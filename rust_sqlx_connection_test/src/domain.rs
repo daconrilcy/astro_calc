@@ -156,6 +156,8 @@ pub struct BasicPayload {
     pub signals: Vec<BasicSignal>,
     #[serde(default)]
     pub reading_plan: Vec<BasicReadingPlanItem>,
+    #[serde(default)]
+    pub drafting_plan: Vec<BasicDraftingPlanItem>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -197,4 +199,16 @@ pub struct BasicReadingPlanItem {
     pub title: String,
     #[serde(default)]
     pub source_signal_keys: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BasicDraftingPlanItem {
+    pub slot: String,
+    pub section_title: String,
+    #[serde(default)]
+    pub source_signal_keys: Vec<String>,
+    pub writing_objective: String,
+    pub max_words: u16,
+    #[serde(default)]
+    pub avoid: Vec<String>,
 }

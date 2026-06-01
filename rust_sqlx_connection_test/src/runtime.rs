@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use chrono::Utc;
 use sqlx::PgPool;
@@ -190,6 +190,7 @@ fn is_current_basic_payload(payload: &BasicPayload) -> bool {
     !payload.signals.is_empty()
         && payload.signals.len() <= 12
         && has_current_reading_plan(payload)
+        && has_current_drafting_plan(payload)
         && payload
             .positions
             .iter()
@@ -220,11 +221,19 @@ fn has_current_reading_plan(payload: &BasicPayload) -> bool {
         .map(|signal| signal.signal_key.as_str())
         .collect();
     let mut slots = HashSet::new();
+    let mut previous_slot_order = None;
 
     payload.reading_plan.iter().all(|item| {
         let slot = item.slot.trim();
+        let Some(slot_order) = reading_slot_order(slot) else {
+            return false;
+        };
+        let is_in_order = previous_slot_order.is_none_or(|previous| previous < slot_order);
+        previous_slot_order = Some(slot_order);
+
         !slot.is_empty()
             && slots.insert(slot)
+            && is_in_order
             && !item.title.trim().is_empty()
             && !item.source_signal_keys.is_empty()
             && item.source_signal_keys.iter().all(|signal_key| {
@@ -232,6 +241,100 @@ fn has_current_reading_plan(payload: &BasicPayload) -> bool {
                 !signal_key.is_empty() && signal_keys.contains(signal_key)
             })
     })
+}
+
+fn reading_slot_order(slot: &str) -> Option<usize> {
+    match slot {
+        "core_identity" => Some(0),
+        "dominant_cluster" => Some(1),
+        "main_tension_or_support" => Some(2),
+        "expression_style" => Some(3),
+        "background_factors" => Some(4),
+        _ => None,
+    }
+}
+
+fn has_current_drafting_plan(payload: &BasicPayload) -> bool {
+    if payload.drafting_plan.is_empty() || payload.drafting_plan.len() != payload.reading_plan.len()
+    {
+        return false;
+    }
+
+    let reading_sources_by_slot: HashMap<&str, &[String]> = payload
+        .reading_plan
+        .iter()
+        .map(|item| (item.slot.as_str(), item.source_signal_keys.as_slice()))
+        .collect();
+    let signal_keys: HashSet<&str> = payload
+        .signals
+        .iter()
+        .map(|signal| signal.signal_key.as_str())
+        .collect();
+    let mut slots = HashSet::new();
+
+    payload.drafting_plan.iter().all(|item| {
+        let slot = item.slot.trim();
+        !slot.is_empty()
+            && slots.insert(slot)
+            && reading_sources_by_slot
+                .get(slot)
+                .is_some_and(|reading_sources| {
+                    *reading_sources == item.source_signal_keys.as_slice()
+                })
+            && !item.section_title.trim().is_empty()
+            && !item.writing_objective.trim().is_empty()
+            && has_current_drafting_language(item)
+            && item.max_words > 0
+            && !item.avoid.is_empty()
+            && item.avoid.iter().all(|rule| !rule.trim().is_empty())
+            && !item.source_signal_keys.is_empty()
+            && item.source_signal_keys.iter().all(|signal_key| {
+                let signal_key = signal_key.trim();
+                !signal_key.is_empty() && signal_keys.contains(signal_key)
+            })
+    })
+}
+
+fn has_current_drafting_language(item: &crate::domain::BasicDraftingPlanItem) -> bool {
+    let fields = std::iter::once(item.section_title.as_str())
+        .chain(std::iter::once(item.writing_objective.as_str()))
+        .chain(item.avoid.iter().map(String::as_str));
+
+    fields.into_iter().all(|field| {
+        !contains_legacy_french_drafting_text(field) && !contains_non_ascii_letter(field)
+    })
+}
+
+fn contains_legacy_french_drafting_text(text: &str) -> bool {
+    const LEGACY_FRENCH_FRAGMENTS: &[&str] = &[
+        "Les reperes",
+        "Les dynamiques",
+        "Les facteurs",
+        "Une dominante",
+        "Presenter en langage",
+        "Expliquer en langage",
+        "Expliquer les principales",
+        "Montrer comment",
+        "Situer les facteurs",
+        "Rediger une section",
+        "repeter chaque",
+        "utiliser des IDs",
+        "faire une prediction",
+        "ajouter des informations",
+        "presenter un aspect",
+        "donner trop de poids",
+        "en regroupant",
+        "sans lister",
+    ];
+
+    LEGACY_FRENCH_FRAGMENTS
+        .iter()
+        .any(|fragment| text.contains(fragment))
+}
+
+fn contains_non_ascii_letter(text: &str) -> bool {
+    text.chars()
+        .any(|character| character.is_alphabetic() && !character.is_ascii())
 }
 
 fn has_text(value: &Option<String>) -> bool {
@@ -250,7 +353,9 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-    use crate::domain::{BasicObjectPosition, BasicReadingPlanItem, BasicSignal};
+    use crate::domain::{
+        BasicDraftingPlanItem, BasicObjectPosition, BasicReadingPlanItem, BasicSignal,
+    };
 
     fn current_payload() -> BasicPayload {
         BasicPayload {
@@ -290,6 +395,14 @@ mod tests {
                 title: "Core identity markers".to_string(),
                 source_signal_keys: vec!["object_position:sun".to_string()],
             }],
+            drafting_plan: vec![BasicDraftingPlanItem {
+                slot: "core_identity".to_string(),
+                section_title: "Core chart markers".to_string(),
+                source_signal_keys: vec!["object_position:sun".to_string()],
+                writing_objective: "Explain the central markers.".to_string(),
+                max_words: 110,
+                avoid: vec!["use technical IDs".to_string()],
+            }],
         }
     }
 
@@ -318,6 +431,14 @@ mod tests {
     }
 
     #[test]
+    fn current_payload_requires_drafting_plan() {
+        let mut payload = current_payload();
+        payload.drafting_plan.clear();
+
+        assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
     fn current_payload_rejects_reading_plan_with_missing_signal_key() {
         let mut payload = current_payload();
         payload.reading_plan[0]
@@ -335,6 +456,76 @@ mod tests {
             title: "Duplicate".to_string(),
             source_signal_keys: vec!["object_position:sun".to_string()],
         });
+
+        assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
+    fn current_payload_rejects_unknown_reading_plan_slot() {
+        let mut payload = current_payload();
+        payload.reading_plan[0].slot = "custom_slot".to_string();
+        payload.drafting_plan[0].slot = "custom_slot".to_string();
+
+        assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
+    fn current_payload_rejects_out_of_order_reading_plan_slots() {
+        let mut payload = current_payload();
+        payload.signals.push(BasicSignal {
+            signal_key: "object_position:mercury".to_string(),
+            theme_code: Some("communication".to_string()),
+            title: "Mercury in Gemini, house 9".to_string(),
+            summary: Some("summary".to_string()),
+            priority_score: 85.0,
+            confidence_score: Some(0.95),
+            interpretive_hint: Some("hint".to_string()),
+            semantic_tags: vec!["placement".to_string()],
+            source_weight: Some(0.75),
+            aggregation_group: Some("gemini:house_9".to_string()),
+            writing_guidance: Some("guidance".to_string()),
+            evidence: Some(json!({"fact_type": "object_position"})),
+        });
+        payload.reading_plan.insert(
+            0,
+            BasicReadingPlanItem {
+                slot: "expression_style".to_string(),
+                title: "Expression style".to_string(),
+                source_signal_keys: vec!["object_position:mercury".to_string()],
+            },
+        );
+        payload.drafting_plan.insert(
+            0,
+            BasicDraftingPlanItem {
+                slot: "expression_style".to_string(),
+                section_title: "Expression and action style".to_string(),
+                source_signal_keys: vec!["object_position:mercury".to_string()],
+                writing_objective: "Show how the person thinks and acts.".to_string(),
+                max_words: 110,
+                avoid: vec!["use technical IDs".to_string()],
+            },
+        );
+
+        assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
+    fn current_payload_rejects_drafting_plan_with_missing_signal_key() {
+        let mut payload = current_payload();
+        payload.drafting_plan[0]
+            .source_signal_keys
+            .push("object_position:moon".to_string());
+
+        assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
+    fn current_payload_rejects_legacy_french_drafting_plan() {
+        let mut payload = current_payload();
+        payload.drafting_plan[0].section_title = "Les reperes centraux du theme".to_string();
+        payload.drafting_plan[0].writing_objective =
+            "Presenter en langage simple les marqueurs centraux.".to_string();
+        payload.drafting_plan[0].avoid = vec!["utiliser des IDs techniques".to_string()];
 
         assert!(!is_current_basic_payload(&payload));
     }

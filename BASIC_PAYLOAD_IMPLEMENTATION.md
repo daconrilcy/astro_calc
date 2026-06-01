@@ -20,6 +20,11 @@ sont persistees en `merged` au lieu de remonter comme signaux actifs autonomes.
 Le payload final expose aussi `reading_plan`, une sequence de slots qui indique
 dans quel ordre exploiter les signaux actifs pour la future redaction.
 
+L'etape 1D ajoute un contrat de redaction Basic par slot. Le runtime ne produit
+pas encore un texte final, mais il transforme chaque item de `reading_plan` en
+section attendue via `drafting_plan` : titre editorial, sources, objectif de
+redaction, plafond de mots et consignes d'evitement.
+
 Le runtime conserve la chaine existante :
 
 1. calcul des faits astrologiques ;
@@ -296,6 +301,61 @@ slots suivants quand les sources correspondantes existent :
 - `background_factors` : Jupiter, Saturne, Uranus, Neptune, Pluton si encore
   actifs.
 
+## Contrat de redaction Basic
+
+Le payload final contient aussi `drafting_plan`. Il est derive du
+`reading_plan` et conserve les memes slots et les memes sources, mais les rend
+directement exploitables par une future couche de generation controlee.
+
+Les champs redactionnels generes par `drafting_plan` sont en anglais. Cette
+contrainte couvre `section_title`, `writing_objective` et `avoid`, afin que le
+payload Basic reste coherent avec les libelles de referentiel actuellement
+exposes par le runtime.
+
+```json
+{
+  "drafting_plan": [
+    {
+      "slot": "dominant_cluster",
+      "section_title": "A Capricorn dominant theme around Resources",
+      "source_signal_keys": [
+        "cluster:capricorn:house_2",
+        "object_position:sun"
+      ],
+      "writing_objective": "Explain in plain language that the chart emphasizes Capricorn, Resources, and structure, responsibility, security, grouping the related placements instead of enumerating them.",
+      "max_words": 120,
+      "avoid": [
+        "repeat each placement one by one",
+        "use technical IDs",
+        "make fatalistic predictions",
+        "add information that is absent from the source signals"
+      ]
+    }
+  ]
+}
+```
+
+Les slots ont des objectifs specialises :
+
+- `core_identity` : presenter les marqueurs centraux ;
+- `dominant_cluster` : expliquer la dominante sans enumerer chaque placement ;
+- `main_tension_or_support` : decrire les dynamiques principales en distinguant
+  appuis et tensions ;
+- `expression_style` : synthetiser pensee, communication, desir et action ;
+- `background_factors` : garder les facteurs de fond proportionnes.
+
+Cette couche est volontairement contractuelle : elle donne au futur LLM une
+liste de sections a rediger, mais elle ne lui demande pas encore de produire un
+theme complet libre.
+
+La validation de reutilisation des payloads existants force maintenant aussi :
+
+- des slots connus uniquement ;
+- l'ordre canonique des slots Basic ;
+- un `drafting_plan` strictement aligne sur les sources du `reading_plan` ;
+- l'absence d'anciens fragments redactionnels en francais ;
+- l'absence de lettres non ASCII dans les consignes redactionnelles 1D.
+
 ## Persistance
 
 Le payload final est serialize et upserte dans :
@@ -325,6 +385,12 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
   `aggregation_group` et `writing_guidance` non vides ;
 - `reading_plan` present, non vide, compose de slots uniques et de sources qui
   existent dans les signaux du payload ;
+- `drafting_plan` present, non vide, aligne sur les slots et sources du
+  `reading_plan`, avec `section_title`, `writing_objective`, `max_words` et
+  `avoid` renseignes ;
+- slots du `reading_plan` connus et dans l'ordre Basic canonique ;
+- champs redactionnels du `drafting_plan` en anglais, sans anciens fragments
+  francais ni lettres non ASCII ;
 - absence d'anciens templates connus comme `by a opposition`.
 
 Sinon, les signaux sont reconstruits depuis les positions et aspects persistants,
@@ -356,6 +422,7 @@ Le run attendu doit afficher :
 - des positions avec `sign_code`, `sign_name`, `house_number`, `house_name` ;
 - au plus 12 signaux ;
 - un `reading_plan` non vide ;
+- un `drafting_plan` non vide et aligne sur le `reading_plan` ;
 - des titres sans IDs techniques ;
 - des champs semantiques 1B sur chaque signal ;
 - un cluster `cluster:<sign_code>:house_<number>` quand au moins trois objets

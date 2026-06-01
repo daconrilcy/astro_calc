@@ -1,6 +1,6 @@
 use crate::domain::{
-    BasicObjectPosition, BasicPayload, BasicReadingPlanItem, BasicSignal, InterpretationSignalRow,
-    NatalChartInput, ObjectPositionFact,
+    BasicDraftingPlanItem, BasicObjectPosition, BasicPayload, BasicReadingPlanItem, BasicSignal,
+    InterpretationSignalRow, NatalChartInput, ObjectPositionFact,
 };
 
 pub fn build_basic_payload(
@@ -29,6 +29,7 @@ pub fn build_basic_payload(
         .collect();
 
     let reading_plan = build_reading_plan(&basic_signals);
+    let drafting_plan = build_drafting_plan(&reading_plan, &basic_signals);
 
     BasicPayload {
         product_code: input.product_code().to_string(),
@@ -53,6 +54,7 @@ pub fn build_basic_payload(
             .collect(),
         signals: basic_signals,
         reading_plan,
+        drafting_plan,
     }
 }
 
@@ -175,6 +177,171 @@ fn dedupe_strings(values: &mut Vec<String>) {
         }
     }
     *values = deduped;
+}
+
+fn build_drafting_plan(
+    reading_plan: &[BasicReadingPlanItem],
+    signals: &[BasicSignal],
+) -> Vec<BasicDraftingPlanItem> {
+    reading_plan
+        .iter()
+        .map(|item| {
+            let source_signals = signals_for_keys(signals, &item.source_signal_keys);
+            BasicDraftingPlanItem {
+                slot: item.slot.clone(),
+                section_title: section_title(item, &source_signals),
+                source_signal_keys: item.source_signal_keys.clone(),
+                writing_objective: writing_objective(item, &source_signals),
+                max_words: max_words_for_slot(&item.slot),
+                avoid: avoid_rules_for_slot(&item.slot),
+            }
+        })
+        .collect()
+}
+
+fn signals_for_keys<'a>(signals: &'a [BasicSignal], keys: &[String]) -> Vec<&'a BasicSignal> {
+    keys.iter()
+        .filter_map(|key| signals.iter().find(|signal| signal.signal_key == *key))
+        .collect()
+}
+
+fn section_title(item: &BasicReadingPlanItem, signals: &[&BasicSignal]) -> String {
+    match item.slot.as_str() {
+        "core_identity" => "Core chart markers".to_string(),
+        "dominant_cluster" => cluster_section_title(signals),
+        "main_tension_or_support" => "Main dynamics".to_string(),
+        "expression_style" => "Expression and action style".to_string(),
+        "background_factors" => "Background factors".to_string(),
+        _ => item.title.clone(),
+    }
+}
+
+fn cluster_section_title(signals: &[&BasicSignal]) -> String {
+    let Some(cluster) = signals
+        .iter()
+        .copied()
+        .find(|signal| signal.signal_key.starts_with("cluster:"))
+    else {
+        return "A structuring dominant theme".to_string();
+    };
+
+    let sign_name = cluster
+        .evidence
+        .as_ref()
+        .and_then(|evidence| evidence.get("sign_name"))
+        .and_then(|value| value.as_str())
+        .unwrap_or("the sign");
+    let house_name = cluster
+        .evidence
+        .as_ref()
+        .and_then(|evidence| evidence.get("house_name"))
+        .and_then(|value| value.as_str())
+        .unwrap_or("the house");
+
+    format!("A {sign_name} dominant theme around {house_name}")
+}
+
+fn writing_objective(item: &BasicReadingPlanItem, signals: &[&BasicSignal]) -> String {
+    match item.slot.as_str() {
+        "core_identity" => {
+            "Explain the central identity markers, emotional needs, and overall chart orientation in plain language.".to_string()
+        }
+        "dominant_cluster" => dominant_cluster_objective(signals),
+        "main_tension_or_support" => {
+            "Explain the main relationships between chart factors, distinguishing supportive and challenging dynamics without turning aspects into verdicts.".to_string()
+        }
+        "expression_style" => {
+            "Show how the person thinks, communicates, desires, chooses, and acts day to day without listing each placement separately.".to_string()
+        }
+        "background_factors" => {
+            "Place the more collective or less central factors in the background with brief, proportionate wording.".to_string()
+        }
+        _ => format!(
+            "Draft a short section from the {} slot while staying strictly grounded in the source signals.",
+            item.slot
+        ),
+    }
+}
+
+fn dominant_cluster_objective(signals: &[&BasicSignal]) -> String {
+    let Some(cluster) = signals
+        .iter()
+        .copied()
+        .find(|signal| signal.signal_key.starts_with("cluster:"))
+    else {
+        return "Explain the chart's dominant theme in plain language without repeating each placement one by one.".to_string();
+    };
+
+    let sign_name = cluster
+        .evidence
+        .as_ref()
+        .and_then(|evidence| evidence.get("sign_name"))
+        .and_then(|value| value.as_str())
+        .unwrap_or("the sign");
+    let house_name = cluster
+        .evidence
+        .as_ref()
+        .and_then(|evidence| evidence.get("house_name"))
+        .and_then(|value| value.as_str())
+        .unwrap_or("the house");
+    let sign_code = sign_name.to_lowercase();
+    let house_code = house_name.to_lowercase();
+    let themes = cluster
+        .semantic_tags
+        .iter()
+        .filter(|tag| {
+            !matches!(
+                tag.as_str(),
+                "cluster" | "placement" | "aspect" | "high_strength" | "medium_strength"
+            ) && !tag.starts_with("house_")
+                && tag.as_str() != sign_code
+                && tag.as_str() != house_code
+        })
+        .take(4)
+        .cloned()
+        .collect::<Vec<_>>();
+
+    let theme_text = if themes.is_empty() {
+        "the cluster's recurring themes".to_string()
+    } else {
+        themes.join(", ")
+    };
+
+    format!(
+        "Explain in plain language that the chart emphasizes {sign_name}, {house_name}, and {theme_text}, grouping the related placements instead of enumerating them."
+    )
+}
+
+fn max_words_for_slot(slot: &str) -> u16 {
+    match slot {
+        "dominant_cluster" => 120,
+        "core_identity" | "main_tension_or_support" | "expression_style" => 110,
+        "background_factors" => 80,
+        _ => 100,
+    }
+}
+
+fn avoid_rules_for_slot(slot: &str) -> Vec<String> {
+    let mut rules = vec![
+        "use technical IDs".to_string(),
+        "make fatalistic predictions".to_string(),
+        "add information that is absent from the source signals".to_string(),
+    ];
+
+    match slot {
+        "dominant_cluster" => {
+            rules.insert(0, "repeat each placement one by one".to_string());
+        }
+        "main_tension_or_support" => {
+            rules.insert(0, "present an aspect as an isolated verdict".to_string());
+        }
+        "background_factors" => {
+            rules.insert(0, "give too much weight to background factors".to_string());
+        }
+        _ => {}
+    }
+
+    rules
 }
 
 fn payload_value(signal: &InterpretationSignalRow, key: &str) -> Option<serde_json::Value> {
@@ -313,6 +480,13 @@ mod tests {
             payload.reading_plan[0].source_signal_keys,
             vec!["object_position:sun"]
         );
+        assert_eq!(payload.drafting_plan.len(), 1);
+        assert_eq!(payload.drafting_plan[0].slot, "core_identity");
+        assert_eq!(
+            payload.drafting_plan[0].source_signal_keys,
+            payload.reading_plan[0].source_signal_keys
+        );
+        assert_eq!(payload.drafting_plan[0].max_words, 110);
     }
 
     #[test]
@@ -328,12 +502,14 @@ mod tests {
                 confidence_score: Some(0.9),
                 payload_json: Some(json!({
                     "interpretive_hint": "hint",
-                    "semantic_tags": ["cluster", "capricorn", "house_2"],
+                    "semantic_tags": ["cluster", "capricorn", "house_2", "resources", "structure", "responsibility"],
                     "source_weight": 2.0,
                     "aggregation_group": "capricorn_house_2_cluster",
                     "writing_guidance": "guidance",
                     "evidence": {
                         "fact_type": "position_cluster",
+                        "sign_name": "Capricorn",
+                        "house_name": "Resources",
                         "source_signals": [
                             "object_position:sun",
                             "object_position:saturn"
@@ -392,5 +568,22 @@ mod tests {
             .reading_plan
             .iter()
             .any(|item| item.slot == "main_tension_or_support"));
+
+        let cluster_drafting = payload
+            .drafting_plan
+            .iter()
+            .find(|item| item.slot == "dominant_cluster")
+            .expect("expected dominant cluster drafting item");
+        assert_eq!(
+            cluster_drafting.source_signal_keys,
+            vec!["cluster:capricorn:house_2", "object_position:sun"]
+        );
+        assert_eq!(
+            cluster_drafting.section_title,
+            "A Capricorn dominant theme around Resources"
+        );
+        assert!(cluster_drafting
+            .avoid
+            .contains(&"repeat each placement one by one".to_string()));
     }
 }
