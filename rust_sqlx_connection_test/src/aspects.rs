@@ -29,13 +29,14 @@ pub fn detect_aspects(
 
                 let (source_id, target_id) =
                     canonical_pair(left.chart_object_id, right.chart_object_id);
+                let is_applying = is_applying(left, right, aspect.angle, orb);
                 facts.push(AspectFact {
                     source_chart_object_id: source_id,
                     target_chart_object_id: target_id,
                     aspect_id: aspect.id,
                     orb_deg: round4(orb),
-                    phase_state: phase_state(orb).to_string(),
-                    is_applying: false,
+                    phase_state: phase_state(orb, is_applying).to_string(),
+                    is_applying,
                     is_exact: orb <= 0.1,
                     strength_score: Some(round4((1.0 - (orb / DEFAULT_MAJOR_ORB_DEG)).max(0.0))),
                     calculation_notes_json: Some(json!({
@@ -66,14 +67,79 @@ fn canonical_pair(left: i32, right: i32) -> (i32, i32) {
     }
 }
 
-fn phase_state(orb: f64) -> &'static str {
+fn is_applying(
+    left: &ObjectPositionFact,
+    right: &ObjectPositionFact,
+    aspect_angle: f64,
+    current_orb: f64,
+) -> bool {
+    let Some(left_speed) = left.apparent_speed_deg_per_day else {
+        return false;
+    };
+    let Some(right_speed) = right.apparent_speed_deg_per_day else {
+        return false;
+    };
+
+    let next_left = left.longitude_deg + left_speed;
+    let next_right = right.longitude_deg + right_speed;
+    let next_separation = shortest_distance(next_left, next_right);
+    let next_orb = (next_separation - aspect_angle).abs();
+    next_orb < current_orb
+}
+
+fn phase_state(orb: f64, is_applying: bool) -> &'static str {
     if orb <= 0.1 {
         "exact"
-    } else {
+    } else if is_applying {
         "applying"
+    } else {
+        "separating"
     }
 }
 
 fn round4(value: f64) -> f64 {
     (value * 10_000.0).round() / 10_000.0
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn position(id: i32, longitude_deg: f64, speed: f64) -> ObjectPositionFact {
+        ObjectPositionFact {
+            chart_object_id: id,
+            object_code: format!("object_{id}"),
+            object_name: format!("Object {id}"),
+            zodiacal_reference_system_id: 1,
+            coordinate_reference_system_id: 1,
+            sign_id: 1,
+            house_id: None,
+            motion_state_id: None,
+            horizon_position_id: None,
+            longitude_deg,
+            latitude_deg: None,
+            apparent_speed_deg_per_day: Some(speed),
+            altitude_deg: None,
+            is_visible: None,
+            facts_json: None,
+        }
+    }
+
+    #[test]
+    fn aspect_phase_uses_relative_speed() {
+        let aspects = vec![AspectDefinition {
+            id: 1,
+            code: "conjunction".to_string(),
+            name: "Conjunction".to_string(),
+            angle: 0.0,
+        }];
+
+        let applying = detect_aspects(&[position(1, 0.0, 1.0), position(2, 2.0, 0.0)], &aspects);
+        assert_eq!(applying[0].phase_state, "applying");
+        assert!(applying[0].is_applying);
+
+        let separating = detect_aspects(&[position(1, 0.0, -1.0), position(2, 2.0, 0.0)], &aspects);
+        assert_eq!(separating[0].phase_state, "separating");
+        assert!(!separating[0].is_applying);
+    }
 }

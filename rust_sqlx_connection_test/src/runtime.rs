@@ -17,6 +17,8 @@ pub enum RuntimeError {
     Json(#[from] serde_json::Error),
     #[error("ephemeris error: {0}")]
     Ephemeris(String),
+    #[error("invalid runtime table: {0}")]
+    InvalidRuntimeTable(String),
     #[error("calculation is already running for idempotency key {idempotency_key}")]
     RunningCalculationInProgress {
         idempotency_key: String,
@@ -30,6 +32,7 @@ impl RuntimeError {
             Self::Database(_) => "database_error",
             Self::Json(_) => "json_error",
             Self::Ephemeris(_) => "ephemeris_error",
+            Self::InvalidRuntimeTable(_) => "invalid_runtime_table",
             Self::RunningCalculationInProgress { .. } => "running_calculation_in_progress",
         }
     }
@@ -80,9 +83,13 @@ where
             {
                 return Ok(payload);
             }
-            return Err(RuntimeError::Ephemeris(format!(
-                "completed calculation {completed_id} exists but has no {product_code} payload"
-            )));
+            let positions = self.repository.positions_for_payload(completed_id).await?;
+            let signals = self.repository.active_signals(completed_id).await?;
+            let payload = build_basic_payload(completed_id, &input, &positions, &signals);
+            let mut payload_tx = self.repository.pool().begin().await?;
+            RuntimeRepository::persist_basic_payload(&mut payload_tx, &input, &payload).await?;
+            payload_tx.commit().await?;
+            return Ok(payload);
         } else if let Some(running) = existing.iter().find(|row| row.status == "running") {
             if is_stale(running, self.options.stale_after_seconds) {
                 RuntimeRepository::mark_stale_failed(&mut tx, running.id).await?;

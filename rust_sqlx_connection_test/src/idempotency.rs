@@ -7,7 +7,7 @@ use crate::runtime::RuntimeError;
 #[derive(Debug, Serialize)]
 struct StableIdempotencyDocument<'a> {
     chart_type: &'static str,
-    input: &'a NatalChartInput,
+    input: StableCalculationInput<'a>,
     reference_version_id: i32,
     calculation_profile_id: Option<i32>,
     engine_version: &'a str,
@@ -17,8 +17,17 @@ struct StableIdempotencyDocument<'a> {
     house_system_id: i32,
 }
 
+#[derive(Debug, Serialize)]
+struct StableCalculationInput<'a> {
+    subject_label: &'a Option<String>,
+    birth_datetime_utc: chrono::DateTime<chrono::Utc>,
+    latitude_deg: f64,
+    longitude_deg: f64,
+    altitude_m: Option<f64>,
+}
+
 pub fn input_hash(input: &NatalChartInput) -> Result<String, RuntimeError> {
-    sha256_json(input)
+    sha256_json(&stable_calculation_input(input))
 }
 
 pub fn idempotency_key(
@@ -27,7 +36,7 @@ pub fn idempotency_key(
 ) -> Result<String, RuntimeError> {
     let document = StableIdempotencyDocument {
         chart_type: "natal",
-        input,
+        input: stable_calculation_input(input),
         reference_version_id: input.reference_version_id,
         calculation_profile_id: input.calculation_profile_id,
         engine_version: &options.engine_version,
@@ -38,6 +47,16 @@ pub fn idempotency_key(
     };
 
     sha256_json(&document)
+}
+
+fn stable_calculation_input(input: &NatalChartInput) -> StableCalculationInput<'_> {
+    StableCalculationInput {
+        subject_label: &input.subject_label,
+        birth_datetime_utc: input.birth_datetime_utc,
+        latitude_deg: input.latitude_deg,
+        longitude_deg: input.longitude_deg,
+        altitude_m: input.altitude_m,
+    }
 }
 
 pub fn advisory_lock_key(idempotency_key: &str) -> i64 {
@@ -95,5 +114,21 @@ mod tests {
             idempotency_key(&input, &left).unwrap(),
             idempotency_key(&input, &right).unwrap()
         );
+    }
+
+    #[test]
+    fn idempotency_ignores_generation_options() {
+        let mut left = input();
+        let mut right = input();
+        left.product_code = Some("basic".to_string());
+        left.language_id = Some(1);
+        right.product_code = Some("premium".to_string());
+        right.language_id = Some(2);
+
+        assert_eq!(
+            idempotency_key(&left, &RuntimeOptions::default()).unwrap(),
+            idempotency_key(&right, &RuntimeOptions::default()).unwrap()
+        );
+        assert_eq!(input_hash(&left).unwrap(), input_hash(&right).unwrap());
     }
 }

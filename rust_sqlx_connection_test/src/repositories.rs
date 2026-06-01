@@ -96,6 +96,59 @@ impl RuntimeRepository {
             .map_err(Into::into)
     }
 
+    pub async fn positions_for_payload(
+        &self,
+        chart_calculation_id: i32,
+    ) -> Result<Vec<ObjectPositionFact>, RuntimeError> {
+        Ok(sqlx::query_as::<_, PersistedObjectPositionFact>(
+            r#"
+            SELECT p.chart_object_id,
+                   o.code AS object_code,
+                   o.name AS object_name,
+                   p.zodiacal_reference_system_id,
+                   p.coordinate_reference_system_id,
+                   p.sign_id,
+                   p.house_id,
+                   p.motion_state_id,
+                   p.horizon_position_id,
+                   p.longitude_deg::float8 AS longitude_deg,
+                   p.latitude_deg::float8 AS latitude_deg,
+                   p.apparent_speed_deg_per_day::float8 AS apparent_speed_deg_per_day,
+                   p.altitude_deg::float8 AS altitude_deg,
+                   p.is_visible,
+                   p.facts_json
+            FROM astral_calculated_chart_object_positions p
+            JOIN astral_chart_objects o ON o.id = p.chart_object_id
+            WHERE p.chart_calculation_id = $1
+            ORDER BY o.sort_order, o.id
+            "#,
+        )
+        .bind(chart_calculation_id)
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(Into::into)
+        .collect())
+    }
+
+    pub async fn active_signals(
+        &self,
+        chart_calculation_id: i32,
+    ) -> Result<Vec<InterpretationSignalRow>, RuntimeError> {
+        Ok(sqlx::query_as::<_, InterpretationSignalRow>(
+            r#"
+            SELECT id, signal_key, title, summary, priority_score::float8 AS priority_score,
+                   confidence_score::float8 AS confidence_score, payload_json
+            FROM astral_interpretation_signals
+            WHERE chart_calculation_id = $1 AND suppression_state = 'active'
+            ORDER BY priority_score DESC, id
+            "#,
+        )
+        .bind(chart_calculation_id)
+        .fetch_all(&self.pool)
+        .await?)
+    }
+
     pub async fn lock_idempotency(
         tx: &mut Transaction<'_, Postgres>,
         lock_key: i64,
@@ -479,8 +532,64 @@ async fn next_id(
     tx: &mut Transaction<'_, Postgres>,
     table_name: &str,
 ) -> Result<i32, RuntimeError> {
+    ensure_runtime_table_name(table_name)?;
+    let lock_sql = format!("LOCK TABLE {table_name} IN EXCLUSIVE MODE");
+    sqlx::query(&lock_sql).execute(&mut **tx).await?;
     let sql = format!("SELECT COALESCE(MAX(id), 0) + 1 FROM {table_name}");
     Ok(sqlx::query_scalar::<_, i32>(&sql)
         .fetch_one(&mut **tx)
         .await?)
+}
+
+fn ensure_runtime_table_name(table_name: &str) -> Result<(), RuntimeError> {
+    match table_name {
+        "astral_chart_calculations"
+        | "astral_calculated_house_cusps"
+        | "astral_calculated_chart_object_positions"
+        | "astral_calculated_aspects"
+        | "astral_interpretation_signals"
+        | "astral_interpretation_generation_payloads" => Ok(()),
+        _ => Err(RuntimeError::InvalidRuntimeTable(table_name.to_string())),
+    }
+}
+
+#[derive(Debug, sqlx::FromRow)]
+struct PersistedObjectPositionFact {
+    chart_object_id: i32,
+    object_code: String,
+    object_name: String,
+    zodiacal_reference_system_id: i32,
+    coordinate_reference_system_id: i32,
+    sign_id: i32,
+    house_id: Option<i32>,
+    motion_state_id: Option<i32>,
+    horizon_position_id: Option<i32>,
+    longitude_deg: f64,
+    latitude_deg: Option<f64>,
+    apparent_speed_deg_per_day: Option<f64>,
+    altitude_deg: Option<f64>,
+    is_visible: Option<bool>,
+    facts_json: Option<Value>,
+}
+
+impl From<PersistedObjectPositionFact> for ObjectPositionFact {
+    fn from(row: PersistedObjectPositionFact) -> Self {
+        Self {
+            chart_object_id: row.chart_object_id,
+            object_code: row.object_code,
+            object_name: row.object_name,
+            zodiacal_reference_system_id: row.zodiacal_reference_system_id,
+            coordinate_reference_system_id: row.coordinate_reference_system_id,
+            sign_id: row.sign_id,
+            house_id: row.house_id,
+            motion_state_id: row.motion_state_id,
+            horizon_position_id: row.horizon_position_id,
+            longitude_deg: row.longitude_deg,
+            latitude_deg: row.latitude_deg,
+            apparent_speed_deg_per_day: row.apparent_speed_deg_per_day,
+            altitude_deg: row.altitude_deg,
+            is_visible: row.is_visible,
+            facts_json: row.facts_json,
+        }
+    }
 }

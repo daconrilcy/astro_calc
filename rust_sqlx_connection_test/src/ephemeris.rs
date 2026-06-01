@@ -1,4 +1,6 @@
 use std::path::{Path, PathBuf};
+#[cfg(feature = "swisseph-engine")]
+use std::sync::{Mutex, OnceLock};
 
 use crate::domain::{
     AspectDefinition, CalculatedChartFacts, ChartObject, HouseSystem, NatalChartInput,
@@ -48,8 +50,12 @@ impl EphemerisEngine for SwissEphemerisEngine {
             whole_sign_house_id,
         };
         use serde_json::json;
-        use swiss_eph::safe::{calc_ut, close, houses, set_ephe_path, CalcFlags};
+        use swiss_eph::safe::{calc_ut, houses, set_ephe_path, CalcFlags};
 
+        validate_supported_reference_systems(input)?;
+        let _guard = swiss_ephemeris_lock()
+            .lock()
+            .map_err(|_| RuntimeError::Ephemeris("Swiss Ephemeris lock poisoned".to_string()))?;
         set_ephe_path(
             self.ephemeris_path
                 .to_str()
@@ -120,7 +126,6 @@ impl EphemerisEngine for SwissEphemerisEngine {
         }
 
         let aspects = detect_aspects(&positions, aspects);
-        close();
 
         Ok(CalculatedChartFacts {
             positions,
@@ -144,6 +149,29 @@ impl EphemerisEngine for SwissEphemerisEngine {
             ),
         ))
     }
+}
+
+#[cfg(feature = "swisseph-engine")]
+fn swiss_ephemeris_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+}
+
+#[cfg(feature = "swisseph-engine")]
+fn validate_supported_reference_systems(input: &NatalChartInput) -> Result<(), RuntimeError> {
+    if input.zodiacal_reference_system_id != 1 {
+        return Err(RuntimeError::Ephemeris(format!(
+            "unsupported zodiacal_reference_system_id {}; only tropical (id=1) is implemented",
+            input.zodiacal_reference_system_id
+        )));
+    }
+    if input.coordinate_reference_system_id != 1 {
+        return Err(RuntimeError::Ephemeris(format!(
+            "unsupported coordinate_reference_system_id {}; only geocentric (id=1) is implemented",
+            input.coordinate_reference_system_id
+        )));
+    }
+    Ok(())
 }
 
 #[cfg(feature = "swisseph-engine")]
