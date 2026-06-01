@@ -1,5 +1,6 @@
 .env
 horoscope.db
+ephe/
 __pycache__/
 *.pyc
 target/
