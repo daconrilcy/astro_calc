@@ -137,6 +137,7 @@ pub struct InterpretationSignalDraft {
 pub struct InterpretationSignalRow {
     pub id: i32,
     pub signal_key: String,
+    pub theme_code: Option<String>,
     pub title: String,
     pub summary: Option<String>,
     pub priority_score: f64,
@@ -174,9 +175,16 @@ pub struct BasicObjectPosition {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BasicSignal {
     pub signal_key: String,
+    pub theme_code: Option<String>,
     pub title: String,
     pub summary: Option<String>,
     pub priority_score: f64,
     pub confidence_score: Option<f64>,
+    pub interpretive_hint: Option<String>,
+    #[serde(default)]
+    pub semantic_tags: Vec<String>,
+    pub source_weight: Option<f64>,
+    pub aggregation_group: Option<String>,
+    pub writing_guidance: Option<String>,
     pub evidence: Option<Value>,
 }

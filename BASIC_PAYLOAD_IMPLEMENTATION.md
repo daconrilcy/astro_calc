@@ -5,8 +5,14 @@ Ce document decrit l'implementation actuelle du payload Basic dans le binaire Ru
 
 ## Objectif
 
-L'etape 1A transforme le payload technique initial en payload Basic exploitable
+L'etape 1A a transforme le payload technique initial en payload Basic exploitable
 par une future couche de generation texte.
+
+L'etape 1B enrichit maintenant ce payload avec des signaux semantiques Basic :
+themes editoriaux, tags, indications de redaction, poids de source et premiers
+signaux agreges. Le runtime ne produit toujours pas une interpretation finale,
+mais il fournit une base plus directement exploitable pour une couche de
+redaction.
 
 Le runtime conserve la chaine existante :
 
@@ -16,8 +22,8 @@ Le runtime conserve la chaine existante :
 4. filtrage produit Basic ;
 5. ecriture du payload final dans `astral_interpretation_generation_payloads`.
 
-Cette etape ne produit pas encore une interpretation redactionnelle finale. Elle
-prepare une entree propre, lisible et auditable.
+Cette etape prepare donc une entree propre, lisible, auditable et pre-orientee
+editorialement.
 
 ## Fichiers concernes
 
@@ -58,24 +64,43 @@ Les IDs restent presents pour l'audit et les relations DB. Les libelles viennent
 
 Les signaux actifs du payload Basic sont limites a 12.
 
-Un signal de position contient un titre lisible et les preuves techniques dans
-`evidence` :
+Un signal de position contient un titre lisible, des champs semantiques et les
+preuves techniques dans `evidence` :
 
 ```json
 {
   "signal_key": "object_position:sun",
+  "theme_code": "beliefs",
   "title": "Sun in Gemini, house 9",
   "summary": "Sun is placed in Gemini and the Beliefs house, emphasizing this chart factor through a concrete, readable placement.",
   "priority_score": 100.0,
   "confidence_score": 0.95,
+  "interpretive_hint": "Sun expresses through Gemini qualities in the field of Beliefs.",
+  "semantic_tags": [
+    "placement",
+    "sun",
+    "gemini",
+    "learning",
+    "adaptability",
+    "house_9",
+    "beliefs",
+    "philosophy",
+    "travel"
+  ],
+  "source_weight": 1.0,
+  "aggregation_group": "gemini:house_9",
+  "writing_guidance": "Use this as a concise placement cue; combine it with nearby cluster or aspect signals before drafting final text.",
   "evidence": {
     "fact_type": "object_position",
     "chart_object_id": 1,
     "object_code": "sun",
+    "object_name": "Sun",
     "sign_id": 3,
     "sign_code": "gemini",
+    "sign_name": "Gemini",
     "house_id": 9,
     "house_number": 9,
+    "house_name": "Beliefs",
     "longitude_deg": 84.8759
   }
 }
@@ -87,18 +112,31 @@ texte utilisateur :
 ```json
 {
   "signal_key": "aspect:sun:mercury:conjunction",
+  "theme_code": "aspect",
   "title": "Sun conjunction Mercury",
   "summary": "Sun and Mercury form a conjunction with 1.01 degrees of orb; the phase is separating.",
   "priority_score": 69.92,
   "confidence_score": 0.85,
+  "interpretive_hint": "Sun and Mercury are connected by a conjunction, so their functions should be read together with attention to the separating phase.",
+  "semantic_tags": [
+    "aspect",
+    "conjunction",
+    "high_strength"
+  ],
+  "source_weight": 1.75,
+  "aggregation_group": "aspect:conjunction",
+  "writing_guidance": "Use the aspect as a relationship between two chart factors, not as a standalone verdict.",
   "evidence": {
     "fact_type": "aspect",
     "source_chart_object_id": 1,
     "source_object_code": "sun",
+    "source_object_name": "Sun",
     "target_chart_object_id": 3,
     "target_object_code": "mercury",
+    "target_object_name": "Mercury",
     "aspect_id": 1,
     "aspect_code": "conjunction",
+    "aspect_name": "Conjunction",
     "orb_deg": 1.0084,
     "phase_state": "separating",
     "strength_score": 0.874
@@ -106,12 +144,85 @@ texte utilisateur :
 }
 ```
 
+### Champs semantiques 1B
+
+Les champs ajoutes par l'etape 1B sont :
+
+- `theme_code` : theme editorial principal du signal, derive de la maison pour
+  les placements quand elle est connue, ou de la famille de signal pour les
+  aspects.
+- `interpretive_hint` : phrase courte orientee utilisateur, mais encore
+  templatee.
+- `semantic_tags` : tags stables utiles pour grouper, filtrer ou guider la
+  redaction.
+- `source_weight` : poids relatif de la source astrologique. Soleil et Lune
+  valent plus que les planetes lentes.
+- `aggregation_group` : cle de regroupement editoriale.
+- `writing_guidance` : consigne courte pour la future couche de redaction.
+
+Ces champs sont stockes dans `astral_interpretation_signals.payload_json`, puis
+remontes dans le payload final par `payload.rs`.
+
+## Signaux agreges Basic
+
+L'etape 1B ajoute un premier type de signal agrege :
+
+```json
+{
+  "signal_key": "cluster:capricorn:house_2",
+  "theme_code": "resources",
+  "title": "Strong concentration in Capricorn, house 2",
+  "summary": "4 chart factors are concentrated in Capricorn and the Resources house, giving extra interpretive weight to this area of the chart.",
+  "priority_score": 99.0,
+  "confidence_score": 0.9,
+  "interpretive_hint": "Read this as a repeated emphasis: Capricorn qualities are focused through the themes of the Resources house.",
+  "semantic_tags": [
+    "cluster",
+    "capricorn",
+    "house_2",
+    "resources",
+    "structure",
+    "responsibility",
+    "security",
+    "value"
+  ],
+  "source_weight": 2.3,
+  "aggregation_group": "capricorn_house_2_cluster",
+  "writing_guidance": "Use this cluster before individual placements and merge repeated wording from its source signals.",
+  "evidence": {
+    "fact_type": "position_cluster",
+    "cluster_type": "sign_house",
+    "sign_code": "capricorn",
+    "sign_name": "Capricorn",
+    "house_number": 2,
+    "house_name": "Resources",
+    "source_signals": [
+      "object_position:sun",
+      "object_position:saturn",
+      "object_position:neptune",
+      "object_position:uranus"
+    ],
+    "source_objects": [
+      "sun",
+      "saturn",
+      "neptune",
+      "uranus"
+    ]
+  }
+}
+```
+
+Un cluster `sign_house` est produit quand au moins trois objets sont places dans
+le meme couple `(sign_code, house_number)`. Il entre dans le meme filtrage Basic
+que les autres signaux et compte donc dans la limite des 12 signaux actifs.
+
 ## Filtrage Basic
 
 Le filtrage est applique dans `signals.rs` :
 
 - les signaux sont tries par `priority_score` decroissant ;
 - les aspects dont `strength_score < 0.4` passent en `suppressed` ;
+- les clusters semantiques sont ajoutes avant le tri final ;
 - seuls les 12 premiers signaux actifs restent eligibles au payload ;
 - `payload.rs` applique aussi `.take(12)` comme garde de lecture.
 
@@ -141,8 +252,12 @@ Si un calcul idempotent est deja `completed`, le runtime tente de reutiliser le
 payload existant. Il ne le reutilise que si le contrat enrichi est present :
 
 - 12 signaux maximum ;
+- au moins un signal ;
 - positions avec `sign_code` et `sign_name` ;
-- signaux avec `evidence`.
+- signaux avec `evidence` ;
+- signaux avec `theme_code`, `interpretive_hint`, `semantic_tags`,
+  `aggregation_group` et `writing_guidance` non vides ;
+- absence d'anciens templates connus comme `by a opposition`.
 
 Sinon, les signaux sont reconstruits depuis les positions et aspects persistants,
 puis le payload est reecrit.
@@ -154,6 +269,7 @@ Depuis `rust_sqlx_connection_test` :
 ```powershell
 cargo test
 cargo test --features swisseph-engine
+cargo clippy --features swisseph-engine -- -D warnings
 ```
 
 Run complet avec les valeurs d'exemple :
@@ -172,6 +288,9 @@ Le run attendu doit afficher :
 - des positions avec `sign_code`, `sign_name`, `house_number`, `house_name` ;
 - au plus 12 signaux ;
 - des titres sans IDs techniques ;
+- des champs semantiques 1B sur chaque signal ;
+- un cluster `cluster:<sign_code>:house_<number>` quand au moins trois objets
+  partagent le meme signe et la meme maison ;
 - des IDs conserves dans `evidence` ;
 - une ecriture/upsert dans `astral_interpretation_generation_payloads`.
 
@@ -179,5 +298,8 @@ Le run attendu doit afficher :
 
 - L'Ascendant et le MC ne sont pas encore exposes comme objets de position Basic.
 - Les resumes restent des phrases templatees, pas une interpretation finale.
+- Les `interpretive_hint` et `writing_guidance` restent aussi des templates.
+- Les clusters Basic ne couvrent pour l'instant que les concentrations
+  `sign_house`.
 - Le programme consomme les libelles des referentiels tels quels. Il ne gere pas la traduction.
 - La redaction LLM doit rester une etape ulterieure.

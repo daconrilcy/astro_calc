@@ -185,13 +185,105 @@ fn is_stale(row: &ChartCalculationRow, default_stale_after_seconds: i32) -> bool
 }
 
 fn is_current_basic_payload(payload: &BasicPayload) -> bool {
-    payload.signals.len() <= 12
+    !payload.signals.is_empty()
+        && payload.signals.len() <= 12
         && payload
             .positions
             .iter()
             .all(|position| !position.sign_code.is_empty() && !position.sign_name.is_empty())
-        && payload
-            .signals
-            .iter()
-            .all(|signal| signal.evidence.is_some())
+        && payload.signals.iter().all(|signal| {
+            signal.evidence.is_some()
+                && has_text(&signal.theme_code)
+                && has_text(&signal.interpretive_hint)
+                && !signal.semantic_tags.is_empty()
+                && signal
+                    .semantic_tags
+                    .iter()
+                    .all(|tag| !tag.trim().is_empty())
+                && has_text(&signal.aggregation_group)
+                && has_text(&signal.writing_guidance)
+                && has_current_aspect_article(&signal.interpretive_hint)
+        })
+}
+
+fn has_text(value: &Option<String>) -> bool {
+    value.as_deref().is_some_and(|text| !text.trim().is_empty())
+}
+
+fn has_current_aspect_article(value: &Option<String>) -> bool {
+    value
+        .as_deref()
+        .is_none_or(|text| !text.contains(" by a opposition"))
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::TimeZone;
+    use serde_json::json;
+
+    use super::*;
+    use crate::domain::{BasicObjectPosition, BasicSignal};
+
+    fn current_payload() -> BasicPayload {
+        BasicPayload {
+            product_code: "basic".to_string(),
+            chart_calculation_id: 1,
+            reference_version_id: 1,
+            subject_label: None,
+            birth_datetime_utc: Utc.with_ymd_and_hms(2024, 6, 15, 12, 0, 0).unwrap(),
+            positions: vec![BasicObjectPosition {
+                object_code: "sun".to_string(),
+                object_name: "Sun".to_string(),
+                longitude_deg: 84.0,
+                sign_id: 3,
+                sign_code: "gemini".to_string(),
+                sign_name: "Gemini".to_string(),
+                house_id: Some(9),
+                house_number: Some(9),
+                house_name: Some("Beliefs".to_string()),
+                motion_state_id: Some(1),
+            }],
+            signals: vec![BasicSignal {
+                signal_key: "object_position:sun".to_string(),
+                theme_code: Some("beliefs".to_string()),
+                title: "Sun in Gemini, house 9".to_string(),
+                summary: Some("summary".to_string()),
+                priority_score: 100.0,
+                confidence_score: Some(0.95),
+                interpretive_hint: Some("hint".to_string()),
+                semantic_tags: vec!["placement".to_string()],
+                source_weight: Some(1.0),
+                aggregation_group: Some("gemini:house_9".to_string()),
+                writing_guidance: Some("guidance".to_string()),
+                evidence: Some(json!({"fact_type": "object_position"})),
+            }],
+        }
+    }
+
+    #[test]
+    fn current_payload_requires_signals() {
+        let mut payload = current_payload();
+        payload.signals.clear();
+
+        assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
+    fn current_payload_rejects_empty_semantic_contract_fields() {
+        let mut payload = current_payload();
+        payload.signals[0].interpretive_hint = Some(" ".to_string());
+
+        assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
+    fn current_payload_rejects_old_opposition_hint_template() {
+        let mut payload = current_payload();
+        payload.signals[0].interpretive_hint = Some(
+            "Jupiter and Uranus are connected by a opposition, so their functions should be read together."
+                .to_string(),
+        );
+
+        assert!(!is_current_basic_payload(&payload));
+    }
 }

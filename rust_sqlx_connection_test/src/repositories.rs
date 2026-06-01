@@ -143,7 +143,8 @@ impl RuntimeRepository {
     ) -> Result<Vec<InterpretationSignalRow>, RuntimeError> {
         Ok(sqlx::query_as::<_, InterpretationSignalRow>(
             r#"
-            SELECT id, signal_key, title, summary, priority_score::float8 AS priority_score,
+            SELECT id, signal_key, theme_code, title, summary,
+                   priority_score::float8 AS priority_score,
                    confidence_score::float8 AS confidence_score, payload_json
             FROM astral_interpretation_signals
             WHERE chart_calculation_id = $1 AND suppression_state = 'active'
@@ -351,6 +352,8 @@ impl RuntimeRepository {
                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
                 ON CONFLICT (chart_calculation_id, signal_key) DO UPDATE
                 SET title = EXCLUDED.title,
+                    signal_type_id = EXCLUDED.signal_type_id,
+                    theme_code = EXCLUDED.theme_code,
                     summary = EXCLUDED.summary,
                     priority_score = EXCLUDED.priority_score,
                     confidence_score = EXCLUDED.confidence_score,
@@ -376,7 +379,8 @@ impl RuntimeRepository {
 
         Ok(sqlx::query_as::<_, InterpretationSignalRow>(
             r#"
-            SELECT id, signal_key, title, summary, priority_score::float8 AS priority_score,
+            SELECT id, signal_key, theme_code, title, summary,
+                   priority_score::float8 AS priority_score,
                    confidence_score::float8 AS confidence_score, payload_json
             FROM astral_interpretation_signals
             WHERE chart_calculation_id = $1 AND suppression_state = 'active'
