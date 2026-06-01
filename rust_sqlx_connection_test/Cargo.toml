@@ -1,0 +1,25 @@
+[package]
+name = "rust_sqlx_connection_test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+dotenvy = "0.15"
+hex = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "chrono", "json"] }
+swiss_eph = { package = "swiss-eph", version = "0.2.1", optional = true }
+thiserror = "2"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+[features]
+default = []
+swisseph-engine = ["dep:swiss_eph"]
+
+[[bin]]
+name = "swe_smoke"
+path = "src/bin/swe_smoke.rs"
+required-features = ["swisseph-engine"]

@@ -2,3 +2,4 @@
 horoscope.db
 __pycache__/
 *.pyc
+target/
