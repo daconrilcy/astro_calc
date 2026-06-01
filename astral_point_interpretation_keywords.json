@@ -2,12 +2,12 @@
   "name": "astral_point_interpretation_keywords",
   "structure": {
     "id": "integer",
-    "core_keywords_json": "json array<string>, default locale en",
-    "shadow_keywords_json": "json array<string>, default locale en",
-    "psychological_keywords_json": "json array<string>, default locale en",
-    "spiritual_keywords_json": "json array<string>, default locale en",
-    "relationship_keywords_json": "json array<string>, default locale en",
-    "career_keywords_json": "json array<string>, default locale en"
+    "core_keywords_json": "json array<string>",
+    "shadow_keywords_json": "json array<string>",
+    "psychological_keywords_json": "json array<string>",
+    "spiritual_keywords_json": "json array<string>",
+    "relationship_keywords_json": "json array<string>",
+    "career_keywords_json": "json array<string>"
   },
   "data": [
     {

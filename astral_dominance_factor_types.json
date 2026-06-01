@@ -1,5 +1,14 @@
 {
-  "table": "astral_dominance_factor_types",
+  "name": "astral_dominance_factor_types",
+  "structure": {
+    "code": "string",
+    "label": "string",
+    "category": "string",
+    "description": "string",
+    "default_weight": "number",
+    "sort_order": "integer",
+    "is_active": "boolean"
+  },
   "data": [
     {
       "code": "chart_ruler",

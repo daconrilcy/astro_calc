@@ -7,17 +7,17 @@
     "display_name": "string",
     "calculation_mode": "string",
     "is_default": "boolean",
-    "description": "string"
-  },
-  "constraints": {
-    "unique": [
-      "astral_point_code",
-      "variant_code"
-    ],
-    "composite_reference_key": [
-      "astral_point_code",
-      "variant_code"
-    ]
+    "description": "string",
+    "constraints": {
+      "unique": [
+        "astral_point_code",
+        "variant_code"
+      ],
+      "composite_reference_key": [
+        "astral_point_code",
+        "variant_code"
+      ]
+    }
   },
   "data": [
     {

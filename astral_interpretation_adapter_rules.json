@@ -1,5 +1,17 @@
 {
   "name": "astral_interpretation_adapter_rules",
+  "structure": {
+    "code": "string",
+    "source_type": "string",
+    "source_code": "string",
+    "condition_json": "object",
+    "signal_code": "string",
+    "priority_override": "string",
+    "priority_override_rank": "integer",
+    "weight": "number",
+    "is_active": "boolean",
+    "reference_version_code": "string"
+  },
   "data": [
     {
       "code": "dominant_mars_to_signature",

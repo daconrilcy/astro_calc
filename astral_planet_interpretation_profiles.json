@@ -5,7 +5,6 @@
     "reference_version_id": "integer, FK -> reference_versions.id",
     "planet_id": "integer, FK -> astral_planets.id",
     "astral_system_id": "integer, FK -> astral_systems.id",
-    "language_id": "integer, FK -> languages.id",
     "title": "string",
     "summary": "string",
     "core_keywords_json": "json array<string>",
@@ -29,7 +28,6 @@
       "reference_version_id": 1,
       "planet_id": 1,
       "astral_system_id": 2,
-      "language_id": 1,
       "title": "Identity and Vitality",
       "summary": "The Sun represents the central organizing principle of the personality: identity, vitality, will, creative force and conscious direction.",
       "core_keywords_json": [
@@ -121,7 +119,6 @@
       "reference_version_id": 1,
       "planet_id": 2,
       "astral_system_id": 2,
-      "language_id": 1,
       "title": "Emotion and Inner Security",
       "summary": "The Moon represents emotional life, instinctive reactions, memory, habits, needs and the search for inner safety.",
       "core_keywords_json": [
@@ -213,7 +210,6 @@
       "reference_version_id": 1,
       "planet_id": 3,
       "astral_system_id": 2,
-      "language_id": 1,
       "title": "Thought and Communication",
       "summary": "Mercury represents perception, thinking, language, learning, exchange, analysis and the way information is processed.",
       "core_keywords_json": [
@@ -307,7 +303,6 @@
       "reference_version_id": 1,
       "planet_id": 4,
       "astral_system_id": 2,
-      "language_id": 1,
       "title": "Attraction and Value",
       "summary": "Venus represents attraction, pleasure, affection, harmony, values, beauty and the way one gives and receives appreciation.",
       "core_keywords_json": [
@@ -402,7 +397,6 @@
       "reference_version_id": 1,
       "planet_id": 5,
       "astral_system_id": 2,
-      "language_id": 1,
       "title": "Action and Desire",
       "summary": "Mars represents action, assertion, desire, courage, anger, libido, competition and the way energy is directed toward goals.",
       "core_keywords_json": [
@@ -496,7 +490,6 @@
       "reference_version_id": 1,
       "planet_id": 6,
       "astral_system_id": 2,
-      "language_id": 1,
       "title": "Expansion and Meaning",
       "summary": "Jupiter represents expansion, confidence, belief, wisdom, growth, opportunity, generosity and the search for meaning.",
       "core_keywords_json": [
@@ -590,7 +583,6 @@
       "reference_version_id": 1,
       "planet_id": 7,
       "astral_system_id": 2,
-      "language_id": 1,
       "title": "Structure and Responsibility",
       "summary": "Saturn represents structure, time, discipline, limits, responsibility, maturity, fear and the process of consolidation.",
       "core_keywords_json": [
@@ -685,7 +677,6 @@
       "reference_version_id": 1,
       "planet_id": 8,
       "astral_system_id": 2,
-      "language_id": 1,
       "title": "Disruption and Liberation",
       "summary": "Uranus represents disruption, awakening, independence, rebellion, originality, innovation and sudden change.",
       "core_keywords_json": [
@@ -778,7 +769,6 @@
       "reference_version_id": 1,
       "planet_id": 9,
       "astral_system_id": 2,
-      "language_id": 1,
       "title": "Dream and Dissolution",
       "summary": "Neptune represents imagination, spirituality, compassion, dreams, idealization, confusion, dissolution and transcendence.",
       "core_keywords_json": [
@@ -873,7 +863,6 @@
       "reference_version_id": 1,
       "planet_id": 10,
       "astral_system_id": 2,
-      "language_id": 1,
       "title": "Transformation and Power",
       "summary": "Pluto represents transformation, depth, crisis, power, shadow, compulsion, regeneration and processes of death and rebirth.",
       "core_keywords_json": [
@@ -967,7 +956,6 @@
       "reference_version_id": 2,
       "planet_id": 1,
       "astral_system_id": 2,
-      "language_id": 1,
       "title": "Identity and Vitality",
       "summary": "The Sun represents the central organizing principle of the personality: identity, vitality, will, creative force and conscious direction.",
       "core_keywords_json": [
@@ -1059,7 +1047,6 @@
       "reference_version_id": 2,
       "planet_id": 2,
       "astral_system_id": 2,
-      "language_id": 1,
       "title": "Emotion and Inner Security",
       "summary": "The Moon represents emotional life, instinctive reactions, memory, habits, needs and the search for inner safety.",
       "core_keywords_json": [
@@ -1151,7 +1138,6 @@
       "reference_version_id": 2,
       "planet_id": 3,
       "astral_system_id": 2,
-      "language_id": 1,
       "title": "Thought and Communication",
       "summary": "Mercury represents perception, thinking, language, learning, exchange, analysis and the way information is processed.",
       "core_keywords_json": [
@@ -1245,7 +1231,6 @@
       "reference_version_id": 2,
       "planet_id": 4,
       "astral_system_id": 2,
-      "language_id": 1,
       "title": "Attraction and Value",
       "summary": "Venus represents attraction, pleasure, affection, harmony, values, beauty and the way one gives and receives appreciation.",
       "core_keywords_json": [
@@ -1340,7 +1325,6 @@
       "reference_version_id": 2,
       "planet_id": 5,
       "astral_system_id": 2,
-      "language_id": 1,
       "title": "Action and Desire",
       "summary": "Mars represents action, assertion, desire, courage, anger, libido, competition and the way energy is directed toward goals.",
       "core_keywords_json": [
@@ -1434,7 +1418,6 @@
       "reference_version_id": 2,
       "planet_id": 6,
       "astral_system_id": 2,
-      "language_id": 1,
       "title": "Expansion and Meaning",
       "summary": "Jupiter represents expansion, confidence, belief, wisdom, growth, opportunity, generosity and the search for meaning.",
       "core_keywords_json": [
@@ -1528,7 +1511,6 @@
       "reference_version_id": 2,
       "planet_id": 7,
       "astral_system_id": 2,
-      "language_id": 1,
       "title": "Structure and Responsibility",
       "summary": "Saturn represents structure, time, discipline, limits, responsibility, maturity, fear and the process of consolidation.",
       "core_keywords_json": [
@@ -1623,7 +1605,6 @@
       "reference_version_id": 2,
       "planet_id": 8,
       "astral_system_id": 2,
-      "language_id": 1,
       "title": "Disruption and Liberation",
       "summary": "Uranus represents disruption, awakening, independence, rebellion, originality, innovation and sudden change.",
       "core_keywords_json": [
@@ -1716,7 +1697,6 @@
       "reference_version_id": 2,
       "planet_id": 9,
       "astral_system_id": 2,
-      "language_id": 1,
       "title": "Dream and Dissolution",
       "summary": "Neptune represents imagination, spirituality, compassion, dreams, idealization, confusion, dissolution and transcendence.",
       "core_keywords_json": [
@@ -1811,7 +1791,6 @@
       "reference_version_id": 2,
       "planet_id": 10,
       "astral_system_id": 2,
-      "language_id": 1,
       "title": "Transformation and Power",
       "summary": "Pluto represents transformation, depth, crisis, power, shadow, compulsion, regeneration and processes of death and rebirth.",
       "core_keywords_json": [

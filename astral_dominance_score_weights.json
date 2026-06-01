@@ -1,5 +1,14 @@
 {
-  "table": "astral_dominance_score_weights",
+  "name": "astral_dominance_score_weights",
+  "structure": {
+    "score_profile_code": "string",
+    "factor_type_code": "string",
+    "weight": "number",
+    "min_value": "integer",
+    "max_value": "integer",
+    "normalization_method": "string",
+    "notes": "string"
+  },
   "data": [
     {
       "score_profile_code": "natal_standard_v1",

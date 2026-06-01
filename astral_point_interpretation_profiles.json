@@ -5,41 +5,39 @@
     "astral_point_code": "string, FK -> astral_points.code",
     "variant_code": "string|null",
     "keyword_set_id": "integer, FK -> astral_point_interpretation_keywords.id",
-    "locale": "string, ISO 639-1, default en",
     "tradition": "string",
     "title": "string",
     "summary": "string",
-    "micro_note": "string|null"
-  },
-  "constraints": {
-    "foreign_keys": [
-      {
-        "columns": [
-          "astral_point_code"
-        ],
-        "references": "astral_points(code)"
-      },
-      {
-        "columns": [
-          "astral_point_code",
-          "variant_code"
-        ],
-        "references": "astral_point_calculation_variants(astral_point_code, variant_code)",
-        "nullable_when": "variant_code is null"
-      },
-      {
-        "columns": [
-          "keyword_set_id"
-        ],
-        "references": "astral_point_interpretation_keywords(id)"
-      }
-    ],
-    "unique": [
-      "astral_point_code",
-      "variant_code",
-      "locale",
-      "tradition"
-    ]
+    "micro_note": "string|null",
+    "constraints": {
+      "foreign_keys": [
+        {
+          "columns": [
+            "astral_point_code"
+          ],
+          "references": "astral_points(code)"
+        },
+        {
+          "columns": [
+            "astral_point_code",
+            "variant_code"
+          ],
+          "references": "astral_point_calculation_variants(astral_point_code, variant_code)",
+          "nullable_when": "variant_code is null"
+        },
+        {
+          "columns": [
+            "keyword_set_id"
+          ],
+          "references": "astral_point_interpretation_keywords(id)"
+        }
+      ],
+      "unique": [
+        "astral_point_code",
+        "variant_code",
+        "tradition"
+      ]
+    }
   },
   "data": [
     {
@@ -47,7 +45,6 @@
       "astral_point_code": "north_node",
       "variant_code": null,
       "keyword_set_id": 1,
-      "locale": "en",
       "tradition": "modern_western",
       "title": "North Node",
       "summary": "Direction of evolution, learning, growth potential and incarnational path.",
@@ -58,7 +55,6 @@
       "astral_point_code": "south_node",
       "variant_code": null,
       "keyword_set_id": 2,
-      "locale": "en",
       "tradition": "modern_western",
       "title": "South Node",
       "summary": "Heritage, acquired reflexes, familiar territory and resources already available but sometimes overused.",
@@ -69,7 +65,6 @@
       "astral_point_code": "lunar_apogee",
       "variant_code": null,
       "keyword_set_id": 3,
-      "locale": "en",
       "tradition": "modern_western",
       "title": "Lunar Apogee",
       "summary": "Orbital point of maximum lunar distance, used as the astronomical basis for some Lilith readings.",
@@ -80,7 +75,6 @@
       "astral_point_code": "lunar_perigee",
       "variant_code": null,
       "keyword_set_id": 4,
-      "locale": "en",
       "tradition": "modern_western",
       "title": "Lunar Perigee",
       "summary": "Orbital point of maximum lunar proximity, symbolically associated with intensified lunar presence.",
@@ -91,7 +85,6 @@
       "astral_point_code": "black_moon_lilith",
       "variant_code": null,
       "keyword_set_id": 5,
-      "locale": "en",
       "tradition": "modern_western",
       "title": "Black Moon Lilith",
       "summary": "Symbolic point derived from the lunar apogee, associated with radical autonomy, refusal of submission and non-negotiated psychic material.",

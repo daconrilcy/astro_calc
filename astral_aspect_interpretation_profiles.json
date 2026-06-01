@@ -5,15 +5,13 @@
     "unique_key": [
       "reference_version_id",
       "aspect_id",
-      "astral_system_id",
-      "language_id"
+      "astral_system_id"
     ],
     "columns": {
       "id": "integer",
       "reference_version_id": "foreign_key:astral_reference_versions.id",
       "aspect_id": "foreign_key:astral_aspects.id",
       "astral_system_id": "foreign_key:astral_systems.id",
-      "language_id": "foreign_key:languages.id",
       "title": "string",
       "summary": "text",
       "core_keywords_json": "json_array",
@@ -120,8 +118,7 @@
         "Describe how the two planetary principles become difficult to separate.",
         "Avoid fixed good/bad language."
       ],
-      "micro_note": "The conjunction is contextual: it magnifies whatever it touches.",
-      "language_id": 1
+      "micro_note": "The conjunction is contextual: it magnifies whatever it touches."
     },
     {
       "reference_version_id": 1,
@@ -205,8 +202,7 @@
         "Mention that conscious engagement is needed.",
         "Use constructive and practical language."
       ],
-      "micro_note": "The sextile is a door; it still needs to be opened.",
-      "language_id": 1
+      "micro_note": "The sextile is a door; it still needs to be opened."
     },
     {
       "reference_version_id": 1,
@@ -294,8 +290,7 @@
         "Explain the challenge and the development opportunity.",
         "Use precise, active language."
       ],
-      "micro_note": "The square is difficult, but it is one of the strongest engines of growth.",
-      "language_id": 1
+      "micro_note": "The square is difficult, but it is one of the strongest engines of growth."
     },
     {
       "reference_version_id": 1,
@@ -381,8 +376,7 @@
         "Mention talent or ease.",
         "Add a note about conscious use."
       ],
-      "micro_note": "The trine shows what flows naturally, but flow still needs direction.",
-      "language_id": 1
+      "micro_note": "The trine shows what flows naturally, but flow still needs direction."
     },
     {
       "reference_version_id": 1,
@@ -470,8 +464,7 @@
         "Explain projection and balance.",
         "Use language of dialogue and integration."
       ],
-      "micro_note": "The opposition reveals what must be balanced, owned and integrated.",
-      "language_id": 1
+      "micro_note": "The opposition reveals what must be balanced, owned and integrated."
     },
     {
       "reference_version_id": 1,
@@ -548,8 +541,7 @@
         "Describe small adjustments.",
         "Mention subtle coordination."
       ],
-      "micro_note": "The semi-sextile is minor but useful for fine-tuning.",
-      "language_id": 1
+      "micro_note": "The semi-sextile is minor but useful for fine-tuning."
     },
     {
       "reference_version_id": 1,
@@ -627,8 +619,7 @@
         "Mention irritation and correction.",
         "Avoid dramatic language."
       ],
-      "micro_note": "The semi-square is small pressure that becomes useful when noticed early.",
-      "language_id": 1
+      "micro_note": "The semi-square is small pressure that becomes useful when noticed early."
     },
     {
       "reference_version_id": 1,
@@ -711,8 +702,7 @@
         "Mention talent, craft and intentional expression.",
         "Connect it to the planets involved."
       ],
-      "micro_note": "The quintile points to cultivated talent and creative order.",
-      "language_id": 1
+      "micro_note": "The quintile points to cultivated talent and creative order."
     },
     {
       "reference_version_id": 1,
@@ -790,8 +780,7 @@
         "Mention repetition and accumulated pressure.",
         "Suggest practical correction."
       ],
-      "micro_note": "The sesquiquadrate shows pressure that has been building indirectly.",
-      "language_id": 1
+      "micro_note": "The sesquiquadrate shows pressure that has been building indirectly."
     },
     {
       "reference_version_id": 1,
@@ -878,8 +867,7 @@
         "Explain that the planets need recalibration.",
         "Use language of adaptation, not direct conflict."
       ],
-      "micro_note": "The quincunx is not a clean conflict; it is a mismatch that asks for adjustment.",
-      "language_id": 1
+      "micro_note": "The quincunx is not a clean conflict; it is a mismatch that asks for adjustment."
     },
     {
       "reference_version_id": 1,
@@ -960,8 +948,7 @@
         "Mention design, craft and symbolic intelligence.",
         "Avoid deterministic language."
       ],
-      "micro_note": "The biquintile refines the creative impulse of the quintile.",
-      "language_id": 1
+      "micro_note": "The biquintile refines the creative impulse of the quintile."
     },
     {
       "reference_version_id": 1,
@@ -1044,8 +1031,7 @@
         "Use careful, non-fatalistic language.",
         "Mention mystery and inner necessity."
       ],
-      "micro_note": "The septile should remain subtle and contextual in public interpretations.",
-      "language_id": 1
+      "micro_note": "The septile should remain subtle and contextual in public interpretations."
     },
     {
       "reference_version_id": 1,
@@ -1123,8 +1109,7 @@
         "Avoid fatalistic framing.",
         "Keep it secondary unless repeated."
       ],
-      "micro_note": "The biseptile is meaningful but should be handled with restraint.",
-      "language_id": 1
+      "micro_note": "The biseptile is meaningful but should be handled with restraint."
     },
     {
       "reference_version_id": 1,
@@ -1203,8 +1188,7 @@
         "Keep the tone grounded.",
         "Avoid certainty claims."
       ],
-      "micro_note": "The triseptile is advanced and should not dominate a reading alone.",
-      "language_id": 1
+      "micro_note": "The triseptile is advanced and should not dominate a reading alone."
     },
     {
       "reference_version_id": 1,
@@ -1284,8 +1268,7 @@
         "Mention maturation and completion.",
         "Use quiet, reflective language."
       ],
-      "micro_note": "The novile is subtle, inward and developmental.",
-      "language_id": 1
+      "micro_note": "The novile is subtle, inward and developmental."
     },
     {
       "reference_version_id": 1,
@@ -1363,8 +1346,7 @@
         "Use reflective language.",
         "Keep practical grounding."
       ],
-      "micro_note": "The binovile deepens the inner completion theme of the novile.",
-      "language_id": 1
+      "micro_note": "The binovile deepens the inner completion theme of the novile."
     },
     {
       "reference_version_id": 1,
@@ -1442,8 +1424,7 @@
         "Use mature, reflective language.",
         "Avoid overstatement."
       ],
-      "micro_note": "The quadranovile points to quiet culmination rather than obvious external action.",
-      "language_id": 1
+      "micro_note": "The quadranovile points to quiet culmination rather than obvious external action."
     },
     {
       "reference_version_id": 1,
@@ -1524,8 +1505,7 @@
         "Mention design and skill.",
         "Use subtle harmonic language."
       ],
-      "micro_note": "The decile gives form and order to creative intelligence.",
-      "language_id": 1
+      "micro_note": "The decile gives form and order to creative intelligence."
     },
     {
       "reference_version_id": 1,
@@ -1603,8 +1583,7 @@
         "Mention originality and craft.",
         "Keep grounded."
       ],
-      "micro_note": "The tredecile is a subtle marker of distinctive creative skill.",
-      "language_id": 1
+      "micro_note": "The tredecile is a subtle marker of distinctive creative skill."
     },
     {
       "reference_version_id": 1,
@@ -1687,8 +1666,7 @@
         "Balance constructive persistence with shadow risk.",
         "Use careful psychological language."
       ],
-      "micro_note": "The quindecile can become mastery or obsession depending on consciousness.",
-      "language_id": 1
+      "micro_note": "The quindecile can become mastery or obsession depending on consciousness."
     }
   ]
 }

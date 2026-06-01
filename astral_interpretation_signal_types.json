@@ -1,5 +1,16 @@
 {
   "name": "astral_interpretation_signal_types",
+  "structure": {
+    "code": "string",
+    "label": "string",
+    "category": "string",
+    "theme_code": "string",
+    "description": "string",
+    "priority_default": "string",
+    "priority_default_rank": "integer",
+    "is_active": "boolean",
+    "sort_order": "integer"
+  },
   "data": [
     {
       "code": "dominant_mars_signature",

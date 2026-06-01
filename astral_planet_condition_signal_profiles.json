@@ -1,6 +1,18 @@
 {
-  "table": "astral_planet_condition_signal_profiles",
-  "description": "Profils versionnes de signaux techniques derives des axes PlanetConditionProfile.",
+  "name": "astral_planet_condition_signal_profiles",
+  "structure": {
+    "id": "integer",
+    "condition_axis": "string",
+    "level_min": "number",
+    "level_max": "number",
+    "signal_code": "string",
+    "signal_label": "string",
+    "signal_level": "string",
+    "interpretation_use": "string",
+    "priority_weight": "number",
+    "prompt_hint": "string",
+    "_description": "Profils versionnes de signaux techniques derives des axes PlanetConditionProfile."
+  },
   "data": [
     {
       "id": 1,

@@ -1,5 +1,13 @@
 {
-  "table": "astral_dominance_score_profiles",
+  "name": "astral_dominance_score_profiles",
+  "structure": {
+    "code": "string",
+    "label": "string",
+    "tradition_code": "string",
+    "description": "string",
+    "reference_version_code": "string",
+    "is_active": "boolean"
+  },
   "data": [
     {
       "code": "natal_standard_v1",

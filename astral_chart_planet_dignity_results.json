@@ -1,6 +1,5 @@
 {
   "name": "astral_chart_planet_dignity_results",
-  "table_role": "Runtime audit table used to persist calculated dignity scores, detected conditions and explanatory breakdowns for each planet in a chart result.",
   "structure": {
     "chart_result_id": "integer, FK -> chart_results.id",
     "planet_id": "integer, FK -> astral_planets.id",
@@ -17,17 +16,18 @@
     "accidental_breakdown_json": "array",
     "condition_summary_json": "object",
     "calculation_context_json": "object",
-    "created_at": "datetime"
-  },
-  "constraints": {
-    "unique": [
-      [
-        "chart_result_id",
-        "planet_id",
-        "score_profile_id",
-        "reference_version_id"
+    "created_at": "datetime",
+    "table_role": "Runtime audit table used to persist calculated dignity scores, detected conditions and explanatory breakdowns for each planet in a chart result.",
+    "constraints": {
+      "unique": [
+        [
+          "chart_result_id",
+          "planet_id",
+          "score_profile_id",
+          "reference_version_id"
+        ]
       ]
-    ]
+    }
   },
   "data": []
 }

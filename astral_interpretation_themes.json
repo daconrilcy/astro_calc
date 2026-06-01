@@ -1,5 +1,12 @@
 {
   "name": "astral_interpretation_themes",
+  "structure": {
+    "code": "string",
+    "label": "string",
+    "category": "string",
+    "description": "string",
+    "is_active": "boolean"
+  },
   "data": [
     {
       "code": "drive_assertion_action",
