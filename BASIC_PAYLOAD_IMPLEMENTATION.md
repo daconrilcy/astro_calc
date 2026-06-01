@@ -25,13 +25,19 @@ pas encore un texte final, mais il transforme chaque item de `reading_plan` en
 section attendue via `drafting_plan` : titre editorial, sources, objectif de
 redaction, plafond de mots et consignes d'evitement.
 
+L'etape 1E ajoute une generation controlee avec provider fake deterministe. Le
+payload Basic source expose maintenant aussi `writing_contract`, puis le runtime
+produit un artefact separe avec `generated_sections`. Cette sortie sert a
+valider le workflow de generation sans appeler de LLM externe.
+
 Le runtime conserve la chaine existante :
 
 1. calcul des faits astrologiques ;
 2. ecriture des positions, cuspides et aspects calcules ;
 3. aggregation des signaux ;
 4. filtrage produit Basic ;
-5. ecriture du payload final dans `astral_interpretation_generation_payloads`.
+5. ecriture du payload source dans `astral_interpretation_generation_payloads` ;
+6. generation fake controlee et ecriture d'un payload separe.
 
 Cette etape prepare donc une entree propre, lisible, auditable et pre-orientee
 editorialement.
@@ -301,9 +307,34 @@ slots suivants quand les sources correspondantes existent :
 - `background_factors` : Jupiter, Saturne, Uranus, Neptune, Pluton si encore
   actifs.
 
+Pour eviter une lecture trop lisse, `main_tension_or_support` force maintenant
+l'inclusion d'au moins un aspect de tension fort quand un carre ou une opposition
+atteint `strength_score >= 0.75`. Si les trois premiers aspects prioritaires ne
+contiennent aucune tension forte, le troisieme est remplace par cette tension.
+
 ## Contrat de redaction Basic
 
-Le payload final contient aussi `drafting_plan`. Il est derive du
+Le payload final contient aussi `writing_contract` et `drafting_plan`.
+`writing_contract` pose les contraintes globales de redaction :
+
+```json
+{
+  "writing_contract": {
+    "audience_level": "beginner",
+    "tone": "clear, warm, non fatalistic",
+    "language": "fr",
+    "max_total_words": 650,
+    "must_not": [
+      "list placements mechanically",
+      "mention internal IDs",
+      "invent facts not present in source signals",
+      "use deterministic or fatalistic wording"
+    ]
+  }
+}
+```
+
+`drafting_plan` est derive du
 `reading_plan` et conserve les memes slots et les memes sources, mais les rend
 directement exploitables par une future couche de generation controlee.
 
@@ -350,11 +381,56 @@ theme complet libre.
 
 La validation de reutilisation des payloads existants force maintenant aussi :
 
+- un `writing_contract` global exact pour Basic ;
 - des slots connus uniquement ;
 - l'ordre canonique des slots Basic ;
 - un `drafting_plan` strictement aligne sur les sources du `reading_plan` ;
 - l'absence d'anciens fragments redactionnels en francais ;
 - l'absence de lettres non ASCII dans les consignes redactionnelles 1D.
+
+## Generation controlee fake
+
+L'etape 1E ajoute `build_fake_generated_reading`, un provider deterministe qui
+transforme chaque item du `drafting_plan` en section produite :
+
+```json
+{
+  "product_code": "basic_generated_fake",
+  "source_product_code": "basic",
+  "generation_provider": "fake_deterministic_v1",
+  "generated_sections": [
+    {
+      "slot": "core_identity",
+      "section_title": "Core chart markers",
+      "source_signal_keys": [
+        "object_position:sun"
+      ],
+      "text": "Cette section presente les reperes centraux du theme...",
+      "word_count": 24
+    }
+  ]
+}
+```
+
+Le provider fake :
+
+- produit une section par item du `drafting_plan` ;
+- conserve l'ordre canonique porte par `drafting_plan` ;
+- recopie `slot`, `section_title` et `source_signal_keys` ;
+- construit un texte simple a partir des titres et resumes des signaux sources ;
+- nettoie les tokens techniques interdits si une source textuelle en contient ;
+- tronque chaque section au `max_words` du slot ;
+- conserve le meme `writing_contract` que le payload source ;
+- n'ecrit pas dans le payload source.
+
+La methode runtime `calculate_natal_basic_with_fake_generation` retourne un
+objet combine avec `source_payload` et `generated_payload`. Le binaire principal
+l'utilise pour afficher directement les deux artefacts lors d'un run local.
+
+Les tests verifient que chaque source referencee existe dans `signals`, que le
+nombre de mots respecte `max_words`, que l'ordre des sections suit le
+`drafting_plan`, et que le texte fake ne contient pas de tokens d'IDs techniques
+comme `chart_object_id`, `aspect_id`, `house_id` ou `sign_id`.
 
 ## Persistance
 
@@ -374,6 +450,16 @@ Avant chaque reecriture des signaux d'un calcul, les signaux existants du meme
 ensuite re-upsertes avec leur etat courant. Cela evite qu'un ancien signal actif
 reste visible apres un changement de format de cle ou de filtrage.
 
+La sortie fake 1E est persistee dans la meme table, mais sous un `product_code`
+derive : `basic_generated_fake`. Le payload source `basic` n'est donc pas
+ecrase. La cle fonctionnelle reste
+`(chart_calculation_id, product_code, language_id)`.
+
+Avant persistance, le runtime valide que la sortie fake respecte le contrat :
+nombre de sections, ordre, sources existantes, limites de mots par section,
+plafond global `max_total_words`, absence de tokens techniques interdits et
+coherence du `writing_contract`.
+
 Si un calcul idempotent est deja `completed`, le runtime tente de reutiliser le
 payload existant. Il ne le reutilise que si le contrat enrichi est present :
 
@@ -385,6 +471,7 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
   `aggregation_group` et `writing_guidance` non vides ;
 - `reading_plan` present, non vide, compose de slots uniques et de sources qui
   existent dans les signaux du payload ;
+- `writing_contract` global present et conforme au contrat Basic ;
 - `drafting_plan` present, non vide, aligne sur les slots et sources du
   `reading_plan`, avec `section_title`, `writing_objective`, `max_words` et
   `avoid` renseignes ;
@@ -416,12 +503,14 @@ $env:ASTRAL_EPHEMERIS_PATH = "..\ephe\se-2026a"
 cargo run --features swisseph-engine
 ```
 
-Le run attendu doit afficher :
+Le run attendu doit afficher un objet avec `source_payload` et
+`generated_payload`. `source_payload` doit contenir :
 
 - `product_code = "basic"` ;
 - des positions avec `sign_code`, `sign_name`, `house_number`, `house_name` ;
 - au plus 12 signaux ;
 - un `reading_plan` non vide ;
+- un `writing_contract` global Basic ;
 - un `drafting_plan` non vide et aligne sur le `reading_plan` ;
 - des titres sans IDs techniques ;
 - des champs semantiques 1B sur chaque signal ;
@@ -429,6 +518,15 @@ Le run attendu doit afficher :
   partagent le meme signe et la meme maison ;
 - des IDs conserves dans `evidence` ;
 - une ecriture/upsert dans `astral_interpretation_generation_payloads`.
+
+`generated_payload` doit contenir :
+
+- `product_code = "basic_generated_fake"` ;
+- `source_product_code = "basic"` ;
+- `generation_provider = "fake_deterministic_v1"` ;
+- `generated_sections`, une section par item du `drafting_plan` ;
+- des `word_count` inferieurs ou egaux au `max_words` du slot correspondant ;
+- aucun token technique interdit dans le texte genere.
 
 ## Limites connues
 

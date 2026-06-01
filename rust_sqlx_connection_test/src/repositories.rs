@@ -3,9 +3,9 @@ use serde_json::Value;
 use sqlx::{PgPool, Postgres, Transaction};
 
 use crate::domain::{
-    AspectDefinition, AspectFact, BasicPayload, CalculatedChartFacts, ChartObject, HouseCuspFact,
-    HouseSystem, InterpretationSignalDraft, InterpretationSignalRow, NatalChartInput,
-    ObjectPositionFact, RuntimeOptions,
+    AspectDefinition, AspectFact, BasicGeneratedReadingPayload, BasicPayload, CalculatedChartFacts,
+    ChartObject, HouseCuspFact, HouseSystem, InterpretationSignalDraft, InterpretationSignalRow,
+    NatalChartInput, ObjectPositionFact, RuntimeOptions,
 };
 use crate::runtime::RuntimeError;
 
@@ -417,6 +417,36 @@ impl RuntimeRepository {
         .bind(input.reference_version_id)
         .bind(input.product_code())
         .bind(input.language_id)
+        .bind(payload_json)
+        .execute(&mut **tx)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn persist_generated_reading_payload(
+        tx: &mut Transaction<'_, Postgres>,
+        language_id: Option<i32>,
+        payload: &BasicGeneratedReadingPayload,
+    ) -> Result<(), RuntimeError> {
+        let id = next_id(tx, "astral_interpretation_generation_payloads").await?;
+        let payload_json = serde_json::to_value(payload)?;
+        sqlx::query(
+            r#"
+            INSERT INTO astral_interpretation_generation_payloads (
+                id, chart_calculation_id, reference_version_id, product_code,
+                language_id, payload_json, created_at
+            )
+            VALUES ($1,$2,$3,$4,$5,$6,now())
+            ON CONFLICT (chart_calculation_id, product_code, language_id) DO UPDATE
+            SET payload_json = EXCLUDED.payload_json,
+                created_at = EXCLUDED.created_at
+            "#,
+        )
+        .bind(id)
+        .bind(payload.chart_calculation_id)
+        .bind(payload.reference_version_id)
+        .bind(&payload.product_code)
+        .bind(language_id)
         .bind(payload_json)
         .execute(&mut **tx)
         .await?;
