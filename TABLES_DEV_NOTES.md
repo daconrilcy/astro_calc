@@ -927,3 +927,73 @@ Les marqueurs declaratifs `unique`, `snake_case` et `enum:` presents dans les de
 `astral_reference_versions` est conservee comme table de rattachement, mais elle reste vide tant qu'aucun referentiel n'a ete valide. Les colonnes `reference_version_id` sont donc conservees et nullable. Elles devront pointer vers une ligne de `astral_reference_versions` uniquement lors de la publication explicite d'une version de referentiel.
 
 Les copies strictement identiques provenant des anciennes versions `1.0.0` et `2.0.0` ont ete fusionnees. Les FK internes ont ete remappees vers les lignes conservees avant la suppression de ces deux versions.
+
+## Descriptions des tables PostgreSQL ajoutees a l'inventaire
+
+Inventaire genere depuis le schema PostgreSQL `public` le 1er juin 2026. Ces descriptions donnent le role fonctionnel des tables dont le nom complet n'etait pas encore cite dans ce document. Elles servent de point d'entree ; les contraintes runtime sensibles restent detaillees dans les sections specialisees.
+
+- `astral_accidental_dignity_categories` : categories fonctionnelles utilisees pour regrouper les dignites accidentelles, par exemple la position en maison ou la relation aux angles.
+- `astral_accidental_dignity_condition_schemas` : catalogue des formes de conditions que le moteur peut evaluer pour detecter une dignite accidentelle.
+- `astral_accidental_dignity_expression_tendencies` : vocabulaire normalise de la maniere dont une dignite accidentelle rend l'expression d'un objet plus visible, stable ou contrainte.
+- `astral_accidental_dignity_score_weights` : matrice de ponderation reliant un profil de score a chaque type de dignite accidentelle.
+- `astral_accidental_dignity_types` : catalogue des dignites accidentelles detectables et de leurs effets fonctionnels, expressifs et intensifs.
+- `astral_advanced_condition_types` : catalogue versionnable des conditions astrologiques avancees, avec leurs effets et ponderations par defaut.
+- `astral_advanced_condition_weights` : ponderations appliquees aux conditions avancees pour un profil de score donne.
+- `astral_angle_points` : referentiel des angles principaux du theme natal : Ascendant, Descendant, Milieu du Ciel et Fond du Ciel.
+- `astral_aspect_families` : familles utilisees pour classer les aspects, par exemple les aspects majeurs.
+- `astral_aspect_interpretation_profiles` : contenus interpretatifs multilingues associes a un aspect et a un systeme astrologique.
+- `astral_aspect_orb_rules` : regles prioritaires qui specialisent les orbes par contexte de calcul et par type d'objet, point ou angle.
+- `astral_aspects` : referentiel canonique des aspects astrologiques et de leur angle geometrique.
+- `astral_astrological_roles` : roles interpretatifs attribuables aux objets d'un theme, par exemple luminaire ou planete.
+- `astral_calculation_types` : modes d'obtention d'une position astrologique, par exemple calcul astronomique ou point derive.
+- `astral_constellations` : catalogue des constellations avec leur nom latin, abbreviation, hemisphere et statut zodiacal.
+- `astral_decan_system_code` : referentiel des systemes de decans utilisables pour attribuer un maitre aux tranches de dix degres.
+- `astral_diginity_score_profiles` : profils de calcul des scores de dignite essentielle selon une tradition ou un systeme astrologique.
+- `astral_dignity_functional_effects` : effets normalises d'une dignite sur la capacite fonctionnelle d'une planete.
+- `astral_dignity_intensity_effects` : niveaux normalises de l'intensite produite par une dignite.
+- `astral_dignity_type` : liste compacte des types de dignite essentielle utilises par les tables de correspondance historiques.
+- `astral_dominance_factor_types` : facteurs versionnables qui permettent d'identifier les objets dominants d'un theme.
+- `astral_dominance_score_weights` : poids et methodes de normalisation appliques aux facteurs de dominance pour un profil donne.
+- `astral_elements` : referentiel des quatre elements astrologiques : feu, terre, air et eau.
+- `astral_essential_dignity_categories` : categories utilisees pour regrouper les dignites et debilites essentielles.
+- `astral_essential_dignity_expression_tendencies` : tendances d'expression produites par les dignites essentielles, par exemple stabilisation ou fragilisation.
+- `astral_essential_dignity_score_weights` : matrice de score reliant un profil a chaque type de dignite essentielle.
+- `astral_essential_dignity_types` : catalogue detaille des dignites essentielles et de leurs effets fonctionnels, expressifs et intensifs.
+- `astral_face_decans` : attribution du maitre de chaque decan d'un signe selon un systeme de decans et une version de referentiel.
+- `astral_fixed_star_definitions` : donnees astronomiques et contextuelles versionnees des etoiles fixes : coordonnees, epoque, constellation, source et mots-cles.
+- `astral_fixed_star_keywords` : ensembles reutilisables de mots-cles interpretatifs associes aux etoiles fixes.
+- `astral_fixed_stars` : identite canonique des etoiles fixes utilisees par le moteur.
+- `astral_hemispheres` : metadonnees descriptives des hemispheres celestes utilisees pour classer les constellations.
+- `astral_house_axis_definitions` : definition interpretative des axes formes par deux maisons opposees.
+- `astral_house_axis_members` : liaison entre un axe de maisons et les deux maisons opposees qui le composent.
+- `astral_house_category_weights` : ponderation des categories de prediction par maison avec indication du role de routage.
+- `astral_house_interpretation_profiles` : contenus interpretatifs multilingues associes a chaque maison et systeme astrologique.
+- `astral_interpretation_themes` : themes semantiques versionnables utilises pour organiser les signaux interpretatifs.
+- `astral_modalities` : referentiel des modalites zodiacales cardinal, fixe et mutable.
+- `astral_object_types` : nature physique ou structurelle d'un objet manipulable dans un theme astrologique.
+- `astral_point_aliases` : alias textuels et cles moteur acceptes pour identifier les points astrologiques calcules.
+- `astral_point_calculation_variants` : variantes de calcul d'un point astrologique, par exemple noeud moyen ou noeud vrai.
+- `astral_point_families` : familles semantiques de points calcules, par exemple noeuds lunaires ou apsides.
+- `astral_point_interpretation_keywords` : ensembles reutilisables de mots-cles pour l'interpretation des points calcules.
+- `astral_point_interpretation_profiles` : profils interpretatifs reliant un point ou une variante a un ensemble de mots-cles.
+- `astral_points` : referentiel canonique des points astrologiques calcules qui ne sont pas necessairement des corps physiques.
+- `astral_prediction_daily_house_profiles` : priorites et poids de visibilite des maisons pour la generation de predictions quotidiennes.
+- `astral_reference_epochs` : epoques astronomiques utilisees pour rendre explicites les coordonnees de reference, par exemple J2000.
+- `astral_reference_sources` : provenance des donnees astronomiques ou internes utilisees pour alimenter les referentiels.
+- `astral_ruler_assignments_role` : roles possibles d'un maitre dans une attribution, par exemple principal ou secondaire.
+- `astral_sect` : referentiel de la secte diurne ou nocturne utilisee par les calculs traditionnels.
+- `astral_sign_fertility_classes` : classes traditionnelles de fertilite associees aux signes zodiacaux.
+- `astral_sign_form_classes` : classes traditionnelles de forme associees aux signes, par exemple humain ou animal.
+- `astral_sign_seasonal_quadrants` : rattachement des signes aux quadrants saisonniers du zodiaque.
+- `astral_sign_voice_classes` : classes traditionnelles d'expression vocale associees aux signes.
+- `astral_signs` : referentiel canonique des douze signes zodiacaux.
+- `astral_sources` : sources historiques ou documentaires citees par les correspondances astrologiques.
+- `astral_systems` : traditions ou systemes astrologiques auxquels les definitions et regles peuvent etre rattachees.
+- `astral_term_bounds` : bornes de termes d'un signe et objet maitre de chaque intervalle selon le systeme choisi.
+- `astral_term_system_code` : referentiel des systemes de termes, par exemple egyptien.
+- `astral_triplicity_ruler_assignments` : attribution des maitres de triplicite par element, secte, role, systeme et source.
+- `astral_typical_polarities` : polarite habituelle simplifiee associee aux objets astraux.
+- `astral_zodiacal_reference_system_categories` : categories de systemes de reference zodiacaux ou celestes.
+- `astral_zodiacal_reference_systems` : systemes de reference utilises pour positionner et interpreter les objets, par exemple tropical ou sideral.
+- `languages` : langues disponibles pour les contenus interpretatifs.
+- `prediction_categories` : categories versionnables exposees par le moteur de prediction, avec ordre d'affichage et statut public.
