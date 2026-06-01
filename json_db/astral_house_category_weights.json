@@ -1,0 +1,205 @@
+{
+  "name": "astral_house_category_weights",
+  "structure": {
+    "id": "integer, primary key",
+    "reference_version_id": "integer|null, FK -> astral_reference_versions.id",
+    "house_id": "integer, FK -> astral_houses.id",
+    "category_id": "integer, FK -> prediction_categories.id",
+    "weight": "number",
+    "routing_role": "string"
+  },
+  "data": [
+    {
+      "id": 1,
+      "reference_version_id": null,
+      "house_id": 1,
+      "category_id": 1,
+      "weight": 0.8,
+      "routing_role": "primary"
+    },
+    {
+      "id": 2,
+      "reference_version_id": null,
+      "house_id": 1,
+      "category_id": 2,
+      "weight": 0.6,
+      "routing_role": "secondary"
+    },
+    {
+      "id": 3,
+      "reference_version_id": null,
+      "house_id": 2,
+      "category_id": 6,
+      "weight": 0.9,
+      "routing_role": "primary"
+    },
+    {
+      "id": 4,
+      "reference_version_id": null,
+      "house_id": 2,
+      "category_id": 4,
+      "weight": 0.5,
+      "routing_role": "secondary"
+    },
+    {
+      "id": 5,
+      "reference_version_id": null,
+      "house_id": 3,
+      "category_id": 11,
+      "weight": 0.9,
+      "routing_role": "primary"
+    },
+    {
+      "id": 6,
+      "reference_version_id": null,
+      "house_id": 3,
+      "category_id": 10,
+      "weight": 0.5,
+      "routing_role": "secondary"
+    },
+    {
+      "id": 7,
+      "reference_version_id": null,
+      "house_id": 4,
+      "category_id": 9,
+      "weight": 0.9,
+      "routing_role": "primary"
+    },
+    {
+      "id": 8,
+      "reference_version_id": null,
+      "house_id": 4,
+      "category_id": 2,
+      "weight": 0.5,
+      "routing_role": "secondary"
+    },
+    {
+      "id": 9,
+      "reference_version_id": null,
+      "house_id": 5,
+      "category_id": 12,
+      "weight": 0.9,
+      "routing_role": "primary"
+    },
+    {
+      "id": 10,
+      "reference_version_id": null,
+      "house_id": 5,
+      "category_id": 7,
+      "weight": 0.6,
+      "routing_role": "secondary"
+    },
+    {
+      "id": 11,
+      "reference_version_id": null,
+      "house_id": 6,
+      "category_id": 3,
+      "weight": 0.9,
+      "routing_role": "primary"
+    },
+    {
+      "id": 12,
+      "reference_version_id": null,
+      "house_id": 6,
+      "category_id": 4,
+      "weight": 0.7,
+      "routing_role": "secondary"
+    },
+    {
+      "id": 13,
+      "reference_version_id": null,
+      "house_id": 7,
+      "category_id": 7,
+      "weight": 0.8,
+      "routing_role": "primary"
+    },
+    {
+      "id": 14,
+      "reference_version_id": null,
+      "house_id": 7,
+      "category_id": 10,
+      "weight": 0.6,
+      "routing_role": "secondary"
+    },
+    {
+      "id": 15,
+      "reference_version_id": null,
+      "house_id": 8,
+      "category_id": 8,
+      "weight": 0.8,
+      "routing_role": "primary"
+    },
+    {
+      "id": 16,
+      "reference_version_id": null,
+      "house_id": 8,
+      "category_id": 6,
+      "weight": 0.6,
+      "routing_role": "secondary"
+    },
+    {
+      "id": 17,
+      "reference_version_id": null,
+      "house_id": 9,
+      "category_id": 12,
+      "weight": 0.5,
+      "routing_role": "secondary"
+    },
+    {
+      "id": 18,
+      "reference_version_id": null,
+      "house_id": 9,
+      "category_id": 5,
+      "weight": 0.4,
+      "routing_role": "secondary"
+    },
+    {
+      "id": 19,
+      "reference_version_id": null,
+      "house_id": 10,
+      "category_id": 5,
+      "weight": 0.9,
+      "routing_role": "primary"
+    },
+    {
+      "id": 20,
+      "reference_version_id": null,
+      "house_id": 10,
+      "category_id": 4,
+      "weight": 0.6,
+      "routing_role": "secondary"
+    },
+    {
+      "id": 21,
+      "reference_version_id": null,
+      "house_id": 11,
+      "category_id": 10,
+      "weight": 0.9,
+      "routing_role": "primary"
+    },
+    {
+      "id": 22,
+      "reference_version_id": null,
+      "house_id": 11,
+      "category_id": 12,
+      "weight": 0.5,
+      "routing_role": "secondary"
+    },
+    {
+      "id": 23,
+      "reference_version_id": null,
+      "house_id": 12,
+      "category_id": 2,
+      "weight": 0.5,
+      "routing_role": "secondary"
+    },
+    {
+      "id": 24,
+      "reference_version_id": null,
+      "house_id": 12,
+      "category_id": 3,
+      "weight": 0.4,
+      "routing_role": "secondary"
+    }
+  ]
+}

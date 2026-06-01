@@ -1,0 +1,966 @@
+{
+  "name": "astral_object_interpretation_profiles",
+  "structure": {
+    "id": "integer, primary key",
+    "reference_version_id": "integer|null, FK -> astral_reference_versions.id",
+    "chart_object_id": "integer, FK -> astral_chart_objects.id",
+    "astral_system_id": "integer, FK -> astral_systems.id",
+    "language_id": "integer, FK -> languages.id",
+    "title": "string",
+    "summary": "string|null",
+    "core_keywords_json": "string|null",
+    "shadow_keywords_json": "string|null",
+    "psychological_expression_json": "string|null",
+    "relational_expression_json": "string|null",
+    "vocational_expression_json": "string|null",
+    "spiritual_expression_json": "string|null",
+    "energetic_dynamics_json": "string|null",
+    "growth_patterns_json": "string|null",
+    "conflict_patterns_json": "string|null",
+    "archetypes_json": "string|null",
+    "dos_json": "string|null",
+    "donts_json": "string|null",
+    "prompt_hints_json": "string|null",
+    "micro_note": "string|null"
+  },
+  "data": [
+    {
+      "id": 11,
+      "reference_version_id": null,
+      "chart_object_id": 1,
+      "astral_system_id": 2,
+      "language_id": 1,
+      "title": "Identity and Vitality",
+      "summary": "The Sun represents the central organizing principle of the personality: identity, vitality, will, creative force and conscious direction.",
+      "core_keywords_json": [
+        "identity",
+        "vitality",
+        "will",
+        "consciousness",
+        "creativity",
+        "self-expression",
+        "life direction"
+      ],
+      "shadow_keywords_json": [
+        "ego inflation",
+        "pride",
+        "self-centeredness",
+        "rigidity",
+        "need for recognition",
+        "dominance"
+      ],
+      "psychological_expression_json": [
+        "sense of self",
+        "confidence",
+        "inner coherence",
+        "personal authority",
+        "creative identity"
+      ],
+      "relational_expression_json": [
+        "presence",
+        "recognition",
+        "leadership dynamic",
+        "need to be seen",
+        "authentic self-expression"
+      ],
+      "vocational_expression_json": [
+        "leadership",
+        "visibility",
+        "creative direction",
+        "personal branding",
+        "executive presence"
+      ],
+      "spiritual_expression_json": [
+        "inner light",
+        "purpose",
+        "consciousness",
+        "solar principle",
+        "alignment with life force"
+      ],
+      "energetic_dynamics_json": [
+        "centralizes energy",
+        "clarifies intention",
+        "radiates presence",
+        "organizes the chart around identity"
+      ],
+      "growth_patterns_json": [
+        "develop authentic confidence",
+        "express creative will consciously",
+        "lead without domination"
+      ],
+      "conflict_patterns_json": [
+        "over-identifying with image",
+        "seeking validation excessively",
+        "confusing will with control"
+      ],
+      "archetypes_json": [
+        "the sovereign",
+        "the creator",
+        "the hero",
+        "the radiant self"
+      ],
+      "dos_json": [
+        "interpret as the core identity function",
+        "connect it to vitality and direction",
+        "consider sign, house and aspects before judging expression"
+      ],
+      "donts_json": [
+        "do not reduce it to ego only",
+        "do not assume automatic confidence",
+        "do not interpret it without chart context"
+      ],
+      "prompt_hints_json": [
+        "Describe the Sun as the conscious center.",
+        "Explain how the person seeks to express vitality and identity.",
+        "Avoid simplistic zodiac-sign clichés."
+      ],
+      "micro_note": "The Sun shows the principle of conscious selfhood, not the whole personality."
+    },
+    {
+      "id": 12,
+      "reference_version_id": null,
+      "chart_object_id": 2,
+      "astral_system_id": 2,
+      "language_id": 1,
+      "title": "Emotion and Inner Security",
+      "summary": "The Moon represents emotional life, instinctive reactions, memory, habits, needs and the search for inner safety.",
+      "core_keywords_json": [
+        "emotion",
+        "instinct",
+        "needs",
+        "memory",
+        "habit",
+        "receptivity",
+        "inner security"
+      ],
+      "shadow_keywords_json": [
+        "moodiness",
+        "dependency",
+        "emotional reactivity",
+        "clinging",
+        "insecurity",
+        "regression"
+      ],
+      "psychological_expression_json": [
+        "emotional regulation",
+        "attachment style",
+        "inner child",
+        "comfort patterns",
+        "unconscious responses"
+      ],
+      "relational_expression_json": [
+        "nurturing",
+        "emotional bonding",
+        "care needs",
+        "family patterns",
+        "protective reactions"
+      ],
+      "vocational_expression_json": [
+        "care work",
+        "public sensitivity",
+        "emotional intelligence",
+        "support roles",
+        "rhythm-based productivity"
+      ],
+      "spiritual_expression_json": [
+        "receptivity",
+        "cyclic wisdom",
+        "ancestral memory",
+        "inner listening",
+        "soul nourishment"
+      ],
+      "energetic_dynamics_json": [
+        "absorbs atmosphere",
+        "responds instinctively",
+        "cycles through moods",
+        "seeks containment"
+      ],
+      "growth_patterns_json": [
+        "recognize emotional needs",
+        "build inner security",
+        "respond instead of reacting"
+      ],
+      "conflict_patterns_json": [
+        "being ruled by moods",
+        "confusing familiarity with safety",
+        "projecting unmet needs"
+      ],
+      "archetypes_json": [
+        "the mother",
+        "the child",
+        "the nurturer",
+        "the inner tide"
+      ],
+      "dos_json": [
+        "interpret as emotional and instinctive function",
+        "include needs and safety",
+        "consider family and habit patterns"
+      ],
+      "donts_json": [
+        "do not treat the Moon as weakness",
+        "do not over-pathologize sensitivity",
+        "do not ignore bodily and emotional rhythms"
+      ],
+      "prompt_hints_json": [
+        "Describe how the person seeks comfort and emotional safety.",
+        "Mention instinctive reactions.",
+        "Use soft and embodied language."
+      ],
+      "micro_note": "The Moon shows how life is felt from the inside."
+    },
+    {
+      "id": 13,
+      "reference_version_id": null,
+      "chart_object_id": 3,
+      "astral_system_id": 2,
+      "language_id": 1,
+      "title": "Thought and Communication",
+      "summary": "Mercury represents perception, thinking, language, learning, exchange, analysis and the way information is processed.",
+      "core_keywords_json": [
+        "thought",
+        "communication",
+        "language",
+        "analysis",
+        "learning",
+        "perception",
+        "exchange"
+      ],
+      "shadow_keywords_json": [
+        "overthinking",
+        "nervousness",
+        "manipulation",
+        "scattered attention",
+        "mental restlessness",
+        "clever avoidance"
+      ],
+      "psychological_expression_json": [
+        "cognitive style",
+        "curiosity",
+        "mental flexibility",
+        "problem-solving",
+        "inner dialogue"
+      ],
+      "relational_expression_json": [
+        "conversation",
+        "listening",
+        "negotiation",
+        "wit",
+        "misunderstanding",
+        "intellectual bonding"
+      ],
+      "vocational_expression_json": [
+        "writing",
+        "sales",
+        "teaching",
+        "analysis",
+        "data work",
+        "communication strategy"
+      ],
+      "spiritual_expression_json": [
+        "discernment",
+        "sacred language",
+        "symbolic thinking",
+        "study",
+        "mental clarity"
+      ],
+      "energetic_dynamics_json": [
+        "connects ideas",
+        "moves quickly",
+        "translates experience into words",
+        "mediates between functions"
+      ],
+      "growth_patterns_json": [
+        "develop clear thinking",
+        "listen actively",
+        "turn curiosity into skill"
+      ],
+      "conflict_patterns_json": [
+        "fragmented focus",
+        "using intellect to avoid feeling",
+        "confusing information with understanding"
+      ],
+      "archetypes_json": [
+        "the messenger",
+        "the student",
+        "the translator",
+        "the trickster"
+      ],
+      "dos_json": [
+        "interpret as the mental and communicative function",
+        "connect it to learning and exchange",
+        "adapt interpretation to sign and house"
+      ],
+      "donts_json": [
+        "do not reduce Mercury to intelligence",
+        "do not assume clarity without context",
+        "do not ignore nervous-system tone"
+      ],
+      "prompt_hints_json": [
+        "Describe how the person thinks, learns and communicates.",
+        "Mention both strengths and possible mental traps.",
+        "Keep language precise."
+      ],
+      "micro_note": "Mercury shows how experience becomes thought, word and exchange."
+    },
+    {
+      "id": 14,
+      "reference_version_id": null,
+      "chart_object_id": 4,
+      "astral_system_id": 2,
+      "language_id": 1,
+      "title": "Attraction and Value",
+      "summary": "Venus represents attraction, pleasure, affection, harmony, values, beauty and the way one gives and receives appreciation.",
+      "core_keywords_json": [
+        "love",
+        "beauty",
+        "pleasure",
+        "harmony",
+        "values",
+        "attraction",
+        "affection"
+      ],
+      "shadow_keywords_json": [
+        "vanity",
+        "avoidance of conflict",
+        "dependency",
+        "people-pleasing",
+        "seduction",
+        "comfort addiction"
+      ],
+      "psychological_expression_json": [
+        "self-worth",
+        "taste",
+        "pleasure principle",
+        "desire for harmony",
+        "capacity to receive"
+      ],
+      "relational_expression_json": [
+        "affection",
+        "romance",
+        "seduction",
+        "reciprocity",
+        "attachment through pleasure",
+        "relational ease"
+      ],
+      "vocational_expression_json": [
+        "diplomacy",
+        "aesthetics",
+        "negotiation",
+        "design",
+        "luxury",
+        "relationship management"
+      ],
+      "spiritual_expression_json": [
+        "beauty",
+        "grace",
+        "gratitude",
+        "devotion",
+        "peace",
+        "heart opening"
+      ],
+      "energetic_dynamics_json": [
+        "softens energy",
+        "attracts rather than forces",
+        "creates harmony",
+        "seeks pleasure and balance"
+      ],
+      "growth_patterns_json": [
+        "develop self-worth",
+        "choose aligned values",
+        "create harmony without self-erasure"
+      ],
+      "conflict_patterns_json": [
+        "avoiding necessary tension",
+        "confusing love with approval",
+        "over-attaching to comfort"
+      ],
+      "archetypes_json": [
+        "the lover",
+        "the artist",
+        "the diplomat",
+        "the muse"
+      ],
+      "dos_json": [
+        "interpret as value and attraction function",
+        "include pleasure and relational style",
+        "connect beauty to values"
+      ],
+      "donts_json": [
+        "do not reduce Venus to romance only",
+        "do not make it automatically passive",
+        "do not ignore self-worth"
+      ],
+      "prompt_hints_json": [
+        "Describe what the person values and attracts.",
+        "Mention love, pleasure and aesthetic sensitivity.",
+        "Balance sweetness with shadow patterns."
+      ],
+      "micro_note": "Venus describes what feels desirable, valuable and harmonious."
+    },
+    {
+      "id": 15,
+      "reference_version_id": null,
+      "chart_object_id": 5,
+      "astral_system_id": 2,
+      "language_id": 1,
+      "title": "Action and Desire",
+      "summary": "Mars represents action, assertion, desire, courage, anger, libido, competition and the way energy is directed toward goals.",
+      "core_keywords_json": [
+        "action",
+        "desire",
+        "assertion",
+        "courage",
+        "anger",
+        "drive",
+        "competition"
+      ],
+      "shadow_keywords_json": [
+        "aggression",
+        "impulsiveness",
+        "violence",
+        "impatience",
+        "conflict",
+        "domination"
+      ],
+      "psychological_expression_json": [
+        "motivation",
+        "anger response",
+        "will to act",
+        "boundary assertion",
+        "survival drive"
+      ],
+      "relational_expression_json": [
+        "sexual desire",
+        "conflict style",
+        "directness",
+        "pursuit",
+        "friction",
+        "protectiveness"
+      ],
+      "vocational_expression_json": [
+        "initiative",
+        "competition",
+        "execution",
+        "entrepreneurship",
+        "crisis response",
+        "performance under pressure"
+      ],
+      "spiritual_expression_json": [
+        "sacred fire",
+        "courage",
+        "disciplined will",
+        "warrior energy",
+        "right action"
+      ],
+      "energetic_dynamics_json": [
+        "activates movement",
+        "cuts through inertia",
+        "pushes outward",
+        "creates heat and urgency"
+      ],
+      "growth_patterns_json": [
+        "act with courage",
+        "channel anger constructively",
+        "develop disciplined initiative"
+      ],
+      "conflict_patterns_json": [
+        "reacting too fast",
+        "turning desire into conflict",
+        "using force instead of clarity"
+      ],
+      "archetypes_json": [
+        "the warrior",
+        "the challenger",
+        "the pioneer",
+        "the protector"
+      ],
+      "dos_json": [
+        "interpret as action and desire function",
+        "include courage and conflict",
+        "look at how Mars is directed"
+      ],
+      "donts_json": [
+        "do not make Mars only negative",
+        "do not ignore sexuality and anger",
+        "do not confuse assertiveness with aggression"
+      ],
+      "prompt_hints_json": [
+        "Describe how the person acts, wants and fights.",
+        "Mention both drive and reactivity.",
+        "Use active, concrete language."
+      ],
+      "micro_note": "Mars shows how energy becomes action."
+    },
+    {
+      "id": 16,
+      "reference_version_id": null,
+      "chart_object_id": 6,
+      "astral_system_id": 2,
+      "language_id": 1,
+      "title": "Expansion and Meaning",
+      "summary": "Jupiter represents expansion, confidence, belief, wisdom, growth, opportunity, generosity and the search for meaning.",
+      "core_keywords_json": [
+        "expansion",
+        "growth",
+        "belief",
+        "wisdom",
+        "opportunity",
+        "generosity",
+        "meaning"
+      ],
+      "shadow_keywords_json": [
+        "excess",
+        "overconfidence",
+        "dogmatism",
+        "inflation",
+        "waste",
+        "moral superiority"
+      ],
+      "psychological_expression_json": [
+        "optimism",
+        "faith",
+        "big-picture thinking",
+        "confidence",
+        "meaning-making"
+      ],
+      "relational_expression_json": [
+        "generosity",
+        "encouragement",
+        "shared beliefs",
+        "mentorship",
+        "excessive promises"
+      ],
+      "vocational_expression_json": [
+        "teaching",
+        "strategy",
+        "international growth",
+        "law",
+        "publishing",
+        "leadership through vision"
+      ],
+      "spiritual_expression_json": [
+        "faith",
+        "wisdom",
+        "blessing",
+        "philosophy",
+        "higher meaning",
+        "guidance"
+      ],
+      "energetic_dynamics_json": [
+        "amplifies what it touches",
+        "opens possibilities",
+        "seeks growth",
+        "moves toward abundance"
+      ],
+      "growth_patterns_json": [
+        "develop wise confidence",
+        "expand with discernment",
+        "align growth with meaning"
+      ],
+      "conflict_patterns_json": [
+        "overpromising",
+        "ignoring limits",
+        "turning belief into certainty"
+      ],
+      "archetypes_json": [
+        "the teacher",
+        "the benefactor",
+        "the explorer",
+        "the sage"
+      ],
+      "dos_json": [
+        "interpret as expansion and meaning function",
+        "include both opportunity and excess",
+        "connect it to belief systems"
+      ],
+      "donts_json": [
+        "do not make Jupiter only lucky",
+        "do not ignore inflation",
+        "do not promise guaranteed success"
+      ],
+      "prompt_hints_json": [
+        "Describe where growth, confidence and meaning seek expression.",
+        "Mention opportunity with moderation.",
+        "Avoid deterministic luck language."
+      ],
+      "micro_note": "Jupiter expands; whether that helps depends on context."
+    },
+    {
+      "id": 17,
+      "reference_version_id": null,
+      "chart_object_id": 7,
+      "astral_system_id": 2,
+      "language_id": 1,
+      "title": "Structure and Responsibility",
+      "summary": "Saturn represents structure, time, discipline, limits, responsibility, maturity, fear and the process of consolidation.",
+      "core_keywords_json": [
+        "structure",
+        "discipline",
+        "limits",
+        "responsibility",
+        "maturity",
+        "time",
+        "consolidation"
+      ],
+      "shadow_keywords_json": [
+        "fear",
+        "restriction",
+        "rigidity",
+        "guilt",
+        "coldness",
+        "pessimism",
+        "inhibition"
+      ],
+      "psychological_expression_json": [
+        "self-control",
+        "inner authority",
+        "fear patterns",
+        "discipline",
+        "endurance"
+      ],
+      "relational_expression_json": [
+        "commitment",
+        "boundaries",
+        "distance",
+        "loyalty",
+        "testing",
+        "responsibility in bonds"
+      ],
+      "vocational_expression_json": [
+        "management",
+        "long-term planning",
+        "expertise",
+        "governance",
+        "process",
+        "accountability"
+      ],
+      "spiritual_expression_json": [
+        "karma",
+        "discipline",
+        "humility",
+        "mastery",
+        "wisdom through limitation"
+      ],
+      "energetic_dynamics_json": [
+        "slows down energy",
+        "creates form",
+        "tests durability",
+        "demands accountability"
+      ],
+      "growth_patterns_json": [
+        "build maturity",
+        "accept limits consciously",
+        "turn fear into discipline"
+      ],
+      "conflict_patterns_json": [
+        "becoming rigid",
+        "identifying with failure",
+        "avoiding life through control"
+      ],
+      "archetypes_json": [
+        "the elder",
+        "the builder",
+        "the judge",
+        "the guardian"
+      ],
+      "dos_json": [
+        "interpret as structure and maturity function",
+        "include fear and mastery",
+        "connect difficulty to development"
+      ],
+      "donts_json": [
+        "do not make Saturn only negative",
+        "do not use fatalistic language",
+        "do not ignore its stabilizing power"
+      ],
+      "prompt_hints_json": [
+        "Describe what must be built, matured or disciplined.",
+        "Mention limits without fatalism.",
+        "Frame Saturn as demanding but constructive."
+      ],
+      "micro_note": "Saturn restricts in order to form and mature."
+    },
+    {
+      "id": 18,
+      "reference_version_id": null,
+      "chart_object_id": 8,
+      "astral_system_id": 2,
+      "language_id": 1,
+      "title": "Disruption and Liberation",
+      "summary": "Uranus represents disruption, awakening, independence, rebellion, originality, innovation and sudden change.",
+      "core_keywords_json": [
+        "disruption",
+        "freedom",
+        "innovation",
+        "rebellion",
+        "awakening",
+        "originality",
+        "sudden change"
+      ],
+      "shadow_keywords_json": [
+        "instability",
+        "detachment",
+        "contrarianism",
+        "chaos",
+        "nervous tension",
+        "rupture"
+      ],
+      "psychological_expression_json": [
+        "need for freedom",
+        "individuality",
+        "nonconformity",
+        "awakening impulse",
+        "mental electricity"
+      ],
+      "relational_expression_json": [
+        "space",
+        "unconventional bonds",
+        "sudden attraction",
+        "detachment",
+        "freedom needs"
+      ],
+      "vocational_expression_json": [
+        "technology",
+        "innovation",
+        "reform",
+        "disruption strategy",
+        "independent work",
+        "future-oriented thinking"
+      ],
+      "spiritual_expression_json": [
+        "awakening",
+        "liberation",
+        "higher mind",
+        "breakthrough",
+        "cosmic intelligence"
+      ],
+      "energetic_dynamics_json": [
+        "breaks patterns",
+        "accelerates change",
+        "electrifies awareness",
+        "destabilizes fixed structures"
+      ],
+      "growth_patterns_json": [
+        "liberate without destroying everything",
+        "honor originality",
+        "integrate change consciously"
+      ],
+      "conflict_patterns_json": [
+        "rebelling reflexively",
+        "avoiding intimacy through distance",
+        "creating instability to feel alive"
+      ],
+      "archetypes_json": [
+        "the rebel",
+        "the awakener",
+        "the inventor",
+        "the outsider"
+      ],
+      "dos_json": [
+        "interpret as liberation and disruption function",
+        "include originality and instability",
+        "consider generational context"
+      ],
+      "donts_json": [
+        "do not make Uranus only chaos",
+        "do not ignore its innovative intelligence",
+        "do not over-personalize slow-planet effects"
+      ],
+      "prompt_hints_json": [
+        "Describe what seeks freedom or awakening.",
+        "Mention disruption as potentially creative.",
+        "Ground interpretation in house and aspects."
+      ],
+      "micro_note": "Uranus breaks continuity to reveal new possibilities."
+    },
+    {
+      "id": 19,
+      "reference_version_id": null,
+      "chart_object_id": 9,
+      "astral_system_id": 2,
+      "language_id": 1,
+      "title": "Dream and Dissolution",
+      "summary": "Neptune represents imagination, spirituality, compassion, dreams, idealization, confusion, dissolution and transcendence.",
+      "core_keywords_json": [
+        "imagination",
+        "dream",
+        "spirituality",
+        "compassion",
+        "idealization",
+        "dissolution",
+        "transcendence"
+      ],
+      "shadow_keywords_json": [
+        "confusion",
+        "illusion",
+        "escapism",
+        "deception",
+        "victimhood",
+        "boundary loss"
+      ],
+      "psychological_expression_json": [
+        "sensitivity",
+        "fantasy life",
+        "empathy",
+        "idealization patterns",
+        "porous boundaries"
+      ],
+      "relational_expression_json": [
+        "romantic idealization",
+        "compassion",
+        "sacrifice",
+        "projection",
+        "blurred boundaries"
+      ],
+      "vocational_expression_json": [
+        "art",
+        "music",
+        "film",
+        "healing",
+        "spiritual work",
+        "charity",
+        "imaginative fields"
+      ],
+      "spiritual_expression_json": [
+        "mysticism",
+        "oneness",
+        "surrender",
+        "devotion",
+        "grace",
+        "transcendence"
+      ],
+      "energetic_dynamics_json": [
+        "softens boundaries",
+        "dissolves certainty",
+        "opens imagination",
+        "merges with the invisible"
+      ],
+      "growth_patterns_json": [
+        "develop discernment",
+        "honor imagination without losing reality",
+        "practice compassionate boundaries"
+      ],
+      "conflict_patterns_json": [
+        "escaping reality",
+        "believing projections",
+        "losing self in fantasy or rescue"
+      ],
+      "archetypes_json": [
+        "the mystic",
+        "the dreamer",
+        "the artist",
+        "the ocean"
+      ],
+      "dos_json": [
+        "interpret as imagination and dissolution function",
+        "include both inspiration and confusion",
+        "mention boundaries when relevant"
+      ],
+      "donts_json": [
+        "do not make Neptune purely spiritual",
+        "do not ignore deception or vagueness",
+        "do not present illusions as facts"
+      ],
+      "prompt_hints_json": [
+        "Describe where sensitivity, dreams or idealization operate.",
+        "Use poetic but grounded language.",
+        "Balance compassion with discernment."
+      ],
+      "micro_note": "Neptune opens the invisible but can blur reality."
+    },
+    {
+      "id": 20,
+      "reference_version_id": null,
+      "chart_object_id": 10,
+      "astral_system_id": 2,
+      "language_id": 1,
+      "title": "Transformation and Power",
+      "summary": "Pluto represents transformation, depth, crisis, power, shadow, compulsion, regeneration and processes of death and rebirth.",
+      "core_keywords_json": [
+        "transformation",
+        "power",
+        "depth",
+        "crisis",
+        "shadow",
+        "regeneration",
+        "intensity"
+      ],
+      "shadow_keywords_json": [
+        "obsession",
+        "control",
+        "manipulation",
+        "destruction",
+        "paranoia",
+        "compulsion"
+      ],
+      "psychological_expression_json": [
+        "shadow work",
+        "survival patterns",
+        "deep fear",
+        "psychological intensity",
+        "transformational pressure"
+      ],
+      "relational_expression_json": [
+        "magnetism",
+        "power dynamics",
+        "obsession",
+        "deep bonding",
+        "control issues",
+        "emotional intensity"
+      ],
+      "vocational_expression_json": [
+        "crisis management",
+        "research",
+        "strategy",
+        "finance",
+        "psychology",
+        "transformation leadership"
+      ],
+      "spiritual_expression_json": [
+        "death and rebirth",
+        "underworld journey",
+        "purification",
+        "soul power",
+        "initiation"
+      ],
+      "energetic_dynamics_json": [
+        "intensifies hidden forces",
+        "breaks down what is obsolete",
+        "reveals shadow material",
+        "regenerates through crisis"
+      ],
+      "growth_patterns_json": [
+        "face shadow consciously",
+        "release control",
+        "transform pain into power"
+      ],
+      "conflict_patterns_json": [
+        "using control to avoid vulnerability",
+        "becoming consumed by intensity",
+        "repeating destructive patterns"
+      ],
+      "archetypes_json": [
+        "the alchemist",
+        "the underworld guide",
+        "the transformer",
+        "the phoenix"
+      ],
+      "dos_json": [
+        "interpret as transformation and power function",
+        "handle intensity carefully",
+        "include regeneration, not only crisis"
+      ],
+      "donts_json": [
+        "do not use fear-based language",
+        "do not make Pluto only destructive",
+        "do not over-personalize generational placements"
+      ],
+      "prompt_hints_json": [
+        "Describe where deep transformation or power dynamics appear.",
+        "Use careful psychological language.",
+        "Balance shadow with regeneration."
+      ],
+      "micro_note": "Pluto reveals what must die, transform or be reclaimed."
+    }
+  ]
+}

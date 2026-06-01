@@ -1,0 +1,35 @@
+{
+  "name": "astral_aspect_orb_rule_inheritance",
+  "structure": {
+    "table_role": "System inheritance used when resolving aspect orb override rules.",
+    "columns": {
+      "reference_version_id": "integer|null, FK -> astral_reference_versions.id",
+      "astral_system_id": "integer, FK -> astral_systems.id",
+      "inherited_from_astral_system_id": "integer, FK -> astral_systems.id"
+    },
+    "constraints": {
+      "unique_key": [
+        "reference_version_id",
+        "astral_system_id"
+      ],
+      "checks": [
+        {
+          "name": "no_self_inheritance",
+          "expression": "astral_system_id <> inherited_from_astral_system_id"
+        }
+      ]
+    }
+  },
+  "data": [
+    {
+      "reference_version_id": null,
+      "astral_system_id": 3,
+      "inherited_from_astral_system_id": 1
+    },
+    {
+      "reference_version_id": null,
+      "astral_system_id": 4,
+      "inherited_from_astral_system_id": 1
+    }
+  ]
+}

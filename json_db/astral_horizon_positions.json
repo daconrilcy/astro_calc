@@ -4,10 +4,46 @@
     "id": "integer",
     "code": "string, unique, snake_case",
     "label": "string",
+    "family": "string",
+    "description": "string",
+    "runtime_usage": "string",
+    "result_type": "string",
+    "calculation_notes": "string",
     "sort_order": "integer"
   },
   "data": [
-    { "id": 1, "code": "above_horizon", "label": "Above horizon", "sort_order": 1 },
-    { "id": 2, "code": "below_horizon", "label": "Below horizon", "sort_order": 2 }
+    {
+      "id": 1,
+      "code": "above_horizon",
+      "label": "Above horizon",
+      "family": "horizon_position",
+      "description": "The body is located above the local horizon for the chart time and location.",
+      "runtime_usage": "Boolean low-level condition used for local visibility, diurnal sect checks, visible hemisphere classification, hayz rules and accidental dignity logic.",
+      "result_type": "boolean_condition",
+      "calculation_notes": "Prefer direct altitude or a robust Ascendant/Descendant horizon calculation over a house-only shortcut. A positive altitude or configured positive horizon delta maps to this condition.",
+      "sort_order": 1
+    },
+    {
+      "id": 2,
+      "code": "below_horizon",
+      "label": "Below horizon",
+      "family": "horizon_position",
+      "description": "The body is located below the local horizon for the chart time and location.",
+      "runtime_usage": "Boolean low-level condition used for local invisibility, nocturnal sect checks, invisible hemisphere classification, hayz rules and accidental dignity logic.",
+      "result_type": "boolean_condition",
+      "calculation_notes": "Prefer direct altitude or a robust Ascendant/Descendant horizon calculation over a house-only shortcut. A negative altitude or configured negative horizon delta maps to this condition.",
+      "sort_order": 2
+    },
+    {
+      "id": 3,
+      "code": "on_horizon",
+      "label": "On horizon",
+      "family": "horizon_position",
+      "description": "The body is on or very close to the local horizon within a configured technical tolerance.",
+      "runtime_usage": "Boundary condition for objects near the Ascendant or Descendant where strict above/below classification would be arbitrary without an explicit threshold.",
+      "result_type": "boolean_condition",
+      "calculation_notes": "Use a configurable horizon_delta_degrees tolerance. This condition should be selected when the absolute altitude or horizon delta is inside that tolerance.",
+      "sort_order": 3
+    }
   ]
 }

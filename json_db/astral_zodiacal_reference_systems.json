@@ -1,86 +1,86 @@
 {
-    "name": "astral_zodiacal_reference_systems",
-    "structure": {
-        "id": "integer",
-        "key": "string",
-        "display_name": "string",
-        "category_id": "integer",
-        "description": "string",
-        "requires_ayanamsha": "boolean",
-        "usage_note": "string|null"
+  "name": "astral_zodiacal_reference_systems",
+  "structure": {
+    "id": "integer",
+    "key": "string",
+    "display_name": "string",
+    "category_id": "integer, FK -> astral_zodiacal_reference_system_categories.id",
+    "description": "string",
+    "requires_ayanamsha": "boolean",
+    "usage_note": "string|null"
+  },
+  "data": [
+    {
+      "id": 1,
+      "key": "tropical",
+      "display_name": "Tropical",
+      "category_id": 1,
+      "description": "Zodiac system based on the equinoxes and seasons, commonly used in modern Western astrology.",
+      "requires_ayanamsha": false,
+      "usage_note": "Default reference system for most Western natal, daily and interpretive calculations."
     },
-    "data": [
-        {
-            "id": 1,
-            "key": "tropical",
-            "display_name": "Tropical",
-            "category_id": 1,
-            "description": "Zodiac system based on the equinoxes and seasons, commonly used in modern Western astrology.",
-            "requires_ayanamsha": false,
-            "usage_note": "Default reference system for most Western natal, daily and interpretive calculations."
-        },
-        {
-            "id": 2,
-            "key": "sidereal",
-            "display_name": "Sidereal",
-            "category_id": 1,
-            "description": "Zodiac system based on the fixed-star background, commonly used in Vedic and some traditional astrological systems.",
-            "requires_ayanamsha": true,
-            "usage_note": "Requires an ayanamsha to define the offset from the tropical zodiac."
-        },
-        {
-            "id": 3,
-            "key": "draconic",
-            "display_name": "Draconic",
-            "category_id": 1,
-            "description": "Zodiac system calculated by placing the lunar North Node at 0° Aries.",
-            "requires_ayanamsha": false,
-            "usage_note": "Used mainly for karmic, nodal or soul-oriented interpretive layers."
-        },
-        {
-            "id": 4,
-            "key": "geocentric",
-            "display_name": "Geocentric",
-            "category_id": 2,
-            "description": "Reference frame calculated from the perspective of Earth.",
-            "requires_ayanamsha": false,
-            "usage_note": "Standard frame for most astrology chart calculations."
-        },
-        {
-            "id": 5,
-            "key": "heliocentric",
-            "display_name": "Heliocentric",
-            "category_id": 2,
-            "description": "Reference frame calculated from the perspective of the Sun.",
-            "requires_ayanamsha": false,
-            "usage_note": "Used for specialized astrological or astronomical analysis, not for standard natal interpretation."
-        },
-        {
-            "id": 6,
-            "key": "topocentric",
-            "display_name": "Topocentric",
-            "category_id": 2,
-            "description": "Reference frame calculated from a specific location on Earth.",
-            "requires_ayanamsha": false,
-            "usage_note": "Useful when observer location materially affects positions, especially for parallax-sensitive bodies such as the Moon."
-        },
-        {
-            "id": 7,
-            "key": "equatorial",
-            "display_name": "Equatorial",
-            "category_id": 3,
-            "description": "Astronomical coordinate system based on right ascension and declination.",
-            "requires_ayanamsha": false,
-            "usage_note": "Useful for storing raw astronomical star data."
-        },
-        {
-            "id": 8,
-            "key": "ecliptic",
-            "display_name": "Ecliptic",
-            "category_id": 3,
-            "description": "Coordinate system based on the plane of the ecliptic, using ecliptic longitude and latitude.",
-            "requires_ayanamsha": false,
-            "usage_note": "Useful for astrological longitude calculations and fixed-star projections."
-        }
-    ]
+    {
+      "id": 2,
+      "key": "sidereal",
+      "display_name": "Sidereal",
+      "category_id": 1,
+      "description": "Zodiac system based on the fixed-star background, commonly used in Vedic and some traditional astrological systems.",
+      "requires_ayanamsha": true,
+      "usage_note": "Requires an ayanamsha to define the offset from the tropical zodiac."
+    },
+    {
+      "id": 3,
+      "key": "draconic",
+      "display_name": "Draconic",
+      "category_id": 1,
+      "description": "Zodiac system calculated by placing the lunar North Node at 0° Aries.",
+      "requires_ayanamsha": false,
+      "usage_note": "Used mainly for karmic, nodal or soul-oriented interpretive layers."
+    },
+    {
+      "id": 4,
+      "key": "geocentric",
+      "display_name": "Geocentric",
+      "category_id": 2,
+      "description": "Reference frame calculated from the perspective of Earth.",
+      "requires_ayanamsha": false,
+      "usage_note": "Standard frame for most astrology chart calculations."
+    },
+    {
+      "id": 5,
+      "key": "heliocentric",
+      "display_name": "Heliocentric",
+      "category_id": 2,
+      "description": "Reference frame calculated from the perspective of the Sun.",
+      "requires_ayanamsha": false,
+      "usage_note": "Used for specialized astrological or astronomical analysis, not for standard natal interpretation."
+    },
+    {
+      "id": 6,
+      "key": "topocentric",
+      "display_name": "Topocentric",
+      "category_id": 2,
+      "description": "Reference frame calculated from a specific location on Earth.",
+      "requires_ayanamsha": false,
+      "usage_note": "Useful when observer location materially affects positions, especially for parallax-sensitive bodies such as the Moon."
+    },
+    {
+      "id": 7,
+      "key": "equatorial",
+      "display_name": "Equatorial",
+      "category_id": 3,
+      "description": "Astronomical coordinate system based on right ascension and declination.",
+      "requires_ayanamsha": false,
+      "usage_note": "Useful for storing raw astronomical star data."
+    },
+    {
+      "id": 8,
+      "key": "ecliptic",
+      "display_name": "Ecliptic",
+      "category_id": 3,
+      "description": "Coordinate system based on the plane of the ecliptic, using ecliptic longitude and latitude.",
+      "requires_ayanamsha": false,
+      "usage_note": "Useful for astrological longitude calculations and fixed-star projections."
+    }
+  ]
 }

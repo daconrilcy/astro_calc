@@ -1,0 +1,166 @@
+{
+  "name": "astral_sign_profiles",
+  "structure": {
+    "id": "integer, primary key",
+    "astral_sign_id": "integer, FK -> astral_signs.id",
+    "astral_element_id": "integer, FK -> astral_elements.id",
+    "astral_modality_id": "integer, FK -> astral_modalities.id",
+    "astral_polarity_id": "integer, FK -> astral_polarities.id",
+    "sign_gender_id": "integer, FK -> astral_sign_genders.id",
+    "seasonal_quadrant_id": "integer, FK -> astral_sign_seasonal_quadrants.id",
+    "fertility_class_id": "integer, FK -> astral_sign_fertility_classes.id",
+    "voice_class_id": "integer, FK -> astral_sign_voice_classes.id",
+    "form_class_id": "integer, FK -> astral_sign_form_classes.id",
+    "constraints": {
+      "unique_key": [
+        "astral_sign_id"
+      ]
+    }
+  },
+  "data": [
+    {
+      "id": 1,
+      "astral_sign_id": 1,
+      "astral_element_id": 1,
+      "astral_modality_id": 1,
+      "astral_polarity_id": 1,
+      "seasonal_quadrant_id": 1,
+      "fertility_class_id": 3,
+      "voice_class_id": 2,
+      "form_class_id": 2,
+      "sign_gender_id": 1
+    },
+    {
+      "id": 2,
+      "astral_sign_id": 2,
+      "astral_element_id": 2,
+      "astral_modality_id": 2,
+      "astral_polarity_id": 2,
+      "seasonal_quadrant_id": 1,
+      "fertility_class_id": 2,
+      "voice_class_id": 2,
+      "form_class_id": 2,
+      "sign_gender_id": 2
+    },
+    {
+      "id": 3,
+      "astral_sign_id": 3,
+      "astral_element_id": 3,
+      "astral_modality_id": 3,
+      "astral_polarity_id": 1,
+      "seasonal_quadrant_id": 1,
+      "fertility_class_id": 3,
+      "voice_class_id": 1,
+      "form_class_id": 3,
+      "sign_gender_id": 1
+    },
+    {
+      "id": 4,
+      "astral_sign_id": 4,
+      "astral_element_id": 4,
+      "astral_modality_id": 1,
+      "astral_polarity_id": 2,
+      "seasonal_quadrant_id": 2,
+      "fertility_class_id": 1,
+      "voice_class_id": 3,
+      "form_class_id": 2,
+      "sign_gender_id": 2
+    },
+    {
+      "id": 5,
+      "astral_sign_id": 5,
+      "astral_element_id": 1,
+      "astral_modality_id": 2,
+      "astral_polarity_id": 1,
+      "seasonal_quadrant_id": 2,
+      "fertility_class_id": 3,
+      "voice_class_id": 2,
+      "form_class_id": 2,
+      "sign_gender_id": 1
+    },
+    {
+      "id": 6,
+      "astral_sign_id": 6,
+      "astral_element_id": 2,
+      "astral_modality_id": 3,
+      "astral_polarity_id": 2,
+      "seasonal_quadrant_id": 2,
+      "fertility_class_id": 3,
+      "voice_class_id": 1,
+      "form_class_id": 1,
+      "sign_gender_id": 2
+    },
+    {
+      "id": 7,
+      "astral_sign_id": 7,
+      "astral_element_id": 3,
+      "astral_modality_id": 1,
+      "astral_polarity_id": 1,
+      "seasonal_quadrant_id": 3,
+      "fertility_class_id": 2,
+      "voice_class_id": 1,
+      "form_class_id": 1,
+      "sign_gender_id": 1
+    },
+    {
+      "id": 8,
+      "astral_sign_id": 8,
+      "astral_element_id": 4,
+      "astral_modality_id": 2,
+      "astral_polarity_id": 2,
+      "seasonal_quadrant_id": 3,
+      "fertility_class_id": 1,
+      "voice_class_id": 3,
+      "form_class_id": 2,
+      "sign_gender_id": 2
+    },
+    {
+      "id": 9,
+      "astral_sign_id": 9,
+      "astral_element_id": 1,
+      "astral_modality_id": 3,
+      "astral_polarity_id": 1,
+      "seasonal_quadrant_id": 3,
+      "fertility_class_id": 3,
+      "voice_class_id": 2,
+      "form_class_id": 4,
+      "sign_gender_id": 1
+    },
+    {
+      "id": 10,
+      "astral_sign_id": 10,
+      "astral_element_id": 2,
+      "astral_modality_id": 1,
+      "astral_polarity_id": 2,
+      "seasonal_quadrant_id": 4,
+      "fertility_class_id": 2,
+      "voice_class_id": 2,
+      "form_class_id": 4,
+      "sign_gender_id": 2
+    },
+    {
+      "id": 11,
+      "astral_sign_id": 11,
+      "astral_element_id": 3,
+      "astral_modality_id": 2,
+      "astral_polarity_id": 1,
+      "seasonal_quadrant_id": 4,
+      "fertility_class_id": 3,
+      "voice_class_id": 1,
+      "form_class_id": 1,
+      "sign_gender_id": 1
+    },
+    {
+      "id": 12,
+      "astral_sign_id": 12,
+      "astral_element_id": 4,
+      "astral_modality_id": 3,
+      "astral_polarity_id": 2,
+      "seasonal_quadrant_id": 4,
+      "fertility_class_id": 1,
+      "voice_class_id": 3,
+      "form_class_id": 3,
+      "sign_gender_id": 2
+    }
+  ]
+}

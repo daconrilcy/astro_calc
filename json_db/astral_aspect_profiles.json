@@ -8,11 +8,11 @@
     ],
     "columns": {
       "id": "integer",
-      "reference_version_id": "foreign_key:astral_reference_versions.id",
+      "reference_version_id": "integer|null, foreign_key:astral_reference_versions.id, FK -> astral_reference_versions.id",
       "aspect_id": "foreign_key:astral_aspects.id",
       "intensity_weight": "float",
-      "default_valence": "enum:positive|negative|neutral|contextual",
-      "interpretive_valence": "string",
+      "default_valence": "string, FK -> astral_default_valence.name",
+      "interpretive_valence": "string, FK -> astral_interpretive_valence.name",
       "polarity_score": "float",
       "energy_type": "string",
       "orb_multiplier": "float",
@@ -24,8 +24,7 @@
   },
   "data": [
     {
-      "reference_version_id": 1,
-      "aspect_code": "conjunction",
+      "reference_version_id": null,
       "intensity_weight": 1.5,
       "default_valence": "contextual",
       "interpretive_valence": "amplifying",
@@ -44,11 +43,12 @@
         "moderate_ratio": 0.66,
         "weak_ratio": 1.0
       },
-      "micro_note": "Intensifies and fuses the two planetary principles. Its quality depends strongly on the planets involved."
+      "micro_note": "Intensifies and fuses the two planetary principles. Its quality depends strongly on the planets involved.",
+      "id": 1,
+      "aspect_id": 1
     },
     {
-      "reference_version_id": 1,
-      "aspect_code": "sextile",
+      "reference_version_id": null,
       "intensity_weight": 0.8,
       "default_valence": "positive",
       "interpretive_valence": "supportive",
@@ -67,11 +67,12 @@
         "moderate_ratio": 0.66,
         "weak_ratio": 1.0
       },
-      "micro_note": "Creates accessible opportunities, cooperation and constructive openings, but usually requires conscious activation."
+      "micro_note": "Creates accessible opportunities, cooperation and constructive openings, but usually requires conscious activation.",
+      "id": 2,
+      "aspect_id": 2
     },
     {
-      "reference_version_id": 1,
-      "aspect_code": "square",
+      "reference_version_id": null,
       "intensity_weight": 1.25,
       "default_valence": "negative",
       "interpretive_valence": "dynamic_challenging",
@@ -90,11 +91,12 @@
         "moderate_ratio": 0.66,
         "weak_ratio": 1.0
       },
-      "micro_note": "Generates friction, pressure and activation. It often signals growth through effort, conflict or adjustment."
+      "micro_note": "Generates friction, pressure and activation. It often signals growth through effort, conflict or adjustment.",
+      "id": 3,
+      "aspect_id": 3
     },
     {
-      "reference_version_id": 1,
-      "aspect_code": "trine",
+      "reference_version_id": null,
       "intensity_weight": 1.0,
       "default_valence": "positive",
       "interpretive_valence": "harmonious",
@@ -113,11 +115,12 @@
         "moderate_ratio": 0.66,
         "weak_ratio": 1.0
       },
-      "micro_note": "Indicates ease, natural flow and integration between the two planetary principles."
+      "micro_note": "Indicates ease, natural flow and integration between the two planetary principles.",
+      "id": 4,
+      "aspect_id": 4
     },
     {
-      "reference_version_id": 1,
-      "aspect_code": "opposition",
+      "reference_version_id": null,
       "intensity_weight": 1.35,
       "default_valence": "contextual",
       "interpretive_valence": "polarizing",
@@ -136,11 +139,12 @@
         "moderate_ratio": 0.66,
         "weak_ratio": 1.0
       },
-      "micro_note": "Creates polarity, confrontation and awareness through contrast. It can manifest as tension, projection or necessary rebalancing."
+      "micro_note": "Creates polarity, confrontation and awareness through contrast. It can manifest as tension, projection or necessary rebalancing.",
+      "id": 5,
+      "aspect_id": 5
     },
     {
-      "reference_version_id": 1,
-      "aspect_code": "semi_sextile",
+      "reference_version_id": null,
       "intensity_weight": 0.35,
       "default_valence": "contextual",
       "interpretive_valence": "subtle_adjustment",
@@ -159,11 +163,12 @@
         "moderate_ratio": 0.66,
         "weak_ratio": 1.0
       },
-      "micro_note": "Subtle connection requiring small adaptation between adjacent principles."
+      "micro_note": "Subtle connection requiring small adaptation between adjacent principles.",
+      "id": 6,
+      "aspect_id": 6
     },
     {
-      "reference_version_id": 1,
-      "aspect_code": "semi_square",
+      "reference_version_id": null,
       "intensity_weight": 0.45,
       "default_valence": "negative",
       "interpretive_valence": "minor_friction",
@@ -182,11 +187,12 @@
         "moderate_ratio": 0.66,
         "weak_ratio": 1.0
       },
-      "micro_note": "Low-grade friction that can create irritation, restlessness or small blocks."
+      "micro_note": "Low-grade friction that can create irritation, restlessness or small blocks.",
+      "id": 7,
+      "aspect_id": 7
     },
     {
-      "reference_version_id": 1,
-      "aspect_code": "quintile",
+      "reference_version_id": null,
       "intensity_weight": 0.4,
       "default_valence": "positive",
       "interpretive_valence": "creative",
@@ -205,11 +211,12 @@
         "moderate_ratio": 0.66,
         "weak_ratio": 1.0
       },
-      "micro_note": "Creative harmonic aspect linked to talent, design, craft or symbolic patterning."
+      "micro_note": "Creative harmonic aspect linked to talent, design, craft or symbolic patterning.",
+      "id": 8,
+      "aspect_id": 8
     },
     {
-      "reference_version_id": 1,
-      "aspect_code": "sesquiquadrate",
+      "reference_version_id": null,
       "intensity_weight": 0.45,
       "default_valence": "negative",
       "interpretive_valence": "indirect_tension",
@@ -228,11 +235,12 @@
         "moderate_ratio": 0.66,
         "weak_ratio": 1.0
       },
-      "micro_note": "Indirect friction that may surface as accumulated pressure or repeated adjustment."
+      "micro_note": "Indirect friction that may surface as accumulated pressure or repeated adjustment.",
+      "id": 9,
+      "aspect_id": 9
     },
     {
-      "reference_version_id": 1,
-      "aspect_code": "quincunx",
+      "reference_version_id": null,
       "intensity_weight": 0.65,
       "default_valence": "contextual",
       "interpretive_valence": "adjustment",
@@ -251,11 +259,12 @@
         "moderate_ratio": 0.66,
         "weak_ratio": 1.0
       },
-      "micro_note": "Requires adjustment between principles that do not naturally see or understand each other."
+      "micro_note": "Requires adjustment between principles that do not naturally see or understand each other.",
+      "id": 10,
+      "aspect_id": 10
     },
     {
-      "reference_version_id": 1,
-      "aspect_code": "biquintile",
+      "reference_version_id": null,
       "intensity_weight": 0.35,
       "default_valence": "positive",
       "interpretive_valence": "refined_creative",
@@ -274,11 +283,12 @@
         "moderate_ratio": 0.66,
         "weak_ratio": 1.0
       },
-      "micro_note": "Refined creative harmonic aspect associated with skill, design and intentional expression."
+      "micro_note": "Refined creative harmonic aspect associated with skill, design and intentional expression.",
+      "id": 11,
+      "aspect_id": 11
     },
     {
-      "reference_version_id": 1,
-      "aspect_code": "septile",
+      "reference_version_id": null,
       "intensity_weight": 0.25,
       "default_valence": "contextual",
       "interpretive_valence": "symbolic_fated",
@@ -297,11 +307,12 @@
         "moderate_ratio": 0.66,
         "weak_ratio": 1.0
       },
-      "micro_note": "Advanced symbolic aspect. Keep display-only unless explicitly activated."
+      "micro_note": "Advanced symbolic aspect. Keep display-only unless explicitly activated.",
+      "id": 12,
+      "aspect_id": 12
     },
     {
-      "reference_version_id": 1,
-      "aspect_code": "biseptile",
+      "reference_version_id": null,
       "intensity_weight": 0.25,
       "default_valence": "contextual",
       "interpretive_valence": "symbolic_fated",
@@ -320,11 +331,12 @@
         "moderate_ratio": 0.66,
         "weak_ratio": 1.0
       },
-      "micro_note": "Advanced symbolic aspect. Keep display-only unless explicitly activated."
+      "micro_note": "Advanced symbolic aspect. Keep display-only unless explicitly activated.",
+      "id": 13,
+      "aspect_id": 13
     },
     {
-      "reference_version_id": 1,
-      "aspect_code": "triseptile",
+      "reference_version_id": null,
       "intensity_weight": 0.25,
       "default_valence": "contextual",
       "interpretive_valence": "symbolic_fated",
@@ -343,11 +355,12 @@
         "moderate_ratio": 0.66,
         "weak_ratio": 1.0
       },
-      "micro_note": "Advanced symbolic aspect. Keep display-only unless explicitly activated."
+      "micro_note": "Advanced symbolic aspect. Keep display-only unless explicitly activated.",
+      "id": 14,
+      "aspect_id": 14
     },
     {
-      "reference_version_id": 1,
-      "aspect_code": "novile",
+      "reference_version_id": null,
       "intensity_weight": 0.25,
       "default_valence": "positive",
       "interpretive_valence": "spiritual_integration",
@@ -366,11 +379,12 @@
         "moderate_ratio": 0.66,
         "weak_ratio": 1.0
       },
-      "micro_note": "Advanced harmonic aspect associated with inner integration or spiritual maturation."
+      "micro_note": "Advanced harmonic aspect associated with inner integration or spiritual maturation.",
+      "id": 15,
+      "aspect_id": 15
     },
     {
-      "reference_version_id": 1,
-      "aspect_code": "binovile",
+      "reference_version_id": null,
       "intensity_weight": 0.25,
       "default_valence": "positive",
       "interpretive_valence": "spiritual_integration",
@@ -389,11 +403,12 @@
         "moderate_ratio": 0.66,
         "weak_ratio": 1.0
       },
-      "micro_note": "Advanced harmonic aspect associated with inner integration or spiritual maturation."
+      "micro_note": "Advanced harmonic aspect associated with inner integration or spiritual maturation.",
+      "id": 16,
+      "aspect_id": 16
     },
     {
-      "reference_version_id": 1,
-      "aspect_code": "quadranovile",
+      "reference_version_id": null,
       "intensity_weight": 0.25,
       "default_valence": "positive",
       "interpretive_valence": "spiritual_integration",
@@ -412,11 +427,12 @@
         "moderate_ratio": 0.66,
         "weak_ratio": 1.0
       },
-      "micro_note": "Advanced harmonic aspect associated with inner integration or spiritual maturation."
+      "micro_note": "Advanced harmonic aspect associated with inner integration or spiritual maturation.",
+      "id": 17,
+      "aspect_id": 17
     },
     {
-      "reference_version_id": 1,
-      "aspect_code": "decile",
+      "reference_version_id": null,
       "intensity_weight": 0.25,
       "default_valence": "positive",
       "interpretive_valence": "creative_ordering",
@@ -435,11 +451,12 @@
         "moderate_ratio": 0.66,
         "weak_ratio": 1.0
       },
-      "micro_note": "Advanced creative harmonic aspect. Keep display-only unless explicitly activated."
+      "micro_note": "Advanced creative harmonic aspect. Keep display-only unless explicitly activated.",
+      "id": 18,
+      "aspect_id": 18
     },
     {
-      "reference_version_id": 1,
-      "aspect_code": "tredecile",
+      "reference_version_id": null,
       "intensity_weight": 0.25,
       "default_valence": "positive",
       "interpretive_valence": "creative_ordering",
@@ -458,11 +475,12 @@
         "moderate_ratio": 0.66,
         "weak_ratio": 1.0
       },
-      "micro_note": "Advanced creative harmonic aspect. Keep display-only unless explicitly activated."
+      "micro_note": "Advanced creative harmonic aspect. Keep display-only unless explicitly activated.",
+      "id": 19,
+      "aspect_id": 19
     },
     {
-      "reference_version_id": 1,
-      "aspect_code": "quindecile",
+      "reference_version_id": null,
       "intensity_weight": 0.3,
       "default_valence": "contextual",
       "interpretive_valence": "obsessive_focus",
@@ -481,7 +499,9 @@
         "moderate_ratio": 0.66,
         "weak_ratio": 1.0
       },
-      "micro_note": "Advanced intensifying aspect associated with focus, compulsion or fixation. Keep display-only unless explicitly activated."
+      "micro_note": "Advanced intensifying aspect associated with focus, compulsion or fixation. Keep display-only unless explicitly activated.",
+      "id": 20,
+      "aspect_id": 20
     }
   ]
 }

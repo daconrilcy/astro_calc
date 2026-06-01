@@ -1,0 +1,153 @@
+{
+  "name": "astral_chart_objects",
+  "structure": {
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "name": "string",
+    "object_type_id": "integer, FK -> astral_object_types.id",
+    "calculation_type_id": "integer, FK -> astral_calculation_types.id",
+    "swe_id": "integer|null",
+    "is_physical_body": "boolean",
+    "is_calculable": "boolean",
+    "is_mobile": "boolean",
+    "is_active": "boolean",
+    "sort_order": "integer",
+    "constraints": {
+      "unique_key": [
+        "code"
+      ]
+    }
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "sun",
+      "name": "Sun",
+      "swe_id": 0,
+      "object_type_id": 1,
+      "calculation_type_id": 1,
+      "is_physical_body": true,
+      "is_calculable": true,
+      "is_mobile": true,
+      "is_active": true,
+      "sort_order": 1
+    },
+    {
+      "id": 2,
+      "code": "moon",
+      "name": "Moon",
+      "swe_id": 1,
+      "object_type_id": 1,
+      "calculation_type_id": 1,
+      "is_physical_body": true,
+      "is_calculable": true,
+      "is_mobile": true,
+      "is_active": true,
+      "sort_order": 2
+    },
+    {
+      "id": 3,
+      "code": "mercury",
+      "name": "Mercury",
+      "swe_id": 2,
+      "object_type_id": 1,
+      "calculation_type_id": 1,
+      "is_physical_body": true,
+      "is_calculable": true,
+      "is_mobile": true,
+      "is_active": true,
+      "sort_order": 3
+    },
+    {
+      "id": 4,
+      "code": "venus",
+      "name": "Venus",
+      "swe_id": 3,
+      "object_type_id": 1,
+      "calculation_type_id": 1,
+      "is_physical_body": true,
+      "is_calculable": true,
+      "is_mobile": true,
+      "is_active": true,
+      "sort_order": 4
+    },
+    {
+      "id": 5,
+      "code": "mars",
+      "name": "Mars",
+      "swe_id": 4,
+      "object_type_id": 1,
+      "calculation_type_id": 1,
+      "is_physical_body": true,
+      "is_calculable": true,
+      "is_mobile": true,
+      "is_active": true,
+      "sort_order": 5
+    },
+    {
+      "id": 6,
+      "code": "jupiter",
+      "name": "Jupiter",
+      "swe_id": 5,
+      "object_type_id": 1,
+      "calculation_type_id": 1,
+      "is_physical_body": true,
+      "is_calculable": true,
+      "is_mobile": true,
+      "is_active": true,
+      "sort_order": 6
+    },
+    {
+      "id": 7,
+      "code": "saturn",
+      "name": "Saturn",
+      "swe_id": 6,
+      "object_type_id": 1,
+      "calculation_type_id": 1,
+      "is_physical_body": true,
+      "is_calculable": true,
+      "is_mobile": true,
+      "is_active": true,
+      "sort_order": 7
+    },
+    {
+      "id": 8,
+      "code": "uranus",
+      "name": "Uranus",
+      "swe_id": 7,
+      "object_type_id": 1,
+      "calculation_type_id": 1,
+      "is_physical_body": true,
+      "is_calculable": true,
+      "is_mobile": true,
+      "is_active": true,
+      "sort_order": 8
+    },
+    {
+      "id": 9,
+      "code": "neptune",
+      "name": "Neptune",
+      "swe_id": 8,
+      "object_type_id": 1,
+      "calculation_type_id": 1,
+      "is_physical_body": true,
+      "is_calculable": true,
+      "is_mobile": true,
+      "is_active": true,
+      "sort_order": 9
+    },
+    {
+      "id": 10,
+      "code": "pluto",
+      "name": "Pluto",
+      "swe_id": 9,
+      "object_type_id": 1,
+      "calculation_type_id": 1,
+      "is_physical_body": true,
+      "is_calculable": true,
+      "is_mobile": true,
+      "is_active": true,
+      "sort_order": 10
+    }
+  ]
+}

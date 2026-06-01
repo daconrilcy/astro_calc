@@ -1,6 +1,7 @@
 {
   "name": "astral_interpretation_signal_types",
   "structure": {
+    "id": "integer, primary key",
     "code": "string",
     "label": "string",
     "category": "string",
@@ -9,10 +10,27 @@
     "priority_default": "string",
     "priority_default_rank": "integer",
     "is_active": "boolean",
-    "sort_order": "integer"
+    "sort_order": "integer",
+    "reference_version_id": "integer|null, FK -> astral_reference_versions.id",
+    "constraints": {
+      "unique_key": [
+        "reference_version_id",
+        "code"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "reference_version_id",
+            "theme_code"
+          ],
+          "references": "astral_interpretation_themes(reference_version_id, code)"
+        }
+      ]
+    }
   },
   "data": [
     {
+      "id": 5,
       "code": "dominant_mars_signature",
       "label": "Dominant Mars Signature",
       "category": "planetary_signature",
@@ -21,9 +39,11 @@
       "priority_default": "critical",
       "priority_default_rank": 10,
       "is_active": true,
-      "sort_order": 1
+      "sort_order": 1,
+      "reference_version_id": null
     },
     {
+      "id": 6,
       "code": "high_externalization",
       "label": "High Externalization",
       "category": "expression_pattern",
@@ -32,9 +52,11 @@
       "priority_default": "high",
       "priority_default_rank": 20,
       "is_active": true,
-      "sort_order": 2
+      "sort_order": 2,
+      "reference_version_id": null
     },
     {
+      "id": 7,
       "code": "constraint_on_action",
       "label": "Constraint On Action",
       "category": "tension_pattern",
@@ -43,9 +65,11 @@
       "priority_default": "medium",
       "priority_default_rank": 30,
       "is_active": true,
-      "sort_order": 3
+      "sort_order": 3,
+      "reference_version_id": null
     },
     {
+      "id": 8,
       "code": "structural_endurance",
       "label": "Structural Endurance",
       "category": "planetary_signature",
@@ -54,7 +78,8 @@
       "priority_default": "high",
       "priority_default_rank": 20,
       "is_active": true,
-      "sort_order": 4
+      "sort_order": 4,
+      "reference_version_id": null
     }
   ]
 }

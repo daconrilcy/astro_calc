@@ -1,0 +1,35 @@
+{
+  "name": "astral_prediction_calculation_profiles",
+  "structure": {
+    "id": "integer, primary key",
+    "zodiac_type": "string",
+    "coordinate_mode": "string",
+    "house_system_id": "integer, FK -> astral_house_systems.id",
+    "time_step_minutes": "integer",
+    "description": "string",
+    "is_locked": "boolean",
+    "created_at": "datetime"
+  },
+  "data": [
+    {
+      "id": 1,
+      "zodiac_type": "tropical",
+      "coordinate_mode": "geocentric",
+      "house_system_id": 1,
+      "time_step_minutes": 30,
+      "description": "Legacy prediction calculation profile using tropical geocentric positions, Placidus houses and a 30-minute scan step.",
+      "is_locked": false,
+      "created_at": "2026-05-30 15:30:16"
+    },
+    {
+      "id": 2,
+      "zodiac_type": "tropical",
+      "coordinate_mode": "geocentric",
+      "house_system_id": 1,
+      "time_step_minutes": 30,
+      "description": "Canonical v2 prediction calculation profile using tropical geocentric positions, Placidus houses and a 30-minute scan step.",
+      "is_locked": false,
+      "created_at": "2026-05-30 15:30:16"
+    }
+  ]
+}

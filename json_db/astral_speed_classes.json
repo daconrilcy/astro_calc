@@ -2,24 +2,41 @@
   "name": "astral_speed_classes",
   "structure": {
     "id": "integer, primary key",
-    "name": "string, unique",
-    "speed_rank": "integer|null"
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "description": "string",
+    "speed_rank": "integer|null",
+    "sort_order": "integer",
+    "constraints": {
+      "unique_key": [
+        "code"
+      ]
+    }
   },
   "data": [
     {
       "id": 1,
-      "name": "fast",
-      "speed_rank": 1
+      "code": "fast",
+      "label": "Fast",
+      "description": "Reference class for objects whose typical apparent motion is relatively fast.",
+      "speed_rank": 1,
+      "sort_order": 1
     },
     {
       "id": 2,
-      "name": "medium",
-      "speed_rank": null
+      "code": "medium",
+      "label": "Medium",
+      "description": "Reference class for objects whose typical apparent motion is intermediate.",
+      "speed_rank": 2,
+      "sort_order": 2
     },
     {
       "id": 3,
-      "name": "slow",
-      "speed_rank": null
+      "code": "slow",
+      "label": "Slow",
+      "description": "Reference class for objects whose typical apparent motion is relatively slow.",
+      "speed_rank": 3,
+      "sort_order": 3
     }
   ]
 }

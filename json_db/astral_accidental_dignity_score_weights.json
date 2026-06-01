@@ -7,7 +7,13 @@
     "functional_weight": "number",
     "expression_weight": "number",
     "intensity_weight": "number",
-    "notes": "string"
+    "notes": "string",
+    "constraints": {
+      "unique_key": [
+        "score_profile_id",
+        "accidental_dignity_type_id"
+      ]
+    }
   },
   "data": [
     {

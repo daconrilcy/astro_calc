@@ -1,0 +1,710 @@
+{
+  "name": "prediction_object_category_weights",
+  "structure": {
+    "id": "integer, primary key",
+    "reference_version_id": "integer|null, FK -> astral_reference_versions.id",
+    "chart_object_id": "integer, FK -> astral_chart_objects.id",
+    "prediction_category_id": "integer, FK -> prediction_categories.id",
+    "weight": "number",
+    "influence_role": "string",
+    "constraints": {
+      "unique_key": [
+        "reference_version_id",
+        "chart_object_id",
+        "prediction_category_id"
+      ],
+      "checks": [
+        {
+          "name": "weight_range",
+          "expression": "weight >= 0 AND weight <= 1"
+        },
+        {
+          "name": "influence_role_allowed",
+          "expression": "influence_role IN ('primary', 'secondary', 'supporting', 'contextual')"
+        }
+      ]
+    }
+  },
+  "data": [
+    {
+      "id": 1,
+      "reference_version_id": null,
+      "chart_object_id": 1,
+      "weight": 0.8,
+      "influence_role": "primary",
+      "prediction_category_id": 1
+    },
+    {
+      "id": 2,
+      "reference_version_id": null,
+      "chart_object_id": 1,
+      "weight": 0.6,
+      "influence_role": "secondary",
+      "prediction_category_id": 2
+    },
+    {
+      "id": 3,
+      "reference_version_id": null,
+      "chart_object_id": 1,
+      "weight": 0.5,
+      "influence_role": "secondary",
+      "prediction_category_id": 3
+    },
+    {
+      "id": 4,
+      "reference_version_id": null,
+      "chart_object_id": 1,
+      "weight": 0.6,
+      "influence_role": "secondary",
+      "prediction_category_id": 4
+    },
+    {
+      "id": 5,
+      "reference_version_id": null,
+      "chart_object_id": 1,
+      "weight": 0.8,
+      "influence_role": "primary",
+      "prediction_category_id": 5
+    },
+    {
+      "id": 6,
+      "reference_version_id": null,
+      "chart_object_id": 1,
+      "weight": 0.5,
+      "influence_role": "secondary",
+      "prediction_category_id": 6
+    },
+    {
+      "id": 7,
+      "reference_version_id": null,
+      "chart_object_id": 1,
+      "weight": 0.5,
+      "influence_role": "secondary",
+      "prediction_category_id": 7
+    },
+    {
+      "id": 8,
+      "reference_version_id": null,
+      "chart_object_id": 1,
+      "weight": 0.6,
+      "influence_role": "primary",
+      "prediction_category_id": 12
+    },
+    {
+      "id": 9,
+      "reference_version_id": null,
+      "chart_object_id": 2,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 1
+    },
+    {
+      "id": 10,
+      "reference_version_id": null,
+      "chart_object_id": 2,
+      "weight": 0.9,
+      "influence_role": "primary",
+      "prediction_category_id": 2
+    },
+    {
+      "id": 11,
+      "reference_version_id": null,
+      "chart_object_id": 2,
+      "weight": 0.6,
+      "influence_role": "primary",
+      "prediction_category_id": 3
+    },
+    {
+      "id": 12,
+      "reference_version_id": null,
+      "chart_object_id": 2,
+      "weight": 0.7,
+      "influence_role": "primary",
+      "prediction_category_id": 7
+    },
+    {
+      "id": 13,
+      "reference_version_id": null,
+      "chart_object_id": 2,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 8
+    },
+    {
+      "id": 14,
+      "reference_version_id": null,
+      "chart_object_id": 2,
+      "weight": 0.8,
+      "influence_role": "primary",
+      "prediction_category_id": 9
+    },
+    {
+      "id": 15,
+      "reference_version_id": null,
+      "chart_object_id": 2,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 10
+    },
+    {
+      "id": 16,
+      "reference_version_id": null,
+      "chart_object_id": 2,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 12
+    },
+    {
+      "id": 17,
+      "reference_version_id": null,
+      "chart_object_id": 3,
+      "weight": 0.3,
+      "influence_role": "secondary",
+      "prediction_category_id": 1
+    },
+    {
+      "id": 18,
+      "reference_version_id": null,
+      "chart_object_id": 3,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 2
+    },
+    {
+      "id": 19,
+      "reference_version_id": null,
+      "chart_object_id": 3,
+      "weight": 0.8,
+      "influence_role": "primary",
+      "prediction_category_id": 4
+    },
+    {
+      "id": 20,
+      "reference_version_id": null,
+      "chart_object_id": 3,
+      "weight": 0.5,
+      "influence_role": "secondary",
+      "prediction_category_id": 5
+    },
+    {
+      "id": 21,
+      "reference_version_id": null,
+      "chart_object_id": 3,
+      "weight": 0.3,
+      "influence_role": "secondary",
+      "prediction_category_id": 6
+    },
+    {
+      "id": 22,
+      "reference_version_id": null,
+      "chart_object_id": 3,
+      "weight": 0.3,
+      "influence_role": "secondary",
+      "prediction_category_id": 7
+    },
+    {
+      "id": 23,
+      "reference_version_id": null,
+      "chart_object_id": 3,
+      "weight": 0.7,
+      "influence_role": "secondary",
+      "prediction_category_id": 10
+    },
+    {
+      "id": 24,
+      "reference_version_id": null,
+      "chart_object_id": 3,
+      "weight": 0.9,
+      "influence_role": "primary",
+      "prediction_category_id": 11
+    },
+    {
+      "id": 25,
+      "reference_version_id": null,
+      "chart_object_id": 3,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 12
+    },
+    {
+      "id": 26,
+      "reference_version_id": null,
+      "chart_object_id": 4,
+      "weight": 0.3,
+      "influence_role": "secondary",
+      "prediction_category_id": 1
+    },
+    {
+      "id": 27,
+      "reference_version_id": null,
+      "chart_object_id": 4,
+      "weight": 0.6,
+      "influence_role": "secondary",
+      "prediction_category_id": 2
+    },
+    {
+      "id": 28,
+      "reference_version_id": null,
+      "chart_object_id": 4,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 3
+    },
+    {
+      "id": 29,
+      "reference_version_id": null,
+      "chart_object_id": 4,
+      "weight": 0.6,
+      "influence_role": "secondary",
+      "prediction_category_id": 6
+    },
+    {
+      "id": 30,
+      "reference_version_id": null,
+      "chart_object_id": 4,
+      "weight": 0.9,
+      "influence_role": "primary",
+      "prediction_category_id": 7
+    },
+    {
+      "id": 31,
+      "reference_version_id": null,
+      "chart_object_id": 4,
+      "weight": 0.7,
+      "influence_role": "primary",
+      "prediction_category_id": 8
+    },
+    {
+      "id": 32,
+      "reference_version_id": null,
+      "chart_object_id": 4,
+      "weight": 0.5,
+      "influence_role": "secondary",
+      "prediction_category_id": 9
+    },
+    {
+      "id": 33,
+      "reference_version_id": null,
+      "chart_object_id": 4,
+      "weight": 0.6,
+      "influence_role": "secondary",
+      "prediction_category_id": 10
+    },
+    {
+      "id": 34,
+      "reference_version_id": null,
+      "chart_object_id": 4,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 11
+    },
+    {
+      "id": 35,
+      "reference_version_id": null,
+      "chart_object_id": 4,
+      "weight": 0.8,
+      "influence_role": "primary",
+      "prediction_category_id": 12
+    },
+    {
+      "id": 36,
+      "reference_version_id": null,
+      "chart_object_id": 5,
+      "weight": 0.9,
+      "influence_role": "primary",
+      "prediction_category_id": 1
+    },
+    {
+      "id": 37,
+      "reference_version_id": null,
+      "chart_object_id": 5,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 2
+    },
+    {
+      "id": 38,
+      "reference_version_id": null,
+      "chart_object_id": 5,
+      "weight": 0.6,
+      "influence_role": "secondary",
+      "prediction_category_id": 3
+    },
+    {
+      "id": 39,
+      "reference_version_id": null,
+      "chart_object_id": 5,
+      "weight": 0.7,
+      "influence_role": "secondary",
+      "prediction_category_id": 4
+    },
+    {
+      "id": 40,
+      "reference_version_id": null,
+      "chart_object_id": 5,
+      "weight": 0.5,
+      "influence_role": "secondary",
+      "prediction_category_id": 5
+    },
+    {
+      "id": 41,
+      "reference_version_id": null,
+      "chart_object_id": 5,
+      "weight": 0.3,
+      "influence_role": "secondary",
+      "prediction_category_id": 6
+    },
+    {
+      "id": 42,
+      "reference_version_id": null,
+      "chart_object_id": 5,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 7
+    },
+    {
+      "id": 43,
+      "reference_version_id": null,
+      "chart_object_id": 5,
+      "weight": 0.8,
+      "influence_role": "primary",
+      "prediction_category_id": 8
+    },
+    {
+      "id": 44,
+      "reference_version_id": null,
+      "chart_object_id": 5,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 12
+    },
+    {
+      "id": 45,
+      "reference_version_id": null,
+      "chart_object_id": 6,
+      "weight": 0.5,
+      "influence_role": "secondary",
+      "prediction_category_id": 1
+    },
+    {
+      "id": 46,
+      "reference_version_id": null,
+      "chart_object_id": 6,
+      "weight": 0.6,
+      "influence_role": "secondary",
+      "prediction_category_id": 2
+    },
+    {
+      "id": 47,
+      "reference_version_id": null,
+      "chart_object_id": 6,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 3
+    },
+    {
+      "id": 48,
+      "reference_version_id": null,
+      "chart_object_id": 6,
+      "weight": 0.5,
+      "influence_role": "secondary",
+      "prediction_category_id": 4
+    },
+    {
+      "id": 49,
+      "reference_version_id": null,
+      "chart_object_id": 6,
+      "weight": 0.8,
+      "influence_role": "primary",
+      "prediction_category_id": 5
+    },
+    {
+      "id": 50,
+      "reference_version_id": null,
+      "chart_object_id": 6,
+      "weight": 0.7,
+      "influence_role": "primary",
+      "prediction_category_id": 6
+    },
+    {
+      "id": 51,
+      "reference_version_id": null,
+      "chart_object_id": 6,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 7
+    },
+    {
+      "id": 52,
+      "reference_version_id": null,
+      "chart_object_id": 6,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 9
+    },
+    {
+      "id": 53,
+      "reference_version_id": null,
+      "chart_object_id": 6,
+      "weight": 0.6,
+      "influence_role": "secondary",
+      "prediction_category_id": 10
+    },
+    {
+      "id": 54,
+      "reference_version_id": null,
+      "chart_object_id": 6,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 11
+    },
+    {
+      "id": 55,
+      "reference_version_id": null,
+      "chart_object_id": 6,
+      "weight": 0.6,
+      "influence_role": "secondary",
+      "prediction_category_id": 12
+    },
+    {
+      "id": 56,
+      "reference_version_id": null,
+      "chart_object_id": 7,
+      "weight": 0.3,
+      "influence_role": "secondary",
+      "prediction_category_id": 1
+    },
+    {
+      "id": 57,
+      "reference_version_id": null,
+      "chart_object_id": 7,
+      "weight": 0.7,
+      "influence_role": "primary",
+      "prediction_category_id": 4
+    },
+    {
+      "id": 58,
+      "reference_version_id": null,
+      "chart_object_id": 7,
+      "weight": 0.7,
+      "influence_role": "primary",
+      "prediction_category_id": 5
+    },
+    {
+      "id": 59,
+      "reference_version_id": null,
+      "chart_object_id": 7,
+      "weight": 0.5,
+      "influence_role": "secondary",
+      "prediction_category_id": 6
+    },
+    {
+      "id": 60,
+      "reference_version_id": null,
+      "chart_object_id": 7,
+      "weight": 0.5,
+      "influence_role": "secondary",
+      "prediction_category_id": 3
+    },
+    {
+      "id": 61,
+      "reference_version_id": null,
+      "chart_object_id": 7,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 9
+    },
+    {
+      "id": 62,
+      "reference_version_id": null,
+      "chart_object_id": 8,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 1
+    },
+    {
+      "id": 63,
+      "reference_version_id": null,
+      "chart_object_id": 8,
+      "weight": 0.3,
+      "influence_role": "secondary",
+      "prediction_category_id": 2
+    },
+    {
+      "id": 64,
+      "reference_version_id": null,
+      "chart_object_id": 8,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 4
+    },
+    {
+      "id": 65,
+      "reference_version_id": null,
+      "chart_object_id": 8,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 5
+    },
+    {
+      "id": 66,
+      "reference_version_id": null,
+      "chart_object_id": 8,
+      "weight": 0.3,
+      "influence_role": "secondary",
+      "prediction_category_id": 8
+    },
+    {
+      "id": 67,
+      "reference_version_id": null,
+      "chart_object_id": 8,
+      "weight": 0.5,
+      "influence_role": "secondary",
+      "prediction_category_id": 10
+    },
+    {
+      "id": 68,
+      "reference_version_id": null,
+      "chart_object_id": 8,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 11
+    },
+    {
+      "id": 69,
+      "reference_version_id": null,
+      "chart_object_id": 8,
+      "weight": 0.5,
+      "influence_role": "secondary",
+      "prediction_category_id": 12
+    },
+    {
+      "id": 70,
+      "reference_version_id": null,
+      "chart_object_id": 9,
+      "weight": 0.5,
+      "influence_role": "secondary",
+      "prediction_category_id": 2
+    },
+    {
+      "id": 71,
+      "reference_version_id": null,
+      "chart_object_id": 9,
+      "weight": 0.3,
+      "influence_role": "secondary",
+      "prediction_category_id": 3
+    },
+    {
+      "id": 72,
+      "reference_version_id": null,
+      "chart_object_id": 9,
+      "weight": 0.5,
+      "influence_role": "secondary",
+      "prediction_category_id": 7
+    },
+    {
+      "id": 73,
+      "reference_version_id": null,
+      "chart_object_id": 9,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 8
+    },
+    {
+      "id": 74,
+      "reference_version_id": null,
+      "chart_object_id": 9,
+      "weight": 0.3,
+      "influence_role": "secondary",
+      "prediction_category_id": 9
+    },
+    {
+      "id": 75,
+      "reference_version_id": null,
+      "chart_object_id": 9,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 10
+    },
+    {
+      "id": 76,
+      "reference_version_id": null,
+      "chart_object_id": 9,
+      "weight": 0.5,
+      "influence_role": "secondary",
+      "prediction_category_id": 12
+    },
+    {
+      "id": 77,
+      "reference_version_id": null,
+      "chart_object_id": 10,
+      "weight": 0.5,
+      "influence_role": "secondary",
+      "prediction_category_id": 1
+    },
+    {
+      "id": 78,
+      "reference_version_id": null,
+      "chart_object_id": 10,
+      "weight": 0.3,
+      "influence_role": "secondary",
+      "prediction_category_id": 2
+    },
+    {
+      "id": 79,
+      "reference_version_id": null,
+      "chart_object_id": 10,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 3
+    },
+    {
+      "id": 80,
+      "reference_version_id": null,
+      "chart_object_id": 10,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 4
+    },
+    {
+      "id": 81,
+      "reference_version_id": null,
+      "chart_object_id": 10,
+      "weight": 0.5,
+      "influence_role": "secondary",
+      "prediction_category_id": 5
+    },
+    {
+      "id": 82,
+      "reference_version_id": null,
+      "chart_object_id": 10,
+      "weight": 0.5,
+      "influence_role": "secondary",
+      "prediction_category_id": 6
+    },
+    {
+      "id": 83,
+      "reference_version_id": null,
+      "chart_object_id": 10,
+      "weight": 0.4,
+      "influence_role": "secondary",
+      "prediction_category_id": 7
+    },
+    {
+      "id": 84,
+      "reference_version_id": null,
+      "chart_object_id": 10,
+      "weight": 0.6,
+      "influence_role": "secondary",
+      "prediction_category_id": 8
+    },
+    {
+      "id": 85,
+      "reference_version_id": null,
+      "chart_object_id": 10,
+      "weight": 0.3,
+      "influence_role": "secondary",
+      "prediction_category_id": 12
+    }
+  ]
+}

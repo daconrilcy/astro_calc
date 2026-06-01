@@ -1,0 +1,229 @@
+{
+  "name": "astral_interpretive_valence",
+  "structure": {
+    "id": "integer, primary key",
+    "name": "string, unique, snake_case",
+    "label": "string",
+    "description": "string",
+    "interpretive_family": "string",
+    "is_tonal_valence": "boolean",
+    "is_intensity_modifier": "boolean",
+    "writing_guidance": "string",
+    "default_valence_id": "integer, FK -> astral_default_valence.id",
+    "sort_order": "integer",
+    "is_active": "boolean",
+    "constraints": {
+      "checks": [
+        {
+          "name": "name_snake_case",
+          "expression": "name ~ '^[a-z][a-z0-9_]*$'"
+        },
+        {
+          "name": "interpretive_family_allowed",
+          "expression": "interpretive_family IN ('tonal','intensity','adaptive','creative','symbolic','spiritual')"
+        },
+        {
+          "name": "not_both_tonal_and_intensity",
+          "expression": "NOT (is_tonal_valence AND is_intensity_modifier)"
+        }
+      ]
+    }
+  },
+  "data": [
+    {
+      "id": 1,
+      "name": "supportive",
+      "label": "Supportive",
+      "description": "Supportive interpretive effect: the configuration tends to help, stabilize, protect or provide usable support.",
+      "interpretive_family": "tonal",
+      "is_tonal_valence": true,
+      "is_intensity_modifier": false,
+      "writing_guidance": "Present as a resource, support or facilitation that the native can mobilize.",
+      "default_valence_id": 5,
+      "sort_order": 1,
+      "is_active": true
+    },
+    {
+      "id": 2,
+      "name": "harmonious",
+      "label": "Harmonious",
+      "description": "Harmonious interpretive effect: the configuration tends to flow naturally, cooperate or integrate without strong friction.",
+      "interpretive_family": "tonal",
+      "is_tonal_valence": true,
+      "is_intensity_modifier": false,
+      "writing_guidance": "Present as ease, compatibility or natural cooperation without implying that no effort is ever needed.",
+      "default_valence_id": 8,
+      "sort_order": 2,
+      "is_active": true
+    },
+    {
+      "id": 3,
+      "name": "dynamic_challenging",
+      "label": "Dynamic challenging",
+      "description": "Dynamic challenging interpretive effect: the configuration creates tension, pressure or conflict that can push action and growth.",
+      "interpretive_family": "tonal",
+      "is_tonal_valence": true,
+      "is_intensity_modifier": false,
+      "writing_guidance": "Present as active tension or constructive challenge, not as a purely negative outcome.",
+      "default_valence_id": 6,
+      "sort_order": 3,
+      "is_active": true
+    },
+    {
+      "id": 4,
+      "name": "polarizing",
+      "label": "Polarizing",
+      "description": "Polarizing interpretive effect: the configuration draws awareness through contrast, opposition or tension between two poles.",
+      "interpretive_family": "tonal",
+      "is_tonal_valence": true,
+      "is_intensity_modifier": false,
+      "writing_guidance": "Present as a polarity to balance, integrate or negotiate, especially across axes or oppositions.",
+      "default_valence_id": 7,
+      "sort_order": 4,
+      "is_active": true
+    },
+    {
+      "id": 5,
+      "name": "amplifying",
+      "label": "Amplifying",
+      "description": "Amplifying interpretive effect: the configuration increases visibility, strength or impact without deciding whether the outcome is favorable or difficult.",
+      "interpretive_family": "intensity",
+      "is_tonal_valence": false,
+      "is_intensity_modifier": true,
+      "writing_guidance": "Indicate that the factor intensifies what is already present, and combine it with another tonal valence when possible.",
+      "default_valence_id": 4,
+      "sort_order": 5,
+      "is_active": true
+    },
+    {
+      "id": 6,
+      "name": "adjustment",
+      "label": "Adjustment",
+      "description": "Adjustment interpretive effect: the configuration requires adaptation between factors that do not naturally align.",
+      "interpretive_family": "adaptive",
+      "is_tonal_valence": true,
+      "is_intensity_modifier": false,
+      "writing_guidance": "Present as a need for recalibration, practical adjustment or conscious adaptation.",
+      "default_valence_id": 7,
+      "sort_order": 6,
+      "is_active": true
+    },
+    {
+      "id": 7,
+      "name": "subtle_adjustment",
+      "label": "Subtle adjustment",
+      "description": "Subtle adjustment interpretive effect: the configuration asks for small refinements or low-noise adaptation.",
+      "interpretive_family": "adaptive",
+      "is_tonal_valence": true,
+      "is_intensity_modifier": false,
+      "writing_guidance": "Present as a small adjustment or quiet mismatch rather than a major conflict.",
+      "default_valence_id": 7,
+      "sort_order": 7,
+      "is_active": true
+    },
+    {
+      "id": 8,
+      "name": "minor_friction",
+      "label": "Minor friction",
+      "description": "Minor friction interpretive effect: the configuration creates low-grade irritation, pressure or small obstacles.",
+      "interpretive_family": "tonal",
+      "is_tonal_valence": true,
+      "is_intensity_modifier": false,
+      "writing_guidance": "Present as manageable friction that can reveal small blocks or irritants.",
+      "default_valence_id": 6,
+      "sort_order": 8,
+      "is_active": true
+    },
+    {
+      "id": 9,
+      "name": "creative",
+      "label": "Creative",
+      "description": "Creative interpretive effect: the configuration supports talent, design, patterning or expressive invention.",
+      "interpretive_family": "creative",
+      "is_tonal_valence": true,
+      "is_intensity_modifier": false,
+      "writing_guidance": "Present as a creative opening, craft potential or symbolic patterning capacity.",
+      "default_valence_id": 8,
+      "sort_order": 9,
+      "is_active": true
+    },
+    {
+      "id": 10,
+      "name": "indirect_tension",
+      "label": "Indirect tension",
+      "description": "Indirect tension interpretive effect: the configuration produces accumulated pressure or tension that may surface indirectly.",
+      "interpretive_family": "tonal",
+      "is_tonal_valence": true,
+      "is_intensity_modifier": false,
+      "writing_guidance": "Present as indirect pressure, repeated irritation or background tension that needs release.",
+      "default_valence_id": 6,
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": 11,
+      "name": "refined_creative",
+      "label": "Refined creative",
+      "description": "Refined creative interpretive effect: the configuration supports intentional skill, design refinement or specialized creative expression.",
+      "interpretive_family": "creative",
+      "is_tonal_valence": true,
+      "is_intensity_modifier": false,
+      "writing_guidance": "Present as refined talent, deliberate craft or precise creative intelligence.",
+      "default_valence_id": 8,
+      "sort_order": 11,
+      "is_active": true
+    },
+    {
+      "id": 12,
+      "name": "symbolic_fated",
+      "label": "Symbolic fated",
+      "description": "Symbolic fated interpretive effect: the configuration carries a symbolic, compulsive or fate-like quality that should be used carefully.",
+      "interpretive_family": "symbolic",
+      "is_tonal_valence": true,
+      "is_intensity_modifier": false,
+      "writing_guidance": "Use sparingly and avoid fatalistic wording; present as symbolic emphasis or meaningful recurrence.",
+      "default_valence_id": 4,
+      "sort_order": 12,
+      "is_active": true
+    },
+    {
+      "id": 13,
+      "name": "spiritual_integration",
+      "label": "Spiritual integration",
+      "description": "Spiritual integration interpretive effect: the configuration supports inner completion, maturation or integration of subtle meaning.",
+      "interpretive_family": "spiritual",
+      "is_tonal_valence": true,
+      "is_intensity_modifier": false,
+      "writing_guidance": "Present as inner maturation, spiritual integration or quiet completion without overstating external events.",
+      "default_valence_id": 8,
+      "sort_order": 13,
+      "is_active": true
+    },
+    {
+      "id": 14,
+      "name": "creative_ordering",
+      "label": "Creative ordering",
+      "description": "Creative ordering interpretive effect: the configuration supports pattern, structure, proportion and ordered creative expression.",
+      "interpretive_family": "creative",
+      "is_tonal_valence": true,
+      "is_intensity_modifier": false,
+      "writing_guidance": "Present as the ability to organize creative material into coherent form.",
+      "default_valence_id": 8,
+      "sort_order": 14,
+      "is_active": true
+    },
+    {
+      "id": 15,
+      "name": "obsessive_focus",
+      "label": "Obsessive focus",
+      "description": "Obsessive focus interpretive effect: the configuration intensifies concentration, fixation or compulsion around a theme.",
+      "interpretive_family": "intensity",
+      "is_tonal_valence": false,
+      "is_intensity_modifier": true,
+      "writing_guidance": "Present as intensified focus or fixation, and combine with contextual factors before framing it as helpful or difficult.",
+      "default_valence_id": 4,
+      "sort_order": 15,
+      "is_active": true
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "name": "astral_object_motion_states",
+  "structure": {
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "description": "string",
+    "motion_family": "string",
+    "requires_speed_threshold": "boolean",
+    "runtime_usage": "string",
+    "calculation_notes": "string",
+    "sort_order": "integer",
+    "is_active": "boolean",
+    "constraints": {
+      "unique_key": [
+        "code"
+      ]
+    }
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "direct",
+      "label": "Direct",
+      "description": "The planet or mobile astrological object is moving forward in zodiacal longitude at the chart calculation time.",
+      "motion_family": "forward",
+      "requires_speed_threshold": false,
+      "runtime_usage": "Use for calculated planetary positions whose apparent zodiacal longitude increases over time. This is the normal state for the Sun and Moon in a classical geocentric chart.",
+      "calculation_notes": "Determine from apparent speed in degrees per day or by comparing longitude around the chart time. Keep speed magnitude in a separate field such as apparent_speed_deg_per_day.",
+      "sort_order": 1,
+      "is_active": true
+    },
+    {
+      "id": 2,
+      "code": "retrograde",
+      "label": "Retrograde",
+      "description": "The planet or mobile astrological object is moving backward in zodiacal longitude at the chart calculation time.",
+      "motion_family": "backward",
+      "requires_speed_threshold": false,
+      "runtime_usage": "Use for calculated planetary positions whose apparent zodiacal longitude decreases over time. This state can feed condition operators, accidental dignity rules, interpretation rules and expert display.",
+      "calculation_notes": "Determine from negative apparent speed or by comparing longitude around the chart time. Do not store retrograde as a static property of the planet definition.",
+      "sort_order": 2,
+      "is_active": true
+    },
+    {
+      "id": 3,
+      "code": "stationary",
+      "label": "Stationary",
+      "description": "The planet or mobile astrological object is nearly motionless before or after a change of apparent direction.",
+      "motion_family": "station",
+      "requires_speed_threshold": true,
+      "runtime_usage": "Use as a generic station condition when the engine only knows that apparent speed is close to zero. Prefer a future split into stationary_direct and stationary_retrograde when the runtime can determine the outgoing direction.",
+      "calculation_notes": "Requires a planet-specific or engine-level speed threshold. This value should be selected from apparent_speed_deg_per_day close to zero, not from zodiacal position alone.",
+      "sort_order": 3,
+      "is_active": true
+    }
+  ]
+}

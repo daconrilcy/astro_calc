@@ -1,0 +1,25 @@
+{
+  "name": "astral_sign_fertility_classes",
+  "structure": {
+    "id": "integer, primary key",
+    "code": "string",
+    "name": "string"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "fruitful",
+      "name": "Fruitful"
+    },
+    {
+      "id": 2,
+      "code": "semi_fruitful",
+      "name": "Semi-fruitful"
+    },
+    {
+      "id": 3,
+      "code": "barren",
+      "name": "Barren"
+    }
+  ]
+}

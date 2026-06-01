@@ -2,7 +2,7 @@
   "name": "astral_typical_polarities",
   "structure": {
     "id": "integer",
-    "name": "string"
+    "name": "string, FK -> astral_default_valence.name"
   },
   "data": [
     {

@@ -1,0 +1,96 @@
+{
+  "name": "astral_houses",
+  "structure": {
+    "id": "integer, primary key",
+    "number": "integer",
+    "name": "string",
+    "description": "string",
+    "house_modality_id": "integer, FK -> astral_house_modalities.id"
+  },
+  "data": [
+    {
+      "id": 1,
+      "number": 1,
+      "name": "Self",
+      "description": "House of identity, physical presence, temperament, self-expression and the way the native enters life.",
+      "house_modality_id": 1
+    },
+    {
+      "id": 2,
+      "number": 2,
+      "name": "Resources",
+      "description": "House of personal resources, money, possessions, values, material security and what the native develops or preserves.",
+      "house_modality_id": 2
+    },
+    {
+      "id": 3,
+      "number": 3,
+      "name": "Communication",
+      "description": "House of communication, learning, siblings, local environment, short journeys and everyday exchanges.",
+      "house_modality_id": 3
+    },
+    {
+      "id": 4,
+      "number": 4,
+      "name": "Home",
+      "description": "House of roots, family foundations, home, private life, ancestry and the base from which the native is built.",
+      "house_modality_id": 1
+    },
+    {
+      "id": 5,
+      "number": 5,
+      "name": "Creativity",
+      "description": "House of creativity, pleasure, romance, children, play, self-expression and personal joy.",
+      "house_modality_id": 2
+    },
+    {
+      "id": 6,
+      "number": 6,
+      "name": "Health",
+      "description": "House of work routines, service, health, maintenance, duties, skills and practical adjustments.",
+      "house_modality_id": 3
+    },
+    {
+      "id": 7,
+      "number": 7,
+      "name": "Partnership",
+      "description": "House of partnership, marriage, contracts, open opponents, cooperation and direct one-to-one relationships.",
+      "house_modality_id": 1
+    },
+    {
+      "id": 8,
+      "number": 8,
+      "name": "Transformation",
+      "description": "House of shared resources, debts, inheritance, crisis, intimacy, loss, transformation and deep psychological processes.",
+      "house_modality_id": 2
+    },
+    {
+      "id": 9,
+      "number": 9,
+      "name": "Beliefs",
+      "description": "House of beliefs, higher learning, philosophy, religion, law, long journeys and broadening perspectives.",
+      "house_modality_id": 3
+    },
+    {
+      "id": 10,
+      "number": 10,
+      "name": "Career",
+      "description": "House of career, vocation, public role, reputation, authority, ambition and visible achievement.",
+      "house_modality_id": 1
+    },
+    {
+      "id": 11,
+      "number": 11,
+      "name": "Community",
+      "description": "House of friends, groups, networks, alliances, collective projects, hopes and long-term aspirations.",
+      "house_modality_id": 2
+    },
+    {
+      "id": 12,
+      "number": 12,
+      "name": "Subconscious",
+      "description": "House of retreat, hidden matters, solitude, unconscious patterns, confinement, spiritual release and what remains behind the scenes.",
+      "house_modality_id": 3
+    }
+  ]
+}

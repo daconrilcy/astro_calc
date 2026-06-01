@@ -4,7 +4,7 @@
     "id": "integer",
     "code": "string, unique, snake_case",
     "display_name": "string",
-    "point_family": "string, controlled value from astral_point_families.code",
+    "point_family": "string, controlled value from astral_point_families.code, FK -> astral_point_families.code",
     "astronomical_type": "string",
     "is_physical_body": "boolean",
     "description": "string"

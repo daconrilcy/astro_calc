@@ -27,7 +27,6 @@ METADATA_KEYS = {
     "unique_key",
     "versioning",
     "schema_version",
-    "implementation_notes",
     "resolution_order",
 }
 
@@ -62,6 +61,8 @@ def load_json_table(path: Path) -> dict[str, Any]:
         raise ValueError(f"{path}: missing string field 'name'")
     if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
         raise ValueError(f"{path}: unsafe table name {name!r}")
+    if path.stem != name:
+        raise ValueError(f"{path}: file name must match table name {name!r}")
     return obj
 
 
@@ -126,8 +127,10 @@ def columns_for_table(rows: list[dict[str, Any]], structure: Any) -> list[str]:
                 columns.append(key)
                 seen.add(key)
 
-    if not columns:
-        columns = columns_from_structure(structure)
+    for key in columns_from_structure(structure):
+        if key not in seen:
+            columns.append(key)
+            seen.add(key)
 
     for column in columns:
         if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", column):
@@ -210,6 +213,17 @@ def unique_non_null(rows: list[dict[str, Any]], columns: tuple[str, ...]) -> boo
     return True
 
 
+def unique_nulls_not_distinct(rows: list[dict[str, Any]], columns: tuple[str, ...]) -> bool:
+    seen: set[tuple[Any, ...]] = set()
+    for row in rows:
+        values = value_tuple(row, columns)
+        marker = tuple(json.dumps(value, sort_keys=True) if isinstance(value, (dict, list)) else value for value in values)
+        if marker in seen:
+            return False
+        seen.add(marker)
+    return True
+
+
 def complete_non_null(rows: list[dict[str, Any]], columns: tuple[str, ...]) -> bool:
     return all(all(row.get(column) is not None for column in columns) for row in rows)
 
@@ -269,10 +283,120 @@ def extract_foreign_keys(table: dict[str, Any], columns: list[str]) -> list[tupl
     deduped: list[tuple[tuple[str, ...], str, tuple[str, ...]]] = []
     seen: set[tuple[tuple[str, ...], str, tuple[str, ...]]] = set()
     for foreign_key in refs:
-        if foreign_key not in seen and foreign_key[1] != table_name:
+        if foreign_key not in seen:
             deduped.append(foreign_key)
             seen.add(foreign_key)
     return deduped
+
+
+def extract_check_constraints(table: dict[str, Any]) -> list[tuple[str, str]]:
+    structure = table.get("structure")
+    if not isinstance(structure, dict):
+        return []
+
+    checks: list[tuple[str, str]] = []
+    constraints = structure.get("constraints")
+    declared_checks = constraints.get("checks", []) if isinstance(constraints, dict) else []
+    for index, check in enumerate(declared_checks, start=1):
+        if isinstance(check, str):
+            name = f"rule_{index}"
+            expression = check
+        elif isinstance(check, dict):
+            name = check.get("name")
+            expression = check.get("expression")
+        else:
+            continue
+        if not isinstance(name, str) or not isinstance(expression, str):
+            continue
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
+            raise ValueError(f"{table['name']}: unsafe check constraint name {name!r}")
+        if ";" in expression or "--" in expression or "/*" in expression or "*/" in expression:
+            raise ValueError(f"{table['name']}: unsafe check expression {expression!r}")
+        checks.append((name, expression))
+
+    descriptors: list[tuple[str, str]] = [
+        (key, value) for key, value in structure.items() if isinstance(value, str)
+    ]
+    nested_columns = structure.get("columns")
+    if isinstance(nested_columns, dict):
+        descriptors.extend(
+            (key, value) for key, value in nested_columns.items() if isinstance(value, str)
+        )
+
+    for column, descriptor in descriptors:
+        existing_names = {name for name, _ in checks}
+        if re.search(r"\bsnake_case\b", descriptor, re.IGNORECASE):
+            name = f"{column}_snake_case"
+            if name not in existing_names:
+                checks.append(
+                    (
+                        name,
+                        f"{quote_ident(column)} ~ '^[a-z][a-z0-9_]*$'",
+                    )
+                )
+        enum_match = re.search(r"\benum:([A-Za-z0-9_|]+)", descriptor, re.IGNORECASE)
+        if enum_match:
+            values = enum_match.group(1).split("|")
+            allowed = ", ".join(quote_literal(value) for value in values)
+            name = f"{column}_enum"
+            if name not in existing_names:
+                checks.append((name, f"{quote_ident(column)} IN ({allowed})"))
+    return checks
+
+
+def extract_indexes(table: dict[str, Any], columns: list[str]) -> list[tuple[str, ...]]:
+    structure = table.get("structure")
+    if not isinstance(structure, dict):
+        return []
+
+    constraints = structure.get("constraints")
+    if not isinstance(constraints, dict):
+        return []
+
+    indexes: list[tuple[str, ...]] = []
+    for index in constraints.get("indexes", []):
+        if not isinstance(index, list) or not index or not all(isinstance(column, str) for column in index):
+            continue
+        index_columns = tuple(index)
+        if any(column not in columns for column in index_columns):
+            continue
+        indexes.append(index_columns)
+    return list(dict.fromkeys(indexes))
+
+
+def extract_unique_constraints(table: dict[str, Any], columns: list[str]) -> list[tuple[str, ...]]:
+    structure = table.get("structure")
+    if not isinstance(structure, dict):
+        return []
+
+    candidates: list[Any] = [structure.get("unique_key")]
+    descriptors: list[tuple[str, str]] = [
+        (key, value) for key, value in structure.items() if isinstance(value, str)
+    ]
+    nested_columns = structure.get("columns")
+    if isinstance(nested_columns, dict):
+        descriptors.extend(
+            (key, value) for key, value in nested_columns.items() if isinstance(value, str)
+        )
+    candidates.extend([[column] for column, descriptor in descriptors if re.search(r"\bunique\b", descriptor, re.IGNORECASE)])
+    constraints = structure.get("constraints")
+    if isinstance(constraints, dict):
+        candidates.extend([constraints.get("unique_key"), constraints.get("unique")])
+
+    unique_constraints: list[tuple[str, ...]] = []
+    for candidate in candidates:
+        if not isinstance(candidate, list) or not candidate:
+            continue
+        groups = [candidate] if all(isinstance(value, str) for value in candidate) else candidate
+        for group in groups:
+            if not isinstance(group, list) or not group or not all(isinstance(value, str) for value in group):
+                continue
+            constraint_columns = tuple(group)
+            if any(column not in columns for column in constraint_columns):
+                continue
+            unique_constraints.append(constraint_columns)
+
+    return list(dict.fromkeys(unique_constraints))
 
 
 def foreign_key_is_valid(
@@ -303,6 +427,8 @@ def build_sql(json_dir: Path, schema: str) -> tuple[str, int, int, int, int]:
     tables = [load_json_table(path) for path in paths]
     table_defs: dict[str, dict[str, Any]] = {}
     for table in tables:
+        if table["name"] in table_defs:
+            raise ValueError(f"Duplicate table name: {table['name']!r}")
         rows = rows_from_data(table.get("data"))
         columns = columns_for_table(rows, table.get("structure"))
         column_types: dict[str, str] = {}
@@ -325,6 +451,40 @@ def build_sql(json_dir: Path, schema: str) -> tuple[str, int, int, int, int]:
         "\\set ON_ERROR_STOP on",
         "BEGIN;",
         f"CREATE SCHEMA IF NOT EXISTS {q_schema};",
+        "DO $$",
+        "DECLARE",
+        "  obsolete_table record;",
+        "BEGIN",
+        "  FOR obsolete_table IN",
+        "    SELECT tablename",
+        "    FROM pg_tables",
+        f"    WHERE schemaname = {quote_literal(schema)}",
+        "      AND (",
+        "        tablename ~ 'translations?'",
+        "        OR tablename IN (",
+        "          'reference_versions',",
+        "          'chart_results',",
+        "          'astral_chart_planet_dignity_results',",
+        "          'astral_house',",
+        "          'prediction_rulesets',",
+        "          'astral_planets',",
+        "          'astral_planet_definitions',",
+        "          'astral_planet_natures',",
+        "          'astral_planet_motion_states',",
+        "          'astral_planet_sign_dignities',",
+        "          'astral_planet_interpretation_profiles',",
+        "          'astral_planet_category_weights',",
+        "          'astral_planet_condition_signal_profiles',",
+        "          'astral_prediction_daily_planet_profiles',",
+        "          'astral_speed',",
+        "          'astral_structural_reference_catalog'",
+        "        )",
+        "      )",
+        "  LOOP",
+        "    EXECUTE format('DROP TABLE IF EXISTS %I.%I CASCADE',",
+        f"      {quote_literal(schema)}, obsolete_table.tablename);",
+        "  END LOOP;",
+        "END $$;",
     ]
 
     for table in tables:
@@ -362,6 +522,13 @@ def build_sql(json_dir: Path, schema: str) -> tuple[str, int, int, int, int]:
         id_columns = ("id",)
         if "id" in columns and unique_non_null(rows, id_columns) and complete_non_null(rows, id_columns):
             primary_keys.add((table["name"], id_columns))
+
+    for table_name, table_def in table_defs.items():
+        for columns in extract_unique_constraints(table_def["table"], table_def["columns"]):
+            if not unique_nulls_not_distinct(table_def["rows"], columns):
+                raise ValueError(f"{table_name}: declared unique constraint is violated for columns {columns!r}")
+            if (table_name, columns) not in primary_keys:
+                unique_keys.add((table_name, columns))
 
     for source_name, source_def in table_defs.items():
         for source_columns, target_name, target_columns in extract_foreign_keys(
@@ -403,8 +570,24 @@ def build_sql(json_dir: Path, schema: str) -> tuple[str, int, int, int, int]:
         col_sql = ", ".join(quote_ident(column) for column in columns)
         lines.append(
             f"ALTER TABLE {q_schema}.{quote_ident(table_name)} "
-            f"ADD CONSTRAINT {quote_ident(name)} UNIQUE ({col_sql});"
+            f"ADD CONSTRAINT {quote_ident(name)} UNIQUE NULLS NOT DISTINCT ({col_sql});"
         )
+
+    for table_name, table_def in sorted(table_defs.items()):
+        for check_name, expression in extract_check_constraints(table_def["table"]):
+            name = constraint_name("ck", [table_name, check_name])
+            lines.append(
+                f"ALTER TABLE {q_schema}.{quote_ident(table_name)} "
+                f"ADD CONSTRAINT {quote_ident(name)} CHECK ({expression});"
+            )
+
+        for columns in extract_indexes(table_def["table"], table_def["columns"]):
+            name = constraint_name("idx", [table_name, *columns])
+            col_sql = ", ".join(quote_ident(column) for column in columns)
+            lines.append(
+                f"CREATE INDEX IF NOT EXISTS {quote_ident(name)} "
+                f"ON {q_schema}.{quote_ident(table_name)} ({col_sql});"
+            )
 
     for source_name, source_columns, target_name, target_columns in foreign_keys:
         name = constraint_name("fk", [source_name, *source_columns, target_name, *target_columns])
@@ -456,6 +639,10 @@ def main() -> None:
         args.json_dir,
         args.schema,
     )
+    if skipped_foreign_key_count:
+        raise RuntimeError(
+            f"Refusing to import with {skipped_foreign_key_count} skipped foreign keys."
+        )
     if args.output:
         args.output.write_text(sql, encoding="utf-8")
     if args.dry_run:

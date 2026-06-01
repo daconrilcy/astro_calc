@@ -4,10 +4,28 @@
     "id": "integer",
     "code": "string, unique, snake_case",
     "label": "string",
-    "sort_order": "integer"
+    "description": "string",
+    "sort_order": "integer",
+    "constraints": {
+      "unique_key": [
+        "code"
+      ]
+    }
   },
   "data": [
-    { "id": 1, "code": "greater_than_mean", "label": "Greater than mean", "sort_order": 1 },
-    { "id": 2, "code": "less_than_mean", "label": "Less than mean", "sort_order": 2 }
+    {
+      "id": 1,
+      "code": "greater_than_mean",
+      "label": "Greater than mean",
+      "description": "The calculated apparent speed is greater than the configured mean speed for the object.",
+      "sort_order": 1
+    },
+    {
+      "id": 2,
+      "code": "less_than_mean",
+      "label": "Less than mean",
+      "description": "The calculated apparent speed is lower than the configured mean speed for the object.",
+      "sort_order": 2
+    }
   ]
 }

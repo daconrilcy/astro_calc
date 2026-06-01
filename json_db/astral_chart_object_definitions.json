@@ -1,0 +1,142 @@
+{
+  "name": "astral_chart_object_definitions",
+  "structure": {
+    "id": "integer",
+    "chart_object_id": "integer, FK -> astral_chart_objects.id",
+    "astrological_role_id": "integer, FK -> astral_astrological_roles.id",
+    "speed_rank": "integer",
+    "speed_class_id": "integer, FK -> astral_speed_classes.id",
+    "typical_polarity_id": "integer, FK -> astral_typical_polarities.id",
+    "is_luminary": "boolean",
+    "is_planet_symbolic": "boolean",
+    "is_visible_to_naked_eye": "boolean",
+    "micro_note": "string|null",
+    "constraints": {
+      "unique_key": [
+        "chart_object_id"
+      ]
+    }
+  },
+  "data": [
+    {
+      "id": 1,
+      "chart_object_id": 1,
+      "astrological_role_id": 1,
+      "speed_rank": 1,
+      "speed_class_id": 3,
+      "typical_polarity_id": 1,
+      "is_luminary": true,
+      "is_visible_to_naked_eye": true,
+      "micro_note": "The Sun is a physical celestial body and a luminary, not classified as a planet in the astrological taxonomy.",
+      "is_planet_symbolic": false
+    },
+    {
+      "id": 2,
+      "chart_object_id": 2,
+      "astrological_role_id": 1,
+      "speed_rank": 0,
+      "speed_class_id": 1,
+      "typical_polarity_id": 2,
+      "is_luminary": true,
+      "is_visible_to_naked_eye": true,
+      "micro_note": "The Moon is treated as the fastest moving luminary in daily interpretation.",
+      "is_planet_symbolic": false
+    },
+    {
+      "id": 3,
+      "chart_object_id": 3,
+      "astrological_role_id": 2,
+      "speed_rank": 2,
+      "speed_class_id": 1,
+      "typical_polarity_id": 2,
+      "is_luminary": false,
+      "is_visible_to_naked_eye": true,
+      "micro_note": "Mercury is a personal planet associated with fast-moving mental and communicative functions.",
+      "is_planet_symbolic": true
+    },
+    {
+      "id": 4,
+      "chart_object_id": 4,
+      "astrological_role_id": 2,
+      "speed_rank": 3,
+      "speed_class_id": 2,
+      "typical_polarity_id": 1,
+      "is_luminary": false,
+      "is_visible_to_naked_eye": true,
+      "micro_note": "Venus is a personal planet with generally harmonizing and attractive symbolism.",
+      "is_planet_symbolic": true
+    },
+    {
+      "id": 5,
+      "chart_object_id": 5,
+      "astrological_role_id": 2,
+      "speed_rank": 4,
+      "speed_class_id": 2,
+      "typical_polarity_id": 3,
+      "is_luminary": false,
+      "is_visible_to_naked_eye": true,
+      "micro_note": "Mars is a personal planet with activating, conflictual, assertive and energetic symbolism.",
+      "is_planet_symbolic": true
+    },
+    {
+      "id": 6,
+      "chart_object_id": 6,
+      "astrological_role_id": 3,
+      "speed_rank": 5,
+      "speed_class_id": 3,
+      "typical_polarity_id": 1,
+      "is_luminary": false,
+      "is_visible_to_naked_eye": true,
+      "micro_note": "Jupiter is a social planet associated with expansion, opportunity, belief and growth.",
+      "is_planet_symbolic": true
+    },
+    {
+      "id": 7,
+      "chart_object_id": 7,
+      "astrological_role_id": 3,
+      "speed_rank": 6,
+      "speed_class_id": 3,
+      "typical_polarity_id": 3,
+      "is_luminary": false,
+      "is_visible_to_naked_eye": true,
+      "micro_note": "Saturn is a social planet associated with limits, responsibility, discipline and maturation.",
+      "is_planet_symbolic": true
+    },
+    {
+      "id": 8,
+      "chart_object_id": 8,
+      "astrological_role_id": 4,
+      "speed_rank": 7,
+      "speed_class_id": 3,
+      "typical_polarity_id": 2,
+      "is_luminary": false,
+      "is_visible_to_naked_eye": false,
+      "micro_note": "Uranus is a transpersonal planet and is not normally visible to the naked eye.",
+      "is_planet_symbolic": true
+    },
+    {
+      "id": 9,
+      "chart_object_id": 9,
+      "astrological_role_id": 4,
+      "speed_rank": 8,
+      "speed_class_id": 3,
+      "typical_polarity_id": 2,
+      "is_luminary": false,
+      "is_visible_to_naked_eye": false,
+      "micro_note": "Neptune is a transpersonal planet associated with subtle, collective and dissolving dynamics.",
+      "is_planet_symbolic": true
+    },
+    {
+      "id": 10,
+      "chart_object_id": 10,
+      "astrological_role_id": 4,
+      "speed_rank": 9,
+      "speed_class_id": 3,
+      "typical_polarity_id": 2,
+      "is_luminary": false,
+      "is_visible_to_naked_eye": false,
+      "micro_note": "Pluto is treated as a transpersonal astrological planet/body despite its astronomical dwarf planet classification.",
+      "is_planet_symbolic": true
+    }
+  ]
+}

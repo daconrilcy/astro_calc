@@ -5,7 +5,12 @@
     "code": "string",
     "name": "string",
     "angle": "integer",
-    "family": "string"
+    "family": "string, FK -> astral_aspect_families.name",
+    "constraints": {
+      "unique_key": [
+        "code"
+      ]
+    }
   },
   "data": [
     {

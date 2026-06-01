@@ -3,6 +3,7 @@
   "structure": {
     "id": "integer",
     "code": "string, unique, snake_case",
+    "angle_code": "string|null, FK -> astral_angle_points.code",
     "label": "string",
     "category_id": "integer, FK -> astral_accidental_dignity_categories.id",
     "functional_effect_id": "integer, FK -> astral_dignity_functional_effects.id",
@@ -21,7 +22,8 @@
       "expression_tendency_id": 1,
       "intensity_effect_id": 2,
       "description": "Planète située en maison angulaire : 1, 4, 7 ou 10.",
-      "sort_order": 1
+      "sort_order": 1,
+      "angle_code": null
     },
     {
       "id": 2,
@@ -32,7 +34,8 @@
       "expression_tendency_id": 2,
       "intensity_effect_id": 3,
       "description": "Planète située en maison succédente : 2, 5, 8 ou 11.",
-      "sort_order": 2
+      "sort_order": 2,
+      "angle_code": null
     },
     {
       "id": 3,
@@ -43,7 +46,8 @@
       "expression_tendency_id": 3,
       "intensity_effect_id": 4,
       "description": "Planète située en maison cadente : 3, 6, 9 ou 12.",
-      "sort_order": 3
+      "sort_order": 3,
+      "angle_code": null
     },
     {
       "id": 4,
@@ -54,7 +58,8 @@
       "expression_tendency_id": 4,
       "intensity_effect_id": 3,
       "description": "Planète située dans sa maison de joie traditionnelle.",
-      "sort_order": 4
+      "sort_order": 4,
+      "angle_code": null
     },
     {
       "id": 5,
@@ -65,7 +70,8 @@
       "expression_tendency_id": 5,
       "intensity_effect_id": 3,
       "description": "Planète en mouvement direct.",
-      "sort_order": 5
+      "sort_order": 5,
+      "angle_code": null
     },
     {
       "id": 6,
@@ -76,7 +82,8 @@
       "expression_tendency_id": 6,
       "intensity_effect_id": 6,
       "description": "Planète en mouvement rétrograde.",
-      "sort_order": 6
+      "sort_order": 6,
+      "angle_code": null
     },
     {
       "id": 7,
@@ -87,7 +94,8 @@
       "expression_tendency_id": 7,
       "intensity_effect_id": 7,
       "description": "Planète stationnaire avant reprise du mouvement direct.",
-      "sort_order": 7
+      "sort_order": 7,
+      "angle_code": null
     },
     {
       "id": 8,
@@ -98,7 +106,8 @@
       "expression_tendency_id": 8,
       "intensity_effect_id": 7,
       "description": "Planète stationnaire avant passage rétrograde.",
-      "sort_order": 8
+      "sort_order": 8,
+      "angle_code": null
     },
     {
       "id": 9,
@@ -109,7 +118,8 @@
       "expression_tendency_id": 9,
       "intensity_effect_id": 3,
       "description": "Planète plus rapide que sa vitesse moyenne.",
-      "sort_order": 9
+      "sort_order": 9,
+      "angle_code": null
     },
     {
       "id": 10,
@@ -120,7 +130,8 @@
       "expression_tendency_id": 10,
       "intensity_effect_id": 3,
       "description": "Planète plus lente que sa vitesse moyenne.",
-      "sort_order": 10
+      "sort_order": 10,
+      "angle_code": null
     },
     {
       "id": 11,
@@ -131,7 +142,8 @@
       "expression_tendency_id": 11,
       "intensity_effect_id": 7,
       "description": "Planète au cœur du Soleil selon une orbe très serrée.",
-      "sort_order": 11
+      "sort_order": 11,
+      "angle_code": null
     },
     {
       "id": 12,
@@ -142,7 +154,8 @@
       "expression_tendency_id": 12,
       "intensity_effect_id": 2,
       "description": "Planète trop proche du Soleil, traditionnellement affaiblie.",
-      "sort_order": 12
+      "sort_order": 12,
+      "angle_code": null
     },
     {
       "id": 13,
@@ -153,7 +166,8 @@
       "expression_tendency_id": 13,
       "intensity_effect_id": 3,
       "description": "Planète sous les rayons du Soleil.",
-      "sort_order": 13
+      "sort_order": 13,
+      "angle_code": null
     },
     {
       "id": 14,
@@ -164,7 +178,8 @@
       "expression_tendency_id": 1,
       "intensity_effect_id": 3,
       "description": "Planète suffisamment éloignée du Soleil pour être dégagée de son affaiblissement solaire.",
-      "sort_order": 14
+      "sort_order": 14,
+      "angle_code": null
     },
     {
       "id": 15,
@@ -175,7 +190,8 @@
       "expression_tendency_id": 14,
       "intensity_effect_id": 3,
       "description": "Planète orientale par rapport au Soleil.",
-      "sort_order": 15
+      "sort_order": 15,
+      "angle_code": null
     },
     {
       "id": 16,
@@ -186,7 +202,8 @@
       "expression_tendency_id": 15,
       "intensity_effect_id": 3,
       "description": "Planète occidentale par rapport au Soleil.",
-      "sort_order": 16
+      "sort_order": 16,
+      "angle_code": null
     },
     {
       "id": 17,
@@ -197,7 +214,8 @@
       "expression_tendency_id": 16,
       "intensity_effect_id": 3,
       "description": "Planète située au-dessus de l'horizon.",
-      "sort_order": 17
+      "sort_order": 17,
+      "angle_code": null
     },
     {
       "id": 18,
@@ -208,7 +226,8 @@
       "expression_tendency_id": 17,
       "intensity_effect_id": 3,
       "description": "Planète située sous l'horizon.",
-      "sort_order": 18
+      "sort_order": 18,
+      "angle_code": null
     },
     {
       "id": 19,
@@ -219,7 +238,8 @@
       "expression_tendency_id": 18,
       "intensity_effect_id": 3,
       "description": "Planète cohérente avec la secte diurne ou nocturne du thème.",
-      "sort_order": 19
+      "sort_order": 19,
+      "angle_code": null
     },
     {
       "id": 20,
@@ -230,7 +250,8 @@
       "expression_tendency_id": 19,
       "intensity_effect_id": 3,
       "description": "Planète moins cohérente avec la secte du thème.",
-      "sort_order": 20
+      "sort_order": 20,
+      "angle_code": null
     },
     {
       "id": 21,
@@ -241,7 +262,8 @@
       "expression_tendency_id": 20,
       "intensity_effect_id": 3,
       "description": "Planète soutenue par un aspect favorable d'une bénéfique.",
-      "sort_order": 21
+      "sort_order": 21,
+      "angle_code": null
     },
     {
       "id": 22,
@@ -252,7 +274,8 @@
       "expression_tendency_id": 21,
       "intensity_effect_id": 2,
       "description": "Planète contrainte par un aspect difficile d'une maléfique.",
-      "sort_order": 22
+      "sort_order": 22,
+      "angle_code": null
     },
     {
       "id": 23,
@@ -263,7 +286,8 @@
       "expression_tendency_id": 20,
       "intensity_effect_id": 2,
       "description": "Planète encadrée ou entourée par des bénéfiques selon la doctrine retenue.",
-      "sort_order": 23
+      "sort_order": 23,
+      "angle_code": null
     },
     {
       "id": 24,
@@ -274,7 +298,8 @@
       "expression_tendency_id": 22,
       "intensity_effect_id": 2,
       "description": "Planète encadrée ou entourée par des maléfiques selon la doctrine retenue.",
-      "sort_order": 24
+      "sort_order": 24,
+      "angle_code": null
     },
     {
       "id": 25,
@@ -285,7 +310,8 @@
       "expression_tendency_id": 23,
       "intensity_effect_id": 2,
       "description": "Planète conjointe à une bénéfique.",
-      "sort_order": 25
+      "sort_order": 25,
+      "angle_code": null
     },
     {
       "id": 26,
@@ -296,7 +322,8 @@
       "expression_tendency_id": 24,
       "intensity_effect_id": 2,
       "description": "Planète conjointe à une maléfique.",
-      "sort_order": 26
+      "sort_order": 26,
+      "angle_code": null
     },
     {
       "id": 27,
@@ -307,7 +334,8 @@
       "expression_tendency_id": 25,
       "intensity_effect_id": 4,
       "description": "Planète non affligée par les maléfiques selon les règles du profil.",
-      "sort_order": 27
+      "sort_order": 27,
+      "angle_code": null
     },
     {
       "id": 28,
@@ -318,7 +346,8 @@
       "expression_tendency_id": 26,
       "intensity_effect_id": 4,
       "description": "Condition lunaire où la Lune ne forme plus d'aspect majeur avant de quitter son signe.",
-      "sort_order": 28
+      "sort_order": 28,
+      "angle_code": null
     },
     {
       "id": 29,
@@ -329,7 +358,8 @@
       "expression_tendency_id": 27,
       "intensity_effect_id": 3,
       "description": "Lune en phase croissante.",
-      "sort_order": 29
+      "sort_order": 29,
+      "angle_code": null
     },
     {
       "id": 30,
@@ -340,7 +370,8 @@
       "expression_tendency_id": 28,
       "intensity_effect_id": 3,
       "description": "Lune en phase décroissante.",
-      "sort_order": 30
+      "sort_order": 30,
+      "angle_code": null
     },
     {
       "id": 31,
@@ -351,7 +382,8 @@
       "expression_tendency_id": 29,
       "intensity_effect_id": 2,
       "description": "Aspect appliquant, dont l'effet est en montée.",
-      "sort_order": 31
+      "sort_order": 31,
+      "angle_code": null
     },
     {
       "id": 32,
@@ -362,7 +394,8 @@
       "expression_tendency_id": 28,
       "intensity_effect_id": 3,
       "description": "Aspect séparant, dont l'effet est en décroissance.",
-      "sort_order": 32
+      "sort_order": 32,
+      "angle_code": null
     },
     {
       "id": 33,
@@ -373,7 +406,8 @@
       "expression_tendency_id": 30,
       "intensity_effect_id": 7,
       "description": "Planète proche de l'Ascendant.",
-      "sort_order": 33
+      "sort_order": 33,
+      "angle_code": "asc"
     },
     {
       "id": 34,
@@ -384,7 +418,8 @@
       "expression_tendency_id": 31,
       "intensity_effect_id": 7,
       "description": "Planète proche du Milieu du Ciel.",
-      "sort_order": 34
+      "sort_order": 34,
+      "angle_code": "mc"
     },
     {
       "id": 35,
@@ -395,7 +430,8 @@
       "expression_tendency_id": 32,
       "intensity_effect_id": 2,
       "description": "Planète proche du Descendant.",
-      "sort_order": 35
+      "sort_order": 35,
+      "angle_code": "dsc"
     },
     {
       "id": 36,
@@ -406,7 +442,8 @@
       "expression_tendency_id": 33,
       "intensity_effect_id": 2,
       "description": "Planète proche du Fond du Ciel.",
-      "sort_order": 36
+      "sort_order": 36,
+      "angle_code": "ic"
     },
     {
       "id": 37,
@@ -417,7 +454,8 @@
       "expression_tendency_id": 6,
       "intensity_effect_id": 7,
       "description": "Planète stationnaire, sans distinction entre station directe et station rétrograde.",
-      "sort_order": 37
+      "sort_order": 37,
+      "angle_code": null
     },
     {
       "id": 38,
@@ -428,7 +466,8 @@
       "expression_tendency_id": 18,
       "intensity_effect_id": 2,
       "description": "Planète en cohérence complète avec la secte, l'hémisphère et le genre du signe selon la doctrine traditionnelle.",
-      "sort_order": 38
+      "sort_order": 38,
+      "angle_code": null
     }
   ]
 }

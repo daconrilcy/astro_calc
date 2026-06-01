@@ -2,9 +2,9 @@
   "name": "astral_house_axis_members",
   "structure": {
     "id": "integer",
-    "axis_id": "integer",
-    "house_id": "integer",
-    "opposite_house_id": "integer"
+    "axis_id": "integer, FK -> astral_house_axis_definitions.id",
+    "house_id": "integer, FK -> astral_houses.id",
+    "opposite_house_id": "integer, FK -> astral_houses.id"
   },
   "data": [
     {

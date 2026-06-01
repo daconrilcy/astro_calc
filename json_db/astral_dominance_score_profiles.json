@@ -1,21 +1,29 @@
 {
   "name": "astral_dominance_score_profiles",
   "structure": {
+    "id": "integer, primary key",
     "code": "string",
     "label": "string",
     "tradition_code": "string",
     "description": "string",
-    "reference_version_code": "string",
-    "is_active": "boolean"
+    "is_active": "boolean",
+    "reference_version_id": "integer|null, FK -> astral_reference_versions.id",
+    "constraints": {
+      "unique_key": [
+        "reference_version_id",
+        "code"
+      ]
+    }
   },
   "data": [
     {
+      "id": 2,
       "code": "natal_standard_v1",
       "label": "Natal standard dominance profile v1",
       "tradition_code": "modern",
       "description": "Profil standard pour calculer les planetes dominantes d'un theme natal.",
-      "reference_version_code": "v1",
-      "is_active": true
+      "is_active": true,
+      "reference_version_id": null
     }
   ]
 }

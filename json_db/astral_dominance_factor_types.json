@@ -1,86 +1,110 @@
 {
   "name": "astral_dominance_factor_types",
   "structure": {
+    "id": "integer, primary key",
     "code": "string",
     "label": "string",
     "category": "string",
-    "description": "string",
     "default_weight": "number",
     "sort_order": "integer",
-    "is_active": "boolean"
+    "is_active": "boolean",
+    "description": "string",
+    "reference_version_id": "integer|null, FK -> astral_reference_versions.id",
+    "constraints": {
+      "unique_key": [
+        "reference_version_id",
+        "code"
+      ]
+    }
   },
   "data": [
     {
+      "id": 9,
       "code": "chart_ruler",
       "label": "Chart ruler",
       "category": "rulership",
-      "description": "Planete gouvernant le signe de l'Ascendant.",
       "default_weight": 1.4,
       "sort_order": 1,
-      "is_active": true
+      "is_active": true,
+      "description": "Planete gouvernant le signe de l'Ascendant.",
+      "reference_version_id": null
     },
     {
+      "id": 10,
       "code": "angularity",
       "label": "Angularity",
       "category": "house_position",
-      "description": "Planete situee en maison angulaire ou proche d'un angle.",
       "default_weight": 1.3,
       "sort_order": 2,
-      "is_active": true
+      "is_active": true,
+      "description": "Planete situee en maison angulaire ou proche d'un angle.",
+      "reference_version_id": null
     },
     {
+      "id": 11,
       "code": "condition_strength",
       "label": "Condition strength",
       "category": "planet_condition",
-      "description": "Force issue du PlanetConditionProfile.",
       "default_weight": 1.2,
       "sort_order": 3,
-      "is_active": true
+      "is_active": true,
+      "description": "Force issue du PlanetConditionProfile.",
+      "reference_version_id": null
     },
     {
+      "id": 12,
       "code": "visibility",
       "label": "Visibility",
       "category": "planet_condition",
-      "description": "Visibilite issue du PlanetConditionProfile.",
       "default_weight": 1.1,
       "sort_order": 4,
-      "is_active": true
+      "is_active": true,
+      "description": "Visibilite issue du PlanetConditionProfile.",
+      "reference_version_id": null
     },
     {
+      "id": 13,
       "code": "most_elevated",
       "label": "Most elevated planet",
       "category": "chart_position",
-      "description": "Planete la plus proche du Milieu du Ciel ou la plus elevee selon le modele retenu.",
       "default_weight": 1.0,
       "sort_order": 5,
-      "is_active": true
+      "is_active": true,
+      "description": "Planete la plus proche du Milieu du Ciel ou la plus elevee selon le modele retenu.",
+      "reference_version_id": null
     },
     {
+      "id": 14,
       "code": "luminary_emphasis",
       "label": "Luminary emphasis",
       "category": "luminary",
-      "description": "Poids specifique du Soleil et de la Lune dans la structure globale du theme.",
       "default_weight": 0.9,
       "sort_order": 6,
-      "is_active": true
+      "is_active": true,
+      "description": "Poids specifique du Soleil et de la Lune dans la structure globale du theme.",
+      "reference_version_id": null
     },
     {
+      "id": 15,
       "code": "house_rulership_load",
       "label": "House rulership load",
       "category": "rulership",
-      "description": "Nombre et importance des maisons gouvernees par une planete.",
       "default_weight": 0.8,
       "sort_order": 7,
-      "is_active": true
+      "is_active": true,
+      "description": "Nombre et importance des maisons gouvernees par une planete.",
+      "reference_version_id": null
     },
     {
+      "id": 16,
       "code": "aspect_centrality",
       "label": "Aspect centrality",
       "category": "aspects",
-      "description": "Centralite d'une planete dans le reseau d'aspects.",
       "default_weight": 0.8,
       "sort_order": 8,
-      "is_active": true
+      "is_active": true,
+      "description": "Centralite d'une planete dans le reseau d'aspects.",
+      "reference_version_id": null
     }
   ]
 }

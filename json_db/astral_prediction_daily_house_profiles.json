@@ -1,0 +1,135 @@
+{
+  "name": "astral_prediction_daily_house_profiles",
+  "structure": {
+    "id": "integer, primary key",
+    "reference_version_id": "integer|null, FK -> astral_reference_versions.id",
+    "house_id": "integer, FK -> astral_houses.id",
+    "house_kind": "string",
+    "visibility_weight": "number",
+    "base_priority": "integer",
+    "keywords_json": "string|null",
+    "micro_note": "string|null"
+  },
+  "data": [
+    {
+      "id": 1,
+      "reference_version_id": null,
+      "house_id": 1,
+      "house_kind": "angular",
+      "visibility_weight": 1.0,
+      "base_priority": 10,
+      "keywords_json": null,
+      "micro_note": null
+    },
+    {
+      "id": 2,
+      "reference_version_id": null,
+      "house_id": 2,
+      "house_kind": "succedent",
+      "visibility_weight": 0.7,
+      "base_priority": 6,
+      "keywords_json": null,
+      "micro_note": null
+    },
+    {
+      "id": 3,
+      "reference_version_id": null,
+      "house_id": 3,
+      "house_kind": "cadent",
+      "visibility_weight": 0.5,
+      "base_priority": 4,
+      "keywords_json": null,
+      "micro_note": null
+    },
+    {
+      "id": 4,
+      "reference_version_id": null,
+      "house_id": 4,
+      "house_kind": "angular",
+      "visibility_weight": 0.9,
+      "base_priority": 9,
+      "keywords_json": null,
+      "micro_note": null
+    },
+    {
+      "id": 5,
+      "reference_version_id": null,
+      "house_id": 5,
+      "house_kind": "succedent",
+      "visibility_weight": 0.7,
+      "base_priority": 6,
+      "keywords_json": null,
+      "micro_note": null
+    },
+    {
+      "id": 6,
+      "reference_version_id": null,
+      "house_id": 6,
+      "house_kind": "cadent",
+      "visibility_weight": 0.6,
+      "base_priority": 5,
+      "keywords_json": null,
+      "micro_note": null
+    },
+    {
+      "id": 7,
+      "reference_version_id": null,
+      "house_id": 7,
+      "house_kind": "angular",
+      "visibility_weight": 0.9,
+      "base_priority": 9,
+      "keywords_json": null,
+      "micro_note": null
+    },
+    {
+      "id": 8,
+      "reference_version_id": null,
+      "house_id": 8,
+      "house_kind": "succedent",
+      "visibility_weight": 0.7,
+      "base_priority": 7,
+      "keywords_json": null,
+      "micro_note": null
+    },
+    {
+      "id": 9,
+      "reference_version_id": null,
+      "house_id": 9,
+      "house_kind": "cadent",
+      "visibility_weight": 0.5,
+      "base_priority": 4,
+      "keywords_json": null,
+      "micro_note": null
+    },
+    {
+      "id": 10,
+      "reference_version_id": null,
+      "house_id": 10,
+      "house_kind": "angular",
+      "visibility_weight": 1.0,
+      "base_priority": 10,
+      "keywords_json": null,
+      "micro_note": null
+    },
+    {
+      "id": 11,
+      "reference_version_id": null,
+      "house_id": 11,
+      "house_kind": "succedent",
+      "visibility_weight": 0.6,
+      "base_priority": 5,
+      "keywords_json": null,
+      "micro_note": null
+    },
+    {
+      "id": 12,
+      "reference_version_id": null,
+      "house_id": 12,
+      "house_kind": "cadent",
+      "visibility_weight": 0.4,
+      "base_priority": 3,
+      "keywords_json": null,
+      "micro_note": null
+    }
+  ]
+}

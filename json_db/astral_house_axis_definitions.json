@@ -2,7 +2,7 @@
   "name": "astral_house_axis_definitions",
   "structure": {
     "id": "integer",
-    "astral_system_id": "integer",
+    "astral_system_id": "integer, FK -> astral_systems.id",
     "key": "string",
     "title": "string",
     "summary": "string",

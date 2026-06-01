@@ -1,33 +1,35 @@
 {
   "name": "astral_house_interpretation_profiles",
   "structure": {
-    "id": "integer",
-    "reference_version_id": "integer",
-    "house_id": "integer",
-    "tradition": "string",
+    "id": "integer, primary key",
+    "reference_version_id": "integer|null, FK -> astral_reference_versions.id",
+    "house_id": "integer, FK -> astral_houses.id",
+    "language_id": "integer, FK -> languages.id",
+    "astral_system_id": "integer, FK -> astral_systems.id",
     "title": "string",
-    "summary": "string",
-    "core_keywords_json": "json_array",
-    "shadow_keywords_json": "json_array",
-    "psychological_keywords_json": "json_array",
-    "material_keywords_json": "json_array",
-    "relationship_keywords_json": "json_array",
-    "career_keywords_json": "json_array",
-    "health_keywords_json": "json_array",
-    "spiritual_keywords_json": "json_array",
-    "body_parts_json": "json_array",
-    "archetypes_json": "json_array",
-    "dos_json": "json_array",
-    "donts_json": "json_array",
-    "prompt_hints_json": "json_array",
-    "micro_note": "string"
+    "summary": "string|null",
+    "core_keywords_json": "string|null",
+    "shadow_keywords_json": "string|null",
+    "psychological_keywords_json": "string|null",
+    "material_keywords_json": "string|null",
+    "relationship_keywords_json": "string|null",
+    "career_keywords_json": "string|null",
+    "health_keywords_json": "string|null",
+    "spiritual_keywords_json": "string|null",
+    "body_parts_json": "string|null",
+    "archetypes_json": "string|null",
+    "dos_json": "string|null",
+    "donts_json": "string|null",
+    "prompt_hints_json": "string|null",
+    "micro_note": "string|null"
   },
   "data": [
     {
-      "id": 1,
-      "reference_version_id": 1,
+      "id": 13,
+      "reference_version_id": null,
       "house_id": 1,
-      "tradition": "modern",
+      "language_id": 1,
+      "astral_system_id": 2,
       "title": "Self and Identity",
       "summary": "The first house describes identity, physical presence, instinctive behavior, vitality and the way a person enters life.",
       "core_keywords_json": [
@@ -112,10 +114,11 @@
       "micro_note": "Where life begins as an embodied self."
     },
     {
-      "id": 2,
-      "reference_version_id": 1,
+      "id": 14,
+      "reference_version_id": null,
       "house_id": 2,
-      "tradition": "modern",
+      "language_id": 1,
+      "astral_system_id": 2,
       "title": "Resources and Values",
       "summary": "The second house describes money, possessions, personal resources, self-worth, stability and the values that create inner security.",
       "core_keywords_json": [
@@ -202,10 +205,11 @@
       "micro_note": "What one owns, values and trusts."
     },
     {
-      "id": 3,
-      "reference_version_id": 1,
+      "id": 15,
+      "reference_version_id": null,
       "house_id": 3,
-      "tradition": "modern",
+      "language_id": 1,
+      "astral_system_id": 2,
       "title": "Communication and Learning",
       "summary": "The third house describes communication, early learning, siblings, close environment, curiosity, language and everyday mental activity.",
       "core_keywords_json": [
@@ -294,10 +298,11 @@
       "micro_note": "How the mind connects with the nearby world."
     },
     {
-      "id": 4,
-      "reference_version_id": 1,
+      "id": 16,
+      "reference_version_id": null,
       "house_id": 4,
-      "tradition": "modern",
+      "language_id": 1,
+      "astral_system_id": 2,
       "title": "Home and Roots",
       "summary": "The fourth house describes home, family roots, ancestry, emotional foundations, private life and the inner base from which life develops.",
       "core_keywords_json": [
@@ -383,10 +388,11 @@
       "micro_note": "The private foundation beneath visible life."
     },
     {
-      "id": 5,
-      "reference_version_id": 1,
+      "id": 17,
+      "reference_version_id": null,
       "house_id": 5,
-      "tradition": "modern",
+      "language_id": 1,
+      "astral_system_id": 2,
       "title": "Creativity and Pleasure",
       "summary": "The fifth house describes creativity, pleasure, romance, children, play, joy, talent and the desire to express oneself freely.",
       "core_keywords_json": [
@@ -472,10 +478,11 @@
       "micro_note": "Where life becomes play, love and creation."
     },
     {
-      "id": 6,
-      "reference_version_id": 1,
+      "id": 18,
+      "reference_version_id": null,
       "house_id": 6,
-      "tradition": "modern",
+      "language_id": 1,
+      "astral_system_id": 2,
       "title": "Work, Health and Daily Practice",
       "summary": "The sixth house describes daily work, routines, service, health habits, discipline, practical improvement and the management of everyday life.",
       "core_keywords_json": [
@@ -564,10 +571,11 @@
       "micro_note": "Where life is refined through practice."
     },
     {
-      "id": 7,
-      "reference_version_id": 1,
+      "id": 19,
+      "reference_version_id": null,
       "house_id": 7,
-      "tradition": "modern",
+      "language_id": 1,
+      "astral_system_id": 2,
       "title": "Partnerships and Agreements",
       "summary": "The seventh house describes committed relationships, marriage, contracts, alliances, open opponents and the way one meets the other.",
       "core_keywords_json": [
@@ -653,10 +661,11 @@
       "micro_note": "Where the self meets the other."
     },
     {
-      "id": 8,
-      "reference_version_id": 1,
+      "id": 20,
+      "reference_version_id": null,
       "house_id": 8,
-      "tradition": "modern",
+      "language_id": 1,
+      "astral_system_id": 2,
       "title": "Transformation and Shared Resources",
       "summary": "The eighth house describes intimacy, transformation, shared resources, crisis, inheritance, psychological depth and processes of loss and renewal.",
       "core_keywords_json": [
@@ -745,10 +754,11 @@
       "micro_note": "Where life transforms through surrender and depth."
     },
     {
-      "id": 9,
-      "reference_version_id": 1,
+      "id": 21,
+      "reference_version_id": null,
       "house_id": 9,
-      "tradition": "modern",
+      "language_id": 1,
+      "astral_system_id": 2,
       "title": "Beliefs and Expansion",
       "summary": "The ninth house describes beliefs, philosophy, higher education, long-distance travel, law, spirituality and the search for meaning.",
       "core_keywords_json": [
@@ -836,10 +846,11 @@
       "micro_note": "Where life searches for meaning."
     },
     {
-      "id": 10,
-      "reference_version_id": 1,
+      "id": 22,
+      "reference_version_id": null,
       "house_id": 10,
-      "tradition": "modern",
+      "language_id": 1,
+      "astral_system_id": 2,
       "title": "Career and Public Role",
       "summary": "The tenth house describes ambition, reputation, vocation, authority, public image and visible contribution to the world.",
       "core_keywords_json": [
@@ -928,10 +939,11 @@
       "micro_note": "Where life becomes visible responsibility."
     },
     {
-      "id": 11,
-      "reference_version_id": 1,
+      "id": 23,
+      "reference_version_id": null,
       "house_id": 11,
-      "tradition": "modern",
+      "language_id": 1,
+      "astral_system_id": 2,
       "title": "Networks and Future Vision",
       "summary": "The eleventh house describes friendships, networks, groups, communities, collective ideals, future goals and the ability to participate in something larger.",
       "core_keywords_json": [
@@ -1016,10 +1028,11 @@
       "micro_note": "Where the individual joins the future."
     },
     {
-      "id": 12,
-      "reference_version_id": 1,
+      "id": 24,
+      "reference_version_id": null,
       "house_id": 12,
-      "tradition": "modern",
+      "language_id": 1,
+      "astral_system_id": 2,
       "title": "Unconscious and Transcendence",
       "summary": "The twelfth house describes the unconscious, solitude, dreams, hidden patterns, spiritual retreat, compassion, release and what lies beyond ordinary control.",
       "core_keywords_json": [

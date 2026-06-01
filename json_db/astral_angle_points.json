@@ -7,7 +7,7 @@
     "short_label": "string",
     "full_name": "string",
     "axis": "horizontal | vertical",
-    "opposite_angle_code": "string|null",
+    "opposite_angle_code": "string|null, FK -> astral_angle_points.code",
     "associated_house": "integer",
     "description": "string"
   },

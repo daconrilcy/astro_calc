@@ -1,0 +1,30 @@
+{
+  "name": "astral_dignity_type",
+  "structure": {
+    "id": "integer, primary key",
+    "code": "string",
+    "name": "string"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "domicile",
+      "name": "Domicile"
+    },
+    {
+      "id": 2,
+      "code": "detriment",
+      "name": "Detriment"
+    },
+    {
+      "id": 3,
+      "code": "exaltation",
+      "name": "Exaltation"
+    },
+    {
+      "id": 4,
+      "code": "fall",
+      "name": "Fall"
+    }
+  ]
+}

@@ -1,60 +1,60 @@
 {
-    "name": "astral_reference_epochs",
-    "structure": {
-        "id": "integer",
-        "key": "string",
-        "display_name": "string",
-        "description": "string",
-        "epoch_type": "string",
-        "julian_year": "float|null",
-        "iso_datetime": "string|null",
-        "is_standard": "boolean",
-        "usage_note": "string|null"
+  "name": "astral_reference_epochs",
+  "structure": {
+    "id": "integer",
+    "key": "string",
+    "display_name": "string",
+    "description": "string",
+    "epoch_type": "string",
+    "julian_year": "float|null",
+    "iso_datetime": "string|null",
+    "is_standard": "boolean",
+    "usage_note": "string|null"
+  },
+  "data": [
+    {
+      "id": 1,
+      "key": "j2000",
+      "display_name": "J2000",
+      "description": "Modern standard astronomical epoch used for many star catalogs and celestial coordinate references.",
+      "epoch_type": "julian_epoch",
+      "julian_year": 2000.0,
+      "iso_datetime": "2000-01-01T12:00:00Z",
+      "is_standard": true,
+      "usage_note": "Recommended default for storing canonical fixed-star source coordinates."
     },
-    "data": [
-        {
-            "id": 1,
-            "key": "j2000",
-            "display_name": "J2000",
-            "description": "Modern standard astronomical epoch used for many star catalogs and celestial coordinate references.",
-            "epoch_type": "julian_epoch",
-            "julian_year": 2000.0,
-            "iso_datetime": "2000-01-01T12:00:00Z",
-            "is_standard": true,
-            "usage_note": "Recommended default for storing canonical fixed-star source coordinates."
-        },
-        {
-            "id": 2,
-            "key": "b1950",
-            "display_name": "B1950",
-            "description": "Older Besselian epoch formerly used in many astronomical catalogs.",
-            "epoch_type": "besselian_epoch",
-            "julian_year": 1950.0,
-            "iso_datetime": null,
-            "is_standard": false,
-            "usage_note": "Kept mainly for compatibility with older astronomical sources."
-        },
-        {
-            "id": 3,
-            "key": "j2050",
-            "display_name": "J2050",
-            "description": "Future Julian epoch sometimes used for projected coordinates.",
-            "epoch_type": "julian_epoch",
-            "julian_year": 2050.0,
-            "iso_datetime": "2050-01-01T12:00:00Z",
-            "is_standard": false,
-            "usage_note": "Useful only if you store projected future positions."
-        },
-        {
-            "id": 4,
-            "key": "of_date",
-            "display_name": "Of Date",
-            "description": "Coordinates calculated for the exact runtime date instead of a fixed catalog epoch.",
-            "epoch_type": "runtime_epoch",
-            "julian_year": null,
-            "iso_datetime": null,
-            "is_standard": true,
-            "usage_note": "Use for calculated chart/runtime positions, not for immutable source catalog data."
-        }
-    ]
+    {
+      "id": 2,
+      "key": "b1950",
+      "display_name": "B1950",
+      "description": "Older Besselian epoch formerly used in many astronomical catalogs.",
+      "epoch_type": "besselian_epoch",
+      "julian_year": 1950.0,
+      "iso_datetime": null,
+      "is_standard": false,
+      "usage_note": "Kept mainly for compatibility with older astronomical sources."
+    },
+    {
+      "id": 3,
+      "key": "j2050",
+      "display_name": "J2050",
+      "description": "Future Julian epoch sometimes used for projected coordinates.",
+      "epoch_type": "julian_epoch",
+      "julian_year": 2050.0,
+      "iso_datetime": "2050-01-01T12:00:00Z",
+      "is_standard": false,
+      "usage_note": "Useful only if you store projected future positions."
+    },
+    {
+      "id": 4,
+      "key": "of_date",
+      "display_name": "Of Date",
+      "description": "Coordinates calculated for the exact runtime date instead of a fixed catalog epoch.",
+      "epoch_type": "runtime_epoch",
+      "julian_year": null,
+      "iso_datetime": null,
+      "is_standard": true,
+      "usage_note": "Use for calculated chart/runtime positions, not for immutable source catalog data."
+    }
+  ]
 }

@@ -4,10 +4,26 @@
     "id": "integer",
     "code": "string, unique, snake_case",
     "label": "string",
+    "description": "string",
+    "runtime_usage": "string",
     "sort_order": "integer"
   },
   "data": [
-    { "id": 1, "code": "rising_before_sun", "label": "Rising before Sun", "sort_order": 1 },
-    { "id": 2, "code": "setting_after_sun", "label": "Setting after Sun", "sort_order": 2 }
+    {
+      "id": 1,
+      "code": "rising_before_sun",
+      "label": "Rising before Sun",
+      "description": "The astrological body rises before the Sun, making morning visibility possible in the eastern sky before dawn and before sunlight overwhelms the body.",
+      "runtime_usage": "Base condition for heliacal rising, morning-star qualification, solar visibility recovery, and rules that compare body rise time with Sun rise time.",
+      "sort_order": 1
+    },
+    {
+      "id": 2,
+      "code": "setting_after_sun",
+      "label": "Setting after Sun",
+      "description": "The astrological body sets after the Sun, making evening visibility possible in the western sky after sunset and before the body becomes too close to the Sun to observe.",
+      "runtime_usage": "Base condition for evening visibility, evening-star qualification, evening heliacal setting, and rules that compare body set time with Sun set time.",
+      "sort_order": 2
+    }
   ]
 }

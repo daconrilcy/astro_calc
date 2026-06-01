@@ -1,40 +1,35 @@
 {
   "name": "astral_aspect_interpretation_profiles",
   "structure": {
-    "schema_version": "astral_aspect_interpretation_profiles.v1",
-    "unique_key": [
-      "reference_version_id",
-      "aspect_id",
-      "astral_system_id"
-    ],
-    "columns": {
-      "id": "integer",
-      "reference_version_id": "foreign_key:astral_reference_versions.id",
-      "aspect_id": "foreign_key:astral_aspects.id",
-      "astral_system_id": "foreign_key:astral_systems.id",
-      "title": "string",
-      "summary": "text",
-      "core_keywords_json": "json_array",
-      "shadow_keywords_json": "json_array",
-      "psychological_keywords_json": "json_array",
-      "relationship_keywords_json": "json_array",
-      "career_keywords_json": "json_array",
-      "spiritual_keywords_json": "json_array",
-      "energetic_dynamics_json": "json_array",
-      "growth_patterns_json": "json_array",
-      "conflict_patterns_json": "json_array",
-      "archetypes_json": "json_array",
-      "dos_json": "json_array",
-      "donts_json": "json_array",
-      "prompt_hints_json": "json_array",
-      "micro_note": "text"
-    }
+    "id": "integer, primary key",
+    "reference_version_id": "integer|null, FK -> astral_reference_versions.id",
+    "aspect_id": "integer, FK -> astral_aspects.id",
+    "astral_system_id": "integer, FK -> astral_systems.id",
+    "language_id": "integer, FK -> languages.id",
+    "title": "string",
+    "summary": "string|null",
+    "core_keywords_json": "string|null",
+    "shadow_keywords_json": "string|null",
+    "psychological_keywords_json": "string|null",
+    "relationship_keywords_json": "string|null",
+    "career_keywords_json": "string|null",
+    "spiritual_keywords_json": "string|null",
+    "energetic_dynamics_json": "string|null",
+    "growth_patterns_json": "string|null",
+    "conflict_patterns_json": "string|null",
+    "archetypes_json": "string|null",
+    "dos_json": "string|null",
+    "donts_json": "string|null",
+    "prompt_hints_json": "string|null",
+    "micro_note": "string|null"
   },
   "data": [
     {
-      "reference_version_id": 1,
-      "astral_system_code": "modern",
-      "aspect_code": "conjunction",
+      "id": 21,
+      "reference_version_id": null,
+      "aspect_id": 1,
+      "astral_system_id": 2,
+      "language_id": 1,
       "title": "Fusion and Intensification",
       "summary": "A conjunction blends two planetary principles into a single intensified field. It amplifies the planets involved and can feel natural, powerful, excessive, or difficult to separate.",
       "core_keywords_json": [
@@ -121,9 +116,11 @@
       "micro_note": "The conjunction is contextual: it magnifies whatever it touches."
     },
     {
-      "reference_version_id": 1,
-      "astral_system_code": "modern",
-      "aspect_code": "sextile",
+      "id": 22,
+      "reference_version_id": null,
+      "aspect_id": 2,
+      "astral_system_id": 2,
+      "language_id": 1,
       "title": "Opportunity and Cooperation",
       "summary": "A sextile creates a supportive connection that opens possibilities. It is constructive and helpful, but usually requires conscious participation to become fully active.",
       "core_keywords_json": [
@@ -205,9 +202,11 @@
       "micro_note": "The sextile is a door; it still needs to be opened."
     },
     {
-      "reference_version_id": 1,
-      "astral_system_code": "modern",
-      "aspect_code": "square",
+      "id": 23,
+      "reference_version_id": null,
+      "aspect_id": 3,
+      "astral_system_id": 2,
+      "language_id": 1,
       "title": "Friction and Activation",
       "summary": "A square creates tension between two planetary principles. It often manifests as pressure, conflict, urgency or frustration, but it also generates movement, effort and growth.",
       "core_keywords_json": [
@@ -293,9 +292,11 @@
       "micro_note": "The square is difficult, but it is one of the strongest engines of growth."
     },
     {
-      "reference_version_id": 1,
-      "astral_system_code": "modern",
-      "aspect_code": "trine",
+      "id": 24,
+      "reference_version_id": null,
+      "aspect_id": 4,
+      "astral_system_id": 2,
+      "language_id": 1,
       "title": "Flow and Integration",
       "summary": "A trine indicates natural ease between two planetary principles. It supports talent, fluidity and integration, though it can become passive if not consciously used.",
       "core_keywords_json": [
@@ -379,9 +380,11 @@
       "micro_note": "The trine shows what flows naturally, but flow still needs direction."
     },
     {
-      "reference_version_id": 1,
-      "astral_system_code": "modern",
-      "aspect_code": "opposition",
+      "id": 25,
+      "reference_version_id": null,
+      "aspect_id": 5,
+      "astral_system_id": 2,
+      "language_id": 1,
       "title": "Polarity and Awareness",
       "summary": "An opposition places two planetary principles across from each other. It creates polarity, tension, projection and awareness through contrast, often requiring balance and integration.",
       "core_keywords_json": [
@@ -467,9 +470,11 @@
       "micro_note": "The opposition reveals what must be balanced, owned and integrated."
     },
     {
-      "reference_version_id": 1,
-      "astral_system_code": "modern",
-      "aspect_code": "semi_sextile",
+      "id": 26,
+      "reference_version_id": null,
+      "aspect_id": 6,
+      "astral_system_id": 2,
+      "language_id": 1,
       "title": "Subtle Adjustment",
       "summary": "A semi-sextile links adjacent principles that are close but not naturally aligned. It indicates small adaptations, emerging awareness and subtle developmental friction.",
       "core_keywords_json": [
@@ -544,9 +549,11 @@
       "micro_note": "The semi-sextile is minor but useful for fine-tuning."
     },
     {
-      "reference_version_id": 1,
-      "astral_system_code": "modern",
-      "aspect_code": "semi_square",
+      "id": 27,
+      "reference_version_id": null,
+      "aspect_id": 7,
+      "astral_system_id": 2,
+      "language_id": 1,
       "title": "Minor Friction",
       "summary": "A semi-square creates low-grade tension. It is less forceful than a square, but can produce irritation, restlessness and recurring pressure that asks for adjustment.",
       "core_keywords_json": [
@@ -622,9 +629,11 @@
       "micro_note": "The semi-square is small pressure that becomes useful when noticed early."
     },
     {
-      "reference_version_id": 1,
-      "astral_system_code": "modern",
-      "aspect_code": "quintile",
+      "id": 28,
+      "reference_version_id": null,
+      "aspect_id": 8,
+      "astral_system_id": 2,
+      "language_id": 1,
       "title": "Creative Patterning",
       "summary": "A quintile suggests creative intelligence, talent, design, craft and the ability to shape experience intentionally. It is subtle but highly expressive when cultivated.",
       "core_keywords_json": [
@@ -705,9 +714,11 @@
       "micro_note": "The quintile points to cultivated talent and creative order."
     },
     {
-      "reference_version_id": 1,
-      "astral_system_code": "modern",
-      "aspect_code": "sesquiquadrate",
+      "id": 29,
+      "reference_version_id": null,
+      "aspect_id": 9,
+      "astral_system_id": 2,
+      "language_id": 1,
       "title": "Accumulated Tension",
       "summary": "A sesquiquadrate indicates indirect or accumulated tension. It can feel like repeated pressure, frustration or unresolved stress that pushes for correction.",
       "core_keywords_json": [
@@ -783,9 +794,11 @@
       "micro_note": "The sesquiquadrate shows pressure that has been building indirectly."
     },
     {
-      "reference_version_id": 1,
-      "astral_system_code": "modern",
-      "aspect_code": "quincunx",
+      "id": 30,
+      "reference_version_id": null,
+      "aspect_id": 10,
+      "astral_system_id": 2,
+      "language_id": 1,
       "title": "Incongruent Adjustment",
       "summary": "A quincunx links planetary principles that do not naturally understand each other. It often requires adaptation, recalibration and practical adjustment without easy integration.",
       "core_keywords_json": [
@@ -870,9 +883,11 @@
       "micro_note": "The quincunx is not a clean conflict; it is a mismatch that asks for adjustment."
     },
     {
-      "reference_version_id": 1,
-      "astral_system_code": "modern",
-      "aspect_code": "biquintile",
+      "id": 31,
+      "reference_version_id": null,
+      "aspect_id": 11,
+      "astral_system_id": 2,
+      "language_id": 1,
       "title": "Refined Creative Expression",
       "summary": "A biquintile is a subtle creative harmonic. It suggests refinement, symbolic intelligence, design ability and the capacity to shape talent into a distinctive form.",
       "core_keywords_json": [
@@ -951,9 +966,11 @@
       "micro_note": "The biquintile refines the creative impulse of the quintile."
     },
     {
-      "reference_version_id": 1,
-      "astral_system_code": "modern",
-      "aspect_code": "septile",
+      "id": 32,
+      "reference_version_id": null,
+      "aspect_id": 12,
+      "astral_system_id": 2,
+      "language_id": 1,
       "title": "Symbolic Compulsion",
       "summary": "A septile is an advanced symbolic aspect associated with inner necessity, unusual timing, subtle compulsion and experiences that feel meaningful or fated.",
       "core_keywords_json": [
@@ -1034,9 +1051,11 @@
       "micro_note": "The septile should remain subtle and contextual in public interpretations."
     },
     {
-      "reference_version_id": 1,
-      "astral_system_code": "modern",
-      "aspect_code": "biseptile",
+      "id": 33,
+      "reference_version_id": null,
+      "aspect_id": 13,
+      "astral_system_id": 2,
+      "language_id": 1,
       "title": "Deep Symbolic Resonance",
       "summary": "A biseptile extends the septile family, indicating subtle symbolic pressure, unusual resonance and a sense of meaningful inner movement.",
       "core_keywords_json": [
@@ -1112,9 +1131,11 @@
       "micro_note": "The biseptile is meaningful but should be handled with restraint."
     },
     {
-      "reference_version_id": 1,
-      "astral_system_code": "modern",
-      "aspect_code": "triseptile",
+      "id": 34,
+      "reference_version_id": null,
+      "aspect_id": 14,
+      "astral_system_id": 2,
+      "language_id": 1,
       "title": "Intensified Symbolic Pattern",
       "summary": "A triseptile belongs to the septile family and points to intensified symbolic patterning, subtle compulsion and inner movements that may feel charged with meaning.",
       "core_keywords_json": [
@@ -1191,9 +1212,11 @@
       "micro_note": "The triseptile is advanced and should not dominate a reading alone."
     },
     {
-      "reference_version_id": 1,
-      "astral_system_code": "modern",
-      "aspect_code": "novile",
+      "id": 35,
+      "reference_version_id": null,
+      "aspect_id": 15,
+      "astral_system_id": 2,
+      "language_id": 1,
       "title": "Inner Completion",
       "summary": "A novile suggests inner integration, maturation and subtle spiritual development. It often points to a quiet process of completion rather than visible outer pressure.",
       "core_keywords_json": [
@@ -1271,9 +1294,11 @@
       "micro_note": "The novile is subtle, inward and developmental."
     },
     {
-      "reference_version_id": 1,
-      "astral_system_code": "modern",
-      "aspect_code": "binovile",
+      "id": 36,
+      "reference_version_id": null,
+      "aspect_id": 16,
+      "astral_system_id": 2,
+      "language_id": 1,
       "title": "Deepening Inner Integration",
       "summary": "A binovile extends the novile family, suggesting a deepening process of inner alignment, spiritual maturation and quiet synthesis.",
       "core_keywords_json": [
@@ -1349,9 +1374,11 @@
       "micro_note": "The binovile deepens the inner completion theme of the novile."
     },
     {
-      "reference_version_id": 1,
-      "astral_system_code": "modern",
-      "aspect_code": "quadranovile",
+      "id": 37,
+      "reference_version_id": null,
+      "aspect_id": 17,
+      "astral_system_id": 2,
+      "language_id": 1,
       "title": "Culminating Inner Synthesis",
       "summary": "A quadranovile suggests a culminating phase of inner integration. It points to subtle completion, spiritual synthesis and the quiet consolidation of experience.",
       "core_keywords_json": [
@@ -1427,9 +1454,11 @@
       "micro_note": "The quadranovile points to quiet culmination rather than obvious external action."
     },
     {
-      "reference_version_id": 1,
-      "astral_system_code": "modern",
-      "aspect_code": "decile",
+      "id": 38,
+      "reference_version_id": null,
+      "aspect_id": 18,
+      "astral_system_id": 2,
+      "language_id": 1,
       "title": "Creative Ordering",
       "summary": "A decile is a subtle creative harmonic linked to order, proportion, intelligent design and the ability to structure talent into useful form.",
       "core_keywords_json": [
@@ -1508,9 +1537,11 @@
       "micro_note": "The decile gives form and order to creative intelligence."
     },
     {
-      "reference_version_id": 1,
-      "astral_system_code": "modern",
-      "aspect_code": "tredecile",
+      "id": 39,
+      "reference_version_id": null,
+      "aspect_id": 19,
+      "astral_system_id": 2,
+      "language_id": 1,
       "title": "Specialized Creative Intelligence",
       "summary": "A tredecile suggests specialized creative intelligence, unusual skill and the ability to combine inspiration with structured expression.",
       "core_keywords_json": [
@@ -1586,9 +1617,11 @@
       "micro_note": "The tredecile is a subtle marker of distinctive creative skill."
     },
     {
-      "reference_version_id": 1,
-      "astral_system_code": "modern",
-      "aspect_code": "quindecile",
+      "id": 40,
+      "reference_version_id": null,
+      "aspect_id": 20,
+      "astral_system_id": 2,
+      "language_id": 1,
       "title": "Intense Focus and Fixation",
       "summary": "A quindecile suggests intense focus, compulsion, obsession or deep concentration. It can create extraordinary persistence, but also fixation if unconscious.",
       "core_keywords_json": [

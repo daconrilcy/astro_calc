@@ -4,9 +4,994 @@
     "id": "integer",
     "code": "string, unique, snake_case",
     "label": "string",
-    "sort_order": "integer"
+    "operator_family": "string",
+    "description": "string",
+    "utility": "string",
+    "input_contract": "string",
+    "result_type": "string",
+    "implementation_notes": "string|null",
+    "sort_order": "integer",
+    "input_schema": "object, runtime validation schema"
   },
   "data": [
-    { "id": 1, "code": "between_two_planets_by_longitude", "label": "Between two planets by longitude", "sort_order": 1 }
+    {
+      "id": 1,
+      "code": "between_two_planets_by_longitude",
+      "label": "Between two planets by longitude",
+      "operator_family": "zodiacal_longitude",
+      "description": "Legacy operator testing whether a target astrological object is located between two bounding planets by zodiacal longitude.",
+      "utility": "Low-level geometric test used by advanced conditions such as enclosure, besiegement, or a planet being contained in the zodiacal arc defined by two planets. It only returns a factual yes/no result; interpretation belongs to a higher layer.",
+      "input_contract": "target_object, first_bounding_planet, second_bounding_planet, optional_orb",
+      "result_type": "boolean",
+      "implementation_notes": "Must compare longitudes on a circular 0-360 zodiac. A target at 5 degrees is between bounds at 350 and 20 degrees when the interval crosses 0 Aries. Kept for backward compatibility; new rules should prefer target_between_two_objects_by_longitude when bounds are not necessarily planets.",
+      "sort_order": 1,
+      "input_schema": {
+        "required": {
+          "target_object": "chart_object_ref",
+          "first_bounding_planet": "planet_ref",
+          "second_bounding_planet": "planet_ref"
+        },
+        "optional": {
+          "orb_degrees": "number",
+          "arc_mode": "direct_zodiacal_arc|shortest_arc|selected_arc"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "code": "target_between_two_objects_by_longitude",
+      "label": "Target between two objects by longitude",
+      "operator_family": "zodiacal_longitude",
+      "description": "Tests whether a target object is located inside the zodiacal arc delimited by two astrological objects.",
+      "utility": "Generic version of the longitude enclosure test. Supports planets, angles, nodes, lots, cusps, fixed stars, or calculated points as target or bounds.",
+      "input_contract": "target_object, first_bounding_object, second_bounding_object, arc_mode, optional_orb",
+      "result_type": "boolean",
+      "implementation_notes": "Use circular longitude arithmetic and define whether the tested arc is the direct zodiacal arc, the shortest arc, or an explicitly selected arc. The arc_mode input is mandatory so runtime behavior is deterministic.",
+      "sort_order": 2,
+      "input_schema": {
+        "required": {
+          "target_object": "chart_object_ref",
+          "first_bounding_object": "chart_object_ref",
+          "second_bounding_object": "chart_object_ref",
+          "arc_mode": "direct_zodiacal_arc|shortest_arc|selected_arc"
+        },
+        "optional": {
+          "orb_degrees": "number"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "code": "target_outside_two_objects_by_longitude",
+      "label": "Target outside two objects by longitude",
+      "operator_family": "zodiacal_longitude",
+      "description": "Tests whether a target object is outside the zodiacal arc delimited by two astrological objects.",
+      "utility": "Complements the between operator for exclusion zones, bounded arcs, and negative geometric conditions.",
+      "input_contract": "target_object, first_bounding_object, second_bounding_object, arc_mode, optional_orb",
+      "result_type": "boolean",
+      "implementation_notes": "Should use the same arc-selection convention as target_between_two_objects_by_longitude. The arc_mode input is mandatory so runtime behavior is deterministic.",
+      "sort_order": 3,
+      "input_schema": {
+        "required": {
+          "target_object": "chart_object_ref",
+          "first_bounding_object": "chart_object_ref",
+          "second_bounding_object": "chart_object_ref",
+          "arc_mode": "direct_zodiacal_arc|shortest_arc|selected_arc"
+        },
+        "optional": {
+          "orb_degrees": "number"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "code": "object_before_object_by_longitude",
+      "label": "Object before object by longitude",
+      "operator_family": "zodiacal_longitude",
+      "description": "Tests whether one object comes before another in zodiacal order.",
+      "utility": "Useful for relative ordering rules, applying/separating logic, and sequence-based conditions.",
+      "input_contract": "source_object, reference_object, arc_mode",
+      "result_type": "boolean",
+      "implementation_notes": "The arc_mode input is mandatory so the reference direction and wrap-around at 0 Aries are deterministic.",
+      "sort_order": 4,
+      "input_schema": {
+        "required": {
+          "source_object": "chart_object_ref",
+          "reference_object": "chart_object_ref",
+          "arc_mode": "direct_zodiacal_arc|shortest_arc|selected_arc"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 5,
+      "code": "object_after_object_by_longitude",
+      "label": "Object after object by longitude",
+      "operator_family": "zodiacal_longitude",
+      "description": "Tests whether one object comes after another in zodiacal order.",
+      "utility": "Useful for relative ordering rules, applying/separating logic, and sequence-based conditions.",
+      "input_contract": "source_object, reference_object, arc_mode",
+      "result_type": "boolean",
+      "implementation_notes": "The arc_mode input is mandatory so the reference direction and wrap-around at 0 Aries are deterministic.",
+      "sort_order": 5,
+      "input_schema": {
+        "required": {
+          "source_object": "chart_object_ref",
+          "reference_object": "chart_object_ref",
+          "arc_mode": "direct_zodiacal_arc|shortest_arc|selected_arc"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 6,
+      "code": "angular_distance_between_objects",
+      "label": "Angular distance between objects",
+      "operator_family": "zodiacal_longitude",
+      "description": "Computes the directed angular distance between two objects on the zodiac.",
+      "utility": "Base operator for aspects, solar distance, lunar phase distance, or any rule depending on a measured separation.",
+      "input_contract": "source_object, target_object, optional_direction",
+      "result_type": "number",
+      "implementation_notes": "Calculation operator only. It returns a directed angular distance; use compare_number or value_between to turn the computed value into a boolean condition.",
+      "sort_order": 6,
+      "input_schema": {
+        "required": {
+          "source_object": "chart_object_ref",
+          "target_object": "chart_object_ref"
+        },
+        "optional": {
+          "direction": "zodiacal_forward|zodiacal_backward"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "code": "shortest_angular_distance_between_objects",
+      "label": "Shortest angular distance between objects",
+      "operator_family": "zodiacal_longitude",
+      "description": "Computes the shortest angular distance between two objects on the zodiac.",
+      "utility": "Useful for aspects, conjunctions, orbs, combustion-like thresholds, and proximity checks.",
+      "input_contract": "source_object, target_object",
+      "result_type": "number",
+      "implementation_notes": "Calculation operator only. It returns a value from 0 to 180 degrees; use compare_number or value_between to turn the computed value into a boolean condition.",
+      "sort_order": 7,
+      "input_schema": {
+        "required": {
+          "source_object": "chart_object_ref",
+          "target_object": "chart_object_ref"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 8,
+      "code": "object_within_longitude_orb_of_object",
+      "label": "Object within longitude orb of object",
+      "operator_family": "zodiacal_longitude",
+      "description": "Tests whether one object is within a longitude orb of another object.",
+      "utility": "Base proximity operator for conjunctions, angular closeness, solar conditions, and custom near-object rules.",
+      "input_contract": "source_object, target_object, orb_degrees",
+      "result_type": "boolean",
+      "implementation_notes": "Should normally rely on shortest angular distance unless a directed distance is explicitly required.",
+      "sort_order": 8,
+      "input_schema": {
+        "required": {
+          "source_object": "chart_object_ref",
+          "target_object": "chart_object_ref",
+          "orb_degrees": "number"
+        },
+        "optional": {
+          "distance_mode": "shortest|directed"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "code": "aspect_exists_between_objects",
+      "label": "Aspect exists between objects",
+      "operator_family": "aspect",
+      "description": "Tests whether two objects form a configured aspect within the accepted orb.",
+      "utility": "Low-level aspect detection without assigning interpretive quality.",
+      "input_contract": "source_object, target_object, aspect_id|aspect_code, optional_orb_profile",
+      "result_type": "boolean",
+      "implementation_notes": "Should delegate aspect angle and orb thresholds to aspect definition and orb profile tables.",
+      "sort_order": 9,
+      "input_schema": {
+        "required": {
+          "source_object": "chart_object_ref",
+          "target_object": "chart_object_ref",
+          "aspect": "aspect_ref"
+        },
+        "optional": {
+          "orb_profile": "orb_profile_ref"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "code": "aspect_angle_matches",
+      "label": "Aspect angle matches",
+      "operator_family": "aspect",
+      "description": "Tests whether the angular separation between two objects matches a specific aspect angle.",
+      "utility": "Separates geometric angle matching from orb policy and interpretation.",
+      "input_contract": "source_object, target_object, aspect_angle_degrees, orb_degrees",
+      "result_type": "boolean",
+      "implementation_notes": "Use shortest angular distance unless the aspect model requires direction.",
+      "sort_order": 10,
+      "input_schema": {
+        "required": {
+          "source_object": "chart_object_ref",
+          "target_object": "chart_object_ref",
+          "aspect_angle_degrees": "number",
+          "orb_degrees": "number"
+        },
+        "optional": {
+          "distance_mode": "shortest|directed"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "code": "aspect_applying",
+      "label": "Aspect applying",
+      "operator_family": "aspect",
+      "description": "Tests whether an aspect between two objects is applying.",
+      "utility": "Supports timing and strength rules without embedding interpretation.",
+      "input_contract": "source_object, target_object, aspect_id|aspect_code",
+      "result_type": "boolean",
+      "implementation_notes": "Requires motion direction and relative speeds from the chart calculation layer.",
+      "sort_order": 11,
+      "input_schema": {
+        "required": {
+          "source_object": "chart_object_ref",
+          "target_object": "chart_object_ref",
+          "aspect": "aspect_ref"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 12,
+      "code": "aspect_separating",
+      "label": "Aspect separating",
+      "operator_family": "aspect",
+      "description": "Tests whether an aspect between two objects is separating.",
+      "utility": "Supports timing and strength rules without embedding interpretation.",
+      "input_contract": "source_object, target_object, aspect_id|aspect_code",
+      "result_type": "boolean",
+      "implementation_notes": "Requires motion direction and relative speeds from the chart calculation layer.",
+      "sort_order": 12,
+      "input_schema": {
+        "required": {
+          "source_object": "chart_object_ref",
+          "target_object": "chart_object_ref",
+          "aspect": "aspect_ref"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 13,
+      "code": "object_in_sign",
+      "label": "Object in sign",
+      "operator_family": "sign",
+      "description": "Tests whether an object is located in a specific zodiac sign.",
+      "utility": "Base operator for sign placement, dignity, rulership, and interpretation profile rules.",
+      "input_contract": "target_object, sign_id|sign_code",
+      "result_type": "boolean",
+      "implementation_notes": null,
+      "sort_order": 13,
+      "input_schema": {
+        "required": {
+          "target_object": "chart_object_ref",
+          "sign": "sign_ref"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 14,
+      "code": "object_in_sign_element",
+      "label": "Object in sign element",
+      "operator_family": "sign",
+      "description": "Tests whether an object is located in a sign belonging to a given element.",
+      "utility": "Supports elemental distributions and condition profiles without hard-coded sign lists.",
+      "input_contract": "target_object, element_id|element_code",
+      "result_type": "boolean",
+      "implementation_notes": "Should resolve sign properties through sign profile/reference tables.",
+      "sort_order": 14,
+      "input_schema": {
+        "required": {
+          "target_object": "chart_object_ref",
+          "element": "element_ref"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 15,
+      "code": "object_in_sign_modality",
+      "label": "Object in sign modality",
+      "operator_family": "sign",
+      "description": "Tests whether an object is located in a sign belonging to a given modality.",
+      "utility": "Supports cardinal, fixed, and mutable condition rules.",
+      "input_contract": "target_object, modality_id|modality_code",
+      "result_type": "boolean",
+      "implementation_notes": "Should resolve sign properties through sign profile/reference tables.",
+      "sort_order": 15,
+      "input_schema": {
+        "required": {
+          "target_object": "chart_object_ref",
+          "modality": "modality_ref"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 16,
+      "code": "object_in_sign_polarity",
+      "label": "Object in sign polarity",
+      "operator_family": "sign",
+      "description": "Tests whether an object is located in a sign of a given polarity.",
+      "utility": "Supports polarity, sect-related, and temperament-like rules.",
+      "input_contract": "target_object, polarity_id|polarity_code",
+      "result_type": "boolean",
+      "implementation_notes": "Should resolve sign properties through sign profile/reference tables.",
+      "sort_order": 16,
+      "input_schema": {
+        "required": {
+          "target_object": "chart_object_ref",
+          "polarity": "polarity_ref"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 17,
+      "code": "object_in_degree_range_of_sign",
+      "label": "Object in degree range of sign",
+      "operator_family": "sign",
+      "description": "Tests whether an object falls within a degree interval inside a sign.",
+      "utility": "Base operator for decans, terms, critical degrees, and custom sign subdivisions.",
+      "input_contract": "target_object, sign_id|sign_code, start_degree, end_degree",
+      "result_type": "boolean",
+      "implementation_notes": "Degree range is sign-relative from 0 to 30 unless explicitly configured otherwise.",
+      "sort_order": 17,
+      "input_schema": {
+        "required": {
+          "target_object": "chart_object_ref",
+          "sign": "sign_ref",
+          "start_degree": "number",
+          "end_degree": "number"
+        },
+        "optional": {
+          "range_mode": "inclusive|exclusive"
+        }
+      }
+    },
+    {
+      "id": 18,
+      "code": "object_in_decan",
+      "label": "Object in decan",
+      "operator_family": "sign",
+      "description": "Tests whether an object is located in a configured decan.",
+      "utility": "Supports decan and face based rules using reference tables instead of hard-coded boundaries.",
+      "input_contract": "target_object, decan_system_id, optional_decan_id|decan_index",
+      "result_type": "boolean",
+      "implementation_notes": "Should use astral_face_decans or the configured decan reference table.",
+      "sort_order": 18,
+      "input_schema": {
+        "required": {
+          "target_object": "chart_object_ref",
+          "decan_system": "decan_system_ref"
+        },
+        "optional": {
+          "decan": "decan_ref",
+          "decan_index": "integer"
+        }
+      }
+    },
+    {
+      "id": 19,
+      "code": "object_in_term_or_bound",
+      "label": "Object in term or bound",
+      "operator_family": "sign",
+      "description": "Tests whether an object is located in a configured term or bound.",
+      "utility": "Supports essential dignity rules based on bounds without duplicating boundary logic.",
+      "input_contract": "target_object, term_system_id, optional_ruler_chart_object_id",
+      "result_type": "boolean",
+      "implementation_notes": "Should use astral_term_bounds or the configured bound reference table.",
+      "sort_order": 19,
+      "input_schema": {
+        "required": {
+          "target_object": "chart_object_ref",
+          "term_system": "term_system_ref"
+        },
+        "optional": {
+          "ruler_planet": "planet_ref"
+        }
+      }
+    },
+    {
+      "id": 20,
+      "code": "object_in_house",
+      "label": "Object in house",
+      "operator_family": "house",
+      "description": "Tests whether an object is located in a specific astrological house.",
+      "utility": "Base house placement operator for accidental dignity and interpretation rules.",
+      "input_contract": "target_object, house_id|house_number, house_system_id",
+      "result_type": "boolean",
+      "implementation_notes": "House system must be explicit or inherited from chart context.",
+      "sort_order": 20,
+      "input_schema": {
+        "required": {
+          "target_object": "chart_object_ref",
+          "house": "house_ref",
+          "house_system": "house_system_ref"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 21,
+      "code": "object_in_house_modality",
+      "label": "Object in house modality",
+      "operator_family": "house",
+      "description": "Tests whether an object is in an angular, succedent, or cadent house.",
+      "utility": "Generalizes object_in_angular_house, object_in_succedent_house, and object_in_cadent_house into one composable operator.",
+      "input_contract": "target_object, house_modality_id|house_modality_code, house_system_id",
+      "result_type": "boolean",
+      "implementation_notes": "Should resolve modality through house reference tables rather than hard-coded house numbers.",
+      "sort_order": 21,
+      "input_schema": {
+        "required": {
+          "target_object": "chart_object_ref",
+          "house_modality": "house_modality_ref",
+          "house_system": "house_system_ref"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 22,
+      "code": "object_above_horizon",
+      "label": "Object above horizon",
+      "operator_family": "house",
+      "description": "Tests whether an object is above the horizon in the chart.",
+      "utility": "Base visibility and sect operator.",
+      "input_contract": "target_object, chart_context",
+      "result_type": "boolean",
+      "implementation_notes": "May be derived from houses or from altitude depending on calculation policy.",
+      "sort_order": 22,
+      "input_schema": {
+        "required": {
+          "target_object": "chart_object_ref"
+        },
+        "optional": {
+          "calculation_policy": "house_based|altitude_based"
+        }
+      }
+    },
+    {
+      "id": 23,
+      "code": "object_below_horizon",
+      "label": "Object below horizon",
+      "operator_family": "house",
+      "description": "Tests whether an object is below the horizon in the chart.",
+      "utility": "Base visibility and sect operator.",
+      "input_contract": "target_object, chart_context",
+      "result_type": "boolean",
+      "implementation_notes": "May be derived from houses or from altitude depending on calculation policy.",
+      "sort_order": 23,
+      "input_schema": {
+        "required": {
+          "target_object": "chart_object_ref"
+        },
+        "optional": {
+          "calculation_policy": "house_based|altitude_based"
+        }
+      }
+    },
+    {
+      "id": 24,
+      "code": "object_near_angle",
+      "label": "Object near angle",
+      "operator_family": "house",
+      "description": "Tests whether an object is within an orb of a configured chart angle.",
+      "utility": "Generic operator for near Ascendant, Descendant, Midheaven, or Imum Coeli conditions using astral_angle_points.",
+      "input_contract": "target_object, angle_code, orb_degrees",
+      "result_type": "boolean",
+      "implementation_notes": "angle_code should reference astral_angle_points.code.",
+      "sort_order": 24,
+      "input_schema": {
+        "required": {
+          "target_object": "chart_object_ref",
+          "angle_code": "astral_angle_points.code",
+          "orb_degrees": "number"
+        },
+        "optional": {
+          "distance_mode": "shortest|directed"
+        }
+      }
+    },
+    {
+      "id": 25,
+      "code": "object_rules_sign",
+      "label": "Object rules sign",
+      "operator_family": "rulership",
+      "description": "Tests whether an object rules a given sign under the selected rulership system.",
+      "utility": "Base operator for domicile, house ruler, dispositor, and lordship rules.",
+      "input_contract": "ruler_object, sign_id|sign_code, rulership_system_id",
+      "result_type": "boolean",
+      "implementation_notes": "Should use configured rulership reference data.",
+      "sort_order": 25,
+      "input_schema": {
+        "required": {
+          "ruler_object": "chart_object_ref",
+          "sign": "sign_ref",
+          "rulership_system": "rulership_system_ref"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 26,
+      "code": "object_rules_house",
+      "label": "Object rules house",
+      "operator_family": "rulership",
+      "description": "Tests whether an object rules the sign on a house cusp.",
+      "utility": "Supports house lord rules without hard-coding sign-to-planet mappings.",
+      "input_contract": "ruler_object, house_id|house_number, house_system_id, rulership_system_id",
+      "result_type": "boolean",
+      "implementation_notes": "Requires house cusp sign and rulership reference data.",
+      "sort_order": 26,
+      "input_schema": {
+        "required": {
+          "ruler_object": "chart_object_ref",
+          "house": "house_ref",
+          "house_system": "house_system_ref",
+          "rulership_system": "rulership_system_ref"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 27,
+      "code": "object_in_essential_dignity",
+      "label": "Object in essential dignity",
+      "operator_family": "rulership",
+      "description": "Tests whether an object is in a selected essential dignity or debility state.",
+      "utility": "Generalizes own sign, exaltation, detriment, fall, triplicity, term, and face checks behind reference data.",
+      "input_contract": "target_object, dignity_type_id|dignity_type_code, dignity_system_id",
+      "result_type": "boolean",
+      "implementation_notes": "Should use astral_object_sign_dignities and related dignity reference tables.",
+      "sort_order": 27,
+      "input_schema": {
+        "required": {
+          "target_object": "chart_object_ref",
+          "dignity_type": "dignity_type_ref",
+          "dignity_system": "dignity_system_ref"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 28,
+      "code": "object_disposes_object",
+      "label": "Object disposes object",
+      "operator_family": "rulership",
+      "description": "Tests whether one object disposes another by ruling the sign occupied by the second object.",
+      "utility": "Base operator for dispositor chains and dependency rules.",
+      "input_contract": "dispositor_object, disposed_object, rulership_system_id",
+      "result_type": "boolean",
+      "implementation_notes": "Uses target object's sign and selected rulership system.",
+      "sort_order": 28,
+      "input_schema": {
+        "required": {
+          "dispositor_object": "chart_object_ref",
+          "disposed_object": "chart_object_ref",
+          "rulership_system": "rulership_system_ref"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 29,
+      "code": "object_motion_state_is",
+      "label": "Object motion state is",
+      "operator_family": "motion",
+      "description": "Tests whether an object has a specific motion state such as direct, retrograde, or stationary.",
+      "utility": "Generalizes direct, retrograde, and stationary checks for condition rules.",
+      "input_contract": "target_object, motion_state_id|motion_state_code",
+      "result_type": "boolean",
+      "implementation_notes": "Should use calculated motion state from chart results or motion reference tables.",
+      "sort_order": 29,
+      "input_schema": {
+        "required": {
+          "target_object": "chart_object_ref",
+          "motion_state": "motion_state_ref"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 30,
+      "code": "object_speed_between",
+      "label": "Object speed between",
+      "operator_family": "motion",
+      "description": "Tests whether an object's speed is within a numeric interval.",
+      "utility": "Base speed operator for fast, slow, station-like, acceleration, or deceleration rules.",
+      "input_contract": "target_object, min_speed, max_speed, speed_unit",
+      "result_type": "boolean",
+      "implementation_notes": "Speed unit and sign convention should be explicit.",
+      "sort_order": 30,
+      "input_schema": {
+        "required": {
+          "target_object": "chart_object_ref",
+          "min_speed": "number",
+          "max_speed": "number",
+          "speed_unit": "string"
+        },
+        "optional": {
+          "inclusive": "boolean"
+        }
+      }
+    },
+    {
+      "id": 31,
+      "code": "object_speed_class_is",
+      "label": "Object speed class is",
+      "operator_family": "motion",
+      "description": "Tests whether an object belongs to a configured speed class.",
+      "utility": "Supports fast, average, slow, and similar speed rules using reference data.",
+      "input_contract": "target_object, speed_class_id|speed_class_code",
+      "result_type": "boolean",
+      "implementation_notes": "Should use astral_speed_classes or calculated chart classifications.",
+      "sort_order": 31,
+      "input_schema": {
+        "required": {
+          "target_object": "chart_object_ref",
+          "speed_class": "speed_class_ref"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 32,
+      "code": "object_distance_to_sun_between",
+      "label": "Object distance to Sun between",
+      "operator_family": "solar_condition",
+      "description": "Tests whether an object's angular distance from the Sun is within a configured interval.",
+      "utility": "Base operator for cazimi, combustion, under beams, solar visibility, and related conditions.",
+      "input_contract": "target_object, min_distance_degrees, max_distance_degrees",
+      "result_type": "boolean",
+      "implementation_notes": "Keeps solar conditions configurable instead of hard-coding is_combust-like operators.",
+      "sort_order": 32,
+      "input_schema": {
+        "required": {
+          "target_object": "chart_object_ref",
+          "min_distance_degrees": "number",
+          "max_distance_degrees": "number"
+        },
+        "optional": {
+          "inclusive": "boolean"
+        }
+      }
+    },
+    {
+      "id": 33,
+      "code": "object_same_sign_as_sun",
+      "label": "Object same sign as Sun",
+      "operator_family": "solar_condition",
+      "description": "Tests whether an object is in the same zodiac sign as the Sun.",
+      "utility": "Useful for solar visibility and combustion-family rule variants that require sign context.",
+      "input_contract": "target_object",
+      "result_type": "boolean",
+      "implementation_notes": null,
+      "sort_order": 33,
+      "input_schema": {
+        "required": {
+          "target_object": "chart_object_ref"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 34,
+      "code": "moon_phase_between",
+      "label": "Moon phase between",
+      "operator_family": "lunar_condition",
+      "description": "Tests whether the Moon phase angle falls within a configured interval.",
+      "utility": "Base operator for waxing, waning, balsamic, quarter, and lunation phase rules.",
+      "input_contract": "min_phase_degrees, max_phase_degrees",
+      "result_type": "boolean",
+      "implementation_notes": "Usually derived from directed Moon-Sun angular distance.",
+      "sort_order": 34,
+      "input_schema": {
+        "required": {
+          "min_phase_degrees": "number",
+          "max_phase_degrees": "number"
+        },
+        "optional": {
+          "inclusive": "boolean"
+        }
+      }
+    },
+    {
+      "id": 35,
+      "code": "moon_is_waxing",
+      "label": "Moon is waxing",
+      "operator_family": "lunar_condition",
+      "description": "Tests whether the Moon is in a waxing phase.",
+      "utility": "Simple lunar phase atom for conditions that do not need an exact phase interval.",
+      "input_contract": "chart_context",
+      "result_type": "boolean",
+      "implementation_notes": "Can be implemented as moon_phase_between from New Moon to Full Moon.",
+      "sort_order": 35,
+      "input_schema": {
+        "required": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": 36,
+      "code": "moon_is_waning",
+      "label": "Moon is waning",
+      "operator_family": "lunar_condition",
+      "description": "Tests whether the Moon is in a waning phase.",
+      "utility": "Simple lunar phase atom for conditions that do not need an exact phase interval.",
+      "input_contract": "chart_context",
+      "result_type": "boolean",
+      "implementation_notes": "Can be implemented as moon_phase_between from Full Moon to New Moon.",
+      "sort_order": 36,
+      "input_schema": {
+        "required": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": 37,
+      "code": "chart_is_day",
+      "label": "Chart is day",
+      "operator_family": "sect",
+      "description": "Tests whether the chart is diurnal.",
+      "utility": "Base operator for sect, hayz, and day/night condition rules.",
+      "input_contract": "chart_context",
+      "result_type": "boolean",
+      "implementation_notes": "Usually derived from Sun above horizon.",
+      "sort_order": 37,
+      "input_schema": {
+        "required": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": 38,
+      "code": "chart_is_night",
+      "label": "Chart is night",
+      "operator_family": "sect",
+      "description": "Tests whether the chart is nocturnal.",
+      "utility": "Base operator for sect, hayz, and day/night condition rules.",
+      "input_contract": "chart_context",
+      "result_type": "boolean",
+      "implementation_notes": "Usually derived from Sun below horizon.",
+      "sort_order": 38,
+      "input_schema": {
+        "required": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": 39,
+      "code": "object_in_sect",
+      "label": "Object in sect",
+      "operator_family": "sect",
+      "description": "Tests whether an object is in sect for the chart context.",
+      "utility": "Atomic condition that can be combined with horizon and sign polarity rules for composed conditions such as hayz.",
+      "input_contract": "target_object, chart_context",
+      "result_type": "boolean",
+      "implementation_notes": "Should not by itself express the full hayz condition.",
+      "sort_order": 39,
+      "input_schema": {
+        "required": {
+          "target_object": "chart_object_ref"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 40,
+      "code": "object_out_of_sect",
+      "label": "Object out of sect",
+      "operator_family": "sect",
+      "description": "Tests whether an object is out of sect for the chart context.",
+      "utility": "Atomic condition for sect-based weakening or mismatch rules.",
+      "input_contract": "target_object, chart_context",
+      "result_type": "boolean",
+      "implementation_notes": "Should not by itself express a full interpretive judgement.",
+      "sort_order": 40,
+      "input_schema": {
+        "required": {
+          "target_object": "chart_object_ref"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 41,
+      "code": "all_conditions_true",
+      "label": "All conditions true",
+      "operator_family": "logical_composition",
+      "description": "Tests whether every nested condition returns true.",
+      "utility": "Composition operator for building rich astrological rules from atomic tests.",
+      "input_contract": "conditions[]",
+      "result_type": "boolean",
+      "implementation_notes": "Evaluation can short-circuit after the first false condition.",
+      "sort_order": 41,
+      "input_schema": {
+        "required": {
+          "conditions": "condition_payload[]"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 42,
+      "code": "any_condition_true",
+      "label": "Any condition true",
+      "operator_family": "logical_composition",
+      "description": "Tests whether at least one nested condition returns true.",
+      "utility": "Composition operator for alternative rule branches.",
+      "input_contract": "conditions[]",
+      "result_type": "boolean",
+      "implementation_notes": "Evaluation can short-circuit after the first true condition.",
+      "sort_order": 42,
+      "input_schema": {
+        "required": {
+          "conditions": "condition_payload[]"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 43,
+      "code": "not_condition",
+      "label": "Not condition",
+      "operator_family": "logical_composition",
+      "description": "Negates the result of one nested condition.",
+      "utility": "Allows exclusion rules without defining duplicate negative operators for every positive operator.",
+      "input_contract": "condition",
+      "result_type": "boolean",
+      "implementation_notes": null,
+      "sort_order": 43,
+      "input_schema": {
+        "required": {
+          "condition": "condition_payload"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 44,
+      "code": "count_objects_matching_condition",
+      "label": "Count objects matching condition",
+      "operator_family": "logical_composition",
+      "description": "Counts how many objects in a set satisfy a nested condition.",
+      "utility": "Supports rules such as at least three planets in water signs or no personal planet in angular houses.",
+      "input_contract": "object_set, condition",
+      "result_type": "number",
+      "implementation_notes": "Usually paired with a comparator in a parent condition.",
+      "sort_order": 44,
+      "input_schema": {
+        "required": {
+          "object_set": "chart_object_ref[]",
+          "condition": "condition_payload"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 45,
+      "code": "at_least_n_objects_matching",
+      "label": "At least N objects matching",
+      "operator_family": "logical_composition",
+      "description": "Tests whether at least N objects in a set satisfy a nested condition.",
+      "utility": "Convenience boolean operator for threshold-based distributions.",
+      "input_contract": "object_set, condition, min_count",
+      "result_type": "boolean",
+      "implementation_notes": null,
+      "sort_order": 45,
+      "input_schema": {
+        "required": {
+          "object_set": "chart_object_ref[]",
+          "condition": "condition_payload",
+          "min_count": "integer"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 46,
+      "code": "exactly_n_objects_matching",
+      "label": "Exactly N objects matching",
+      "operator_family": "logical_composition",
+      "description": "Tests whether exactly N objects in a set satisfy a nested condition.",
+      "utility": "Convenience boolean operator for exact-count rules.",
+      "input_contract": "object_set, condition, expected_count",
+      "result_type": "boolean",
+      "implementation_notes": null,
+      "sort_order": 46,
+      "input_schema": {
+        "required": {
+          "object_set": "chart_object_ref[]",
+          "condition": "condition_payload",
+          "expected_count": "integer"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 47,
+      "code": "no_object_matching",
+      "label": "No object matching",
+      "operator_family": "logical_composition",
+      "description": "Tests whether no object in a set satisfies a nested condition.",
+      "utility": "Convenience boolean operator for absence-based rules.",
+      "input_contract": "object_set, condition",
+      "result_type": "boolean",
+      "implementation_notes": null,
+      "sort_order": 47,
+      "input_schema": {
+        "required": {
+          "object_set": "chart_object_ref[]",
+          "condition": "condition_payload"
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": 48,
+      "code": "compare_number",
+      "label": "Compare number",
+      "operator_family": "numeric_comparison",
+      "description": "Tests a numeric value or computed numeric result against another numeric value using a comparator.",
+      "utility": "Turns calculation operators such as angular_distance_between_objects into boolean conditions without mixing calculation and predicate responsibilities.",
+      "input_contract": "left_value, comparator, right_value",
+      "input_schema": {
+        "required": {
+          "left_value": "number|computed_value_ref",
+          "comparator": "eq|neq|lt|lte|gt|gte",
+          "right_value": "number|computed_value_ref"
+        },
+        "optional": {
+          "tolerance": "number"
+        }
+      },
+      "result_type": "boolean",
+      "implementation_notes": "Use this operator after a numeric calculation operator when the rule needs a threshold comparison.",
+      "sort_order": 48
+    },
+    {
+      "id": 49,
+      "code": "value_between",
+      "label": "Value between",
+      "operator_family": "numeric_comparison",
+      "description": "Tests whether a numeric value or computed numeric result is inside a configured interval.",
+      "utility": "Turns numeric calculation outputs into interval-based boolean conditions, for example testing whether a computed angular distance is within a range.",
+      "input_contract": "value, min_value, max_value, optional_inclusive",
+      "input_schema": {
+        "required": {
+          "value": "number|computed_value_ref",
+          "min_value": "number|computed_value_ref",
+          "max_value": "number|computed_value_ref"
+        },
+        "optional": {
+          "inclusive": "boolean"
+        }
+      },
+      "result_type": "boolean",
+      "implementation_notes": "Use this operator after a numeric calculation operator when the rule needs a range check.",
+      "sort_order": 49
+    }
   ]
 }

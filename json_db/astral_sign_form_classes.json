@@ -1,0 +1,30 @@
+{
+  "name": "astral_sign_form_classes",
+  "structure": {
+    "id": "integer, primary key",
+    "code": "string",
+    "name": "string"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "humane",
+      "name": "Humane"
+    },
+    {
+      "id": 2,
+      "code": "bestial",
+      "name": "Bestial"
+    },
+    {
+      "id": 3,
+      "code": "double_bodied",
+      "name": "Double-bodied"
+    },
+    {
+      "id": 4,
+      "code": "hybrid",
+      "name": "Hybrid"
+    }
+  ]
+}

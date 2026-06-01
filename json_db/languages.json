@@ -1,0 +1,35 @@
+{
+  "name": "languages",
+  "structure": {
+    "id": "integer, primary key",
+    "code": "string",
+    "name": "string"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "en",
+      "name": "english"
+    },
+    {
+      "id": 2,
+      "code": "fr",
+      "name": "french"
+    },
+    {
+      "id": 3,
+      "code": "es",
+      "name": "spanish"
+    },
+    {
+      "id": 4,
+      "code": "de",
+      "name": "german"
+    },
+    {
+      "id": 5,
+      "code": "it",
+      "name": "italian"
+    }
+  ]
+}

@@ -2,20 +2,67 @@
   "name": "astral_house_modalities",
   "structure": {
     "id": "integer",
-    "name": "string"
+    "name": "string, unique, snake_case",
+    "label": "string",
+    "description": "string",
+    "house_numbers_json": "array",
+    "accidental_strength": "string",
+    "score_modifier": "string",
+    "interpretation_weight": "string",
+    "runtime_usage": "string",
+    "sort_order": "integer"
   },
   "data": [
     {
       "id": 1,
-      "name": "angular"
+      "name": "angular",
+      "label": "Angular",
+      "description": "Angular houses are houses 1, 4, 7 and 10. They are tied to the Ascendant, IC, Descendant and MC, and are considered the strongest, most visible and most active houses.",
+      "house_numbers_json": [
+        1,
+        4,
+        7,
+        10
+      ],
+      "accidental_strength": "strong",
+      "score_modifier": "+",
+      "interpretation_weight": "high",
+      "runtime_usage": "Use as a strong weighting factor for planet_in_house, accidental dignity, manifestation power, visibility score, planetary strength and interpretation priority.",
+      "sort_order": 1
     },
     {
       "id": 2,
-      "name": "succedent"
+      "name": "succedent",
+      "label": "Succedent",
+      "description": "Succedent houses are houses 2, 5, 8 and 11. They follow angular houses and stabilize, maintain, develop or consolidate what angular houses initiate.",
+      "house_numbers_json": [
+        2,
+        5,
+        8,
+        11
+      ],
+      "accidental_strength": "medium",
+      "score_modifier": "0_or_light_plus",
+      "interpretation_weight": "medium",
+      "runtime_usage": "Use as a medium weighting factor for continuity, consolidation, resource development and stable expression in planet-in-house rules.",
+      "sort_order": 2
     },
     {
       "id": 3,
-      "name": "cadent"
+      "name": "cadent",
+      "label": "Cadent",
+      "description": "Cadent houses are houses 3, 6, 9 and 12. They precede angular houses and describe more preparatory, adaptive, transitional, mental or less visible zones.",
+      "house_numbers_json": [
+        3,
+        6,
+        9,
+        12
+      ],
+      "accidental_strength": "weak_or_background",
+      "score_modifier": "-",
+      "interpretation_weight": "lower_for_external_manifestation",
+      "runtime_usage": "Use as a lower external manifestation weighting factor, not as a negative judgement. Cadent emphasis can still be important for mental, adaptive or preparatory expression.",
+      "sort_order": 3
     }
   ]
 }

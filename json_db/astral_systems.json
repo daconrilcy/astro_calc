@@ -2,7 +2,12 @@
   "name": "astral_systems",
   "structure": {
     "id": "integer",
-    "name": "string"
+    "name": "string",
+    "constraints": {
+      "unique_key": [
+        "name"
+      ]
+    }
   },
   "data": [
     {

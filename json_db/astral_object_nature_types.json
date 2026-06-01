@@ -1,0 +1,66 @@
+{
+  "name": "astral_object_nature_types",
+  "structure": {
+    "id": "integer, primary key",
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "nature_family": "string",
+    "description": "string",
+    "sort_order": "integer",
+    "constraints": {
+      "unique_key": [
+        "code"
+      ]
+    }
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "benefic",
+      "label": "Benefic",
+      "nature_family": "classical_moral_nature",
+      "description": "Classical nature associated with support, facilitation, growth or harmonization.",
+      "sort_order": 1
+    },
+    {
+      "id": 2,
+      "code": "malefic",
+      "label": "Malefic",
+      "nature_family": "classical_moral_nature",
+      "description": "Classical nature associated with tension, constraint, friction or challenge.",
+      "sort_order": 2
+    },
+    {
+      "id": 3,
+      "code": "variable",
+      "label": "Variable",
+      "nature_family": "classical_moral_nature",
+      "description": "Nature whose expression depends strongly on context, associations and surrounding conditions.",
+      "sort_order": 3
+    },
+    {
+      "id": 4,
+      "code": "luminary",
+      "label": "Luminary",
+      "nature_family": "symbolic_role",
+      "description": "Symbolic role reserved for the Sun and Moon as the two primary lights of the chart.",
+      "sort_order": 4
+    },
+    {
+      "id": 5,
+      "code": "neutral",
+      "label": "Neutral",
+      "nature_family": "classical_moral_nature",
+      "description": "Neutral or descriptive nature without a default benefic or malefic classification.",
+      "sort_order": 5
+    },
+    {
+      "id": 6,
+      "code": "transpersonal",
+      "label": "Transpersonal",
+      "nature_family": "modern_astrological_family",
+      "description": "Modern astrological family for slow collective objects whose symbolism extends beyond personal expression.",
+      "sort_order": 6
+    }
+  ]
+}

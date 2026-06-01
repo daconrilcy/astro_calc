@@ -1,9 +1,9 @@
 {
-  "name": "astral_prediction_daily_planet_profiles",
+  "name": "astral_prediction_daily_object_profiles",
   "structure": {
     "id": "integer",
-    "reference_version_id": "integer, FK -> reference_versions.id",
-    "planet_id": "integer, FK -> astral_planets.id",
+    "reference_version_id": "integer|null, FK -> astral_reference_versions.id",
+    "chart_object_id": "integer, FK -> astral_chart_objects.id",
     "weight_intraday": "decimal(4,2)",
     "weight_day_climate": "decimal(4,2)",
     "daily_visibility_score": "decimal(4,2)",
@@ -15,8 +15,8 @@
   "data": [
     {
       "id": 1,
-      "reference_version_id": 1,
-      "planet_id": 1,
+      "reference_version_id": null,
+      "chart_object_id": 1,
       "weight_intraday": 0.6,
       "weight_day_climate": 1.0,
       "daily_visibility_score": 1.0,
@@ -27,8 +27,8 @@
     },
     {
       "id": 2,
-      "reference_version_id": 1,
-      "planet_id": 2,
+      "reference_version_id": null,
+      "chart_object_id": 2,
       "weight_intraday": 1.0,
       "weight_day_climate": 0.8,
       "daily_visibility_score": 0.7,
@@ -39,8 +39,8 @@
     },
     {
       "id": 3,
-      "reference_version_id": 1,
-      "planet_id": 3,
+      "reference_version_id": null,
+      "chart_object_id": 3,
       "weight_intraday": 0.9,
       "weight_day_climate": 0.7,
       "daily_visibility_score": 0.7,
@@ -51,8 +51,8 @@
     },
     {
       "id": 4,
-      "reference_version_id": 1,
-      "planet_id": 4,
+      "reference_version_id": null,
+      "chart_object_id": 4,
       "weight_intraday": 0.7,
       "weight_day_climate": 0.8,
       "daily_visibility_score": 0.8,
@@ -63,8 +63,8 @@
     },
     {
       "id": 5,
-      "reference_version_id": 1,
-      "planet_id": 5,
+      "reference_version_id": null,
+      "chart_object_id": 5,
       "weight_intraday": 0.8,
       "weight_day_climate": 0.9,
       "daily_visibility_score": 0.9,
@@ -75,8 +75,8 @@
     },
     {
       "id": 6,
-      "reference_version_id": 1,
-      "planet_id": 6,
+      "reference_version_id": null,
+      "chart_object_id": 6,
       "weight_intraday": 0.4,
       "weight_day_climate": 1.0,
       "daily_visibility_score": 0.9,
@@ -87,8 +87,8 @@
     },
     {
       "id": 7,
-      "reference_version_id": 1,
-      "planet_id": 7,
+      "reference_version_id": null,
+      "chart_object_id": 7,
       "weight_intraday": 0.3,
       "weight_day_climate": 1.0,
       "daily_visibility_score": 0.9,
@@ -99,8 +99,8 @@
     },
     {
       "id": 8,
-      "reference_version_id": 1,
-      "planet_id": 8,
+      "reference_version_id": null,
+      "chart_object_id": 8,
       "weight_intraday": 0.1,
       "weight_day_climate": 0.5,
       "daily_visibility_score": 0.5,
@@ -111,8 +111,8 @@
     },
     {
       "id": 9,
-      "reference_version_id": 1,
-      "planet_id": 9,
+      "reference_version_id": null,
+      "chart_object_id": 9,
       "weight_intraday": 0.1,
       "weight_day_climate": 0.4,
       "daily_visibility_score": 0.4,
@@ -123,8 +123,8 @@
     },
     {
       "id": 10,
-      "reference_version_id": 1,
-      "planet_id": 10,
+      "reference_version_id": null,
+      "chart_object_id": 10,
       "weight_intraday": 0.1,
       "weight_day_climate": 0.3,
       "daily_visibility_score": 0.5,

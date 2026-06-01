@@ -1,13 +1,17 @@
 {
   "name": "astral_sign_keywords",
   "structure": {
-    "code": "string, reference astral_signs.code",
+    "astral_sign_id": "integer, FK -> astral_signs.id",
     "keywords_json": "json_array",
-    "shadow_keywords_json": "json_array"
+    "shadow_keywords_json": "json_array",
+    "constraints": {
+      "unique_key": [
+        "astral_sign_id"
+      ]
+    }
   },
   "data": [
     {
-      "code": "aries",
       "keywords_json": [
         "initiative",
         "action",
@@ -68,10 +72,10 @@
         "rash decisions",
         "need to win",
         "difficulty cooperating"
-      ]
+      ],
+      "astral_sign_id": 1
     },
     {
-      "code": "taurus",
       "keywords_json": [
         "stability",
         "security",
@@ -133,10 +137,10 @@
         "denial",
         "over-attachment to routine",
         "difficulty letting go"
-      ]
+      ],
+      "astral_sign_id": 2
     },
     {
-      "code": "gemini",
       "keywords_json": [
         "communication",
         "curiosity",
@@ -199,10 +203,10 @@
         "fickleness",
         "verbal excess",
         "curiosity without integration"
-      ]
+      ],
+      "astral_sign_id": 3
     },
     {
-      "code": "cancer",
       "keywords_json": [
         "emotional sensitivity",
         "nurturing",
@@ -263,10 +267,10 @@
         "fear of exposure",
         "living in the past",
         "emotional blackmail"
-      ]
+      ],
+      "astral_sign_id": 4
     },
     {
-      "code": "leo",
       "keywords_json": [
         "self-expression",
         "creativity",
@@ -328,10 +332,10 @@
         "grandiosity",
         "refusal to be ordinary",
         "wounded pride"
-      ]
+      ],
+      "astral_sign_id": 5
     },
     {
-      "code": "virgo",
       "keywords_json": [
         "analysis",
         "precision",
@@ -394,10 +398,10 @@
         "dryness",
         "self-sacrifice through duty",
         "paralysis by analysis"
-      ]
+      ],
+      "astral_sign_id": 6
     },
     {
-      "code": "libra",
       "keywords_json": [
         "harmony",
         "relationship",
@@ -459,10 +463,10 @@
         "difficulty choosing",
         "conflict suppression",
         "social masking"
-      ]
+      ],
+      "astral_sign_id": 7
     },
     {
-      "code": "scorpio",
       "keywords_json": [
         "intensity",
         "transformation",
@@ -525,10 +529,10 @@
         "inability to forgive",
         "hidden rage",
         "testing others"
-      ]
+      ],
+      "astral_sign_id": 8
     },
     {
-      "code": "sagittarius",
       "keywords_json": [
         "expansion",
         "freedom",
@@ -591,10 +595,10 @@
         "gambling instinct",
         "freedom addiction",
         "running away"
-      ]
+      ],
+      "astral_sign_id": 9
     },
     {
-      "code": "capricorn",
       "keywords_json": [
         "ambition",
         "discipline",
@@ -657,10 +661,10 @@
         "blocked tenderness",
         "achievement addiction",
         "difficulty trusting life"
-      ]
+      ],
+      "astral_sign_id": 10
     },
     {
-      "code": "aquarius",
       "keywords_json": [
         "innovation",
         "freedom",
@@ -723,10 +727,10 @@
         "abstraction",
         "fear of dependence",
         "disruptiveness"
-      ]
+      ],
+      "astral_sign_id": 11
     },
     {
-      "code": "pisces",
       "keywords_json": [
         "compassion",
         "intuition",
@@ -790,7 +794,8 @@
         "idealization",
         "spiritual bypassing",
         "loss of self"
-      ]
+      ],
+      "astral_sign_id": 12
     }
   ]
 }

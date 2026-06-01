@@ -4,10 +4,28 @@
     "id": "integer",
     "code": "string, unique, snake_case",
     "label": "string",
-    "sort_order": "integer"
+    "astral_polarity_id": "integer, FK -> astral_polarities.id",
+    "sort_order": "integer",
+    "constraints": {
+      "unique_key": [
+        "code"
+      ]
+    }
   },
   "data": [
-    { "id": 1, "code": "masculine", "label": "Masculine", "sort_order": 1 },
-    { "id": 2, "code": "feminine", "label": "Feminine", "sort_order": 2 }
+    {
+      "id": 1,
+      "code": "masculine",
+      "label": "Masculine",
+      "sort_order": 1,
+      "astral_polarity_id": 1
+    },
+    {
+      "id": 2,
+      "code": "feminine",
+      "label": "Feminine",
+      "sort_order": 2,
+      "astral_polarity_id": 2
+    }
   ]
 }

@@ -1,0 +1,524 @@
+{
+  "name": "astral_object_sign_dignities",
+  "structure": {
+    "id": "integer, primary key",
+    "reference_version_id": "integer|null, FK -> astral_reference_versions.id",
+    "astral_system_id": "integer, FK -> astral_systems.id",
+    "astral_sign_id": "integer, FK -> astral_signs.id",
+    "chart_object_id": "integer, FK -> astral_chart_objects.id",
+    "astral_dignity_type_id": "integer, FK -> astral_dignity_type.id",
+    "weight": "number",
+    "is_primary": "boolean",
+    "constraints": {
+      "unique_key": [
+        "reference_version_id",
+        "astral_system_id",
+        "astral_sign_id",
+        "chart_object_id",
+        "astral_dignity_type_id"
+      ]
+    }
+  },
+  "data": [
+    {
+      "id": 1,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 1,
+      "chart_object_id": 5,
+      "astral_dignity_type_id": 1,
+      "weight": 1.0,
+      "is_primary": true
+    },
+    {
+      "id": 2,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 2,
+      "chart_object_id": 4,
+      "astral_dignity_type_id": 1,
+      "weight": 1.0,
+      "is_primary": true
+    },
+    {
+      "id": 3,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 3,
+      "chart_object_id": 3,
+      "astral_dignity_type_id": 1,
+      "weight": 1.0,
+      "is_primary": true
+    },
+    {
+      "id": 4,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 4,
+      "chart_object_id": 2,
+      "astral_dignity_type_id": 1,
+      "weight": 1.0,
+      "is_primary": true
+    },
+    {
+      "id": 5,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 5,
+      "chart_object_id": 1,
+      "astral_dignity_type_id": 1,
+      "weight": 1.0,
+      "is_primary": true
+    },
+    {
+      "id": 6,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 6,
+      "chart_object_id": 3,
+      "astral_dignity_type_id": 1,
+      "weight": 1.0,
+      "is_primary": true
+    },
+    {
+      "id": 7,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 7,
+      "chart_object_id": 4,
+      "astral_dignity_type_id": 1,
+      "weight": 1.0,
+      "is_primary": true
+    },
+    {
+      "id": 8,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 8,
+      "chart_object_id": 5,
+      "astral_dignity_type_id": 1,
+      "weight": 1.0,
+      "is_primary": true
+    },
+    {
+      "id": 9,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 9,
+      "chart_object_id": 6,
+      "astral_dignity_type_id": 1,
+      "weight": 1.0,
+      "is_primary": true
+    },
+    {
+      "id": 10,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 10,
+      "chart_object_id": 7,
+      "astral_dignity_type_id": 1,
+      "weight": 1.0,
+      "is_primary": true
+    },
+    {
+      "id": 11,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 11,
+      "chart_object_id": 7,
+      "astral_dignity_type_id": 1,
+      "weight": 1.0,
+      "is_primary": true
+    },
+    {
+      "id": 12,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 12,
+      "chart_object_id": 6,
+      "astral_dignity_type_id": 1,
+      "weight": 1.0,
+      "is_primary": true
+    },
+    {
+      "id": 13,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 7,
+      "chart_object_id": 5,
+      "astral_dignity_type_id": 2,
+      "weight": -1.0,
+      "is_primary": true
+    },
+    {
+      "id": 14,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 8,
+      "chart_object_id": 4,
+      "astral_dignity_type_id": 2,
+      "weight": -1.0,
+      "is_primary": true
+    },
+    {
+      "id": 15,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 9,
+      "chart_object_id": 3,
+      "astral_dignity_type_id": 2,
+      "weight": -1.0,
+      "is_primary": true
+    },
+    {
+      "id": 16,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 10,
+      "chart_object_id": 2,
+      "astral_dignity_type_id": 2,
+      "weight": -1.0,
+      "is_primary": true
+    },
+    {
+      "id": 17,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 11,
+      "chart_object_id": 1,
+      "astral_dignity_type_id": 2,
+      "weight": -1.0,
+      "is_primary": true
+    },
+    {
+      "id": 18,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 12,
+      "chart_object_id": 3,
+      "astral_dignity_type_id": 2,
+      "weight": -1.0,
+      "is_primary": true
+    },
+    {
+      "id": 19,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 1,
+      "chart_object_id": 4,
+      "astral_dignity_type_id": 2,
+      "weight": -1.0,
+      "is_primary": true
+    },
+    {
+      "id": 20,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 2,
+      "chart_object_id": 5,
+      "astral_dignity_type_id": 2,
+      "weight": -1.0,
+      "is_primary": true
+    },
+    {
+      "id": 21,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 3,
+      "chart_object_id": 6,
+      "astral_dignity_type_id": 2,
+      "weight": -1.0,
+      "is_primary": true
+    },
+    {
+      "id": 22,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 4,
+      "chart_object_id": 7,
+      "astral_dignity_type_id": 2,
+      "weight": -1.0,
+      "is_primary": true
+    },
+    {
+      "id": 23,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 5,
+      "chart_object_id": 7,
+      "astral_dignity_type_id": 2,
+      "weight": -1.0,
+      "is_primary": true
+    },
+    {
+      "id": 24,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 6,
+      "chart_object_id": 6,
+      "astral_dignity_type_id": 2,
+      "weight": -1.0,
+      "is_primary": true
+    },
+    {
+      "id": 25,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 1,
+      "chart_object_id": 1,
+      "astral_dignity_type_id": 3,
+      "weight": 0.8,
+      "is_primary": true
+    },
+    {
+      "id": 26,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 2,
+      "chart_object_id": 2,
+      "astral_dignity_type_id": 3,
+      "weight": 0.8,
+      "is_primary": true
+    },
+    {
+      "id": 27,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 4,
+      "chart_object_id": 6,
+      "astral_dignity_type_id": 3,
+      "weight": 0.8,
+      "is_primary": true
+    },
+    {
+      "id": 28,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 6,
+      "chart_object_id": 3,
+      "astral_dignity_type_id": 3,
+      "weight": 0.8,
+      "is_primary": true
+    },
+    {
+      "id": 29,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 7,
+      "chart_object_id": 7,
+      "astral_dignity_type_id": 3,
+      "weight": 0.8,
+      "is_primary": true
+    },
+    {
+      "id": 30,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 10,
+      "chart_object_id": 5,
+      "astral_dignity_type_id": 3,
+      "weight": 0.8,
+      "is_primary": true
+    },
+    {
+      "id": 31,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 12,
+      "chart_object_id": 4,
+      "astral_dignity_type_id": 3,
+      "weight": 0.8,
+      "is_primary": true
+    },
+    {
+      "id": 32,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 7,
+      "chart_object_id": 1,
+      "astral_dignity_type_id": 4,
+      "weight": -0.8,
+      "is_primary": true
+    },
+    {
+      "id": 33,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 8,
+      "chart_object_id": 2,
+      "astral_dignity_type_id": 4,
+      "weight": -0.8,
+      "is_primary": true
+    },
+    {
+      "id": 34,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 10,
+      "chart_object_id": 6,
+      "astral_dignity_type_id": 4,
+      "weight": -0.8,
+      "is_primary": true
+    },
+    {
+      "id": 35,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 12,
+      "chart_object_id": 3,
+      "astral_dignity_type_id": 4,
+      "weight": -0.8,
+      "is_primary": true
+    },
+    {
+      "id": 36,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 1,
+      "chart_object_id": 7,
+      "astral_dignity_type_id": 4,
+      "weight": -0.8,
+      "is_primary": true
+    },
+    {
+      "id": 37,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 4,
+      "chart_object_id": 5,
+      "astral_dignity_type_id": 4,
+      "weight": -0.8,
+      "is_primary": true
+    },
+    {
+      "id": 38,
+      "reference_version_id": null,
+      "astral_system_id": 1,
+      "astral_sign_id": 6,
+      "chart_object_id": 4,
+      "astral_dignity_type_id": 4,
+      "weight": -0.8,
+      "is_primary": true
+    },
+    {
+      "id": 39,
+      "reference_version_id": null,
+      "astral_system_id": 2,
+      "astral_sign_id": 8,
+      "chart_object_id": 8,
+      "astral_dignity_type_id": 1,
+      "weight": 1.0,
+      "is_primary": true
+    },
+    {
+      "id": 40,
+      "reference_version_id": null,
+      "astral_system_id": 2,
+      "astral_sign_id": 11,
+      "chart_object_id": 9,
+      "astral_dignity_type_id": 1,
+      "weight": 1.0,
+      "is_primary": true
+    },
+    {
+      "id": 41,
+      "reference_version_id": null,
+      "astral_system_id": 2,
+      "astral_sign_id": 12,
+      "chart_object_id": 10,
+      "astral_dignity_type_id": 1,
+      "weight": 1.0,
+      "is_primary": true
+    },
+    {
+      "id": 42,
+      "reference_version_id": null,
+      "astral_system_id": 2,
+      "astral_sign_id": 2,
+      "chart_object_id": 8,
+      "astral_dignity_type_id": 2,
+      "weight": -1.0,
+      "is_primary": true
+    },
+    {
+      "id": 43,
+      "reference_version_id": null,
+      "astral_system_id": 2,
+      "astral_sign_id": 5,
+      "chart_object_id": 9,
+      "astral_dignity_type_id": 2,
+      "weight": -1.0,
+      "is_primary": true
+    },
+    {
+      "id": 44,
+      "reference_version_id": null,
+      "astral_system_id": 2,
+      "astral_sign_id": 6,
+      "chart_object_id": 10,
+      "astral_dignity_type_id": 2,
+      "weight": -1.0,
+      "is_primary": true
+    },
+    {
+      "id": 45,
+      "reference_version_id": null,
+      "astral_system_id": 2,
+      "astral_sign_id": 11,
+      "chart_object_id": 8,
+      "astral_dignity_type_id": 3,
+      "weight": 0.8,
+      "is_primary": false
+    },
+    {
+      "id": 46,
+      "reference_version_id": null,
+      "astral_system_id": 2,
+      "astral_sign_id": 8,
+      "chart_object_id": 9,
+      "astral_dignity_type_id": 3,
+      "weight": 0.8,
+      "is_primary": false
+    },
+    {
+      "id": 47,
+      "reference_version_id": null,
+      "astral_system_id": 2,
+      "astral_sign_id": 5,
+      "chart_object_id": 10,
+      "astral_dignity_type_id": 3,
+      "weight": 0.8,
+      "is_primary": false
+    },
+    {
+      "id": 48,
+      "reference_version_id": null,
+      "astral_system_id": 2,
+      "astral_sign_id": 5,
+      "chart_object_id": 8,
+      "astral_dignity_type_id": 4,
+      "weight": -0.8,
+      "is_primary": false
+    },
+    {
+      "id": 49,
+      "reference_version_id": null,
+      "astral_system_id": 2,
+      "astral_sign_id": 2,
+      "chart_object_id": 9,
+      "astral_dignity_type_id": 4,
+      "weight": -0.8,
+      "is_primary": false
+    },
+    {
+      "id": 50,
+      "reference_version_id": null,
+      "astral_system_id": 2,
+      "astral_sign_id": 11,
+      "chart_object_id": 10,
+      "astral_dignity_type_id": 4,
+      "weight": -0.8,
+      "is_primary": false
+    }
+  ]
+}

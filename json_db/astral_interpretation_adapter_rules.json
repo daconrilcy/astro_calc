@@ -1,19 +1,36 @@
 {
   "name": "astral_interpretation_adapter_rules",
   "structure": {
+    "id": "integer, primary key",
     "code": "string",
     "source_type": "string",
     "source_code": "string",
     "condition_json": "object",
     "signal_code": "string",
-    "priority_override": "string",
-    "priority_override_rank": "integer",
+    "priority_override": "string|null",
+    "priority_override_rank": "integer|null",
     "weight": "number",
     "is_active": "boolean",
-    "reference_version_code": "string"
+    "reference_version_id": "integer|null, FK -> astral_reference_versions.id",
+    "constraints": {
+      "unique_key": [
+        "reference_version_id",
+        "code"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "reference_version_id",
+            "signal_code"
+          ],
+          "references": "astral_interpretation_signal_types(reference_version_id, code)"
+        }
+      ]
+    }
   },
   "data": [
     {
+      "id": 5,
       "code": "dominant_mars_to_signature",
       "source_type": "dominant_planet",
       "source_code": "mars",
@@ -25,9 +42,10 @@
       "priority_override_rank": 10,
       "weight": 1.0,
       "is_active": true,
-      "reference_version_code": "v1"
+      "reference_version_id": null
     },
     {
+      "id": 6,
       "code": "high_visibility_to_externalization",
       "source_type": "condition_axis",
       "source_code": "visibility",
@@ -39,9 +57,10 @@
       "priority_override_rank": 20,
       "weight": 0.8,
       "is_active": true,
-      "reference_version_code": "v1"
+      "reference_version_id": null
     },
     {
+      "id": 7,
       "code": "constraint_to_action_pressure",
       "source_type": "condition_axis",
       "source_code": "constraint",
@@ -53,9 +72,10 @@
       "priority_override_rank": 30,
       "weight": 0.7,
       "is_active": true,
-      "reference_version_code": "v1"
+      "reference_version_id": null
     },
     {
+      "id": 8,
       "code": "saturn_stability_to_endurance",
       "source_type": "compound",
       "source_code": "saturn_stability",
@@ -67,7 +87,7 @@
       "priority_override_rank": 20,
       "weight": 0.9,
       "is_active": true,
-      "reference_version_code": "v1"
+      "reference_version_id": null
     }
   ]
 }

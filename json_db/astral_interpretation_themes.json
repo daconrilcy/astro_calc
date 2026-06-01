@@ -1,40 +1,56 @@
 {
   "name": "astral_interpretation_themes",
   "structure": {
+    "id": "integer, primary key",
     "code": "string",
     "label": "string",
     "category": "string",
     "description": "string",
-    "is_active": "boolean"
+    "is_active": "boolean",
+    "reference_version_id": "integer|null, FK -> astral_reference_versions.id",
+    "constraints": {
+      "unique_key": [
+        "reference_version_id",
+        "code"
+      ]
+    }
   },
   "data": [
     {
+      "id": 5,
       "code": "drive_assertion_action",
       "label": "Drive / Assertion / Action",
       "category": "behavioral",
       "description": "Thematique liee a l'action, l'affirmation et l'impulsion.",
-      "is_active": true
+      "is_active": true,
+      "reference_version_id": null
     },
     {
+      "id": 6,
       "code": "visibility_expression",
       "label": "Visibility / Expression",
       "category": "expression",
       "description": "Thematique liee a l'expression visible et exterieure.",
-      "is_active": true
+      "is_active": true,
+      "reference_version_id": null
     },
     {
+      "id": 7,
       "code": "frustration_pressure",
       "label": "Frustration / Pressure",
       "category": "tension",
       "description": "Thematique de tension, pression ou limitation.",
-      "is_active": true
+      "is_active": true,
+      "reference_version_id": null
     },
     {
+      "id": 8,
       "code": "responsibility_structure",
       "label": "Responsibility / Structure",
       "category": "functional",
       "description": "Thematique de responsabilite, stabilite et structuration.",
-      "is_active": true
+      "is_active": true,
+      "reference_version_id": null
     }
   ]
 }

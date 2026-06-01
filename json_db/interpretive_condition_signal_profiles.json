@@ -1,7 +1,7 @@
 {
-  "name": "astral_planet_condition_signal_profiles",
+  "name": "interpretive_condition_signal_profiles",
   "structure": {
-    "id": "integer",
+    "id": "integer, primary key",
     "condition_axis": "string",
     "level_min": "number",
     "level_max": "number",
@@ -11,11 +11,11 @@
     "interpretation_use": "string",
     "priority_weight": "number",
     "prompt_hint": "string",
-    "_description": "Profils versionnes de signaux techniques derives des axes PlanetConditionProfile."
+    "reference_version_id": "integer|null, FK -> astral_reference_versions.id"
   },
   "data": [
     {
-      "id": 1,
+      "id": 9,
       "condition_axis": "functional_strength",
       "level_min": 1.0,
       "level_max": 100.0,
@@ -24,10 +24,11 @@
       "signal_level": "high",
       "interpretation_use": "prioritize_condition_axis",
       "priority_weight": 10.0,
-      "prompt_hint": "functional_strength_positive"
+      "prompt_hint": "functional_strength_positive",
+      "reference_version_id": null
     },
     {
-      "id": 2,
+      "id": 10,
       "condition_axis": "functional_strength",
       "level_min": -100.0,
       "level_max": -0.5,
@@ -36,10 +37,11 @@
       "signal_level": "low",
       "interpretation_use": "qualify_condition_axis",
       "priority_weight": 20.0,
-      "prompt_hint": "functional_strength_constrained"
+      "prompt_hint": "functional_strength_constrained",
+      "reference_version_id": null
     },
     {
-      "id": 3,
+      "id": 11,
       "condition_axis": "visibility",
       "level_min": 0.5,
       "level_max": 100.0,
@@ -48,10 +50,11 @@
       "signal_level": "high",
       "interpretation_use": "surface_condition_axis",
       "priority_weight": 30.0,
-      "prompt_hint": "visibility_emphasized"
+      "prompt_hint": "visibility_emphasized",
+      "reference_version_id": null
     },
     {
-      "id": 4,
+      "id": 12,
       "condition_axis": "stability",
       "level_min": 0.5,
       "level_max": 100.0,
@@ -60,10 +63,11 @@
       "signal_level": "high",
       "interpretation_use": "stabilize_condition_axis",
       "priority_weight": 40.0,
-      "prompt_hint": "stability_supported"
+      "prompt_hint": "stability_supported",
+      "reference_version_id": null
     },
     {
-      "id": 5,
+      "id": 13,
       "condition_axis": "intensity",
       "level_min": 1.0,
       "level_max": 100.0,
@@ -72,10 +76,11 @@
       "signal_level": "high",
       "interpretation_use": "weight_condition_axis",
       "priority_weight": 50.0,
-      "prompt_hint": "intensity_notable"
+      "prompt_hint": "intensity_notable",
+      "reference_version_id": null
     },
     {
-      "id": 6,
+      "id": 14,
       "condition_axis": "coherence",
       "level_min": 0.5,
       "level_max": 100.0,
@@ -84,10 +89,11 @@
       "signal_level": "high",
       "interpretation_use": "align_condition_axis",
       "priority_weight": 60.0,
-      "prompt_hint": "coherence_aligned"
+      "prompt_hint": "coherence_aligned",
+      "reference_version_id": null
     },
     {
-      "id": 7,
+      "id": 15,
       "condition_axis": "support",
       "level_min": 0.5,
       "level_max": 100.0,
@@ -96,10 +102,11 @@
       "signal_level": "high",
       "interpretation_use": "support_condition_axis",
       "priority_weight": 70.0,
-      "prompt_hint": "support_available"
+      "prompt_hint": "support_available",
+      "reference_version_id": null
     },
     {
-      "id": 8,
+      "id": 16,
       "condition_axis": "constraint",
       "level_min": 0.5,
       "level_max": 100.0,
@@ -108,7 +115,8 @@
       "signal_level": "high",
       "interpretation_use": "temper_condition_axis",
       "priority_weight": 80.0,
-      "prompt_hint": "constraint_present"
+      "prompt_hint": "constraint_present",
+      "reference_version_id": null
     }
   ]
 }
