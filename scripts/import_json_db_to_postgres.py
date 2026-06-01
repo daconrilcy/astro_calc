@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Create and populate PostgreSQL tables from json_db/*.json.
 
-The script intentionally avoids foreign-key creation because the JSON catalog
-contains a mix of flat seed tables, compatibility tables, and nested documents.
-It creates typed columns where the source data is clear, and stores nested
-objects/lists as jsonb.
+The script creates typed columns where the source data is clear, stores nested
+objects/lists as jsonb, and materializes valid primary/unique/foreign-key
+constraints so database tools can display table relationships.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -142,8 +142,8 @@ def infer_type(column: str, descriptor: str, values: list[Any]) -> str:
     if (
         column.endswith("_json")
         or "json" in desc
-        or "object" in desc
         or "array" in desc
+        or desc.startswith("object")
         or any(isinstance(value, (dict, list)) for value in non_null)
     ):
         return "jsonb"
@@ -184,23 +184,124 @@ def sql_value(value: Any, postgres_type: str) -> str:
     return quote_literal(str(value))
 
 
-def build_sql(json_dir: Path, schema: str) -> tuple[str, int, int]:
+def constraint_name(prefix: str, parts: list[str]) -> str:
+    raw = "_".join([prefix, *parts])
+    safe = re.sub(r"[^A-Za-z0-9_]", "_", raw).lower()
+    if len(safe) <= 60:
+        return safe
+    digest = hashlib.sha1(safe.encode("utf-8")).hexdigest()[:8]
+    return f"{safe[:51]}_{digest}"
+
+
+def value_tuple(row: dict[str, Any], columns: tuple[str, ...]) -> tuple[Any, ...]:
+    return tuple(row.get(column) for column in columns)
+
+
+def unique_non_null(rows: list[dict[str, Any]], columns: tuple[str, ...]) -> bool:
+    seen: set[tuple[Any, ...]] = set()
+    for row in rows:
+        values = value_tuple(row, columns)
+        if any(value is None for value in values):
+            continue
+        marker = tuple(json.dumps(value, sort_keys=True) if isinstance(value, (dict, list)) else value for value in values)
+        if marker in seen:
+            return False
+        seen.add(marker)
+    return True
+
+
+def complete_non_null(rows: list[dict[str, Any]], columns: tuple[str, ...]) -> bool:
+    return all(all(row.get(column) is not None for column in columns) for row in rows)
+
+
+def extract_foreign_keys(table: dict[str, Any], columns: list[str]) -> list[tuple[tuple[str, ...], str, tuple[str, ...]]]:
+    table_name = table["name"]
+    structure = table.get("structure")
+    refs: list[tuple[tuple[str, ...], str, tuple[str, ...]]] = []
+
+    def add(source_columns: tuple[str, ...], target_table: str, target_columns: tuple[str, ...]) -> None:
+        if not source_columns or not target_columns or len(source_columns) != len(target_columns):
+            return
+        if any(column not in columns for column in source_columns):
+            return
+        refs.append((source_columns, target_table, target_columns))
+
+    if not isinstance(structure, dict):
+        return refs
+
+    descriptors: list[tuple[str, str]] = [
+        (key, value) for key, value in structure.items() if isinstance(value, str)
+    ]
+    nested_columns = structure.get("columns")
+    if isinstance(nested_columns, dict):
+        descriptors.extend(
+            (key, value) for key, value in nested_columns.items() if isinstance(value, str)
+        )
+
+    for column, descriptor in descriptors:
+        for target_table, target_column in re.findall(
+            r"FK\s*->\s*([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)",
+            descriptor,
+        ):
+            add((column,), target_table, (target_column,))
+        for target_table, target_column in re.findall(
+            r"foreign_key:([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)",
+            descriptor,
+        ):
+            add((column,), target_table, (target_column,))
+
+    constraints = structure.get("constraints")
+    if isinstance(constraints, dict):
+        for foreign_key in constraints.get("foreign_keys", []):
+            if not isinstance(foreign_key, dict):
+                continue
+            source_columns = tuple(foreign_key.get("columns", []))
+            reference = foreign_key.get("references")
+            if not isinstance(reference, str):
+                continue
+            match = re.fullmatch(r"([A-Za-z0-9_]+)\(([A-Za-z0-9_,\s]+)\)", reference)
+            if not match:
+                continue
+            target_columns = tuple(column.strip() for column in match.group(2).split(","))
+            add(source_columns, match.group(1), target_columns)
+
+    # Stable de-duplication while preserving order.
+    deduped: list[tuple[tuple[str, ...], str, tuple[str, ...]]] = []
+    seen: set[tuple[tuple[str, ...], str, tuple[str, ...]]] = set()
+    for foreign_key in refs:
+        if foreign_key not in seen and foreign_key[1] != table_name:
+            deduped.append(foreign_key)
+            seen.add(foreign_key)
+    return deduped
+
+
+def foreign_key_is_valid(
+    source_rows: list[dict[str, Any]],
+    source_columns: tuple[str, ...],
+    target_rows: list[dict[str, Any]],
+    target_columns: tuple[str, ...],
+) -> bool:
+    target_values = {
+        value_tuple(row, target_columns)
+        for row in target_rows
+        if all(row.get(column) is not None for column in target_columns)
+    }
+    for row in source_rows:
+        values = value_tuple(row, source_columns)
+        if any(value is None for value in values):
+            continue
+        if values not in target_values:
+            return False
+    return True
+
+
+def build_sql(json_dir: Path, schema: str) -> tuple[str, int, int, int, int]:
     paths = sorted(json_dir.glob("*.json"))
     if not paths:
         raise RuntimeError(f"No JSON files found in {json_dir}")
 
     tables = [load_json_table(path) for path in paths]
-    q_schema = quote_ident(schema)
-    lines = [
-        "\\set ON_ERROR_STOP on",
-        "BEGIN;",
-        f"CREATE SCHEMA IF NOT EXISTS {q_schema};",
-    ]
-
-    for table in tables:
-        lines.append(f"DROP TABLE IF EXISTS {q_schema}.{quote_ident(table['name'])} CASCADE;")
-
-    total_rows = 0
+    table_defs: dict[str, dict[str, Any]] = {}
     for table in tables:
         rows = rows_from_data(table.get("data"))
         columns = columns_for_table(rows, table.get("structure"))
@@ -212,6 +313,34 @@ def build_sql(json_dir: Path, schema: str) -> tuple[str, int, int]:
                 descriptor_for(table.get("structure"), column),
                 values,
             )
+        table_defs[table["name"]] = {
+            "table": table,
+            "rows": rows,
+            "columns": columns,
+            "column_types": column_types,
+        }
+
+    q_schema = quote_ident(schema)
+    lines = [
+        "\\set ON_ERROR_STOP on",
+        "BEGIN;",
+        f"CREATE SCHEMA IF NOT EXISTS {q_schema};",
+    ]
+
+    for table in tables:
+        lines.append(f"DROP TABLE IF EXISTS {q_schema}.{quote_ident(table['name'])} CASCADE;")
+
+    total_rows = 0
+    primary_keys: set[tuple[str, tuple[str, ...]]] = set()
+    unique_keys: set[tuple[str, tuple[str, ...]]] = set()
+    foreign_keys: list[tuple[str, tuple[str, ...], str, tuple[str, ...]]] = []
+    skipped_foreign_keys = 0
+
+    for table in tables:
+        table_def = table_defs[table["name"]]
+        rows = table_def["rows"]
+        columns = table_def["columns"]
+        column_types = table_def["column_types"]
 
         create_columns = [
             f"  {quote_ident(column)} {column_types[column]}"
@@ -230,8 +359,71 @@ def build_sql(json_dir: Path, schema: str) -> tuple[str, int, int]:
                 f"INSERT INTO {q_schema}.{quote_ident(table['name'])} ({col_sql}) VALUES ({values_sql});"
             )
 
+        id_columns = ("id",)
+        if "id" in columns and unique_non_null(rows, id_columns) and complete_non_null(rows, id_columns):
+            primary_keys.add((table["name"], id_columns))
+
+    for source_name, source_def in table_defs.items():
+        for source_columns, target_name, target_columns in extract_foreign_keys(
+            source_def["table"],
+            source_def["columns"],
+        ):
+            target_def = table_defs.get(target_name)
+            if not target_def:
+                skipped_foreign_keys += 1
+                continue
+            if any(column not in target_def["columns"] for column in target_columns):
+                skipped_foreign_keys += 1
+                continue
+            if not unique_non_null(target_def["rows"], target_columns):
+                skipped_foreign_keys += 1
+                continue
+            if not foreign_key_is_valid(
+                source_def["rows"],
+                source_columns,
+                target_def["rows"],
+                target_columns,
+            ):
+                skipped_foreign_keys += 1
+                continue
+            if (target_name, target_columns) not in primary_keys:
+                unique_keys.add((target_name, target_columns))
+            foreign_keys.append((source_name, source_columns, target_name, target_columns))
+
+    for table_name, columns in sorted(primary_keys):
+        name = constraint_name("pk", [table_name, *columns])
+        col_sql = ", ".join(quote_ident(column) for column in columns)
+        lines.append(
+            f"ALTER TABLE {q_schema}.{quote_ident(table_name)} "
+            f"ADD CONSTRAINT {quote_ident(name)} PRIMARY KEY ({col_sql});"
+        )
+
+    for table_name, columns in sorted(unique_keys):
+        name = constraint_name("uq", [table_name, *columns])
+        col_sql = ", ".join(quote_ident(column) for column in columns)
+        lines.append(
+            f"ALTER TABLE {q_schema}.{quote_ident(table_name)} "
+            f"ADD CONSTRAINT {quote_ident(name)} UNIQUE ({col_sql});"
+        )
+
+    for source_name, source_columns, target_name, target_columns in foreign_keys:
+        name = constraint_name("fk", [source_name, *source_columns, target_name, *target_columns])
+        source_col_sql = ", ".join(quote_ident(column) for column in source_columns)
+        target_col_sql = ", ".join(quote_ident(column) for column in target_columns)
+        lines.append(
+            f"ALTER TABLE {q_schema}.{quote_ident(source_name)} "
+            f"ADD CONSTRAINT {quote_ident(name)} FOREIGN KEY ({source_col_sql}) "
+            f"REFERENCES {q_schema}.{quote_ident(target_name)} ({target_col_sql});"
+        )
+
+        index_name = constraint_name("idx", [source_name, *source_columns])
+        lines.append(
+            f"CREATE INDEX IF NOT EXISTS {quote_ident(index_name)} "
+            f"ON {q_schema}.{quote_ident(source_name)} ({source_col_sql});"
+        )
+
     lines += ["COMMIT;", ""]
-    return "\n".join(lines), len(tables), total_rows
+    return "\n".join(lines), len(tables), total_rows, len(foreign_keys), skipped_foreign_keys
 
 
 def run_psql(sql: str, env_values: dict[str, str]) -> None:
@@ -260,16 +452,27 @@ def main() -> None:
     parser.add_argument("--output", type=Path, help="Write generated SQL to a file.")
     args = parser.parse_args()
 
-    sql, table_count, row_count = build_sql(args.json_dir, args.schema)
+    sql, table_count, row_count, foreign_key_count, skipped_foreign_key_count = build_sql(
+        args.json_dir,
+        args.schema,
+    )
     if args.output:
         args.output.write_text(sql, encoding="utf-8")
     if args.dry_run:
-        print(f"Generated SQL for {table_count} tables and {row_count} rows.")
+        print(
+            f"Generated SQL for {table_count} tables, {row_count} rows, "
+            f"{foreign_key_count} foreign keys "
+            f"({skipped_foreign_key_count} skipped)."
+        )
         return
 
     env_values = read_env(DEFAULT_ENV_FILE)
     run_psql(sql, env_values)
-    print(f"Imported {row_count} rows into {table_count} PostgreSQL tables.")
+    print(
+        f"Imported {row_count} rows into {table_count} PostgreSQL tables "
+        f"with {foreign_key_count} foreign keys "
+        f"({skipped_foreign_key_count} skipped)."
+    )
 
 
 if __name__ == "__main__":

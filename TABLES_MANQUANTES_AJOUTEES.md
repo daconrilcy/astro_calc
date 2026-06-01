@@ -13,7 +13,7 @@ Ces fichiers JSON ont été générés depuis `horoscope.db` pour compléter les
 Références qui ont motivé ces ajouts :
 
 - `astral_planet_definitions.speed_class_id` -> `astral_speed_classes.id`
-- `astral_planet_definitions.typical_polarity_id` -> `astral_polarities.id`
+- `astral_planet_definitions.typical_polarity_id` avait d'abord été repéré avec une référence vers `astral_polarities.id`; la contrainte PostgreSQL utilise finalement `astral_typical_polarities.id`, qui contient bien les valeurs `positive`, `negative` et `neutral`.
 - `astral_prediction_daily_planet_profiles.reference_version_id` -> `reference_versions.id`
 - `astral_planet_interpretation_profiles.reference_version_id` -> `reference_versions.id`
 - Plusieurs tables de règles/profils -> `astral_reference_versions.id`

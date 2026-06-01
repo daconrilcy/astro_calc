@@ -8,7 +8,7 @@
     "calculation_type_id": "integer, FK -> astral_calculation_types.id",
     "speed_rank": "integer",
     "speed_class_id": "integer, FK -> astral_speed_classes.id",
-    "typical_polarity_id": "integer, FK -> astral_polarities.id",
+    "typical_polarity_id": "integer, FK -> astral_typical_polarities.id",
     "is_physical_body": "boolean",
     "is_luminary": "boolean",
     "is_planet": "boolean",
