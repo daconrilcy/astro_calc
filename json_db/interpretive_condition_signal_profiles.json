@@ -25,7 +25,7 @@
       "interpretation_use": "prioritize_condition_axis",
       "priority_weight": 10.0,
       "prompt_hint": "functional_strength_positive",
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "id": 10,
@@ -38,7 +38,7 @@
       "interpretation_use": "qualify_condition_axis",
       "priority_weight": 20.0,
       "prompt_hint": "functional_strength_constrained",
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "id": 11,
@@ -51,7 +51,7 @@
       "interpretation_use": "surface_condition_axis",
       "priority_weight": 30.0,
       "prompt_hint": "visibility_emphasized",
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "id": 12,
@@ -64,7 +64,7 @@
       "interpretation_use": "stabilize_condition_axis",
       "priority_weight": 40.0,
       "prompt_hint": "stability_supported",
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "id": 13,
@@ -77,7 +77,7 @@
       "interpretation_use": "weight_condition_axis",
       "priority_weight": 50.0,
       "prompt_hint": "intensity_notable",
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "id": 14,
@@ -90,7 +90,7 @@
       "interpretation_use": "align_condition_axis",
       "priority_weight": 60.0,
       "prompt_hint": "coherence_aligned",
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "id": 15,
@@ -103,7 +103,7 @@
       "interpretation_use": "support_condition_axis",
       "priority_weight": 70.0,
       "prompt_hint": "support_available",
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "id": 16,
@@ -116,7 +116,7 @@
       "interpretation_use": "temper_condition_axis",
       "priority_weight": 80.0,
       "prompt_hint": "constraint_present",
-      "reference_version_id": null
+      "reference_version_id": 1
     }
   ]
 }

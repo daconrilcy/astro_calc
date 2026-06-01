@@ -37,7 +37,7 @@
         ]
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Planète en maison angulaire.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -67,7 +67,7 @@
         ]
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Planète en maison succédente.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -97,7 +97,7 @@
         ]
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Planète en maison cadente.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -121,7 +121,7 @@
         "motion_state_id": 1
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Planète en mouvement direct.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -145,7 +145,7 @@
         "motion_state_id": 2
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Planète en mouvement rétrograde.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -170,7 +170,7 @@
         "absolute_speed_max_deg_per_day": 0.05
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Planète stationnaire, seuil à adapter selon planète.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -194,7 +194,7 @@
         "speed_relation_id": 1
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Planète plus rapide que sa vitesse moyenne.",
       "speed_relation_id": 1,
       "sign_gender_id": null,
@@ -218,7 +218,7 @@
         "speed_relation_id": 2
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Planète plus lente que sa vitesse moyenne.",
       "speed_relation_id": 2,
       "sign_gender_id": null,
@@ -244,7 +244,7 @@
         "angular_distance_max_deg": 0.283
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Planète au cœur du Soleil.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -270,7 +270,7 @@
         "angular_distance_max_deg": 8.5
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Planète trop proche du Soleil.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -296,7 +296,7 @@
         "angular_distance_max_deg": 17
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Planète sous les rayons du Soleil.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -322,7 +322,7 @@
         "angular_distance_max_deg": 180
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Planète libre des rayons du Soleil.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -347,7 +347,7 @@
         "heliacal_condition_id": 1
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Planète orientale au Soleil.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -372,7 +372,7 @@
         "heliacal_condition_id": 2
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Planète occidentale au Soleil.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -404,7 +404,7 @@
         ]
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Planète au-dessus de l'horizon.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -436,7 +436,7 @@
         ]
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Planète sous l'horizon.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -460,7 +460,7 @@
         "chart_sect_id": 1
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Le Soleil est en secte dans un thème diurne.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -484,7 +484,7 @@
         "chart_sect_id": 1
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Jupiter est une planète diurne.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -508,7 +508,7 @@
         "chart_sect_id": 1
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Saturne est une planète diurne.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -532,7 +532,7 @@
         "chart_sect_id": 3
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Mercure est commun et varie selon les conditions.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -556,7 +556,7 @@
         "chart_sect_id": 2
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "La Lune est en secte dans un thème nocturne.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -580,7 +580,7 @@
         "chart_sect_id": 2
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Vénus est une planète nocturne.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -604,7 +604,7 @@
         "chart_sect_id": 2
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Mars est une planète nocturne.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -628,7 +628,7 @@
         "chart_sect_id": 2
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Le Soleil est hors secte dans un thème nocturne.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -652,7 +652,7 @@
         "chart_sect_id": 1
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "La Lune est hors secte dans un thème diurne.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -676,7 +676,7 @@
         "house_id": 1
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Joie traditionnelle de Mercure.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -700,7 +700,7 @@
         "house_id": 3
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Joie traditionnelle de la Lune.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -724,7 +724,7 @@
         "house_id": 5
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Joie traditionnelle de Vénus.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -748,7 +748,7 @@
         "house_id": 6
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Joie traditionnelle de Mars.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -772,7 +772,7 @@
         "house_id": 9
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Joie traditionnelle du Soleil.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -796,7 +796,7 @@
         "house_id": 11
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Joie traditionnelle de Jupiter.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -820,7 +820,7 @@
         "house_id": 12
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Joie traditionnelle de Saturne.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -846,7 +846,7 @@
         "sign_gender_id": 1
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Soleil en hayz : secte, hémisphère et genre du signe cohérents.",
       "speed_relation_id": null,
       "sign_gender_id": 1,
@@ -872,7 +872,7 @@
         "sign_gender_id": 1
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Jupiter en hayz.",
       "speed_relation_id": null,
       "sign_gender_id": 1,
@@ -898,7 +898,7 @@
         "sign_gender_id": 1
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Saturne en hayz.",
       "speed_relation_id": null,
       "sign_gender_id": 1,
@@ -924,7 +924,7 @@
         "sign_gender_id": 2
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Lune en hayz.",
       "speed_relation_id": null,
       "sign_gender_id": 2,
@@ -950,7 +950,7 @@
         "sign_gender_id": 2
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Vénus en hayz.",
       "speed_relation_id": null,
       "sign_gender_id": 2,
@@ -976,7 +976,7 @@
         "sign_gender_id": 2
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Mars en hayz.",
       "speed_relation_id": null,
       "sign_gender_id": 2,
@@ -1006,7 +1006,7 @@
         "max_orb_deg": 6
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Soutien par aspect harmonique d'une bénéfique.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -1036,7 +1036,7 @@
         "max_orb_deg": 6
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Affliction par aspect dur d'une maléfique.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -1061,7 +1061,7 @@
         "bounding_object_nature_type_id": 1
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Planète encadrée par deux bénéfiques.",
       "speed_relation_id": null,
       "sign_gender_id": null,
@@ -1086,7 +1086,7 @@
         "bounding_object_nature_type_id": 2
       },
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "micro_note": "Planète encadrée par deux maléfiques.",
       "speed_relation_id": null,
       "sign_gender_id": null,

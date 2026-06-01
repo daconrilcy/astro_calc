@@ -1,0 +1,16 @@
+{
+  "name": "astral_chart_calculations",
+  "structure": {
+    "table_role": "Runtime audit header for a calculated chart or prediction scan.",
+    "columns": {
+      "id": "integer, primary key",
+      "reference_version_id": "integer, FK -> astral_reference_versions.id",
+      "calculation_profile_id": "integer|null, FK -> astral_prediction_calculation_profiles.id",
+      "chart_type": "string, enum:natal|transit|progression|prediction",
+      "subject_label": "string|null",
+      "input_data_json": "json",
+      "calculated_at": "datetime"
+    }
+  },
+  "data": []
+}

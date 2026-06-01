@@ -30,7 +30,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Solar domicile."
     },
@@ -41,7 +41,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Lunar domicile."
     },
@@ -52,7 +52,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Mercury domicile in Gemini."
     },
@@ -63,7 +63,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Mercury domicile in Virgo."
     },
@@ -74,7 +74,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Venus domicile in Taurus."
     },
@@ -85,7 +85,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Venus domicile in Libra."
     },
@@ -96,7 +96,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Mars domicile in Aries."
     },
@@ -107,7 +107,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Mars domicile in Scorpio."
     },
@@ -118,7 +118,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Jupiter domicile in Sagittarius."
     },
@@ -129,7 +129,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Jupiter domicile in Pisces."
     },
@@ -140,7 +140,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Saturn domicile in Capricorn."
     },
@@ -151,7 +151,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Saturn domicile in Aquarius."
     },
@@ -162,7 +162,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Solar exaltation in Aries."
     },
@@ -173,7 +173,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Lunar exaltation in Taurus."
     },
@@ -184,7 +184,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Mercury exaltation in Virgo."
     },
@@ -195,7 +195,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Venus exaltation in Pisces."
     },
@@ -206,7 +206,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Mars exaltation in Capricorn."
     },
@@ -217,7 +217,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Jupiter exaltation in Cancer."
     },
@@ -228,7 +228,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Saturn exaltation in Libra."
     },
@@ -239,7 +239,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Opposite of solar domicile in Leo."
     },
@@ -250,7 +250,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Opposite of lunar domicile in Cancer."
     },
@@ -261,7 +261,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Opposite of Mercury domicile in Gemini."
     },
@@ -272,7 +272,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Opposite of Mercury domicile in Virgo."
     },
@@ -283,7 +283,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Opposite of Venus domicile in Taurus."
     },
@@ -294,7 +294,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Opposite of Venus domicile in Libra."
     },
@@ -305,7 +305,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Opposite of Mars domicile in Aries."
     },
@@ -316,7 +316,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Opposite of Mars domicile in Scorpio."
     },
@@ -327,7 +327,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Opposite of Jupiter domicile in Sagittarius."
     },
@@ -338,7 +338,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Opposite of Jupiter domicile in Pisces."
     },
@@ -349,7 +349,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Opposite of Saturn domicile in Capricorn."
     },
@@ -360,7 +360,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Opposite of Saturn domicile in Aquarius."
     },
@@ -371,7 +371,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Opposite of solar exaltation in Aries."
     },
@@ -382,7 +382,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Opposite of lunar exaltation in Taurus."
     },
@@ -393,7 +393,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Opposite of Mercury exaltation in Virgo."
     },
@@ -404,7 +404,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Opposite of Venus exaltation in Pisces."
     },
@@ -415,7 +415,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Opposite of Mars exaltation in Capricorn."
     },
@@ -426,7 +426,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Opposite of Jupiter exaltation in Cancer."
     },
@@ -437,7 +437,7 @@
       "degree_start": 0,
       "degree_end": 30,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "source_id": 4,
       "micro_note": "Opposite of Saturn exaltation in Libra."
     }

@@ -1,0 +1,224 @@
+{
+  "name": "astral_aspect_interpretive_effects",
+  "structure": {
+    "table_role": "Typed relation between an aspect scoring profile and one or more interpretive valence effects.",
+    "unique_key": [
+      "reference_version_id",
+      "aspect_profile_id",
+      "interpretive_valence_id",
+      "effect_role"
+    ],
+    "columns": {
+      "id": "integer, primary key",
+      "reference_version_id": "integer, FK -> astral_reference_versions.id",
+      "aspect_profile_id": "integer, FK -> astral_aspect_profiles.id",
+      "interpretive_valence_id": "integer, FK -> astral_interpretive_valence.id",
+      "effect_role": "string, enum:primary_valence|intensity_modifier|secondary_effect",
+      "weight": "number",
+      "sort_order": "integer",
+      "notes": "string|null"
+    }
+  },
+  "data": [
+    {
+      "id": 1,
+      "reference_version_id": 1,
+      "aspect_profile_id": 1,
+      "interpretive_valence_id": 5,
+      "effect_role": "intensity_modifier",
+      "weight": 1.0,
+      "sort_order": 1,
+      "notes": "Migrated from astral_aspect_profiles.interpretive_valence."
+    },
+    {
+      "id": 2,
+      "reference_version_id": 1,
+      "aspect_profile_id": 2,
+      "interpretive_valence_id": 1,
+      "effect_role": "primary_valence",
+      "weight": 1.0,
+      "sort_order": 1,
+      "notes": "Migrated from astral_aspect_profiles.interpretive_valence."
+    },
+    {
+      "id": 3,
+      "reference_version_id": 1,
+      "aspect_profile_id": 3,
+      "interpretive_valence_id": 3,
+      "effect_role": "primary_valence",
+      "weight": 1.0,
+      "sort_order": 1,
+      "notes": "Migrated from astral_aspect_profiles.interpretive_valence."
+    },
+    {
+      "id": 4,
+      "reference_version_id": 1,
+      "aspect_profile_id": 4,
+      "interpretive_valence_id": 2,
+      "effect_role": "primary_valence",
+      "weight": 1.0,
+      "sort_order": 1,
+      "notes": "Migrated from astral_aspect_profiles.interpretive_valence."
+    },
+    {
+      "id": 5,
+      "reference_version_id": 1,
+      "aspect_profile_id": 5,
+      "interpretive_valence_id": 4,
+      "effect_role": "primary_valence",
+      "weight": 1.0,
+      "sort_order": 1,
+      "notes": "Migrated from astral_aspect_profiles.interpretive_valence."
+    },
+    {
+      "id": 6,
+      "reference_version_id": 1,
+      "aspect_profile_id": 6,
+      "interpretive_valence_id": 7,
+      "effect_role": "primary_valence",
+      "weight": 1.0,
+      "sort_order": 1,
+      "notes": "Migrated from astral_aspect_profiles.interpretive_valence."
+    },
+    {
+      "id": 7,
+      "reference_version_id": 1,
+      "aspect_profile_id": 7,
+      "interpretive_valence_id": 8,
+      "effect_role": "primary_valence",
+      "weight": 1.0,
+      "sort_order": 1,
+      "notes": "Migrated from astral_aspect_profiles.interpretive_valence."
+    },
+    {
+      "id": 8,
+      "reference_version_id": 1,
+      "aspect_profile_id": 8,
+      "interpretive_valence_id": 9,
+      "effect_role": "primary_valence",
+      "weight": 1.0,
+      "sort_order": 1,
+      "notes": "Migrated from astral_aspect_profiles.interpretive_valence."
+    },
+    {
+      "id": 9,
+      "reference_version_id": 1,
+      "aspect_profile_id": 9,
+      "interpretive_valence_id": 10,
+      "effect_role": "primary_valence",
+      "weight": 1.0,
+      "sort_order": 1,
+      "notes": "Migrated from astral_aspect_profiles.interpretive_valence."
+    },
+    {
+      "id": 10,
+      "reference_version_id": 1,
+      "aspect_profile_id": 10,
+      "interpretive_valence_id": 6,
+      "effect_role": "primary_valence",
+      "weight": 1.0,
+      "sort_order": 1,
+      "notes": "Migrated from astral_aspect_profiles.interpretive_valence."
+    },
+    {
+      "id": 11,
+      "reference_version_id": 1,
+      "aspect_profile_id": 11,
+      "interpretive_valence_id": 11,
+      "effect_role": "primary_valence",
+      "weight": 1.0,
+      "sort_order": 1,
+      "notes": "Migrated from astral_aspect_profiles.interpretive_valence."
+    },
+    {
+      "id": 12,
+      "reference_version_id": 1,
+      "aspect_profile_id": 12,
+      "interpretive_valence_id": 12,
+      "effect_role": "primary_valence",
+      "weight": 1.0,
+      "sort_order": 1,
+      "notes": "Migrated from astral_aspect_profiles.interpretive_valence."
+    },
+    {
+      "id": 13,
+      "reference_version_id": 1,
+      "aspect_profile_id": 13,
+      "interpretive_valence_id": 12,
+      "effect_role": "primary_valence",
+      "weight": 1.0,
+      "sort_order": 1,
+      "notes": "Migrated from astral_aspect_profiles.interpretive_valence."
+    },
+    {
+      "id": 14,
+      "reference_version_id": 1,
+      "aspect_profile_id": 14,
+      "interpretive_valence_id": 12,
+      "effect_role": "primary_valence",
+      "weight": 1.0,
+      "sort_order": 1,
+      "notes": "Migrated from astral_aspect_profiles.interpretive_valence."
+    },
+    {
+      "id": 15,
+      "reference_version_id": 1,
+      "aspect_profile_id": 15,
+      "interpretive_valence_id": 13,
+      "effect_role": "primary_valence",
+      "weight": 1.0,
+      "sort_order": 1,
+      "notes": "Migrated from astral_aspect_profiles.interpretive_valence."
+    },
+    {
+      "id": 16,
+      "reference_version_id": 1,
+      "aspect_profile_id": 16,
+      "interpretive_valence_id": 13,
+      "effect_role": "primary_valence",
+      "weight": 1.0,
+      "sort_order": 1,
+      "notes": "Migrated from astral_aspect_profiles.interpretive_valence."
+    },
+    {
+      "id": 17,
+      "reference_version_id": 1,
+      "aspect_profile_id": 17,
+      "interpretive_valence_id": 13,
+      "effect_role": "primary_valence",
+      "weight": 1.0,
+      "sort_order": 1,
+      "notes": "Migrated from astral_aspect_profiles.interpretive_valence."
+    },
+    {
+      "id": 18,
+      "reference_version_id": 1,
+      "aspect_profile_id": 18,
+      "interpretive_valence_id": 14,
+      "effect_role": "primary_valence",
+      "weight": 1.0,
+      "sort_order": 1,
+      "notes": "Migrated from astral_aspect_profiles.interpretive_valence."
+    },
+    {
+      "id": 19,
+      "reference_version_id": 1,
+      "aspect_profile_id": 19,
+      "interpretive_valence_id": 14,
+      "effect_role": "primary_valence",
+      "weight": 1.0,
+      "sort_order": 1,
+      "notes": "Migrated from astral_aspect_profiles.interpretive_valence."
+    },
+    {
+      "id": 20,
+      "reference_version_id": 1,
+      "aspect_profile_id": 20,
+      "interpretive_valence_id": 15,
+      "effect_role": "intensity_modifier",
+      "weight": 1.0,
+      "sort_order": 1,
+      "notes": "Migrated from astral_aspect_profiles.interpretive_valence."
+    }
+  ]
+}

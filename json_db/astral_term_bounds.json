@@ -25,7 +25,7 @@
       "degree_start": 0,
       "degree_end": 6,
       "order_index": 1,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -34,7 +34,7 @@
       "degree_start": 6,
       "degree_end": 14,
       "order_index": 2,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -43,7 +43,7 @@
       "degree_start": 14,
       "degree_end": 21,
       "order_index": 3,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -52,7 +52,7 @@
       "degree_start": 21,
       "degree_end": 26,
       "order_index": 4,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -61,7 +61,7 @@
       "degree_start": 26,
       "degree_end": 30,
       "order_index": 5,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -70,7 +70,7 @@
       "degree_start": 0,
       "degree_end": 8,
       "order_index": 1,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -79,7 +79,7 @@
       "degree_start": 8,
       "degree_end": 14,
       "order_index": 2,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -88,7 +88,7 @@
       "degree_start": 14,
       "degree_end": 22,
       "order_index": 3,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -97,7 +97,7 @@
       "degree_start": 22,
       "degree_end": 27,
       "order_index": 4,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -106,7 +106,7 @@
       "degree_start": 27,
       "degree_end": 30,
       "order_index": 5,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -115,7 +115,7 @@
       "degree_start": 0,
       "degree_end": 6,
       "order_index": 1,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -124,7 +124,7 @@
       "degree_start": 6,
       "degree_end": 14,
       "order_index": 2,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -133,7 +133,7 @@
       "degree_start": 14,
       "degree_end": 21,
       "order_index": 3,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -142,7 +142,7 @@
       "degree_start": 21,
       "degree_end": 25,
       "order_index": 4,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -151,7 +151,7 @@
       "degree_start": 25,
       "degree_end": 30,
       "order_index": 5,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -160,7 +160,7 @@
       "degree_start": 0,
       "degree_end": 7,
       "order_index": 1,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -169,7 +169,7 @@
       "degree_start": 7,
       "degree_end": 13,
       "order_index": 2,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -178,7 +178,7 @@
       "degree_start": 13,
       "degree_end": 19,
       "order_index": 3,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -187,7 +187,7 @@
       "degree_start": 19,
       "degree_end": 26,
       "order_index": 4,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -196,7 +196,7 @@
       "degree_start": 26,
       "degree_end": 30,
       "order_index": 5,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -205,7 +205,7 @@
       "degree_start": 0,
       "degree_end": 6,
       "order_index": 1,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -214,7 +214,7 @@
       "degree_start": 6,
       "degree_end": 13,
       "order_index": 2,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -223,7 +223,7 @@
       "degree_start": 13,
       "degree_end": 19,
       "order_index": 3,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -232,7 +232,7 @@
       "degree_start": 19,
       "degree_end": 25,
       "order_index": 4,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -241,7 +241,7 @@
       "degree_start": 25,
       "degree_end": 30,
       "order_index": 5,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -250,7 +250,7 @@
       "degree_start": 0,
       "degree_end": 7,
       "order_index": 1,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -259,7 +259,7 @@
       "degree_start": 7,
       "degree_end": 13,
       "order_index": 2,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -268,7 +268,7 @@
       "degree_start": 13,
       "degree_end": 18,
       "order_index": 3,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -277,7 +277,7 @@
       "degree_start": 18,
       "degree_end": 24,
       "order_index": 4,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -286,7 +286,7 @@
       "degree_start": 24,
       "degree_end": 30,
       "order_index": 5,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -295,7 +295,7 @@
       "degree_start": 0,
       "degree_end": 6,
       "order_index": 1,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -304,7 +304,7 @@
       "degree_start": 6,
       "degree_end": 14,
       "order_index": 2,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -313,7 +313,7 @@
       "degree_start": 14,
       "degree_end": 21,
       "order_index": 3,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -322,7 +322,7 @@
       "degree_start": 21,
       "degree_end": 28,
       "order_index": 4,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -331,7 +331,7 @@
       "degree_start": 28,
       "degree_end": 30,
       "order_index": 5,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -340,7 +340,7 @@
       "degree_start": 0,
       "degree_end": 7,
       "order_index": 1,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -349,7 +349,7 @@
       "degree_start": 7,
       "degree_end": 11,
       "order_index": 2,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -358,7 +358,7 @@
       "degree_start": 11,
       "degree_end": 19,
       "order_index": 3,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -367,7 +367,7 @@
       "degree_start": 19,
       "degree_end": 24,
       "order_index": 4,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -376,7 +376,7 @@
       "degree_start": 24,
       "degree_end": 30,
       "order_index": 5,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -385,7 +385,7 @@
       "degree_start": 0,
       "degree_end": 12,
       "order_index": 1,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -394,7 +394,7 @@
       "degree_start": 12,
       "degree_end": 17,
       "order_index": 2,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -403,7 +403,7 @@
       "degree_start": 17,
       "degree_end": 21,
       "order_index": 3,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -412,7 +412,7 @@
       "degree_start": 21,
       "degree_end": 26,
       "order_index": 4,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -421,7 +421,7 @@
       "degree_start": 26,
       "degree_end": 30,
       "order_index": 5,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -430,7 +430,7 @@
       "degree_start": 0,
       "degree_end": 7,
       "order_index": 1,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -439,7 +439,7 @@
       "degree_start": 7,
       "degree_end": 14,
       "order_index": 2,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -448,7 +448,7 @@
       "degree_start": 14,
       "degree_end": 22,
       "order_index": 3,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -457,7 +457,7 @@
       "degree_start": 22,
       "degree_end": 26,
       "order_index": 4,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -466,7 +466,7 @@
       "degree_start": 26,
       "degree_end": 30,
       "order_index": 5,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -475,7 +475,7 @@
       "degree_start": 0,
       "degree_end": 7,
       "order_index": 1,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -484,7 +484,7 @@
       "degree_start": 7,
       "degree_end": 13,
       "order_index": 2,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -493,7 +493,7 @@
       "degree_start": 13,
       "degree_end": 20,
       "order_index": 3,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -502,7 +502,7 @@
       "degree_start": 20,
       "degree_end": 25,
       "order_index": 4,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -511,7 +511,7 @@
       "degree_start": 25,
       "degree_end": 30,
       "order_index": 5,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -520,7 +520,7 @@
       "degree_start": 0,
       "degree_end": 12,
       "order_index": 1,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -529,7 +529,7 @@
       "degree_start": 12,
       "degree_end": 16,
       "order_index": 2,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -538,7 +538,7 @@
       "degree_start": 16,
       "degree_end": 19,
       "order_index": 3,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -547,7 +547,7 @@
       "degree_start": 19,
       "degree_end": 28,
       "order_index": 4,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "term_system_id": 1,
@@ -556,7 +556,7 @@
       "degree_start": 28,
       "degree_end": 30,
       "order_index": 5,
-      "reference_version_id": null
+      "reference_version_id": 1
     }
   ]
 }

@@ -23,7 +23,7 @@
       "tradition_code": "modern",
       "description": "Profil standard pour calculer les planetes dominantes d'un theme natal.",
       "is_active": true,
-      "reference_version_id": null
+      "reference_version_id": 1
     }
   ]
 }

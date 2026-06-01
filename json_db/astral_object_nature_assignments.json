@@ -24,7 +24,7 @@
       "chart_object_id": 4,
       "nature_type_id": 1,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "is_primary": true,
       "weight": 1.0,
       "notes": "Venus is a classical benefic."
@@ -34,7 +34,7 @@
       "chart_object_id": 6,
       "nature_type_id": 1,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "is_primary": true,
       "weight": 1.0,
       "notes": "Jupiter is a classical benefic."
@@ -44,7 +44,7 @@
       "chart_object_id": 5,
       "nature_type_id": 2,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "is_primary": true,
       "weight": 1.0,
       "notes": "Mars is a classical malefic."
@@ -54,7 +54,7 @@
       "chart_object_id": 7,
       "nature_type_id": 2,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "is_primary": true,
       "weight": 1.0,
       "notes": "Saturn is a classical malefic."
@@ -64,7 +64,7 @@
       "chart_object_id": 3,
       "nature_type_id": 3,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "is_primary": true,
       "weight": 1.0,
       "notes": "Mercury has a variable classical nature."
@@ -74,7 +74,7 @@
       "chart_object_id": 1,
       "nature_type_id": 4,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "is_primary": true,
       "weight": 1.0,
       "notes": "The Sun is a luminary."
@@ -84,7 +84,7 @@
       "chart_object_id": 2,
       "nature_type_id": 4,
       "astral_system_id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "is_primary": true,
       "weight": 1.0,
       "notes": "The Moon is a luminary."
@@ -94,7 +94,7 @@
       "chart_object_id": 8,
       "nature_type_id": 6,
       "astral_system_id": 2,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "is_primary": true,
       "weight": 1.0,
       "notes": "Uranus belongs to the modern transpersonal family."
@@ -104,7 +104,7 @@
       "chart_object_id": 9,
       "nature_type_id": 6,
       "astral_system_id": 2,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "is_primary": true,
       "weight": 1.0,
       "notes": "Neptune belongs to the modern transpersonal family."
@@ -114,7 +114,7 @@
       "chart_object_id": 10,
       "nature_type_id": 6,
       "astral_system_id": 2,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "is_primary": true,
       "weight": 1.0,
       "notes": "Pluto belongs to the modern transpersonal family."

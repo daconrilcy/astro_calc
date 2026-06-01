@@ -477,6 +477,7 @@ def build_sql(json_dir: Path, schema: str) -> tuple[str, int, int, int, int]:
         "          'astral_planet_condition_signal_profiles',",
         "          'astral_prediction_daily_planet_profiles',",
         "          'astral_speed',",
+        "          'astral_diginity_score_profiles',",
         "          'astral_structural_reference_catalog'",
         "        )",
         "      )",

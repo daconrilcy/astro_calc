@@ -15,7 +15,7 @@
   "data": [
     {
       "id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "chart_object_id": 1,
       "weight_intraday": 0.6,
       "weight_day_climate": 1.0,
@@ -27,7 +27,7 @@
     },
     {
       "id": 2,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "chart_object_id": 2,
       "weight_intraday": 1.0,
       "weight_day_climate": 0.8,
@@ -39,7 +39,7 @@
     },
     {
       "id": 3,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "chart_object_id": 3,
       "weight_intraday": 0.9,
       "weight_day_climate": 0.7,
@@ -51,7 +51,7 @@
     },
     {
       "id": 4,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "chart_object_id": 4,
       "weight_intraday": 0.7,
       "weight_day_climate": 0.8,
@@ -63,7 +63,7 @@
     },
     {
       "id": 5,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "chart_object_id": 5,
       "weight_intraday": 0.8,
       "weight_day_climate": 0.9,
@@ -75,7 +75,7 @@
     },
     {
       "id": 6,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "chart_object_id": 6,
       "weight_intraday": 0.4,
       "weight_day_climate": 1.0,
@@ -87,7 +87,7 @@
     },
     {
       "id": 7,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "chart_object_id": 7,
       "weight_intraday": 0.3,
       "weight_day_climate": 1.0,
@@ -99,7 +99,7 @@
     },
     {
       "id": 8,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "chart_object_id": 8,
       "weight_intraday": 0.1,
       "weight_day_climate": 0.5,
@@ -111,7 +111,7 @@
     },
     {
       "id": 9,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "chart_object_id": 9,
       "weight_intraday": 0.1,
       "weight_day_climate": 0.4,
@@ -123,7 +123,7 @@
     },
     {
       "id": 10,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "chart_object_id": 10,
       "weight_intraday": 0.1,
       "weight_day_climate": 0.3,

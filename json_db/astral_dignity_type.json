@@ -1,9 +1,12 @@
 {
   "name": "astral_dignity_type",
   "structure": {
-    "id": "integer, primary key",
-    "code": "string",
-    "name": "string"
+    "table_role": "Legacy compact essential dignity vocabulary used by older sign-dignity mappings; detailed scoring and effects live in astral_essential_dignity_types.",
+    "columns": {
+      "id": "integer, primary key",
+      "code": "string, unique, snake_case",
+      "name": "string"
+    }
   },
   "data": [
     {

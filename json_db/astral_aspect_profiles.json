@@ -1,7 +1,7 @@
 {
   "name": "astral_aspect_profiles",
   "structure": {
-    "table_role": "Predictive behavior of each aspect for scoring, event weighting and polarity resolution.",
+    "table_role": "Predictive and scoring behavior of each aspect. Interpretive effects are normalized in astral_aspect_interpretive_effects.",
     "unique_key": [
       "reference_version_id",
       "aspect_id"
@@ -12,7 +12,6 @@
       "aspect_id": "foreign_key:astral_aspects.id",
       "intensity_weight": "float",
       "default_valence": "string, FK -> astral_default_valence.name",
-      "interpretive_valence": "string, FK -> astral_interpretive_valence.name",
       "polarity_score": "float",
       "energy_type": "string",
       "orb_multiplier": "float",
@@ -24,10 +23,9 @@
   },
   "data": [
     {
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "intensity_weight": 1.5,
       "default_valence": "contextual",
-      "interpretive_valence": "amplifying",
       "polarity_score": 0.0,
       "energy_type": "fusion_intensification",
       "orb_multiplier": 1.0,
@@ -48,10 +46,9 @@
       "aspect_id": 1
     },
     {
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "intensity_weight": 0.8,
       "default_valence": "positive",
-      "interpretive_valence": "supportive",
       "polarity_score": 0.55,
       "energy_type": "cooperative_opportunity",
       "orb_multiplier": 0.9,
@@ -72,10 +69,9 @@
       "aspect_id": 2
     },
     {
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "intensity_weight": 1.25,
       "default_valence": "negative",
-      "interpretive_valence": "dynamic_challenging",
       "polarity_score": -0.65,
       "energy_type": "friction_activation",
       "orb_multiplier": 1.0,
@@ -96,10 +92,9 @@
       "aspect_id": 3
     },
     {
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "intensity_weight": 1.0,
       "default_valence": "positive",
-      "interpretive_valence": "harmonious",
       "polarity_score": 0.75,
       "energy_type": "harmonious_flow",
       "orb_multiplier": 1.0,
@@ -120,10 +115,9 @@
       "aspect_id": 4
     },
     {
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "intensity_weight": 1.35,
       "default_valence": "contextual",
-      "interpretive_valence": "polarizing",
       "polarity_score": -0.35,
       "energy_type": "polarity_awareness",
       "orb_multiplier": 1.0,
@@ -144,10 +138,9 @@
       "aspect_id": 5
     },
     {
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "intensity_weight": 0.35,
       "default_valence": "contextual",
-      "interpretive_valence": "subtle_adjustment",
       "polarity_score": 0.05,
       "energy_type": "minor_adaptation",
       "orb_multiplier": 0.65,
@@ -168,10 +161,9 @@
       "aspect_id": 6
     },
     {
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "intensity_weight": 0.45,
       "default_valence": "negative",
-      "interpretive_valence": "minor_friction",
       "polarity_score": -0.35,
       "energy_type": "irritation_pressure",
       "orb_multiplier": 0.55,
@@ -192,10 +184,9 @@
       "aspect_id": 7
     },
     {
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "intensity_weight": 0.4,
       "default_valence": "positive",
-      "interpretive_valence": "creative",
       "polarity_score": 0.35,
       "energy_type": "creative_patterning",
       "orb_multiplier": 0.55,
@@ -216,10 +207,9 @@
       "aspect_id": 8
     },
     {
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "intensity_weight": 0.45,
       "default_valence": "negative",
-      "interpretive_valence": "indirect_tension",
       "polarity_score": -0.35,
       "energy_type": "accumulated_pressure",
       "orb_multiplier": 0.55,
@@ -240,10 +230,9 @@
       "aspect_id": 9
     },
     {
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "intensity_weight": 0.65,
       "default_valence": "contextual",
-      "interpretive_valence": "adjustment",
       "polarity_score": -0.2,
       "energy_type": "incongruent_adaptation",
       "orb_multiplier": 0.65,
@@ -264,10 +253,9 @@
       "aspect_id": 10
     },
     {
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "intensity_weight": 0.35,
       "default_valence": "positive",
-      "interpretive_valence": "refined_creative",
       "polarity_score": 0.3,
       "energy_type": "creative_refinement",
       "orb_multiplier": 0.55,
@@ -288,10 +276,9 @@
       "aspect_id": 11
     },
     {
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "intensity_weight": 0.25,
       "default_valence": "contextual",
-      "interpretive_valence": "symbolic_fated",
       "polarity_score": 0.0,
       "energy_type": "symbolic_compulsion",
       "orb_multiplier": 0.35,
@@ -312,10 +299,9 @@
       "aspect_id": 12
     },
     {
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "intensity_weight": 0.25,
       "default_valence": "contextual",
-      "interpretive_valence": "symbolic_fated",
       "polarity_score": 0.0,
       "energy_type": "symbolic_compulsion",
       "orb_multiplier": 0.35,
@@ -336,10 +322,9 @@
       "aspect_id": 13
     },
     {
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "intensity_weight": 0.25,
       "default_valence": "contextual",
-      "interpretive_valence": "symbolic_fated",
       "polarity_score": 0.0,
       "energy_type": "symbolic_compulsion",
       "orb_multiplier": 0.35,
@@ -360,10 +345,9 @@
       "aspect_id": 14
     },
     {
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "intensity_weight": 0.25,
       "default_valence": "positive",
-      "interpretive_valence": "spiritual_integration",
       "polarity_score": 0.2,
       "energy_type": "inner_completion",
       "orb_multiplier": 0.35,
@@ -384,10 +368,9 @@
       "aspect_id": 15
     },
     {
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "intensity_weight": 0.25,
       "default_valence": "positive",
-      "interpretive_valence": "spiritual_integration",
       "polarity_score": 0.2,
       "energy_type": "inner_completion",
       "orb_multiplier": 0.35,
@@ -408,10 +391,9 @@
       "aspect_id": 16
     },
     {
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "intensity_weight": 0.25,
       "default_valence": "positive",
-      "interpretive_valence": "spiritual_integration",
       "polarity_score": 0.2,
       "energy_type": "inner_completion",
       "orb_multiplier": 0.35,
@@ -432,10 +414,9 @@
       "aspect_id": 17
     },
     {
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "intensity_weight": 0.25,
       "default_valence": "positive",
-      "interpretive_valence": "creative_ordering",
       "polarity_score": 0.25,
       "energy_type": "creative_harmonic",
       "orb_multiplier": 0.35,
@@ -456,10 +437,9 @@
       "aspect_id": 18
     },
     {
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "intensity_weight": 0.25,
       "default_valence": "positive",
-      "interpretive_valence": "creative_ordering",
       "polarity_score": 0.25,
       "energy_type": "creative_harmonic",
       "orb_multiplier": 0.35,
@@ -480,10 +460,9 @@
       "aspect_id": 19
     },
     {
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "intensity_weight": 0.3,
       "default_valence": "contextual",
-      "interpretive_valence": "obsessive_focus",
       "polarity_score": -0.1,
       "energy_type": "intensified_fixation",
       "orb_multiplier": 0.4,

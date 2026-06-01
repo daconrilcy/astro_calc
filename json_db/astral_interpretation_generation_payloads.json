@@ -1,0 +1,15 @@
+{
+  "name": "astral_interpretation_generation_payloads",
+  "structure": {
+    "table_role": "Serialized payload sent to a text generation layer after signal aggregation and product prioritization.",
+    "columns": {
+      "id": "integer, primary key",
+      "chart_calculation_id": "integer, FK -> astral_chart_calculations.id",
+      "reference_version_id": "integer, FK -> astral_reference_versions.id",
+      "product_code": "string|null",
+      "payload_json": "json",
+      "created_at": "datetime"
+    }
+  },
+  "data": []
+}

@@ -22,12 +22,12 @@
   },
   "data": [
     {
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 3,
       "inherited_from_astral_system_id": 1
     },
     {
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 4,
       "inherited_from_astral_system_id": 1
     }

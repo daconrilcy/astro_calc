@@ -1,5 +1,5 @@
 {
-  "name": "astral_diginity_score_profiles",
+  "name": "astral_dignity_score_profiles",
   "structure": {
     "id": "integer",
     "code": "string, unique, snake_case",

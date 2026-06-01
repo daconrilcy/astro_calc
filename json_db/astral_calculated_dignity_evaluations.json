@@ -1,0 +1,18 @@
+{
+  "name": "astral_calculated_dignity_evaluations",
+  "structure": {
+    "table_role": "Runtime audit of essential and accidental dignity evaluations.",
+    "columns": {
+      "id": "integer, primary key",
+      "chart_calculation_id": "integer, FK -> astral_chart_calculations.id",
+      "chart_object_id": "integer, FK -> astral_chart_objects.id",
+      "dignity_scope": "string, enum:essential|accidental",
+      "essential_dignity_type_id": "integer|null, FK -> astral_essential_dignity_types.id",
+      "accidental_dignity_type_id": "integer|null, FK -> astral_accidental_dignity_types.id",
+      "score_profile_id": "integer|null, FK -> astral_dignity_score_profiles.id",
+      "score_value": "number|null",
+      "evidence_json": "json|null"
+    }
+  },
+  "data": []
+}

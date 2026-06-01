@@ -1,0 +1,27 @@
+{
+  "name": "astral_calculated_chart_object_positions",
+  "structure": {
+    "table_role": "Runtime facts for object positions in a calculated chart.",
+    "unique_key": [
+      "chart_calculation_id",
+      "chart_object_id"
+    ],
+    "columns": {
+      "id": "integer, primary key",
+      "chart_calculation_id": "integer, FK -> astral_chart_calculations.id",
+      "chart_object_id": "integer, FK -> astral_chart_objects.id",
+      "zodiacal_reference_system_id": "integer, FK -> astral_zodiacal_reference_systems.id",
+      "sign_id": "integer|null, FK -> astral_signs.id",
+      "house_id": "integer|null, FK -> astral_houses.id",
+      "motion_state_id": "integer|null, FK -> astral_object_motion_states.id",
+      "horizon_position_id": "integer|null, FK -> astral_horizon_positions.id",
+      "longitude_deg": "number",
+      "latitude_deg": "number|null",
+      "apparent_speed_deg_per_day": "number|null",
+      "altitude_deg": "number|null",
+      "is_visible": "boolean|null",
+      "facts_json": "json|null"
+    }
+  },
+  "data": []
+}

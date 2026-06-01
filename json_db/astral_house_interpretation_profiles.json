@@ -26,7 +26,7 @@
   "data": [
     {
       "id": 13,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 1,
       "language_id": 1,
       "astral_system_id": 2,
@@ -115,7 +115,7 @@
     },
     {
       "id": 14,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 2,
       "language_id": 1,
       "astral_system_id": 2,
@@ -206,7 +206,7 @@
     },
     {
       "id": 15,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 3,
       "language_id": 1,
       "astral_system_id": 2,
@@ -299,7 +299,7 @@
     },
     {
       "id": 16,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 4,
       "language_id": 1,
       "astral_system_id": 2,
@@ -389,7 +389,7 @@
     },
     {
       "id": 17,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 5,
       "language_id": 1,
       "astral_system_id": 2,
@@ -479,7 +479,7 @@
     },
     {
       "id": 18,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 6,
       "language_id": 1,
       "astral_system_id": 2,
@@ -572,7 +572,7 @@
     },
     {
       "id": 19,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 7,
       "language_id": 1,
       "astral_system_id": 2,
@@ -662,7 +662,7 @@
     },
     {
       "id": 20,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 8,
       "language_id": 1,
       "astral_system_id": 2,
@@ -755,7 +755,7 @@
     },
     {
       "id": 21,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 9,
       "language_id": 1,
       "astral_system_id": 2,
@@ -847,7 +847,7 @@
     },
     {
       "id": 22,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 10,
       "language_id": 1,
       "astral_system_id": 2,
@@ -940,7 +940,7 @@
     },
     {
       "id": 23,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 11,
       "language_id": 1,
       "astral_system_id": 2,
@@ -1029,7 +1029,7 @@
     },
     {
       "id": 24,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 12,
       "language_id": 1,
       "astral_system_id": 2,

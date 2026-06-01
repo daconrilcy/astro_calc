@@ -1,0 +1,21 @@
+{
+  "name": "astral_calculated_aspects",
+  "structure": {
+    "table_role": "Runtime facts for aspects detected between calculated chart objects.",
+    "columns": {
+      "id": "integer, primary key",
+      "chart_calculation_id": "integer, FK -> astral_chart_calculations.id",
+      "source_chart_object_id": "integer, FK -> astral_chart_objects.id",
+      "target_chart_object_id": "integer, FK -> astral_chart_objects.id",
+      "aspect_id": "integer, FK -> astral_aspects.id",
+      "aspect_definition_id": "integer|null, FK -> astral_aspect_definitions.id",
+      "orb_deg": "number",
+      "phase_state": "string, enum:applying|exact|separating|out_of_orb",
+      "is_applying": "boolean",
+      "is_exact": "boolean",
+      "strength_score": "number|null",
+      "calculation_notes_json": "json|null"
+    }
+  },
+  "data": []
+}

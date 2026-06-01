@@ -23,7 +23,7 @@
       "tradition_code": "traditional",
       "description": "Profil standard des conditions avancees.",
       "is_active": true,
-      "reference_version_id": null
+      "reference_version_id": 1
     }
   ]
 }

@@ -13,6 +13,12 @@ Chaque section doit rester centree sur une table precise et decrire :
 Tables documentees pour l'instant :
 
 - `astral_condition_operators`
+- `astral_chart_calculations`
+- `astral_calculated_chart_object_positions`
+- `astral_calculated_house_cusps`
+- `astral_calculated_aspects`
+- `astral_calculated_dignity_evaluations`
+- `astral_calculated_condition_matches`
 - `astral_chart_objects`
 - `astral_chart_object_definitions`
 - `astral_heliacal_conditions`
@@ -21,6 +27,10 @@ Tables documentees pour l'instant :
 - `astral_houses`
 - `astral_house_systems`
 - `astral_interpretive_valence`
+- `astral_interpretation_signals`
+- `astral_interpretation_signal_evidence`
+- `astral_interpretation_generation_payloads`
+- `astral_aspect_interpretive_effects`
 - `astral_object_motion_states`
 - `astral_object_nature_types`
 - `astral_object_nature_assignments`
@@ -520,7 +530,7 @@ Pour les systemes quadrant-based, le moteur doit gerer les cas de hautes latitud
 
 Cette table n'est pas une donnee astronomique et ne decrit pas un calcul astrologique brut. Elle appartient a la couche semantique et redactionnelle du moteur : elle indique quelle tonalite ou quel effet de formulation utiliser quand une regle astrologique est detectee.
 
-Le champ `name` sert de cle technique existante. Il est notamment reference par `astral_aspect_profiles.interpretive_valence`.
+Le champ `name` sert de cle technique existante. Les effets d'aspects ne le referencent plus par texte libre : ils passent par `astral_aspect_interpretive_effects.interpretive_valence_id` -> `astral_interpretive_valence.id`.
 
 `name` est immuable une fois publie ou reference par une autre table. Le `label`, la `description` et `writing_guidance` peuvent evoluer, mais `name` ne doit pas etre renomme sans migration explicite des donnees dependantes.
 
@@ -584,7 +594,7 @@ Pour une regle astrologique detectee, le runtime peut :
 
 Consommateur confirme :
 
-- `astral_aspect_profiles.interpretive_valence` -> `astral_interpretive_valence.name`.
+- `astral_aspect_interpretive_effects.interpretive_valence_id` -> `astral_interpretive_valence.id`.
 
 Cette relation est justifiee parce que les profils d'aspects ne decrivent pas seulement une geometrie angulaire brute. Ils portent aussi une orientation de lecture utile au moteur de redaction.
 
@@ -612,7 +622,7 @@ Tables a ne pas connecter directement :
 
 Regle de modelisation : si une table ne possede qu'un seul champ `interpretive_valence`, ce champ doit normalement pointer vers une ligne ou `is_tonal_valence = true`. Les lignes ou `is_intensity_modifier = true`, comme `amplifying` ou `obsessive_focus`, doivent plutot etre portees par un champ dedie ou une table d'effets secondaires.
 
-Etat actuel : `astral_aspect_profiles` utilise encore `amplifying` et `obsessive_focus` dans son champ unique `interpretive_valence`. Ce choix reste compatible avec les donnees existantes, mais une evolution plus propre serait de creer une table de liaison, par exemple `astral_aspect_profile_interpretive_effects`, avec un `role` permettant de distinguer `primary_valence`, `intensity_modifier` ou `secondary_effect`.
+Etat actuel : `astral_aspect_profiles.interpretive_valence` a ete retire. La table `astral_aspect_interpretive_effects` porte maintenant les effets interpretatifs avec un `effect_role` permettant de distinguer `primary_valence`, `intensity_modifier` ou `secondary_effect`. Les valeurs `amplifying` et `obsessive_focus` sont donc stockees comme `intensity_modifier` et non comme valence principale.
 
 ### Points de vigilance runtime
 
@@ -638,7 +648,7 @@ La separation retenue est :
 | --- | --- | --- |
 | Identite et calcul | `astral_chart_objects`, `astral_chart_object_definitions` | Identite stable, mode de calcul et proprietes astrologiques de l'objet. |
 | Doctrine | `astral_object_nature_types`, `astral_object_nature_assignments`, `astral_object_sign_dignities` | Classifications dependantes d'une tradition, d'un systeme ou d'une version de referentiel. |
-| Runtime | `astral_object_motion_states` | Etats calcules au moment d'un theme ou d'une prediction. |
+| Runtime | `astral_chart_calculations`, `astral_calculated_chart_object_positions`, `astral_calculated_house_cusps`, `astral_calculated_aspects`, `astral_calculated_dignity_evaluations`, `astral_calculated_condition_matches`, `astral_object_motion_states` | Faits calcules et traces d'evaluation au moment d'un theme ou d'une prediction. |
 | Interpretation | `astral_object_interpretation_profiles`, `interpretive_condition_signal_profiles` | Contrats redactionnels et traduction des scores en signaux lisibles. |
 | Produit et prediction | `prediction_object_category_weights`, `astral_prediction_daily_object_profiles` | Ponderation des objets pour la priorisation des contenus et predictions. |
 
@@ -811,8 +821,9 @@ Elle repond a trois besoins principaux :
 | Champ | Role |
 | --- | --- |
 | `id` | Identifiant stable du profil de calcul. |
-| `zodiac_type` | Type de zodiaque utilise, par exemple `tropical` ou `sidereal`. |
-| `coordinate_mode` | Mode de calcul des coordonnees, par exemple `geocentric`. |
+| `reference_version_id` | Version du referentiel qui porte ce profil de calcul. |
+| `zodiacal_reference_system_id` | Reference vers `astral_zodiacal_reference_systems.id` pour le zodiaque utilise, par exemple tropical ou sideral. |
+| `coordinate_reference_system_id` | Reference vers `astral_zodiacal_reference_systems.id` pour le cadre de coordonnees, par exemple geocentrique ou heliocentrique. |
 | `house_system_id` | Reference vers `astral_house_systems.id`. |
 | `time_step_minutes` | Granularite de balayage temporel du moteur. |
 | `description` | Description humaine du profil et de son usage. |
@@ -821,9 +832,12 @@ Elle repond a trois besoins principaux :
 
 ### Relations
 
-La relation principale est :
+Les relations principales sont :
 
+- `astral_prediction_calculation_profiles.zodiacal_reference_system_id` -> `astral_zodiacal_reference_systems.id` ;
+- `astral_prediction_calculation_profiles.coordinate_reference_system_id` -> `astral_zodiacal_reference_systems.id` ;
 - `astral_prediction_calculation_profiles.house_system_id` -> `astral_house_systems.id`.
+- `astral_prediction_calculation_profiles.reference_version_id` -> `astral_reference_versions.id`.
 
 Ce lien est important car les predictions peuvent dependre des maisons :
 
@@ -839,7 +853,7 @@ Le moteur doit selectionner un profil avant de calculer une prediction.
 Flux attendu :
 
 1. selectionner le profil de calcul ;
-2. lire `zodiac_type`, `coordinate_mode`, `house_system_id` et `time_step_minutes` ;
+2. lire `zodiacal_reference_system_id`, `coordinate_reference_system_id`, `house_system_id` et `time_step_minutes` ;
 3. calculer les positions, transits, entrees en signes, entrees en maisons et evenements selon ces parametres ;
 4. stocker les resultats avec l'identifiant du profil utilise.
 
@@ -847,7 +861,7 @@ Exemple :
 
 1. l'utilisateur demande une prediction premium ;
 2. le moteur selectionne un profil avec un pas de calcul fin ;
-3. le profil indique `tropical`, `geocentric`, `Placidus`, `30` minutes ;
+3. le profil indique `Tropical`, `Geocentric`, `Placidus`, `30` minutes via des FK de referentiel ;
 4. les resultats sont stockes avec ce profil pour rester explicables plus tard.
 
 ### Points de vigilance runtime
@@ -899,6 +913,39 @@ Les tables d'aspects doivent utiliser les identifiants relationnels et non dupli
 
 Les anciennes colonnes polymorphes `source_point_code` et `target_point_code` ont ete retirees. Une FK de point renseignee cible un point exact. Une FK nulle avec `source_body_type` ou `target_body_type` egal a `point` ou `angle` reste une regle generique de categorie. Les contraintes PostgreSQL interdisent qu'une meme extremite melange un objet celeste, un point calcule et un angle.
 
+`astral_aspect_profiles` reste le profil court de scoring et de comportement technique d'un aspect : intensite, polarite, multiplicateur d'orbe, sensibilite a la phase et seuils de force.
+
+`astral_aspect_interpretation_profiles` reste le contenu interpretatif long et multilingue associe a un aspect, un systeme astrologique et une langue.
+
+`astral_aspect_interpretive_effects` fait le lien entre le profil court et les effets redactionnels normalises. Cette table evite de confondre une valence principale avec un modificateur d'intensite :
+
+- `primary_valence` : tonalite principale, par exemple `supportive`, `harmonious`, `dynamic_challenging` ;
+- `intensity_modifier` : effet d'intensification, par exemple `amplifying` ou `obsessive_focus` ;
+- `secondary_effect` : effet complementaire optionnel.
+
+Le runtime ne doit donc plus lire une colonne unique `astral_aspect_profiles.interpretive_valence`.
+
+## Contrats runtime ajoutes
+
+La review a pointe un manque de contrat entre les referentiels statiques et les lectures produites. Les JSON ajoutent maintenant une couche de tables runtime vides, destinees a recevoir les faits calcules et les traces d'audit :
+
+- `astral_chart_calculations` : entete d'un calcul de theme ou de prediction, avec version de referentiel, profil de calcul et payload d'entree ;
+- `astral_calculated_chart_object_positions` : positions calculees des objets, avec longitude, signe, maison, vitesse, etat de mouvement, horizon et visibilite ;
+- `astral_calculated_house_cusps` : cuspides calculees par maison ;
+- `astral_calculated_aspects` : aspects detectes, orbe, phase `applying` / `exact` / `separating` / `out_of_orb` et score de force ;
+- `astral_calculated_dignity_evaluations` : evaluations de dignites essentielles et accidentelles avec score et preuves ;
+- `astral_calculated_condition_matches` : evaluations d'operateurs et de regles, y compris les non-matchs, avec valeurs calculees.
+
+Ces tables ne remplacent pas les referentiels. Elles materialisent la chaine :
+
+`referentiels` -> `faits calcules` -> `conditions matchees` -> `scores/signaux` -> `payload de generation`.
+
+La couche de signaux interpretatifs est egalement explicitee :
+
+- `astral_interpretation_signals` : signaux agreges et priorises avant generation de texte ;
+- `astral_interpretation_signal_evidence` : preuves reliant un signal aux faits calcules ou aux regles matchees ;
+- `astral_interpretation_generation_payloads` : payload final transmis a la couche de generation apres filtrage produit.
+
 ## Catalogue structurel retire
 
 `astral_structural_reference_catalog` a ete retire du schema PostgreSQL. Cette table isolee dupliquait sous forme de tableaux JSON les planetes, signes, classes de signes, dignites et maisons deja exposes par les tables normalisees. Elle ne doit pas devenir une seconde source de verite.
@@ -922,9 +969,18 @@ L'importeur refuse maintenant les noms de fichiers differents du nom de table, l
 
 Les marqueurs declaratifs `unique`, `snake_case` et `enum:` presents dans les descriptions de colonnes sont egalement materialises en contraintes PostgreSQL.
 
-## Referentiels sans version validee
+## Version de referentiel de travail
 
-`astral_reference_versions` est conservee comme table de rattachement, mais elle reste vide tant qu'aucun referentiel n'a ete valide. Les colonnes `reference_version_id` sont donc conservees et nullable. Elles devront pointer vers une ligne de `astral_reference_versions` uniquement lors de la publication explicite d'une version de referentiel.
+`astral_reference_versions` contient maintenant une premiere ligne de travail :
+
+- `id = 1` ;
+- `version = draft_2026_06_01` ;
+- `status = draft` ;
+- `is_locked = false`.
+
+Les lignes versionnables des JSON pointent vers `reference_version_id = 1`. Cela rend l'etat courant reproductible meme avant publication d'une version verrouillee.
+
+Les colonnes `reference_version_id` peuvent rester nullable dans le schema pour faciliter des imports transitoires ou des lignes purement structurelles, mais les donnees de referentiel actives ne doivent plus rester sans version.
 
 Les copies strictement identiques provenant des anciennes versions `1.0.0` et `2.0.0` ont ete fusionnees. Les FK internes ont ete remappees vers les lignes conservees avant la suppression de ces deux versions.
 
@@ -942,13 +998,20 @@ Inventaire genere depuis le schema PostgreSQL `public` le 1er juin 2026. Ces des
 - `astral_angle_points` : referentiel des angles principaux du theme natal : Ascendant, Descendant, Milieu du Ciel et Fond du Ciel.
 - `astral_aspect_families` : familles utilisees pour classer les aspects, par exemple les aspects majeurs.
 - `astral_aspect_interpretation_profiles` : contenus interpretatifs multilingues associes a un aspect et a un systeme astrologique.
+- `astral_aspect_interpretive_effects` : liaison entre un profil court d'aspect et ses effets interpretatifs, avec role `primary_valence`, `intensity_modifier` ou `secondary_effect`.
 - `astral_aspect_orb_rules` : regles prioritaires qui specialisent les orbes par contexte de calcul et par type d'objet, point ou angle.
 - `astral_aspects` : referentiel canonique des aspects astrologiques et de leur angle geometrique.
 - `astral_astrological_roles` : roles interpretatifs attribuables aux objets d'un theme, par exemple luminaire ou planete.
+- `astral_calculated_aspects` : faits runtime des aspects detectes entre objets calcules, avec orbe, phase dynamique et force.
+- `astral_calculated_chart_object_positions` : faits runtime des positions d'objets, avec longitude, signe, maison, vitesse, horizon et visibilite.
+- `astral_calculated_condition_matches` : audit runtime des conditions et operateurs evalues, y compris les non-matchs.
+- `astral_calculated_dignity_evaluations` : audit runtime des dignites essentielles et accidentelles detectees et scorees.
+- `astral_calculated_house_cusps` : faits runtime des cuspides de maisons calculees.
 - `astral_calculation_types` : modes d'obtention d'une position astrologique, par exemple calcul astronomique ou point derive.
+- `astral_chart_calculations` : entete runtime d'un calcul de theme ou de prediction, rattachee a une version de referentiel et a un profil de calcul.
 - `astral_constellations` : catalogue des constellations avec leur nom latin, abbreviation, hemisphere et statut zodiacal.
 - `astral_decan_system_code` : referentiel des systemes de decans utilisables pour attribuer un maitre aux tranches de dix degres.
-- `astral_diginity_score_profiles` : profils de calcul des scores de dignite essentielle selon une tradition ou un systeme astrologique.
+- `astral_dignity_score_profiles` : profils de calcul des scores de dignite essentielle et accidentelle selon une tradition ou un systeme astrologique.
 - `astral_dignity_functional_effects` : effets normalises d'une dignite sur la capacite fonctionnelle d'une planete.
 - `astral_dignity_intensity_effects` : niveaux normalises de l'intensite produite par une dignite.
 - `astral_dignity_type` : liste compacte des types de dignite essentielle utilises par les tables de correspondance historiques.
@@ -968,6 +1031,9 @@ Inventaire genere depuis le schema PostgreSQL `public` le 1er juin 2026. Ces des
 - `astral_house_axis_members` : liaison entre un axe de maisons et les deux maisons opposees qui le composent.
 - `astral_house_category_weights` : ponderation des categories de prediction par maison avec indication du role de routage.
 - `astral_house_interpretation_profiles` : contenus interpretatifs multilingues associes a chaque maison et systeme astrologique.
+- `astral_interpretation_generation_payloads` : payloads finalises transmis a la couche de generation apres agregation et priorisation.
+- `astral_interpretation_signal_evidence` : preuves reliant un signal interpretatif aux faits calcules ou aux regles matchees.
+- `astral_interpretation_signals` : signaux interpretatifs agreges et priorises avant generation de texte.
 - `astral_interpretation_themes` : themes semantiques versionnables utilises pour organiser les signaux interpretatifs.
 - `astral_modalities` : referentiel des modalites zodiacales cardinal, fixe et mutable.
 - `astral_object_types` : nature physique ou structurelle d'un objet manipulable dans un theme astrologique.

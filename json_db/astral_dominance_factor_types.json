@@ -27,7 +27,7 @@
       "sort_order": 1,
       "is_active": true,
       "description": "Planete gouvernant le signe de l'Ascendant.",
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "id": 10,
@@ -38,7 +38,7 @@
       "sort_order": 2,
       "is_active": true,
       "description": "Planete situee en maison angulaire ou proche d'un angle.",
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "id": 11,
@@ -49,7 +49,7 @@
       "sort_order": 3,
       "is_active": true,
       "description": "Force issue du PlanetConditionProfile.",
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "id": 12,
@@ -60,7 +60,7 @@
       "sort_order": 4,
       "is_active": true,
       "description": "Visibilite issue du PlanetConditionProfile.",
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "id": 13,
@@ -71,7 +71,7 @@
       "sort_order": 5,
       "is_active": true,
       "description": "Planete la plus proche du Milieu du Ciel ou la plus elevee selon le modele retenu.",
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "id": 14,
@@ -82,7 +82,7 @@
       "sort_order": 6,
       "is_active": true,
       "description": "Poids specifique du Soleil et de la Lune dans la structure globale du theme.",
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "id": 15,
@@ -93,7 +93,7 @@
       "sort_order": 7,
       "is_active": true,
       "description": "Nombre et importance des maisons gouvernees par une planete.",
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "id": 16,
@@ -104,7 +104,7 @@
       "sort_order": 8,
       "is_active": true,
       "description": "Centralite d'une planete dans le reseau d'aspects.",
-      "reference_version_id": null
+      "reference_version_id": 1
     }
   ]
 }

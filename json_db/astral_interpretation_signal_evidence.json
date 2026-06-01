@@ -1,0 +1,15 @@
+{
+  "name": "astral_interpretation_signal_evidence",
+  "structure": {
+    "table_role": "Traceability rows linking interpretation signals to calculated facts and matched rules.",
+    "columns": {
+      "id": "integer, primary key",
+      "interpretation_signal_id": "integer, FK -> astral_interpretation_signals.id",
+      "evidence_table": "string",
+      "evidence_id": "integer|null",
+      "evidence_json": "json|null",
+      "sort_order": "integer"
+    }
+  },
+  "data": []
+}

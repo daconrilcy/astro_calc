@@ -13,7 +13,7 @@
   "data": [
     {
       "id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 1,
       "house_kind": "angular",
       "visibility_weight": 1.0,
@@ -23,7 +23,7 @@
     },
     {
       "id": 2,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 2,
       "house_kind": "succedent",
       "visibility_weight": 0.7,
@@ -33,7 +33,7 @@
     },
     {
       "id": 3,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 3,
       "house_kind": "cadent",
       "visibility_weight": 0.5,
@@ -43,7 +43,7 @@
     },
     {
       "id": 4,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 4,
       "house_kind": "angular",
       "visibility_weight": 0.9,
@@ -53,7 +53,7 @@
     },
     {
       "id": 5,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 5,
       "house_kind": "succedent",
       "visibility_weight": 0.7,
@@ -63,7 +63,7 @@
     },
     {
       "id": 6,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 6,
       "house_kind": "cadent",
       "visibility_weight": 0.6,
@@ -73,7 +73,7 @@
     },
     {
       "id": 7,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 7,
       "house_kind": "angular",
       "visibility_weight": 0.9,
@@ -83,7 +83,7 @@
     },
     {
       "id": 8,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 8,
       "house_kind": "succedent",
       "visibility_weight": 0.7,
@@ -93,7 +93,7 @@
     },
     {
       "id": 9,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 9,
       "house_kind": "cadent",
       "visibility_weight": 0.5,
@@ -103,7 +103,7 @@
     },
     {
       "id": 10,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 10,
       "house_kind": "angular",
       "visibility_weight": 1.0,
@@ -113,7 +113,7 @@
     },
     {
       "id": 11,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 11,
       "house_kind": "succedent",
       "visibility_weight": 0.6,
@@ -123,7 +123,7 @@
     },
     {
       "id": 12,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "house_id": 12,
       "house_kind": "cadent",
       "visibility_weight": 0.4,

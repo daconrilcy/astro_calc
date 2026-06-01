@@ -23,7 +23,7 @@
       "category": "behavioral",
       "description": "Thematique liee a l'action, l'affirmation et l'impulsion.",
       "is_active": true,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "id": 6,
@@ -32,7 +32,7 @@
       "category": "expression",
       "description": "Thematique liee a l'expression visible et exterieure.",
       "is_active": true,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "id": 7,
@@ -41,7 +41,7 @@
       "category": "tension",
       "description": "Thematique de tension, pression ou limitation.",
       "is_active": true,
-      "reference_version_id": null
+      "reference_version_id": 1
     },
     {
       "id": 8,
@@ -50,7 +50,7 @@
       "category": "functional",
       "description": "Thematique de responsabilite, stabilite et structuration.",
       "is_active": true,
-      "reference_version_id": null
+      "reference_version_id": 1
     }
   ]
 }

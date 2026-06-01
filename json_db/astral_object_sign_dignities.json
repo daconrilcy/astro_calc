@@ -22,7 +22,7 @@
   "data": [
     {
       "id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 1,
       "chart_object_id": 5,
@@ -32,7 +32,7 @@
     },
     {
       "id": 2,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 2,
       "chart_object_id": 4,
@@ -42,7 +42,7 @@
     },
     {
       "id": 3,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 3,
       "chart_object_id": 3,
@@ -52,7 +52,7 @@
     },
     {
       "id": 4,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 4,
       "chart_object_id": 2,
@@ -62,7 +62,7 @@
     },
     {
       "id": 5,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 5,
       "chart_object_id": 1,
@@ -72,7 +72,7 @@
     },
     {
       "id": 6,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 6,
       "chart_object_id": 3,
@@ -82,7 +82,7 @@
     },
     {
       "id": 7,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 7,
       "chart_object_id": 4,
@@ -92,7 +92,7 @@
     },
     {
       "id": 8,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 8,
       "chart_object_id": 5,
@@ -102,7 +102,7 @@
     },
     {
       "id": 9,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 9,
       "chart_object_id": 6,
@@ -112,7 +112,7 @@
     },
     {
       "id": 10,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 10,
       "chart_object_id": 7,
@@ -122,7 +122,7 @@
     },
     {
       "id": 11,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 11,
       "chart_object_id": 7,
@@ -132,7 +132,7 @@
     },
     {
       "id": 12,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 12,
       "chart_object_id": 6,
@@ -142,7 +142,7 @@
     },
     {
       "id": 13,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 7,
       "chart_object_id": 5,
@@ -152,7 +152,7 @@
     },
     {
       "id": 14,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 8,
       "chart_object_id": 4,
@@ -162,7 +162,7 @@
     },
     {
       "id": 15,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 9,
       "chart_object_id": 3,
@@ -172,7 +172,7 @@
     },
     {
       "id": 16,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 10,
       "chart_object_id": 2,
@@ -182,7 +182,7 @@
     },
     {
       "id": 17,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 11,
       "chart_object_id": 1,
@@ -192,7 +192,7 @@
     },
     {
       "id": 18,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 12,
       "chart_object_id": 3,
@@ -202,7 +202,7 @@
     },
     {
       "id": 19,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 1,
       "chart_object_id": 4,
@@ -212,7 +212,7 @@
     },
     {
       "id": 20,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 2,
       "chart_object_id": 5,
@@ -222,7 +222,7 @@
     },
     {
       "id": 21,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 3,
       "chart_object_id": 6,
@@ -232,7 +232,7 @@
     },
     {
       "id": 22,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 4,
       "chart_object_id": 7,
@@ -242,7 +242,7 @@
     },
     {
       "id": 23,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 5,
       "chart_object_id": 7,
@@ -252,7 +252,7 @@
     },
     {
       "id": 24,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 6,
       "chart_object_id": 6,
@@ -262,7 +262,7 @@
     },
     {
       "id": 25,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 1,
       "chart_object_id": 1,
@@ -272,7 +272,7 @@
     },
     {
       "id": 26,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 2,
       "chart_object_id": 2,
@@ -282,7 +282,7 @@
     },
     {
       "id": 27,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 4,
       "chart_object_id": 6,
@@ -292,7 +292,7 @@
     },
     {
       "id": 28,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 6,
       "chart_object_id": 3,
@@ -302,7 +302,7 @@
     },
     {
       "id": 29,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 7,
       "chart_object_id": 7,
@@ -312,7 +312,7 @@
     },
     {
       "id": 30,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 10,
       "chart_object_id": 5,
@@ -322,7 +322,7 @@
     },
     {
       "id": 31,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 12,
       "chart_object_id": 4,
@@ -332,7 +332,7 @@
     },
     {
       "id": 32,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 7,
       "chart_object_id": 1,
@@ -342,7 +342,7 @@
     },
     {
       "id": 33,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 8,
       "chart_object_id": 2,
@@ -352,7 +352,7 @@
     },
     {
       "id": 34,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 10,
       "chart_object_id": 6,
@@ -362,7 +362,7 @@
     },
     {
       "id": 35,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 12,
       "chart_object_id": 3,
@@ -372,7 +372,7 @@
     },
     {
       "id": 36,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 1,
       "chart_object_id": 7,
@@ -382,7 +382,7 @@
     },
     {
       "id": 37,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 4,
       "chart_object_id": 5,
@@ -392,7 +392,7 @@
     },
     {
       "id": 38,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 1,
       "astral_sign_id": 6,
       "chart_object_id": 4,
@@ -402,7 +402,7 @@
     },
     {
       "id": 39,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 2,
       "astral_sign_id": 8,
       "chart_object_id": 8,
@@ -412,7 +412,7 @@
     },
     {
       "id": 40,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 2,
       "astral_sign_id": 11,
       "chart_object_id": 9,
@@ -422,7 +422,7 @@
     },
     {
       "id": 41,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 2,
       "astral_sign_id": 12,
       "chart_object_id": 10,
@@ -432,7 +432,7 @@
     },
     {
       "id": 42,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 2,
       "astral_sign_id": 2,
       "chart_object_id": 8,
@@ -442,7 +442,7 @@
     },
     {
       "id": 43,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 2,
       "astral_sign_id": 5,
       "chart_object_id": 9,
@@ -452,7 +452,7 @@
     },
     {
       "id": 44,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 2,
       "astral_sign_id": 6,
       "chart_object_id": 10,
@@ -462,7 +462,7 @@
     },
     {
       "id": 45,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 2,
       "astral_sign_id": 11,
       "chart_object_id": 8,
@@ -472,7 +472,7 @@
     },
     {
       "id": 46,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 2,
       "astral_sign_id": 8,
       "chart_object_id": 9,
@@ -482,7 +482,7 @@
     },
     {
       "id": 47,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 2,
       "astral_sign_id": 5,
       "chart_object_id": 10,
@@ -492,7 +492,7 @@
     },
     {
       "id": 48,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 2,
       "astral_sign_id": 5,
       "chart_object_id": 8,
@@ -502,7 +502,7 @@
     },
     {
       "id": 49,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 2,
       "astral_sign_id": 2,
       "chart_object_id": 9,
@@ -512,7 +512,7 @@
     },
     {
       "id": 50,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "astral_system_id": 2,
       "astral_sign_id": 11,
       "chart_object_id": 10,

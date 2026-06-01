@@ -14,7 +14,7 @@
   "data": [
     {
       "id": 1,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "code": "energy",
       "name": "Energy",
       "display_name": "Énergie",
@@ -25,7 +25,7 @@
     },
     {
       "id": 2,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "code": "mood",
       "name": "Mood",
       "display_name": "Humeur",
@@ -36,7 +36,7 @@
     },
     {
       "id": 3,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "code": "health",
       "name": "Health",
       "display_name": "Santé",
@@ -47,7 +47,7 @@
     },
     {
       "id": 4,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "code": "work",
       "name": "Work",
       "display_name": "Travail",
@@ -58,7 +58,7 @@
     },
     {
       "id": 5,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "code": "career",
       "name": "Career",
       "display_name": "Carrière",
@@ -69,7 +69,7 @@
     },
     {
       "id": 6,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "code": "money",
       "name": "Money",
       "display_name": "Argent",
@@ -80,7 +80,7 @@
     },
     {
       "id": 7,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "code": "love",
       "name": "Love",
       "display_name": "Amour",
@@ -91,7 +91,7 @@
     },
     {
       "id": 8,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "code": "sex_intimacy",
       "name": "Sex & Intimacy",
       "display_name": "Intimité",
@@ -102,7 +102,7 @@
     },
     {
       "id": 9,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "code": "family_home",
       "name": "Family & Home",
       "display_name": "Famille & Foyer",
@@ -113,7 +113,7 @@
     },
     {
       "id": 10,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "code": "social_network",
       "name": "Social Network",
       "display_name": "Réseau social",
@@ -124,7 +124,7 @@
     },
     {
       "id": 11,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "code": "communication",
       "name": "Communication",
       "display_name": "Communication",
@@ -135,7 +135,7 @@
     },
     {
       "id": 12,
-      "reference_version_id": null,
+      "reference_version_id": 1,
       "code": "pleasure_creativity",
       "name": "Pleasure & Creativity",
       "display_name": "Plaisir & Créativité",

@@ -1,7 +1,7 @@
 {
   "name": "astral_essential_dignity_score_weights",
   "structure": {
-    "score_profile_id": "integer, FK -> astral_diginity_score_profiles.id",
+    "score_profile_id": "integer, FK -> astral_dignity_score_profiles.id",
     "essential_dignity_types_id": "integer, FK -> astral_essential_dignity_types.id",
     "score_value": "number",
     "functional_weight": "number",

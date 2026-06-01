@@ -5,7 +5,7 @@
     "name": "string, unique, snake_case",
     "label": "string",
     "description": "string",
-    "house_numbers_json": "array",
+    "house_numbers_json": "array, documentary only; runtime source of truth is astral_houses.house_modality_id",
     "accidental_strength": "string",
     "score_modifier": "string",
     "interpretation_weight": "string",
