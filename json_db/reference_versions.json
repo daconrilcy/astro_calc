@@ -1,0 +1,26 @@
+{
+  "name": "reference_versions",
+  "structure": {
+    "id": "integer, primary key",
+    "version": "string, unique",
+    "description": "string",
+    "is_locked": "boolean",
+    "created_at": "datetime"
+  },
+  "data": [
+    {
+      "id": 1,
+      "version": "2.0.0",
+      "description": "Initial seeded version",
+      "is_locked": true,
+      "created_at": "2026-05-30 13:24:20.198857"
+    },
+    {
+      "id": 2,
+      "version": "1.0.0",
+      "description": "Initial seeded version",
+      "is_locked": true,
+      "created_at": "2026-05-30 15:30:13.877603"
+    }
+  ]
+}

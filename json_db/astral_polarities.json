@@ -1,0 +1,20 @@
+{
+  "name": "astral_polarities",
+  "structure": {
+    "id": "integer, primary key",
+    "code": "string, unique, snake_case",
+    "name": "string"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "yang",
+      "name": "Yang"
+    },
+    {
+      "id": 2,
+      "code": "yin",
+      "name": "Yin"
+    }
+  ]
+}

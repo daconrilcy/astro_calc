@@ -1,0 +1,25 @@
+{
+  "name": "astral_speed_classes",
+  "structure": {
+    "id": "integer, primary key",
+    "name": "string, unique",
+    "speed_rank": "integer|null"
+  },
+  "data": [
+    {
+      "id": 1,
+      "name": "fast",
+      "speed_rank": 1
+    },
+    {
+      "id": 2,
+      "name": "medium",
+      "speed_rank": null
+    },
+    {
+      "id": 3,
+      "name": "slow",
+      "speed_rank": null
+    }
+  ]
+}
