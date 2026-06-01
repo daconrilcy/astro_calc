@@ -2,10 +2,15 @@
   "name": "astral_interpretation_signals",
   "structure": {
     "table_role": "Aggregated interpretation signals produced from calculated facts before text generation.",
+    "unique_key": [
+      "chart_calculation_id",
+      "signal_key"
+    ],
     "columns": {
       "id": "integer, primary key",
       "chart_calculation_id": "integer, FK -> astral_chart_calculations.id",
       "reference_version_id": "integer, FK -> astral_reference_versions.id",
+      "signal_key": "string",
       "signal_type_id": "integer|null, FK -> astral_interpretation_signal_types.id",
       "theme_code": "string|null",
       "title": "string",

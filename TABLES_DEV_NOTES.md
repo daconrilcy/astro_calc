@@ -13,6 +13,7 @@ Chaque section doit rester centree sur une table precise et decrire :
 Tables documentees pour l'instant :
 
 - `astral_condition_operators`
+- `astral_coordinate_reference_systems`
 - `astral_chart_calculations`
 - `astral_calculated_chart_object_positions`
 - `astral_calculated_house_cusps`
@@ -823,7 +824,7 @@ Elle repond a trois besoins principaux :
 | `id` | Identifiant stable du profil de calcul. |
 | `reference_version_id` | Version du referentiel qui porte ce profil de calcul. |
 | `zodiacal_reference_system_id` | Reference vers `astral_zodiacal_reference_systems.id` pour le zodiaque utilise, par exemple tropical ou sideral. |
-| `coordinate_reference_system_id` | Reference vers `astral_zodiacal_reference_systems.id` pour le cadre de coordonnees, par exemple geocentrique ou heliocentrique. |
+| `coordinate_reference_system_id` | Reference vers `astral_coordinate_reference_systems.id` pour le cadre de coordonnees, par exemple geocentrique ou heliocentrique. |
 | `house_system_id` | Reference vers `astral_house_systems.id`. |
 | `time_step_minutes` | Granularite de balayage temporel du moteur. |
 | `description` | Description humaine du profil et de son usage. |
@@ -835,7 +836,7 @@ Elle repond a trois besoins principaux :
 Les relations principales sont :
 
 - `astral_prediction_calculation_profiles.zodiacal_reference_system_id` -> `astral_zodiacal_reference_systems.id` ;
-- `astral_prediction_calculation_profiles.coordinate_reference_system_id` -> `astral_zodiacal_reference_systems.id` ;
+- `astral_prediction_calculation_profiles.coordinate_reference_system_id` -> `astral_coordinate_reference_systems.id` ;
 - `astral_prediction_calculation_profiles.house_system_id` -> `astral_house_systems.id`.
 - `astral_prediction_calculation_profiles.reference_version_id` -> `astral_reference_versions.id`.
 
@@ -863,6 +864,10 @@ Exemple :
 2. le moteur selectionne un profil avec un pas de calcul fin ;
 3. le profil indique `Tropical`, `Geocentric`, `Placidus`, `30` minutes via des FK de referentiel ;
 4. les resultats sont stockes avec ce profil pour rester explicables plus tard.
+
+`astral_zodiacal_reference_systems` reste limite aux systemes zodiacaux, comme `tropical`, `sidereal` ou `draconic`.
+
+`astral_coordinate_reference_systems` porte les cadres et grilles de coordonnees, comme `geocentric`, `heliocentric`, `topocentric`, `ecliptic` ou `equatorial`. Le runtime ne doit donc pas chercher `geocentric` dans la table zodiacale.
 
 ### Points de vigilance runtime
 
@@ -929,8 +934,8 @@ Le runtime ne doit donc plus lire une colonne unique `astral_aspect_profiles.int
 
 La review a pointe un manque de contrat entre les referentiels statiques et les lectures produites. Les JSON ajoutent maintenant une couche de tables runtime vides, destinees a recevoir les faits calcules et les traces d'audit :
 
-- `astral_chart_calculations` : entete d'un calcul de theme ou de prediction, avec version de referentiel, profil de calcul et payload d'entree ;
-- `astral_calculated_chart_object_positions` : positions calculees des objets, avec longitude, signe, maison, vitesse, etat de mouvement, horizon et visibilite ;
+- `astral_chart_calculations` : entete d'un calcul de theme ou de prediction, avec version de referentiel, profil de calcul, statut d'execution, hash d'entree, versions moteur/ephemeride, dates de debut/fin et erreur eventuelle ;
+- `astral_calculated_chart_object_positions` : positions calculees des objets, avec zodiaque, repere de coordonnees, longitude, signe, maison, vitesse, etat de mouvement, horizon et visibilite ;
 - `astral_calculated_house_cusps` : cuspides calculees par maison ;
 - `astral_calculated_aspects` : aspects detectes, orbe, phase `applying` / `exact` / `separating` / `out_of_orb` et score de force ;
 - `astral_calculated_dignity_evaluations` : evaluations de dignites essentielles et accidentelles avec score et preuves ;
@@ -945,6 +950,166 @@ La couche de signaux interpretatifs est egalement explicitee :
 - `astral_interpretation_signals` : signaux agreges et priorises avant generation de texte ;
 - `astral_interpretation_signal_evidence` : preuves reliant un signal aux faits calcules ou aux regles matchees ;
 - `astral_interpretation_generation_payloads` : payload final transmis a la couche de generation apres filtrage produit.
+
+Le write path attendu est strict :
+
+1. creer `astral_chart_calculations` avec `status = running`, `started_at`, `heartbeat_at`, `input_hash`, `idempotency_key`, `execution_attempt`, `engine_version` et `ephemeris_version` ;
+2. ecrire les faits calcules : positions, cuspides, aspects, dignites et conditions ;
+3. agregger les signaux interpretatifs et leurs preuves ;
+4. ecrire le payload final de generation ;
+5. passer `astral_chart_calculations.status` a `completed` avec `finished_at`, ou a `failed` avec `error_code` et `error_message`.
+
+### astral_chart_calculations
+
+`astral_chart_calculations` est l'entete d'audit d'une execution de calcul.
+
+Champs critiques :
+
+| Champ | Role |
+| --- | --- |
+| `reference_version_id` | Version de referentiel utilisee. |
+| `calculation_profile_id` | Profil technique de calcul, nullable pour certains calculs non prediction. |
+| `chart_type` | Type d'execution : `natal`, `transit`, `progression` ou `prediction`. |
+| `status` | Etat d'execution : `running`, `completed` ou `failed`. |
+| `input_hash` | Hash stable du payload d'entree normalise. |
+| `idempotency_key` | Cle derivee de l'entree, du profil, de la version de referentiel, du moteur et de l'ephemeride. |
+| `execution_attempt` | Numero de tentative pour une meme cle d'idempotence. |
+| `engine_version` | Version du moteur applicatif. |
+| `ephemeris_version` | Version ou source d'ephemeride utilisee. |
+| `heartbeat_at` | Dernier signe de vie de l'execution `running`. |
+| `progress_state` | Etape applicative courante, par exemple `positions_written`, `signals_aggregated` ou `payload_written`. |
+| `stale_after_seconds` | Seuil apres lequel une execution `running` sans heartbeat devient stale. |
+| `started_at` / `finished_at` | Bornes temporelles de l'execution. |
+| `error_code` / `error_message` | Erreur renseignee uniquement si `status = failed`. |
+
+Contraintes materialisees :
+
+- `(idempotency_key, execution_attempt)` est unique ;
+- `started_at` est obligatoire pour toute execution ;
+- `heartbeat_at` est obligatoire tant que `status = running` ;
+- `stale_after_seconds`, s'il est renseigne, doit etre strictement positif ;
+- `finished_at` est obligatoire pour `completed` et `failed` ;
+- `finished_at` reste nul pour `running` ;
+- `error_code` et `error_message` sont reserves aux executions `failed` ;
+- une execution `failed` doit porter au moins `error_code` ;
+- `started_at <= finished_at` quand les deux dates existent ;
+- `heartbeat_at` doit rester entre `started_at` et `finished_at` quand ces bornes existent.
+
+La transition d'etat doit etre controlee cote application : `running -> completed` ou `running -> failed`. Une execution terminale ne doit pas revenir a `running`.
+
+Politique d'idempotence :
+
+- si une execution `completed` existe deja pour la meme `idempotency_key`, le runtime doit reutiliser ses faits calcules ;
+- si une execution `running` non stale existe deja pour la meme `idempotency_key`, le runtime doit se rattacher a l'execution en cours ou attendre son resultat ;
+- si une execution `running` est stale, le runtime doit d'abord la passer en `failed` avec `error_code = stale_running_timeout`, puis creer une nouvelle tentative ;
+- si la derniere execution est `failed`, le runtime peut creer une nouvelle ligne avec le meme `idempotency_key` et `execution_attempt + 1`.
+
+Generation de `idempotency_key` :
+
+- normaliser strictement le payload d'entree avant hash : ordre stable des cles JSON, formats numeriques et temporels canoniques, absence de champs volatils ;
+- inclure au minimum `input_hash`, `reference_version_id`, `calculation_profile_id`, `engine_version`, `ephemeris_version`, `zodiacal_reference_system_id`, `coordinate_reference_system_id` et `house_system_id` ;
+- utiliser un algorithme de hash documente et stable, recommande `SHA-256`, puis stocker la cle sous forme textuelle reproductible ;
+- deux workers recevant la meme demande logique doivent produire exactement le meme `idempotency_key`.
+
+Contrat de concurrence :
+
+1. ouvrir une transaction ;
+2. prendre un verrou logique sur `idempotency_key`, par exemple `pg_advisory_xact_lock(lock_hash(idempotency_key))`, ou verrouiller les lignes existantes avec `SELECT ... FOR UPDATE` ;
+3. relire les executions existantes pour cette cle dans la transaction ;
+4. appliquer la politique d'idempotence ci-dessus ;
+5. inserer au plus une nouvelle tentative avec `execution_attempt = max(existing.execution_attempt) + 1`.
+
+La contrainte unique `(idempotency_key, execution_attempt)` reste le dernier filet de securite, mais le runtime ne doit pas s'appuyer uniquement dessus pour gerer la concurrence.
+
+Le `lock_hash` utilise pour l'advisory lock doit etre stable entre workers, langages et environnements. Il doit etre implemente explicitement dans le code, documente, teste avec des vecteurs fixes, et ne doit pas dependre d'un hash runtime non deterministe.
+
+Politique `stale running` :
+
+- une execution est stale quand `status = running` et que `now() - heartbeat_at` depasse `stale_after_seconds` ;
+- si `stale_after_seconds` est nul, le runtime doit appliquer son seuil applicatif par defaut, recommande a 900 secondes pour une premiere implementation ;
+- chaque etape longue doit mettre a jour `heartbeat_at` et, si utile, `progress_state` ;
+- une execution stale doit etre terminee en `failed` avant de creer une nouvelle tentative pour la meme cle.
+
+### astral_calculated_chart_object_positions
+
+`astral_calculated_chart_object_positions` stocke les positions factuelles des objets d'un theme calcule.
+
+Chaque ligne doit etre rattachee a `chart_calculation_id` et `chart_object_id`. Les champs `zodiacal_reference_system_id` et `coordinate_reference_system_id` rendent explicites le zodiaque et le repere de calcul. Le runtime doit remplir au minimum `longitude_deg`, puis renseigner `sign_id`, `house_id`, `motion_state_id`, `horizon_position_id`, `apparent_speed_deg_per_day`, `altitude_deg` et `is_visible` quand ces informations sont disponibles.
+
+Regle d'ecriture : une execution ne doit pas melanger plusieurs systemes de reference pour un meme objet sauf si le besoin est explicite et trace dans `facts_json`.
+
+Contrainte d'unicite : une position est unique par `(chart_calculation_id, chart_object_id, zodiacal_reference_system_id, coordinate_reference_system_id)`.
+
+Exemple : Mars en longitude tropicale geocentrique, avec signe, maison, vitesse apparente et etat de mouvement.
+
+### astral_calculated_aspects
+
+`astral_calculated_aspects` stocke les aspects detectes entre deux objets calcules.
+
+Champs critiques :
+
+- `source_chart_object_id` et `target_chart_object_id` identifient les deux objets ;
+- `aspect_id` identifie l'aspect geometrique ;
+- `aspect_definition_id` rattache l'aspect au systeme astrologique si une definition active existe ;
+- `orb_deg` stocke l'ecart a l'exactitude ;
+- `phase_state` distingue `applying`, `exact`, `separating` et `out_of_orb` ;
+- `strength_score` porte la force calculee apres orbe, phase et ponderations.
+
+Le runtime doit conserver les aspects `out_of_orb` uniquement si cela sert l'audit ou le debug. Pour les lectures utilisateur, seuls les aspects actifs ou retenus par les profils doivent alimenter les signaux.
+
+Contrainte d'unicite : un aspect est unique par `(chart_calculation_id, source_chart_object_id, target_chart_object_id, aspect_id)`. Pour les aspects symetriques, le runtime doit canonicaliser l'ordre source/cible avant insertion afin d'eviter les doublons inverses.
+
+### astral_calculated_condition_matches
+
+`astral_calculated_condition_matches` trace l'evaluation des operateurs et regles.
+
+Une ligne peut representer un match ou un non-match. `matched = false` est utile pour expliquer pourquoi une dignite, un signal ou une prediction n'a pas ete retenu.
+
+Le runtime doit renseigner :
+
+- `condition_match_key`, cle stable derivee de l'operateur ou de la regle, du payload normalise et du contexte evalue ;
+- `condition_operator_id` quand l'evaluation repose sur `astral_condition_operators` ;
+- `rule_table` et `rule_id` quand l'evaluation provient d'une table de regles ;
+- `condition_payload_json` avec le payload exact evalue ;
+- `calculated_values_json` avec les valeurs numeriques ou booleennes produites ;
+- `explanation` avec une phrase courte d'audit.
+
+Cette table est la preuve technique entre les faits calcules et les conclusions astrologiques.
+
+Contrainte d'unicite : une evaluation est unique par `(chart_calculation_id, condition_match_key)`.
+
+### astral_interpretation_signals
+
+`astral_interpretation_signals` est la couche agregee entre les faits techniques et le texte final.
+
+Chaque signal doit etre rattache a un `chart_calculation_id` et a une `reference_version_id`. `signal_key` identifie la conclusion agregee de facon stable pour un calcul donne. `signal_type_id` est utilise quand le signal correspond a un type versionne ; `theme_code` peut aider au regroupement editorial.
+
+Regles de remplissage :
+
+- `priority_score` doit refleter la priorite finale apres ponderations ;
+- `confidence_score` doit baisser si le signal depend de faits faibles, ambigus ou incomplets ;
+- `suppression_state = active` signifie que le signal peut alimenter le payload ;
+- `suppression_state = suppressed` signifie qu'il est conserve pour audit mais exclu du texte ;
+- `suppression_state = merged` signifie qu'il a ete fusionne dans un signal plus large.
+
+Les preuves doivent etre ecrites dans `astral_interpretation_signal_evidence`.
+
+Contrainte d'unicite : un signal est unique par `(chart_calculation_id, signal_key)`.
+
+### astral_interpretation_generation_payloads
+
+`astral_interpretation_generation_payloads` stocke le payload final transmis a la couche de generation.
+
+`payload_json` doit contenir uniquement les signaux retenus, les contraintes produit, le niveau de profondeur, les consignes de style et les preuves utiles a la generation. Il ne doit pas contenir une copie brute de tous les faits runtime.
+
+Regle d'ecriture :
+
+- un payload doit etre cree apres l'agregation des signaux ;
+- `product_code` doit identifier le niveau produit quand il existe, par exemple `basic` ou `premium` ;
+- `language_id` doit identifier la langue cible quand elle est connue ;
+- `created_at` doit correspondre au moment ou le payload est fige ;
+- une nouvelle generation avec le meme calcul mais un produit ou une langue differente doit creer un nouveau payload ;
+- un payload est unique par `(chart_calculation_id, product_code, language_id)`.
 
 ## Catalogue structurel retire
 
@@ -982,6 +1147,12 @@ Les lignes versionnables des JSON pointent vers `reference_version_id = 1`. Cela
 
 Les colonnes `reference_version_id` peuvent rester nullable dans le schema pour faciliter des imports transitoires ou des lignes purement structurelles, mais les donnees de referentiel actives ne doivent plus rester sans version.
 
+Les tables versionnables qui portent un champ `is_active` materialisent cette regle avec un check `active_requires_reference_version` :
+
+`NOT is_active OR reference_version_id IS NOT NULL`.
+
+Une ligne inactive ou transitoire peut donc rester sans version, mais aucune ligne active de ces tables ne peut etre importee sans rattachement a `astral_reference_versions`.
+
 Les copies strictement identiques provenant des anciennes versions `1.0.0` et `2.0.0` ont ete fusionnees. Les FK internes ont ete remappees vers les lignes conservees avant la suppression de ces deux versions.
 
 ## Descriptions des tables PostgreSQL ajoutees a l'inventaire
@@ -1010,11 +1181,12 @@ Inventaire genere depuis le schema PostgreSQL `public` le 1er juin 2026. Ces des
 - `astral_calculation_types` : modes d'obtention d'une position astrologique, par exemple calcul astronomique ou point derive.
 - `astral_chart_calculations` : entete runtime d'un calcul de theme ou de prediction, rattachee a une version de referentiel et a un profil de calcul.
 - `astral_constellations` : catalogue des constellations avec leur nom latin, abbreviation, hemisphere et statut zodiacal.
+- `astral_coordinate_reference_systems` : cadres et grilles de coordonnees utilises par les calculs, par exemple geocentrique, heliocentrique, topocentrique, ecliptique ou equatorial.
 - `astral_decan_system_code` : referentiel des systemes de decans utilisables pour attribuer un maitre aux tranches de dix degres.
 - `astral_dignity_score_profiles` : profils de calcul des scores de dignite essentielle et accidentelle selon une tradition ou un systeme astrologique.
 - `astral_dignity_functional_effects` : effets normalises d'une dignite sur la capacite fonctionnelle d'une planete.
 - `astral_dignity_intensity_effects` : niveaux normalises de l'intensite produite par une dignite.
-- `astral_dignity_type` : liste compacte des types de dignite essentielle utilises par les tables de correspondance historiques.
+- `astral_dignity_type` : vocabulaire compact de compatibilite pour les quatre codes historiques de dignites de signe ; la source canonique de scoring et d'effets reste `astral_essential_dignity_types`.
 - `astral_dominance_factor_types` : facteurs versionnables qui permettent d'identifier les objets dominants d'un theme.
 - `astral_dominance_score_weights` : poids et methodes de normalisation appliques aux facteurs de dominance pour un profil donne.
 - `astral_elements` : referentiel des quatre elements astrologiques : feu, terre, air et eau.
@@ -1059,7 +1231,7 @@ Inventaire genere depuis le schema PostgreSQL `public` le 1er juin 2026. Ces des
 - `astral_term_system_code` : referentiel des systemes de termes, par exemple egyptien.
 - `astral_triplicity_ruler_assignments` : attribution des maitres de triplicite par element, secte, role, systeme et source.
 - `astral_typical_polarities` : polarite habituelle simplifiee associee aux objets astraux.
-- `astral_zodiacal_reference_system_categories` : categories de systemes de reference zodiacaux ou celestes.
-- `astral_zodiacal_reference_systems` : systemes de reference utilises pour positionner et interpreter les objets, par exemple tropical ou sideral.
+- `astral_zodiacal_reference_system_categories` : categories de systemes zodiacaux.
+- `astral_zodiacal_reference_systems` : systemes zodiacaux utilises pour positionner et interpreter les objets, par exemple tropical, sideral ou draconique.
 - `languages` : langues disponibles pour les contenus interpretatifs.
 - `prediction_categories` : categories versionnables exposees par le moteur de prediction, avec ordre d'affichage et statut public.

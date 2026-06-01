@@ -2,9 +2,14 @@
   "name": "astral_calculated_condition_matches",
   "structure": {
     "table_role": "Runtime audit of condition and operator evaluations, including non-matches.",
+    "unique_key": [
+      "chart_calculation_id",
+      "condition_match_key"
+    ],
     "columns": {
       "id": "integer, primary key",
       "chart_calculation_id": "integer, FK -> astral_chart_calculations.id",
+      "condition_match_key": "string",
       "condition_operator_id": "integer|null, FK -> astral_condition_operators.id",
       "rule_table": "string|null",
       "rule_id": "integer|null",

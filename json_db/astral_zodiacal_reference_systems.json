@@ -36,51 +36,6 @@
       "description": "Zodiac system calculated by placing the lunar North Node at 0° Aries.",
       "requires_ayanamsha": false,
       "usage_note": "Used mainly for karmic, nodal or soul-oriented interpretive layers."
-    },
-    {
-      "id": 4,
-      "key": "geocentric",
-      "display_name": "Geocentric",
-      "category_id": 2,
-      "description": "Reference frame calculated from the perspective of Earth.",
-      "requires_ayanamsha": false,
-      "usage_note": "Standard frame for most astrology chart calculations."
-    },
-    {
-      "id": 5,
-      "key": "heliocentric",
-      "display_name": "Heliocentric",
-      "category_id": 2,
-      "description": "Reference frame calculated from the perspective of the Sun.",
-      "requires_ayanamsha": false,
-      "usage_note": "Used for specialized astrological or astronomical analysis, not for standard natal interpretation."
-    },
-    {
-      "id": 6,
-      "key": "topocentric",
-      "display_name": "Topocentric",
-      "category_id": 2,
-      "description": "Reference frame calculated from a specific location on Earth.",
-      "requires_ayanamsha": false,
-      "usage_note": "Useful when observer location materially affects positions, especially for parallax-sensitive bodies such as the Moon."
-    },
-    {
-      "id": 7,
-      "key": "equatorial",
-      "display_name": "Equatorial",
-      "category_id": 3,
-      "description": "Astronomical coordinate system based on right ascension and declination.",
-      "requires_ayanamsha": false,
-      "usage_note": "Useful for storing raw astronomical star data."
-    },
-    {
-      "id": 8,
-      "key": "ecliptic",
-      "display_name": "Ecliptic",
-      "category_id": 3,
-      "description": "Coordinate system based on the plane of the ecliptic, using ecliptic longitude and latitude.",
-      "requires_ayanamsha": false,
-      "usage_note": "Useful for astrological longitude calculations and fixed-star projections."
     }
   ]
 }

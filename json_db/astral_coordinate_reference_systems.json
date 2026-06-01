@@ -1,0 +1,53 @@
+{
+  "name": "astral_coordinate_reference_systems",
+  "structure": {
+    "id": "integer, primary key",
+    "key": "string, unique, snake_case",
+    "display_name": "string",
+    "frame_family": "string, enum:observer_frame|coordinate_grid",
+    "description": "string",
+    "usage_note": "string|null"
+  },
+  "data": [
+    {
+      "id": 1,
+      "key": "geocentric",
+      "display_name": "Geocentric",
+      "frame_family": "observer_frame",
+      "description": "Reference frame calculated from the perspective of Earth.",
+      "usage_note": "Standard frame for most astrology chart calculations."
+    },
+    {
+      "id": 2,
+      "key": "heliocentric",
+      "display_name": "Heliocentric",
+      "frame_family": "observer_frame",
+      "description": "Reference frame calculated from the perspective of the Sun.",
+      "usage_note": "Used for specialized astrological or astronomical analysis, not for standard natal interpretation."
+    },
+    {
+      "id": 3,
+      "key": "topocentric",
+      "display_name": "Topocentric",
+      "frame_family": "observer_frame",
+      "description": "Reference frame calculated from a specific location on Earth.",
+      "usage_note": "Useful when observer location materially affects positions, especially for parallax-sensitive bodies such as the Moon."
+    },
+    {
+      "id": 4,
+      "key": "ecliptic",
+      "display_name": "Ecliptic",
+      "frame_family": "coordinate_grid",
+      "description": "Coordinate grid based on the plane of the ecliptic, using ecliptic longitude and latitude.",
+      "usage_note": "Default grid for astrological longitude calculations and fixed-star projections."
+    },
+    {
+      "id": 5,
+      "key": "equatorial",
+      "display_name": "Equatorial",
+      "frame_family": "coordinate_grid",
+      "description": "Astronomical coordinate grid based on right ascension and declination.",
+      "usage_note": "Useful for storing raw astronomical star data."
+    }
+  ]
+}

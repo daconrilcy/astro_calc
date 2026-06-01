@@ -7,9 +7,83 @@
       "reference_version_id": "integer, FK -> astral_reference_versions.id",
       "calculation_profile_id": "integer|null, FK -> astral_prediction_calculation_profiles.id",
       "chart_type": "string, enum:natal|transit|progression|prediction",
+      "status": "string, enum:running|completed|failed",
       "subject_label": "string|null",
+      "input_hash": "string",
+      "idempotency_key": "string",
+      "execution_attempt": "integer",
       "input_data_json": "json",
-      "calculated_at": "datetime"
+      "engine_version": "string|null",
+      "ephemeris_version": "string|null",
+      "started_at": "datetime|null",
+      "heartbeat_at": "datetime|null",
+      "progress_state": "string|null",
+      "stale_after_seconds": "integer|null",
+      "finished_at": "datetime|null",
+      "error_code": "string|null",
+      "error_message": "string|null"
+    },
+    "constraints": {
+      "unique_key": [
+        "idempotency_key",
+        "execution_attempt"
+      ],
+      "checks": [
+        {
+          "name": "started_at_required",
+          "expression": "started_at IS NOT NULL"
+        },
+        {
+          "name": "running_requires_heartbeat",
+          "expression": "status <> 'running' OR heartbeat_at IS NOT NULL"
+        },
+        {
+          "name": "stale_after_seconds_positive",
+          "expression": "stale_after_seconds IS NULL OR stale_after_seconds > 0"
+        },
+        {
+          "name": "finished_at_required_when_terminal",
+          "expression": "status NOT IN ('completed','failed') OR finished_at IS NOT NULL"
+        },
+        {
+          "name": "finished_at_only_when_terminal",
+          "expression": "status <> 'running' OR finished_at IS NULL"
+        },
+        {
+          "name": "error_only_when_failed",
+          "expression": "status = 'failed' OR (error_code IS NULL AND error_message IS NULL)"
+        },
+        {
+          "name": "failed_requires_error_code",
+          "expression": "status <> 'failed' OR error_code IS NOT NULL"
+        },
+        {
+          "name": "started_before_finished",
+          "expression": "started_at IS NULL OR finished_at IS NULL OR started_at <= finished_at"
+        },
+        {
+          "name": "heartbeat_not_before_started",
+          "expression": "started_at IS NULL OR heartbeat_at IS NULL OR started_at <= heartbeat_at"
+        },
+        {
+          "name": "heartbeat_not_after_finished",
+          "expression": "finished_at IS NULL OR heartbeat_at IS NULL OR heartbeat_at <= finished_at"
+        }
+      ],
+      "indexes": [
+        [
+          "idempotency_key"
+        ],
+        [
+          "status",
+          "heartbeat_at"
+        ],
+        [
+          "reference_version_id",
+          "calculation_profile_id",
+          "input_hash"
+        ]
+      ]
     }
   },
   "data": []

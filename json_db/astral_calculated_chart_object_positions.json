@@ -4,13 +4,16 @@
     "table_role": "Runtime facts for object positions in a calculated chart.",
     "unique_key": [
       "chart_calculation_id",
-      "chart_object_id"
+      "chart_object_id",
+      "zodiacal_reference_system_id",
+      "coordinate_reference_system_id"
     ],
     "columns": {
       "id": "integer, primary key",
       "chart_calculation_id": "integer, FK -> astral_chart_calculations.id",
       "chart_object_id": "integer, FK -> astral_chart_objects.id",
       "zodiacal_reference_system_id": "integer, FK -> astral_zodiacal_reference_systems.id",
+      "coordinate_reference_system_id": "integer, FK -> astral_coordinate_reference_systems.id",
       "sign_id": "integer|null, FK -> astral_signs.id",
       "house_id": "integer|null, FK -> astral_houses.id",
       "motion_state_id": "integer|null, FK -> astral_object_motion_states.id",

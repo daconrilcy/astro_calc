@@ -2,6 +2,12 @@
   "name": "astral_calculated_aspects",
   "structure": {
     "table_role": "Runtime facts for aspects detected between calculated chart objects.",
+    "unique_key": [
+      "chart_calculation_id",
+      "source_chart_object_id",
+      "target_chart_object_id",
+      "aspect_id"
+    ],
     "columns": {
       "id": "integer, primary key",
       "chart_calculation_id": "integer, FK -> astral_chart_calculations.id",

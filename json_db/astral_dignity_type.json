@@ -1,33 +1,43 @@
 {
   "name": "astral_dignity_type",
   "structure": {
-    "table_role": "Legacy compact essential dignity vocabulary used by older sign-dignity mappings; detailed scoring and effects live in astral_essential_dignity_types.",
+    "table_role": "Legacy compatibility vocabulary for the four historical sign-dignity codes used by astral_object_sign_dignities. It is not the parent dignity taxonomy and must not be used for scoring or interpretive effects; detailed essential dignity semantics live in astral_essential_dignity_types.",
     "columns": {
       "id": "integer, primary key",
       "code": "string, unique, snake_case",
-      "name": "string"
+      "name": "string",
+      "compatibility_status": "string, enum:legacy_compatibility",
+      "canonical_table": "string"
     }
   },
   "data": [
     {
       "id": 1,
       "code": "domicile",
-      "name": "Domicile"
+      "name": "Domicile",
+      "compatibility_status": "legacy_compatibility",
+      "canonical_table": "astral_essential_dignity_types"
     },
     {
       "id": 2,
       "code": "detriment",
-      "name": "Detriment"
+      "name": "Detriment",
+      "compatibility_status": "legacy_compatibility",
+      "canonical_table": "astral_essential_dignity_types"
     },
     {
       "id": 3,
       "code": "exaltation",
-      "name": "Exaltation"
+      "name": "Exaltation",
+      "compatibility_status": "legacy_compatibility",
+      "canonical_table": "astral_essential_dignity_types"
     },
     {
       "id": 4,
       "code": "fall",
-      "name": "Fall"
+      "name": "Fall",
+      "compatibility_status": "legacy_compatibility",
+      "canonical_table": "astral_essential_dignity_types"
     }
   ]
 }

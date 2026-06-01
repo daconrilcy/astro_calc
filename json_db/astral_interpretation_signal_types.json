@@ -25,6 +25,12 @@
           ],
           "references": "astral_interpretation_themes(reference_version_id, code)"
         }
+      ],
+      "checks": [
+        {
+          "name": "active_requires_reference_version",
+          "expression": "NOT is_active OR reference_version_id IS NOT NULL"
+        }
       ]
     }
   },
