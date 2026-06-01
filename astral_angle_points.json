@@ -1,0 +1,56 @@
+{
+  "name": "astral_angle_points",
+  "structure": {
+    "_description": "Référentiel des principaux angles astrologiques du thème natal.",
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "short_label": "string",
+    "full_name": "string",
+    "axis": "horizontal | vertical",
+    "opposite_angle_code": "string|null",
+    "associated_house": "integer",
+    "description": "string"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "asc",
+      "short_label": "ASC",
+      "full_name": "Ascendant",
+      "axis": "horizontal",
+      "opposite_angle_code": "dsc",
+      "associated_house": 1,
+      "description": "Eastern horizon point at the moment of birth representing embodiment, appearance, instinctive behavior, and the beginning of the first house."
+    },
+    {
+      "id": 2,
+      "code": "dsc",
+      "short_label": "DSC",
+      "full_name": "Descendant",
+      "axis": "horizontal",
+      "opposite_angle_code": "asc",
+      "associated_house": 7,
+      "description": "Western horizon point opposite the Ascendant representing relationships, projection, encounters, partnership, and the beginning of the seventh house."
+    },
+    {
+      "id": 3,
+      "code": "mc",
+      "short_label": "MC",
+      "full_name": "Midheaven",
+      "axis": "vertical",
+      "opposite_angle_code": "ic",
+      "associated_house": 10,
+      "description": "Upper meridian point representing vocation, career direction, public image, visibility, status, and social achievement."
+    },
+    {
+      "id": 4,
+      "code": "ic",
+      "short_label": "IC",
+      "full_name": "Imum Coeli",
+      "axis": "vertical",
+      "opposite_angle_code": "mc",
+      "associated_house": 4,
+      "description": "Lower meridian point representing roots, ancestry, emotional foundation, private life, home, and the beginning of the fourth house."
+    }
+  ]
+}

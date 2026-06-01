@@ -1,0 +1,33 @@
+{
+  "name": "astral_advanced_condition_weights",
+  "structure": {
+    "score_profile_code": "string",
+    "condition_type_code": "string",
+    "functional_strength_weight": "float",
+    "visibility_weight": "float",
+    "stability_weight": "float",
+    "intensity_weight": "float",
+    "coherence_weight": "float",
+    "support_weight": "float",
+    "constraint_weight": "float",
+    "ranking_weight": "float",
+    "uses_default_weight": "boolean",
+    "notes": "string"
+  },
+  "data": [
+    { "score_profile_code": "traditional_advanced_v1", "condition_type_code": "mutual_reception", "functional_strength_weight": 0.5, "visibility_weight": 0.0, "stability_weight": 0.2, "intensity_weight": 0.1, "coherence_weight": 0.3, "support_weight": 0.4, "constraint_weight": 0.0, "ranking_weight": 1.2, "uses_default_weight": false, "notes": "Reception mutuelle positive." },
+    { "score_profile_code": "traditional_advanced_v1", "condition_type_code": "hayz", "functional_strength_weight": 0.3, "visibility_weight": 0.2, "stability_weight": 0.4, "intensity_weight": 0.1, "coherence_weight": 0.3, "support_weight": 0.2, "constraint_weight": 0.0, "ranking_weight": 1.1, "uses_default_weight": false, "notes": "Secte et placement coherents." },
+    { "score_profile_code": "traditional_advanced_v1", "condition_type_code": "out_of_sect", "functional_strength_weight": -0.2, "visibility_weight": 0.0, "stability_weight": -0.3, "intensity_weight": 0.0, "coherence_weight": -0.2, "support_weight": 0.0, "constraint_weight": 0.4, "ranking_weight": -1.0, "uses_default_weight": false, "notes": "Secte contraire." },
+    { "score_profile_code": "traditional_advanced_v1", "condition_type_code": "stationary", "functional_strength_weight": 0.1, "visibility_weight": 0.2, "stability_weight": -0.1, "intensity_weight": 0.8, "coherence_weight": 0.0, "support_weight": 0.0, "constraint_weight": 0.1, "ranking_weight": 1.0, "uses_default_weight": false, "notes": "Mouvement stationnaire." },
+    { "score_profile_code": "traditional_advanced_v1", "condition_type_code": "besiegement", "functional_strength_weight": -0.4, "visibility_weight": 0.0, "stability_weight": -0.4, "intensity_weight": 0.4, "coherence_weight": -0.3, "support_weight": 0.0, "constraint_weight": 0.8, "ranking_weight": -1.3, "uses_default_weight": false, "notes": "Encadrement contraignant." },
+    { "score_profile_code": "traditional_advanced_v1", "condition_type_code": "bonification", "functional_strength_weight": 0.3, "visibility_weight": 0.0, "stability_weight": 0.3, "intensity_weight": 0.1, "coherence_weight": 0.2, "support_weight": 0.5, "constraint_weight": 0.0, "ranking_weight": 1.0, "uses_default_weight": false, "notes": "Soutien aspectuel." },
+    { "score_profile_code": "traditional_advanced_v1", "condition_type_code": "maltreatment", "functional_strength_weight": -0.3, "visibility_weight": 0.0, "stability_weight": -0.3, "intensity_weight": 0.3, "coherence_weight": -0.2, "support_weight": 0.0, "constraint_weight": 0.6, "ranking_weight": -1.2, "uses_default_weight": false, "notes": "Contrainte aspectuelle." },
+    { "score_profile_code": "traditional_advanced_v1", "condition_type_code": "fast_motion", "functional_strength_weight": 0.2, "visibility_weight": 0.0, "stability_weight": 0.0, "intensity_weight": 0.3, "coherence_weight": 0.1, "support_weight": 0.2, "constraint_weight": 0.0, "ranking_weight": 0.7, "uses_default_weight": false, "notes": "Mouvement rapide." },
+    { "score_profile_code": "traditional_advanced_v1", "condition_type_code": "slow_motion", "functional_strength_weight": -0.1, "visibility_weight": 0.0, "stability_weight": -0.1, "intensity_weight": -0.1, "coherence_weight": -0.1, "support_weight": 0.0, "constraint_weight": 0.2, "ranking_weight": -0.6, "uses_default_weight": false, "notes": "Mouvement lent." },
+    { "score_profile_code": "traditional_advanced_v1", "condition_type_code": "heliacal_rising", "functional_strength_weight": 0.2, "visibility_weight": 0.5, "stability_weight": 0.1, "intensity_weight": 0.2, "coherence_weight": 0.1, "support_weight": 0.2, "constraint_weight": 0.0, "ranking_weight": 0.9, "uses_default_weight": false, "notes": "Phase solaire emergente." },
+    { "score_profile_code": "traditional_advanced_v1", "condition_type_code": "heliacal_setting", "functional_strength_weight": -0.1, "visibility_weight": -0.4, "stability_weight": -0.1, "intensity_weight": 0.0, "coherence_weight": -0.1, "support_weight": 0.0, "constraint_weight": 0.2, "ranking_weight": -0.8, "uses_default_weight": false, "notes": "Phase solaire descendante." },
+    { "score_profile_code": "traditional_advanced_v1", "condition_type_code": "oriental", "functional_strength_weight": 0.1, "visibility_weight": 0.1, "stability_weight": 0.0, "intensity_weight": 0.0, "coherence_weight": 0.1, "support_weight": 0.1, "constraint_weight": 0.0, "ranking_weight": 0.4, "uses_default_weight": false, "notes": "Orientation orientale." },
+    { "score_profile_code": "traditional_advanced_v1", "condition_type_code": "occidental", "functional_strength_weight": 0.1, "visibility_weight": 0.1, "stability_weight": 0.0, "intensity_weight": 0.0, "coherence_weight": 0.1, "support_weight": 0.1, "constraint_weight": 0.0, "ranking_weight": 0.4, "uses_default_weight": false, "notes": "Orientation occidentale." },
+    { "score_profile_code": "traditional_advanced_v1", "condition_type_code": "sect_nature_mitigation", "functional_strength_weight": 0.0, "visibility_weight": 0.0, "stability_weight": 0.0, "intensity_weight": 0.0, "coherence_weight": 0.0, "support_weight": 0.0, "constraint_weight": 0.0, "ranking_weight": 0.0, "uses_default_weight": false, "notes": "Fait explicatif benefique/malefique par la secte; les polarites restent dans le condition_code calcule sans scoring commun." }
+  ]
+}

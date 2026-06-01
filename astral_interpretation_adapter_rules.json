@@ -1,0 +1,61 @@
+{
+  "name": "astral_interpretation_adapter_rules",
+  "data": [
+    {
+      "code": "dominant_mars_to_signature",
+      "source_type": "dominant_planet",
+      "source_code": "mars",
+      "condition_json": {
+        "dominance_level": "dominant"
+      },
+      "signal_code": "dominant_mars_signature",
+      "priority_override": "critical",
+      "priority_override_rank": 10,
+      "weight": 1.0,
+      "is_active": true,
+      "reference_version_code": "v1"
+    },
+    {
+      "code": "high_visibility_to_externalization",
+      "source_type": "condition_axis",
+      "source_code": "visibility",
+      "condition_json": {
+        "min": 0.7
+      },
+      "signal_code": "high_externalization",
+      "priority_override": "high",
+      "priority_override_rank": 20,
+      "weight": 0.8,
+      "is_active": true,
+      "reference_version_code": "v1"
+    },
+    {
+      "code": "constraint_to_action_pressure",
+      "source_type": "condition_axis",
+      "source_code": "constraint",
+      "condition_json": {
+        "min": 0.6
+      },
+      "signal_code": "constraint_on_action",
+      "priority_override": "medium",
+      "priority_override_rank": 30,
+      "weight": 0.7,
+      "is_active": true,
+      "reference_version_code": "v1"
+    },
+    {
+      "code": "saturn_stability_to_endurance",
+      "source_type": "compound",
+      "source_code": "saturn_stability",
+      "condition_json": {
+        "min": 0.7
+      },
+      "signal_code": "structural_endurance",
+      "priority_override": "high",
+      "priority_override_rank": 20,
+      "weight": 0.9,
+      "is_active": true,
+      "reference_version_code": "v1"
+    }
+  ]
+}

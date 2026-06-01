@@ -1,0 +1,104 @@
+{
+  "name": "astral_essential_dignity_types",
+  "structure": {
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "category_id": "integer, FK -> astral_essential_dignity_categories.id",
+    "functional_effect_id": "integer, FK -> astral_dignity_functional_effects.id",
+    "expression_tendency_id": "integer, FK -> astral_essential_dignity_expression_tendencies.id",
+    "intensity_effect_id": "integer, FK -> astral_dignity_intensity_effects.id",
+    "description": "string",
+    "sort_order": "integer"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "domicile",
+      "label": "Domicile",
+      "category_id": 1,
+      "functional_effect_id": 1,
+      "expression_tendency_id": 1,
+      "intensity_effect_id": 1,
+      "description": "La planète est dans un signe qu'elle gouverne et exprime naturellement sa fonction.",
+      "sort_order": 1
+    },
+    {
+      "id": 2,
+      "code": "exaltation",
+      "label": "Exaltation",
+      "category_id": 1,
+      "functional_effect_id": 1,
+      "expression_tendency_id": 2,
+      "intensity_effect_id": 2,
+      "description": "La planète est valorisée, amplifiée et rendue très performante, parfois de manière excessive.",
+      "sort_order": 2
+    },
+    {
+      "id": 3,
+      "code": "detriment",
+      "label": "Detriment",
+      "category_id": 1,
+      "functional_effect_id": 2,
+      "expression_tendency_id": 3,
+      "intensity_effect_id": 3,
+      "description": "La planète est dans le signe opposé à son domicile et agit avec moins de naturel.",
+      "sort_order": 3
+    },
+    {
+      "id": 4,
+      "code": "fall",
+      "label": "Fall",
+      "category_id": 1,
+      "functional_effect_id": 2,
+      "expression_tendency_id": 4,
+      "intensity_effect_id": 3,
+      "description": "La planète est dans le signe opposé à son exaltation et perd une partie de son aisance fonctionnelle.",
+      "sort_order": 4
+    },
+    {
+      "id": 5,
+      "code": "triplicity",
+      "label": "Triplicity",
+      "category_id": 2,
+      "functional_effect_id": 3,
+      "expression_tendency_id": 5,
+      "intensity_effect_id": 4,
+      "description": "La planète bénéficie d'un soutien élémentaire selon l'élément du signe et la secte du thème.",
+      "sort_order": 5
+    },
+    {
+      "id": 6,
+      "code": "term",
+      "label": "Term / Bound",
+      "category_id": 2,
+      "functional_effect_id": 4,
+      "expression_tendency_id": 1,
+      "intensity_effect_id": 4,
+      "description": "La planète bénéficie d'une dignité par borne de degré dans un signe.",
+      "sort_order": 6
+    },
+    {
+      "id": 7,
+      "code": "face",
+      "label": "Face / Decan",
+      "category_id": 2,
+      "functional_effect_id": 5,
+      "expression_tendency_id": 6,
+      "intensity_effect_id": 5,
+      "description": "La planète reçoit une dignité faible par tranche de dix degrés.",
+      "sort_order": 7
+    },
+    {
+      "id": 8,
+      "code": "peregrine",
+      "label": "Peregrine",
+      "category_id": 3,
+      "functional_effect_id": 6,
+      "expression_tendency_id": 7,
+      "intensity_effect_id": 6,
+      "description": "La planète ne reçoit aucune dignité essentielle majeure ou mineure.",
+      "sort_order": 8
+    }
+  ]
+}

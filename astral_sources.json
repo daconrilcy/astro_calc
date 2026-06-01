@@ -1,0 +1,82 @@
+{
+  "name": "astral_sources",
+  "structure": {
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "source_type": "string",
+    "author": "string",
+    "era": "string",
+    "description": "string",
+    "url": "string|null",
+    "is_historical": "boolean"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "ptolemy_tetrabiblos",
+      "label": "Tetrabiblos",
+      "source_type": "historical_text",
+      "author": "Claudius Ptolemy",
+      "era": "2nd_century",
+      "description": "Classical astrological text attributed to Ptolemy.",
+      "url": null,
+      "is_historical": true
+    },
+    {
+      "id": 2,
+      "code": "william_lilly_christian_astrology",
+      "label": "Christian Astrology",
+      "source_type": "historical_text",
+      "author": "William Lilly",
+      "era": "17th_century",
+      "description": "Traditional western astrology reference.",
+      "url": null,
+      "is_historical": true
+    },
+    {
+      "id": 3,
+      "code": "golden_dawn",
+      "label": "Hermetic Order of the Golden Dawn",
+      "source_type": "esoteric_tradition",
+      "author": "Golden Dawn",
+      "era": "19th_century",
+      "description": "Hermetic and occult astrology correspondences.",
+      "url": null,
+      "is_historical": true
+    },
+    {
+      "id": 4,
+      "code": "modern_consensus",
+      "label": "Modern Western Astrology Consensus",
+      "source_type": "modern_consensus",
+      "author": "Multiple",
+      "era": "20th_21st_century",
+      "description": "Commonly accepted modern western astrology correspondences.",
+      "url": null,
+      "is_historical": false
+    },
+    {
+      "id": 5,
+      "code": "hellenistic",
+      "label": "Hellenistic Astrology",
+      "source_type": "historical_tradition",
+      "author": "Multiple",
+      "era": "hellenistic_period",
+      "description": "Hellenistic astrological tradition used as a profile family for essential dignity interpretation.",
+      "url": null,
+      "is_historical": true
+    },
+    {
+      "id": 6,
+      "code": "runtime_simplified",
+      "label": "Runtime Simplified",
+      "source_type": "runtime_profile",
+      "author": "Application",
+      "era": "runtime",
+      "description": "Simplified application profile family optimized for lightweight dignity scoring.",
+      "url": null,
+      "is_historical": false
+    }
+  ]
+}

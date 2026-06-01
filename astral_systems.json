@@ -1,0 +1,25 @@
+{
+  "name": "astral_systems",
+  "structure": {
+    "id": "integer",
+    "name": "string"
+  },
+  "data": [
+    {
+      "id": 1,
+      "name": "traditional"
+    },
+    {
+      "id": 2,
+      "name": "modern"
+    },
+    {
+      "id": 3,
+      "name": "hellenistic"
+    },
+    {
+      "id": 4,
+      "name": "medieval"
+    }
+  ]
+}

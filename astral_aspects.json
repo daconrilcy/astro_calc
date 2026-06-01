@@ -1,0 +1,152 @@
+{
+  "name": "astral_aspects",
+  "structure": {
+    "id": "integer",
+    "code": "string",
+    "name": "string",
+    "angle": "integer",
+    "family": "string"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "conjunction",
+      "name": "Conjunction",
+      "angle": 0,
+      "family": "major"
+    },
+    {
+      "id": 2,
+      "code": "sextile",
+      "name": "Sextile",
+      "angle": 60,
+      "family": "major"
+    },
+    {
+      "id": 3,
+      "code": "square",
+      "name": "Square",
+      "angle": 90,
+      "family": "major"
+    },
+    {
+      "id": 4,
+      "code": "trine",
+      "name": "Trine",
+      "angle": 120,
+      "family": "major"
+    },
+    {
+      "id": 5,
+      "code": "opposition",
+      "name": "Opposition",
+      "angle": 180,
+      "family": "major"
+    },
+    {
+      "id": 6,
+      "code": "semi_sextile",
+      "name": "Semi-sextile",
+      "angle": 30,
+      "family": "minor"
+    },
+    {
+      "id": 7,
+      "code": "semi_square",
+      "name": "Semi-square",
+      "angle": 45,
+      "family": "minor"
+    },
+    {
+      "id": 8,
+      "code": "quintile",
+      "name": "Quintile",
+      "angle": 72,
+      "family": "minor"
+    },
+    {
+      "id": 9,
+      "code": "sesquiquadrate",
+      "name": "Sesquiquadrate",
+      "angle": 135,
+      "family": "minor"
+    },
+    {
+      "id": 10,
+      "code": "quincunx",
+      "name": "Quincunx",
+      "angle": 150,
+      "family": "minor"
+    },
+    {
+      "id": 11,
+      "code": "biquintile",
+      "name": "Biquintile",
+      "angle": 144,
+      "family": "minor"
+    },
+    {
+      "id": 12,
+      "code": "septile",
+      "name": "Septile",
+      "angle": 51.428571,
+      "family": "advanced"
+    },
+    {
+      "id": 13,
+      "code": "biseptile",
+      "name": "Biseptile",
+      "angle": 102.857143,
+      "family": "advanced"
+    },
+    {
+      "id": 14,
+      "code": "triseptile",
+      "name": "Triseptile",
+      "angle": 154.285714,
+      "family": "advanced"
+    },
+    {
+      "id": 15,
+      "code": "novile",
+      "name": "Novile",
+      "angle": 40,
+      "family": "advanced"
+    },
+    {
+      "id": 16,
+      "code": "binovile",
+      "name": "Binovile",
+      "angle": 80,
+      "family": "advanced"
+    },
+    {
+      "id": 17,
+      "code": "quadranovile",
+      "name": "Quadranovile",
+      "angle": 160,
+      "family": "advanced"
+    },
+    {
+      "id": 18,
+      "code": "decile",
+      "name": "Decile",
+      "angle": 36,
+      "family": "advanced"
+    },
+    {
+      "id": 19,
+      "code": "tredecile",
+      "name": "Tredecile",
+      "angle": 108,
+      "family": "advanced"
+    },
+    {
+      "id": 20,
+      "code": "quindecile",
+      "name": "Quindecile",
+      "angle": 165,
+      "family": "advanced"
+    }
+  ]
+}

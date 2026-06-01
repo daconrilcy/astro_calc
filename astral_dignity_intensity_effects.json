@@ -1,0 +1,61 @@
+{
+  "name": "astral_dignity_intensity_effects",
+  "structure": {
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "description": "string",
+    "sort_order": "integer"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "moderate",
+      "label": "Moderate",
+      "description": "Intensité notable mais équilibrée.",
+      "sort_order": 1
+    },
+    {
+      "id": 2,
+      "code": "high",
+      "label": "High",
+      "description": "Intensité élevée.",
+      "sort_order": 2
+    },
+    {
+      "id": 3,
+      "code": "medium",
+      "label": "Medium",
+      "description": "Intensité moyenne.",
+      "sort_order": 3
+    },
+    {
+      "id": 4,
+      "code": "low",
+      "label": "Low",
+      "description": "Intensité faible.",
+      "sort_order": 4
+    },
+    {
+      "id": 5,
+      "code": "very_low",
+      "label": "Very low",
+      "description": "Intensité très faible.",
+      "sort_order": 5
+    },
+    {
+      "id": 6,
+      "code": "contextual",
+      "label": "Contextual",
+      "description": "Intensité dépendante du contexte astrologique global.",
+      "sort_order": 6
+    },
+    {
+      "id": 7,
+      "code": "very_high",
+      "label": "Very high",
+      "description": "Intensité très élevée.",
+      "sort_order": 7
+    }
+  ]
+}

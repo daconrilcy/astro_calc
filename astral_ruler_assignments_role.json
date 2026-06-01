@@ -1,0 +1,41 @@
+{
+  "name": "astral_ruler_assignments_role",
+  "structure": {
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "sort_order": "integer"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "primary",
+      "label": "Primary",
+      "sort_order": 1
+    },
+    {
+      "id": 2,
+      "code": "secondary",
+      "label": "Secondary",
+      "sort_order": 2
+    },
+    {
+      "id": 3,
+      "code": "participating",
+      "label": "Participating",
+      "sort_order": 3
+    },
+    {
+      "id": 4,
+      "code": "co_ruler",
+      "label": "Co-ruler",
+      "sort_order": 4
+    },
+    {
+      "id": 5,
+      "code": "variant",
+      "label": "Variant",
+      "sort_order": 5
+    }
+  ]
+}

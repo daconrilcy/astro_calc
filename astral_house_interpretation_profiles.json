@@ -1,0 +1,1123 @@
+{
+  "name": "astral_house_interpretation_profiles",
+  "structure": {
+    "id": "integer",
+    "reference_version_id": "integer",
+    "house_id": "integer",
+    "language_id": "integer, FK -> languages.id",
+    "tradition": "string",
+    "title": "string",
+    "summary": "string",
+    "core_keywords_json": "json_array",
+    "shadow_keywords_json": "json_array",
+    "psychological_keywords_json": "json_array",
+    "material_keywords_json": "json_array",
+    "relationship_keywords_json": "json_array",
+    "career_keywords_json": "json_array",
+    "health_keywords_json": "json_array",
+    "spiritual_keywords_json": "json_array",
+    "body_parts_json": "json_array",
+    "archetypes_json": "json_array",
+    "dos_json": "json_array",
+    "donts_json": "json_array",
+    "prompt_hints_json": "json_array",
+    "micro_note": "string"
+  },
+  "data": [
+    {
+      "id": 1,
+      "reference_version_id": 1,
+      "house_id": 1,
+      "tradition": "modern",
+      "title": "Self and Identity",
+      "summary": "The first house describes identity, physical presence, instinctive behavior, vitality and the way a person enters life.",
+      "core_keywords_json": [
+        "self",
+        "identity",
+        "appearance",
+        "body",
+        "presence",
+        "temperament",
+        "vitality",
+        "first impression"
+      ],
+      "shadow_keywords_json": [
+        "self-centeredness",
+        "impulsiveness",
+        "defensiveness",
+        "identity confusion",
+        "over-identification with image"
+      ],
+      "psychological_keywords_json": [
+        "self-awareness",
+        "personal agency",
+        "instinctive reaction",
+        "autonomy",
+        "confidence"
+      ],
+      "material_keywords_json": [
+        "physical body",
+        "appearance",
+        "personal style",
+        "health baseline",
+        "visible behavior"
+      ],
+      "relationship_keywords_json": [
+        "how one approaches others",
+        "personal boundaries",
+        "first contact",
+        "assertiveness"
+      ],
+      "career_keywords_json": [
+        "personal branding",
+        "initiative",
+        "leadership presence",
+        "entrepreneurial impulse"
+      ],
+      "health_keywords_json": [
+        "vitality",
+        "energy level",
+        "body awareness",
+        "head",
+        "face"
+      ],
+      "spiritual_keywords_json": [
+        "incarnation",
+        "self-realization",
+        "life force",
+        "embodied identity"
+      ],
+      "body_parts_json": [
+        "head",
+        "face",
+        "brain",
+        "eyes"
+      ],
+      "archetypes_json": [
+        "The Pioneer",
+        "The Warrior",
+        "The Embodied Self"
+      ],
+      "dos_json": [
+        "Encourage self-awareness and healthy assertion.",
+        "Connect this house to embodiment and personal presence."
+      ],
+      "donts_json": [
+        "Do not reduce it only to physical appearance.",
+        "Do not confuse identity with ego inflation."
+      ],
+      "prompt_hints_json": [
+        "Describe how the native enters life and reacts instinctively.",
+        "Link planets here to visibility, self-expression and embodiment."
+      ],
+      "micro_note": "Where life begins as an embodied self.",
+      "language_id": 1
+    },
+    {
+      "id": 2,
+      "reference_version_id": 1,
+      "house_id": 2,
+      "tradition": "modern",
+      "title": "Resources and Values",
+      "summary": "The second house describes money, possessions, personal resources, self-worth, stability and the values that create inner security.",
+      "core_keywords_json": [
+        "money",
+        "income",
+        "resources",
+        "possessions",
+        "values",
+        "self-worth",
+        "security",
+        "stability"
+      ],
+      "shadow_keywords_json": [
+        "materialism",
+        "fear of lack",
+        "greed",
+        "insecurity",
+        "possessiveness",
+        "low self-worth"
+      ],
+      "psychological_keywords_json": [
+        "self-esteem",
+        "inner security",
+        "value system",
+        "attachment",
+        "confidence in resources"
+      ],
+      "material_keywords_json": [
+        "income",
+        "assets",
+        "possessions",
+        "food",
+        "comfort",
+        "financial habits"
+      ],
+      "relationship_keywords_json": [
+        "shared values",
+        "security needs",
+        "possessiveness",
+        "emotional reliability"
+      ],
+      "career_keywords_json": [
+        "earning capacity",
+        "pricing",
+        "financial stability",
+        "monetizable skills"
+      ],
+      "health_keywords_json": [
+        "throat",
+        "neck",
+        "voice",
+        "nutrition",
+        "sensory comfort"
+      ],
+      "spiritual_keywords_json": [
+        "inner abundance",
+        "grounding",
+        "gratitude",
+        "right relationship with matter"
+      ],
+      "body_parts_json": [
+        "neck",
+        "throat",
+        "jaw",
+        "voice"
+      ],
+      "archetypes_json": [
+        "The Builder",
+        "The Keeper",
+        "The Steward"
+      ],
+      "dos_json": [
+        "Connect material security with self-worth.",
+        "Show how values guide choices and attachments."
+      ],
+      "donts_json": [
+        "Do not reduce this house only to money.",
+        "Avoid moralizing material needs."
+      ],
+      "prompt_hints_json": [
+        "Interpret this house through resources, stability and personal value.",
+        "Mention both financial and psychological security."
+      ],
+      "micro_note": "What one owns, values and trusts.",
+      "language_id": 1
+    },
+    {
+      "id": 3,
+      "reference_version_id": 1,
+      "house_id": 3,
+      "tradition": "modern",
+      "title": "Communication and Learning",
+      "summary": "The third house describes communication, early learning, siblings, close environment, curiosity, language and everyday mental activity.",
+      "core_keywords_json": [
+        "communication",
+        "learning",
+        "speech",
+        "writing",
+        "siblings",
+        "neighborhood",
+        "curiosity",
+        "short trips"
+      ],
+      "shadow_keywords_json": [
+        "gossip",
+        "mental restlessness",
+        "scattered thinking",
+        "superficiality",
+        "miscommunication"
+      ],
+      "psychological_keywords_json": [
+        "mental agility",
+        "curiosity",
+        "perception",
+        "adaptability",
+        "information processing"
+      ],
+      "material_keywords_json": [
+        "documents",
+        "messages",
+        "transport",
+        "local environment",
+        "devices",
+        "schooling"
+      ],
+      "relationship_keywords_json": [
+        "siblings",
+        "neighbors",
+        "daily exchanges",
+        "conversations",
+        "peer communication"
+      ],
+      "career_keywords_json": [
+        "writing",
+        "sales",
+        "teaching",
+        "media",
+        "communication roles",
+        "local networking"
+      ],
+      "health_keywords_json": [
+        "lungs",
+        "hands",
+        "arms",
+        "nervous system",
+        "breathing"
+      ],
+      "spiritual_keywords_json": [
+        "mindfulness in speech",
+        "sacred language",
+        "learning as awareness"
+      ],
+      "body_parts_json": [
+        "lungs",
+        "hands",
+        "arms",
+        "shoulders",
+        "nervous system"
+      ],
+      "archetypes_json": [
+        "The Messenger",
+        "The Student",
+        "The Storyteller"
+      ],
+      "dos_json": [
+        "Emphasize communication style and learning patterns.",
+        "Connect this house to the immediate environment."
+      ],
+      "donts_json": [
+        "Do not confuse this house with higher education.",
+        "Avoid treating communication as only verbal."
+      ],
+      "prompt_hints_json": [
+        "Use this house to describe how the native thinks, speaks and learns.",
+        "Mention siblings or local context only when relevant."
+      ],
+      "micro_note": "How the mind connects with the nearby world.",
+      "language_id": 1
+    },
+    {
+      "id": 4,
+      "reference_version_id": 1,
+      "house_id": 4,
+      "tradition": "modern",
+      "title": "Home and Roots",
+      "summary": "The fourth house describes home, family roots, ancestry, emotional foundations, private life and the inner base from which life develops.",
+      "core_keywords_json": [
+        "home",
+        "family",
+        "roots",
+        "ancestry",
+        "private life",
+        "childhood",
+        "belonging",
+        "emotional foundation"
+      ],
+      "shadow_keywords_json": [
+        "family wounds",
+        "emotional withdrawal",
+        "dependency",
+        "nostalgia",
+        "fear of leaving the past"
+      ],
+      "psychological_keywords_json": [
+        "inner safety",
+        "emotional memory",
+        "attachment patterns",
+        "belonging",
+        "privacy"
+      ],
+      "material_keywords_json": [
+        "home",
+        "real estate",
+        "land",
+        "family property",
+        "domestic space"
+      ],
+      "relationship_keywords_json": [
+        "family bonds",
+        "parents",
+        "ancestral patterns",
+        "domestic intimacy"
+      ],
+      "career_keywords_json": [
+        "real estate",
+        "family business",
+        "care work",
+        "working from home",
+        "foundational support"
+      ],
+      "health_keywords_json": [
+        "chest",
+        "stomach",
+        "breasts",
+        "digestion",
+        "emotional regulation"
+      ],
+      "spiritual_keywords_json": [
+        "ancestral healing",
+        "inner sanctuary",
+        "soul roots",
+        "emotional grounding"
+      ],
+      "body_parts_json": [
+        "chest",
+        "stomach",
+        "breasts",
+        "rib cage"
+      ],
+      "archetypes_json": [
+        "The Root",
+        "The Ancestor",
+        "The Keeper of the Hearth"
+      ],
+      "dos_json": [
+        "Connect this house to inner security and emotional inheritance.",
+        "Distinguish private identity from public role."
+      ],
+      "donts_json": [
+        "Do not reduce family to literal parents only.",
+        "Avoid deterministic claims about childhood."
+      ],
+      "prompt_hints_json": [
+        "Describe the emotional base and private world.",
+        "Connect planets here to roots, memory and belonging."
+      ],
+      "micro_note": "The private foundation beneath visible life.",
+      "language_id": 1
+    },
+    {
+      "id": 5,
+      "reference_version_id": 1,
+      "house_id": 5,
+      "tradition": "modern",
+      "title": "Creativity and Pleasure",
+      "summary": "The fifth house describes creativity, pleasure, romance, children, play, joy, talent and the desire to express oneself freely.",
+      "core_keywords_json": [
+        "creativity",
+        "pleasure",
+        "romance",
+        "children",
+        "play",
+        "joy",
+        "talent",
+        "self-expression"
+      ],
+      "shadow_keywords_json": [
+        "attention seeking",
+        "vanity",
+        "recklessness",
+        "dramatic behavior",
+        "immaturity"
+      ],
+      "psychological_keywords_json": [
+        "creative confidence",
+        "spontaneity",
+        "desire",
+        "joy",
+        "personal radiance"
+      ],
+      "material_keywords_json": [
+        "art",
+        "entertainment",
+        "games",
+        "leisure",
+        "speculation",
+        "creative projects"
+      ],
+      "relationship_keywords_json": [
+        "romance",
+        "flirtation",
+        "dating",
+        "children",
+        "playful affection"
+      ],
+      "career_keywords_json": [
+        "creative work",
+        "performance",
+        "entertainment",
+        "teaching children",
+        "personal talent"
+      ],
+      "health_keywords_json": [
+        "heart",
+        "spine",
+        "circulation",
+        "vital joy"
+      ],
+      "spiritual_keywords_json": [
+        "creative spark",
+        "divine play",
+        "joy as life force",
+        "authentic expression"
+      ],
+      "body_parts_json": [
+        "heart",
+        "spine",
+        "upper back"
+      ],
+      "archetypes_json": [
+        "The Artist",
+        "The Lover",
+        "The Child"
+      ],
+      "dos_json": [
+        "Emphasize joy, creativity and personal radiance.",
+        "Connect this house to authentic self-expression."
+      ],
+      "donts_json": [
+        "Do not reduce it only to romance or children.",
+        "Avoid portraying pleasure as superficial."
+      ],
+      "prompt_hints_json": [
+        "Use this house to interpret creative drive and pleasure.",
+        "Mention romance, children or performance when context supports it."
+      ],
+      "micro_note": "Where life becomes play, love and creation.",
+      "language_id": 1
+    },
+    {
+      "id": 6,
+      "reference_version_id": 1,
+      "house_id": 6,
+      "tradition": "modern",
+      "title": "Work, Health and Daily Practice",
+      "summary": "The sixth house describes daily work, routines, service, health habits, discipline, practical improvement and the management of everyday life.",
+      "core_keywords_json": [
+        "daily work",
+        "routine",
+        "health",
+        "service",
+        "discipline",
+        "habits",
+        "skills",
+        "improvement"
+      ],
+      "shadow_keywords_json": [
+        "overwork",
+        "perfectionism",
+        "anxiety",
+        "criticism",
+        "burnout",
+        "rigidity"
+      ],
+      "psychological_keywords_json": [
+        "self-improvement",
+        "usefulness",
+        "discipline",
+        "problem-solving",
+        "practical humility"
+      ],
+      "material_keywords_json": [
+        "workplace",
+        "tasks",
+        "tools",
+        "schedule",
+        "pets",
+        "health routines"
+      ],
+      "relationship_keywords_json": [
+        "service dynamics",
+        "colleagues",
+        "helpers",
+        "daily cooperation",
+        "caregiving"
+      ],
+      "career_keywords_json": [
+        "operations",
+        "administration",
+        "healthcare",
+        "craft",
+        "process improvement",
+        "support roles"
+      ],
+      "health_keywords_json": [
+        "digestion",
+        "intestines",
+        "gut health",
+        "daily hygiene",
+        "stress habits"
+      ],
+      "spiritual_keywords_json": [
+        "sacred service",
+        "purification",
+        "humility",
+        "mindful routine"
+      ],
+      "body_parts_json": [
+        "intestines",
+        "digestive system",
+        "abdomen"
+      ],
+      "archetypes_json": [
+        "The Craftsperson",
+        "The Healer",
+        "The Servant"
+      ],
+      "dos_json": [
+        "Connect routine with health and practical mastery.",
+        "Show how daily habits shape long-term wellbeing."
+      ],
+      "donts_json": [
+        "Do not reduce this house to illness.",
+        "Avoid framing service as subordination."
+      ],
+      "prompt_hints_json": [
+        "Interpret this house through work patterns, habits and health maintenance.",
+        "Mention improvement without making it feel punitive."
+      ],
+      "micro_note": "Where life is refined through practice.",
+      "language_id": 1
+    },
+    {
+      "id": 7,
+      "reference_version_id": 1,
+      "house_id": 7,
+      "tradition": "modern",
+      "title": "Partnerships and Agreements",
+      "summary": "The seventh house describes committed relationships, marriage, contracts, alliances, open opponents and the way one meets the other.",
+      "core_keywords_json": [
+        "partnership",
+        "marriage",
+        "contracts",
+        "alliance",
+        "cooperation",
+        "projection",
+        "others",
+        "open enemies"
+      ],
+      "shadow_keywords_json": [
+        "dependency",
+        "people-pleasing",
+        "conflict avoidance",
+        "projection",
+        "unbalanced relationships"
+      ],
+      "psychological_keywords_json": [
+        "relational awareness",
+        "mirroring",
+        "compromise",
+        "projection",
+        "negotiation"
+      ],
+      "material_keywords_json": [
+        "contracts",
+        "legal agreements",
+        "business partnerships",
+        "clients",
+        "formal commitments"
+      ],
+      "relationship_keywords_json": [
+        "marriage",
+        "partnership",
+        "long-term commitment",
+        "one-to-one bonds",
+        "conflict resolution"
+      ],
+      "career_keywords_json": [
+        "client work",
+        "consulting",
+        "law",
+        "diplomacy",
+        "negotiation",
+        "partnership strategy"
+      ],
+      "health_keywords_json": [
+        "kidneys",
+        "lower back",
+        "balance",
+        "hormonal equilibrium"
+      ],
+      "spiritual_keywords_json": [
+        "sacred mirror",
+        "karma of relationship",
+        "balance",
+        "mutual recognition"
+      ],
+      "body_parts_json": [
+        "kidneys",
+        "lower back",
+        "lumbar region"
+      ],
+      "archetypes_json": [
+        "The Partner",
+        "The Diplomat",
+        "The Mirror"
+      ],
+      "dos_json": [
+        "Emphasize reciprocity, projection and commitment.",
+        "Connect this house to both love and formal agreements."
+      ],
+      "donts_json": [
+        "Do not reduce it only to romantic marriage.",
+        "Avoid implying the native has no agency in relationships."
+      ],
+      "prompt_hints_json": [
+        "Describe how the native meets others through commitment and contrast.",
+        "Mention open conflict as well as cooperation when relevant."
+      ],
+      "micro_note": "Where the self meets the other.",
+      "language_id": 1
+    },
+    {
+      "id": 8,
+      "reference_version_id": 1,
+      "house_id": 8,
+      "tradition": "modern",
+      "title": "Transformation and Shared Resources",
+      "summary": "The eighth house describes intimacy, transformation, shared resources, crisis, inheritance, psychological depth and processes of loss and renewal.",
+      "core_keywords_json": [
+        "transformation",
+        "intimacy",
+        "shared money",
+        "inheritance",
+        "crisis",
+        "psychology",
+        "depth",
+        "rebirth"
+      ],
+      "shadow_keywords_json": [
+        "control",
+        "jealousy",
+        "obsession",
+        "fear of loss",
+        "power struggles",
+        "emotional intensity"
+      ],
+      "psychological_keywords_json": [
+        "shadow work",
+        "trust",
+        "vulnerability",
+        "depth psychology",
+        "emotional fusion"
+      ],
+      "material_keywords_json": [
+        "taxes",
+        "debts",
+        "inheritance",
+        "investments",
+        "insurance",
+        "shared assets"
+      ],
+      "relationship_keywords_json": [
+        "sexual intimacy",
+        "trust",
+        "emotional bonding",
+        "dependency",
+        "shared vulnerability"
+      ],
+      "career_keywords_json": [
+        "finance",
+        "psychology",
+        "crisis management",
+        "research",
+        "investigation",
+        "estate planning"
+      ],
+      "health_keywords_json": [
+        "reproductive organs",
+        "elimination",
+        "sexual health",
+        "deep stress patterns"
+      ],
+      "spiritual_keywords_json": [
+        "death and rebirth",
+        "initiation",
+        "shadow integration",
+        "surrender"
+      ],
+      "body_parts_json": [
+        "reproductive organs",
+        "genitals",
+        "colon",
+        "elimination system"
+      ],
+      "archetypes_json": [
+        "The Alchemist",
+        "The Shadow Worker",
+        "The Phoenix"
+      ],
+      "dos_json": [
+        "Treat this house with nuance and emotional depth.",
+        "Connect crisis to transformation, not only trauma."
+      ],
+      "donts_json": [
+        "Do not sensationalize death, sex or crisis.",
+        "Avoid deterministic or frightening interpretations."
+      ],
+      "prompt_hints_json": [
+        "Use this house for shared resources, intimacy and psychological transformation.",
+        "Frame intensity as a potential path to renewal."
+      ],
+      "micro_note": "Where life transforms through surrender and depth.",
+      "language_id": 1
+    },
+    {
+      "id": 9,
+      "reference_version_id": 1,
+      "house_id": 9,
+      "tradition": "modern",
+      "title": "Beliefs and Expansion",
+      "summary": "The ninth house describes beliefs, philosophy, higher education, long-distance travel, law, spirituality and the search for meaning.",
+      "core_keywords_json": [
+        "beliefs",
+        "philosophy",
+        "higher education",
+        "travel",
+        "spirituality",
+        "law",
+        "vision",
+        "meaning"
+      ],
+      "shadow_keywords_json": [
+        "dogmatism",
+        "moral superiority",
+        "escapism",
+        "restlessness",
+        "overconfidence"
+      ],
+      "psychological_keywords_json": [
+        "meaning-making",
+        "vision",
+        "faith",
+        "intellectual expansion",
+        "worldview"
+      ],
+      "material_keywords_json": [
+        "universities",
+        "foreign countries",
+        "publishing",
+        "legal systems",
+        "religious institutions"
+      ],
+      "relationship_keywords_json": [
+        "shared beliefs",
+        "cross-cultural bonds",
+        "teacher-student dynamics",
+        "long-distance relationships"
+      ],
+      "career_keywords_json": [
+        "teaching",
+        "academia",
+        "law",
+        "publishing",
+        "international business",
+        "travel industries"
+      ],
+      "health_keywords_json": [
+        "hips",
+        "thighs",
+        "liver",
+        "mobility",
+        "growth processes"
+      ],
+      "spiritual_keywords_json": [
+        "faith",
+        "wisdom",
+        "pilgrimage",
+        "higher truth",
+        "cosmic perspective"
+      ],
+      "body_parts_json": [
+        "hips",
+        "thighs",
+        "liver",
+        "sciatic region"
+      ],
+      "archetypes_json": [
+        "The Seeker",
+        "The Teacher",
+        "The Pilgrim"
+      ],
+      "dos_json": [
+        "Connect this house to meaning, worldview and expansion.",
+        "Distinguish wisdom from dogma."
+      ],
+      "donts_json": [
+        "Do not reduce it only to travel.",
+        "Avoid presenting beliefs as universally true."
+      ],
+      "prompt_hints_json": [
+        "Interpret this house through purpose, learning and broad horizons.",
+        "Mention travel or education when context supports it."
+      ],
+      "micro_note": "Where life searches for meaning.",
+      "language_id": 1
+    },
+    {
+      "id": 10,
+      "reference_version_id": 1,
+      "house_id": 10,
+      "tradition": "modern",
+      "title": "Career and Public Role",
+      "summary": "The tenth house describes ambition, reputation, vocation, authority, public image and visible contribution to the world.",
+      "core_keywords_json": [
+        "career",
+        "ambition",
+        "reputation",
+        "status",
+        "authority",
+        "achievement",
+        "vocation",
+        "public image"
+      ],
+      "shadow_keywords_json": [
+        "workaholism",
+        "status anxiety",
+        "cold ambition",
+        "fear of failure",
+        "public pressure"
+      ],
+      "psychological_keywords_json": [
+        "achievement drive",
+        "responsibility",
+        "recognition need",
+        "discipline",
+        "public accountability"
+      ],
+      "material_keywords_json": [
+        "profession",
+        "hierarchy",
+        "leadership",
+        "public visibility",
+        "institutions",
+        "career milestones"
+      ],
+      "relationship_keywords_json": [
+        "authority figures",
+        "mentors",
+        "public expectations",
+        "parental imprint",
+        "professional alliances"
+      ],
+      "career_keywords_json": [
+        "leadership",
+        "management",
+        "executive role",
+        "public reputation",
+        "long-term direction"
+      ],
+      "health_keywords_json": [
+        "knees",
+        "bones",
+        "skin",
+        "posture",
+        "structural endurance"
+      ],
+      "spiritual_keywords_json": [
+        "calling",
+        "dharma",
+        "responsibility",
+        "legacy",
+        "visible service"
+      ],
+      "body_parts_json": [
+        "knees",
+        "bones",
+        "skin",
+        "skeleton"
+      ],
+      "archetypes_json": [
+        "The Leader",
+        "The Authority",
+        "The Builder of Legacy"
+      ],
+      "dos_json": [
+        "Connect this house to public identity and long-term direction.",
+        "Include vocation and responsibility, not only job title."
+      ],
+      "donts_json": [
+        "Do not reduce it only to salary or professional success.",
+        "Avoid equating worth with status."
+      ],
+      "prompt_hints_json": [
+        "Interpret this house through vocation, visibility and social contribution.",
+        "Mention reputation and authority when relevant."
+      ],
+      "micro_note": "Where life becomes visible responsibility.",
+      "language_id": 1
+    },
+    {
+      "id": 11,
+      "reference_version_id": 1,
+      "house_id": 11,
+      "tradition": "modern",
+      "title": "Networks and Future Vision",
+      "summary": "The eleventh house describes friendships, networks, groups, communities, collective ideals, future goals and the ability to participate in something larger.",
+      "core_keywords_json": [
+        "friends",
+        "networks",
+        "groups",
+        "community",
+        "future",
+        "hopes",
+        "collective",
+        "social vision"
+      ],
+      "shadow_keywords_json": [
+        "detachment",
+        "social conformity",
+        "exclusion",
+        "idealism without action",
+        "fear of belonging"
+      ],
+      "psychological_keywords_json": [
+        "belonging",
+        "idealism",
+        "future orientation",
+        "social intelligence",
+        "collective identity"
+      ],
+      "material_keywords_json": [
+        "organizations",
+        "associations",
+        "technology networks",
+        "communities",
+        "social platforms"
+      ],
+      "relationship_keywords_json": [
+        "friendships",
+        "group belonging",
+        "peer networks",
+        "social alliances",
+        "chosen family"
+      ],
+      "career_keywords_json": [
+        "community building",
+        "innovation",
+        "technology",
+        "social strategy",
+        "network leadership"
+      ],
+      "health_keywords_json": [
+        "ankles",
+        "calves",
+        "circulation",
+        "nervous distribution"
+      ],
+      "spiritual_keywords_json": [
+        "collective evolution",
+        "humanitarian vision",
+        "shared future",
+        "service to humanity"
+      ],
+      "body_parts_json": [
+        "ankles",
+        "calves",
+        "circulatory system"
+      ],
+      "archetypes_json": [
+        "The Visionary",
+        "The Friend",
+        "The Reformer"
+      ],
+      "dos_json": [
+        "Connect personal hopes to collective participation.",
+        "Emphasize networks, communities and future vision."
+      ],
+      "donts_json": [
+        "Do not reduce this house to casual friendship.",
+        "Avoid presenting group identity as loss of individuality."
+      ],
+      "prompt_hints_json": [
+        "Use this house to describe social belonging and future-oriented goals.",
+        "Mention groups and networks when planets activate this area."
+      ],
+      "micro_note": "Where the individual joins the future.",
+      "language_id": 1
+    },
+    {
+      "id": 12,
+      "reference_version_id": 1,
+      "house_id": 12,
+      "tradition": "modern",
+      "title": "Unconscious and Transcendence",
+      "summary": "The twelfth house describes the unconscious, solitude, dreams, hidden patterns, spiritual retreat, compassion, release and what lies beyond ordinary control.",
+      "core_keywords_json": [
+        "unconscious",
+        "solitude",
+        "dreams",
+        "spirituality",
+        "retreat",
+        "hidden patterns",
+        "compassion",
+        "release"
+      ],
+      "shadow_keywords_json": [
+        "escapism",
+        "self-sabotage",
+        "isolation",
+        "confusion",
+        "victimhood",
+        "unresolved fears"
+      ],
+      "psychological_keywords_json": [
+        "unconscious material",
+        "inner retreat",
+        "sensitivity",
+        "hidden fears",
+        "psychic permeability"
+      ],
+      "material_keywords_json": [
+        "hospitals",
+        "monasteries",
+        "retreat centers",
+        "closed institutions",
+        "private spaces"
+      ],
+      "relationship_keywords_json": [
+        "hidden bonds",
+        "sacrifice",
+        "compassion",
+        "unspoken dynamics",
+        "karmic ties"
+      ],
+      "career_keywords_json": [
+        "healing work",
+        "research behind the scenes",
+        "spiritual care",
+        "charity",
+        "institutional service"
+      ],
+      "health_keywords_json": [
+        "feet",
+        "sleep",
+        "immune sensitivity",
+        "psychosomatic patterns",
+        "subtle fatigue"
+      ],
+      "spiritual_keywords_json": [
+        "transcendence",
+        "surrender",
+        "meditation",
+        "compassion",
+        "liberation"
+      ],
+      "body_parts_json": [
+        "feet",
+        "lymphatic system",
+        "subtle nervous sensitivity"
+      ],
+      "archetypes_json": [
+        "The Mystic",
+        "The Dreamer",
+        "The Hermit"
+      ],
+      "dos_json": [
+        "Interpret this house with care, compassion and subtlety.",
+        "Connect solitude to integration and spiritual release."
+      ],
+      "donts_json": [
+        "Do not make fatalistic claims about suffering.",
+        "Avoid treating hidden material as inherently negative."
+      ],
+      "prompt_hints_json": [
+        "Use this house for dreams, unconscious patterns and spiritual withdrawal.",
+        "Frame challenges as invitations to release and compassion."
+      ],
+      "micro_note": "Where life dissolves, heals and returns to the invisible.",
+      "language_id": 1
+    }
+  ]
+}

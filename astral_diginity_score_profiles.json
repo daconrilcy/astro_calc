@@ -1,0 +1,59 @@
+{
+  "name": "astral_diginity_score_profiles",
+  "structure": {
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "astral_system_id": "integer, FK -> astral_systems.id",
+    "profile_family_source_id": "integer, FK -> astral_sources.id",
+    "description": "string",
+    "is_default": "boolean"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "traditional_standard",
+      "label": "Traditional Standard",
+      "astral_system_id": 1,
+      "profile_family_source_id": 4,
+      "description": "Balanced traditional western essential dignity scoring profile.",
+      "is_default": true
+    },
+    {
+      "id": 2,
+      "code": "traditional_strict",
+      "label": "Traditional Strict",
+      "astral_system_id": 1,
+      "profile_family_source_id": 4,
+      "description": "Strict traditional dignity scoring with stronger penalties and accidental weighting.",
+      "is_default": false
+    },
+    {
+      "id": 3,
+      "code": "hellenistic",
+      "label": "Hellenistic",
+      "astral_system_id": 3,
+      "profile_family_source_id": 5,
+      "description": "Hellenistic essential dignity interpretation profile.",
+      "is_default": false
+    },
+    {
+      "id": 4,
+      "code": "modern_psychological",
+      "label": "Modern Psychological",
+      "astral_system_id": 2,
+      "profile_family_source_id": 4,
+      "description": "Modern psychological dignity interpretation profile focused on expression rather than beneficence.",
+      "is_default": false
+    },
+    {
+      "id": 5,
+      "code": "lightweight_runtime",
+      "label": "Lightweight Runtime",
+      "astral_system_id": 1,
+      "profile_family_source_id": 6,
+      "description": "Simplified runtime dignity scoring optimized for lightweight calculations.",
+      "is_default": false
+    }
+  ]
+}

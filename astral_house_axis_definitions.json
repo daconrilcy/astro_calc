@@ -1,0 +1,68 @@
+{
+  "name": "astral_house_axis_definitions",
+  "structure": {
+    "id": "integer",
+    "astral_system_id": "integer",
+    "key": "string",
+    "title": "string",
+    "summary": "string",
+    "language_id": "integer",
+    "micro_note": "string | null"
+  },
+  "data": [
+    {
+      "id": 1,
+      "astral_system_id": 2,
+      "key": "self_relationship",
+      "title": "Self and Relationship",
+      "summary": "The axis between personal identity, autonomy and self-expression, and partnership, cooperation and the encounter with others.",
+      "language_id": 1,
+      "micro_note": "Canonical 1st/7th house polarity."
+    },
+    {
+      "id": 2,
+      "astral_system_id": 2,
+      "key": "resources_sharing",
+      "title": "Resources and Sharing",
+      "summary": "The axis between personal resources, money, values and self-worth, and shared assets, intimacy, debts, transformation and dependency.",
+      "language_id": 1,
+      "micro_note": "Canonical 2nd/8th house polarity."
+    },
+    {
+      "id": 3,
+      "astral_system_id": 2,
+      "key": "local_distant",
+      "title": "Local and Distant",
+      "summary": "The axis between immediate environment, everyday communication and practical learning, and higher knowledge, distant horizons, beliefs and worldview.",
+      "language_id": 1,
+      "micro_note": "Canonical 3rd/9th house polarity."
+    },
+    {
+      "id": 4,
+      "astral_system_id": 2,
+      "key": "private_public",
+      "title": "Private and Public",
+      "summary": "The axis between home, roots, family, emotional foundations and private life, and career, vocation, reputation, authority and public role.",
+      "language_id": 1,
+      "micro_note": "Canonical 4th/10th house polarity."
+    },
+    {
+      "id": 5,
+      "astral_system_id": 2,
+      "key": "creation_collective",
+      "title": "Creation and Collective",
+      "summary": "The axis between personal creativity, pleasure, romance and individual expression, and friendships, groups, collective projects and shared ideals.",
+      "language_id": 1,
+      "micro_note": "Canonical 5th/11th house polarity."
+    },
+    {
+      "id": 6,
+      "astral_system_id": 2,
+      "key": "control_surrender",
+      "title": "Control and Surrender",
+      "summary": "The axis between daily work, routines, service, health and practical order, and retreat, unconscious patterns, solitude, release and transcendence.",
+      "language_id": 1,
+      "micro_note": "Canonical 6th/12th house polarity."
+    }
+  ]
+}

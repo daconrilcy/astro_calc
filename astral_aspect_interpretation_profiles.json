@@ -1,0 +1,1694 @@
+{
+  "name": "astral_aspect_interpretation_profiles",
+  "structure": {
+    "schema_version": "astral_aspect_interpretation_profiles.v1",
+    "unique_key": [
+      "reference_version_id",
+      "aspect_id",
+      "astral_system_id",
+      "language_id"
+    ],
+    "columns": {
+      "id": "integer",
+      "reference_version_id": "foreign_key:astral_reference_versions.id",
+      "aspect_id": "foreign_key:astral_aspects.id",
+      "astral_system_id": "foreign_key:astral_systems.id",
+      "language_id": "foreign_key:languages.id",
+      "title": "string",
+      "summary": "text",
+      "core_keywords_json": "json_array",
+      "shadow_keywords_json": "json_array",
+      "psychological_keywords_json": "json_array",
+      "relationship_keywords_json": "json_array",
+      "career_keywords_json": "json_array",
+      "spiritual_keywords_json": "json_array",
+      "energetic_dynamics_json": "json_array",
+      "growth_patterns_json": "json_array",
+      "conflict_patterns_json": "json_array",
+      "archetypes_json": "json_array",
+      "dos_json": "json_array",
+      "donts_json": "json_array",
+      "prompt_hints_json": "json_array",
+      "micro_note": "text"
+    }
+  },
+  "data": [
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "modern",
+      "aspect_code": "conjunction",
+      "title": "Fusion and Intensification",
+      "summary": "A conjunction blends two planetary principles into a single intensified field. It amplifies the planets involved and can feel natural, powerful, excessive, or difficult to separate.",
+      "core_keywords_json": [
+        "fusion",
+        "intensification",
+        "focus",
+        "emphasis",
+        "amplification",
+        "merging",
+        "concentration"
+      ],
+      "shadow_keywords_json": [
+        "over-identification",
+        "blind spot",
+        "excess",
+        "confusion",
+        "lack of distance",
+        "compulsion"
+      ],
+      "psychological_keywords_json": [
+        "identity fusion",
+        "inner concentration",
+        "dominant complex",
+        "self-definition",
+        "integrated drive"
+      ],
+      "relationship_keywords_json": [
+        "merging",
+        "projection",
+        "strong attraction",
+        "identification",
+        "shared focus"
+      ],
+      "career_keywords_json": [
+        "specialization",
+        "visibility",
+        "focused ambition",
+        "personal branding",
+        "intensified skill"
+      ],
+      "spiritual_keywords_json": [
+        "unity",
+        "embodiment",
+        "integration",
+        "initiation",
+        "presence"
+      ],
+      "energetic_dynamics_json": [
+        "two functions operate together",
+        "energy is concentrated",
+        "separation between the planets is reduced"
+      ],
+      "growth_patterns_json": [
+        "learn to consciously direct the intensified energy",
+        "differentiate the planets involved",
+        "use focus without becoming rigid"
+      ],
+      "conflict_patterns_json": [
+        "difficulty seeing alternatives",
+        "one function dominates the other",
+        "excessive identification with one theme"
+      ],
+      "archetypes_json": [
+        "the fusion point",
+        "the amplifier",
+        "the seed",
+        "the concentrated flame"
+      ],
+      "dos_json": [
+        "name the planets involved clearly",
+        "explain that the quality depends on the planets",
+        "emphasize intensity rather than automatic positivity or negativity"
+      ],
+      "donts_json": [
+        "do not call every conjunction harmonious",
+        "do not interpret it without the planets involved",
+        "do not confuse fusion with ease"
+      ],
+      "prompt_hints_json": [
+        "Interpret as amplification and fusion.",
+        "Describe how the two planetary principles become difficult to separate.",
+        "Avoid fixed good/bad language."
+      ],
+      "micro_note": "The conjunction is contextual: it magnifies whatever it touches.",
+      "language_id": 1
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "modern",
+      "aspect_code": "sextile",
+      "title": "Opportunity and Cooperation",
+      "summary": "A sextile creates a supportive connection that opens possibilities. It is constructive and helpful, but usually requires conscious participation to become fully active.",
+      "core_keywords_json": [
+        "opportunity",
+        "cooperation",
+        "support",
+        "opening",
+        "ease with effort",
+        "constructive link"
+      ],
+      "shadow_keywords_json": [
+        "underuse",
+        "passivity",
+        "missed opportunity",
+        "complacency",
+        "soft potential"
+      ],
+      "psychological_keywords_json": [
+        "available resource",
+        "adaptive intelligence",
+        "constructive attitude",
+        "learning through engagement"
+      ],
+      "relationship_keywords_json": [
+        "friendly support",
+        "mutual help",
+        "dialogue",
+        "cooperation",
+        "soft attraction"
+      ],
+      "career_keywords_json": [
+        "networking",
+        "skill development",
+        "collaboration",
+        "opportunity creation",
+        "practical support"
+      ],
+      "spiritual_keywords_json": [
+        "alignment",
+        "gentle guidance",
+        "opening path",
+        "assisted growth"
+      ],
+      "energetic_dynamics_json": [
+        "energy flows when activated",
+        "the planets cooperate without forcing",
+        "potential becomes useful through action"
+      ],
+      "growth_patterns_json": [
+        "notice available opportunities",
+        "take small constructive actions",
+        "develop the latent skill"
+      ],
+      "conflict_patterns_json": [
+        "waiting for things to happen",
+        "not using available resources",
+        "mistaking potential for achievement"
+      ],
+      "archetypes_json": [
+        "the helper",
+        "the bridge",
+        "the open door",
+        "the invitation"
+      ],
+      "dos_json": [
+        "describe the opportunity",
+        "show how the person can activate it",
+        "keep the tone supportive but not passive"
+      ],
+      "donts_json": [
+        "do not overstate it as automatic success",
+        "do not make it as strong as a trine or conjunction"
+      ],
+      "prompt_hints_json": [
+        "Interpret as helpful potential.",
+        "Mention that conscious engagement is needed.",
+        "Use constructive and practical language."
+      ],
+      "micro_note": "The sextile is a door; it still needs to be opened.",
+      "language_id": 1
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "modern",
+      "aspect_code": "square",
+      "title": "Friction and Activation",
+      "summary": "A square creates tension between two planetary principles. It often manifests as pressure, conflict, urgency or frustration, but it also generates movement, effort and growth.",
+      "core_keywords_json": [
+        "friction",
+        "challenge",
+        "activation",
+        "pressure",
+        "conflict",
+        "effort",
+        "growth through tension"
+      ],
+      "shadow_keywords_json": [
+        "stress",
+        "blockage",
+        "reactivity",
+        "inner conflict",
+        "resistance",
+        "forced action"
+      ],
+      "psychological_keywords_json": [
+        "developmental tension",
+        "inner contradiction",
+        "activation complex",
+        "will under pressure",
+        "problem-solving"
+      ],
+      "relationship_keywords_json": [
+        "conflict",
+        "attraction through tension",
+        "misalignment",
+        "power struggle",
+        "necessary confrontation"
+      ],
+      "career_keywords_json": [
+        "pressure",
+        "competition",
+        "ambition",
+        "urgent problem",
+        "performance challenge"
+      ],
+      "spiritual_keywords_json": [
+        "trial",
+        "discipline",
+        "purification through friction",
+        "awakening through difficulty"
+      ],
+      "energetic_dynamics_json": [
+        "two functions push against each other",
+        "energy seeks resolution through action",
+        "friction creates movement"
+      ],
+      "growth_patterns_json": [
+        "act consciously instead of reacting",
+        "turn pressure into structured effort",
+        "integrate conflicting needs"
+      ],
+      "conflict_patterns_json": [
+        "repeating the same struggle",
+        "projecting one side outward",
+        "responding with defensiveness or force"
+      ],
+      "archetypes_json": [
+        "the obstacle",
+        "the forge",
+        "the challenger",
+        "the pressure point"
+      ],
+      "dos_json": [
+        "name the tension clearly",
+        "show the growth path",
+        "avoid fatalistic language"
+      ],
+      "donts_json": [
+        "do not call it simply negative",
+        "do not ignore its productive force",
+        "do not soften it so much that the tension disappears"
+      ],
+      "prompt_hints_json": [
+        "Interpret as dynamic tension.",
+        "Explain the challenge and the development opportunity.",
+        "Use precise, active language."
+      ],
+      "micro_note": "The square is difficult, but it is one of the strongest engines of growth.",
+      "language_id": 1
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "modern",
+      "aspect_code": "trine",
+      "title": "Flow and Integration",
+      "summary": "A trine indicates natural ease between two planetary principles. It supports talent, fluidity and integration, though it can become passive if not consciously used.",
+      "core_keywords_json": [
+        "flow",
+        "ease",
+        "harmony",
+        "integration",
+        "talent",
+        "natural support",
+        "fluidity"
+      ],
+      "shadow_keywords_json": [
+        "complacency",
+        "laziness",
+        "over-reliance",
+        "lack of effort",
+        "taken-for-granted gift"
+      ],
+      "psychological_keywords_json": [
+        "inner harmony",
+        "natural confidence",
+        "integrated function",
+        "ease of expression"
+      ],
+      "relationship_keywords_json": [
+        "comfort",
+        "understanding",
+        "natural rapport",
+        "emotional ease",
+        "supportive bond"
+      ],
+      "career_keywords_json": [
+        "natural talent",
+        "smooth execution",
+        "recognized ability",
+        "easeful productivity",
+        "creative flow"
+      ],
+      "spiritual_keywords_json": [
+        "grace",
+        "inner alignment",
+        "blessing",
+        "harmonious development"
+      ],
+      "energetic_dynamics_json": [
+        "energy circulates easily",
+        "the planets reinforce each other",
+        "there is little internal resistance"
+      ],
+      "growth_patterns_json": [
+        "use the talent actively",
+        "avoid becoming passive",
+        "share the gift consciously"
+      ],
+      "conflict_patterns_json": [
+        "lack of motivation",
+        "expecting ease everywhere",
+        "avoiding necessary friction"
+      ],
+      "archetypes_json": [
+        "the gift",
+        "the river",
+        "the blessing",
+        "the natural path"
+      ],
+      "dos_json": [
+        "describe the ease and talent",
+        "include the risk of passivity",
+        "connect the flow to concrete expression"
+      ],
+      "donts_json": [
+        "do not imply guaranteed success",
+        "do not ignore effort",
+        "do not make it purely spiritual without practical expression"
+      ],
+      "prompt_hints_json": [
+        "Interpret as natural flow.",
+        "Mention talent or ease.",
+        "Add a note about conscious use."
+      ],
+      "micro_note": "The trine shows what flows naturally, but flow still needs direction.",
+      "language_id": 1
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "modern",
+      "aspect_code": "opposition",
+      "title": "Polarity and Awareness",
+      "summary": "An opposition places two planetary principles across from each other. It creates polarity, tension, projection and awareness through contrast, often requiring balance and integration.",
+      "core_keywords_json": [
+        "polarity",
+        "contrast",
+        "awareness",
+        "projection",
+        "tension",
+        "balance",
+        "relationship axis"
+      ],
+      "shadow_keywords_json": [
+        "projection",
+        "division",
+        "externalization",
+        "conflict",
+        "dependency",
+        "either-or thinking"
+      ],
+      "psychological_keywords_json": [
+        "inner polarity",
+        "self-other awareness",
+        "projection pattern",
+        "balancing opposites",
+        "mirroring"
+      ],
+      "relationship_keywords_json": [
+        "attraction",
+        "confrontation",
+        "mirroring",
+        "partnership tension",
+        "need for negotiation"
+      ],
+      "career_keywords_json": [
+        "public opposition",
+        "negotiation",
+        "stakeholder tension",
+        "visibility through contrast",
+        "strategic balance"
+      ],
+      "spiritual_keywords_json": [
+        "integration of opposites",
+        "mirror work",
+        "duality",
+        "conscious balance"
+      ],
+      "energetic_dynamics_json": [
+        "two functions face each other",
+        "awareness grows through contrast",
+        "energy seeks balance across an axis"
+      ],
+      "growth_patterns_json": [
+        "own both sides of the polarity",
+        "reduce projection",
+        "build conscious dialogue between opposites"
+      ],
+      "conflict_patterns_json": [
+        "blaming the other side",
+        "oscillating between extremes",
+        "refusing compromise"
+      ],
+      "archetypes_json": [
+        "the mirror",
+        "the axis",
+        "the counterpart",
+        "the balancing scale"
+      ],
+      "dos_json": [
+        "frame it as polarity",
+        "include relationship and projection dynamics",
+        "show the integration path"
+      ],
+      "donts_json": [
+        "do not reduce it to conflict only",
+        "do not ignore the relational dimension",
+        "do not treat one side as good and the other as bad"
+      ],
+      "prompt_hints_json": [
+        "Interpret as polarity and mirroring.",
+        "Explain projection and balance.",
+        "Use language of dialogue and integration."
+      ],
+      "micro_note": "The opposition reveals what must be balanced, owned and integrated.",
+      "language_id": 1
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "modern",
+      "aspect_code": "semi_sextile",
+      "title": "Subtle Adjustment",
+      "summary": "A semi-sextile links adjacent principles that are close but not naturally aligned. It indicates small adaptations, emerging awareness and subtle developmental friction.",
+      "core_keywords_json": [
+        "subtle adjustment",
+        "proximity",
+        "adaptation",
+        "minor connection",
+        "emerging link"
+      ],
+      "shadow_keywords_json": [
+        "awkwardness",
+        "minor discomfort",
+        "unclear link",
+        "underdeveloped potential"
+      ],
+      "psychological_keywords_json": [
+        "small adaptation",
+        "emerging awareness",
+        "minor integration",
+        "learning to coordinate"
+      ],
+      "relationship_keywords_json": [
+        "small differences",
+        "soft misunderstanding",
+        "adjustment",
+        "neighboring needs"
+      ],
+      "career_keywords_json": [
+        "minor optimization",
+        "skill adjustment",
+        "coordination",
+        "incremental progress"
+      ],
+      "spiritual_keywords_json": [
+        "subtle correction",
+        "small alignment",
+        "quiet teaching"
+      ],
+      "energetic_dynamics_json": [
+        "the planets are near but not fully compatible",
+        "energy requires small adjustments",
+        "connection is present but understated"
+      ],
+      "growth_patterns_json": [
+        "notice small signals",
+        "make incremental corrections",
+        "develop coordination"
+      ],
+      "conflict_patterns_json": [
+        "ignoring low-level discomfort",
+        "underestimating subtle misalignment"
+      ],
+      "archetypes_json": [
+        "the small hinge",
+        "the adjustment point",
+        "the neighbor"
+      ],
+      "dos_json": [
+        "keep interpretation subtle",
+        "avoid overstating intensity",
+        "focus on adjustment"
+      ],
+      "donts_json": [
+        "do not interpret it like a sextile",
+        "do not make it a major life driver alone"
+      ],
+      "prompt_hints_json": [
+        "Use soft language.",
+        "Describe small adjustments.",
+        "Mention subtle coordination."
+      ],
+      "micro_note": "The semi-sextile is minor but useful for fine-tuning.",
+      "language_id": 1
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "modern",
+      "aspect_code": "semi_square",
+      "title": "Minor Friction",
+      "summary": "A semi-square creates low-grade tension. It is less forceful than a square, but can produce irritation, restlessness and recurring pressure that asks for adjustment.",
+      "core_keywords_json": [
+        "minor friction",
+        "irritation",
+        "restlessness",
+        "pressure",
+        "adjustment",
+        "low-grade tension"
+      ],
+      "shadow_keywords_json": [
+        "annoyance",
+        "impatience",
+        "repetition",
+        "agitation",
+        "small blockage"
+      ],
+      "psychological_keywords_json": [
+        "inner irritation",
+        "minor stress response",
+        "restless adjustment",
+        "pressure sensitivity"
+      ],
+      "relationship_keywords_json": [
+        "small conflict",
+        "irritation",
+        "frictional communication",
+        "unspoken annoyance"
+      ],
+      "career_keywords_json": [
+        "workflow irritation",
+        "small obstacle",
+        "pressure point",
+        "minor conflict"
+      ],
+      "spiritual_keywords_json": [
+        "discipline through small discomfort",
+        "attention to minor imbalance"
+      ],
+      "energetic_dynamics_json": [
+        "pressure builds in a minor but noticeable way",
+        "energy pushes for correction",
+        "irritation signals misalignment"
+      ],
+      "growth_patterns_json": [
+        "respond early to small pressure",
+        "make practical corrections",
+        "avoid letting irritation accumulate"
+      ],
+      "conflict_patterns_json": [
+        "overreacting to small triggers",
+        "letting irritation become resentment"
+      ],
+      "archetypes_json": [
+        "the pebble in the shoe",
+        "the irritant",
+        "the small pressure valve"
+      ],
+      "dos_json": [
+        "keep intensity moderate",
+        "name the irritation",
+        "offer practical adjustment"
+      ],
+      "donts_json": [
+        "do not treat it as a full square",
+        "do not ignore its cumulative effect"
+      ],
+      "prompt_hints_json": [
+        "Interpret as minor tension.",
+        "Mention irritation and correction.",
+        "Avoid dramatic language."
+      ],
+      "micro_note": "The semi-square is small pressure that becomes useful when noticed early.",
+      "language_id": 1
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "modern",
+      "aspect_code": "quintile",
+      "title": "Creative Patterning",
+      "summary": "A quintile suggests creative intelligence, talent, design, craft and the ability to shape experience intentionally. It is subtle but highly expressive when cultivated.",
+      "core_keywords_json": [
+        "creativity",
+        "talent",
+        "patterning",
+        "craft",
+        "design",
+        "inventiveness",
+        "intentional expression"
+      ],
+      "shadow_keywords_json": [
+        "preciousness",
+        "eccentricity",
+        "unused talent",
+        "over-stylization",
+        "control through design"
+      ],
+      "psychological_keywords_json": [
+        "creative intelligence",
+        "pattern recognition",
+        "self-expression",
+        "skill formation"
+      ],
+      "relationship_keywords_json": [
+        "creative chemistry",
+        "playful expression",
+        "unique bond",
+        "aesthetic attraction"
+      ],
+      "career_keywords_json": [
+        "design",
+        "innovation",
+        "craftsmanship",
+        "creative problem-solving",
+        "specialized talent"
+      ],
+      "spiritual_keywords_json": [
+        "sacred pattern",
+        "creative order",
+        "symbolic intelligence"
+      ],
+      "energetic_dynamics_json": [
+        "energy organizes into pattern",
+        "the planets create intentional form",
+        "talent emerges through refinement"
+      ],
+      "growth_patterns_json": [
+        "practice the talent",
+        "give form to intuition",
+        "develop craft and symbolic precision"
+      ],
+      "conflict_patterns_json": [
+        "keeping talent private",
+        "becoming overly self-conscious",
+        "confusing uniqueness with superiority"
+      ],
+      "archetypes_json": [
+        "the artisan",
+        "the designer",
+        "the pattern-maker",
+        "the creative code"
+      ],
+      "dos_json": [
+        "emphasize creativity and craft",
+        "describe the talent as needing cultivation",
+        "keep the tone subtle"
+      ],
+      "donts_json": [
+        "do not overstate it as destiny",
+        "do not make it purely artistic if the planets suggest another field"
+      ],
+      "prompt_hints_json": [
+        "Interpret as creative patterning.",
+        "Mention talent, craft and intentional expression.",
+        "Connect it to the planets involved."
+      ],
+      "micro_note": "The quintile points to cultivated talent and creative order.",
+      "language_id": 1
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "modern",
+      "aspect_code": "sesquiquadrate",
+      "title": "Accumulated Tension",
+      "summary": "A sesquiquadrate indicates indirect or accumulated tension. It can feel like repeated pressure, frustration or unresolved stress that pushes for correction.",
+      "core_keywords_json": [
+        "accumulated tension",
+        "indirect pressure",
+        "frustration",
+        "stress pattern",
+        "correction"
+      ],
+      "shadow_keywords_json": [
+        "resentment",
+        "chronic irritation",
+        "delayed conflict",
+        "pressure build-up",
+        "repetition"
+      ],
+      "psychological_keywords_json": [
+        "stored frustration",
+        "repeating stress response",
+        "indirect conflict",
+        "adaptive pressure"
+      ],
+      "relationship_keywords_json": [
+        "unspoken tension",
+        "repeated irritation",
+        "indirect confrontation",
+        "emotional pressure"
+      ],
+      "career_keywords_json": [
+        "structural friction",
+        "repeated obstacle",
+        "process tension",
+        "hidden inefficiency"
+      ],
+      "spiritual_keywords_json": [
+        "purification through repeated correction",
+        "learning through discomfort"
+      ],
+      "energetic_dynamics_json": [
+        "pressure accumulates indirectly",
+        "energy seeks correction through repeated signals",
+        "friction is less obvious than a square"
+      ],
+      "growth_patterns_json": [
+        "identify repeated patterns",
+        "resolve pressure before it hardens",
+        "turn frustration into disciplined correction"
+      ],
+      "conflict_patterns_json": [
+        "avoiding direct confrontation",
+        "letting stress become chronic",
+        "misreading symptoms as causes"
+      ],
+      "archetypes_json": [
+        "the pressure chamber",
+        "the delayed spark",
+        "the repeated lesson"
+      ],
+      "dos_json": [
+        "explain accumulated pressure",
+        "connect it to repeated patterns",
+        "offer correction rather than drama"
+      ],
+      "donts_json": [
+        "do not make it stronger than a square",
+        "do not ignore its persistence"
+      ],
+      "prompt_hints_json": [
+        "Interpret as indirect tension.",
+        "Mention repetition and accumulated pressure.",
+        "Suggest practical correction."
+      ],
+      "micro_note": "The sesquiquadrate shows pressure that has been building indirectly.",
+      "language_id": 1
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "modern",
+      "aspect_code": "quincunx",
+      "title": "Incongruent Adjustment",
+      "summary": "A quincunx links planetary principles that do not naturally understand each other. It often requires adaptation, recalibration and practical adjustment without easy integration.",
+      "core_keywords_json": [
+        "adjustment",
+        "incongruence",
+        "adaptation",
+        "recalibration",
+        "mismatch",
+        "awkward integration"
+      ],
+      "shadow_keywords_json": [
+        "discomfort",
+        "misfit",
+        "chronic adjustment",
+        "confusion",
+        "inefficiency",
+        "somatic tension"
+      ],
+      "psychological_keywords_json": [
+        "adaptive stress",
+        "incompatible needs",
+        "recalibration",
+        "hidden discomfort",
+        "self-correction"
+      ],
+      "relationship_keywords_json": [
+        "misalignment",
+        "awkward compromise",
+        "adjustment",
+        "different needs",
+        "subtle incompatibility"
+      ],
+      "career_keywords_json": [
+        "process adjustment",
+        "role mismatch",
+        "optimization",
+        "complex adaptation",
+        "hidden inefficiency"
+      ],
+      "spiritual_keywords_json": [
+        "humility",
+        "fine-tuning",
+        "service through adjustment",
+        "integration of the unfamiliar"
+      ],
+      "energetic_dynamics_json": [
+        "the planets do not easily see each other",
+        "energy requires practical adaptation",
+        "resolution is indirect rather than confrontational"
+      ],
+      "growth_patterns_json": [
+        "accept the need for adjustment",
+        "listen to discomfort",
+        "build flexible systems"
+      ],
+      "conflict_patterns_json": [
+        "forcing incompatible parts together",
+        "ignoring bodily or practical signals",
+        "over-adapting without clarity"
+      ],
+      "archetypes_json": [
+        "the misfit",
+        "the tailor",
+        "the recalibrator",
+        "the awkward bridge"
+      ],
+      "dos_json": [
+        "emphasize adjustment and recalibration",
+        "avoid calling it purely negative",
+        "mention practical and bodily signals when relevant"
+      ],
+      "donts_json": [
+        "do not interpret it as an opposition",
+        "do not promise easy integration",
+        "do not ignore the discomfort"
+      ],
+      "prompt_hints_json": [
+        "Interpret as incongruent adjustment.",
+        "Explain that the planets need recalibration.",
+        "Use language of adaptation, not direct conflict."
+      ],
+      "micro_note": "The quincunx is not a clean conflict; it is a mismatch that asks for adjustment.",
+      "language_id": 1
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "modern",
+      "aspect_code": "biquintile",
+      "title": "Refined Creative Expression",
+      "summary": "A biquintile is a subtle creative harmonic. It suggests refinement, symbolic intelligence, design ability and the capacity to shape talent into a distinctive form.",
+      "core_keywords_json": [
+        "refinement",
+        "creative intelligence",
+        "symbolic design",
+        "craft",
+        "distinctive talent",
+        "articulation"
+      ],
+      "shadow_keywords_json": [
+        "over-refinement",
+        "detachment",
+        "unused gift",
+        "aesthetic control",
+        "self-conscious expression"
+      ],
+      "psychological_keywords_json": [
+        "refined talent",
+        "pattern intelligence",
+        "creative self-command",
+        "symbolic processing"
+      ],
+      "relationship_keywords_json": [
+        "unique chemistry",
+        "creative resonance",
+        "subtle attraction",
+        "distinctive relational style"
+      ],
+      "career_keywords_json": [
+        "high craft",
+        "design refinement",
+        "creative strategy",
+        "specialized skill",
+        "innovation"
+      ],
+      "spiritual_keywords_json": [
+        "sacred geometry",
+        "symbolic order",
+        "creative intelligence"
+      ],
+      "energetic_dynamics_json": [
+        "talent becomes refined",
+        "energy forms elegant patterns",
+        "expression is intentional and stylized"
+      ],
+      "growth_patterns_json": [
+        "practice refinement",
+        "share the talent",
+        "avoid hiding behind perfectionism"
+      ],
+      "conflict_patterns_json": [
+        "over-designing experience",
+        "withholding expression",
+        "turning talent into isolation"
+      ],
+      "archetypes_json": [
+        "the master craftsperson",
+        "the symbolic designer",
+        "the refined pattern"
+      ],
+      "dos_json": [
+        "keep it subtle",
+        "emphasize refined talent",
+        "connect creativity to discipline"
+      ],
+      "donts_json": [
+        "do not overinflate the aspect",
+        "do not ignore the need for practice"
+      ],
+      "prompt_hints_json": [
+        "Interpret as refined creativity.",
+        "Mention design, craft and symbolic intelligence.",
+        "Avoid deterministic language."
+      ],
+      "micro_note": "The biquintile refines the creative impulse of the quintile.",
+      "language_id": 1
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "modern",
+      "aspect_code": "septile",
+      "title": "Symbolic Compulsion",
+      "summary": "A septile is an advanced symbolic aspect associated with inner necessity, unusual timing, subtle compulsion and experiences that feel meaningful or fated.",
+      "core_keywords_json": [
+        "symbolic timing",
+        "fated feeling",
+        "inner necessity",
+        "mystery",
+        "subtle compulsion",
+        "sacred pattern"
+      ],
+      "shadow_keywords_json": [
+        "fatalism",
+        "obsession",
+        "irrational fixation",
+        "confusion",
+        "mystification"
+      ],
+      "psychological_keywords_json": [
+        "unconscious pull",
+        "meaning-making",
+        "inner summons",
+        "symbolic sensitivity"
+      ],
+      "relationship_keywords_json": [
+        "strange attraction",
+        "karmic feeling",
+        "unusual bond",
+        "difficult-to-explain resonance"
+      ],
+      "career_keywords_json": [
+        "unusual calling",
+        "symbolic vocation",
+        "nonlinear timing",
+        "specialized intuition"
+      ],
+      "spiritual_keywords_json": [
+        "initiation",
+        "mystery",
+        "fate",
+        "sacred timing",
+        "esoteric pattern"
+      ],
+      "energetic_dynamics_json": [
+        "energy operates symbolically",
+        "the connection is subtle and non-rational",
+        "timing can feel meaningful"
+      ],
+      "growth_patterns_json": [
+        "hold mystery without losing discernment",
+        "listen to symbolic signals",
+        "avoid fatalistic conclusions"
+      ],
+      "conflict_patterns_json": [
+        "believing everything is destined",
+        "confusing intuition with compulsion",
+        "over-mystifying events"
+      ],
+      "archetypes_json": [
+        "the omen",
+        "the hidden pattern",
+        "the summons",
+        "the mystery gate"
+      ],
+      "dos_json": [
+        "mark it as advanced",
+        "use cautious language",
+        "avoid making it central unless strongly supported"
+      ],
+      "donts_json": [
+        "do not present it as certain fate",
+        "do not overuse it in mainstream readings"
+      ],
+      "prompt_hints_json": [
+        "Interpret as symbolic and subtle.",
+        "Use careful, non-fatalistic language.",
+        "Mention mystery and inner necessity."
+      ],
+      "micro_note": "The septile should remain subtle and contextual in public interpretations.",
+      "language_id": 1
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "modern",
+      "aspect_code": "biseptile",
+      "title": "Deep Symbolic Resonance",
+      "summary": "A biseptile extends the septile family, indicating subtle symbolic pressure, unusual resonance and a sense of meaningful inner movement.",
+      "core_keywords_json": [
+        "symbolic resonance",
+        "subtle pressure",
+        "meaningful pattern",
+        "inner pull",
+        "mystery"
+      ],
+      "shadow_keywords_json": [
+        "over-interpretation",
+        "fatalism",
+        "psychological fixation",
+        "obscurity"
+      ],
+      "psychological_keywords_json": [
+        "symbolic processing",
+        "deep intuition",
+        "unconscious pattern",
+        "inner necessity"
+      ],
+      "relationship_keywords_json": [
+        "mysterious resonance",
+        "unusual connection",
+        "symbolic attraction",
+        "nonlinear bond"
+      ],
+      "career_keywords_json": [
+        "intuitive strategy",
+        "nonlinear vocation",
+        "symbolic insight",
+        "unusual specialization"
+      ],
+      "spiritual_keywords_json": [
+        "esoteric pattern",
+        "sacred pressure",
+        "hidden order",
+        "initiation"
+      ],
+      "energetic_dynamics_json": [
+        "energy moves through symbolic resonance",
+        "the aspect is subtle and interpretively delicate"
+      ],
+      "growth_patterns_json": [
+        "develop discernment",
+        "translate intuition into grounded action",
+        "avoid exaggerating signs"
+      ],
+      "conflict_patterns_json": [
+        "reading too much into everything",
+        "becoming attached to mystery",
+        "mistaking pressure for destiny"
+      ],
+      "archetypes_json": [
+        "the hidden chord",
+        "the symbolic bridge",
+        "the inner call"
+      ],
+      "dos_json": [
+        "keep interpretation cautious",
+        "make it secondary to major aspects",
+        "ground symbolism in practical life"
+      ],
+      "donts_json": [
+        "do not make it a deterministic claim",
+        "do not overstate its public relevance"
+      ],
+      "prompt_hints_json": [
+        "Interpret as advanced symbolic resonance.",
+        "Avoid fatalistic framing.",
+        "Keep it secondary unless repeated."
+      ],
+      "micro_note": "The biseptile is meaningful but should be handled with restraint.",
+      "language_id": 1
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "modern",
+      "aspect_code": "triseptile",
+      "title": "Intensified Symbolic Pattern",
+      "summary": "A triseptile belongs to the septile family and points to intensified symbolic patterning, subtle compulsion and inner movements that may feel charged with meaning.",
+      "core_keywords_json": [
+        "symbolic intensity",
+        "inner compulsion",
+        "meaningful pattern",
+        "subtle destiny",
+        "charged intuition"
+      ],
+      "shadow_keywords_json": [
+        "fatalism",
+        "obsession",
+        "irrational certainty",
+        "distortion",
+        "hidden anxiety"
+      ],
+      "psychological_keywords_json": [
+        "charged intuition",
+        "unconscious pressure",
+        "symbolic fixation",
+        "inner mandate"
+      ],
+      "relationship_keywords_json": [
+        "intense mysterious bond",
+        "symbolic attraction",
+        "unusual mirroring",
+        "karmic feeling"
+      ],
+      "career_keywords_json": [
+        "unusual mission",
+        "specialized intuition",
+        "symbolic leadership",
+        "nonlinear calling"
+      ],
+      "spiritual_keywords_json": [
+        "mystery",
+        "initiation",
+        "fate motif",
+        "sacred compulsion"
+      ],
+      "energetic_dynamics_json": [
+        "energy becomes charged through symbolic meaning",
+        "the connection is subtle but psychologically intense"
+      ],
+      "growth_patterns_json": [
+        "separate intuition from compulsion",
+        "ground symbolic insight",
+        "avoid dramatic certainty"
+      ],
+      "conflict_patterns_json": [
+        "over-identifying with fate",
+        "becoming psychologically captured by a pattern",
+        "refusing ordinary explanations"
+      ],
+      "archetypes_json": [
+        "the charged omen",
+        "the initiatory pattern",
+        "the hidden mandate"
+      ],
+      "dos_json": [
+        "use cautious language",
+        "make the symbolic quality clear",
+        "avoid sensationalism"
+      ],
+      "donts_json": [
+        "do not make it central without corroboration",
+        "do not claim literal fate"
+      ],
+      "prompt_hints_json": [
+        "Interpret as intensified symbolic pressure.",
+        "Keep the tone grounded.",
+        "Avoid certainty claims."
+      ],
+      "micro_note": "The triseptile is advanced and should not dominate a reading alone.",
+      "language_id": 1
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "modern",
+      "aspect_code": "novile",
+      "title": "Inner Completion",
+      "summary": "A novile suggests inner integration, maturation and subtle spiritual development. It often points to a quiet process of completion rather than visible outer pressure.",
+      "core_keywords_json": [
+        "completion",
+        "integration",
+        "maturation",
+        "inner development",
+        "spiritual refinement"
+      ],
+      "shadow_keywords_json": [
+        "withdrawal",
+        "passivity",
+        "idealization",
+        "invisibility",
+        "private stagnation"
+      ],
+      "psychological_keywords_json": [
+        "inner synthesis",
+        "quiet maturation",
+        "self-integration",
+        "reflective growth"
+      ],
+      "relationship_keywords_json": [
+        "quiet bond",
+        "inner loyalty",
+        "spiritual rapport",
+        "mature affection"
+      ],
+      "career_keywords_json": [
+        "mastery process",
+        "quiet expertise",
+        "refinement",
+        "completion of skill"
+      ],
+      "spiritual_keywords_json": [
+        "initiation through completion",
+        "inner marriage",
+        "soul integration",
+        "maturity"
+      ],
+      "energetic_dynamics_json": [
+        "energy integrates inwardly",
+        "the aspect is quiet and developmental",
+        "completion is more internal than external"
+      ],
+      "growth_patterns_json": [
+        "honor slow maturation",
+        "make inner integration visible when needed",
+        "avoid hiding development"
+      ],
+      "conflict_patterns_json": [
+        "mistaking silence for completion",
+        "remaining too private",
+        "idealizing maturity"
+      ],
+      "archetypes_json": [
+        "the inner temple",
+        "the completion point",
+        "the quiet initiate"
+      ],
+      "dos_json": [
+        "keep the interpretation subtle",
+        "emphasize inner maturity",
+        "avoid making it event-driven"
+      ],
+      "donts_json": [
+        "do not treat it like a major external trigger",
+        "do not overstate its visibility"
+      ],
+      "prompt_hints_json": [
+        "Interpret as inner integration.",
+        "Mention maturation and completion.",
+        "Use quiet, reflective language."
+      ],
+      "micro_note": "The novile is subtle, inward and developmental.",
+      "language_id": 1
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "modern",
+      "aspect_code": "binovile",
+      "title": "Deepening Inner Integration",
+      "summary": "A binovile extends the novile family, suggesting a deepening process of inner alignment, spiritual maturation and quiet synthesis.",
+      "core_keywords_json": [
+        "deep integration",
+        "inner alignment",
+        "maturation",
+        "spiritual process",
+        "quiet synthesis"
+      ],
+      "shadow_keywords_json": [
+        "detachment",
+        "over-idealization",
+        "hidden passivity",
+        "private isolation"
+      ],
+      "psychological_keywords_json": [
+        "deep reflection",
+        "inner synthesis",
+        "mature processing",
+        "psychological integration"
+      ],
+      "relationship_keywords_json": [
+        "spiritual rapport",
+        "quiet intimacy",
+        "mature connection",
+        "inner loyalty"
+      ],
+      "career_keywords_json": [
+        "deep mastery",
+        "specialized refinement",
+        "private excellence",
+        "completed skill"
+      ],
+      "spiritual_keywords_json": [
+        "inner initiation",
+        "mature wisdom",
+        "soul alignment",
+        "quiet completion"
+      ],
+      "energetic_dynamics_json": [
+        "energy moves toward deeper synthesis",
+        "development is subtle and largely internal"
+      ],
+      "growth_patterns_json": [
+        "make inner maturity actionable",
+        "trust slow integration",
+        "avoid disappearing into private meaning"
+      ],
+      "conflict_patterns_json": [
+        "withdrawing from expression",
+        "mistaking idealization for wisdom",
+        "keeping integration invisible"
+      ],
+      "archetypes_json": [
+        "the mature initiate",
+        "the quiet sage",
+        "the inner alignment"
+      ],
+      "dos_json": [
+        "interpret as subtle and mature",
+        "avoid dramatic claims",
+        "connect inner development to lived choices"
+      ],
+      "donts_json": [
+        "do not overemphasize it in public V1 readings",
+        "do not make it more visible than major aspects"
+      ],
+      "prompt_hints_json": [
+        "Interpret as deep inner synthesis.",
+        "Use reflective language.",
+        "Keep practical grounding."
+      ],
+      "micro_note": "The binovile deepens the inner completion theme of the novile.",
+      "language_id": 1
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "modern",
+      "aspect_code": "quadranovile",
+      "title": "Culminating Inner Synthesis",
+      "summary": "A quadranovile suggests a culminating phase of inner integration. It points to subtle completion, spiritual synthesis and the quiet consolidation of experience.",
+      "core_keywords_json": [
+        "culmination",
+        "inner synthesis",
+        "completion",
+        "spiritual consolidation",
+        "mature integration"
+      ],
+      "shadow_keywords_json": [
+        "withdrawal",
+        "completion fantasy",
+        "private idealization",
+        "inertia"
+      ],
+      "psychological_keywords_json": [
+        "culminating reflection",
+        "self-integration",
+        "inner consolidation",
+        "mature perspective"
+      ],
+      "relationship_keywords_json": [
+        "mature understanding",
+        "quiet completion",
+        "spiritual bond",
+        "resolved pattern"
+      ],
+      "career_keywords_json": [
+        "consolidated mastery",
+        "final refinement",
+        "quiet authority",
+        "completed phase"
+      ],
+      "spiritual_keywords_json": [
+        "completion cycle",
+        "inner wholeness",
+        "spiritual maturation",
+        "quiet initiation"
+      ],
+      "energetic_dynamics_json": [
+        "energy consolidates into inner completion",
+        "the aspect is subtle, reflective and mature"
+      ],
+      "growth_patterns_json": [
+        "bring completed insight into life",
+        "avoid remaining purely internal",
+        "translate synthesis into action"
+      ],
+      "conflict_patterns_json": [
+        "believing the process is complete too early",
+        "staying withdrawn",
+        "using spirituality to avoid action"
+      ],
+      "archetypes_json": [
+        "the completed circle",
+        "the inner harvest",
+        "the mature temple"
+      ],
+      "dos_json": [
+        "frame as subtle culmination",
+        "keep it secondary",
+        "connect insight to practical embodiment"
+      ],
+      "donts_json": [
+        "do not dramatize it",
+        "do not treat it as a major external event"
+      ],
+      "prompt_hints_json": [
+        "Interpret as culminating inner synthesis.",
+        "Use mature, reflective language.",
+        "Avoid overstatement."
+      ],
+      "micro_note": "The quadranovile points to quiet culmination rather than obvious external action.",
+      "language_id": 1
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "modern",
+      "aspect_code": "decile",
+      "title": "Creative Ordering",
+      "summary": "A decile is a subtle creative harmonic linked to order, proportion, intelligent design and the ability to structure talent into useful form.",
+      "core_keywords_json": [
+        "creative order",
+        "design",
+        "proportion",
+        "skill",
+        "intelligent structure",
+        "craft"
+      ],
+      "shadow_keywords_json": [
+        "over-control",
+        "perfectionism",
+        "stylization",
+        "unused skill",
+        "rigidity"
+      ],
+      "psychological_keywords_json": [
+        "organized creativity",
+        "pattern intelligence",
+        "structured expression",
+        "skill consciousness"
+      ],
+      "relationship_keywords_json": [
+        "designed rapport",
+        "creative compatibility",
+        "shared taste",
+        "structured exchange"
+      ],
+      "career_keywords_json": [
+        "design thinking",
+        "craft",
+        "technical creativity",
+        "strategic patterning",
+        "structured talent"
+      ],
+      "spiritual_keywords_json": [
+        "sacred order",
+        "creative intelligence",
+        "patterned harmony"
+      ],
+      "energetic_dynamics_json": [
+        "energy organizes into useful pattern",
+        "creativity seeks structure",
+        "talent becomes more deliberate"
+      ],
+      "growth_patterns_json": [
+        "practice structure",
+        "develop skill through repetition",
+        "avoid perfectionism"
+      ],
+      "conflict_patterns_json": [
+        "over-designing",
+        "controlling expression",
+        "valuing form over life"
+      ],
+      "archetypes_json": [
+        "the designer",
+        "the architect",
+        "the pattern keeper"
+      ],
+      "dos_json": [
+        "emphasize structured creativity",
+        "connect to craft",
+        "keep interpretation subtle"
+      ],
+      "donts_json": [
+        "do not treat it as a major driver",
+        "do not make creativity purely artistic"
+      ],
+      "prompt_hints_json": [
+        "Interpret as creative ordering.",
+        "Mention design and skill.",
+        "Use subtle harmonic language."
+      ],
+      "micro_note": "The decile gives form and order to creative intelligence.",
+      "language_id": 1
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "modern",
+      "aspect_code": "tredecile",
+      "title": "Specialized Creative Intelligence",
+      "summary": "A tredecile suggests specialized creative intelligence, unusual skill and the ability to combine inspiration with structured expression.",
+      "core_keywords_json": [
+        "specialized talent",
+        "creative intelligence",
+        "structured inspiration",
+        "pattern skill",
+        "inventiveness"
+      ],
+      "shadow_keywords_json": [
+        "eccentricity",
+        "over-specialization",
+        "perfectionism",
+        "self-conscious uniqueness"
+      ],
+      "psychological_keywords_json": [
+        "distinctive intelligence",
+        "creative patterning",
+        "skill identity",
+        "symbolic design"
+      ],
+      "relationship_keywords_json": [
+        "unusual creative bond",
+        "shared originality",
+        "distinctive rapport",
+        "creative attraction"
+      ],
+      "career_keywords_json": [
+        "innovation",
+        "specialized design",
+        "creative strategy",
+        "technical artistry",
+        "distinctive skill"
+      ],
+      "spiritual_keywords_json": [
+        "creative order",
+        "symbolic talent",
+        "inspired structure"
+      ],
+      "energetic_dynamics_json": [
+        "energy becomes inventive and specialized",
+        "creative order is expressed in a distinctive way"
+      ],
+      "growth_patterns_json": [
+        "develop the skill patiently",
+        "share originality constructively",
+        "avoid over-identifying with uniqueness"
+      ],
+      "conflict_patterns_json": [
+        "feeling too special to practice",
+        "overcomplicating expression",
+        "hiding behind originality"
+      ],
+      "archetypes_json": [
+        "the inventor",
+        "the specialist",
+        "the inspired architect"
+      ],
+      "dos_json": [
+        "interpret as specialized creativity",
+        "mention practice and expression",
+        "avoid exaggeration"
+      ],
+      "donts_json": [
+        "do not use deterministic genius language",
+        "do not ignore the need for discipline"
+      ],
+      "prompt_hints_json": [
+        "Interpret as specialized creative intelligence.",
+        "Mention originality and craft.",
+        "Keep grounded."
+      ],
+      "micro_note": "The tredecile is a subtle marker of distinctive creative skill.",
+      "language_id": 1
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "modern",
+      "aspect_code": "quindecile",
+      "title": "Intense Focus and Fixation",
+      "summary": "A quindecile suggests intense focus, compulsion, obsession or deep concentration. It can create extraordinary persistence, but also fixation if unconscious.",
+      "core_keywords_json": [
+        "intense focus",
+        "fixation",
+        "compulsion",
+        "obsession",
+        "persistence",
+        "driving force"
+      ],
+      "shadow_keywords_json": [
+        "obsession",
+        "control",
+        "extremism",
+        "compulsive repetition",
+        "psychological pressure"
+      ],
+      "psychological_keywords_json": [
+        "compulsive focus",
+        "deep drive",
+        "fixated pattern",
+        "intense motivation",
+        "psychological pressure"
+      ],
+      "relationship_keywords_json": [
+        "obsessive attraction",
+        "control dynamic",
+        "intense attachment",
+        "magnetic fixation"
+      ],
+      "career_keywords_json": [
+        "relentless ambition",
+        "deep specialization",
+        "extreme persistence",
+        "single-minded focus"
+      ],
+      "spiritual_keywords_json": [
+        "purification of desire",
+        "discipline of focus",
+        "shadow confrontation"
+      ],
+      "energetic_dynamics_json": [
+        "energy locks onto a theme",
+        "focus can become powerful or compulsive",
+        "the planets intensify through fixation"
+      ],
+      "growth_patterns_json": [
+        "bring awareness to compulsion",
+        "channel intensity into disciplined work",
+        "release control when necessary"
+      ],
+      "conflict_patterns_json": [
+        "becoming obsessed",
+        "refusing flexibility",
+        "confusing intensity with truth"
+      ],
+      "archetypes_json": [
+        "the magnet",
+        "the obsession",
+        "the laser",
+        "the fixed gaze"
+      ],
+      "dos_json": [
+        "name the intensity carefully",
+        "include both power and risk",
+        "avoid pathologizing the person"
+      ],
+      "donts_json": [
+        "do not use alarmist language",
+        "do not ignore the constructive potential",
+        "do not make it the whole chart"
+      ],
+      "prompt_hints_json": [
+        "Interpret as intense focus or fixation.",
+        "Balance constructive persistence with shadow risk.",
+        "Use careful psychological language."
+      ],
+      "micro_note": "The quindecile can become mastery or obsession depending on consciousness.",
+      "language_id": 1
+    }
+  ]
+}

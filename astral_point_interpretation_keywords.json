@@ -1,0 +1,194 @@
+{
+  "name": "astral_point_interpretation_keywords",
+  "structure": {
+    "id": "integer",
+    "core_keywords_json": "json array<string>, default locale en",
+    "shadow_keywords_json": "json array<string>, default locale en",
+    "psychological_keywords_json": "json array<string>, default locale en",
+    "spiritual_keywords_json": "json array<string>, default locale en",
+    "relationship_keywords_json": "json array<string>, default locale en",
+    "career_keywords_json": "json array<string>, default locale en"
+  },
+  "data": [
+    {
+      "id": 1,
+      "core_keywords_json": [
+        "evolution",
+        "growth",
+        "direction",
+        "learning",
+        "future"
+      ],
+      "shadow_keywords_json": [
+        "discomfort",
+        "fear of change",
+        "unknown territory",
+        "idealized future"
+      ],
+      "psychological_keywords_json": [
+        "personal development",
+        "moving beyond automatic patterns",
+        "new life skill"
+      ],
+      "spiritual_keywords_json": [
+        "inner calling",
+        "karmic axis",
+        "soul orientation"
+      ],
+      "relationship_keywords_json": [
+        "evolutionary encounters",
+        "learning through others",
+        "leaving familiar patterns"
+      ],
+      "career_keywords_json": [
+        "mission",
+        "long-term direction",
+        "professional growth zone"
+      ]
+    },
+    {
+      "id": 2,
+      "core_keywords_json": [
+        "heritage",
+        "habit",
+        "memory",
+        "acquired talent",
+        "past"
+      ],
+      "shadow_keywords_json": [
+        "repetition",
+        "stagnation",
+        "attachment to the known",
+        "risk avoidance"
+      ],
+      "psychological_keywords_json": [
+        "automatic patterns",
+        "psychic safety",
+        "old schemas"
+      ],
+      "spiritual_keywords_json": [
+        "karmic memory",
+        "soul baggage",
+        "integration of the past"
+      ],
+      "relationship_keywords_json": [
+        "familiar relationships",
+        "repeated relational patterns",
+        "known emotional comfort"
+      ],
+      "career_keywords_json": [
+        "natural skills",
+        "acquired expertise",
+        "risk of routine"
+      ]
+    },
+    {
+      "id": 3,
+      "core_keywords_json": [
+        "distance",
+        "remoteness",
+        "lunar orbit",
+        "apogee",
+        "abstraction"
+      ],
+      "shadow_keywords_json": [
+        "coldness",
+        "dissociation",
+        "excessive withdrawal"
+      ],
+      "psychological_keywords_json": [
+        "taking distance",
+        "observation",
+        "emotional detachment"
+      ],
+      "spiritual_keywords_json": [
+        "fertile emptiness",
+        "inner silence",
+        "symbolic separation"
+      ],
+      "relationship_keywords_json": [
+        "need for space",
+        "relational distance",
+        "emotional autonomy"
+      ],
+      "career_keywords_json": [
+        "analysis",
+        "perspective",
+        "conceptual work"
+      ]
+    },
+    {
+      "id": 4,
+      "core_keywords_json": [
+        "proximity",
+        "intensity",
+        "embodiment",
+        "reaction",
+        "contact"
+      ],
+      "shadow_keywords_json": [
+        "hyperreactivity",
+        "fusion",
+        "emotional overflow"
+      ],
+      "psychological_keywords_json": [
+        "immediate sensitivity",
+        "need for contact",
+        "instinctive response"
+      ],
+      "spiritual_keywords_json": [
+        "presence",
+        "lunar grounding",
+        "body listening"
+      ],
+      "relationship_keywords_json": [
+        "emotional closeness",
+        "attachment",
+        "need for reassurance"
+      ],
+      "career_keywords_json": [
+        "reactivity",
+        "direct support",
+        "operational presence"
+      ]
+    },
+    {
+      "id": 5,
+      "core_keywords_json": [
+        "autonomy",
+        "instinct",
+        "shadow",
+        "refusal",
+        "raw truth"
+      ],
+      "shadow_keywords_json": [
+        "rejection",
+        "shame",
+        "provocation",
+        "isolation",
+        "radical defense"
+      ],
+      "psychological_keywords_json": [
+        "untamed part",
+        "wound of exclusion",
+        "nonconforming desire"
+      ],
+      "spiritual_keywords_json": [
+        "inner sovereignty",
+        "initiation through emptiness",
+        "liberation from false compromise"
+      ],
+      "relationship_keywords_json": [
+        "boundaries",
+        "taboo attraction",
+        "fear of being possessed",
+        "need for radical equality"
+      ],
+      "career_keywords_json": [
+        "independence",
+        "refusal of imposed roles",
+        "marginal creative power"
+      ]
+    }
+  ]
+}

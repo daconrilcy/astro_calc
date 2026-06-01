@@ -1,0 +1,61 @@
+{
+  "name": "astral_essential_dignity_expression_tendencies",
+  "structure": {
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "description": "string",
+    "sort_order": "integer"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "stabilizing",
+      "label": "Stabilizing",
+      "description": "Tendance à stabiliser l'expression de la planète.",
+      "sort_order": 1
+    },
+    {
+      "id": 2,
+      "code": "amplifying",
+      "label": "Amplifying",
+      "description": "Tendance à amplifier l'expression de la planète.",
+      "sort_order": 2
+    },
+    {
+      "id": 3,
+      "code": "destabilizing",
+      "label": "Destabilizing",
+      "description": "Tendance à rendre l'expression moins naturelle ou moins stable.",
+      "sort_order": 3
+    },
+    {
+      "id": 4,
+      "code": "internalizing",
+      "label": "Internalizing",
+      "description": "Tendance à intérioriser ou contraindre l'expression de la planète.",
+      "sort_order": 4
+    },
+    {
+      "id": 5,
+      "code": "harmonizing",
+      "label": "Harmonizing",
+      "description": "Tendance à harmoniser l'expression avec le contexte élémentaire.",
+      "sort_order": 5
+    },
+    {
+      "id": 6,
+      "code": "qualifying",
+      "label": "Qualifying",
+      "description": "Tendance à qualifier l'expression par une nuance spécifique.",
+      "sort_order": 6
+    },
+    {
+      "id": 7,
+      "code": "unstable",
+      "label": "Unstable",
+      "description": "Tendance à produire une expression moins soutenue et plus dépendante du contexte.",
+      "sort_order": 7
+    }
+  ]
+}

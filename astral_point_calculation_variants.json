@@ -1,0 +1,114 @@
+{
+  "name": "astral_point_calculation_variants",
+  "structure": {
+    "id": "integer",
+    "astral_point_code": "string, FK -> astral_points.code",
+    "variant_code": "string",
+    "display_name": "string",
+    "calculation_mode": "string",
+    "is_default": "boolean",
+    "description": "string"
+  },
+  "constraints": {
+    "unique": [
+      "astral_point_code",
+      "variant_code"
+    ],
+    "composite_reference_key": [
+      "astral_point_code",
+      "variant_code"
+    ]
+  },
+  "data": [
+    {
+      "id": 1,
+      "astral_point_code": "north_node",
+      "variant_code": "mean",
+      "display_name": "Mean North Node",
+      "calculation_mode": "mean",
+      "is_default": false,
+      "description": "Smoothed lunar node position that removes short-period oscillations."
+    },
+    {
+      "id": 2,
+      "astral_point_code": "north_node",
+      "variant_code": "true",
+      "display_name": "True North Node",
+      "calculation_mode": "true",
+      "is_default": true,
+      "description": "Osculating lunar node position including short-period variations."
+    },
+    {
+      "id": 3,
+      "astral_point_code": "south_node",
+      "variant_code": "mean",
+      "display_name": "Mean South Node",
+      "calculation_mode": "mean_opposition",
+      "is_default": false,
+      "description": "South Node calculated as the point opposite the Mean North Node."
+    },
+    {
+      "id": 4,
+      "astral_point_code": "south_node",
+      "variant_code": "true",
+      "display_name": "True South Node",
+      "calculation_mode": "true_opposition",
+      "is_default": true,
+      "description": "South Node calculated as the point opposite the True North Node."
+    },
+    {
+      "id": 5,
+      "astral_point_code": "lunar_apogee",
+      "variant_code": "mean",
+      "display_name": "Mean Lunar Apogee",
+      "calculation_mode": "mean_apogee",
+      "is_default": true,
+      "description": "Smoothed lunar apogee position used for stable interpretive and comparison contexts."
+    },
+    {
+      "id": 6,
+      "astral_point_code": "lunar_apogee",
+      "variant_code": "true",
+      "display_name": "Osculating Lunar Apogee",
+      "calculation_mode": "osculating_apogee",
+      "is_default": false,
+      "description": "Instantaneous lunar apogee position based on the osculating orbit."
+    },
+    {
+      "id": 7,
+      "astral_point_code": "lunar_perigee",
+      "variant_code": "mean",
+      "display_name": "Mean Lunar Perigee",
+      "calculation_mode": "mean_perigee",
+      "is_default": true,
+      "description": "Smoothed lunar perigee position, generally derived opposite the mean apogee."
+    },
+    {
+      "id": 8,
+      "astral_point_code": "lunar_perigee",
+      "variant_code": "true",
+      "display_name": "Osculating Lunar Perigee",
+      "calculation_mode": "osculating_perigee",
+      "is_default": false,
+      "description": "Instantaneous lunar perigee position based on the osculating orbit."
+    },
+    {
+      "id": 9,
+      "astral_point_code": "black_moon_lilith",
+      "variant_code": "mean",
+      "display_name": "Mean Black Moon Lilith",
+      "calculation_mode": "mean_apogee",
+      "is_default": true,
+      "description": "Black Moon Lilith interpreted from the mean lunar apogee."
+    },
+    {
+      "id": 10,
+      "astral_point_code": "black_moon_lilith",
+      "variant_code": "true",
+      "display_name": "True Black Moon Lilith",
+      "calculation_mode": "osculating_apogee",
+      "is_default": false,
+      "description": "Black Moon Lilith interpreted from the osculating lunar apogee."
+    }
+  ]
+}

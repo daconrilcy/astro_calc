@@ -1,0 +1,35 @@
+{
+  "name": "astral_elements",
+  "structure": {
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "sort_order": "integer"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "fire",
+      "label": "Fire",
+      "sort_order": 1
+    },
+    {
+      "id": 2,
+      "code": "earth",
+      "label": "Earth",
+      "sort_order": 2
+    },
+    {
+      "id": 3,
+      "code": "air",
+      "label": "Air",
+      "sort_order": 3
+    },
+    {
+      "id": 4,
+      "code": "water",
+      "label": "Water",
+      "sort_order": 4
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "name": "astral_term_system_code",
+  "structure": {
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "sort_order": "integer"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "egyptian",
+      "label": "Egyptian",
+      "sort_order": 1
+    },
+    {
+      "id": 2,
+      "code": "ptolemaic",
+      "label": "Ptolemaic",
+      "sort_order": 2
+    },
+    {
+      "id": 3,
+      "code": "chaldean",
+      "label": "Chaldean",
+      "sort_order": 3
+    },
+    {
+      "id": 4,
+      "code": "lilly",
+      "label": "Lilly",
+      "sort_order": 4
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "name": "astral_interpretation_themes",
+  "data": [
+    {
+      "code": "drive_assertion_action",
+      "label": "Drive / Assertion / Action",
+      "category": "behavioral",
+      "description": "Thematique liee a l'action, l'affirmation et l'impulsion.",
+      "is_active": true
+    },
+    {
+      "code": "visibility_expression",
+      "label": "Visibility / Expression",
+      "category": "expression",
+      "description": "Thematique liee a l'expression visible et exterieure.",
+      "is_active": true
+    },
+    {
+      "code": "frustration_pressure",
+      "label": "Frustration / Pressure",
+      "category": "tension",
+      "description": "Thematique de tension, pression ou limitation.",
+      "is_active": true
+    },
+    {
+      "code": "responsibility_structure",
+      "label": "Responsibility / Structure",
+      "category": "functional",
+      "description": "Thematique de responsabilite, stabilite et structuration.",
+      "is_active": true
+    }
+  ]
+}

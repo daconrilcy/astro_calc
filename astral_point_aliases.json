@@ -1,0 +1,203 @@
+{
+  "name": "astral_point_aliases",
+  "structure": {
+    "id": "integer",
+    "astral_point_code": "string, FK -> astral_points.code",
+    "variant_code": "string|null",
+    "alias": "string",
+    "language": "string, ISO 639-1",
+    "source": "string",
+    "engine_key": "string|null",
+    "is_primary": "boolean"
+  },
+  "constraints": {
+    "foreign_keys": [
+      {
+        "columns": [
+          "astral_point_code"
+        ],
+        "references": "astral_points(code)"
+      },
+      {
+        "columns": [
+          "astral_point_code",
+          "variant_code"
+        ],
+        "references": "astral_point_calculation_variants(astral_point_code, variant_code)",
+        "nullable_when": "variant_code is null"
+      }
+    ]
+  },
+  "data": [
+    {
+      "id": 1,
+      "astral_point_code": "north_node",
+      "variant_code": null,
+      "alias": "North Node",
+      "language": "en",
+      "source": "modern_western_astrology",
+      "engine_key": null,
+      "is_primary": true
+    },
+    {
+      "id": 2,
+      "astral_point_code": "north_node",
+      "variant_code": null,
+      "alias": "Dragon's Head",
+      "language": "en",
+      "source": "traditional_astrology",
+      "engine_key": null,
+      "is_primary": false
+    },
+    {
+      "id": 3,
+      "astral_point_code": "north_node",
+      "variant_code": null,
+      "alias": "Rahu",
+      "language": "en",
+      "source": "vedic_astrology",
+      "engine_key": null,
+      "is_primary": false
+    },
+    {
+      "id": 4,
+      "astral_point_code": "north_node",
+      "variant_code": "mean",
+      "alias": "Mean North Node",
+      "language": "en",
+      "source": "swiss_ephemeris",
+      "engine_key": "SE_MEAN_NODE",
+      "is_primary": false
+    },
+    {
+      "id": 5,
+      "astral_point_code": "north_node",
+      "variant_code": "true",
+      "alias": "True North Node",
+      "language": "en",
+      "source": "swiss_ephemeris",
+      "engine_key": "SE_TRUE_NODE",
+      "is_primary": false
+    },
+    {
+      "id": 6,
+      "astral_point_code": "south_node",
+      "variant_code": null,
+      "alias": "South Node",
+      "language": "en",
+      "source": "modern_western_astrology",
+      "engine_key": null,
+      "is_primary": true
+    },
+    {
+      "id": 7,
+      "astral_point_code": "south_node",
+      "variant_code": null,
+      "alias": "Dragon's Tail",
+      "language": "en",
+      "source": "traditional_astrology",
+      "engine_key": null,
+      "is_primary": false
+    },
+    {
+      "id": 8,
+      "astral_point_code": "south_node",
+      "variant_code": null,
+      "alias": "Ketu",
+      "language": "en",
+      "source": "vedic_astrology",
+      "engine_key": null,
+      "is_primary": false
+    },
+    {
+      "id": 9,
+      "astral_point_code": "lunar_apogee",
+      "variant_code": null,
+      "alias": "Lunar Apogee",
+      "language": "en",
+      "source": "astronomical_reference",
+      "engine_key": null,
+      "is_primary": true
+    },
+    {
+      "id": 16,
+      "astral_point_code": "lunar_apogee",
+      "variant_code": "mean",
+      "alias": "Mean Lunar Apogee",
+      "language": "en",
+      "source": "swiss_ephemeris",
+      "engine_key": "SE_MEAN_APOG",
+      "is_primary": false
+    },
+    {
+      "id": 17,
+      "astral_point_code": "lunar_apogee",
+      "variant_code": "true",
+      "alias": "Osculating Lunar Apogee",
+      "language": "en",
+      "source": "swiss_ephemeris",
+      "engine_key": "SE_OSCU_APOG",
+      "is_primary": false
+    },
+    {
+      "id": 10,
+      "astral_point_code": "lunar_perigee",
+      "variant_code": null,
+      "alias": "Lunar Perigee",
+      "language": "en",
+      "source": "astronomical_reference",
+      "engine_key": null,
+      "is_primary": true
+    },
+    {
+      "id": 11,
+      "astral_point_code": "black_moon_lilith",
+      "variant_code": null,
+      "alias": "Black Moon Lilith",
+      "language": "en",
+      "source": "modern_astrology",
+      "engine_key": null,
+      "is_primary": true
+    },
+    {
+      "id": 12,
+      "astral_point_code": "black_moon_lilith",
+      "variant_code": null,
+      "alias": "Lilith",
+      "language": "en",
+      "source": "modern_astrology",
+      "engine_key": null,
+      "is_primary": false
+    },
+    {
+      "id": 13,
+      "astral_point_code": "black_moon_lilith",
+      "variant_code": null,
+      "alias": "Lune Noire",
+      "language": "fr",
+      "source": "modern_astrology",
+      "engine_key": null,
+      "is_primary": false
+    },
+    {
+      "id": 14,
+      "astral_point_code": "black_moon_lilith",
+      "variant_code": "mean",
+      "alias": "Mean Lilith",
+      "language": "en",
+      "source": "swiss_ephemeris",
+      "engine_key": "SE_MEAN_APOG",
+      "is_primary": false
+    },
+    {
+      "id": 15,
+      "astral_point_code": "black_moon_lilith",
+      "variant_code": "true",
+      "alias": "Osculating Lilith",
+      "language": "en",
+      "source": "swiss_ephemeris",
+      "engine_key": "SE_OSCU_APOG",
+      "is_primary": false
+    }
+  ]
+}

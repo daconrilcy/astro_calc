@@ -1,0 +1,60 @@
+{
+    "name": "astral_fixed_stars",
+    "structure": {
+        "id": "integer",
+        "key": "string",
+        "display_name": "string"
+    },
+    "data": [
+        {
+            "id": 1,
+            "key": "regulus",
+            "display_name": "Regulus"
+        },
+        {
+            "id": 2,
+            "key": "algol",
+            "display_name": "Algol"
+        },
+        {
+            "id": 3,
+            "key": "spica",
+            "display_name": "Spica"
+        },
+        {
+            "id": 4,
+            "key": "antares",
+            "display_name": "Antares"
+        },
+        {
+            "id": 5,
+            "key": "aldebaran",
+            "display_name": "Aldebaran"
+        },
+        {
+            "id": 6,
+            "key": "sirius",
+            "display_name": "Sirius"
+        },
+        {
+            "id": 7,
+            "key": "fomalhaut",
+            "display_name": "Fomalhaut"
+        },
+        {
+            "id": 8,
+            "key": "betelgeuse",
+            "display_name": "Betelgeuse"
+        },
+        {
+            "id": 9,
+            "key": "achernar",
+            "display_name": "Achernar"
+        },
+        {
+            "id": 10,
+            "key": "vega",
+            "display_name": "Vega"
+        }
+    ]
+}

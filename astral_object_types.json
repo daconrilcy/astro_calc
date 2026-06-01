@@ -1,0 +1,30 @@
+{
+  "name": "astral_object_types",
+  "structure": {
+    "_description": "Référentiel de la nature physique ou structurelle d’un objet utilisé dans un thème astrologique.",
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "description": "string"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "celestial_body",
+      "label": "Celestial body",
+      "description": "Physical astronomical body used in the chart, such as the Sun, Moon, planets, or Pluto."
+    },
+    {
+      "id": 2,
+      "code": "chart_angle",
+      "label": "Chart angle",
+      "description": "Geometrical point of the chart derived from the local horizon and meridian, such as Ascendant, Descendant, Midheaven, or Imum Coeli."
+    },
+    {
+      "id": 3,
+      "code": "mathematical_point",
+      "label": "Mathematical point",
+      "description": "Non-physical point calculated from astronomical relationships, such as lunar nodes."
+    }
+  ]
+}

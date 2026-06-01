@@ -1,0 +1,24 @@
+{
+  "name": "astral_calculation_types",
+  "structure": {
+    "_description": "Référentiel du mode d’obtention d’un objet astrologique dans le moteur.",
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "description": "string"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "astronomical",
+      "label": "Astronomical",
+      "description": "Position obtained from astronomical or ephemeris-based computation of a physical body."
+    },
+    {
+      "id": 2,
+      "code": "computed",
+      "label": "Computed",
+      "description": "Position derived from chart geometry or mathematical relationships rather than direct physical body position."
+    }
+  ]
+}

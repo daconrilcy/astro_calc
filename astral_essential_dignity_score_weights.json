@@ -1,0 +1,22 @@
+{
+  "name": "astral_essential_dignity_score_weights",
+  "structure": {
+    "score_profile_id": "integer, FK -> astral_diginity_score_profiles.id",
+    "essential_dignity_types_id": "integer, FK -> astral_essential_dignity_types.id",
+    "score_value": "number",
+    "functional_weight": "number",
+    "expression_weight": "number",
+    "intensity_weight": "number",
+    "notes": "string"
+  },
+  "data": [
+    { "score_profile_id": 1, "essential_dignity_types_id": 1, "score_value": 5, "functional_weight": 1.0, "expression_weight": 0.7, "intensity_weight": 0.6, "notes": "Force essentielle majeure. La planète agit naturellement selon sa propre fonction." },
+    { "score_profile_id": 1, "essential_dignity_types_id": 2, "score_value": 4, "functional_weight": 0.9, "expression_weight": 0.6, "intensity_weight": 0.9, "notes": "Force essentielle élevée avec effet amplificateur. L'expression peut être brillante mais parfois excessive." },
+    { "score_profile_id": 1, "essential_dignity_types_id": 5, "score_value": 3, "functional_weight": 0.6, "expression_weight": 0.7, "intensity_weight": 0.3, "notes": "Soutien élémentaire par triplicité selon l'élément et la secte." },
+    { "score_profile_id": 1, "essential_dignity_types_id": 6, "score_value": 2, "functional_weight": 0.4, "expression_weight": 0.5, "intensity_weight": 0.2, "notes": "Soutien local par borne de degré." },
+    { "score_profile_id": 1, "essential_dignity_types_id": 7, "score_value": 1, "functional_weight": 0.2, "expression_weight": 0.4, "intensity_weight": 0.1, "notes": "Dignité mineure par face ou décan." },
+    { "score_profile_id": 1, "essential_dignity_types_id": 3, "score_value": -5, "functional_weight": -1.0, "expression_weight": -0.8, "intensity_weight": 0.4, "notes": "Affaiblissement essentiel majeur. La planète agit dans un environnement contraire à son domicile." },
+    { "score_profile_id": 1, "essential_dignity_types_id": 4, "score_value": -4, "functional_weight": -0.9, "expression_weight": -0.7, "intensity_weight": 0.4, "notes": "Affaiblissement par chute. La planète perd en aisance, en autorité ou en stabilité d'expression." },
+    { "score_profile_id": 1, "essential_dignity_types_id": 8, "score_value": -5, "functional_weight": -0.6, "expression_weight": -0.5, "intensity_weight": 0.2, "notes": "Planète sans dignité essentielle. Valeur configurable selon doctrine." }
+  ]
+}

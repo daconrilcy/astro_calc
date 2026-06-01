@@ -1,0 +1,13 @@
+{
+  "name": "astral_heliacal_conditions",
+  "structure": {
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "sort_order": "integer"
+  },
+  "data": [
+    { "id": 1, "code": "rising_before_sun", "label": "Rising before Sun", "sort_order": 1 },
+    { "id": 2, "code": "setting_after_sun", "label": "Setting after Sun", "sort_order": 2 }
+  ]
+}

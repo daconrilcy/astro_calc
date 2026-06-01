@@ -1,0 +1,12 @@
+{
+  "name": "astral_condition_operators",
+  "structure": {
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "sort_order": "integer"
+  },
+  "data": [
+    { "id": 1, "code": "between_two_planets_by_longitude", "label": "Between two planets by longitude", "sort_order": 1 }
+  ]
+}

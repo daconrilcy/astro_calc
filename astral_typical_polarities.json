@@ -1,0 +1,21 @@
+{
+  "name": "astral_typical_polarities",
+  "structure": {
+    "id": "integer",
+    "name": "string"
+  },
+  "data": [
+    {
+      "id": 1,
+      "name": "positive"
+    },
+    {
+      "id": 2,
+      "name": "negative"
+    },
+    {
+      "id": 3,
+      "name": "neutral"
+    }
+  ]
+}

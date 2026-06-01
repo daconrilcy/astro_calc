@@ -1,0 +1,102 @@
+{
+  "table": "astral_planet_condition_signal_profiles",
+  "description": "Profils versionnes de signaux techniques derives des axes PlanetConditionProfile.",
+  "data": [
+    {
+      "id": 1,
+      "condition_axis": "functional_strength",
+      "level_min": 1.0,
+      "level_max": 100.0,
+      "signal_code": "functional_strength_high",
+      "signal_label": "Functional strength high",
+      "signal_level": "high",
+      "interpretation_use": "prioritize_condition_axis",
+      "priority_weight": 10.0,
+      "prompt_hint": "functional_strength_positive"
+    },
+    {
+      "id": 2,
+      "condition_axis": "functional_strength",
+      "level_min": -100.0,
+      "level_max": -0.5,
+      "signal_code": "functional_strength_low",
+      "signal_label": "Functional strength low",
+      "signal_level": "low",
+      "interpretation_use": "qualify_condition_axis",
+      "priority_weight": 20.0,
+      "prompt_hint": "functional_strength_constrained"
+    },
+    {
+      "id": 3,
+      "condition_axis": "visibility",
+      "level_min": 0.5,
+      "level_max": 100.0,
+      "signal_code": "visibility_high",
+      "signal_label": "Visibility high",
+      "signal_level": "high",
+      "interpretation_use": "surface_condition_axis",
+      "priority_weight": 30.0,
+      "prompt_hint": "visibility_emphasized"
+    },
+    {
+      "id": 4,
+      "condition_axis": "stability",
+      "level_min": 0.5,
+      "level_max": 100.0,
+      "signal_code": "stability_high",
+      "signal_label": "Stability high",
+      "signal_level": "high",
+      "interpretation_use": "stabilize_condition_axis",
+      "priority_weight": 40.0,
+      "prompt_hint": "stability_supported"
+    },
+    {
+      "id": 5,
+      "condition_axis": "intensity",
+      "level_min": 1.0,
+      "level_max": 100.0,
+      "signal_code": "intensity_high",
+      "signal_label": "Intensity high",
+      "signal_level": "high",
+      "interpretation_use": "weight_condition_axis",
+      "priority_weight": 50.0,
+      "prompt_hint": "intensity_notable"
+    },
+    {
+      "id": 6,
+      "condition_axis": "coherence",
+      "level_min": 0.5,
+      "level_max": 100.0,
+      "signal_code": "coherence_high",
+      "signal_label": "Coherence high",
+      "signal_level": "high",
+      "interpretation_use": "align_condition_axis",
+      "priority_weight": 60.0,
+      "prompt_hint": "coherence_aligned"
+    },
+    {
+      "id": 7,
+      "condition_axis": "support",
+      "level_min": 0.5,
+      "level_max": 100.0,
+      "signal_code": "support_high",
+      "signal_label": "Support high",
+      "signal_level": "high",
+      "interpretation_use": "support_condition_axis",
+      "priority_weight": 70.0,
+      "prompt_hint": "support_available"
+    },
+    {
+      "id": 8,
+      "condition_axis": "constraint",
+      "level_min": 0.5,
+      "level_max": 100.0,
+      "signal_code": "constraint_high",
+      "signal_label": "Constraint high",
+      "signal_level": "high",
+      "interpretation_use": "temper_condition_axis",
+      "priority_weight": 80.0,
+      "prompt_hint": "constraint_present"
+    }
+  ]
+}

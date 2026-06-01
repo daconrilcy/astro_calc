@@ -1,0 +1,105 @@
+{
+    "name": "astral_reference_sources",
+    "structure": {
+        "id": "integer",
+        "key": "string",
+        "display_name": "string",
+        "category": "string",
+        "publisher": "string|null",
+        "website": "string|null",
+        "is_canonical": "boolean",
+        "usage_note": "string|null"
+    },
+    "data": [
+        {
+            "id": 1,
+            "key": "internal_seed_reference",
+            "display_name": "Internal Seed Reference",
+            "category": "internal",
+            "publisher": null,
+            "website": null,
+            "is_canonical": false,
+            "usage_note": "Manual internal seed values used before replacing them with audited astronomical or astrological sources."
+        },
+        {
+            "id": 2,
+            "key": "swiss_ephemeris",
+            "display_name": "Swiss Ephemeris",
+            "category": "astronomical_engine",
+            "publisher": "Astrodienst",
+            "website": "https://www.astro.com/swisseph/",
+            "is_canonical": true,
+            "usage_note": "Recommended source for runtime astronomical calculations and ephemeris-based positions."
+        },
+        {
+            "id": 3,
+            "key": "hipparcos",
+            "display_name": "Hipparcos Catalogue",
+            "category": "astronomical_catalog",
+            "publisher": "ESA",
+            "website": "https://www.cosmos.esa.int/web/hipparcos",
+            "is_canonical": true,
+            "usage_note": "Astronomical catalogue useful for stable star metadata such as position and magnitude."
+        },
+        {
+            "id": 4,
+            "key": "gaia",
+            "display_name": "Gaia Catalogue",
+            "category": "astronomical_catalog",
+            "publisher": "ESA",
+            "website": "https://www.cosmos.esa.int/web/gaia",
+            "is_canonical": false,
+            "usage_note": "Modern astronomical catalogue with highly precise stellar data; useful for advanced future enrichment."
+        },
+        {
+            "id": 5,
+            "key": "nasa_jpl",
+            "display_name": "NASA/JPL",
+            "category": "astronomical_reference",
+            "publisher": "NASA Jet Propulsion Laboratory",
+            "website": "https://ssd.jpl.nasa.gov/",
+            "is_canonical": false,
+            "usage_note": "High-quality astronomical reference source, mainly useful for solar system ephemerides rather than fixed-star interpretation."
+        },
+        {
+            "id": 6,
+            "key": "robson_fixed_stars",
+            "display_name": "Vivian Robson Fixed Stars",
+            "category": "astrological_interpretation",
+            "publisher": "Vivian E. Robson",
+            "website": null,
+            "is_canonical": false,
+            "usage_note": "Traditional astrological interpretation source for fixed stars."
+        },
+        {
+            "id": 7,
+            "key": "brady_fixed_stars",
+            "display_name": "Bernadette Brady Fixed Stars",
+            "category": "astrological_interpretation",
+            "publisher": "Bernadette Brady",
+            "website": null,
+            "is_canonical": false,
+            "usage_note": "Modern astrological interpretation source for fixed stars and parans."
+        },
+        {
+            "id": 8,
+            "key": "ptolemy_tetrabiblos",
+            "display_name": "Ptolemy Tetrabiblos",
+            "category": "historical_astrological_source",
+            "publisher": "Claudius Ptolemy",
+            "website": null,
+            "is_canonical": false,
+            "usage_note": "Historical astrological source, useful for traditional doctrine but not for modern astronomical coordinates."
+        },
+        {
+            "id": 9,
+            "key": "astrodienst",
+            "display_name": "Astrodienst",
+            "category": "astrological_platform",
+            "publisher": "Astrodienst AG",
+            "website": "https://www.astro.com/",
+            "is_canonical": false,
+            "usage_note": "Astrology platform and publisher of Swiss Ephemeris resources."
+        }
+    ]
+}

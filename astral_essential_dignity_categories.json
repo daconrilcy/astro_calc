@@ -1,0 +1,33 @@
+{
+  "name": "astral_essential_dignity_categories",
+  "structure": {
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "description": "string",
+    "sort_order": "integer"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "major_essential",
+      "label": "Major essential",
+      "description": "Catégorie regroupant les dignités et débilités essentielles majeures.",
+      "sort_order": 1
+    },
+    {
+      "id": 2,
+      "code": "minor_essential",
+      "label": "Minor essential",
+      "description": "Catégorie regroupant les dignités essentielles mineures.",
+      "sort_order": 2
+    },
+    {
+      "id": 3,
+      "code": "condition",
+      "label": "Condition",
+      "description": "Catégorie décrivant un état fonctionnel sans dignité essentielle propre.",
+      "sort_order": 3
+    }
+  ]
+}

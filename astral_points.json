@@ -1,0 +1,59 @@
+{
+  "name": "astral_points",
+  "structure": {
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "display_name": "string",
+    "point_family": "string, controlled value from astral_point_families.code",
+    "astronomical_type": "string",
+    "is_physical_body": "boolean",
+    "description": "string"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "north_node",
+      "display_name": "North Node",
+      "point_family": "lunar_nodes",
+      "astronomical_type": "orbital_intersection",
+      "is_physical_body": false,
+      "description": "Ascending intersection of the Moon's orbit with the ecliptic. Mean and true nodes are calculation variants of this same canonical point."
+    },
+    {
+      "id": 2,
+      "code": "south_node",
+      "display_name": "South Node",
+      "point_family": "lunar_nodes",
+      "astronomical_type": "orbital_intersection",
+      "is_physical_body": false,
+      "description": "Descending intersection of the Moon's orbit with the ecliptic, normally opposite the North Node in zodiacal longitude."
+    },
+    {
+      "id": 3,
+      "code": "lunar_apogee",
+      "display_name": "Lunar Apogee",
+      "point_family": "lunar_apsides",
+      "astronomical_type": "apsis",
+      "is_physical_body": false,
+      "description": "Calculated point of the lunar orbit farthest from Earth. It can be represented through mean or osculating calculation modes."
+    },
+    {
+      "id": 4,
+      "code": "lunar_perigee",
+      "display_name": "Lunar Perigee",
+      "point_family": "lunar_apsides",
+      "astronomical_type": "apsis",
+      "is_physical_body": false,
+      "description": "Calculated point of the lunar orbit nearest to Earth, opposite the lunar apogee in a simplified orbital model."
+    },
+    {
+      "id": 5,
+      "code": "black_moon_lilith",
+      "display_name": "Black Moon Lilith",
+      "point_family": "lilith",
+      "astronomical_type": "derived_lunar_apogee",
+      "is_physical_body": false,
+      "description": "Astrological point derived from the lunar apogee. Mean and true Lilith are calculation variants, not separate canonical points."
+    }
+  ]
+}

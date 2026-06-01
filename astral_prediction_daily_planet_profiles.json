@@ -1,0 +1,137 @@
+{
+  "name": "astral_prediction_daily_planet_profiles",
+  "structure": {
+    "id": "integer",
+    "reference_version_id": "integer, FK -> reference_versions.id",
+    "planet_id": "integer, FK -> astral_planets.id",
+    "weight_intraday": "decimal(4,2)",
+    "weight_day_climate": "decimal(4,2)",
+    "daily_visibility_score": "decimal(4,2)",
+    "daily_emotional_impact_score": "decimal(4,2)",
+    "daily_conscious_activation_score": "decimal(4,2)",
+    "is_enabled": "boolean",
+    "micro_note": "string|null"
+  },
+  "data": [
+    {
+      "id": 1,
+      "reference_version_id": 1,
+      "planet_id": 1,
+      "weight_intraday": 0.6,
+      "weight_day_climate": 1.0,
+      "daily_visibility_score": 1.0,
+      "daily_emotional_impact_score": 0.5,
+      "daily_conscious_activation_score": 1.0,
+      "is_enabled": true,
+      "micro_note": "The Sun strongly shapes the conscious tone and visibility of the day."
+    },
+    {
+      "id": 2,
+      "reference_version_id": 1,
+      "planet_id": 2,
+      "weight_intraday": 1.0,
+      "weight_day_climate": 0.8,
+      "daily_visibility_score": 0.7,
+      "daily_emotional_impact_score": 1.0,
+      "daily_conscious_activation_score": 0.6,
+      "is_enabled": true,
+      "micro_note": "The Moon is highly reactive in short-term emotional and intraday fluctuations."
+    },
+    {
+      "id": 3,
+      "reference_version_id": 1,
+      "planet_id": 3,
+      "weight_intraday": 0.9,
+      "weight_day_climate": 0.7,
+      "daily_visibility_score": 0.7,
+      "daily_emotional_impact_score": 0.4,
+      "daily_conscious_activation_score": 0.8,
+      "is_enabled": true,
+      "micro_note": "Mercury strongly affects daily exchanges, thinking patterns and short-term decisions."
+    },
+    {
+      "id": 4,
+      "reference_version_id": 1,
+      "planet_id": 4,
+      "weight_intraday": 0.7,
+      "weight_day_climate": 0.8,
+      "daily_visibility_score": 0.8,
+      "daily_emotional_impact_score": 0.8,
+      "daily_conscious_activation_score": 0.5,
+      "is_enabled": true,
+      "micro_note": "Venus shapes relational tone, pleasure seeking and social harmony."
+    },
+    {
+      "id": 5,
+      "reference_version_id": 1,
+      "planet_id": 5,
+      "weight_intraday": 0.8,
+      "weight_day_climate": 0.9,
+      "daily_visibility_score": 0.9,
+      "daily_emotional_impact_score": 0.7,
+      "daily_conscious_activation_score": 0.9,
+      "is_enabled": true,
+      "micro_note": "Mars strongly activates action, urgency, tension and reactive dynamics."
+    },
+    {
+      "id": 6,
+      "reference_version_id": 1,
+      "planet_id": 6,
+      "weight_intraday": 0.4,
+      "weight_day_climate": 1.0,
+      "daily_visibility_score": 0.9,
+      "daily_emotional_impact_score": 0.5,
+      "daily_conscious_activation_score": 0.8,
+      "is_enabled": true,
+      "micro_note": "Jupiter acts more as a broad climate amplifier than as a rapid trigger."
+    },
+    {
+      "id": 7,
+      "reference_version_id": 1,
+      "planet_id": 7,
+      "weight_intraday": 0.3,
+      "weight_day_climate": 1.0,
+      "daily_visibility_score": 0.9,
+      "daily_emotional_impact_score": 0.6,
+      "daily_conscious_activation_score": 0.9,
+      "is_enabled": true,
+      "micro_note": "Saturn shapes structural, serious and responsibility-oriented atmospheres."
+    },
+    {
+      "id": 8,
+      "reference_version_id": 1,
+      "planet_id": 8,
+      "weight_intraday": 0.1,
+      "weight_day_climate": 0.5,
+      "daily_visibility_score": 0.5,
+      "daily_emotional_impact_score": 0.3,
+      "daily_conscious_activation_score": 0.7,
+      "is_enabled": true,
+      "micro_note": "Uranus contributes more to disruption patterns and collective background shifts."
+    },
+    {
+      "id": 9,
+      "reference_version_id": 1,
+      "planet_id": 9,
+      "weight_intraday": 0.1,
+      "weight_day_climate": 0.4,
+      "daily_visibility_score": 0.4,
+      "daily_emotional_impact_score": 0.7,
+      "daily_conscious_activation_score": 0.3,
+      "is_enabled": true,
+      "micro_note": "Neptune acts subtly through atmosphere, intuition and diffuse emotional tone."
+    },
+    {
+      "id": 10,
+      "reference_version_id": 1,
+      "planet_id": 10,
+      "weight_intraday": 0.1,
+      "weight_day_climate": 0.3,
+      "daily_visibility_score": 0.5,
+      "daily_emotional_impact_score": 0.6,
+      "daily_conscious_activation_score": 0.8,
+      "is_enabled": true,
+      "micro_note": "Pluto contributes deep background intensity and transformation pressure."
+    }
+  ]
+}

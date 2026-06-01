@@ -1,0 +1,487 @@
+{
+  "name": "astral_aspect_definitions",
+  "structure": {
+    "table_role": "Activation and qualification of each aspect per astrological system.",
+    "unique_key": [
+      "reference_version_id",
+      "aspect_id",
+      "astral_system_id"
+    ],
+    "columns": {
+      "id": "integer",
+      "reference_version_id": "foreign_key:astral_reference_versions.id",
+      "aspect_id": "foreign_key:astral_aspects.id",
+      "astral_system_id": "foreign_key:astral_systems.id",
+      "is_enabled": "boolean",
+      "is_major": "boolean",
+      "is_minor": "boolean",
+      "default_orb_deg": "float|null",
+      "display_priority": "integer|null",
+      "interpretation_weight": "float",
+      "scoring_weight": "float",
+      "micro_note": "text|null"
+    }
+  },
+  "data": [
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "modern",
+      "definitions": [
+        {
+          "aspect_code": "conjunction",
+          "is_enabled": true,
+          "is_major": true,
+          "is_minor": false,
+          "default_orb_deg": 8.0,
+          "display_priority": 100,
+          "interpretation_weight": 1.5,
+          "scoring_weight": 1.5,
+          "micro_note": "Major aspect of fusion, emphasis and intensification."
+        },
+        {
+          "aspect_code": "opposition",
+          "is_enabled": true,
+          "is_major": true,
+          "is_minor": false,
+          "default_orb_deg": 8.0,
+          "display_priority": 95,
+          "interpretation_weight": 1.35,
+          "scoring_weight": 1.35,
+          "micro_note": "Major aspect of polarity, confrontation and rebalancing."
+        },
+        {
+          "aspect_code": "square",
+          "is_enabled": true,
+          "is_major": true,
+          "is_minor": false,
+          "default_orb_deg": 6.0,
+          "display_priority": 90,
+          "interpretation_weight": 1.25,
+          "scoring_weight": 1.25,
+          "micro_note": "Major dynamic aspect of friction, pressure and activation."
+        },
+        {
+          "aspect_code": "trine",
+          "is_enabled": true,
+          "is_major": true,
+          "is_minor": false,
+          "default_orb_deg": 6.0,
+          "display_priority": 85,
+          "interpretation_weight": 1.0,
+          "scoring_weight": 1.0,
+          "micro_note": "Major harmonious aspect of flow, ease and integration."
+        },
+        {
+          "aspect_code": "sextile",
+          "is_enabled": true,
+          "is_major": true,
+          "is_minor": false,
+          "default_orb_deg": 4.0,
+          "display_priority": 80,
+          "interpretation_weight": 0.8,
+          "scoring_weight": 0.8,
+          "micro_note": "Major supportive aspect of opportunity and cooperation."
+        },
+        {
+          "aspect_code": "quincunx",
+          "is_enabled": true,
+          "is_major": false,
+          "is_minor": true,
+          "default_orb_deg": 3.0,
+          "display_priority": 60,
+          "interpretation_weight": 0.65,
+          "scoring_weight": 0.35,
+          "micro_note": "Minor adjustment aspect requiring adaptation between incompatible principles."
+        },
+        {
+          "aspect_code": "semi_square",
+          "is_enabled": true,
+          "is_major": false,
+          "is_minor": true,
+          "default_orb_deg": 2.0,
+          "display_priority": 45,
+          "interpretation_weight": 0.45,
+          "scoring_weight": 0.25,
+          "micro_note": "Minor friction aspect indicating irritation, pressure or low-grade tension."
+        },
+        {
+          "aspect_code": "sesquiquadrate",
+          "is_enabled": true,
+          "is_major": false,
+          "is_minor": true,
+          "default_orb_deg": 2.0,
+          "display_priority": 44,
+          "interpretation_weight": 0.45,
+          "scoring_weight": 0.25,
+          "micro_note": "Minor dynamic aspect indicating accumulated tension or indirect pressure."
+        },
+        {
+          "aspect_code": "semi_sextile",
+          "is_enabled": true,
+          "is_major": false,
+          "is_minor": true,
+          "default_orb_deg": 2.0,
+          "display_priority": 40,
+          "interpretation_weight": 0.35,
+          "scoring_weight": 0.15,
+          "micro_note": "Minor aspect of subtle adjustment, proximity and emerging connection."
+        },
+        {
+          "aspect_code": "quintile",
+          "is_enabled": true,
+          "is_major": false,
+          "is_minor": true,
+          "default_orb_deg": 2.0,
+          "display_priority": 35,
+          "interpretation_weight": 0.4,
+          "scoring_weight": 0.1,
+          "micro_note": "Creative minor aspect associated with talent, patterning and intentional expression."
+        },
+        {
+          "aspect_code": "biquintile",
+          "is_enabled": true,
+          "is_major": false,
+          "is_minor": true,
+          "default_orb_deg": 2.0,
+          "display_priority": 34,
+          "interpretation_weight": 0.35,
+          "scoring_weight": 0.1,
+          "micro_note": "Creative minor aspect refining talent, design and symbolic intelligence."
+        },
+        {
+          "aspect_code": "septile",
+          "is_enabled": false,
+          "is_major": false,
+          "is_minor": true,
+          "default_orb_deg": 1.0,
+          "display_priority": 20,
+          "interpretation_weight": 0.25,
+          "scoring_weight": 0.0,
+          "micro_note": "Advanced symbolic aspect, disabled by default for public V1."
+        },
+        {
+          "aspect_code": "biseptile",
+          "is_enabled": false,
+          "is_major": false,
+          "is_minor": true,
+          "default_orb_deg": 1.0,
+          "display_priority": 19,
+          "interpretation_weight": 0.25,
+          "scoring_weight": 0.0,
+          "micro_note": "Advanced symbolic aspect, disabled by default for public V1."
+        },
+        {
+          "aspect_code": "triseptile",
+          "is_enabled": false,
+          "is_major": false,
+          "is_minor": true,
+          "default_orb_deg": 1.0,
+          "display_priority": 18,
+          "interpretation_weight": 0.25,
+          "scoring_weight": 0.0,
+          "micro_note": "Advanced symbolic aspect, disabled by default for public V1."
+        },
+        {
+          "aspect_code": "novile",
+          "is_enabled": false,
+          "is_major": false,
+          "is_minor": true,
+          "default_orb_deg": 1.0,
+          "display_priority": 17,
+          "interpretation_weight": 0.25,
+          "scoring_weight": 0.0,
+          "micro_note": "Advanced spiritual or harmonic aspect, disabled by default for public V1."
+        },
+        {
+          "aspect_code": "binovile",
+          "is_enabled": false,
+          "is_major": false,
+          "is_minor": true,
+          "default_orb_deg": 1.0,
+          "display_priority": 16,
+          "interpretation_weight": 0.25,
+          "scoring_weight": 0.0,
+          "micro_note": "Advanced spiritual or harmonic aspect, disabled by default for public V1."
+        },
+        {
+          "aspect_code": "quadranovile",
+          "is_enabled": false,
+          "is_major": false,
+          "is_minor": true,
+          "default_orb_deg": 1.0,
+          "display_priority": 15,
+          "interpretation_weight": 0.25,
+          "scoring_weight": 0.0,
+          "micro_note": "Advanced spiritual or harmonic aspect, disabled by default for public V1."
+        },
+        {
+          "aspect_code": "decile",
+          "is_enabled": false,
+          "is_major": false,
+          "is_minor": true,
+          "default_orb_deg": 1.0,
+          "display_priority": 14,
+          "interpretation_weight": 0.25,
+          "scoring_weight": 0.0,
+          "micro_note": "Advanced creative harmonic aspect, disabled by default for public V1."
+        },
+        {
+          "aspect_code": "tredecile",
+          "is_enabled": false,
+          "is_major": false,
+          "is_minor": true,
+          "default_orb_deg": 1.0,
+          "display_priority": 13,
+          "interpretation_weight": 0.25,
+          "scoring_weight": 0.0,
+          "micro_note": "Advanced creative harmonic aspect, disabled by default for public V1."
+        },
+        {
+          "aspect_code": "quindecile",
+          "is_enabled": false,
+          "is_major": false,
+          "is_minor": true,
+          "default_orb_deg": 1.5,
+          "display_priority": 12,
+          "interpretation_weight": 0.3,
+          "scoring_weight": 0.0,
+          "micro_note": "Advanced obsessive or intensifying minor aspect, disabled by default for public V1."
+        }
+      ]
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "traditional",
+      "definitions": [
+        {
+          "aspect_code": "conjunction",
+          "is_enabled": true,
+          "is_major": true,
+          "is_minor": false,
+          "default_orb_deg": 8.0,
+          "display_priority": 100,
+          "interpretation_weight": 1.5,
+          "scoring_weight": 1.5,
+          "micro_note": "Configured as a major operative contact in the application, although conjunction has a distinct status in older aspect doctrine."
+        },
+        {
+          "aspect_code": "opposition",
+          "is_enabled": true,
+          "is_major": true,
+          "is_minor": false,
+          "default_orb_deg": 8.0,
+          "display_priority": 95,
+          "interpretation_weight": 1.35,
+          "scoring_weight": 1.35,
+          "micro_note": "Major Ptolemaic aspect of polarity."
+        },
+        {
+          "aspect_code": "square",
+          "is_enabled": true,
+          "is_major": true,
+          "is_minor": false,
+          "default_orb_deg": 6.0,
+          "display_priority": 90,
+          "interpretation_weight": 1.25,
+          "scoring_weight": 1.25,
+          "micro_note": "Major Ptolemaic aspect of tension."
+        },
+        {
+          "aspect_code": "trine",
+          "is_enabled": true,
+          "is_major": true,
+          "is_minor": false,
+          "default_orb_deg": 6.0,
+          "display_priority": 85,
+          "interpretation_weight": 1.0,
+          "scoring_weight": 1.0,
+          "micro_note": "Major Ptolemaic aspect of harmony."
+        },
+        {
+          "aspect_code": "sextile",
+          "is_enabled": true,
+          "is_major": true,
+          "is_minor": false,
+          "default_orb_deg": 4.0,
+          "display_priority": 80,
+          "interpretation_weight": 0.8,
+          "scoring_weight": 0.8,
+          "micro_note": "Major Ptolemaic aspect of moderate support."
+        }
+      ],
+      "disabled_aspect_codes": [
+        "semi_sextile",
+        "semi_square",
+        "quintile",
+        "sesquiquadrate",
+        "quincunx",
+        "biquintile",
+        "septile",
+        "biseptile",
+        "triseptile",
+        "novile",
+        "binovile",
+        "quadranovile",
+        "decile",
+        "tredecile",
+        "quindecile"
+      ]
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "hellenistic",
+      "definitions": [
+        {
+          "aspect_code": "conjunction",
+          "is_enabled": true,
+          "is_major": true,
+          "is_minor": false,
+          "default_orb_deg": 8.0,
+          "display_priority": 100,
+          "interpretation_weight": 1.45,
+          "scoring_weight": 1.45,
+          "micro_note": "Handled as a major contact/co-presence style configuration for application consistency."
+        },
+        {
+          "aspect_code": "opposition",
+          "is_enabled": true,
+          "is_major": true,
+          "is_minor": false,
+          "default_orb_deg": 8.0,
+          "display_priority": 95,
+          "interpretation_weight": 1.35,
+          "scoring_weight": 1.35,
+          "micro_note": "Classical major aspect of polarity."
+        },
+        {
+          "aspect_code": "square",
+          "is_enabled": true,
+          "is_major": true,
+          "is_minor": false,
+          "default_orb_deg": 6.0,
+          "display_priority": 90,
+          "interpretation_weight": 1.25,
+          "scoring_weight": 1.25,
+          "micro_note": "Classical major aspect of conflict and action."
+        },
+        {
+          "aspect_code": "trine",
+          "is_enabled": true,
+          "is_major": true,
+          "is_minor": false,
+          "default_orb_deg": 6.0,
+          "display_priority": 85,
+          "interpretation_weight": 1.0,
+          "scoring_weight": 1.0,
+          "micro_note": "Classical major aspect of harmony and support."
+        },
+        {
+          "aspect_code": "sextile",
+          "is_enabled": true,
+          "is_major": true,
+          "is_minor": false,
+          "default_orb_deg": 4.0,
+          "display_priority": 80,
+          "interpretation_weight": 0.75,
+          "scoring_weight": 0.75,
+          "micro_note": "Classical major aspect of moderate cooperation."
+        }
+      ],
+      "disabled_aspect_codes": [
+        "semi_sextile",
+        "semi_square",
+        "quintile",
+        "sesquiquadrate",
+        "quincunx",
+        "biquintile",
+        "septile",
+        "biseptile",
+        "triseptile",
+        "novile",
+        "binovile",
+        "quadranovile",
+        "decile",
+        "tredecile",
+        "quindecile"
+      ]
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "medieval",
+      "definitions": [
+        {
+          "aspect_code": "conjunction",
+          "is_enabled": true,
+          "is_major": true,
+          "is_minor": false,
+          "default_orb_deg": 8.0,
+          "display_priority": 100,
+          "interpretation_weight": 1.5,
+          "scoring_weight": 1.5,
+          "micro_note": "Major operative contact in the application model."
+        },
+        {
+          "aspect_code": "opposition",
+          "is_enabled": true,
+          "is_major": true,
+          "is_minor": false,
+          "default_orb_deg": 8.0,
+          "display_priority": 95,
+          "interpretation_weight": 1.35,
+          "scoring_weight": 1.35,
+          "micro_note": "Major aspect of polarity and confrontation."
+        },
+        {
+          "aspect_code": "square",
+          "is_enabled": true,
+          "is_major": true,
+          "is_minor": false,
+          "default_orb_deg": 6.0,
+          "display_priority": 90,
+          "interpretation_weight": 1.25,
+          "scoring_weight": 1.25,
+          "micro_note": "Major aspect of tension and difficulty."
+        },
+        {
+          "aspect_code": "trine",
+          "is_enabled": true,
+          "is_major": true,
+          "is_minor": false,
+          "default_orb_deg": 6.0,
+          "display_priority": 85,
+          "interpretation_weight": 1.0,
+          "scoring_weight": 1.0,
+          "micro_note": "Major aspect of harmony and assistance."
+        },
+        {
+          "aspect_code": "sextile",
+          "is_enabled": true,
+          "is_major": true,
+          "is_minor": false,
+          "default_orb_deg": 4.0,
+          "display_priority": 80,
+          "interpretation_weight": 0.8,
+          "scoring_weight": 0.8,
+          "micro_note": "Major aspect of moderate support."
+        }
+      ],
+      "disabled_aspect_codes": [
+        "semi_sextile",
+        "semi_square",
+        "quintile",
+        "sesquiquadrate",
+        "quincunx",
+        "biquintile",
+        "septile",
+        "biseptile",
+        "triseptile",
+        "novile",
+        "binovile",
+        "quadranovile",
+        "decile",
+        "tredecile",
+        "quindecile"
+      ]
+    }
+  ]
+}

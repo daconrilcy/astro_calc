@@ -1,0 +1,47 @@
+{
+  "name": "astral_decan_system_code",
+  "structure": {
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "sort_order": "integer"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "chaldean",
+      "label": "Chaldean",
+      "sort_order": 1
+    },
+    {
+      "id": 2,
+      "code": "triplicity",
+      "label": "Triplicity",
+      "sort_order": 2
+    },
+    {
+      "id": 3,
+      "code": "modern_sign_based",
+      "label": "Modern sign based",
+      "sort_order": 3
+    },
+    {
+      "id": 4,
+      "code": "golden_dawn",
+      "label": "Golden Dawn",
+      "sort_order": 4
+    },
+    {
+      "id": 5,
+      "code": "ptolemaic",
+      "label": "Ptolemaic",
+      "sort_order": 5
+    },
+    {
+      "id": 6,
+      "code": "vedic_drekkana",
+      "label": "Vedic drekkana",
+      "sort_order": 6
+    }
+  ]
+}

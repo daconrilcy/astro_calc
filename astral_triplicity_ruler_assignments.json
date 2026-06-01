@@ -1,0 +1,135 @@
+{
+  "name": "astral_triplicity_ruler_assignments",
+  "structure": {
+    "element_id": "integer, FK -> astral_elements.id",
+    "sect_id": "integer, FK -> astral_sect.id",
+    "planet_id": "integer, FK -> astral_planets.id",
+    "role_id": "integer, FK -> astral_ruler_assignments_role.id",
+    "astral_system_id": "integer, FK -> astral_systems.id",
+    "reference_version_id": "integer, FK -> astral_reference_versions.id",
+    "source_id": "integer, FK -> astral_sources.id",
+    "micro_note": "string"
+  },
+  "data": [
+    {
+      "element_id": 1,
+      "sect_id": 1,
+      "planet_id": 1,
+      "role_id": 1,
+      "astral_system_id": 1,
+      "reference_version_id": 1,
+      "source_id": 4,
+      "micro_note": "Day ruler of fire triplicity."
+    },
+    {
+      "element_id": 1,
+      "sect_id": 2,
+      "planet_id": 6,
+      "role_id": 1,
+      "astral_system_id": 1,
+      "reference_version_id": 1,
+      "source_id": 4,
+      "micro_note": "Night ruler of fire triplicity."
+    },
+    {
+      "element_id": 1,
+      "sect_id": 3,
+      "planet_id": 7,
+      "role_id": 3,
+      "astral_system_id": 1,
+      "reference_version_id": 1,
+      "source_id": 4,
+      "micro_note": "Participating ruler of fire triplicity."
+    },
+    {
+      "element_id": 2,
+      "sect_id": 1,
+      "planet_id": 4,
+      "role_id": 1,
+      "astral_system_id": 1,
+      "reference_version_id": 1,
+      "source_id": 4,
+      "micro_note": "Day ruler of earth triplicity."
+    },
+    {
+      "element_id": 2,
+      "sect_id": 2,
+      "planet_id": 2,
+      "role_id": 1,
+      "astral_system_id": 1,
+      "reference_version_id": 1,
+      "source_id": 4,
+      "micro_note": "Night ruler of earth triplicity."
+    },
+    {
+      "element_id": 2,
+      "sect_id": 3,
+      "planet_id": 5,
+      "role_id": 3,
+      "astral_system_id": 1,
+      "reference_version_id": 1,
+      "source_id": 4,
+      "micro_note": "Participating ruler of earth triplicity."
+    },
+    {
+      "element_id": 3,
+      "sect_id": 1,
+      "planet_id": 7,
+      "role_id": 1,
+      "astral_system_id": 1,
+      "reference_version_id": 1,
+      "source_id": 4,
+      "micro_note": "Day ruler of air triplicity."
+    },
+    {
+      "element_id": 3,
+      "sect_id": 2,
+      "planet_id": 3,
+      "role_id": 1,
+      "astral_system_id": 1,
+      "reference_version_id": 1,
+      "source_id": 4,
+      "micro_note": "Night ruler of air triplicity."
+    },
+    {
+      "element_id": 3,
+      "sect_id": 3,
+      "planet_id": 6,
+      "role_id": 3,
+      "astral_system_id": 1,
+      "reference_version_id": 1,
+      "source_id": 4,
+      "micro_note": "Participating ruler of air triplicity."
+    },
+    {
+      "element_id": 4,
+      "sect_id": 1,
+      "planet_id": 4,
+      "role_id": 1,
+      "astral_system_id": 1,
+      "reference_version_id": 1,
+      "source_id": 4,
+      "micro_note": "Day ruler of water triplicity."
+    },
+    {
+      "element_id": 4,
+      "sect_id": 2,
+      "planet_id": 5,
+      "role_id": 1,
+      "astral_system_id": 1,
+      "reference_version_id": 1,
+      "source_id": 4,
+      "micro_note": "Night ruler of water triplicity."
+    },
+    {
+      "element_id": 4,
+      "sect_id": 3,
+      "planet_id": 2,
+      "role_id": 3,
+      "astral_system_id": 1,
+      "reference_version_id": 1,
+      "source_id": 4,
+      "micro_note": "Participating ruler of water triplicity."
+    }
+  ]
+}

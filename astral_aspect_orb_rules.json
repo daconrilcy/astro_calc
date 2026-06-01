@@ -1,0 +1,915 @@
+{
+  "name": "astral_aspect_orb_rules",
+  "structure": {
+    "table_role": "Specific orb override rules for natal and predictive aspect calculations. These rules refine the default orb defined in astral_aspect_definitions without moving observed orb values into reference tables.",
+    "versioning": {
+      "versioned": true,
+      "version_column": "reference_version_id",
+      "locked_by": "astral_reference_versions.is_locked"
+    },
+    "columns": {
+      "id": "integer",
+      "reference_version_id": "foreign_key:astral_reference_versions.id",
+      "astral_system_id": "foreign_key:astral_systems.id",
+      "aspect_id": "foreign_key:astral_aspects.id",
+      "calculation_context": "enum:natal|transit_to_natal|sky_to_sky|progression_to_natal|any",
+      "source_body_type": "enum:any|planet|luminary|personal_planet|social_planet|transpersonal_planet|angle|point",
+      "source_planet_id": "nullable foreign_key:astral_planets.id",
+      "source_point_code": "nullable string",
+      "target_body_type": "enum:any|planet|luminary|personal_planet|social_planet|transpersonal_planet|angle|point",
+      "target_planet_id": "nullable foreign_key:astral_planets.id",
+      "target_point_code": "nullable string",
+      "orb_deg": "float",
+      "priority": "integer",
+      "is_enabled": "boolean",
+      "micro_note": "text|null"
+    },
+    "constraints": {
+      "unique_key": [
+        "reference_version_id",
+        "astral_system_id",
+        "aspect_id",
+        "calculation_context",
+        "source_body_type",
+        "source_planet_id",
+        "source_point_code",
+        "target_body_type",
+        "target_planet_id",
+        "target_point_code"
+      ],
+      "checks": [
+        "orb_deg > 0",
+        "priority >= 0",
+        "source_planet_id IS NULL OR source_body_type IN ('planet', 'luminary', 'personal_planet', 'social_planet', 'transpersonal_planet')",
+        "target_planet_id IS NULL OR target_body_type IN ('planet', 'luminary', 'personal_planet', 'social_planet', 'transpersonal_planet')"
+      ],
+      "indexes": [
+        [
+          "reference_version_id",
+          "astral_system_id",
+          "aspect_id"
+        ],
+        [
+          "calculation_context"
+        ],
+        [
+          "priority"
+        ]
+      ]
+    },
+    "resolution_order": [
+      {
+        "level": 1,
+        "rule": "Exact planet pair rule",
+        "example": "sun + moon + opposition"
+      },
+      {
+        "level": 2,
+        "rule": "Specific planet to body-type rule",
+        "example": "sun -> any luminary"
+      },
+      {
+        "level": 3,
+        "rule": "Luminary rule",
+        "example": "any luminary involved"
+      },
+      {
+        "level": 4,
+        "rule": "Angle rule",
+        "example": "aspect to asc or mc"
+      },
+      {
+        "level": 5,
+        "rule": "Planet class rule",
+        "example": "transpersonal planet involved"
+      },
+      {
+        "level": 6,
+        "rule": "Fallback to astral_aspect_definitions.default_orb_deg"
+      }
+    ],
+    "implementation_notes": [
+      "The observed orb of an actual aspect must remain in runtime payloads such as AspectResult.orb and must not be persisted in this reference table.",
+      "The fallback remains astral_aspect_definitions.default_orb_deg.",
+      "astral_aspect_profiles.orb_multiplier should remain predictive/scoring-oriented and should not be used as a canonical natal orb definition.",
+      "Rules should be resolved by local system before inherited parent, then by descending priority, then by specificity.",
+      "For V1 runtime compatibility, only major aspects should be consumed by natal and transit calculators until the canonical major-aspect helper and EventDetector.ASPECTS_V1 are explicitly extended."
+    ]
+  },
+  "data": [
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "modern",
+      "rules": [
+        {
+          "aspect_code": "conjunction",
+          "calculation_context": "natal",
+          "source_body_type": "luminary",
+          "target_body_type": "any",
+          "orb_deg": 10.0,
+          "priority": 900,
+          "is_enabled": true,
+          "micro_note": "Wider natal orb when a luminary is involved."
+        },
+        {
+          "aspect_code": "opposition",
+          "calculation_context": "natal",
+          "source_body_type": "luminary",
+          "target_body_type": "any",
+          "orb_deg": 10.0,
+          "priority": 900,
+          "is_enabled": true,
+          "micro_note": "Wider natal orb when a luminary is involved."
+        },
+        {
+          "aspect_code": "square",
+          "calculation_context": "natal",
+          "source_body_type": "luminary",
+          "target_body_type": "any",
+          "orb_deg": 8.0,
+          "priority": 900,
+          "is_enabled": true,
+          "micro_note": "Luminary squares remain highly visible in natal interpretation."
+        },
+        {
+          "aspect_code": "trine",
+          "calculation_context": "natal",
+          "source_body_type": "luminary",
+          "target_body_type": "any",
+          "orb_deg": 8.0,
+          "priority": 900,
+          "is_enabled": true,
+          "micro_note": "Luminary trines receive a wider natal orb."
+        },
+        {
+          "aspect_code": "sextile",
+          "calculation_context": "natal",
+          "source_body_type": "luminary",
+          "target_body_type": "any",
+          "orb_deg": 5.0,
+          "priority": 900,
+          "is_enabled": true,
+          "micro_note": "Luminary sextiles receive a moderate widening."
+        },
+        {
+          "aspect_code": "conjunction",
+          "calculation_context": "natal",
+          "source_body_type": "angle",
+          "target_body_type": "any",
+          "orb_deg": 6.0,
+          "priority": 850,
+          "is_enabled": true,
+          "micro_note": "Aspects involving ASC, DSC, MC or IC use a dedicated angular orb."
+        },
+        {
+          "aspect_code": "opposition",
+          "calculation_context": "natal",
+          "source_body_type": "angle",
+          "target_body_type": "any",
+          "orb_deg": 6.0,
+          "priority": 850,
+          "is_enabled": true,
+          "micro_note": "Angular oppositions are treated as structurally important."
+        },
+        {
+          "aspect_code": "square",
+          "calculation_context": "natal",
+          "source_body_type": "angle",
+          "target_body_type": "any",
+          "orb_deg": 5.0,
+          "priority": 850,
+          "is_enabled": true,
+          "micro_note": "Angular squares receive a dedicated orb."
+        },
+        {
+          "aspect_code": "trine",
+          "calculation_context": "natal",
+          "source_body_type": "angle",
+          "target_body_type": "any",
+          "orb_deg": 5.0,
+          "priority": 850,
+          "is_enabled": true,
+          "micro_note": "Angular trines receive a dedicated orb."
+        },
+        {
+          "aspect_code": "sextile",
+          "calculation_context": "natal",
+          "source_body_type": "angle",
+          "target_body_type": "any",
+          "orb_deg": 4.0,
+          "priority": 850,
+          "is_enabled": true,
+          "micro_note": "Angular sextiles receive a dedicated orb."
+        },
+        {
+          "aspect_code": "conjunction",
+          "calculation_context": "natal",
+          "source_body_type": "transpersonal_planet",
+          "target_body_type": "transpersonal_planet",
+          "orb_deg": 4.0,
+          "priority": 700,
+          "is_enabled": true,
+          "micro_note": "Reduced natal orb for slow collective planet pairs."
+        },
+        {
+          "aspect_code": "opposition",
+          "calculation_context": "natal",
+          "source_body_type": "transpersonal_planet",
+          "target_body_type": "transpersonal_planet",
+          "orb_deg": 4.0,
+          "priority": 700,
+          "is_enabled": true,
+          "micro_note": "Reduced natal orb for slow collective planet pairs."
+        },
+        {
+          "aspect_code": "square",
+          "calculation_context": "natal",
+          "source_body_type": "transpersonal_planet",
+          "target_body_type": "transpersonal_planet",
+          "orb_deg": 3.0,
+          "priority": 700,
+          "is_enabled": true,
+          "micro_note": "Reduced natal orb for slow collective planet pairs."
+        },
+        {
+          "aspect_code": "trine",
+          "calculation_context": "natal",
+          "source_body_type": "transpersonal_planet",
+          "target_body_type": "transpersonal_planet",
+          "orb_deg": 3.0,
+          "priority": 700,
+          "is_enabled": true,
+          "micro_note": "Reduced natal orb for slow collective planet pairs."
+        },
+        {
+          "aspect_code": "sextile",
+          "calculation_context": "natal",
+          "source_body_type": "transpersonal_planet",
+          "target_body_type": "transpersonal_planet",
+          "orb_deg": 2.0,
+          "priority": 700,
+          "is_enabled": true,
+          "micro_note": "Reduced natal orb for slow collective planet pairs."
+        },
+        {
+          "aspect_code": "quincunx",
+          "calculation_context": "natal",
+          "source_body_type": "luminary",
+          "target_body_type": "any",
+          "orb_deg": 3.5,
+          "priority": 600,
+          "is_enabled": true,
+          "micro_note": "Slightly wider quincunx orb when a luminary is involved."
+        },
+        {
+          "aspect_code": "semi_sextile",
+          "calculation_context": "natal",
+          "source_body_type": "luminary",
+          "target_body_type": "any",
+          "orb_deg": 2.5,
+          "priority": 600,
+          "is_enabled": true,
+          "micro_note": "Minor luminary adjustment aspect."
+        },
+        {
+          "aspect_code": "semi_square",
+          "calculation_context": "natal",
+          "source_body_type": "luminary",
+          "target_body_type": "any",
+          "orb_deg": 2.5,
+          "priority": 600,
+          "is_enabled": true,
+          "micro_note": "Minor luminary friction aspect."
+        },
+        {
+          "aspect_code": "sesquiquadrate",
+          "calculation_context": "natal",
+          "source_body_type": "luminary",
+          "target_body_type": "any",
+          "orb_deg": 2.5,
+          "priority": 600,
+          "is_enabled": true,
+          "micro_note": "Minor luminary tension aspect."
+        },
+        {
+          "aspect_code": "conjunction",
+          "calculation_context": "transit_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "luminary",
+          "orb_deg": 3.0,
+          "priority": 500,
+          "is_enabled": true,
+          "micro_note": "Transit to natal luminary receives a wider predictive orb."
+        },
+        {
+          "aspect_code": "opposition",
+          "calculation_context": "transit_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "luminary",
+          "orb_deg": 3.0,
+          "priority": 500,
+          "is_enabled": true,
+          "micro_note": "Transit to natal luminary receives a wider predictive orb."
+        },
+        {
+          "aspect_code": "square",
+          "calculation_context": "transit_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "luminary",
+          "orb_deg": 2.5,
+          "priority": 500,
+          "is_enabled": true,
+          "micro_note": "Transit square to natal luminary receives a wider predictive orb."
+        },
+        {
+          "aspect_code": "trine",
+          "calculation_context": "transit_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "luminary",
+          "orb_deg": 2.5,
+          "priority": 500,
+          "is_enabled": true,
+          "micro_note": "Transit trine to natal luminary receives a wider predictive orb."
+        },
+        {
+          "aspect_code": "sextile",
+          "calculation_context": "transit_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "luminary",
+          "orb_deg": 2.0,
+          "priority": 500,
+          "is_enabled": true,
+          "micro_note": "Transit sextile to natal luminary receives a moderate predictive orb."
+        },
+        {
+          "aspect_code": "conjunction",
+          "calculation_context": "transit_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "angle",
+          "orb_deg": 2.5,
+          "priority": 480,
+          "is_enabled": true,
+          "micro_note": "Transit to natal angle receives a dedicated predictive orb."
+        },
+        {
+          "aspect_code": "opposition",
+          "calculation_context": "transit_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "angle",
+          "orb_deg": 2.5,
+          "priority": 480,
+          "is_enabled": true,
+          "micro_note": "Transit to natal angle receives a dedicated predictive orb."
+        },
+        {
+          "aspect_code": "square",
+          "calculation_context": "transit_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "angle",
+          "orb_deg": 2.0,
+          "priority": 480,
+          "is_enabled": true,
+          "micro_note": "Transit square to natal angle receives a dedicated predictive orb."
+        },
+        {
+          "aspect_code": "trine",
+          "calculation_context": "transit_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "angle",
+          "orb_deg": 2.0,
+          "priority": 480,
+          "is_enabled": true,
+          "micro_note": "Transit trine to natal angle receives a dedicated predictive orb."
+        },
+        {
+          "aspect_code": "sextile",
+          "calculation_context": "transit_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "angle",
+          "orb_deg": 1.5,
+          "priority": 480,
+          "is_enabled": true,
+          "micro_note": "Transit sextile to natal angle receives a dedicated predictive orb."
+        },
+        {
+          "aspect_code": "conjunction",
+          "calculation_context": "sky_to_sky",
+          "source_body_type": "any",
+          "target_body_type": "any",
+          "orb_deg": 1.5,
+          "priority": 300,
+          "is_enabled": true,
+          "micro_note": "Display-only sky-to-sky aspect orb."
+        },
+        {
+          "aspect_code": "opposition",
+          "calculation_context": "sky_to_sky",
+          "source_body_type": "any",
+          "target_body_type": "any",
+          "orb_deg": 1.5,
+          "priority": 300,
+          "is_enabled": true,
+          "micro_note": "Display-only sky-to-sky aspect orb."
+        },
+        {
+          "aspect_code": "square",
+          "calculation_context": "sky_to_sky",
+          "source_body_type": "any",
+          "target_body_type": "any",
+          "orb_deg": 1.2,
+          "priority": 300,
+          "is_enabled": true,
+          "micro_note": "Display-only sky-to-sky aspect orb."
+        },
+        {
+          "aspect_code": "trine",
+          "calculation_context": "sky_to_sky",
+          "source_body_type": "any",
+          "target_body_type": "any",
+          "orb_deg": 1.2,
+          "priority": 300,
+          "is_enabled": true,
+          "micro_note": "Display-only sky-to-sky aspect orb."
+        },
+        {
+          "aspect_code": "sextile",
+          "calculation_context": "sky_to_sky",
+          "source_body_type": "any",
+          "target_body_type": "any",
+          "orb_deg": 1.0,
+          "priority": 300,
+          "is_enabled": true,
+          "micro_note": "Display-only sky-to-sky aspect orb."
+        },
+        {
+          "aspect_code": "conjunction",
+          "calculation_context": "progression_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "any",
+          "orb_deg": 1.0,
+          "priority": 250,
+          "is_enabled": true,
+          "micro_note": "Secondary progression aspect orb."
+        },
+        {
+          "aspect_code": "opposition",
+          "calculation_context": "progression_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "any",
+          "orb_deg": 1.0,
+          "priority": 250,
+          "is_enabled": true,
+          "micro_note": "Secondary progression aspect orb."
+        },
+        {
+          "aspect_code": "square",
+          "calculation_context": "progression_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "any",
+          "orb_deg": 1.0,
+          "priority": 250,
+          "is_enabled": true,
+          "micro_note": "Secondary progression aspect orb."
+        },
+        {
+          "aspect_code": "trine",
+          "calculation_context": "progression_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "any",
+          "orb_deg": 1.0,
+          "priority": 250,
+          "is_enabled": true,
+          "micro_note": "Secondary progression aspect orb."
+        },
+        {
+          "aspect_code": "sextile",
+          "calculation_context": "progression_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "any",
+          "orb_deg": 0.8,
+          "priority": 250,
+          "is_enabled": true,
+          "micro_note": "Secondary progression aspect orb."
+        }
+      ]
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "traditional",
+      "rules": [
+        {
+          "aspect_code": "conjunction",
+          "calculation_context": "natal",
+          "source_body_type": "luminary",
+          "target_body_type": "any",
+          "orb_deg": 10.0,
+          "priority": 900,
+          "is_enabled": true,
+          "micro_note": "Wider natal orb when a luminary is involved."
+        },
+        {
+          "aspect_code": "opposition",
+          "calculation_context": "natal",
+          "source_body_type": "luminary",
+          "target_body_type": "any",
+          "orb_deg": 10.0,
+          "priority": 900,
+          "is_enabled": true,
+          "micro_note": "Wider natal orb when a luminary is involved."
+        },
+        {
+          "aspect_code": "square",
+          "calculation_context": "natal",
+          "source_body_type": "luminary",
+          "target_body_type": "any",
+          "orb_deg": 8.0,
+          "priority": 900,
+          "is_enabled": true,
+          "micro_note": "Luminary squares remain highly visible in natal interpretation."
+        },
+        {
+          "aspect_code": "trine",
+          "calculation_context": "natal",
+          "source_body_type": "luminary",
+          "target_body_type": "any",
+          "orb_deg": 8.0,
+          "priority": 900,
+          "is_enabled": true,
+          "micro_note": "Luminary trines receive a wider natal orb."
+        },
+        {
+          "aspect_code": "sextile",
+          "calculation_context": "natal",
+          "source_body_type": "luminary",
+          "target_body_type": "any",
+          "orb_deg": 5.0,
+          "priority": 900,
+          "is_enabled": true,
+          "micro_note": "Luminary sextiles receive a moderate widening."
+        },
+        {
+          "aspect_code": "conjunction",
+          "calculation_context": "natal",
+          "source_body_type": "angle",
+          "target_body_type": "any",
+          "orb_deg": 6.0,
+          "priority": 850,
+          "is_enabled": true,
+          "micro_note": "Aspects involving ASC, DSC, MC or IC use a dedicated angular orb."
+        },
+        {
+          "aspect_code": "opposition",
+          "calculation_context": "natal",
+          "source_body_type": "angle",
+          "target_body_type": "any",
+          "orb_deg": 6.0,
+          "priority": 850,
+          "is_enabled": true,
+          "micro_note": "Angular oppositions are treated as structurally important."
+        },
+        {
+          "aspect_code": "square",
+          "calculation_context": "natal",
+          "source_body_type": "angle",
+          "target_body_type": "any",
+          "orb_deg": 5.0,
+          "priority": 850,
+          "is_enabled": true,
+          "micro_note": "Angular squares receive a dedicated orb."
+        },
+        {
+          "aspect_code": "trine",
+          "calculation_context": "natal",
+          "source_body_type": "angle",
+          "target_body_type": "any",
+          "orb_deg": 5.0,
+          "priority": 850,
+          "is_enabled": true,
+          "micro_note": "Angular trines receive a dedicated orb."
+        },
+        {
+          "aspect_code": "sextile",
+          "calculation_context": "natal",
+          "source_body_type": "angle",
+          "target_body_type": "any",
+          "orb_deg": 4.0,
+          "priority": 850,
+          "is_enabled": true,
+          "micro_note": "Angular sextiles receive a dedicated orb."
+        },
+        {
+          "aspect_code": "conjunction",
+          "calculation_context": "natal",
+          "source_body_type": "transpersonal_planet",
+          "target_body_type": "transpersonal_planet",
+          "orb_deg": 4.0,
+          "priority": 700,
+          "is_enabled": true,
+          "micro_note": "Reduced natal orb for slow collective planet pairs."
+        },
+        {
+          "aspect_code": "opposition",
+          "calculation_context": "natal",
+          "source_body_type": "transpersonal_planet",
+          "target_body_type": "transpersonal_planet",
+          "orb_deg": 4.0,
+          "priority": 700,
+          "is_enabled": true,
+          "micro_note": "Reduced natal orb for slow collective planet pairs."
+        },
+        {
+          "aspect_code": "square",
+          "calculation_context": "natal",
+          "source_body_type": "transpersonal_planet",
+          "target_body_type": "transpersonal_planet",
+          "orb_deg": 3.0,
+          "priority": 700,
+          "is_enabled": true,
+          "micro_note": "Reduced natal orb for slow collective planet pairs."
+        },
+        {
+          "aspect_code": "trine",
+          "calculation_context": "natal",
+          "source_body_type": "transpersonal_planet",
+          "target_body_type": "transpersonal_planet",
+          "orb_deg": 3.0,
+          "priority": 700,
+          "is_enabled": true,
+          "micro_note": "Reduced natal orb for slow collective planet pairs."
+        },
+        {
+          "aspect_code": "sextile",
+          "calculation_context": "natal",
+          "source_body_type": "transpersonal_planet",
+          "target_body_type": "transpersonal_planet",
+          "orb_deg": 2.0,
+          "priority": 700,
+          "is_enabled": true,
+          "micro_note": "Reduced natal orb for slow collective planet pairs."
+        },
+        {
+          "aspect_code": "quincunx",
+          "calculation_context": "natal",
+          "source_body_type": "luminary",
+          "target_body_type": "any",
+          "orb_deg": 3.5,
+          "priority": 600,
+          "is_enabled": true,
+          "micro_note": "Slightly wider quincunx orb when a luminary is involved."
+        },
+        {
+          "aspect_code": "semi_sextile",
+          "calculation_context": "natal",
+          "source_body_type": "luminary",
+          "target_body_type": "any",
+          "orb_deg": 2.5,
+          "priority": 600,
+          "is_enabled": true,
+          "micro_note": "Minor luminary adjustment aspect."
+        },
+        {
+          "aspect_code": "semi_square",
+          "calculation_context": "natal",
+          "source_body_type": "luminary",
+          "target_body_type": "any",
+          "orb_deg": 2.5,
+          "priority": 600,
+          "is_enabled": true,
+          "micro_note": "Minor luminary friction aspect."
+        },
+        {
+          "aspect_code": "sesquiquadrate",
+          "calculation_context": "natal",
+          "source_body_type": "luminary",
+          "target_body_type": "any",
+          "orb_deg": 2.5,
+          "priority": 600,
+          "is_enabled": true,
+          "micro_note": "Minor luminary tension aspect."
+        },
+        {
+          "aspect_code": "conjunction",
+          "calculation_context": "transit_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "luminary",
+          "orb_deg": 3.0,
+          "priority": 500,
+          "is_enabled": true,
+          "micro_note": "Transit to natal luminary receives a wider predictive orb."
+        },
+        {
+          "aspect_code": "opposition",
+          "calculation_context": "transit_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "luminary",
+          "orb_deg": 3.0,
+          "priority": 500,
+          "is_enabled": true,
+          "micro_note": "Transit to natal luminary receives a wider predictive orb."
+        },
+        {
+          "aspect_code": "square",
+          "calculation_context": "transit_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "luminary",
+          "orb_deg": 2.5,
+          "priority": 500,
+          "is_enabled": true,
+          "micro_note": "Transit square to natal luminary receives a wider predictive orb."
+        },
+        {
+          "aspect_code": "trine",
+          "calculation_context": "transit_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "luminary",
+          "orb_deg": 2.5,
+          "priority": 500,
+          "is_enabled": true,
+          "micro_note": "Transit trine to natal luminary receives a wider predictive orb."
+        },
+        {
+          "aspect_code": "sextile",
+          "calculation_context": "transit_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "luminary",
+          "orb_deg": 2.0,
+          "priority": 500,
+          "is_enabled": true,
+          "micro_note": "Transit sextile to natal luminary receives a moderate predictive orb."
+        },
+        {
+          "aspect_code": "conjunction",
+          "calculation_context": "transit_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "angle",
+          "orb_deg": 2.5,
+          "priority": 480,
+          "is_enabled": true,
+          "micro_note": "Transit to natal angle receives a dedicated predictive orb."
+        },
+        {
+          "aspect_code": "opposition",
+          "calculation_context": "transit_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "angle",
+          "orb_deg": 2.5,
+          "priority": 480,
+          "is_enabled": true,
+          "micro_note": "Transit to natal angle receives a dedicated predictive orb."
+        },
+        {
+          "aspect_code": "square",
+          "calculation_context": "transit_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "angle",
+          "orb_deg": 2.0,
+          "priority": 480,
+          "is_enabled": true,
+          "micro_note": "Transit square to natal angle receives a dedicated predictive orb."
+        },
+        {
+          "aspect_code": "trine",
+          "calculation_context": "transit_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "angle",
+          "orb_deg": 2.0,
+          "priority": 480,
+          "is_enabled": true,
+          "micro_note": "Transit trine to natal angle receives a dedicated predictive orb."
+        },
+        {
+          "aspect_code": "sextile",
+          "calculation_context": "transit_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "angle",
+          "orb_deg": 1.5,
+          "priority": 480,
+          "is_enabled": true,
+          "micro_note": "Transit sextile to natal angle receives a dedicated predictive orb."
+        },
+        {
+          "aspect_code": "conjunction",
+          "calculation_context": "sky_to_sky",
+          "source_body_type": "any",
+          "target_body_type": "any",
+          "orb_deg": 1.5,
+          "priority": 300,
+          "is_enabled": true,
+          "micro_note": "Display-only sky-to-sky aspect orb."
+        },
+        {
+          "aspect_code": "opposition",
+          "calculation_context": "sky_to_sky",
+          "source_body_type": "any",
+          "target_body_type": "any",
+          "orb_deg": 1.5,
+          "priority": 300,
+          "is_enabled": true,
+          "micro_note": "Display-only sky-to-sky aspect orb."
+        },
+        {
+          "aspect_code": "square",
+          "calculation_context": "sky_to_sky",
+          "source_body_type": "any",
+          "target_body_type": "any",
+          "orb_deg": 1.2,
+          "priority": 300,
+          "is_enabled": true,
+          "micro_note": "Display-only sky-to-sky aspect orb."
+        },
+        {
+          "aspect_code": "trine",
+          "calculation_context": "sky_to_sky",
+          "source_body_type": "any",
+          "target_body_type": "any",
+          "orb_deg": 1.2,
+          "priority": 300,
+          "is_enabled": true,
+          "micro_note": "Display-only sky-to-sky aspect orb."
+        },
+        {
+          "aspect_code": "sextile",
+          "calculation_context": "sky_to_sky",
+          "source_body_type": "any",
+          "target_body_type": "any",
+          "orb_deg": 1.0,
+          "priority": 300,
+          "is_enabled": true,
+          "micro_note": "Display-only sky-to-sky aspect orb."
+        },
+        {
+          "aspect_code": "conjunction",
+          "calculation_context": "progression_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "any",
+          "orb_deg": 1.0,
+          "priority": 250,
+          "is_enabled": true,
+          "micro_note": "Secondary progression aspect orb."
+        },
+        {
+          "aspect_code": "opposition",
+          "calculation_context": "progression_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "any",
+          "orb_deg": 1.0,
+          "priority": 250,
+          "is_enabled": true,
+          "micro_note": "Secondary progression aspect orb."
+        },
+        {
+          "aspect_code": "square",
+          "calculation_context": "progression_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "any",
+          "orb_deg": 1.0,
+          "priority": 250,
+          "is_enabled": true,
+          "micro_note": "Secondary progression aspect orb."
+        },
+        {
+          "aspect_code": "trine",
+          "calculation_context": "progression_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "any",
+          "orb_deg": 1.0,
+          "priority": 250,
+          "is_enabled": true,
+          "micro_note": "Secondary progression aspect orb."
+        },
+        {
+          "aspect_code": "sextile",
+          "calculation_context": "progression_to_natal",
+          "source_body_type": "any",
+          "target_body_type": "any",
+          "orb_deg": 0.8,
+          "priority": 250,
+          "is_enabled": true,
+          "micro_note": "Secondary progression aspect orb."
+        },
+        {
+          "aspect_code": "quincunx",
+          "calculation_context": "any",
+          "source_body_type": "any",
+          "target_body_type": "any",
+          "orb_deg": 0.1,
+          "priority": 1000,
+          "is_enabled": false,
+          "micro_note": "Quincunx disabled by default in traditional calculation profile."
+        }
+      ]
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "hellenistic",
+      "inherits_from": "traditional",
+      "rules": []
+    },
+    {
+      "reference_version_id": 1,
+      "astral_system_code": "medieval",
+      "inherits_from": "traditional",
+      "rules": []
+    }
+  ]
+}

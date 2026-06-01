@@ -1,0 +1,22 @@
+{
+  "name": "astral_speed",
+  "structure": {
+    "id": "integer",
+    "name": "string"
+  },
+  "data": [
+    {
+      "id": 1,
+      "speed_rank": 1,
+      "name": "fast"
+    },
+    {
+      "id": 2,
+      "name": "medium"
+    },
+    {
+      "id": 3,
+      "name": "slow"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "astral_sign_genders",
+  "structure": {
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "sort_order": "integer"
+  },
+  "data": [
+    { "id": 1, "code": "masculine", "label": "Masculine", "sort_order": 1 },
+    { "id": 2, "code": "feminine", "label": "Feminine", "sort_order": 2 }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "name": "astral_signs",
+  "structure": {
+    "id": "integer",
+    "code": "string",
+    "name": "string"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "aries",
+      "name": "Aries"
+    },
+    {
+      "id": 2,
+      "code": "taurus",
+      "name": "Taurus"
+    },
+    {
+      "id": 3,
+      "code": "gemini",
+      "name": "Gemini"
+    },
+    {
+      "id": 4,
+      "code": "cancer",
+      "name": "Cancer"
+    },
+    {
+      "id": 5,
+      "code": "leo",
+      "name": "Leo"
+    },
+    {
+      "id": 6,
+      "code": "virgo",
+      "name": "Virgo"
+    },
+    {
+      "id": 7,
+      "code": "libra",
+      "name": "Libra"
+    },
+    {
+      "id": 8,
+      "code": "scorpio",
+      "name": "Scorpio"
+    },
+    {
+      "id": 9,
+      "code": "sagittarius",
+      "name": "Sagittarius"
+    },
+    {
+      "id": 10,
+      "code": "capricorn",
+      "name": "Capricorn"
+    },
+    {
+      "id": 11,
+      "code": "aquarius",
+      "name": "Aquarius"
+    },
+    {
+      "id": 12,
+      "code": "pisces",
+      "name": "Pisces"
+    }
+  ]
+}

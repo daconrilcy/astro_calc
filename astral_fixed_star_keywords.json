@@ -1,0 +1,109 @@
+{
+  "name": "astral_fixed_star_keywords",
+  "structure": {
+    "id": "integer",
+    "keywords_json": "json"
+  },
+  "data": [
+    {
+      "id": 1,
+      "keywords_json": [
+        "royalty",
+        "leadership",
+        "honor",
+        "success",
+        "power"
+      ]
+    },
+    {
+      "id": 2,
+      "keywords_json": [
+        "intensity",
+        "crisis",
+        "obsession",
+        "extremes",
+        "danger"
+      ]
+    },
+    {
+      "id": 3,
+      "keywords_json": [
+        "talent",
+        "protection",
+        "art",
+        "intelligence",
+        "fortune"
+      ]
+    },
+    {
+      "id": 4,
+      "keywords_json": [
+        "warrior",
+        "passion",
+        "intensity",
+        "combat",
+        "ambition"
+      ]
+    },
+    {
+      "id": 5,
+      "keywords_json": [
+        "integrity",
+        "honor",
+        "success",
+        "courage",
+        "vision"
+      ]
+    },
+    {
+      "id": 6,
+      "keywords_json": [
+        "fame",
+        "brilliance",
+        "visibility",
+        "wealth",
+        "ambition"
+      ]
+    },
+    {
+      "id": 7,
+      "keywords_json": [
+        "vision",
+        "spirituality",
+        "idealism",
+        "creativity",
+        "mysticism"
+      ]
+    },
+    {
+      "id": 8,
+      "keywords_json": [
+        "strength",
+        "martial_energy",
+        "charisma",
+        "action",
+        "success"
+      ]
+    },
+    {
+      "id": 9,
+      "keywords_json": [
+        "exploration",
+        "adaptation",
+        "movement",
+        "knowledge",
+        "curiosity"
+      ]
+    },
+    {
+      "id": 10,
+      "keywords_json": [
+        "art",
+        "music",
+        "refinement",
+        "beauty",
+        "intelligence"
+      ]
+    }
+  ]
+}

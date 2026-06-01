@@ -1,0 +1,48 @@
+{
+  "name": "astral_astrological_roles",
+  "structure": {
+    "_description": "Référentiel du rôle astrologique interprétatif d’un objet dans le thème.",
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "description": "string"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "luminary",
+      "label": "Luminary",
+      "description": "Astrological role assigned to the Sun and Moon, associated with core vitality, consciousness, instinct, and emotional life."
+    },
+    {
+      "id": 2,
+      "code": "personal_planet",
+      "label": "Personal planet",
+      "description": "Fast-moving planet associated with individual personality, perception, desire, communication, attraction, and action."
+    },
+    {
+      "id": 3,
+      "code": "social_planet",
+      "label": "Social planet",
+      "description": "Planet associated with social integration, growth, responsibility, structure, belief systems, and maturation."
+    },
+    {
+      "id": 4,
+      "code": "transpersonal_planet",
+      "label": "Transpersonal planet",
+      "description": "Slow-moving planet associated with collective, generational, transformative, disruptive, or spiritual dynamics."
+    },
+    {
+      "id": 5,
+      "code": "angle",
+      "label": "Angle",
+      "description": "Major chart angle associated with incarnation, relationship, public direction, and private foundation."
+    },
+    {
+      "id": 6,
+      "code": "lunar_node",
+      "label": "Lunar node",
+      "description": "Calculated lunar point associated with developmental direction, inherited patterns, karmic symbolism, and life trajectory."
+    }
+  ]
+}

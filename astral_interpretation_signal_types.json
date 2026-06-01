@@ -1,0 +1,49 @@
+{
+  "name": "astral_interpretation_signal_types",
+  "data": [
+    {
+      "code": "dominant_mars_signature",
+      "label": "Dominant Mars Signature",
+      "category": "planetary_signature",
+      "theme_code": "drive_assertion_action",
+      "description": "Dominance martienne structurante.",
+      "priority_default": "critical",
+      "priority_default_rank": 10,
+      "is_active": true,
+      "sort_order": 1
+    },
+    {
+      "code": "high_externalization",
+      "label": "High Externalization",
+      "category": "expression_pattern",
+      "theme_code": "visibility_expression",
+      "description": "Signal de forte exteriorisation de l'energie planetaire.",
+      "priority_default": "high",
+      "priority_default_rank": 20,
+      "is_active": true,
+      "sort_order": 2
+    },
+    {
+      "code": "constraint_on_action",
+      "label": "Constraint On Action",
+      "category": "tension_pattern",
+      "theme_code": "frustration_pressure",
+      "description": "Signal de contrainte ou de pression sur l'action.",
+      "priority_default": "medium",
+      "priority_default_rank": 30,
+      "is_active": true,
+      "sort_order": 3
+    },
+    {
+      "code": "structural_endurance",
+      "label": "Structural Endurance",
+      "category": "planetary_signature",
+      "theme_code": "responsibility_structure",
+      "description": "Signal de persistance structurelle liee a Saturne.",
+      "priority_default": "high",
+      "priority_default_rank": 20,
+      "is_active": true,
+      "sort_order": 4
+    }
+  ]
+}

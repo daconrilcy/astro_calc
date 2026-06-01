@@ -1,0 +1,195 @@
+{
+    "name": "astral_constellations",
+    "structure": {
+        "id": "integer",
+        "key": "string",
+        "display_name": "string",
+        "latin_name": "string",
+        "abbreviation": "string",
+        "zodiacal": "boolean",
+        "hemisphere_id": "integer|null",
+        "notes": "string|null"
+    },
+    "data": [
+        {
+            "id": 1,
+            "key": "aries",
+            "display_name": "Aries",
+            "latin_name": "Aries",
+            "abbreviation": "Ari",
+            "zodiacal": true,
+            "hemisphere_id": 1,
+            "notes": null
+        },
+        {
+            "id": 2,
+            "key": "taurus",
+            "display_name": "Taurus",
+            "latin_name": "Taurus",
+            "abbreviation": "Tau",
+            "zodiacal": true,
+            "hemisphere_id": 1,
+            "notes": null
+        },
+        {
+            "id": 3,
+            "key": "gemini",
+            "display_name": "Gemini",
+            "latin_name": "Gemini",
+            "abbreviation": "Gem",
+            "zodiacal": true,
+            "hemisphere_id": 1,
+            "notes": null
+        },
+        {
+            "id": 4,
+            "key": "cancer",
+            "display_name": "Cancer",
+            "latin_name": "Cancer",
+            "abbreviation": "Cnc",
+            "zodiacal": true,
+            "hemisphere_id": 1,
+            "notes": null
+        },
+        {
+            "id": 5,
+            "key": "leo",
+            "display_name": "Leo",
+            "latin_name": "Leo",
+            "abbreviation": "Leo",
+            "zodiacal": true,
+            "hemisphere_id": 1,
+            "notes": null
+        },
+        {
+            "id": 6,
+            "key": "virgo",
+            "display_name": "Virgo",
+            "latin_name": "Virgo",
+            "abbreviation": "Vir",
+            "zodiacal": true,
+            "hemisphere_id": 1,
+            "notes": null
+        },
+        {
+            "id": 7,
+            "key": "libra",
+            "display_name": "Libra",
+            "latin_name": "Libra",
+            "abbreviation": "Lib",
+            "zodiacal": true,
+            "hemisphere_id": 2,
+            "notes": null
+        },
+        {
+            "id": 8,
+            "key": "scorpius",
+            "display_name": "Scorpius",
+            "latin_name": "Scorpius",
+            "abbreviation": "Sco",
+            "zodiacal": true,
+            "hemisphere_id": 2,
+            "notes": null
+        },
+        {
+            "id": 9,
+            "key": "sagittarius",
+            "display_name": "Sagittarius",
+            "latin_name": "Sagittarius",
+            "abbreviation": "Sgr",
+            "zodiacal": true,
+            "hemisphere_id": 2,
+            "notes": null
+        },
+        {
+            "id": 10,
+            "key": "capricornus",
+            "display_name": "Capricornus",
+            "latin_name": "Capricornus",
+            "abbreviation": "Cap",
+            "zodiacal": true,
+            "hemisphere_id": 2,
+            "notes": null
+        },
+        {
+            "id": 11,
+            "key": "aquarius",
+            "display_name": "Aquarius",
+            "latin_name": "Aquarius",
+            "abbreviation": "Aqr",
+            "zodiacal": true,
+            "hemisphere_id": 2,
+            "notes": null
+        },
+        {
+            "id": 12,
+            "key": "pisces",
+            "display_name": "Pisces",
+            "latin_name": "Pisces",
+            "abbreviation": "Psc",
+            "zodiacal": true,
+            "hemisphere_id": 1,
+            "notes": null
+        },
+        {
+            "id": 13,
+            "key": "orion",
+            "display_name": "Orion",
+            "latin_name": "Orion",
+            "abbreviation": "Ori",
+            "zodiacal": false,
+            "hemisphere_id": 3,
+            "notes": "Contains Betelgeuse."
+        },
+        {
+            "id": 14,
+            "key": "canis_major",
+            "display_name": "Canis Major",
+            "latin_name": "Canis Major",
+            "abbreviation": "CMa",
+            "zodiacal": false,
+            "hemisphere_id": 2,
+            "notes": "Contains Sirius."
+        },
+        {
+            "id": 15,
+            "key": "lyra",
+            "display_name": "Lyra",
+            "latin_name": "Lyra",
+            "abbreviation": "Lyr",
+            "zodiacal": false,
+            "hemisphere_id": 1,
+            "notes": "Contains Vega."
+        },
+        {
+            "id": 16,
+            "key": "perseus",
+            "display_name": "Perseus",
+            "latin_name": "Perseus",
+            "abbreviation": "Per",
+            "zodiacal": false,
+            "hemisphere_id": 1,
+            "notes": "Contains Algol."
+        },
+        {
+            "id": 17,
+            "key": "eridanus",
+            "display_name": "Eridanus",
+            "latin_name": "Eridanus",
+            "abbreviation": "Eri",
+            "zodiacal": false,
+            "hemisphere_id": 2,
+            "notes": "Contains Achernar."
+        },
+        {
+            "id": 18,
+            "key": "piscis_austrinus",
+            "display_name": "Piscis Austrinus",
+            "latin_name": "Piscis Austrinus",
+            "abbreviation": "PsA",
+            "zodiacal": false,
+            "hemisphere_id": 2,
+            "notes": "Contains Fomalhaut."
+        }
+    ]
+}

@@ -1,0 +1,21 @@
+{
+  "name": "astral_advanced_condition_score_profiles",
+  "structure": {
+    "code": "string, versioned unique",
+    "label": "string",
+    "tradition_code": "string",
+    "description": "string",
+    "reference_version_code": "string",
+    "is_active": "boolean"
+  },
+  "data": [
+    {
+      "code": "traditional_advanced_v1",
+      "label": "Traditional advanced planetary conditions v1",
+      "tradition_code": "traditional",
+      "description": "Profil standard des conditions avancees.",
+      "reference_version_code": "v1",
+      "is_active": true
+    }
+  ]
+}

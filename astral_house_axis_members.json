@@ -1,0 +1,83 @@
+{
+  "name": "astral_house_axis_members",
+  "structure": {
+    "id": "integer",
+    "axis_id": "integer",
+    "house_id": "integer",
+    "opposite_house_id": "integer"
+  },
+  "data": [
+    {
+      "id": 1,
+      "axis_id": 1,
+      "house_id": 1,
+      "opposite_house_id": 7
+    },
+    {
+      "id": 2,
+      "axis_id": 1,
+      "house_id": 7,
+      "opposite_house_id": 1
+    },
+    {
+      "id": 3,
+      "axis_id": 2,
+      "house_id": 2,
+      "opposite_house_id": 8
+    },
+    {
+      "id": 4,
+      "axis_id": 2,
+      "house_id": 8,
+      "opposite_house_id": 2
+    },
+    {
+      "id": 5,
+      "axis_id": 3,
+      "house_id": 3,
+      "opposite_house_id": 9
+    },
+    {
+      "id": 6,
+      "axis_id": 3,
+      "house_id": 9,
+      "opposite_house_id": 3
+    },
+    {
+      "id": 7,
+      "axis_id": 4,
+      "house_id": 4,
+      "opposite_house_id": 10
+    },
+    {
+      "id": 8,
+      "axis_id": 4,
+      "house_id": 10,
+      "opposite_house_id": 4
+    },
+    {
+      "id": 9,
+      "axis_id": 5,
+      "house_id": 5,
+      "opposite_house_id": 11
+    },
+    {
+      "id": 10,
+      "axis_id": 5,
+      "house_id": 11,
+      "opposite_house_id": 5
+    },
+    {
+      "id": 11,
+      "axis_id": 6,
+      "house_id": 6,
+      "opposite_house_id": 12
+    },
+    {
+      "id": 12,
+      "axis_id": 6,
+      "house_id": 12,
+      "opposite_house_id": 6
+    }
+  ]
+}

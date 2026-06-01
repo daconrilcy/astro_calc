@@ -1,0 +1,71 @@
+{
+  "name": "astral_planets",
+  "structure": {
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "name": "string",
+    "swe_id": "integer"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "sun",
+      "name": "Sun",
+      "swe_id": 0
+    },
+    {
+      "id": 2,
+      "code": "moon",
+      "name": "Moon",
+      "swe_id": 1
+    },
+    {
+      "id": 3,
+      "code": "mercury",
+      "name": "Mercury",
+      "swe_id": 2
+    },
+    {
+      "id": 4,
+      "code": "venus",
+      "name": "Venus",
+      "swe_id": 3
+    },
+    {
+      "id": 5,
+      "code": "mars",
+      "name": "Mars",
+      "swe_id": 4
+    },
+    {
+      "id": 6,
+      "code": "jupiter",
+      "name": "Jupiter",
+      "swe_id": 5
+    },
+    {
+      "id": 7,
+      "code": "saturn",
+      "name": "Saturn",
+      "swe_id": 6
+    },
+    {
+      "id": 8,
+      "code": "uranus",
+      "name": "Uranus",
+      "swe_id": 7
+    },
+    {
+      "id": 9,
+      "code": "neptune",
+      "name": "Neptune",
+      "swe_id": 8
+    },
+    {
+      "id": 10,
+      "code": "pluto",
+      "name": "Pluto",
+      "swe_id": 9
+    }
+  ]
+}

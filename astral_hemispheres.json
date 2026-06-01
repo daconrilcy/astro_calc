@@ -1,0 +1,33 @@
+{
+    "name": "astral_hemispheres",
+    "structure": {
+        "id": "integer",
+        "key": "string",
+        "display_name": "string",
+        "description": "string",
+        "usage_note": "string|null"
+    },
+    "data": [
+        {
+            "id": 1,
+            "key": "northern",
+            "display_name": "Northern",
+            "description": "Region of the celestial sphere mainly located north of the celestial equator.",
+            "usage_note": "Used as descriptive astronomy metadata for constellations or stars."
+        },
+        {
+            "id": 2,
+            "key": "southern",
+            "display_name": "Southern",
+            "description": "Region of the celestial sphere mainly located south of the celestial equator.",
+            "usage_note": "Used as descriptive astronomy metadata for constellations or stars."
+        },
+        {
+            "id": 3,
+            "key": "equatorial",
+            "display_name": "Equatorial",
+            "description": "Region close to the celestial equator, generally visible from both terrestrial hemispheres.",
+            "usage_note": "Useful for constellations crossing or lying near the celestial equator."
+        }
+    ]
+}

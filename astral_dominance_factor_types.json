@@ -1,0 +1,77 @@
+{
+  "table": "astral_dominance_factor_types",
+  "data": [
+    {
+      "code": "chart_ruler",
+      "label": "Chart ruler",
+      "category": "rulership",
+      "description": "Planete gouvernant le signe de l'Ascendant.",
+      "default_weight": 1.4,
+      "sort_order": 1,
+      "is_active": true
+    },
+    {
+      "code": "angularity",
+      "label": "Angularity",
+      "category": "house_position",
+      "description": "Planete situee en maison angulaire ou proche d'un angle.",
+      "default_weight": 1.3,
+      "sort_order": 2,
+      "is_active": true
+    },
+    {
+      "code": "condition_strength",
+      "label": "Condition strength",
+      "category": "planet_condition",
+      "description": "Force issue du PlanetConditionProfile.",
+      "default_weight": 1.2,
+      "sort_order": 3,
+      "is_active": true
+    },
+    {
+      "code": "visibility",
+      "label": "Visibility",
+      "category": "planet_condition",
+      "description": "Visibilite issue du PlanetConditionProfile.",
+      "default_weight": 1.1,
+      "sort_order": 4,
+      "is_active": true
+    },
+    {
+      "code": "most_elevated",
+      "label": "Most elevated planet",
+      "category": "chart_position",
+      "description": "Planete la plus proche du Milieu du Ciel ou la plus elevee selon le modele retenu.",
+      "default_weight": 1.0,
+      "sort_order": 5,
+      "is_active": true
+    },
+    {
+      "code": "luminary_emphasis",
+      "label": "Luminary emphasis",
+      "category": "luminary",
+      "description": "Poids specifique du Soleil et de la Lune dans la structure globale du theme.",
+      "default_weight": 0.9,
+      "sort_order": 6,
+      "is_active": true
+    },
+    {
+      "code": "house_rulership_load",
+      "label": "House rulership load",
+      "category": "rulership",
+      "description": "Nombre et importance des maisons gouvernees par une planete.",
+      "default_weight": 0.8,
+      "sort_order": 7,
+      "is_active": true
+    },
+    {
+      "code": "aspect_centrality",
+      "label": "Aspect centrality",
+      "category": "aspects",
+      "description": "Centralite d'une planete dans le reseau d'aspects.",
+      "default_weight": 0.8,
+      "sort_order": 8,
+      "is_active": true
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "astral_horizon_positions",
+  "structure": {
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "sort_order": "integer"
+  },
+  "data": [
+    { "id": 1, "code": "above_horizon", "label": "Above horizon", "sort_order": 1 },
+    { "id": 2, "code": "below_horizon", "label": "Below horizon", "sort_order": 2 }
+  ]
+}

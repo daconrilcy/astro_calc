@@ -1,0 +1,29 @@
+{
+  "name": "astral_point_families",
+  "structure": {
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "display_name": "string",
+    "description": "string"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "lunar_nodes",
+      "display_name": "Lunar Nodes",
+      "description": "Points where the Moon's orbit intersects the ecliptic, used as calculated karmic or evolutionary axes rather than physical bodies."
+    },
+    {
+      "id": 2,
+      "code": "lunar_apsides",
+      "display_name": "Lunar Apsides",
+      "description": "Calculated points describing the Moon's apogee and perigee, the farthest and nearest positions of the lunar orbit relative to Earth."
+    },
+    {
+      "id": 3,
+      "code": "lilith",
+      "display_name": "Lilith Points",
+      "description": "Astrological points derived from the lunar apogee and interpreted as symbolic indicators of instinct, autonomy and shadow material."
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "name": "astral_sect",
+  "structure": {
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "sort_order": "integer"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "day",
+      "label": "Day",
+      "sort_order": 1
+    },
+    {
+      "id": 2,
+      "code": "night",
+      "label": "Night",
+      "sort_order": 2
+    },
+    {
+      "id": 3,
+      "code": "all",
+      "label": "All",
+      "sort_order": 3
+    }
+  ]
+}

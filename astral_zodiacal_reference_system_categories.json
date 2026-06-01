@@ -1,0 +1,33 @@
+{
+    "name": "astral_zodiacal_reference_system_categories",
+    "structure": {
+        "id": "integer",
+        "key": "string",
+        "display_name": "string",
+        "description": "string",
+        "usage_note": "string|null"
+    },
+    "data": [
+        {
+            "id": 1,
+            "key": "zodiac",
+            "display_name": "Zodiac",
+            "description": "Defines how the zodiacal circle is anchored and interpreted.",
+            "usage_note": "Examples: tropical, sidereal, draconic."
+        },
+        {
+            "id": 2,
+            "key": "observer_frame",
+            "display_name": "Observer Frame",
+            "description": "Defines the observational point of view used for the calculation.",
+            "usage_note": "Examples: geocentric, heliocentric, topocentric."
+        },
+        {
+            "id": 3,
+            "key": "coordinate_system",
+            "display_name": "Coordinate System",
+            "description": "Defines the astronomical coordinate grid used to express positions.",
+            "usage_note": "Examples: ecliptic, equatorial."
+        }
+    ]
+}

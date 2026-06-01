@@ -1,0 +1,13 @@
+{
+  "table": "astral_dominance_score_profiles",
+  "data": [
+    {
+      "code": "natal_standard_v1",
+      "label": "Natal standard dominance profile v1",
+      "tradition_code": "modern",
+      "description": "Profil standard pour calculer les planetes dominantes d'un theme natal.",
+      "reference_version_code": "v1",
+      "is_active": true
+    }
+  ]
+}

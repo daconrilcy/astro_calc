@@ -1,0 +1,13 @@
+{
+  "name": "astral_speed_relations",
+  "structure": {
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "sort_order": "integer"
+  },
+  "data": [
+    { "id": 1, "code": "greater_than_mean", "label": "Greater than mean", "sort_order": 1 },
+    { "id": 2, "code": "less_than_mean", "label": "Less than mean", "sort_order": 2 }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "astral_accidental_dignity_condition_schemas",
+  "structure": {
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "description": "string",
+    "sort_order": "integer"
+  },
+  "data": [
+    { "id": 1, "code": "house_modality_membership", "label": "House modality membership", "description": "Condition fondée sur l'appartenance de la maison à une modalité.", "sort_order": 1 },
+    { "id": 2, "code": "planet_motion_state", "label": "Planet motion state", "description": "Condition fondée sur l'état de mouvement de la planète.", "sort_order": 2 },
+    { "id": 3, "code": "mean_speed_relation", "label": "Mean speed relation", "description": "Condition fondée sur la relation à la vitesse moyenne.", "sort_order": 3 },
+    { "id": 4, "code": "solar_angular_distance", "label": "Solar angular distance", "description": "Condition fondée sur la distance angulaire au Soleil.", "sort_order": 4 },
+    { "id": 5, "code": "heliacal_phase", "label": "Heliacal phase", "description": "Condition fondée sur la phase héliaque par rapport au Soleil.", "sort_order": 5 },
+    { "id": 6, "code": "horizon_house_membership", "label": "Horizon house membership", "description": "Condition fondée sur la position au-dessus ou sous l'horizon.", "sort_order": 6 },
+    { "id": 7, "code": "sect_condition", "label": "Sect condition", "description": "Condition fondée sur la secte du thème.", "sort_order": 7 },
+    { "id": 8, "code": "planetary_joy_house", "label": "Planetary joy house", "description": "Condition fondée sur la maison de joie d'une planète.", "sort_order": 8 },
+    { "id": 9, "code": "hayz_condition", "label": "Hayz condition", "description": "Condition combinant secte, horizon et genre du signe.", "sort_order": 9 },
+    { "id": 10, "code": "planetary_nature_aspect", "label": "Planetary nature aspect", "description": "Condition fondée sur un aspect reçu depuis une planète bénéfique ou maléfique.", "sort_order": 10 },
+    { "id": 11, "code": "longitude_besiegement", "label": "Longitude besiegement", "description": "Condition d'encadrement longitudinal par deux planètes d'une nature donnée.", "sort_order": 11 }
+  ]
+}
