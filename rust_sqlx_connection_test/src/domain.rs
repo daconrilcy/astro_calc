@@ -72,7 +72,11 @@ pub struct ObjectPositionFact {
     pub zodiacal_reference_system_id: i32,
     pub coordinate_reference_system_id: i32,
     pub sign_id: i32,
+    pub sign_code: String,
+    pub sign_name: String,
     pub house_id: Option<i32>,
+    pub house_number: Option<i32>,
+    pub house_name: Option<String>,
     pub motion_state_id: Option<i32>,
     pub horizon_position_id: Option<i32>,
     pub longitude_deg: f64,
@@ -93,8 +97,14 @@ pub struct HouseCuspFact {
 #[derive(Debug, Clone)]
 pub struct AspectFact {
     pub source_chart_object_id: i32,
+    pub source_object_code: String,
+    pub source_object_name: String,
     pub target_chart_object_id: i32,
+    pub target_object_code: String,
+    pub target_object_name: String,
     pub aspect_id: i32,
+    pub aspect_code: String,
+    pub aspect_name: String,
     pub orb_deg: f64,
     pub phase_state: String,
     pub is_applying: bool,
@@ -151,7 +161,13 @@ pub struct BasicObjectPosition {
     pub object_name: String,
     pub longitude_deg: f64,
     pub sign_id: i32,
+    #[serde(default)]
+    pub sign_code: String,
+    #[serde(default)]
+    pub sign_name: String,
     pub house_id: Option<i32>,
+    pub house_number: Option<i32>,
+    pub house_name: Option<String>,
     pub motion_state_id: Option<i32>,
 }
 
@@ -162,4 +178,5 @@ pub struct BasicSignal {
     pub summary: Option<String>,
     pub priority_score: f64,
     pub confidence_score: Option<f64>,
+    pub evidence: Option<Value>,
 }

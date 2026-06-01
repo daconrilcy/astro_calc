@@ -13,6 +13,42 @@ pub fn sign_id_for_longitude(longitude_deg: f64) -> i32 {
     (normalize_degrees(longitude_deg) / 30.0).floor() as i32 + 1
 }
 
+pub fn sign_code_name(sign_id: i32) -> (&'static str, &'static str) {
+    match sign_id {
+        1 => ("aries", "Aries"),
+        2 => ("taurus", "Taurus"),
+        3 => ("gemini", "Gemini"),
+        4 => ("cancer", "Cancer"),
+        5 => ("leo", "Leo"),
+        6 => ("virgo", "Virgo"),
+        7 => ("libra", "Libra"),
+        8 => ("scorpio", "Scorpio"),
+        9 => ("sagittarius", "Sagittarius"),
+        10 => ("capricorn", "Capricorn"),
+        11 => ("aquarius", "Aquarius"),
+        12 => ("pisces", "Pisces"),
+        _ => ("unknown", "Unknown"),
+    }
+}
+
+pub fn house_name(house_id: i32) -> &'static str {
+    match house_id {
+        1 => "Self",
+        2 => "Resources",
+        3 => "Communication",
+        4 => "Home",
+        5 => "Creativity",
+        6 => "Health",
+        7 => "Partnership",
+        8 => "Transformation",
+        9 => "Beliefs",
+        10 => "Career",
+        11 => "Community",
+        12 => "Subconscious",
+        _ => "Unknown",
+    }
+}
+
 pub fn motion_state_id(speed_deg_per_day: Option<f64>) -> Option<i32> {
     let speed = speed_deg_per_day?;
     if speed.abs() <= 0.0001 {

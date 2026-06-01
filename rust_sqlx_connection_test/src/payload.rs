@@ -22,18 +22,27 @@ pub fn build_basic_payload(
                 object_name: position.object_name.clone(),
                 longitude_deg: position.longitude_deg,
                 sign_id: position.sign_id,
+                sign_code: position.sign_code.clone(),
+                sign_name: position.sign_name.clone(),
                 house_id: position.house_id,
+                house_number: position.house_number,
+                house_name: position.house_name.clone(),
                 motion_state_id: position.motion_state_id,
             })
             .collect(),
         signals: signals
             .iter()
+            .take(12)
             .map(|signal| BasicSignal {
                 signal_key: signal.signal_key.clone(),
                 title: signal.title.clone(),
                 summary: signal.summary.clone(),
                 priority_score: signal.priority_score,
                 confidence_score: signal.confidence_score,
+                evidence: signal
+                    .payload_json
+                    .as_ref()
+                    .and_then(|payload| payload.get("evidence").cloned()),
             })
             .collect(),
     }

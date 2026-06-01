@@ -2,7 +2,7 @@ use chrono::Utc;
 use sqlx::PgPool;
 use thiserror::Error;
 
-use crate::domain::{BasicPayload, NatalChartInput, RuntimeOptions};
+use crate::domain::{BasicPayload, CalculatedChartFacts, NatalChartInput, RuntimeOptions};
 use crate::ephemeris::EphemerisEngine;
 use crate::idempotency::{advisory_lock_key, idempotency_key, input_hash};
 use crate::payload::build_basic_payload;
@@ -81,12 +81,26 @@ where
                 .existing_basic_payload(completed_id, &product_code, input.language_id)
                 .await?
             {
-                return Ok(payload);
+                if is_current_basic_payload(&payload) {
+                    return Ok(payload);
+                }
             }
             let positions = self.repository.positions_for_payload(completed_id).await?;
-            let signals = self.repository.active_signals(completed_id).await?;
-            let payload = build_basic_payload(completed_id, &input, &positions, &signals);
+            let aspects = self.repository.aspects_for_payload(completed_id).await?;
+            let signal_drafts = aggregate_basic_signals(&CalculatedChartFacts {
+                positions: positions.clone(),
+                house_cusps: Vec::new(),
+                aspects,
+            });
             let mut payload_tx = self.repository.pool().begin().await?;
+            let signals = RuntimeRepository::persist_signals(
+                &mut payload_tx,
+                completed_id,
+                input.reference_version_id,
+                &signal_drafts,
+            )
+            .await?;
+            let payload = build_basic_payload(completed_id, &input, &positions, &signals);
             RuntimeRepository::persist_basic_payload(&mut payload_tx, &input, &payload).await?;
             payload_tx.commit().await?;
             return Ok(payload);
@@ -168,4 +182,16 @@ fn is_stale(row: &ChartCalculationRow, default_stale_after_seconds: i32) -> bool
         .unwrap_or(default_stale_after_seconds)
         .max(1);
     Utc::now().signed_duration_since(heartbeat_at).num_seconds() > i64::from(threshold)
+}
+
+fn is_current_basic_payload(payload: &BasicPayload) -> bool {
+    payload.signals.len() <= 12
+        && payload
+            .positions
+            .iter()
+            .all(|position| !position.sign_code.is_empty() && !position.sign_name.is_empty())
+        && payload
+            .signals
+            .iter()
+            .all(|signal| signal.evidence.is_some())
 }

@@ -27,13 +27,18 @@ pub fn detect_aspects(
                     continue;
                 }
 
-                let (source_id, target_id) =
-                    canonical_pair(left.chart_object_id, right.chart_object_id);
+                let (source, target) = canonical_pair(left, right);
                 let is_applying = is_applying(left, right, aspect.angle, orb);
                 facts.push(AspectFact {
-                    source_chart_object_id: source_id,
-                    target_chart_object_id: target_id,
+                    source_chart_object_id: source.chart_object_id,
+                    source_object_code: source.object_code.clone(),
+                    source_object_name: source.object_name.clone(),
+                    target_chart_object_id: target.chart_object_id,
+                    target_object_code: target.object_code.clone(),
+                    target_object_name: target.object_name.clone(),
                     aspect_id: aspect.id,
+                    aspect_code: aspect.code.clone(),
+                    aspect_name: aspect.name.clone(),
                     orb_deg: round4(orb),
                     phase_state: phase_state(orb, is_applying).to_string(),
                     is_applying,
@@ -59,8 +64,11 @@ fn shortest_distance(left: f64, right: f64) -> f64 {
     diff.min(360.0 - diff)
 }
 
-fn canonical_pair(left: i32, right: i32) -> (i32, i32) {
-    if left <= right {
+fn canonical_pair<'a>(
+    left: &'a ObjectPositionFact,
+    right: &'a ObjectPositionFact,
+) -> (&'a ObjectPositionFact, &'a ObjectPositionFact) {
+    if left.chart_object_id <= right.chart_object_id {
         (left, right)
     } else {
         (right, left)
@@ -113,7 +121,11 @@ mod tests {
             zodiacal_reference_system_id: 1,
             coordinate_reference_system_id: 1,
             sign_id: 1,
+            sign_code: "aries".to_string(),
+            sign_name: "Aries".to_string(),
             house_id: None,
+            house_number: None,
+            house_name: None,
             motion_state_id: None,
             horizon_position_id: None,
             longitude_deg,

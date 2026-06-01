@@ -108,7 +108,11 @@ impl RuntimeRepository {
                    p.zodiacal_reference_system_id,
                    p.coordinate_reference_system_id,
                    p.sign_id,
+                   s.code AS sign_code,
+                   s.name AS sign_name,
                    p.house_id,
+                   h.number AS house_number,
+                   h.name AS house_name,
                    p.motion_state_id,
                    p.horizon_position_id,
                    p.longitude_deg::float8 AS longitude_deg,
@@ -119,6 +123,8 @@ impl RuntimeRepository {
                    p.facts_json
             FROM astral_calculated_chart_object_positions p
             JOIN astral_chart_objects o ON o.id = p.chart_object_id
+            JOIN astral_signs s ON s.id = p.sign_id
+            LEFT JOIN astral_houses h ON h.id = p.house_id
             WHERE p.chart_calculation_id = $1
             ORDER BY o.sort_order, o.id
             "#,
@@ -142,11 +148,49 @@ impl RuntimeRepository {
             FROM astral_interpretation_signals
             WHERE chart_calculation_id = $1 AND suppression_state = 'active'
             ORDER BY priority_score DESC, id
+            LIMIT 12
             "#,
         )
         .bind(chart_calculation_id)
         .fetch_all(&self.pool)
         .await?)
+    }
+
+    pub async fn aspects_for_payload(
+        &self,
+        chart_calculation_id: i32,
+    ) -> Result<Vec<AspectFact>, RuntimeError> {
+        Ok(sqlx::query_as::<_, PersistedAspectFact>(
+            r#"
+            SELECT a.source_chart_object_id,
+                   source.code AS source_object_code,
+                   source.name AS source_object_name,
+                   a.target_chart_object_id,
+                   target.code AS target_object_code,
+                   target.name AS target_object_name,
+                   a.aspect_id,
+                   aspect.code AS aspect_code,
+                   aspect.name AS aspect_name,
+                   a.orb_deg::float8 AS orb_deg,
+                   a.phase_state,
+                   a.is_applying,
+                   a.is_exact,
+                   a.strength_score::float8 AS strength_score,
+                   a.calculation_notes_json
+            FROM astral_calculated_aspects a
+            JOIN astral_chart_objects source ON source.id = a.source_chart_object_id
+            JOIN astral_chart_objects target ON target.id = a.target_chart_object_id
+            JOIN astral_aspects aspect ON aspect.id = a.aspect_id
+            WHERE a.chart_calculation_id = $1
+            ORDER BY a.strength_score DESC NULLS LAST, a.orb_deg, a.id
+            "#,
+        )
+        .bind(chart_calculation_id)
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(Into::into)
+        .collect())
     }
 
     pub async fn lock_idempotency(
@@ -284,6 +328,17 @@ impl RuntimeRepository {
         reference_version_id: i32,
         signals: &[InterpretationSignalDraft],
     ) -> Result<Vec<InterpretationSignalRow>, RuntimeError> {
+        sqlx::query(
+            r#"
+            UPDATE astral_interpretation_signals
+            SET suppression_state = 'suppressed'
+            WHERE chart_calculation_id = $1
+            "#,
+        )
+        .bind(chart_calculation_id)
+        .execute(&mut **tx)
+        .await?;
+
         for signal in signals {
             let id = next_id(tx, "astral_interpretation_signals").await?;
             sqlx::query(
@@ -326,6 +381,7 @@ impl RuntimeRepository {
             FROM astral_interpretation_signals
             WHERE chart_calculation_id = $1 AND suppression_state = 'active'
             ORDER BY priority_score DESC, id
+            LIMIT 12
             "#,
         )
         .bind(chart_calculation_id)
@@ -561,7 +617,11 @@ struct PersistedObjectPositionFact {
     zodiacal_reference_system_id: i32,
     coordinate_reference_system_id: i32,
     sign_id: i32,
+    sign_code: String,
+    sign_name: String,
     house_id: Option<i32>,
+    house_number: Option<i32>,
+    house_name: Option<String>,
     motion_state_id: Option<i32>,
     horizon_position_id: Option<i32>,
     longitude_deg: f64,
@@ -581,7 +641,11 @@ impl From<PersistedObjectPositionFact> for ObjectPositionFact {
             zodiacal_reference_system_id: row.zodiacal_reference_system_id,
             coordinate_reference_system_id: row.coordinate_reference_system_id,
             sign_id: row.sign_id,
+            sign_code: row.sign_code,
+            sign_name: row.sign_name,
             house_id: row.house_id,
+            house_number: row.house_number,
+            house_name: row.house_name,
             motion_state_id: row.motion_state_id,
             horizon_position_id: row.horizon_position_id,
             longitude_deg: row.longitude_deg,
@@ -590,6 +654,47 @@ impl From<PersistedObjectPositionFact> for ObjectPositionFact {
             altitude_deg: row.altitude_deg,
             is_visible: row.is_visible,
             facts_json: row.facts_json,
+        }
+    }
+}
+
+#[derive(Debug, sqlx::FromRow)]
+struct PersistedAspectFact {
+    source_chart_object_id: i32,
+    source_object_code: String,
+    source_object_name: String,
+    target_chart_object_id: i32,
+    target_object_code: String,
+    target_object_name: String,
+    aspect_id: i32,
+    aspect_code: String,
+    aspect_name: String,
+    orb_deg: f64,
+    phase_state: String,
+    is_applying: bool,
+    is_exact: bool,
+    strength_score: Option<f64>,
+    calculation_notes_json: Option<Value>,
+}
+
+impl From<PersistedAspectFact> for AspectFact {
+    fn from(row: PersistedAspectFact) -> Self {
+        Self {
+            source_chart_object_id: row.source_chart_object_id,
+            source_object_code: row.source_object_code,
+            source_object_name: row.source_object_name,
+            target_chart_object_id: row.target_chart_object_id,
+            target_object_code: row.target_object_code,
+            target_object_name: row.target_object_name,
+            aspect_id: row.aspect_id,
+            aspect_code: row.aspect_code,
+            aspect_name: row.aspect_name,
+            orb_deg: row.orb_deg,
+            phase_state: row.phase_state,
+            is_applying: row.is_applying,
+            is_exact: row.is_exact,
+            strength_score: row.strength_score,
+            calculation_notes_json: row.calculation_notes_json,
         }
     }
 }

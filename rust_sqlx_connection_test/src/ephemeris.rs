@@ -46,8 +46,8 @@ impl EphemerisEngine for SwissEphemerisEngine {
         use crate::aspects::detect_aspects;
         use crate::domain::{HouseCuspFact, ObjectPositionFact};
         use crate::facts::{
-            house_id_from_cusps, motion_state_id, normalize_degrees, sign_id_for_longitude,
-            whole_sign_house_id,
+            house_id_from_cusps, house_name, motion_state_id, normalize_degrees, sign_code_name,
+            sign_id_for_longitude, whole_sign_house_id,
         };
         use serde_json::json;
         use swiss_eph::safe::{calc_ut, houses, set_ephe_path, CalcFlags};
@@ -101,6 +101,8 @@ impl EphemerisEngine for SwissEphemerisEngine {
             } else {
                 house_id_from_cusps(longitude, &house_cusps)
             };
+            let sign_id = sign_id_for_longitude(longitude);
+            let (sign_code, sign_name) = sign_code_name(sign_id);
 
             positions.push(ObjectPositionFact {
                 chart_object_id: object.id,
@@ -108,8 +110,12 @@ impl EphemerisEngine for SwissEphemerisEngine {
                 object_name: object.name.clone(),
                 zodiacal_reference_system_id: input.zodiacal_reference_system_id,
                 coordinate_reference_system_id: input.coordinate_reference_system_id,
-                sign_id: sign_id_for_longitude(longitude),
+                sign_id,
+                sign_code: sign_code.to_string(),
+                sign_name: sign_name.to_string(),
                 house_id,
+                house_number: house_id,
+                house_name: house_id.map(|id| house_name(id).to_string()),
                 motion_state_id: motion_state_id(Some(speed)),
                 horizon_position_id: None,
                 longitude_deg: longitude,
