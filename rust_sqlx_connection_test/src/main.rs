@@ -1,5 +1,7 @@
 use chrono::{DateTime, Utc};
-use rust_sqlx_connection_test::config::{ephemeris_path_from_env, runtime_options_from_env};
+use rust_sqlx_connection_test::config::{
+    ephemeris_path_from_env, load_dotenv, runtime_options_from_env,
+};
 use rust_sqlx_connection_test::db::connect_from_env;
 use rust_sqlx_connection_test::domain::NatalChartInput;
 use rust_sqlx_connection_test::ephemeris::SwissEphemerisEngine;
@@ -7,6 +9,7 @@ use rust_sqlx_connection_test::runtime::ChartCalculationRuntimeService;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    load_dotenv();
     let input = natal_input_from_env()?;
     let pool = connect_from_env().await?;
     let ephemeris = SwissEphemerisEngine::new(ephemeris_path_from_env());

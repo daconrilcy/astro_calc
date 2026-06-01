@@ -1,8 +1,10 @@
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 
+use crate::config::load_dotenv;
+
 pub async fn connect_from_env() -> Result<PgPool, sqlx::Error> {
-    dotenvy::dotenv().ok();
+    load_dotenv();
     PgPoolOptions::new()
         .max_connections(5)
         .connect(&database_url())
