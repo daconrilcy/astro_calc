@@ -154,6 +154,8 @@ pub struct BasicPayload {
     pub birth_datetime_utc: DateTime<Utc>,
     pub positions: Vec<BasicObjectPosition>,
     pub signals: Vec<BasicSignal>,
+    #[serde(default)]
+    pub reading_plan: Vec<BasicReadingPlanItem>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -187,4 +189,12 @@ pub struct BasicSignal {
     pub aggregation_group: Option<String>,
     pub writing_guidance: Option<String>,
     pub evidence: Option<Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BasicReadingPlanItem {
+    pub slot: String,
+    pub title: String,
+    #[serde(default)]
+    pub source_signal_keys: Vec<String>,
 }

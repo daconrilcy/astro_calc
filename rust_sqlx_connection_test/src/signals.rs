@@ -63,8 +63,6 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
         });
     }
 
-    add_position_cluster_signals(facts, &mut signals);
-
     for aspect in &facts.aspects {
         let strength_score = aspect.strength_score.unwrap_or(0.5);
         let suppression_state = if strength_score >= BASIC_ASPECT_MIN_STRENGTH {
@@ -136,6 +134,8 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
         });
     }
 
+    add_position_cluster_signals(facts, &mut signals);
+
     signals.sort_by(|left, right| {
         right
             .priority_score
@@ -143,6 +143,12 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
             .unwrap_or(std::cmp::Ordering::Equal)
     });
     suppress_over_basic_limit(&mut signals);
+    for _ in 0..BASIC_MAX_ACTIVE_SIGNALS {
+        if !apply_cluster_source_deduplication(&mut signals) {
+            break;
+        }
+        fill_basic_active_limit(&mut signals);
+    }
     signals
 }
 
@@ -239,6 +245,113 @@ fn add_position_cluster_signals(
             })),
         });
     }
+}
+
+fn apply_cluster_source_deduplication(signals: &mut [InterpretationSignalDraft]) -> bool {
+    let mut source_to_cluster: HashMap<String, String> = HashMap::new();
+
+    for signal in signals.iter() {
+        if signal.suppression_state != "active" || !signal.signal_key.starts_with("cluster:") {
+            continue;
+        }
+
+        let Some(source_signals) = signal
+            .payload_json
+            .as_ref()
+            .and_then(|payload| payload.get("evidence"))
+            .and_then(|evidence| evidence.get("source_signals"))
+            .and_then(|value| value.as_array())
+        else {
+            continue;
+        };
+
+        for source_signal in source_signals {
+            if let Some(source_signal) = source_signal.as_str() {
+                source_to_cluster.insert(source_signal.to_string(), signal.signal_key.clone());
+            }
+        }
+    }
+
+    if source_to_cluster.is_empty() {
+        return false;
+    }
+
+    let mut changed = false;
+    for signal in signals.iter_mut() {
+        let Some(cluster_key) = source_to_cluster.get(&signal.signal_key).cloned() else {
+            continue;
+        };
+
+        let object_code = signal
+            .payload_json
+            .as_ref()
+            .and_then(|payload| payload.get("evidence"))
+            .and_then(|evidence| evidence.get("object_code"))
+            .and_then(|value| value.as_str())
+            .unwrap_or_default();
+
+        if is_core_chart_object(object_code) {
+            changed |= annotate_cluster_source(signal, &cluster_key, "kept");
+        } else if signal.suppression_state != "merged" {
+            signal.suppression_state = "merged".to_string();
+            changed = true;
+            changed |= annotate_cluster_source(signal, &cluster_key, "merged");
+        }
+    }
+
+    changed
+}
+
+fn annotate_cluster_source(
+    signal: &mut InterpretationSignalDraft,
+    cluster_key: &str,
+    editorial_state: &str,
+) -> bool {
+    let Some(payload) = signal
+        .payload_json
+        .as_mut()
+        .and_then(|value| value.as_object_mut())
+    else {
+        return false;
+    };
+
+    let already_current = payload
+        .get("editorial_state")
+        .and_then(|state| state.get("state"))
+        .and_then(|value| value.as_str())
+        == Some(editorial_state)
+        && payload
+            .get("editorial_state")
+            .and_then(|state| state.get("cluster_signal_key"))
+            .and_then(|value| value.as_str())
+            == Some(cluster_key);
+
+    payload.insert(
+        "editorial_state".to_string(),
+        json!({
+            "state": editorial_state,
+            "reason": "source_signal_of_active_cluster",
+            "cluster_signal_key": cluster_key
+        }),
+    );
+
+    if editorial_state == "kept" {
+        payload.insert(
+            "writing_guidance".to_string(),
+            json!("Keep this core placement, but draft it in relation to the active cluster to avoid repeating the same sign and house wording."),
+        );
+    } else {
+        payload.insert(
+            "writing_guidance".to_string(),
+            json!("Do not draft this as a standalone Basic point; it is represented by the active cluster signal."),
+        );
+    }
+
+    !already_current
+}
+
+fn is_core_chart_object(object_code: &str) -> bool {
+    matches!(object_code, "sun" | "moon" | "ascendant" | "mc")
 }
 
 fn position_priority(object_code: &str) -> f64 {
@@ -407,6 +520,46 @@ fn suppress_over_basic_limit(signals: &mut [InterpretationSignalDraft]) {
     }
 }
 
+fn fill_basic_active_limit(signals: &mut [InterpretationSignalDraft]) {
+    let mut active_count = signals
+        .iter()
+        .filter(|signal| signal.suppression_state == "active")
+        .count();
+
+    if active_count >= BASIC_MAX_ACTIVE_SIGNALS {
+        return;
+    }
+
+    for signal in signals {
+        if active_count >= BASIC_MAX_ACTIVE_SIGNALS {
+            break;
+        }
+
+        if signal.suppression_state == "suppressed" && is_basic_fill_eligible(signal) {
+            signal.suppression_state = "active".to_string();
+            active_count += 1;
+        }
+    }
+}
+
+fn is_basic_fill_eligible(signal: &InterpretationSignalDraft) -> bool {
+    !is_weak_aspect_signal(signal)
+}
+
+fn is_weak_aspect_signal(signal: &InterpretationSignalDraft) -> bool {
+    if !signal.signal_key.starts_with("aspect:") {
+        return false;
+    }
+
+    signal
+        .payload_json
+        .as_ref()
+        .and_then(|payload| payload.get("evidence"))
+        .and_then(|evidence| evidence.get("strength_score"))
+        .and_then(|value| value.as_f64())
+        .is_some_and(|strength_score| strength_score < BASIC_ASPECT_MIN_STRENGTH)
+}
+
 fn indefinite_article(phrase: &str) -> &'static str {
     match phrase
         .chars()
@@ -455,6 +608,65 @@ mod tests {
         }
     }
 
+    fn position(
+        id: i32,
+        object_code: &str,
+        object_name: &str,
+        sign_code: &str,
+        sign_name: &str,
+        house_number: i32,
+    ) -> ObjectPositionFact {
+        ObjectPositionFact {
+            chart_object_id: id,
+            object_code: object_code.to_string(),
+            object_name: object_name.to_string(),
+            zodiacal_reference_system_id: 1,
+            coordinate_reference_system_id: 1,
+            sign_id: id,
+            sign_code: sign_code.to_string(),
+            sign_name: sign_name.to_string(),
+            house_id: Some(house_number),
+            house_number: Some(house_number),
+            house_name: Some(format!("House {house_number}")),
+            motion_state_id: None,
+            horizon_position_id: None,
+            longitude_deg: f64::from(id) * 30.0,
+            latitude_deg: None,
+            apparent_speed_deg_per_day: Some(1.0),
+            altitude_deg: None,
+            is_visible: None,
+            facts_json: None,
+        }
+    }
+
+    fn aspect(
+        source_code: &str,
+        source_name: &str,
+        target_code: &str,
+        target_name: &str,
+        aspect_code: &str,
+        aspect_name: &str,
+        strength_score: f64,
+    ) -> AspectFact {
+        AspectFact {
+            source_chart_object_id: 1,
+            source_object_code: source_code.to_string(),
+            source_object_name: source_name.to_string(),
+            target_chart_object_id: 2,
+            target_object_code: target_code.to_string(),
+            target_object_name: target_name.to_string(),
+            aspect_id: 1,
+            aspect_code: aspect_code.to_string(),
+            aspect_name: aspect_name.to_string(),
+            orb_deg: 1.0,
+            phase_state: "applying".to_string(),
+            is_applying: true,
+            is_exact: false,
+            strength_score: Some(strength_score),
+            calculation_notes_json: None,
+        }
+    }
+
     #[test]
     fn basic_signals_include_semantic_position_cluster() {
         let facts = CalculatedChartFacts {
@@ -496,6 +708,97 @@ mod tests {
                 .map(Vec::len),
             Some(3)
         );
+    }
+
+    #[test]
+    fn basic_cluster_merges_secondary_source_signals() {
+        let facts = CalculatedChartFacts {
+            positions: vec![
+                capricorn_house_2_position(1, "sun", "Sun"),
+                capricorn_house_2_position(6, "saturn", "Saturn"),
+                capricorn_house_2_position(8, "uranus", "Uranus"),
+            ],
+            house_cusps: Vec::new(),
+            aspects: Vec::new(),
+        };
+
+        let signals = aggregate_basic_signals(&facts);
+        let sun = signals
+            .iter()
+            .find(|signal| signal.signal_key == "object_position:sun")
+            .expect("expected Sun signal");
+        let saturn = signals
+            .iter()
+            .find(|signal| signal.signal_key == "object_position:saturn")
+            .expect("expected Saturn signal");
+
+        assert_eq!(sun.suppression_state, "active");
+        assert_eq!(saturn.suppression_state, "merged");
+        assert_eq!(
+            saturn
+                .payload_json
+                .as_ref()
+                .and_then(|payload| payload.get("editorial_state"))
+                .and_then(|state| state.get("cluster_signal_key"))
+                .and_then(|value| value.as_str()),
+            Some("cluster:capricorn:house_2")
+        );
+    }
+
+    #[test]
+    fn basic_cluster_dedup_refills_without_reactivating_weak_aspects() {
+        let facts = CalculatedChartFacts {
+            positions: vec![
+                capricorn_house_2_position(1, "sun", "Sun"),
+                position(2, "moon", "Moon", "cancer", "Cancer", 4),
+                position(3, "mercury", "Mercury", "gemini", "Gemini", 3),
+                position(4, "venus", "Venus", "taurus", "Taurus", 5),
+                position(5, "mars", "Mars", "aries", "Aries", 1),
+                position(6, "jupiter", "Jupiter", "sagittarius", "Sagittarius", 9),
+                capricorn_house_2_position(7, "saturn", "Saturn"),
+                capricorn_house_2_position(8, "uranus", "Uranus"),
+                capricorn_house_2_position(9, "neptune", "Neptune"),
+                position(10, "pluto", "Pluto", "scorpio", "Scorpio", 8),
+                position(11, "north_node", "North Node", "aquarius", "Aquarius", 11),
+            ],
+            house_cusps: Vec::new(),
+            aspects: vec![
+                aspect("sun", "Sun", "moon", "Moon", "trine", "Trine", 0.99),
+                aspect(
+                    "mercury", "Mercury", "venus", "Venus", "sextile", "Sextile", 0.98,
+                ),
+                aspect(
+                    "mars", "Mars", "jupiter", "Jupiter", "square", "Square", 0.97,
+                ),
+                aspect(
+                    "saturn",
+                    "Saturn",
+                    "pluto",
+                    "Pluto",
+                    "opposition",
+                    "Opposition",
+                    0.2,
+                ),
+            ],
+        };
+
+        let signals = aggregate_basic_signals(&facts);
+        let active_count = signals
+            .iter()
+            .filter(|signal| signal.suppression_state == "active")
+            .count();
+        let weak_aspect = signals
+            .iter()
+            .find(|signal| signal.signal_key == "aspect:saturn:pluto:opposition")
+            .expect("expected weak aspect signal");
+        let pluto = signals
+            .iter()
+            .find(|signal| signal.signal_key == "object_position:pluto")
+            .expect("expected Pluto signal");
+
+        assert_eq!(active_count, BASIC_MAX_ACTIVE_SIGNALS);
+        assert_eq!(weak_aspect.suppression_state, "suppressed");
+        assert_eq!(pluto.suppression_state, "active");
     }
 
     #[test]

@@ -14,6 +14,12 @@ signaux agreges. Le runtime ne produit toujours pas une interpretation finale,
 mais il fournit une base plus directement exploitable pour une couche de
 redaction.
 
+L'etape 1C ajoute une deduplication editoriale et un plan de lecture Basic. Quand
+un cluster actif represente deja plusieurs placements, ses sources secondaires
+sont persistees en `merged` au lieu de remonter comme signaux actifs autonomes.
+Le payload final expose aussi `reading_plan`, une sequence de slots qui indique
+dans quel ordre exploiter les signaux actifs pour la future redaction.
+
 Le runtime conserve la chaine existante :
 
 1. calcul des faits astrologiques ;
@@ -223,12 +229,72 @@ Le filtrage est applique dans `signals.rs` :
 - les signaux sont tries par `priority_score` decroissant ;
 - les aspects dont `strength_score < 0.4` passent en `suppressed` ;
 - les clusters semantiques sont ajoutes avant le tri final ;
+- les sources secondaires d'un cluster retenu actif passent en `merged`, sauf
+  Soleil, Lune, Ascendant et MC qui restent actifs comme marqueurs centraux ;
+- quand des fusions liberent des places dans les 12 signaux Basic, le runtime
+  remonte les prochains signaux eligibles sans reactiver les aspects faibles ;
 - seuls les 12 premiers signaux actifs restent eligibles au payload ;
 - `payload.rs` applique aussi `.take(12)` comme garde de lecture.
 
 Les signaux supprimes restent persistables dans `astral_interpretation_signals`
 avec `suppression_state = 'suppressed'`, mais ne remontent pas dans le payload
 Basic final.
+
+Les signaux `merged` sont egalement persistables dans
+`astral_interpretation_signals`, mais ils ne remontent pas dans le payload final
+car les requetes de lecture ne selectionnent que `suppression_state = 'active'`.
+Ils conservent une trace `editorial_state` dans `payload_json` avec la cle du
+cluster qui les represente.
+
+Apres une evolution du format des cles ou du filtrage, la table peut conserver
+d'anciens signaux en `suppressed`, par exemple d'anciens aspects avec des cles
+techniques historiques. Ils restent utiles pour l'audit, mais ne sont pas
+consideres par le payload final tant que leur `suppression_state` n'est pas
+`active`.
+
+## Plan de lecture Basic
+
+Le payload final contient maintenant `reading_plan` :
+
+```json
+{
+  "reading_plan": [
+    {
+      "slot": "core_identity",
+      "title": "Core identity markers",
+      "source_signal_keys": [
+        "object_position:sun",
+        "object_position:moon"
+      ]
+    },
+    {
+      "slot": "dominant_cluster",
+      "title": "Dominant repeated theme",
+      "source_signal_keys": [
+        "cluster:capricorn:house_2",
+        "object_position:sun"
+      ]
+    },
+    {
+      "slot": "main_tension_or_support",
+      "title": "Main dynamic aspect",
+      "source_signal_keys": [
+        "aspect:sun:neptune:conjunction"
+      ]
+    }
+  ]
+}
+```
+
+Le plan est construit dans `payload.rs` a partir des signaux actifs, avec les
+slots suivants quand les sources correspondantes existent :
+
+- `core_identity` : Soleil, Lune, Ascendant, MC ;
+- `dominant_cluster` : premier cluster actif et sources actives associees ;
+- `main_tension_or_support` : jusqu'a trois aspects actifs prioritaires ;
+- `expression_style` : Mercure, Venus, Mars ;
+- `background_factors` : Jupiter, Saturne, Uranus, Neptune, Pluton si encore
+  actifs.
 
 ## Persistance
 
@@ -257,6 +323,8 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
 - signaux avec `evidence` ;
 - signaux avec `theme_code`, `interpretive_hint`, `semantic_tags`,
   `aggregation_group` et `writing_guidance` non vides ;
+- `reading_plan` present, non vide, compose de slots uniques et de sources qui
+  existent dans les signaux du payload ;
 - absence d'anciens templates connus comme `by a opposition`.
 
 Sinon, les signaux sont reconstruits depuis les positions et aspects persistants,
@@ -287,6 +355,7 @@ Le run attendu doit afficher :
 - `product_code = "basic"` ;
 - des positions avec `sign_code`, `sign_name`, `house_number`, `house_name` ;
 - au plus 12 signaux ;
+- un `reading_plan` non vide ;
 - des titres sans IDs techniques ;
 - des champs semantiques 1B sur chaque signal ;
 - un cluster `cluster:<sign_code>:house_<number>` quand au moins trois objets

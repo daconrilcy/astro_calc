@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use chrono::Utc;
 use sqlx::PgPool;
 use thiserror::Error;
@@ -187,6 +189,7 @@ fn is_stale(row: &ChartCalculationRow, default_stale_after_seconds: i32) -> bool
 fn is_current_basic_payload(payload: &BasicPayload) -> bool {
     !payload.signals.is_empty()
         && payload.signals.len() <= 12
+        && has_current_reading_plan(payload)
         && payload
             .positions
             .iter()
@@ -206,6 +209,31 @@ fn is_current_basic_payload(payload: &BasicPayload) -> bool {
         })
 }
 
+fn has_current_reading_plan(payload: &BasicPayload) -> bool {
+    if payload.reading_plan.is_empty() {
+        return false;
+    }
+
+    let signal_keys: HashSet<&str> = payload
+        .signals
+        .iter()
+        .map(|signal| signal.signal_key.as_str())
+        .collect();
+    let mut slots = HashSet::new();
+
+    payload.reading_plan.iter().all(|item| {
+        let slot = item.slot.trim();
+        !slot.is_empty()
+            && slots.insert(slot)
+            && !item.title.trim().is_empty()
+            && !item.source_signal_keys.is_empty()
+            && item.source_signal_keys.iter().all(|signal_key| {
+                let signal_key = signal_key.trim();
+                !signal_key.is_empty() && signal_keys.contains(signal_key)
+            })
+    })
+}
+
 fn has_text(value: &Option<String>) -> bool {
     value.as_deref().is_some_and(|text| !text.trim().is_empty())
 }
@@ -222,7 +250,7 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-    use crate::domain::{BasicObjectPosition, BasicSignal};
+    use crate::domain::{BasicObjectPosition, BasicReadingPlanItem, BasicSignal};
 
     fn current_payload() -> BasicPayload {
         BasicPayload {
@@ -257,6 +285,11 @@ mod tests {
                 writing_guidance: Some("guidance".to_string()),
                 evidence: Some(json!({"fact_type": "object_position"})),
             }],
+            reading_plan: vec![BasicReadingPlanItem {
+                slot: "core_identity".to_string(),
+                title: "Core identity markers".to_string(),
+                source_signal_keys: vec!["object_position:sun".to_string()],
+            }],
         }
     }
 
@@ -272,6 +305,36 @@ mod tests {
     fn current_payload_rejects_empty_semantic_contract_fields() {
         let mut payload = current_payload();
         payload.signals[0].interpretive_hint = Some(" ".to_string());
+
+        assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
+    fn current_payload_requires_reading_plan() {
+        let mut payload = current_payload();
+        payload.reading_plan.clear();
+
+        assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
+    fn current_payload_rejects_reading_plan_with_missing_signal_key() {
+        let mut payload = current_payload();
+        payload.reading_plan[0]
+            .source_signal_keys
+            .push("object_position:moon".to_string());
+
+        assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
+    fn current_payload_rejects_duplicate_reading_plan_slots() {
+        let mut payload = current_payload();
+        payload.reading_plan.push(BasicReadingPlanItem {
+            slot: "core_identity".to_string(),
+            title: "Duplicate".to_string(),
+            source_signal_keys: vec!["object_position:sun".to_string()],
+        });
 
         assert!(!is_current_basic_payload(&payload));
     }
