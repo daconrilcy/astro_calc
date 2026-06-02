@@ -151,12 +151,15 @@ la correction attendue est de resynchroniser PostgreSQL avec les fichiers
 - `rust_sqlx_connection_test/src/aspects.rs` : detection geometrique des aspects
   et calcul de l'orbe, de la phase et de la force brute.
 - `rust_sqlx_connection_test/src/dignities.rs` : detection MVP des dignites essentielles majeures.
-- `rust_sqlx_connection_test/src/signals.rs` : construction et filtrage des signaux Basic.
-- `rust_sqlx_connection_test/src/payload.rs` : assemblage du payload final.
+- `rust_sqlx_connection_test/src/signals/` : construction, filtrage et
+  priorisation des signaux Basic.
+- `rust_sqlx_connection_test/src/payload/` : assemblage du payload final et de
+  ses blocs contractuels.
 - `rust_sqlx_connection_test/src/repositories.rs` : persistance, relecture des
   positions et enrichissement SQL depuis les referentiels de signes, maisons,
   objets, angles et aspects.
-- `rust_sqlx_connection_test/src/runtime.rs` : orchestration et regeneration des anciens payloads.
+- `rust_sqlx_connection_test/src/runtime/` : orchestration runtime,
+  validation des references et regeneration des anciens payloads.
 - `rust_sqlx_connection_test/schemas/basic_natal_structured_v8.schema.json` :
   schema JSON du contrat Basic v8.
 - `tests/golden/basic_payload_v8_paris_1990.json` : fixture golden du contrat
@@ -1525,3 +1528,43 @@ cargo fmt --manifest-path rust_sqlx_connection_test/Cargo.toml
 cargo clippy --manifest-path rust_sqlx_connection_test/Cargo.toml --all-targets -- -D warnings
 cargo test --manifest-path rust_sqlx_connection_test/Cargo.toml
 ```
+
+## Organisation du module runtime
+
+`rust_sqlx_connection_test/src/runtime.rs` a ete remplace par le dossier
+`rust_sqlx_connection_test/src/runtime/` afin de separer les responsabilites
+runtime sans modifier l'API publique `rust_sqlx_connection_test::runtime`.
+Le module reste une couche d'orchestration: il ne porte pas de donnees
+canoniques applicatives et ne contourne pas les referentiels lus depuis la base.
+
+- `mod.rs` conserve les exports publics historiques :
+  `ChartCalculationRuntimeService`, `RuntimeError`,
+  `is_current_basic_payload`, `validate_calculation_references` et
+  `validate_chart_object_signal_profiles`.
+- `error.rs` isole `RuntimeError` et ses codes d'erreur stables.
+- `service.rs` orchestre le calcul natal Basic, l'idempotence, la persistance
+  et la regeneration des payloads obsoletes.
+- `references.rs` regroupe les validations des references chargees depuis la
+  base de donnees et des profils de scoring des objets.
+- `payload_freshness.rs` expose la facade `is_current_basic_payload` et compose
+  les validations de reutilisation.
+- `payload_freshness/contract.rs` verifie le contrat LLM Basic v8.
+- `payload_freshness/angles.rs` verifie les quatre angles canoniques et leurs
+  preuves.
+- `payload_freshness/aspects.rs` verifie le contexte interpretatif des aspects
+  et rejette les aspects d'axes structurels ou angle-angle.
+- `payload_freshness/dignities.rs` verifie la coherence entre dignites
+  structurees et signaux `dignity:*`.
+- `payload_freshness/emphasis.rs` verifie les dominantes de signe, maison et
+  objet.
+- `payload_freshness/placements.rs` verifie les contextes de positions et de
+  signaux de placement.
+- `payload_freshness/plan.rs` verifie `reading_plan`, `drafting_plan` et les
+  `emphasis_refs`.
+- `payload_freshness/json.rs` et `payload_freshness/text.rs` regroupent les
+  helpers transverses limites a la validation de reutilisation.
+
+Ce decoupage reste strictement structurel: aucune nouvelle donnee canonique n'a
+ete ajoutee en dur, les chemins publics existants restent disponibles, et les
+tests runtime valident le comportement conserve. Les helpers internes restent
+prives au fichier ou `pub(super)` quand ils sont partages entre sous-modules.
