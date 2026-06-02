@@ -5,6 +5,7 @@ pub mod domain;
 pub mod ephemeris;
 pub mod facts;
 pub mod idempotency;
+pub mod models;
 pub mod payload;
 pub mod repositories;
 pub mod runtime;

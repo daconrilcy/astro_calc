@@ -1,8 +1,9 @@
 use crate::domain::{
     BasicDraftingPlanItem, BasicGeneratedReadingPayload, BasicGeneratedSection,
     BasicObjectPosition, BasicPayload, BasicReadingPlanItem, BasicSignal, BasicWritingContract,
-    InterpretationSignalRow, NatalChartInput, ObjectPositionFact,
+    NatalChartInput, ObjectPositionFact,
 };
+use crate::models::InterpretationSignalRow;
 
 pub fn build_basic_payload(
     chart_calculation_id: i32,

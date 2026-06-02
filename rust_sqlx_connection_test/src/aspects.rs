@@ -1,7 +1,8 @@
 use serde_json::json;
 
-use crate::domain::{AspectDefinition, AspectFact, ObjectPositionFact};
+use crate::domain::{AspectFact, ObjectPositionFact};
 use crate::facts::normalize_degrees;
+use crate::models::AspectDefinition;
 
 const DEFAULT_MAJOR_ORB_DEG: f64 = 8.0;
 

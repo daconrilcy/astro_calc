@@ -105,10 +105,14 @@ mod tests {
     #[test]
     fn idempotency_changes_when_engine_changes() {
         let input = input();
-        let mut left = RuntimeOptions::default();
-        left.engine_version = "a".to_string();
-        let mut right = RuntimeOptions::default();
-        right.engine_version = "b".to_string();
+        let left = RuntimeOptions {
+            engine_version: "a".to_string(),
+            ..RuntimeOptions::default()
+        };
+        let right = RuntimeOptions {
+            engine_version: "b".to_string(),
+            ..RuntimeOptions::default()
+        };
 
         assert_ne!(
             idempotency_key(&input, &left).unwrap(),

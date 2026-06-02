@@ -10,10 +10,11 @@ use crate::domain::{
 };
 use crate::ephemeris::EphemerisEngine;
 use crate::idempotency::{advisory_lock_key, idempotency_key, input_hash};
+use crate::models::ChartCalculationRow;
 use crate::payload::{
     build_basic_payload, build_fake_generated_reading, is_valid_fake_generated_reading,
 };
-use crate::repositories::{ChartCalculationRow, RuntimeRepository};
+use crate::repositories::RuntimeRepository;
 use crate::signals::aggregate_basic_signals;
 
 #[derive(Debug, Error)]
@@ -480,8 +481,9 @@ mod tests {
     use super::*;
     use crate::domain::{
         BasicDraftingPlanItem, BasicObjectPosition, BasicReadingPlanItem, BasicSignal,
-        BasicWritingContract, HouseReference, SignReference,
+        BasicWritingContract,
     };
+    use crate::models::{HouseReference, SignReference};
 
     fn current_payload() -> BasicPayload {
         BasicPayload {

@@ -2,10 +2,8 @@ use std::path::{Path, PathBuf};
 #[cfg(feature = "swisseph-engine")]
 use std::sync::{Mutex, OnceLock};
 
-use crate::domain::{
-    AspectDefinition, CalculatedChartFacts, CalculationReferenceData, ChartObject, HouseSystem,
-    NatalChartInput,
-};
+use crate::domain::{CalculatedChartFacts, CalculationReferenceData, NatalChartInput};
+use crate::models::{AspectDefinition, ChartObject, HouseSystem};
 use crate::runtime::RuntimeError;
 
 pub trait EphemerisEngine {
@@ -174,9 +172,9 @@ impl EphemerisEngine for SwissEphemerisEngine {
 
 #[cfg(feature = "swisseph-engine")]
 fn sign_reference_for_zodiac_slot(
-    signs: &[crate::domain::SignReference],
+    signs: &[crate::models::SignReference],
     zodiac_slot: i32,
-) -> Result<&crate::domain::SignReference, RuntimeError> {
+) -> Result<&crate::models::SignReference, RuntimeError> {
     if !(1..=12).contains(&zodiac_slot) {
         return Err(RuntimeError::Ephemeris(format!(
             "invalid zodiac slot {zodiac_slot}"
@@ -198,9 +196,9 @@ fn sign_reference_for_zodiac_slot(
 
 #[cfg(feature = "swisseph-engine")]
 fn house_reference_for_number(
-    houses: &[crate::domain::HouseReference],
+    houses: &[crate::models::HouseReference],
     house_number: i32,
-) -> Result<&crate::domain::HouseReference, RuntimeError> {
+) -> Result<&crate::models::HouseReference, RuntimeError> {
     houses
         .iter()
         .find(|house| house.number == house_number)

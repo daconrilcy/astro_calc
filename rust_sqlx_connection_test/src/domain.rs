@@ -2,6 +2,11 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+pub use crate::models::{
+    AspectDefinition, ChartObject, HouseReference, HouseSystem, InterpretationSignalRow,
+    SignReference,
+};
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NatalChartInput {
     pub subject_label: Option<String>,
@@ -39,43 +44,6 @@ impl Default for RuntimeOptions {
             stale_after_seconds: 900,
         }
     }
-}
-
-#[derive(Debug, Clone, sqlx::FromRow)]
-pub struct ChartObject {
-    pub id: i32,
-    pub code: String,
-    pub name: String,
-    pub swe_id: Option<i32>,
-}
-
-#[derive(Debug, Clone, sqlx::FromRow)]
-pub struct AspectDefinition {
-    pub id: i32,
-    pub code: String,
-    pub name: String,
-    pub angle: f64,
-}
-
-#[derive(Debug, Clone, sqlx::FromRow)]
-pub struct HouseSystem {
-    pub id: i32,
-    pub code: String,
-    pub calculation_engine_code: String,
-}
-
-#[derive(Debug, Clone, sqlx::FromRow)]
-pub struct SignReference {
-    pub id: i32,
-    pub code: String,
-    pub name: String,
-}
-
-#[derive(Debug, Clone, sqlx::FromRow)]
-pub struct HouseReference {
-    pub id: i32,
-    pub number: i32,
-    pub name: String,
 }
 
 #[derive(Debug, Clone)]
@@ -151,18 +119,6 @@ pub struct InterpretationSignalDraft {
     pub priority_score: f64,
     pub confidence_score: Option<f64>,
     pub suppression_state: String,
-    pub payload_json: Option<Value>,
-}
-
-#[derive(Debug, Clone, sqlx::FromRow)]
-pub struct InterpretationSignalRow {
-    pub id: i32,
-    pub signal_key: String,
-    pub theme_code: Option<String>,
-    pub title: String,
-    pub summary: Option<String>,
-    pub priority_score: f64,
-    pub confidence_score: Option<f64>,
     pub payload_json: Option<Value>,
 }
 

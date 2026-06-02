@@ -1,22 +1,15 @@
-use chrono::{DateTime, Utc};
 use serde_json::Value;
 use sqlx::{PgPool, Postgres, Transaction};
 
 use crate::domain::{
-    AspectDefinition, AspectFact, BasicGeneratedReadingPayload, BasicPayload, CalculatedChartFacts,
-    ChartObject, HouseCuspFact, HouseReference, HouseSystem, InterpretationSignalDraft,
-    InterpretationSignalRow, NatalChartInput, ObjectPositionFact, RuntimeOptions, SignReference,
+    AspectFact, BasicGeneratedReadingPayload, BasicPayload, CalculatedChartFacts, HouseCuspFact,
+    InterpretationSignalDraft, NatalChartInput, ObjectPositionFact, RuntimeOptions,
+};
+use crate::models::{
+    AspectDefinition, ChartCalculationRow, ChartObject, HouseReference, HouseSystem,
+    InterpretationSignalRow, PersistedAspectFact, PersistedObjectPositionFact, SignReference,
 };
 use crate::runtime::RuntimeError;
-
-#[derive(Debug, Clone, sqlx::FromRow)]
-pub struct ChartCalculationRow {
-    pub id: i32,
-    pub status: String,
-    pub execution_attempt: i32,
-    pub heartbeat_at: Option<DateTime<Utc>>,
-    pub stale_after_seconds: Option<i32>,
-}
 
 pub struct RuntimeRepository {
     pool: PgPool,
@@ -667,29 +660,6 @@ fn ensure_runtime_table_name(table_name: &str) -> Result<(), RuntimeError> {
     }
 }
 
-#[derive(Debug, sqlx::FromRow)]
-struct PersistedObjectPositionFact {
-    chart_object_id: i32,
-    object_code: String,
-    object_name: String,
-    zodiacal_reference_system_id: i32,
-    coordinate_reference_system_id: i32,
-    sign_id: i32,
-    sign_code: String,
-    sign_name: String,
-    house_id: Option<i32>,
-    house_number: Option<i32>,
-    house_name: Option<String>,
-    motion_state_id: Option<i32>,
-    horizon_position_id: Option<i32>,
-    longitude_deg: f64,
-    latitude_deg: Option<f64>,
-    apparent_speed_deg_per_day: Option<f64>,
-    altitude_deg: Option<f64>,
-    is_visible: Option<bool>,
-    facts_json: Option<Value>,
-}
-
 impl From<PersistedObjectPositionFact> for ObjectPositionFact {
     fn from(row: PersistedObjectPositionFact) -> Self {
         Self {
@@ -714,25 +684,6 @@ impl From<PersistedObjectPositionFact> for ObjectPositionFact {
             facts_json: row.facts_json,
         }
     }
-}
-
-#[derive(Debug, sqlx::FromRow)]
-struct PersistedAspectFact {
-    source_chart_object_id: i32,
-    source_object_code: String,
-    source_object_name: String,
-    target_chart_object_id: i32,
-    target_object_code: String,
-    target_object_name: String,
-    aspect_id: i32,
-    aspect_code: String,
-    aspect_name: String,
-    orb_deg: f64,
-    phase_state: String,
-    is_applying: bool,
-    is_exact: bool,
-    strength_score: Option<f64>,
-    calculation_notes_json: Option<Value>,
 }
 
 impl From<PersistedAspectFact> for AspectFact {
