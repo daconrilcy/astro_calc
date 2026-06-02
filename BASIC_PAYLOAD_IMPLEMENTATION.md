@@ -1147,6 +1147,26 @@ reecrit.
 
 ## Verification
 
+### Migration des tests a la racine
+
+Les tests Rust sont stockes dans le repertoire racine `tests/` et declares
+comme cibles de tests d'integration dans `rust_sqlx_connection_test/Cargo.toml`.
+
+Les modules `src/*.rs` ne contiennent plus de bloc `#[cfg(test)]` ni
+`include!`. Les helpers controles par ces tests sont exposes explicitement
+quand ils font partie du contrat verifie par la suite de tests.
+
+Fichiers de tests migres :
+
+- `tests/aspects_tests.rs`
+- `tests/dignities_tests.rs`
+- `tests/facts_tests.rs`
+- `tests/idempotency_tests.rs`
+- `tests/main_tests.rs`
+- `tests/payload_tests.rs`
+- `tests/runtime_tests.rs`
+- `tests/signals_tests.rs`
+
 Depuis `rust_sqlx_connection_test` :
 
 ```powershell

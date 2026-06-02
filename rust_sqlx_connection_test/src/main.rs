@@ -1,6 +1,8 @@
-use std::path::{Path, PathBuf};
-
 use chrono::{DateTime, Utc};
+use rust_sqlx_connection_test::cli::{
+    output_mode_from_args, output_mode_from_env, root_output_dir, write_timestamped_output_file,
+    OutputMode,
+};
 use rust_sqlx_connection_test::config::{
     ephemeris_path_from_env, load_dotenv, runtime_options_from_env,
 };
@@ -28,79 +30,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     Ok(())
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum OutputMode {
-    Stdout,
-    File,
-}
-
-fn output_mode_from_args(
-    args: impl IntoIterator<Item = String>,
-    default_mode: OutputMode,
-) -> Result<OutputMode, Box<dyn std::error::Error>> {
-    let mut output_mode = default_mode;
-
-    for arg in args {
-        match arg.as_str() {
-            "--file" => output_mode = OutputMode::File,
-            "--help" | "-h" => {
-                return Err("usage: cargo run -- [--file]".into());
-            }
-            other => {
-                return Err(
-                    format!("unknown argument {other}; usage: cargo run -- [--file]").into(),
-                );
-            }
-        }
-    }
-
-    Ok(output_mode)
-}
-
-fn output_mode_from_env() -> OutputMode {
-    if env_flag_enabled("ASTRAL_OUTPUT_FILE")
-        || std::env::var("ASTRAL_OUTPUT_MODE")
-            .ok()
-            .is_some_and(|value| value.eq_ignore_ascii_case("file"))
-    {
-        OutputMode::File
-    } else {
-        OutputMode::Stdout
-    }
-}
-
-fn env_flag_enabled(name: &str) -> bool {
-    std::env::var(name).ok().is_some_and(|value| {
-        matches!(
-            value.to_ascii_lowercase().as_str(),
-            "1" | "true" | "yes" | "on"
-        )
-    })
-}
-
-fn root_output_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")))
-        .join("output")
-}
-
-fn write_timestamped_output_file(
-    output_dir: impl AsRef<Path>,
-    json: &str,
-) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let output_dir = output_dir.as_ref();
-    std::fs::create_dir_all(output_dir)?;
-
-    let path = output_dir.join(timestamped_output_filename(Utc::now()));
-    std::fs::write(&path, json)?;
-    Ok(path)
-}
-
-fn timestamped_output_filename(datetime: DateTime<Utc>) -> String {
-    format!("basic_payload_{}.json", datetime.format("%Y%m%d_%H%M%S"))
 }
 
 fn natal_input_from_env() -> Result<NatalChartInput, Box<dyn std::error::Error>> {
@@ -136,56 +65,4 @@ where
         .ok()
         .map(|value| value.parse::<T>().map_err(Into::into))
         .transpose()
-}
-
-#[cfg(test)]
-mod tests {
-    use chrono::TimeZone;
-
-    use super::*;
-
-    #[test]
-    fn output_mode_defaults_to_stdout() {
-        assert_eq!(
-            output_mode_from_args(Vec::<String>::new(), OutputMode::Stdout).unwrap(),
-            OutputMode::Stdout
-        );
-    }
-
-    #[test]
-    fn output_mode_accepts_file_flag() {
-        assert_eq!(
-            output_mode_from_args(["--file".to_string()], OutputMode::Stdout).unwrap(),
-            OutputMode::File
-        );
-    }
-
-    #[test]
-    fn output_mode_can_default_to_file_from_env() {
-        assert_eq!(
-            output_mode_from_args(Vec::<String>::new(), OutputMode::File).unwrap(),
-            OutputMode::File
-        );
-    }
-
-    #[test]
-    fn timestamped_output_filename_is_json_and_filesystem_safe() {
-        let datetime = Utc.with_ymd_and_hms(2026, 6, 2, 12, 34, 56).unwrap();
-
-        assert_eq!(
-            timestamped_output_filename(datetime),
-            "basic_payload_20260602_123456.json"
-        );
-    }
-
-    #[test]
-    fn root_output_dir_is_parent_of_crate_output_dir() {
-        assert_eq!(
-            root_output_dir(),
-            Path::new(env!("CARGO_MANIFEST_DIR"))
-                .parent()
-                .expect("crate should have parent")
-                .join("output")
-        );
-    }
 }

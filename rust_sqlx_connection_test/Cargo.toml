@@ -24,3 +24,35 @@ swisseph-engine = ["dep:swiss_eph"]
 name = "swe_smoke"
 path = "src/bin/swe_smoke.rs"
 required-features = ["swisseph-engine"]
+
+[[test]]
+name = "aspects_tests"
+path = "../tests/aspects_tests.rs"
+
+[[test]]
+name = "dignities_tests"
+path = "../tests/dignities_tests.rs"
+
+[[test]]
+name = "facts_tests"
+path = "../tests/facts_tests.rs"
+
+[[test]]
+name = "idempotency_tests"
+path = "../tests/idempotency_tests.rs"
+
+[[test]]
+name = "main_tests"
+path = "../tests/main_tests.rs"
+
+[[test]]
+name = "payload_tests"
+path = "../tests/payload_tests.rs"
+
+[[test]]
+name = "runtime_tests"
+path = "../tests/runtime_tests.rs"
+
+[[test]]
+name = "signals_tests"
+path = "../tests/signals_tests.rs"

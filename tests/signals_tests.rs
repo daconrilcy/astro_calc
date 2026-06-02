@@ -1,0 +1,733 @@
+use rust_sqlx_connection_test::domain::*;
+use rust_sqlx_connection_test::signals::*;
+use serde_json::json;
+
+fn capricorn_house_2_position(id: i32, object_code: &str, object_name: &str) -> ObjectPositionFact {
+    ObjectPositionFact {
+        chart_object_id: id,
+        object_code: object_code.to_string(),
+        object_name: object_name.to_string(),
+        zodiacal_reference_system_id: 1,
+        coordinate_reference_system_id: 1,
+        sign_id: 10,
+        sign_code: "capricorn".to_string(),
+        sign_name: "Capricorn".to_string(),
+        house_id: Some(2),
+        house_number: Some(2),
+        house_name: Some("Resources".to_string()),
+        motion_state_id: None,
+        horizon_position_id: None,
+        longitude_deg: 270.0 + f64::from(id),
+        latitude_deg: None,
+        apparent_speed_deg_per_day: Some(1.0),
+        altitude_deg: None,
+        is_visible: None,
+        facts_json: Some(json!({
+            "house_context": {"theme_code": "resources"}
+        })),
+    }
+}
+
+fn position(
+    id: i32,
+    object_code: &str,
+    object_name: &str,
+    sign_code: &str,
+    sign_name: &str,
+    house_number: i32,
+) -> ObjectPositionFact {
+    ObjectPositionFact {
+        chart_object_id: id,
+        object_code: object_code.to_string(),
+        object_name: object_name.to_string(),
+        zodiacal_reference_system_id: 1,
+        coordinate_reference_system_id: 1,
+        sign_id: id,
+        sign_code: sign_code.to_string(),
+        sign_name: sign_name.to_string(),
+        house_id: Some(house_number),
+        house_number: Some(house_number),
+        house_name: Some(format!("House {house_number}")),
+        motion_state_id: None,
+        horizon_position_id: None,
+        longitude_deg: f64::from(id) * 30.0,
+        latitude_deg: None,
+        apparent_speed_deg_per_day: Some(1.0),
+        altitude_deg: None,
+        is_visible: None,
+        facts_json: Some(json!({
+            "house_context": {"theme_code": format!("house_{house_number}_theme")}
+        })),
+    }
+}
+
+fn enriched_position() -> ObjectPositionFact {
+    let mut position = position(1, "sun", "Sun", "gemini", "Gemini", 9);
+    position.facts_json = Some(json!({
+        "sign_context": {
+            "element": "air",
+            "modality": "mutable",
+            "polarity": "yang",
+            "keywords": ["communication", "curiosity"]
+        },
+        "house_context": {"theme_code": "beliefs"},
+        "house_modality": {
+            "code": "cadent",
+            "accidental_strength": "weak_or_background",
+            "interpretation_weight": "lower_for_external_manifestation"
+        },
+        "object_context": {
+            "role": "luminary",
+            "nature": ["luminary"],
+            "is_luminary": true
+        },
+        "motion_context": {
+            "motion_state": "direct",
+            "label": "Direct",
+            "motion_family": "forward"
+        }
+    }));
+    position
+}
+
+fn retrograde_mercury_position() -> ObjectPositionFact {
+    let mut position = position(3, "mercury", "Mercury", "capricorn", "Capricorn", 3);
+    position.facts_json = Some(json!({
+        "sign_context": {
+            "element": "earth",
+            "modality": "cardinal",
+            "polarity": "yin"
+        },
+        "house_context": {"theme_code": "communication"},
+        "house_modality": {
+            "code": "cadent"
+        },
+        "object_context": {
+            "role": "planet"
+        },
+        "motion_context": {
+            "motion_state": "retrograde",
+            "label": "Retrograde",
+            "motion_family": "reverse"
+        }
+    }));
+    position
+}
+
+fn aspect(
+    source_code: &str,
+    source_name: &str,
+    target_code: &str,
+    target_name: &str,
+    aspect_code: &str,
+    aspect_name: &str,
+    strength_score: f64,
+) -> AspectFact {
+    AspectFact {
+        source_chart_object_id: 1,
+        source_object_code: source_code.to_string(),
+        source_object_name: source_name.to_string(),
+        target_chart_object_id: 2,
+        target_object_code: target_code.to_string(),
+        target_object_name: target_name.to_string(),
+        aspect_id: 1,
+        aspect_code: aspect_code.to_string(),
+        aspect_name: aspect_name.to_string(),
+        aspect_family: "major".to_string(),
+        orb_deg: 1.0,
+        phase_state: "applying".to_string(),
+        is_applying: true,
+        is_exact: false,
+        strength_score: Some(strength_score),
+        primary_valence: primary_valence_for_test(aspect_code).map(ToString::to_string),
+        intensity_modifier: intensity_modifier_for_test(aspect_code).map(ToString::to_string),
+        secondary_effect: None,
+        valence_family: primary_valence_for_test(aspect_code)
+            .map(|_| "tonal".to_string())
+            .or_else(|| intensity_modifier_for_test(aspect_code).map(|_| "intensity".to_string())),
+        valence_is_tonal: primary_valence_for_test(aspect_code)
+            .map(|_| true)
+            .or_else(|| intensity_modifier_for_test(aspect_code).map(|_| false)),
+        valence_is_intensity_modifier: primary_valence_for_test(aspect_code)
+            .map(|_| false)
+            .or_else(|| intensity_modifier_for_test(aspect_code).map(|_| true)),
+        valence_writing_guidance: valence_guidance_for_test(aspect_code).map(ToString::to_string),
+        calculation_notes_json: None,
+    }
+}
+
+fn primary_valence_for_test(aspect_code: &str) -> Option<&'static str> {
+    match aspect_code {
+        "sextile" => Some("supportive"),
+        "square" => Some("dynamic_challenging"),
+        "trine" => Some("harmonious"),
+        "opposition" => Some("polarizing"),
+        _ => None,
+    }
+}
+
+fn intensity_modifier_for_test(aspect_code: &str) -> Option<&'static str> {
+    match aspect_code {
+        "conjunction" => Some("amplifying"),
+        _ => None,
+    }
+}
+
+fn valence_guidance_for_test(aspect_code: &str) -> Option<&'static str> {
+    match aspect_code {
+            "sextile" => Some("Present as a resource, support or facilitation that the native can mobilize."),
+            "square" => Some("Present as active tension or constructive challenge, not as a purely negative outcome."),
+            "trine" => Some("Present as ease, compatibility or natural cooperation without implying that no effort is ever needed."),
+            "opposition" => Some("Present as a polarity to balance, integrate or negotiate, especially across axes or oppositions."),
+            _ => None,
+        }
+}
+
+trait AspectFactTestExt {
+    fn with_intensity_modifier(self, intensity_modifier: &str) -> Self;
+}
+
+impl AspectFactTestExt for AspectFact {
+    fn with_intensity_modifier(mut self, intensity_modifier: &str) -> Self {
+        self.intensity_modifier = Some(intensity_modifier.to_string());
+        self
+    }
+}
+
+#[test]
+fn major_dignities_create_dedicated_signals_and_enrich_placements() {
+    let facts = CalculatedChartFacts {
+        positions: vec![
+            position(6, "jupiter", "Jupiter", "cancer", "Cancer", 8),
+            position(7, "saturn", "Saturn", "capricorn", "Capricorn", 2),
+        ],
+        house_cusps: Vec::new(),
+        aspects: Vec::new(),
+    };
+
+    let signals = aggregate_basic_signals(&facts);
+    let saturn_dignity = signals
+        .iter()
+        .find(|signal| signal.signal_key == "dignity:saturn:domicile:capricorn")
+        .expect("expected Saturn domicile dignity signal");
+    let jupiter_dignity = signals
+        .iter()
+        .find(|signal| signal.signal_key == "dignity:jupiter:exaltation:cancer")
+        .expect("expected Jupiter exaltation dignity signal");
+    let saturn_placement = signals
+        .iter()
+        .find(|signal| signal.signal_key == "object_position:saturn")
+        .expect("expected Saturn placement signal");
+
+    assert_eq!(
+        saturn_dignity.theme_code.as_deref(),
+        Some("functional_strength")
+    );
+    assert_eq!(saturn_dignity.priority_score, 88.0);
+    assert_eq!(jupiter_dignity.priority_score, 86.0);
+    assert_eq!(
+        saturn_dignity
+            .payload_json
+            .as_ref()
+            .and_then(|payload| payload.get("evidence"))
+            .and_then(|evidence| evidence.get("dignity_type"))
+            .and_then(|value| value.as_str()),
+        Some("domicile")
+    );
+    assert_eq!(
+        saturn_placement
+            .payload_json
+            .as_ref()
+            .and_then(|payload| payload.get("evidence"))
+            .and_then(|evidence| evidence.get("essential_dignities"))
+            .and_then(|dignities| dignities.as_array())
+            .and_then(|dignities| dignities.first())
+            .and_then(|dignity| dignity.get("dignity_type"))
+            .and_then(|value| value.as_str()),
+        Some("domicile")
+    );
+    assert_eq!(
+        jupiter_dignity
+            .payload_json
+            .as_ref()
+            .and_then(|payload| payload.get("interpretive_hint"))
+            .and_then(|value| value.as_str()),
+        Some(
+            "Treat Jupiter in Cancer as an exaltation modifier for the existing placement signal."
+        )
+    );
+}
+
+#[test]
+fn double_dignity_positions_create_all_signals_and_evidence() {
+    let facts = CalculatedChartFacts {
+        positions: vec![position(3, "mercury", "Mercury", "virgo", "Virgo", 6)],
+        house_cusps: Vec::new(),
+        aspects: Vec::new(),
+    };
+
+    let signals = aggregate_basic_signals(&facts);
+    let placement = signals
+        .iter()
+        .find(|signal| signal.signal_key == "object_position:mercury")
+        .expect("expected Mercury placement");
+
+    assert!(signals
+        .iter()
+        .any(|signal| signal.signal_key == "dignity:mercury:domicile:virgo"));
+    assert!(signals
+        .iter()
+        .any(|signal| signal.signal_key == "dignity:mercury:exaltation:virgo"));
+    assert_eq!(
+        placement
+            .payload_json
+            .as_ref()
+            .and_then(|payload| payload.get("evidence"))
+            .and_then(|evidence| evidence.get("essential_dignities"))
+            .and_then(|value| value.as_array())
+            .map(Vec::len),
+        Some(2)
+    );
+    assert_eq!(placement.priority_score, 94.0);
+}
+
+#[test]
+fn basic_signals_include_semantic_position_cluster() {
+    let facts = CalculatedChartFacts {
+        positions: vec![
+            capricorn_house_2_position(1, "sun", "Sun"),
+            capricorn_house_2_position(6, "saturn", "Saturn"),
+            capricorn_house_2_position(8, "uranus", "Uranus"),
+        ],
+        house_cusps: Vec::new(),
+        aspects: Vec::new(),
+    };
+
+    let signals = aggregate_basic_signals(&facts);
+    let cluster = signals
+        .iter()
+        .find(|signal| signal.signal_key == "cluster:capricorn:house_2")
+        .expect("expected a Capricorn house 2 cluster");
+
+    assert_eq!(cluster.theme_code.as_deref(), Some("resources"));
+    assert_eq!(cluster.suppression_state, "active");
+    let payload = cluster.payload_json.as_ref().expect("cluster payload");
+    assert_eq!(
+        payload
+            .get("aggregation_group")
+            .and_then(|value| value.as_str()),
+        Some("capricorn_house_2_cluster")
+    );
+    assert!(payload
+        .get("semantic_tags")
+        .and_then(|value| value.as_array())
+        .expect("semantic tags")
+        .iter()
+        .any(|value| value.as_str() == Some("responsibility")));
+    assert_eq!(
+        payload
+            .get("evidence")
+            .and_then(|value| value.get("source_signals"))
+            .and_then(|value| value.as_array())
+            .map(Vec::len),
+        Some(3)
+    );
+}
+
+#[test]
+fn placement_signal_includes_contextual_evidence_and_tags() {
+    let facts = CalculatedChartFacts {
+        positions: vec![enriched_position()],
+        house_cusps: Vec::new(),
+        aspects: Vec::new(),
+    };
+
+    let signals = aggregate_basic_signals(&facts);
+    let signal = signals
+        .iter()
+        .find(|signal| signal.signal_key == "object_position:sun")
+        .expect("expected Sun signal");
+    let payload = signal.payload_json.as_ref().expect("signal payload");
+    let tags = payload
+        .get("semantic_tags")
+        .and_then(|value| value.as_array())
+        .expect("semantic tags");
+
+    assert!(tags.iter().any(|tag| tag.as_str() == Some("air")));
+    assert!(tags.iter().any(|tag| tag.as_str() == Some("mutable")));
+    assert!(tags.iter().any(|tag| tag.as_str() == Some("cadent")));
+    assert_eq!(
+        payload
+            .get("evidence")
+            .and_then(|evidence| evidence.get("placement_context"))
+            .and_then(|context| context.get("motion_context"))
+            .and_then(|motion| motion.get("motion_state"))
+            .and_then(|value| value.as_str()),
+        Some("direct")
+    );
+}
+
+#[test]
+fn retrograde_placements_get_specific_writing_context() {
+    let facts = CalculatedChartFacts {
+        positions: vec![retrograde_mercury_position()],
+        house_cusps: Vec::new(),
+        aspects: Vec::new(),
+    };
+
+    let signals = aggregate_basic_signals(&facts);
+    let signal = signals
+        .iter()
+        .find(|signal| signal.signal_key == "object_position:mercury")
+        .expect("expected Mercury signal");
+    let payload = signal.payload_json.as_ref().expect("signal payload");
+
+    assert!(signal
+        .summary
+        .as_deref()
+        .expect("summary")
+        .contains("retrograde motion"));
+    assert!(payload
+        .get("interpretive_hint")
+        .and_then(|value| value.as_str())
+        .expect("hint")
+        .contains("internal processing"));
+    assert!(payload
+        .get("writing_guidance")
+        .and_then(|value| value.as_str())
+        .expect("guidance")
+        .contains("retrograde motion"));
+}
+
+#[test]
+fn basic_cluster_merges_secondary_source_signals() {
+    let facts = CalculatedChartFacts {
+        positions: vec![
+            capricorn_house_2_position(1, "sun", "Sun"),
+            capricorn_house_2_position(6, "saturn", "Saturn"),
+            capricorn_house_2_position(8, "uranus", "Uranus"),
+        ],
+        house_cusps: Vec::new(),
+        aspects: Vec::new(),
+    };
+
+    let signals = aggregate_basic_signals(&facts);
+    let sun = signals
+        .iter()
+        .find(|signal| signal.signal_key == "object_position:sun")
+        .expect("expected Sun signal");
+    let saturn = signals
+        .iter()
+        .find(|signal| signal.signal_key == "object_position:saturn")
+        .expect("expected Saturn signal");
+
+    assert_eq!(sun.suppression_state, "active");
+    assert_eq!(saturn.suppression_state, "merged");
+    assert_eq!(
+        saturn
+            .payload_json
+            .as_ref()
+            .and_then(|payload| payload.get("editorial_state"))
+            .and_then(|state| state.get("cluster_signal_key"))
+            .and_then(|value| value.as_str()),
+        Some("cluster:capricorn:house_2")
+    );
+}
+
+#[test]
+fn basic_cluster_dedup_refills_without_reactivating_weak_aspects() {
+    let facts = CalculatedChartFacts {
+        positions: vec![
+            capricorn_house_2_position(1, "sun", "Sun"),
+            position(2, "moon", "Moon", "cancer", "Cancer", 4),
+            position(3, "mercury", "Mercury", "gemini", "Gemini", 3),
+            position(4, "venus", "Venus", "taurus", "Taurus", 5),
+            position(5, "mars", "Mars", "aries", "Aries", 1),
+            position(6, "jupiter", "Jupiter", "sagittarius", "Sagittarius", 9),
+            capricorn_house_2_position(7, "saturn", "Saturn"),
+            capricorn_house_2_position(8, "uranus", "Uranus"),
+            capricorn_house_2_position(9, "neptune", "Neptune"),
+            position(10, "pluto", "Pluto", "scorpio", "Scorpio", 8),
+            position(11, "north_node", "North Node", "aquarius", "Aquarius", 11),
+        ],
+        house_cusps: Vec::new(),
+        aspects: vec![
+            aspect("sun", "Sun", "moon", "Moon", "trine", "Trine", 0.99),
+            aspect(
+                "mercury", "Mercury", "venus", "Venus", "sextile", "Sextile", 0.98,
+            ),
+            aspect(
+                "mars", "Mars", "jupiter", "Jupiter", "square", "Square", 0.97,
+            ),
+            aspect(
+                "saturn",
+                "Saturn",
+                "pluto",
+                "Pluto",
+                "opposition",
+                "Opposition",
+                0.2,
+            ),
+        ],
+    };
+
+    let signals = aggregate_basic_signals(&facts);
+    let active_count = signals
+        .iter()
+        .filter(|signal| signal.suppression_state == "active")
+        .count();
+    let weak_aspect = signals
+        .iter()
+        .find(|signal| signal.signal_key == "aspect:saturn:pluto:opposition")
+        .expect("expected weak aspect signal");
+    let jupiter_dignity = signals
+        .iter()
+        .find(|signal| signal.signal_key == "dignity:jupiter:domicile:sagittarius")
+        .expect("expected Jupiter dignity signal");
+
+    assert_eq!(active_count, BASIC_MAX_ACTIVE_SIGNALS);
+    assert_eq!(weak_aspect.suppression_state, "suppressed");
+    assert_eq!(jupiter_dignity.suppression_state, "active");
+}
+
+#[test]
+fn basic_filter_preserves_one_strong_tension_aspect() {
+    let facts = CalculatedChartFacts {
+        positions: vec![
+            capricorn_house_2_position(1, "sun", "Sun"),
+            position(2, "moon", "Moon", "cancer", "Cancer", 4),
+            position(3, "mercury", "Mercury", "gemini", "Gemini", 3),
+            position(4, "venus", "Venus", "taurus", "Taurus", 5),
+            position(5, "mars", "Mars", "aries", "Aries", 1),
+            position(6, "jupiter", "Jupiter", "sagittarius", "Sagittarius", 9),
+            capricorn_house_2_position(7, "saturn", "Saturn"),
+            capricorn_house_2_position(8, "uranus", "Uranus"),
+            capricorn_house_2_position(9, "neptune", "Neptune"),
+            position(10, "pluto", "Pluto", "scorpio", "Scorpio", 8),
+            position(11, "north_node", "North Node", "aquarius", "Aquarius", 11),
+        ],
+        house_cusps: Vec::new(),
+        aspects: vec![
+            aspect("sun", "Sun", "moon", "Moon", "trine", "Trine", 0.99),
+            aspect(
+                "mercury", "Mercury", "venus", "Venus", "sextile", "Sextile", 0.98,
+            ),
+            aspect(
+                "sun",
+                "Sun",
+                "neptune",
+                "Neptune",
+                "conjunction",
+                "Conjunction",
+                0.97,
+            ),
+            aspect(
+                "moon", "Moon", "neptune", "Neptune", "sextile", "Sextile", 0.96,
+            ),
+            aspect(
+                "jupiter",
+                "Jupiter",
+                "uranus",
+                "Uranus",
+                "opposition",
+                "Opposition",
+                0.88,
+            ),
+        ],
+    };
+
+    let signals = aggregate_basic_signals(&facts);
+    let active_count = signals
+        .iter()
+        .filter(|signal| signal.suppression_state == "active")
+        .count();
+    let tension = signals
+        .iter()
+        .find(|signal| signal.signal_key == "aspect:jupiter:uranus:opposition")
+        .expect("expected strong opposition");
+
+    assert_eq!(active_count, BASIC_MAX_ACTIVE_SIGNALS);
+    assert_eq!(tension.suppression_state, "active");
+}
+
+#[test]
+fn indefinite_article_handles_opposition() {
+    assert_eq!(indefinite_article("opposition"), "an");
+    assert_eq!(indefinite_article("exaltation"), "an");
+    assert_eq!(indefinite_article("square"), "a");
+}
+
+#[test]
+fn aspect_hint_uses_interpretive_quality() {
+    let facts = CalculatedChartFacts {
+            positions: Vec::new(),
+            house_cusps: Vec::new(),
+            aspects: vec![AspectFact {
+                source_chart_object_id: 6,
+                source_object_code: "jupiter".to_string(),
+                source_object_name: "Jupiter".to_string(),
+                target_chart_object_id: 8,
+                target_object_code: "uranus".to_string(),
+                target_object_name: "Uranus".to_string(),
+                aspect_id: 5,
+                aspect_code: "opposition".to_string(),
+                aspect_name: "Opposition".to_string(),
+                aspect_family: "major".to_string(),
+                orb_deg: 0.7586,
+                phase_state: "separating".to_string(),
+                is_applying: false,
+                is_exact: false,
+                strength_score: Some(0.9052),
+                primary_valence: Some("polarizing".to_string()),
+                intensity_modifier: None,
+                secondary_effect: None,
+                valence_family: Some("tonal".to_string()),
+                valence_is_tonal: Some(true),
+                valence_is_intensity_modifier: Some(false),
+                valence_writing_guidance: Some(
+                    "Present as a polarity to balance, integrate or negotiate, especially across axes or oppositions."
+                        .to_string(),
+                ),
+                calculation_notes_json: None,
+            }],
+        };
+
+    let signals = aggregate_basic_signals(&facts);
+    let payload = signals[0].payload_json.as_ref().expect("aspect payload");
+
+    assert_eq!(
+            signals[0].summary.as_deref(),
+            Some("Jupiter and Uranus form an opposition with 0.76 degrees of orb; the phase is separating.")
+        );
+    assert_eq!(
+            payload
+                .get("interpretive_hint")
+                .and_then(|value| value.as_str()),
+            Some("Read this opposition as a polarity to balance between Jupiter and Uranus, with attention to the separating phase.")
+        );
+}
+
+#[test]
+fn aspect_signals_include_interpretive_context_and_valence_tags() {
+    let facts = CalculatedChartFacts {
+        positions: Vec::new(),
+        house_cusps: Vec::new(),
+        aspects: vec![
+            aspect(
+                "venus", "Venus", "jupiter", "Jupiter", "sextile", "Sextile", 0.9,
+            ),
+            aspect("venus", "Venus", "pluto", "Pluto", "trine", "Trine", 0.89)
+                .with_intensity_modifier("amplifying"),
+            aspect("moon", "Moon", "mars", "Mars", "square", "Square", 0.88),
+            aspect(
+                "sun",
+                "Sun",
+                "neptune",
+                "Neptune",
+                "conjunction",
+                "Conjunction",
+                0.86,
+            ),
+        ],
+    };
+
+    let signals = aggregate_basic_signals(&facts);
+    let sextile = aspect_payload(&signals, "aspect:venus:jupiter:sextile");
+    let amplified_trine = aspect_payload(&signals, "aspect:venus:pluto:trine");
+    let square = aspect_payload(&signals, "aspect:moon:mars:square");
+    let conjunction = aspect_payload(&signals, "aspect:sun:neptune:conjunction");
+
+    assert_eq!(
+        sextile
+            .get("aspect_context")
+            .and_then(|context| context.get("primary_valence"))
+            .and_then(|value| value.as_str()),
+        Some("supportive")
+    );
+    assert_eq!(
+            sextile
+                .get("interpretive_hint")
+                .and_then(|value| value.as_str()),
+            Some("Read this sextile as a supportive flow between Venus and Jupiter, with attention to the applying phase.")
+        );
+    assert!(sextile
+        .get("semantic_tags")
+        .and_then(|value| value.as_array())
+        .expect("semantic tags")
+        .iter()
+        .any(|tag| tag.as_str() == Some("flow")));
+    assert_eq!(
+            amplified_trine
+                .get("interpretive_hint")
+                .and_then(|value| value.as_str()),
+            Some("Read this trine as a natural flow with extra emphasis between Venus and Pluto, with attention to the applying phase.")
+        );
+    assert_eq!(
+        square
+            .get("aspect_context")
+            .and_then(|context| context.get("primary_valence"))
+            .and_then(|value| value.as_str()),
+        Some("dynamic_challenging")
+    );
+    assert_eq!(
+            square
+                .get("interpretive_hint")
+                .and_then(|value| value.as_str()),
+            Some("Read this square as an active tension between Moon and Mars, with attention to the applying phase.")
+        );
+    assert!(square
+        .get("semantic_tags")
+        .and_then(|value| value.as_array())
+        .expect("semantic tags")
+        .iter()
+        .any(|tag| tag.as_str() == Some("tension")));
+    assert_eq!(
+        conjunction
+            .get("aspect_context")
+            .and_then(|context| context.get("primary_valence")),
+        Some(&serde_json::Value::Null)
+    );
+    assert_eq!(
+        conjunction
+            .get("aspect_context")
+            .and_then(|context| context.get("intensity_modifier"))
+            .and_then(|value| value.as_str()),
+        Some("amplifying")
+    );
+    assert_eq!(
+            conjunction
+                .get("interpretive_hint")
+                .and_then(|value| value.as_str()),
+            Some("Read this conjunction as an amplifying contact between Sun and Neptune, with attention to the applying phase.")
+        );
+    assert_eq!(
+        conjunction
+            .get("aspect_context")
+            .and_then(|context| context.get("valence_family"))
+            .and_then(|value| value.as_str()),
+        Some("intensity")
+    );
+    assert_eq!(
+        conjunction
+            .get("aspect_context")
+            .and_then(|context| context.get("is_intensity_modifier"))
+            .and_then(|value| value.as_bool()),
+        Some(true)
+    );
+    assert!(conjunction
+        .get("writing_guidance")
+        .and_then(|value| value.as_str())
+        .expect("writing guidance")
+        .contains("not as a supportive or challenging valence"));
+}
+
+fn aspect_payload<'a>(
+    signals: &'a [InterpretationSignalDraft],
+    signal_key: &str,
+) -> &'a serde_json::Value {
+    signals
+        .iter()
+        .find(|signal| signal.signal_key == signal_key)
+        .and_then(|signal| signal.payload_json.as_ref())
+        .expect("aspect payload")
+}
