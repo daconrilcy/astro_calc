@@ -2,8 +2,81 @@ use rust_sqlx_connection_test::domain::*;
 use rust_sqlx_connection_test::signals::*;
 use serde_json::json;
 
+fn with_signal_scoring(mut position: ObjectPositionFact) -> ObjectPositionFact {
+    let scoring = match position.object_code.as_str() {
+        "sun" | "moon" => json!({
+            "position_priority_base": 100.0,
+            "angle_priority_base": null,
+            "source_weight": 1.0
+        }),
+        "mercury" | "venus" | "mars" => json!({
+            "position_priority_base": 85.0,
+            "angle_priority_base": null,
+            "source_weight": 0.75
+        }),
+        "jupiter" | "saturn" => json!({
+            "position_priority_base": 75.0,
+            "angle_priority_base": null,
+            "source_weight": 0.6
+        }),
+        "ascendant" => json!({
+            "position_priority_base": 99.0,
+            "angle_priority_base": 99.0,
+            "source_weight": 1.0
+        }),
+        "descendant" | "ic" => json!({
+            "position_priority_base": 68.0,
+            "angle_priority_base": 68.0,
+            "source_weight": 0.4
+        }),
+        "mc" => json!({
+            "position_priority_base": 82.0,
+            "angle_priority_base": 82.0,
+            "source_weight": 0.8
+        }),
+        _ => json!({
+            "position_priority_base": 60.0,
+            "angle_priority_base": null,
+            "source_weight": 0.35
+        }),
+    };
+
+    let modality_delta = position
+        .facts_json
+        .as_ref()
+        .and_then(|facts| facts.get("house_modality"))
+        .and_then(|modality| modality.get("code"))
+        .and_then(|code| code.as_str())
+        .map(|code| match code {
+            "angular" => 2.0,
+            "succedent" => 0.75,
+            "cadent" => -0.75,
+            _ => 0.0,
+        });
+
+    let facts = position.facts_json.get_or_insert_with(|| json!({}));
+    if let Some(root) = facts.as_object_mut() {
+        let object_context = root
+            .entry("object_context".to_string())
+            .or_insert_with(|| json!({}));
+        if let Some(object_context) = object_context.as_object_mut() {
+            object_context.insert("signal_scoring".to_string(), scoring);
+        }
+        if let Some(delta) = modality_delta {
+            if let Some(modality) = root
+                .get_mut("house_modality")
+                .and_then(|modality| modality.as_object_mut())
+            {
+                modality.insert("priority_delta".to_string(), json!(delta));
+            }
+        }
+    }
+
+    position
+}
+
 fn capricorn_house_2_position(id: i32, object_code: &str, object_name: &str) -> ObjectPositionFact {
-    ObjectPositionFact {
+    with_signal_scoring(ObjectPositionFact {
         chart_object_id: id,
         object_code: object_code.to_string(),
         object_name: object_name.to_string(),
@@ -23,9 +96,10 @@ fn capricorn_house_2_position(id: i32, object_code: &str, object_name: &str) -> 
         altitude_deg: None,
         is_visible: None,
         facts_json: Some(json!({
-            "house_context": {"theme_code": "resources"}
+            "house_context": {"theme_code": "resources"},
+            "house_modality": {"code": "succedent"}
         })),
-    }
+    })
 }
 
 fn position(
@@ -36,7 +110,7 @@ fn position(
     sign_name: &str,
     house_number: i32,
 ) -> ObjectPositionFact {
-    ObjectPositionFact {
+    with_signal_scoring(ObjectPositionFact {
         chart_object_id: id,
         object_code: object_code.to_string(),
         object_name: object_name.to_string(),
@@ -56,8 +130,17 @@ fn position(
         altitude_deg: None,
         is_visible: None,
         facts_json: Some(json!({
-            "house_context": {"theme_code": format!("house_{house_number}_theme")}
+            "house_context": {"theme_code": format!("house_{house_number}_theme")},
+            "house_modality": {"code": house_modality_code(house_number)}
         })),
+    })
+}
+
+fn house_modality_code(house_number: i32) -> &'static str {
+    match house_number {
+        1 | 4 | 7 | 10 => "angular",
+        2 | 5 | 8 | 11 => "succedent",
+        _ => "cadent",
     }
 }
 
@@ -87,7 +170,7 @@ fn enriched_position() -> ObjectPositionFact {
             "motion_family": "forward"
         }
     }));
-    position
+    with_signal_scoring(position)
 }
 
 fn retrograde_mercury_position() -> ObjectPositionFact {
@@ -111,7 +194,7 @@ fn retrograde_mercury_position() -> ObjectPositionFact {
             "motion_family": "reverse"
         }
     }));
-    position
+    with_signal_scoring(position)
 }
 
 fn angle_position(
@@ -322,7 +405,7 @@ fn double_dignity_positions_create_all_signals_and_evidence() {
             .map(Vec::len),
         Some(2)
     );
-    assert_eq!(placement.priority_score, 94.0);
+    assert_eq!(placement.priority_score, 93.25);
 }
 
 #[test]

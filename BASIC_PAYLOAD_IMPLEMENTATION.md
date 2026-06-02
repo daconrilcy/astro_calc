@@ -441,8 +441,9 @@ Les champs ajoutes par l'etape 1B sont :
   elle inclut la qualite interpretative issue de `aspect_context`.
 - `semantic_tags` : tags stables utiles pour grouper, filtrer ou guider la
   redaction.
-- `source_weight` : poids relatif de la source astrologique. Soleil et Lune
-  valent plus que les planetes lentes.
+- `source_weight` : poids relatif de la source astrologique. Il est fourni par
+  `astral_chart_object_signal_profiles.source_weight` via
+  `object_context.signal_scoring`.
 - `aggregation_group` : cle de regroupement editoriale.
 - `writing_guidance` : consigne courte pour la future couche de redaction.
 
@@ -464,10 +465,12 @@ referentiel est directement exploitable par le LLM.
   mots-cles principaux du signe depuis `astral_sign_keywords.keywords_json`.
 - `house_context` : contexte editorial canonique de maison, dont
   `theme_code`, depuis `astral_houses.theme_code`.
-- `house_modality` : modalite de maison, force accidentelle et poids
-  d'interpretation.
+- `house_modality` : modalite de maison, force accidentelle, delta de priorite
+  et poids d'interpretation.
 - `object_context` : role astrologique, nature principale et indicateurs de
-  visibilite/symbolique.
+  visibilite/symbolique. Il inclut aussi `signal_scoring`, issu de
+  `astral_chart_object_signal_profiles`, avec `position_priority_base`,
+  `angle_priority_base` et `source_weight`.
 - `motion_context` : etat de mouvement lisible, libelle et famille de mouvement.
 
 Dans `positions`, ces contextes sont exposes directement comme preuves
@@ -483,8 +486,32 @@ le choix lexical, a eviter l'invention et a permettre une synthese plus riche.
 
 Les tags semantiques des placements integrent aussi les codes utiles comme
 `air`, `mutable`, `yang`, `cadent`, `luminary` ou `direct`. La priorite d'un
-placement est legerement ajustee par la modalite de maison : angular augmente le
-poids, succedent l'augmente faiblement, cadent le baisse faiblement.
+placement est calculee a partir de donnees canoniques : base de priorite issue
+de `astral_chart_object_signal_profiles.position_priority_base`, delta de
+modalite issu de `astral_house_modalities.priority_delta`, puis delta de
+dignite borne. Les angles utilisent `angle_priority_base` quand il est defini.
+
+### Validation des profils de scoring
+
+Les valeurs de scoring ne sont pas des fallbacks applicatifs. Elles font partie
+du referentiel canonique charge depuis la base :
+
+- chaque objet actif et calculable doit avoir une ligne
+  `astral_chart_object_signal_profiles` pour la `reference_version_id` du
+  calcul ;
+- `position_priority_base` doit etre present et compris entre `0` et `100` ;
+- `source_weight` doit etre present et positif ou nul ;
+- les objets dont le role astrologique est `angle` doivent aussi avoir
+  `angle_priority_base` entre `0` et `100` ;
+- chaque maison doit exposer une modalite avec
+  `astral_house_modalities.priority_delta`.
+
+Le runtime valide ces preconditions avant le calcul. Si une valeur manque, il
+renvoie une erreur de reference au lieu de produire un `priority_score` ou un
+`source_weight` sous-pondere par defaut. Les fonctions de scoring Rust restent
+pures et lisent uniquement `object_context.signal_scoring` et
+`house_modality.priority_delta`; elles ne redefinissent pas de mapping par
+`object_code`.
 
 ### Champs de dignite 2B
 

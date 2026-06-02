@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde_json::json;
 
 use crate::dignities::{
@@ -10,11 +12,11 @@ use super::dignity_helpers::{
     dignity_evidence, dignity_interpretive_hint, dignity_priority, dignity_semantic_tags,
     dignity_summary, dignity_title, dignity_writing_guidance,
 };
-use super::positions::object_source_weight;
 use super::utils::round4;
 
 pub(super) fn add_dignity_signals(
     facts: &CalculatedChartFacts,
+    object_source_weights: &HashMap<&str, f64>,
     signals: &mut Vec<InterpretationSignalDraft>,
 ) {
     for dignity in essential_dignities_for_positions(&facts.positions)
@@ -45,7 +47,10 @@ pub(super) fn add_dignity_signals(
                 "interpretive_hint": dignity_interpretive_hint(&dignity),
                 "semantic_tags": dignity_semantic_tags(&dignity),
                 "source_weight": round4(
-                    object_source_weight(&dignity.object_code)
+                    object_source_weights
+                        .get(dignity.object_code.as_str())
+                        .copied()
+                        .unwrap_or(0.0)
                         + dignity_source_weight_delta(&dignity)
                 ),
                 "aggregation_group": format!("dignity:{}", dignity.object_code),

@@ -1,4 +1,5 @@
 use serde_json::json;
+use std::collections::HashMap;
 
 mod angles;
 mod aspect_signals;
@@ -51,6 +52,16 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
     let structural_axis_pairs = structural_axis_pairs_from_positions(&facts.positions);
     let angle_object_codes = angle_object_codes_from_positions(&facts.positions);
     let angle_point_object_codes = angle_point_object_codes_from_positions(&facts.positions);
+    let object_source_weights: HashMap<&str, f64> = facts
+        .positions
+        .iter()
+        .map(|position| {
+            (
+                position.object_code.as_str(),
+                object_source_weight(position),
+            )
+        })
+        .collect();
 
     for position in &facts.positions {
         if is_angle_position(position) {
@@ -70,8 +81,7 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
         let dignities = essential_dignities_for_position(position);
         let semantic_tags = position_semantic_tags(position);
         let source_weight = round4(
-            object_source_weight(&position.object_code)
-                + dignity_source_weight_delta_for_position(position),
+            object_source_weight(position) + dignity_source_weight_delta_for_position(position),
         );
         let theme_code = position_theme_code(position);
         let aggregation_group = position_aggregation_group(position);
@@ -122,7 +132,7 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
         });
     }
 
-    add_dignity_signals(facts, &mut signals);
+    add_dignity_signals(facts, &object_source_weights, &mut signals);
 
     for aspect in &facts.aspects {
         if is_structural_axis_aspect(aspect, &structural_axis_pairs) {
@@ -168,8 +178,14 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
                 "interpretive_hint": aspect_interpretive_hint(aspect, &aspect_name),
                 "semantic_tags": aspect_semantic_tags(aspect, strength_score),
                 "source_weight": round4(
-                    object_source_weight(&aspect.source_object_code)
-                        + object_source_weight(&aspect.target_object_code)
+                    object_source_weights
+                        .get(aspect.source_object_code.as_str())
+                        .copied()
+                        .unwrap_or(0.0)
+                        + object_source_weights
+                            .get(aspect.target_object_code.as_str())
+                            .copied()
+                            .unwrap_or(0.0)
                 ),
                 "aggregation_group": format!("aspect:{}", aspect.aspect_code),
                 "writing_guidance": aspect_writing_guidance(aspect),

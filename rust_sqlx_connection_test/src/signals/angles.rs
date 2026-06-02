@@ -7,7 +7,8 @@ use crate::domain::{InterpretationSignalDraft, ObjectPositionFact};
 use super::constants::SUPPRESSION_ACTIVE;
 use super::context::{placement_context_object, placement_context_str, placement_context_value};
 use super::positions::{
-    house_modality_priority_delta, house_theme_code, object_source_weight, placement_context,
+    angle_priority_base, house_modality_priority_delta, house_theme_code, object_source_weight,
+    placement_context,
 };
 use super::tags::{dedupe_tags, house_tags, sign_tags};
 use super::utils::round4;
@@ -45,7 +46,7 @@ pub(super) fn angle_signal(
         payload_json: Some(json!({
             "interpretive_hint": angle_interpretive_hint(position),
             "semantic_tags": semantic_tags,
-            "source_weight": round4(object_source_weight(&position.object_code)),
+            "source_weight": round4(object_source_weight(position)),
             "aggregation_group": format!("angle:{}:{}", position.object_code, position.sign_code),
             "writing_guidance": angle_writing_guidance(position),
             "angle_context": angle_context,
@@ -74,14 +75,7 @@ pub(super) fn angle_signal(
 }
 
 fn angle_priority(position: &ObjectPositionFact) -> f64 {
-    let base = match position.object_code.as_str() {
-        "ascendant" => 99.0,
-        "mc" => 82.0,
-        "descendant" => 68.0,
-        "ic" => 66.0,
-        _ => 60.0,
-    };
-    round4((base + house_modality_priority_delta(position)).min(100.0))
+    round4((angle_priority_base(position) + house_modality_priority_delta(position)).min(100.0))
 }
 
 fn angle_context(

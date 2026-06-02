@@ -61,7 +61,7 @@ pub(super) fn add_position_cluster_signals(
         let source_weight = round4(
             positions
                 .iter()
-                .map(|position| object_source_weight(&position.object_code))
+                .map(|position| object_source_weight(position))
                 .sum(),
         );
         let priority_score =

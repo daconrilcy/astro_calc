@@ -1,0 +1,160 @@
+{
+  "name": "astral_chart_object_signal_profiles",
+  "structure": {
+    "id": "integer, primary key",
+    "reference_version_id": "integer|null, FK -> astral_reference_versions.id",
+    "chart_object_id": "integer, FK -> astral_chart_objects.id",
+    "position_priority_base": "number",
+    "angle_priority_base": "number|null",
+    "source_weight": "number",
+    "notes": "string|null",
+    "constraints": {
+      "unique_key": [
+        "reference_version_id",
+        "chart_object_id"
+      ],
+      "checks": [
+        {
+          "name": "position_priority_range",
+          "expression": "position_priority_base >= 0 AND position_priority_base <= 100"
+        },
+        {
+          "name": "angle_priority_range",
+          "expression": "angle_priority_base IS NULL OR (angle_priority_base >= 0 AND angle_priority_base <= 100)"
+        },
+        {
+          "name": "source_weight_range",
+          "expression": "source_weight >= 0"
+        }
+      ]
+    }
+  },
+  "data": [
+    {
+      "id": 1,
+      "reference_version_id": 1,
+      "chart_object_id": 1,
+      "position_priority_base": 100.0,
+      "angle_priority_base": null,
+      "source_weight": 1.0,
+      "notes": "Core luminary placement."
+    },
+    {
+      "id": 2,
+      "reference_version_id": 1,
+      "chart_object_id": 2,
+      "position_priority_base": 100.0,
+      "angle_priority_base": null,
+      "source_weight": 1.0,
+      "notes": "Core luminary placement."
+    },
+    {
+      "id": 3,
+      "reference_version_id": 1,
+      "chart_object_id": 3,
+      "position_priority_base": 85.0,
+      "angle_priority_base": null,
+      "source_weight": 0.75,
+      "notes": "Personal planet placement."
+    },
+    {
+      "id": 4,
+      "reference_version_id": 1,
+      "chart_object_id": 4,
+      "position_priority_base": 85.0,
+      "angle_priority_base": null,
+      "source_weight": 0.75,
+      "notes": "Personal planet placement."
+    },
+    {
+      "id": 5,
+      "reference_version_id": 1,
+      "chart_object_id": 5,
+      "position_priority_base": 85.0,
+      "angle_priority_base": null,
+      "source_weight": 0.75,
+      "notes": "Personal planet placement."
+    },
+    {
+      "id": 6,
+      "reference_version_id": 1,
+      "chart_object_id": 6,
+      "position_priority_base": 75.0,
+      "angle_priority_base": null,
+      "source_weight": 0.6,
+      "notes": "Social planet placement."
+    },
+    {
+      "id": 7,
+      "reference_version_id": 1,
+      "chart_object_id": 7,
+      "position_priority_base": 75.0,
+      "angle_priority_base": null,
+      "source_weight": 0.6,
+      "notes": "Social planet placement."
+    },
+    {
+      "id": 8,
+      "reference_version_id": 1,
+      "chart_object_id": 8,
+      "position_priority_base": 60.0,
+      "angle_priority_base": null,
+      "source_weight": 0.35,
+      "notes": "Transpersonal background placement."
+    },
+    {
+      "id": 9,
+      "reference_version_id": 1,
+      "chart_object_id": 9,
+      "position_priority_base": 60.0,
+      "angle_priority_base": null,
+      "source_weight": 0.35,
+      "notes": "Transpersonal background placement."
+    },
+    {
+      "id": 10,
+      "reference_version_id": 1,
+      "chart_object_id": 10,
+      "position_priority_base": 60.0,
+      "angle_priority_base": null,
+      "source_weight": 0.35,
+      "notes": "Transpersonal background placement."
+    },
+    {
+      "id": 11,
+      "reference_version_id": 1,
+      "chart_object_id": 11,
+      "position_priority_base": 99.0,
+      "angle_priority_base": 99.0,
+      "source_weight": 1.0,
+      "notes": "Primary chart angle."
+    },
+    {
+      "id": 12,
+      "reference_version_id": 1,
+      "chart_object_id": 12,
+      "position_priority_base": 68.0,
+      "angle_priority_base": 68.0,
+      "source_weight": 0.4,
+      "notes": "Secondary horizon angle."
+    },
+    {
+      "id": 13,
+      "reference_version_id": 1,
+      "chart_object_id": 13,
+      "position_priority_base": 82.0,
+      "angle_priority_base": 82.0,
+      "source_weight": 0.8,
+      "notes": "Public meridian angle."
+    },
+    {
+      "id": 14,
+      "reference_version_id": 1,
+      "chart_object_id": 14,
+      "position_priority_base": 68.0,
+      "angle_priority_base": 68.0,
+      "source_weight": 0.4,
+      "notes": "Secondary meridian angle."
+    }
+  ]
+}

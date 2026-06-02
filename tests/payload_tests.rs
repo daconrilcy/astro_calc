@@ -20,8 +20,81 @@ fn input() -> NatalChartInput {
     }
 }
 
+fn with_signal_scoring(mut position: ObjectPositionFact) -> ObjectPositionFact {
+    let scoring = match position.object_code.as_str() {
+        "sun" | "moon" => json!({
+            "position_priority_base": 100.0,
+            "angle_priority_base": null,
+            "source_weight": 1.0
+        }),
+        "mercury" | "venus" | "mars" => json!({
+            "position_priority_base": 85.0,
+            "angle_priority_base": null,
+            "source_weight": 0.75
+        }),
+        "jupiter" | "saturn" => json!({
+            "position_priority_base": 75.0,
+            "angle_priority_base": null,
+            "source_weight": 0.6
+        }),
+        "ascendant" => json!({
+            "position_priority_base": 99.0,
+            "angle_priority_base": 99.0,
+            "source_weight": 1.0
+        }),
+        "descendant" | "ic" => json!({
+            "position_priority_base": 68.0,
+            "angle_priority_base": 68.0,
+            "source_weight": 0.4
+        }),
+        "mc" => json!({
+            "position_priority_base": 82.0,
+            "angle_priority_base": 82.0,
+            "source_weight": 0.8
+        }),
+        _ => json!({
+            "position_priority_base": 60.0,
+            "angle_priority_base": null,
+            "source_weight": 0.35
+        }),
+    };
+
+    let modality_delta = position
+        .facts_json
+        .as_ref()
+        .and_then(|facts| facts.get("house_modality"))
+        .and_then(|modality| modality.get("code"))
+        .and_then(|code| code.as_str())
+        .map(|code| match code {
+            "angular" => 2.0,
+            "succedent" => 0.75,
+            "cadent" => -0.75,
+            _ => 0.0,
+        });
+
+    let facts = position.facts_json.get_or_insert_with(|| json!({}));
+    if let Some(root) = facts.as_object_mut() {
+        let object_context = root
+            .entry("object_context".to_string())
+            .or_insert_with(|| json!({}));
+        if let Some(object_context) = object_context.as_object_mut() {
+            object_context.insert("signal_scoring".to_string(), scoring);
+        }
+        if let Some(delta) = modality_delta {
+            if let Some(modality) = root
+                .get_mut("house_modality")
+                .and_then(|modality| modality.as_object_mut())
+            {
+                modality.insert("priority_delta".to_string(), json!(delta));
+            }
+        }
+    }
+
+    position
+}
+
 fn position() -> ObjectPositionFact {
-    ObjectPositionFact {
+    with_signal_scoring(ObjectPositionFact {
         chart_object_id: 1,
         object_code: "sun".to_string(),
         object_name: "Sun".to_string(),
@@ -64,11 +137,11 @@ fn position() -> ObjectPositionFact {
                 "motion_family": "forward"
             }
         })),
-    }
+    })
 }
 
 fn saturn_capricorn_position() -> ObjectPositionFact {
-    ObjectPositionFact {
+    with_signal_scoring(ObjectPositionFact {
         chart_object_id: 7,
         object_code: "saturn".to_string(),
         object_name: "Saturn".to_string(),
@@ -104,7 +177,7 @@ fn saturn_capricorn_position() -> ObjectPositionFact {
                 "motion_state": "direct"
             }
         })),
-    }
+    })
 }
 
 fn capricorn_house_2_position(
@@ -112,7 +185,7 @@ fn capricorn_house_2_position(
     object_code: &str,
     object_name: &str,
 ) -> ObjectPositionFact {
-    ObjectPositionFact {
+    with_signal_scoring(ObjectPositionFact {
         chart_object_id,
         object_code: object_code.to_string(),
         object_name: object_name.to_string(),
@@ -142,7 +215,7 @@ fn capricorn_house_2_position(
             "object_context": {"role": "planet"},
             "motion_context": {"motion_state": "direct"}
         })),
-    }
+    })
 }
 
 fn angle_position(
@@ -154,7 +227,7 @@ fn angle_position(
     axis: &str,
     longitude_deg: f64,
 ) -> ObjectPositionFact {
-    ObjectPositionFact {
+    with_signal_scoring(ObjectPositionFact {
         chart_object_id: id,
         object_code: object_code.to_string(),
         object_name: object_name.to_string(),
@@ -184,7 +257,7 @@ fn angle_position(
             },
             "house_context": {"theme_code": "identity"}
         })),
-    }
+    })
 }
 
 #[test]
@@ -580,7 +653,7 @@ fn chart_emphasis_omits_placement_only_objects_when_stronger_evidence_exists() {
     ];
     let positions = vec![
         position(),
-        ObjectPositionFact {
+        with_signal_scoring(ObjectPositionFact {
             chart_object_id: 2,
             object_code: "moon".to_string(),
             object_name: "Moon".to_string(),
@@ -605,8 +678,8 @@ fn chart_emphasis_omits_placement_only_objects_when_stronger_evidence_exists() {
                 "object_context": {"role": "luminary"},
                 "motion_context": {"motion_state": "direct"}
             })),
-        },
-        ObjectPositionFact {
+        }),
+        with_signal_scoring(ObjectPositionFact {
             chart_object_id: 3,
             object_code: "mercury".to_string(),
             object_name: "Mercury".to_string(),
@@ -631,7 +704,7 @@ fn chart_emphasis_omits_placement_only_objects_when_stronger_evidence_exists() {
                 "object_context": {"role": "planet"},
                 "motion_context": {"motion_state": "direct"}
             })),
-        },
+        }),
     ];
 
     let payload = build_basic_payload(42, &input(), &positions, &signals);
@@ -692,26 +765,26 @@ fn drafting_emphasis_refs_scope_objects_to_the_receiving_slot() {
         dignity_signal_row(7, "dignity:mars:detriment:taurus", "mars"),
     ];
     let positions = vec![
-        ObjectPositionFact {
+        with_signal_scoring(ObjectPositionFact {
             object_code: "sun".to_string(),
             object_name: "Sun".to_string(),
             ..position()
-        },
-        ObjectPositionFact {
+        }),
+        with_signal_scoring(ObjectPositionFact {
             chart_object_id: 3,
             object_code: "mercury".to_string(),
             object_name: "Mercury".to_string(),
             longitude_deg: 70.0,
             ..position()
-        },
-        ObjectPositionFact {
+        }),
+        with_signal_scoring(ObjectPositionFact {
             chart_object_id: 6,
             object_code: "jupiter".to_string(),
             object_name: "Jupiter".to_string(),
             longitude_deg: 80.0,
             ..position()
-        },
-        ObjectPositionFact {
+        }),
+        with_signal_scoring(ObjectPositionFact {
             chart_object_id: 5,
             object_code: "mars".to_string(),
             object_name: "Mars".to_string(),
@@ -723,7 +796,7 @@ fn drafting_emphasis_refs_scope_objects_to_the_receiving_slot() {
             house_name: Some("Transformation".to_string()),
             longitude_deg: 45.0,
             ..position()
-        },
+        }),
     ];
 
     let payload = build_basic_payload(42, &input(), &positions, &signals);

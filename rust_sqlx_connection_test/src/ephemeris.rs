@@ -208,6 +208,7 @@ fn house_modality(house: &crate::models::HouseReference) -> Option<serde_json::V
             "code": code,
             "label": &house.modality_label,
             "accidental_strength": &house.accidental_strength,
+            "priority_delta": &house.modality_priority_delta,
             "interpretation_weight": &house.interpretation_weight
         })
     })
@@ -228,7 +229,12 @@ fn object_context(object: &ChartObject) -> serde_json::Value {
         "nature": &object.nature_codes,
         "is_luminary": &object.is_luminary,
         "is_planet_symbolic": &object.is_planet_symbolic,
-        "is_visible_to_naked_eye": &object.is_visible_to_naked_eye
+        "is_visible_to_naked_eye": &object.is_visible_to_naked_eye,
+        "signal_scoring": {
+            "position_priority_base": &object.position_priority_base,
+            "angle_priority_base": &object.angle_priority_base,
+            "source_weight": &object.source_weight
+        }
     })
 }
 

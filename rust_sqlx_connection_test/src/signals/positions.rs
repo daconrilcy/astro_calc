@@ -14,39 +14,31 @@ use super::tags::{dedupe_tags, house_tags, sign_tags};
 use super::utils::round4;
 
 pub(super) fn position_priority(position: &ObjectPositionFact) -> f64 {
-    let base = match position.object_code.as_str() {
-        "ascendant" => 99.0,
-        "sun" | "moon" => 100.0,
-        "mc" => 82.0,
-        "descendant" | "ic" => 68.0,
-        "mercury" | "venus" | "mars" => 85.0,
-        "jupiter" | "saturn" => 75.0,
-        _ => 60.0,
-    };
+    let base = object_signal_scoring_number(position, "position_priority_base").unwrap_or(0.0);
     let dignity_delta = dignity_priority_delta_for_position(position);
     round4((base + house_modality_priority_delta(position) + dignity_delta).min(100.0))
 }
 
 pub(super) fn house_modality_priority_delta(position: &ObjectPositionFact) -> f64 {
-    match placement_context_value(position, "house_modality", "code")
-        .and_then(|value| value.as_str())
-    {
-        Some("angular") => 2.0,
-        Some("succedent") => 0.75,
-        Some("cadent") => -0.75,
-        _ => 0.0,
-    }
+    placement_context_value(position, "house_modality", "priority_delta")
+        .and_then(|value| value.as_f64())
+        .unwrap_or(0.0)
 }
 
-pub(super) fn object_source_weight(object_code: &str) -> f64 {
-    match object_code {
-        "sun" | "moon" | "ascendant" => 1.0,
-        "mc" => 0.8,
-        "mercury" | "venus" | "mars" => 0.75,
-        "jupiter" | "saturn" => 0.6,
-        "descendant" | "ic" => 0.4,
-        _ => 0.35,
-    }
+pub(super) fn angle_priority_base(position: &ObjectPositionFact) -> f64 {
+    object_signal_scoring_number(position, "angle_priority_base")
+        .or_else(|| object_signal_scoring_number(position, "position_priority_base"))
+        .unwrap_or(0.0)
+}
+
+pub(super) fn object_source_weight(position: &ObjectPositionFact) -> f64 {
+    object_signal_scoring_number(position, "source_weight").unwrap_or(0.0)
+}
+
+fn object_signal_scoring_number(position: &ObjectPositionFact, key: &str) -> Option<f64> {
+    placement_context_value(position, "object_context", "signal_scoring")
+        .and_then(|value| value.get(key))
+        .and_then(|value| value.as_f64())
 }
 
 pub(super) fn position_theme_code(position: &ObjectPositionFact) -> String {

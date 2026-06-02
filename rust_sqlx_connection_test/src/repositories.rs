@@ -25,7 +25,10 @@ impl RuntimeRepository {
         &self.pool
     }
 
-    pub async fn active_chart_objects(&self) -> Result<Vec<ChartObject>, RuntimeError> {
+    pub async fn active_chart_objects(
+        &self,
+        reference_version_id: i32,
+    ) -> Result<Vec<ChartObject>, RuntimeError> {
         Ok(sqlx::query_as::<_, ChartObject>(
             r#"
             SELECT o.id, o.code, o.name, o.swe_id,
@@ -40,14 +43,21 @@ impl RuntimeRepository {
                        JOIN astral_object_nature_types nt ON nt.id = na.nature_type_id
                        WHERE na.chart_object_id = o.id
                          AND na.is_primary = true
-                   ) AS nature_codes
+                   ) AS nature_codes,
+                   signal_profile.position_priority_base::float8 AS position_priority_base,
+                   signal_profile.angle_priority_base::float8 AS angle_priority_base,
+                   signal_profile.source_weight::float8 AS source_weight
             FROM astral_chart_objects o
             LEFT JOIN astral_chart_object_definitions def ON def.chart_object_id = o.id
             LEFT JOIN astral_astrological_roles role ON role.id = def.astrological_role_id
+            LEFT JOIN astral_chart_object_signal_profiles signal_profile
+              ON signal_profile.chart_object_id = o.id
+             AND signal_profile.reference_version_id = $1
             WHERE o.is_active = true AND o.is_calculable = true
             ORDER BY o.sort_order, o.id
             "#,
         )
+        .bind(reference_version_id)
         .fetch_all(&self.pool)
         .await?)
     }
@@ -97,6 +107,7 @@ impl RuntimeRepository {
                    modality.name AS modality_code,
                    modality.label AS modality_label,
                    modality.accidental_strength,
+                   modality.priority_delta::float8 AS modality_priority_delta,
                    modality.interpretation_weight
             FROM astral_houses h
             LEFT JOIN astral_house_modalities modality ON modality.id = h.house_modality_id
@@ -240,6 +251,7 @@ impl RuntimeRepository {
                                'code', house_modality.name,
                                'label', house_modality.label,
                                'accidental_strength', house_modality.accidental_strength,
+                               'priority_delta', house_modality.priority_delta,
                                'interpretation_weight', house_modality.interpretation_weight
                            ))
                        END,
@@ -261,7 +273,15 @@ impl RuntimeRepository {
                            ),
                            'is_luminary', object_definition.is_luminary,
                            'is_planet_symbolic', object_definition.is_planet_symbolic,
-                           'is_visible_to_naked_eye', object_definition.is_visible_to_naked_eye
+                           'is_visible_to_naked_eye', object_definition.is_visible_to_naked_eye,
+                           'signal_scoring', CASE
+                               WHEN signal_profile.id IS NULL THEN NULL
+                               ELSE jsonb_strip_nulls(jsonb_build_object(
+                                   'position_priority_base', signal_profile.position_priority_base,
+                                   'angle_priority_base', signal_profile.angle_priority_base,
+                                   'source_weight', signal_profile.source_weight
+                               ))
+                           END
                        )),
                        'motion_context', CASE
                            WHEN motion.id IS NULL THEN NULL
@@ -273,6 +293,7 @@ impl RuntimeRepository {
                        END
                    ) AS facts_json
             FROM astral_calculated_chart_object_positions p
+            JOIN astral_chart_calculations c ON c.id = p.chart_calculation_id
             JOIN astral_chart_objects o ON o.id = p.chart_object_id
             JOIN astral_signs s ON s.id = p.sign_id
             LEFT JOIN astral_sign_profiles sign_profile ON sign_profile.astral_sign_id = s.id
@@ -284,6 +305,9 @@ impl RuntimeRepository {
             LEFT JOIN astral_house_modalities house_modality ON house_modality.id = h.house_modality_id
             LEFT JOIN astral_chart_object_definitions object_definition ON object_definition.chart_object_id = o.id
             LEFT JOIN astral_astrological_roles role ON role.id = object_definition.astrological_role_id
+            LEFT JOIN astral_chart_object_signal_profiles signal_profile
+              ON signal_profile.chart_object_id = o.id
+             AND signal_profile.reference_version_id = c.reference_version_id
             LEFT JOIN astral_object_motion_states motion ON motion.id = p.motion_state_id
             WHERE p.chart_calculation_id = $1
             ORDER BY o.sort_order, o.id

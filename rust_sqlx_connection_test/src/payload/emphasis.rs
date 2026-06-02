@@ -33,7 +33,7 @@ pub(super) fn build_chart_emphasis(
         .collect();
 
     for position in positions {
-        let object_weight = object_source_weight(&position.object_code);
+        let object_weight = object_source_weight(position);
 
         add_score(
             sign_scores.entry(position.sign_code.clone()).or_default(),
@@ -440,15 +440,15 @@ fn dignity_emphasis_weight(dignity: &BasicDignity) -> f64 {
     }
 }
 
-fn object_source_weight(object_code: &str) -> f64 {
-    match object_code {
-        "sun" | "moon" | "ascendant" => 1.0,
-        "mc" => 0.8,
-        "mercury" | "venus" | "mars" => 0.75,
-        "jupiter" | "saturn" => 0.6,
-        "descendant" | "ic" => 0.4,
-        _ => 0.35,
-    }
+fn object_source_weight(position: &ObjectPositionFact) -> f64 {
+    position_context(position, "object_context")
+        .and_then(|context| {
+            context
+                .get("signal_scoring")
+                .and_then(|scoring| scoring.get("source_weight"))
+                .and_then(|value| value.as_f64())
+        })
+        .unwrap_or(0.0)
 }
 
 fn house_theme_code(position: &ObjectPositionFact) -> Option<String> {

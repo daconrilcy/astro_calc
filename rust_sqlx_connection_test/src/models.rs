@@ -13,6 +13,9 @@ pub struct ChartObject {
     pub is_planet_symbolic: Option<bool>,
     pub is_visible_to_naked_eye: Option<bool>,
     pub nature_codes: Option<Value>,
+    pub position_priority_base: Option<f64>,
+    pub angle_priority_base: Option<f64>,
+    pub source_weight: Option<f64>,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -54,6 +57,7 @@ pub struct HouseReference {
     pub modality_code: Option<String>,
     pub modality_label: Option<String>,
     pub accidental_strength: Option<String>,
+    pub modality_priority_delta: Option<f64>,
     pub interpretation_weight: Option<String>,
 }
 

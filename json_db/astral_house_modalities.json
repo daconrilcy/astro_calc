@@ -8,6 +8,7 @@
     "house_numbers_json": "array, documentary only; runtime source of truth is astral_houses.house_modality_id",
     "accidental_strength": "string",
     "score_modifier": "string",
+    "priority_delta": "number",
     "interpretation_weight": "string",
     "runtime_usage": "string",
     "sort_order": "integer"
@@ -26,6 +27,7 @@
       ],
       "accidental_strength": "strong",
       "score_modifier": "+",
+      "priority_delta": 2.0,
       "interpretation_weight": "high",
       "runtime_usage": "Use as a strong weighting factor for planet_in_house, accidental dignity, manifestation power, visibility score, planetary strength and interpretation priority.",
       "sort_order": 1
@@ -43,6 +45,7 @@
       ],
       "accidental_strength": "medium",
       "score_modifier": "0_or_light_plus",
+      "priority_delta": 0.75,
       "interpretation_weight": "medium",
       "runtime_usage": "Use as a medium weighting factor for continuity, consolidation, resource development and stable expression in planet-in-house rules.",
       "sort_order": 2
@@ -60,6 +63,7 @@
       ],
       "accidental_strength": "weak_or_background",
       "score_modifier": "-",
+      "priority_delta": -0.75,
       "interpretation_weight": "lower_for_external_manifestation",
       "runtime_usage": "Use as a lower external manifestation weighting factor, not as a negative judgement. Cadent emphasis can still be important for mental, adaptive or preparatory expression.",
       "sort_order": 3

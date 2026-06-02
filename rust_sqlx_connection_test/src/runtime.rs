@@ -10,7 +10,7 @@ use crate::domain::{
 };
 use crate::ephemeris::EphemerisEngine;
 use crate::idempotency::{advisory_lock_key, idempotency_key, input_hash};
-use crate::models::ChartCalculationRow;
+use crate::models::{ChartCalculationRow, ChartObject};
 use crate::payload::build_basic_payload;
 use crate::repositories::RuntimeRepository;
 use crate::signals::aggregate_basic_signals;
@@ -78,7 +78,11 @@ where
         let idempotency_key = idempotency_key(&input, &self.options)?;
         let lock_key = advisory_lock_key(&idempotency_key);
 
-        let chart_objects = self.repository.active_chart_objects().await?;
+        let chart_objects = self
+            .repository
+            .active_chart_objects(input.reference_version_id)
+            .await?;
+        validate_chart_object_signal_profiles(&chart_objects)?;
         let aspect_definitions = self.repository.aspect_definitions().await?;
         let house_system = self.repository.house_system(input.house_system_id).await?;
         let references = CalculationReferenceData {
@@ -258,10 +262,11 @@ pub fn validate_calculation_references(
             || !house_numbers.insert(house.number)
             || !(1..=12).contains(&house.number)
             || house.name.trim().is_empty()
+            || house.modality_code.is_none()
+            || house.modality_priority_delta.is_none()
         {
             return Err(RuntimeError::Ephemeris(
-                "invalid house references: duplicate IDs, invalid numbers, or empty labels"
-                    .to_string(),
+                "invalid house references: duplicate IDs, invalid numbers, empty labels, or missing modality scoring".to_string(),
             ));
         }
     }
@@ -296,6 +301,40 @@ pub fn validate_calculation_references(
                 "invalid angle point references: duplicate IDs, invalid houses, or empty labels"
                     .to_string(),
             ));
+        }
+    }
+
+    Ok(())
+}
+
+pub fn validate_chart_object_signal_profiles(
+    chart_objects: &[ChartObject],
+) -> Result<(), RuntimeError> {
+    if chart_objects.is_empty() {
+        return Err(RuntimeError::Ephemeris(
+            "expected active chart object references".to_string(),
+        ));
+    }
+
+    for object in chart_objects {
+        let has_base_priority = object
+            .position_priority_base
+            .is_some_and(|value| (0.0..=100.0).contains(&value));
+        let has_source_weight = object.source_weight.is_some_and(|value| value >= 0.0);
+        let angle_requires_base = object.role_code.as_deref() == Some("angle");
+        let has_angle_base = object
+            .angle_priority_base
+            .is_some_and(|value| (0.0..=100.0).contains(&value));
+
+        if object.code.trim().is_empty()
+            || !has_base_priority
+            || !has_source_weight
+            || (angle_requires_base && !has_angle_base)
+        {
+            return Err(RuntimeError::Ephemeris(format!(
+                "invalid signal scoring profile for chart object {}",
+                object.code
+            )));
         }
     }
 

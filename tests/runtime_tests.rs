@@ -7,9 +7,12 @@ use rust_sqlx_connection_test::domain::{
     BasicObjectPosition, BasicPayload, BasicReadingPlanItem, BasicSecondarySlotCandidate,
     BasicSignal, CalculationReferenceData,
 };
-use rust_sqlx_connection_test::models::{AnglePointReference, HouseReference, SignReference};
+use rust_sqlx_connection_test::models::{
+    AnglePointReference, ChartObject, HouseReference, SignReference,
+};
 use rust_sqlx_connection_test::runtime::{
     is_current_basic_payload, validate_calculation_references,
+    validate_chart_object_signal_profiles,
 };
 
 fn current_payload() -> BasicPayload {
@@ -916,6 +919,65 @@ fn reference_validation_rejects_duplicate_house_numbers() {
     assert!(validate_calculation_references(&references).is_err());
 }
 
+#[test]
+fn reference_validation_requires_house_modality_priority_delta() {
+    let mut references = reference_data();
+    references.houses[0].modality_priority_delta = None;
+
+    assert!(validate_calculation_references(&references).is_err());
+}
+
+#[test]
+fn chart_object_validation_requires_signal_profile() {
+    let mut objects = chart_objects();
+    objects[0].source_weight = None;
+
+    assert!(validate_chart_object_signal_profiles(&objects).is_err());
+}
+
+#[test]
+fn chart_object_validation_requires_angle_priority_for_angles() {
+    let mut objects = chart_objects();
+    objects[1].angle_priority_base = None;
+
+    assert!(validate_chart_object_signal_profiles(&objects).is_err());
+}
+
+fn chart_objects() -> Vec<ChartObject> {
+    vec![
+        ChartObject {
+            id: 1,
+            code: "sun".to_string(),
+            name: "Sun".to_string(),
+            swe_id: Some(0),
+            role_code: Some("luminary".to_string()),
+            role_label: Some("Luminary".to_string()),
+            is_luminary: Some(true),
+            is_planet_symbolic: Some(false),
+            is_visible_to_naked_eye: Some(true),
+            nature_codes: Some(json!(["luminary"])),
+            position_priority_base: Some(100.0),
+            angle_priority_base: None,
+            source_weight: Some(1.0),
+        },
+        ChartObject {
+            id: 11,
+            code: "ascendant".to_string(),
+            name: "Ascendant".to_string(),
+            swe_id: None,
+            role_code: Some("angle".to_string()),
+            role_label: Some("Angle".to_string()),
+            is_luminary: Some(false),
+            is_planet_symbolic: Some(false),
+            is_visible_to_naked_eye: Some(false),
+            nature_codes: Some(json!(["angle"])),
+            position_priority_base: Some(99.0),
+            angle_priority_base: Some(99.0),
+            source_weight: Some(1.0),
+        },
+    ]
+}
+
 fn reference_data() -> CalculationReferenceData {
     CalculationReferenceData {
         signs: (1..=12)
@@ -942,6 +1004,7 @@ fn reference_data() -> CalculationReferenceData {
                 modality_code: Some("angular".to_string()),
                 modality_label: Some("Angular".to_string()),
                 accidental_strength: Some("strong".to_string()),
+                modality_priority_delta: Some(2.0),
                 interpretation_weight: Some("high".to_string()),
             })
             .collect(),
