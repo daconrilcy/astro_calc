@@ -53,6 +53,11 @@ d'intensite (`intensity_modifier`) comme `amplifying`, ajoute une qualite
 dynamique (`flow`, `tension`, `intensification`, etc.) et enrichit les tags et
 la guidance redactionnelle.
 
+L'etape 2D ajoute une synthese top-level `chart_emphasis` qui classe les
+dominantes de signe, de maison et d'objet a partir des placements, clusters,
+dignites et aspects forts deja calcules. Elle fournit une hierarchie quantifiee
+et auditable avant tout appel LLM.
+
 L'etape 2C.1 enrichit ensuite `interpretive_hint` des aspects avec cette meme
 couche interpretative. Le hint reste court et template, mais il ne dit plus
 seulement que deux objets sont connectes par un aspect : il nomme l'effet
@@ -513,6 +518,136 @@ Un sextile ou trigone ajoute typiquement `flow` et une valence comme
 `supportive` ou `harmonious`. Un carre ou une opposition ajoute typiquement
 `tension` et une valence comme `dynamic_challenging` ou `polarizing`.
 
+### Synthese de dominance 2D
+
+Le payload expose maintenant `chart_emphasis`, calcule cote code avant tout appel
+LLM. Cette couche resume la hierarchie globale du theme sans demander au LLM de
+deduire seul les dominantes depuis les signaux bruts :
+
+```json
+{
+  "chart_emphasis": {
+    "dominant_signs": [
+      {
+        "sign_code": "capricorn",
+        "score": 0.87,
+        "reasons": [
+          "sun_in_sign",
+          "saturn_domicile",
+          "sign_house_cluster",
+          "multiple_objects"
+        ]
+      }
+    ],
+    "dominant_houses": [
+      {
+        "house_number": 2,
+        "theme_code": "resources",
+        "score": 0.87,
+        "reasons": [
+          "sun_in_house",
+          "cluster",
+          "saturn_domicile"
+        ]
+      }
+    ],
+    "dominant_objects": [
+      {
+        "object_code": "saturn",
+        "score": 0.78,
+        "reasons": [
+          "domicile",
+          "cluster_participant",
+          "capricorn_emphasis",
+          "strong_aspect_participant"
+        ]
+      }
+    ]
+  }
+}
+```
+
+Les scores sont normalises dans chaque famille entre `0` et `1` contre une
+echelle fixe, pas contre le meilleur element du theme. Un score de `1.0`
+signifie donc une saturation forte de la famille concernee, pas simplement le
+rang 1 local. Les raisons sont
+des cles auditables issues des placements (`sun_in_sign`, `sun_in_house`), des
+concentrations (`multiple_objects`, `sign_house_cluster`, `cluster`), des
+dignites (`saturn_domicile`, `domicile`), de la dominante de signe reportee sur
+les objets (`capricorn_emphasis`) et des aspects actifs forts
+(`strong_aspect_participant`).
+
+Le filtrage garde le resume au niveau "dominance" plutot qu'au niveau simple
+classement :
+
+- `dominant_signs` et `dominant_houses` ne gardent que les scores `>= 0.35`,
+  sauf fallback vers le meilleur item quand aucun score ne franchit ce seuil ;
+- `dominant_objects` ne garde que les scores `>= 0.50` qui ont au moins une
+  raison autre que `placement`, sauf fallback vers le meilleur objet quand aucun
+  objet ne franchit ce seuil ;
+- les listes sont triees par score decroissant et tronquees a 3 signes,
+  3 maisons et 5 objets ;
+- un objet present uniquement parce qu'il est un luminaire ou une planete
+  importante de base ne doit pas etre presente comme dominant si aucun autre
+  indice ne le soutient ;
+- les raisons comme `gemini_emphasis` ou `capricorn_emphasis` ne sont ajoutees
+  aux objets que si le signe concerne franchit lui-meme le seuil de dominance.
+
+Exemple reel genere avec les valeurs de verification Paris / 2024-06-15 :
+
+```json
+{
+  "chart_emphasis": {
+    "dominant_signs": [
+      {
+        "sign_code": "gemini",
+        "score": 1.0,
+        "reasons": [
+          "sun_in_sign",
+          "mercury_in_sign",
+          "venus_in_sign",
+          "jupiter_in_sign",
+          "multiple_objects",
+          "mercury_domicile",
+          "jupiter_detriment",
+          "sign_house_cluster"
+        ]
+      }
+    ],
+    "dominant_houses": [
+      {
+        "house_number": 9,
+        "theme_code": "beliefs",
+        "score": 1.0,
+        "reasons": [
+          "sun_in_house",
+          "mercury_in_house",
+          "jupiter_in_house",
+          "uranus_in_house",
+          "multiple_objects",
+          "mercury_domicile",
+          "jupiter_detriment",
+          "cluster"
+        ]
+      }
+    ],
+    "dominant_objects": [
+      {
+        "object_code": "mercury",
+        "score": 0.8566,
+        "reasons": [
+          "placement",
+          "domicile",
+          "cluster_participant",
+          "strong_aspect_participant",
+          "gemini_emphasis"
+        ]
+      }
+    ]
+  }
+}
+```
+
 ## Signaux agreges Basic
 
 L'etape 1B ajoute un premier type de signal agrege :
@@ -723,12 +858,13 @@ doit respecter :
 ```json
 {
   "llm_handoff_contract": {
-    "contract_version": "basic_natal_structured_v4",
+    "contract_version": "basic_natal_structured_v5",
     "payload_language_code": "en",
     "target_language_policy": "provided_by_llm_service",
     "audience_level": "beginner",
     "tone": "clear, warm, non fatalistic",
     "must_use": [
+      "chart_emphasis",
       "dignities",
       "signals",
       "reading_plan",
@@ -870,9 +1006,12 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
 - 12 signaux maximum ;
 - au moins un signal ;
 - `llm_handoff_contract` present et conforme au contrat canonique
-  `basic_natal_structured_v4` ;
+  `basic_natal_structured_v5` ;
 - `dignities` structurees presentes et coherentes avec les signaux
   `dignity:*` actifs ;
+- `chart_emphasis` present, avec au moins une dominante de signe, de maison et
+  d'objet, chacune scoree, justifiee par des raisons non vides et triee par
+  score decroissant dans sa famille ;
 - positions avec `sign_code`, `sign_name`, `sign_context`, `house_modality`,
   `object_context`, `motion_context` et `dignity_context` sous forme de tableau ;
 - signaux avec `evidence` ;
@@ -927,18 +1066,28 @@ $env:ASTRAL_EPHEMERIS_PATH = "..\ephe\se-2026a"
 cargo run --features swisseph-engine
 ```
 
+Pour ecrire un exemple inspectable dans `../output` :
+
+```powershell
+cargo run --features swisseph-engine -- --file
+```
+
 Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
 
 - `product_code = "basic"` ;
 - `llm_handoff_contract.payload_language_code = "en"` ;
 - `llm_handoff_contract.target_language_policy = "provided_by_llm_service"` ;
-- `llm_handoff_contract.contract_version = "basic_natal_structured_v4"` ;
+- `llm_handoff_contract.contract_version = "basic_natal_structured_v5"` ;
 - des positions avec `sign_code`, `sign_name`, `house_number`, `house_name`,
   `sign_context`, `house_modality`, `object_context`, `motion_context` et
   `dignity_context` sous forme de tableau, vide quand aucune dignite n'est
   detectee ;
 - une liste `dignities` top-level, vide ou non selon le theme, mais coherente
   avec les signaux `dignity:*` actifs ;
+- un `chart_emphasis` top-level avec `dominant_signs`, `dominant_houses` et
+  `dominant_objects` scorees et auditees par `reasons`, sans objet
+  `placement`-only quand une vraie emphase existe par dignite, cluster,
+  dominante de signe ou aspect fort ;
 - au plus 12 signaux ;
 - un `reading_plan` non vide ;
 - un `drafting_plan` non vide et aligne sur le `reading_plan` ;

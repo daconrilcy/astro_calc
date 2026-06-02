@@ -14,6 +14,12 @@ use crate::payload::build_basic_payload;
 use crate::repositories::RuntimeRepository;
 use crate::signals::aggregate_basic_signals;
 
+const SIGN_HOUSE_EMPHASIS_MIN_SCORE: f64 = 0.35;
+const OBJECT_EMPHASIS_MIN_SCORE: f64 = 0.5;
+const MAX_DOMINANT_SIGNS: usize = 3;
+const MAX_DOMINANT_HOUSES: usize = 3;
+const MAX_DOMINANT_OBJECTS: usize = 5;
+
 #[derive(Debug, Error)]
 pub enum RuntimeError {
     #[error("database error: {0}")]
@@ -281,6 +287,7 @@ fn is_current_basic_payload(payload: &BasicPayload) -> bool {
         && payload.signals.len() <= 12
         && has_current_llm_handoff_contract(payload)
         && has_current_dignities(payload)
+        && has_current_chart_emphasis(payload)
         && has_current_reading_plan(payload)
         && has_current_drafting_plan(payload)
         && payload.positions.iter().all(has_current_position_context)
@@ -306,12 +313,19 @@ fn has_current_llm_handoff_contract(payload: &BasicPayload) -> bool {
         return false;
     };
 
-    contract.contract_version == "basic_natal_structured_v4"
+    contract.contract_version == "basic_natal_structured_v5"
         && contract.payload_language_code == "en"
         && contract.target_language_policy == "provided_by_llm_service"
         && contract.audience_level == "beginner"
         && contract.tone == "clear, warm, non fatalistic"
-        && contract.must_use.as_slice() == ["dignities", "signals", "reading_plan", "drafting_plan"]
+        && contract.must_use.as_slice()
+            == [
+                "chart_emphasis",
+                "dignities",
+                "signals",
+                "reading_plan",
+                "drafting_plan",
+            ]
         && contract.must_not.as_slice()
             == [
                 "invent facts not present in source signals",
@@ -322,6 +336,65 @@ fn has_current_llm_handoff_contract(payload: &BasicPayload) -> bool {
                 "make deterministic or fatalistic predictions",
             ]
         && contract.output_format == "structured_sections"
+}
+
+fn has_current_chart_emphasis(payload: &BasicPayload) -> bool {
+    !payload.chart_emphasis.dominant_signs.is_empty()
+        && !payload.chart_emphasis.dominant_houses.is_empty()
+        && !payload.chart_emphasis.dominant_objects.is_empty()
+        && payload.chart_emphasis.dominant_signs.len() <= MAX_DOMINANT_SIGNS
+        && payload.chart_emphasis.dominant_houses.len() <= MAX_DOMINANT_HOUSES
+        && payload.chart_emphasis.dominant_objects.len() <= MAX_DOMINANT_OBJECTS
+        && payload
+            .chart_emphasis
+            .dominant_signs
+            .windows(2)
+            .all(|window| window[0].score >= window[1].score)
+        && payload
+            .chart_emphasis
+            .dominant_houses
+            .windows(2)
+            .all(|window| window[0].score >= window[1].score)
+        && payload
+            .chart_emphasis
+            .dominant_objects
+            .windows(2)
+            .all(|window| window[0].score >= window[1].score)
+        && payload.chart_emphasis.dominant_signs.iter().all(|entry| {
+            !entry.sign_code.trim().is_empty()
+                && valid_emphasis_score(entry.score)
+                && valid_emphasis_reasons(&entry.reasons)
+                && (payload.chart_emphasis.dominant_signs.len() == 1
+                    || entry.score >= SIGN_HOUSE_EMPHASIS_MIN_SCORE)
+        })
+        && payload.chart_emphasis.dominant_houses.iter().all(|entry| {
+            (1..=12).contains(&entry.house_number)
+                && !entry.theme_code.trim().is_empty()
+                && valid_emphasis_score(entry.score)
+                && valid_emphasis_reasons(&entry.reasons)
+                && (payload.chart_emphasis.dominant_houses.len() == 1
+                    || entry.score >= SIGN_HOUSE_EMPHASIS_MIN_SCORE)
+        })
+        && payload.chart_emphasis.dominant_objects.iter().all(|entry| {
+            !entry.object_code.trim().is_empty()
+                && valid_emphasis_score(entry.score)
+                && valid_emphasis_reasons(&entry.reasons)
+                && (payload.chart_emphasis.dominant_objects.len() == 1
+                    || (entry.score >= OBJECT_EMPHASIS_MIN_SCORE
+                        && has_non_placement_emphasis_reason(&entry.reasons)))
+        })
+}
+
+fn valid_emphasis_score(score: f64) -> bool {
+    score > 0.0 && score <= 1.0
+}
+
+fn valid_emphasis_reasons(reasons: &[String]) -> bool {
+    !reasons.is_empty() && reasons.iter().all(|reason| !reason.trim().is_empty())
+}
+
+fn has_non_placement_emphasis_reason(reasons: &[String]) -> bool {
+    reasons.iter().any(|reason| reason != "placement")
 }
 
 fn has_current_aspect_context(signal: &crate::domain::BasicSignal) -> bool {
@@ -628,7 +701,8 @@ mod tests {
 
     use super::*;
     use crate::domain::{
-        BasicDignity, BasicDraftingPlanItem, BasicLlmHandoffContract, BasicObjectPosition,
+        BasicChartEmphasis, BasicDignity, BasicDominantHouse, BasicDominantObject,
+        BasicDominantSign, BasicDraftingPlanItem, BasicLlmHandoffContract, BasicObjectPosition,
         BasicReadingPlanItem, BasicSecondarySlotCandidate, BasicSignal,
     };
     use crate::models::{HouseReference, SignReference};
@@ -641,12 +715,13 @@ mod tests {
             subject_label: None,
             birth_datetime_utc: Utc.with_ymd_and_hms(2024, 6, 15, 12, 0, 0).unwrap(),
             llm_handoff_contract: Some(BasicLlmHandoffContract {
-                contract_version: "basic_natal_structured_v4".to_string(),
+                contract_version: "basic_natal_structured_v5".to_string(),
                 payload_language_code: "en".to_string(),
                 target_language_policy: "provided_by_llm_service".to_string(),
                 audience_level: "beginner".to_string(),
                 tone: "clear, warm, non fatalistic".to_string(),
                 must_use: vec![
+                    "chart_emphasis".to_string(),
                     "dignities".to_string(),
                     "signals".to_string(),
                     "reading_plan".to_string(),
@@ -697,6 +772,24 @@ mod tests {
                 dignity_context: json!([]),
             }],
             dignities: Vec::new(),
+            chart_emphasis: BasicChartEmphasis {
+                dominant_signs: vec![BasicDominantSign {
+                    sign_code: "gemini".to_string(),
+                    score: 0.2174,
+                    reasons: vec!["sun_in_sign".to_string()],
+                }],
+                dominant_houses: vec![BasicDominantHouse {
+                    house_number: 9,
+                    theme_code: "beliefs".to_string(),
+                    score: 0.2174,
+                    reasons: vec!["sun_in_house".to_string()],
+                }],
+                dominant_objects: vec![BasicDominantObject {
+                    object_code: "sun".to_string(),
+                    score: 0.4167,
+                    reasons: vec!["placement".to_string()],
+                }],
+            },
             signals: vec![BasicSignal {
                 signal_key: "object_position:sun".to_string(),
                 theme_code: Some("beliefs".to_string()),
@@ -769,6 +862,52 @@ mod tests {
     fn current_payload_requires_signals() {
         let mut payload = current_payload();
         payload.signals.clear();
+
+        assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
+    fn current_payload_rejects_unsorted_chart_emphasis() {
+        let mut payload = current_payload();
+        payload
+            .chart_emphasis
+            .dominant_objects
+            .push(BasicDominantObject {
+                object_code: "moon".to_string(),
+                score: 0.9,
+                reasons: vec!["moon_in_sign".to_string()],
+            });
+
+        assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
+    fn current_payload_rejects_weak_secondary_chart_emphasis() {
+        let mut payload = current_payload();
+        payload
+            .chart_emphasis
+            .dominant_signs
+            .push(BasicDominantSign {
+                sign_code: "taurus".to_string(),
+                score: 0.2,
+                reasons: vec!["mars_in_sign".to_string()],
+            });
+
+        assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
+    fn current_payload_rejects_placement_only_secondary_dominant_object() {
+        let mut payload = current_payload();
+        payload.chart_emphasis.dominant_objects[0].score = 0.8;
+        payload
+            .chart_emphasis
+            .dominant_objects
+            .push(BasicDominantObject {
+                object_code: "moon".to_string(),
+                score: 0.6,
+                reasons: vec!["placement".to_string()],
+            });
 
         assert!(!is_current_basic_payload(&payload));
     }

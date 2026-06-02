@@ -142,11 +142,48 @@ pub struct BasicPayload {
     pub positions: Vec<BasicObjectPosition>,
     #[serde(default)]
     pub dignities: Vec<BasicDignity>,
+    #[serde(default)]
+    pub chart_emphasis: BasicChartEmphasis,
     pub signals: Vec<BasicSignal>,
     #[serde(default)]
     pub reading_plan: Vec<BasicReadingPlanItem>,
     #[serde(default)]
     pub drafting_plan: Vec<BasicDraftingPlanItem>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BasicChartEmphasis {
+    #[serde(default)]
+    pub dominant_signs: Vec<BasicDominantSign>,
+    #[serde(default)]
+    pub dominant_houses: Vec<BasicDominantHouse>,
+    #[serde(default)]
+    pub dominant_objects: Vec<BasicDominantObject>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BasicDominantSign {
+    pub sign_code: String,
+    pub score: f64,
+    #[serde(default)]
+    pub reasons: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BasicDominantHouse {
+    pub house_number: i32,
+    pub theme_code: String,
+    pub score: f64,
+    #[serde(default)]
+    pub reasons: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BasicDominantObject {
+    pub object_code: String,
+    pub score: f64,
+    #[serde(default)]
+    pub reasons: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -3,11 +3,13 @@ use crate::dignities::{
     EssentialDignityFact,
 };
 use crate::domain::{
-    BasicDignity, BasicDraftingPlanItem, BasicLlmHandoffContract, BasicObjectPosition,
-    BasicPayload, BasicReadingPlanItem, BasicSecondarySlotCandidate, BasicSignal, NatalChartInput,
+    BasicChartEmphasis, BasicDignity, BasicDominantHouse, BasicDominantObject, BasicDominantSign,
+    BasicDraftingPlanItem, BasicLlmHandoffContract, BasicObjectPosition, BasicPayload,
+    BasicReadingPlanItem, BasicSecondarySlotCandidate, BasicSignal, NatalChartInput,
     ObjectPositionFact,
 };
 use crate::models::InterpretationSignalRow;
+use std::collections::HashMap;
 
 pub fn build_basic_payload(
     chart_calculation_id: i32,
@@ -36,6 +38,7 @@ pub fn build_basic_payload(
         .collect();
 
     let dignities = build_payload_dignities(positions, &basic_signals);
+    let chart_emphasis = build_chart_emphasis(positions, &dignities, &basic_signals);
     let reading_plan = build_reading_plan(&basic_signals);
     let drafting_plan = build_drafting_plan(&reading_plan, &basic_signals);
 
@@ -67,6 +70,7 @@ pub fn build_basic_payload(
             })
             .collect(),
         dignities,
+        chart_emphasis,
         signals: basic_signals,
         reading_plan,
         drafting_plan,
@@ -93,12 +97,13 @@ fn position_dignity_context(position: &ObjectPositionFact) -> serde_json::Value 
 
 pub fn basic_llm_handoff_contract() -> BasicLlmHandoffContract {
     BasicLlmHandoffContract {
-        contract_version: "basic_natal_structured_v4".to_string(),
+        contract_version: "basic_natal_structured_v5".to_string(),
         payload_language_code: "en".to_string(),
         target_language_policy: "provided_by_llm_service".to_string(),
         audience_level: "beginner".to_string(),
         tone: "clear, warm, non fatalistic".to_string(),
         must_use: vec![
+            "chart_emphasis".to_string(),
             "dignities".to_string(),
             "signals".to_string(),
             "reading_plan".to_string(),
@@ -153,6 +158,411 @@ fn dignity_signal_key(dignity: &EssentialDignityFact) -> String {
         )
     } else {
         String::new()
+    }
+}
+
+#[derive(Default)]
+struct EmphasisScore {
+    score: f64,
+    reasons: Vec<String>,
+}
+
+const SIGN_EMPHASIS_FULL_SCORE: f64 = 4.6;
+const HOUSE_EMPHASIS_FULL_SCORE: f64 = 4.6;
+const OBJECT_EMPHASIS_FULL_SCORE: f64 = 2.4;
+const SIGN_HOUSE_EMPHASIS_MIN_SCORE: f64 = 0.35;
+const OBJECT_EMPHASIS_MIN_SCORE: f64 = 0.5;
+
+fn build_chart_emphasis(
+    positions: &[ObjectPositionFact],
+    dignities: &[BasicDignity],
+    signals: &[BasicSignal],
+) -> BasicChartEmphasis {
+    let mut sign_scores: HashMap<String, EmphasisScore> = HashMap::new();
+    let mut house_scores: HashMap<i32, EmphasisScore> = HashMap::new();
+    let mut object_scores: HashMap<String, EmphasisScore> = HashMap::new();
+    let positions_by_object: HashMap<&str, &ObjectPositionFact> = positions
+        .iter()
+        .map(|position| (position.object_code.as_str(), position))
+        .collect();
+
+    for position in positions {
+        let object_weight = object_source_weight(&position.object_code);
+
+        add_score(
+            sign_scores.entry(position.sign_code.clone()).or_default(),
+            object_weight,
+            format!("{}_in_sign", position.object_code),
+        );
+        add_score(
+            object_scores
+                .entry(position.object_code.clone())
+                .or_default(),
+            object_weight,
+            "placement".to_string(),
+        );
+
+        if let Some(house_number) = position.house_number {
+            add_score(
+                house_scores.entry(house_number).or_default(),
+                object_weight,
+                format!("{}_in_house", position.object_code),
+            );
+        }
+    }
+
+    add_multiple_object_reasons(positions, &mut sign_scores, &mut house_scores);
+    add_dignity_emphasis(
+        dignities,
+        &positions_by_object,
+        &mut sign_scores,
+        &mut house_scores,
+        &mut object_scores,
+    );
+    add_signal_emphasis(
+        signals,
+        &mut sign_scores,
+        &mut house_scores,
+        &mut object_scores,
+    );
+    add_sign_emphasis_to_objects(positions, &sign_scores, &mut object_scores);
+
+    BasicChartEmphasis {
+        dominant_signs: normalized_signs(sign_scores),
+        dominant_houses: normalized_houses(house_scores),
+        dominant_objects: normalized_objects(object_scores),
+    }
+}
+
+fn add_multiple_object_reasons(
+    positions: &[ObjectPositionFact],
+    sign_scores: &mut HashMap<String, EmphasisScore>,
+    house_scores: &mut HashMap<i32, EmphasisScore>,
+) {
+    let mut sign_counts: HashMap<&str, usize> = HashMap::new();
+    let mut house_counts: HashMap<i32, usize> = HashMap::new();
+    for position in positions {
+        *sign_counts.entry(position.sign_code.as_str()).or_default() += 1;
+        if let Some(house_number) = position.house_number {
+            *house_counts.entry(house_number).or_default() += 1;
+        }
+    }
+
+    for (sign_code, count) in sign_counts {
+        if count >= 2 {
+            add_reason(
+                sign_scores.entry(sign_code.to_string()).or_default(),
+                "multiple_objects",
+            );
+        }
+    }
+    for (house_number, count) in house_counts {
+        if count >= 2 {
+            add_reason(
+                house_scores.entry(house_number).or_default(),
+                "multiple_objects",
+            );
+        }
+    }
+}
+
+fn add_dignity_emphasis(
+    dignities: &[BasicDignity],
+    positions_by_object: &HashMap<&str, &ObjectPositionFact>,
+    sign_scores: &mut HashMap<String, EmphasisScore>,
+    house_scores: &mut HashMap<i32, EmphasisScore>,
+    object_scores: &mut HashMap<String, EmphasisScore>,
+) {
+    for dignity in dignities {
+        let dignity_weight = dignity_emphasis_weight(dignity);
+        add_score(
+            sign_scores.entry(dignity.sign_code.clone()).or_default(),
+            dignity_weight,
+            format!("{}_{}", dignity.object_code, dignity.dignity_type),
+        );
+        add_score(
+            object_scores
+                .entry(dignity.object_code.clone())
+                .or_default(),
+            dignity_weight,
+            dignity.dignity_type.clone(),
+        );
+
+        if let Some(position) = positions_by_object.get(dignity.object_code.as_str()) {
+            if let Some(house_number) = position.house_number {
+                add_score(
+                    house_scores.entry(house_number).or_default(),
+                    dignity_weight,
+                    format!("{}_{}", dignity.object_code, dignity.dignity_type),
+                );
+            }
+        }
+    }
+}
+
+fn add_signal_emphasis(
+    signals: &[BasicSignal],
+    sign_scores: &mut HashMap<String, EmphasisScore>,
+    house_scores: &mut HashMap<i32, EmphasisScore>,
+    object_scores: &mut HashMap<String, EmphasisScore>,
+) {
+    for signal in signals {
+        if signal.signal_key.starts_with("cluster:") {
+            add_cluster_emphasis(signal, sign_scores, house_scores, object_scores);
+        } else if signal.signal_key.starts_with("aspect:") && aspect_strength_score(signal) >= 0.75
+        {
+            add_aspect_object_emphasis(signal, object_scores);
+        }
+    }
+}
+
+fn add_cluster_emphasis(
+    signal: &BasicSignal,
+    sign_scores: &mut HashMap<String, EmphasisScore>,
+    house_scores: &mut HashMap<i32, EmphasisScore>,
+    object_scores: &mut HashMap<String, EmphasisScore>,
+) {
+    let Some(evidence) = signal.evidence.as_ref() else {
+        return;
+    };
+    let cluster_weight = (signal.priority_score / 100.0).clamp(0.0, 1.0);
+
+    if let Some(sign_code) = evidence.get("sign_code").and_then(|value| value.as_str()) {
+        add_score(
+            sign_scores.entry(sign_code.to_string()).or_default(),
+            cluster_weight,
+            "sign_house_cluster".to_string(),
+        );
+    }
+    if let Some(house_number) = evidence
+        .get("house_number")
+        .and_then(|value| value.as_i64())
+    {
+        add_score(
+            house_scores.entry(house_number as i32).or_default(),
+            cluster_weight,
+            "cluster".to_string(),
+        );
+    }
+    if let Some(source_objects) = evidence
+        .get("source_objects")
+        .and_then(|value| value.as_array())
+    {
+        for object_code in source_objects.iter().filter_map(|value| value.as_str()) {
+            add_score(
+                object_scores.entry(object_code.to_string()).or_default(),
+                0.35,
+                "cluster_participant".to_string(),
+            );
+        }
+    }
+}
+
+fn add_aspect_object_emphasis(
+    signal: &BasicSignal,
+    object_scores: &mut HashMap<String, EmphasisScore>,
+) {
+    let Some(evidence) = signal.evidence.as_ref() else {
+        return;
+    };
+    let strength = aspect_strength_score(signal).clamp(0.0, 1.0);
+
+    let mut object_codes: Vec<&str> = ["source_object_code", "target_object_code"]
+        .into_iter()
+        .filter_map(|key| evidence.get(key).and_then(|value| value.as_str()))
+        .collect();
+    if object_codes.is_empty() {
+        let parts = signal.signal_key.split(':').collect::<Vec<_>>();
+        if parts.len() >= 4 {
+            object_codes.extend([parts[1], parts[2]]);
+        }
+    }
+
+    for object_code in object_codes {
+        add_score(
+            object_scores.entry(object_code.to_string()).or_default(),
+            strength * 0.35,
+            "strong_aspect_participant".to_string(),
+        );
+    }
+}
+
+fn add_sign_emphasis_to_objects(
+    positions: &[ObjectPositionFact],
+    sign_scores: &HashMap<String, EmphasisScore>,
+    object_scores: &mut HashMap<String, EmphasisScore>,
+) {
+    let Some(max_sign_score) = sign_scores
+        .values()
+        .map(|entry| entry.score)
+        .max_by(|left, right| left.partial_cmp(right).unwrap_or(std::cmp::Ordering::Equal))
+    else {
+        return;
+    };
+    if max_sign_score <= 0.0 {
+        return;
+    }
+
+    for position in positions {
+        let Some(sign_score) = sign_scores
+            .get(&position.sign_code)
+            .map(|entry| entry.score)
+        else {
+            continue;
+        };
+        let normalized_sign_score = normalized_emphasis_score(sign_score, SIGN_EMPHASIS_FULL_SCORE);
+        if sign_score >= max_sign_score * 0.85
+            && normalized_sign_score >= SIGN_HOUSE_EMPHASIS_MIN_SCORE
+        {
+            add_reason(
+                object_scores
+                    .entry(position.object_code.clone())
+                    .or_default(),
+                &format!("{}_emphasis", position.sign_code),
+            );
+        }
+    }
+}
+
+fn normalized_signs(scores: HashMap<String, EmphasisScore>) -> Vec<BasicDominantSign> {
+    let mut values: Vec<_> = scores
+        .into_iter()
+        .filter(|(_, entry)| entry.score > 0.0)
+        .map(|(sign_code, entry)| BasicDominantSign {
+            sign_code,
+            score: normalized_emphasis_score(entry.score, SIGN_EMPHASIS_FULL_SCORE),
+            reasons: entry.reasons,
+        })
+        .collect();
+    values.sort_by(|left, right| {
+        sort_emphasis(left.score, &left.sign_code, right.score, &right.sign_code)
+    });
+    retain_strong_or_top_signs(&mut values);
+    values.truncate(3);
+    values
+}
+
+fn normalized_houses(scores: HashMap<i32, EmphasisScore>) -> Vec<BasicDominantHouse> {
+    let mut values: Vec<_> = scores
+        .into_iter()
+        .filter(|(_, entry)| entry.score > 0.0)
+        .map(|(house_number, entry)| BasicDominantHouse {
+            house_number,
+            theme_code: house_theme_code(house_number).to_string(),
+            score: normalized_emphasis_score(entry.score, HOUSE_EMPHASIS_FULL_SCORE),
+            reasons: entry.reasons,
+        })
+        .collect();
+    values.sort_by(|left, right| {
+        sort_emphasis(
+            left.score,
+            &left.house_number,
+            right.score,
+            &right.house_number,
+        )
+    });
+    retain_strong_or_top_houses(&mut values);
+    values.truncate(3);
+    values
+}
+
+fn normalized_objects(scores: HashMap<String, EmphasisScore>) -> Vec<BasicDominantObject> {
+    let mut values: Vec<_> = scores
+        .into_iter()
+        .filter(|(_, entry)| entry.score > 0.0)
+        .map(|(object_code, entry)| BasicDominantObject {
+            object_code,
+            score: normalized_emphasis_score(entry.score, OBJECT_EMPHASIS_FULL_SCORE),
+            reasons: entry.reasons,
+        })
+        .collect();
+    values.sort_by(|left, right| {
+        sort_emphasis(
+            left.score,
+            &left.object_code,
+            right.score,
+            &right.object_code,
+        )
+    });
+    retain_strong_or_top_objects(&mut values);
+    values.truncate(5);
+    values
+}
+
+fn retain_strong_or_top_signs(values: &mut Vec<BasicDominantSign>) {
+    let top = values.first().cloned();
+    values.retain(|entry| entry.score >= SIGN_HOUSE_EMPHASIS_MIN_SCORE);
+    if values.is_empty() {
+        if let Some(top) = top {
+            values.push(top);
+        }
+    }
+}
+
+fn retain_strong_or_top_houses(values: &mut Vec<BasicDominantHouse>) {
+    let top = values.first().cloned();
+    values.retain(|entry| entry.score >= SIGN_HOUSE_EMPHASIS_MIN_SCORE);
+    if values.is_empty() {
+        if let Some(top) = top {
+            values.push(top);
+        }
+    }
+}
+
+fn retain_strong_or_top_objects(values: &mut Vec<BasicDominantObject>) {
+    let top = values.first().cloned();
+    values.retain(|entry| {
+        entry.score >= OBJECT_EMPHASIS_MIN_SCORE
+            && entry
+                .reasons
+                .iter()
+                .any(|reason| reason.as_str() != "placement")
+    });
+    if values.is_empty() {
+        if let Some(top) = top {
+            values.push(top);
+        }
+    }
+}
+
+fn normalized_emphasis_score(score: f64, full_score: f64) -> f64 {
+    if full_score <= 0.0 {
+        0.0
+    } else {
+        round4((score / full_score).clamp(0.0, 1.0))
+    }
+}
+
+fn sort_emphasis<T: Ord>(
+    left_score: f64,
+    left_key: &T,
+    right_score: f64,
+    right_key: &T,
+) -> std::cmp::Ordering {
+    right_score
+        .partial_cmp(&left_score)
+        .unwrap_or(std::cmp::Ordering::Equal)
+        .then_with(|| left_key.cmp(right_key))
+}
+
+fn add_score(entry: &mut EmphasisScore, score: f64, reason: String) {
+    entry.score += score;
+    add_reason(entry, &reason);
+}
+
+fn add_reason(entry: &mut EmphasisScore, reason: &str) {
+    if !entry.reasons.iter().any(|existing| existing == reason) {
+        entry.reasons.push(reason.to_string());
+    }
+}
+
+fn dignity_emphasis_weight(dignity: &BasicDignity) -> f64 {
+    match dignity.dignity_type.as_str() {
+        "domicile" => 0.65,
+        "exaltation" => 0.55,
+        "detriment" => 0.45,
+        "fall" => 0.35,
+        _ => 0.25,
     }
 }
 
@@ -356,6 +766,33 @@ fn aspect_strength_score(signal: &BasicSignal) -> f64 {
         .and_then(|evidence| evidence.get("strength_score"))
         .and_then(|value| value.as_f64())
         .unwrap_or(signal.priority_score / 80.0)
+}
+
+fn object_source_weight(object_code: &str) -> f64 {
+    match object_code {
+        "sun" | "moon" => 1.0,
+        "mercury" | "venus" | "mars" => 0.75,
+        "jupiter" | "saturn" => 0.6,
+        _ => 0.35,
+    }
+}
+
+fn house_theme_code(house_number: i32) -> &'static str {
+    match house_number {
+        1 => "identity",
+        2 => "resources",
+        3 => "communication",
+        4 => "roots",
+        5 => "creativity",
+        6 => "work_health",
+        7 => "relationships",
+        8 => "shared_resources",
+        9 => "beliefs",
+        10 => "career",
+        11 => "community",
+        12 => "inner_world",
+        _ => "object_position",
+    }
 }
 
 fn push_plan_item(
@@ -712,6 +1149,10 @@ fn position_context(position: &ObjectPositionFact, key: &str) -> Option<serde_js
         .cloned()
 }
 
+fn round4(value: f64) -> f64 {
+    (value * 10_000.0).round() / 10_000.0
+}
+
 #[cfg(test)]
 mod tests {
     use chrono::{TimeZone, Utc};
@@ -820,6 +1261,43 @@ mod tests {
         }
     }
 
+    fn capricorn_house_2_position(
+        chart_object_id: i32,
+        object_code: &str,
+        object_name: &str,
+    ) -> ObjectPositionFact {
+        ObjectPositionFact {
+            chart_object_id,
+            object_code: object_code.to_string(),
+            object_name: object_name.to_string(),
+            zodiacal_reference_system_id: 1,
+            coordinate_reference_system_id: 1,
+            sign_id: 10,
+            sign_code: "capricorn".to_string(),
+            sign_name: "Capricorn".to_string(),
+            house_id: Some(2),
+            house_number: Some(2),
+            house_name: Some("Resources".to_string()),
+            motion_state_id: Some(1),
+            horizon_position_id: None,
+            longitude_deg: 270.0 + chart_object_id as f64,
+            latitude_deg: None,
+            apparent_speed_deg_per_day: Some(1.0),
+            altitude_deg: None,
+            is_visible: None,
+            facts_json: Some(json!({
+                "sign_context": {
+                    "element": "earth",
+                    "modality": "cardinal",
+                    "polarity": "yin"
+                },
+                "house_modality": {"code": "succedent"},
+                "object_context": {"role": "planet"},
+                "motion_context": {"motion_state": "direct"}
+            })),
+        }
+    }
+
     #[test]
     fn basic_payload_exposes_semantic_signal_fields() {
         let signal = InterpretationSignalRow {
@@ -882,12 +1360,13 @@ mod tests {
                 .as_ref()
                 .expect("llm handoff contract")
                 .contract_version,
-            "basic_natal_structured_v4"
+            "basic_natal_structured_v5"
         );
         let contract = payload
             .llm_handoff_contract
             .as_ref()
             .expect("llm handoff contract");
+        assert!(contract.must_use.contains(&"chart_emphasis".to_string()));
         assert!(contract.must_use.contains(&"dignities".to_string()));
         assert_eq!(contract.payload_language_code, "en");
         assert_eq!(contract.target_language_policy, "provided_by_llm_service");
@@ -1033,6 +1512,205 @@ mod tests {
         assert!(cluster_drafting
             .avoid
             .contains(&"repeat each placement one by one".to_string()));
+    }
+
+    #[test]
+    fn basic_payload_exposes_chart_emphasis_summary() {
+        let signals = vec![
+            InterpretationSignalRow {
+                id: 1,
+                signal_key: "cluster:capricorn:house_2".to_string(),
+                theme_code: Some("resources".to_string()),
+                title: "Strong concentration in Capricorn, house 2".to_string(),
+                summary: Some("summary".to_string()),
+                priority_score: 99.0,
+                confidence_score: Some(0.9),
+                payload_json: Some(json!({
+                    "interpretive_hint": "hint",
+                    "semantic_tags": ["cluster", "capricorn", "house_2", "resources"],
+                    "source_weight": 2.35,
+                    "aggregation_group": "capricorn_house_2_cluster",
+                    "writing_guidance": "guidance",
+                    "evidence": {
+                        "fact_type": "position_cluster",
+                        "cluster_type": "sign_house",
+                        "sign_code": "capricorn",
+                        "sign_name": "Capricorn",
+                        "house_number": 2,
+                        "house_name": "Resources",
+                        "source_signals": [
+                            "object_position:sun",
+                            "object_position:saturn",
+                            "object_position:mars"
+                        ],
+                        "source_objects": ["sun", "saturn", "mars"]
+                    }
+                })),
+            },
+            placement_signal_row(2, "object_position:sun", "sun"),
+            placement_signal_row(3, "object_position:saturn", "saturn"),
+            dignity_signal_row(4, "dignity:saturn:domicile:capricorn", "saturn"),
+            aspect_signal(5, "aspect:sun:saturn:trine", "trine", 0.82),
+        ];
+        let positions = vec![
+            capricorn_house_2_position(1, "sun", "Sun"),
+            capricorn_house_2_position(7, "saturn", "Saturn"),
+            capricorn_house_2_position(5, "mars", "Mars"),
+        ];
+
+        let payload = build_basic_payload(42, &input(), &positions, &signals);
+
+        let dominant_sign = payload
+            .chart_emphasis
+            .dominant_signs
+            .first()
+            .expect("expected dominant sign");
+        assert_eq!(dominant_sign.sign_code, "capricorn");
+        assert!(dominant_sign.score >= 0.85);
+        assert!(dominant_sign.score < 1.0);
+        assert!(dominant_sign.reasons.contains(&"sun_in_sign".to_string()));
+        assert!(dominant_sign
+            .reasons
+            .contains(&"saturn_domicile".to_string()));
+        assert!(dominant_sign
+            .reasons
+            .contains(&"sign_house_cluster".to_string()));
+        assert!(dominant_sign
+            .reasons
+            .contains(&"multiple_objects".to_string()));
+
+        let dominant_house = payload
+            .chart_emphasis
+            .dominant_houses
+            .first()
+            .expect("expected dominant house");
+        assert_eq!(dominant_house.house_number, 2);
+        assert_eq!(dominant_house.theme_code, "resources");
+        assert!(dominant_house.reasons.contains(&"sun_in_house".to_string()));
+        assert!(dominant_house.reasons.contains(&"cluster".to_string()));
+
+        let saturn = payload
+            .chart_emphasis
+            .dominant_objects
+            .iter()
+            .find(|entry| entry.object_code == "saturn")
+            .expect("expected saturn emphasis");
+        assert!(saturn.score > 0.0);
+        assert!(saturn.reasons.contains(&"domicile".to_string()));
+        assert!(saturn.reasons.contains(&"cluster_participant".to_string()));
+        assert!(saturn.reasons.contains(&"capricorn_emphasis".to_string()));
+        assert!(saturn
+            .reasons
+            .contains(&"strong_aspect_participant".to_string()));
+    }
+
+    #[test]
+    fn chart_emphasis_omits_placement_only_objects_when_stronger_evidence_exists() {
+        let signals = vec![
+            placement_signal_row(1, "object_position:sun", "sun"),
+            placement_signal_row(2, "object_position:moon", "moon"),
+            placement_signal_row(3, "object_position:mercury", "mercury"),
+            dignity_signal_row(4, "dignity:mercury:domicile:gemini", "mercury"),
+        ];
+        let positions = vec![
+            position(),
+            ObjectPositionFact {
+                chart_object_id: 2,
+                object_code: "moon".to_string(),
+                object_name: "Moon".to_string(),
+                zodiacal_reference_system_id: 1,
+                coordinate_reference_system_id: 1,
+                sign_id: 7,
+                sign_code: "libra".to_string(),
+                sign_name: "Libra".to_string(),
+                house_id: Some(1),
+                house_number: Some(1),
+                house_name: Some("Self".to_string()),
+                motion_state_id: Some(1),
+                horizon_position_id: None,
+                longitude_deg: 180.0,
+                latitude_deg: None,
+                apparent_speed_deg_per_day: Some(12.0),
+                altitude_deg: None,
+                is_visible: None,
+                facts_json: Some(json!({
+                    "sign_context": {"element": "air", "modality": "cardinal", "polarity": "yang"},
+                    "house_modality": {"code": "angular"},
+                    "object_context": {"role": "luminary"},
+                    "motion_context": {"motion_state": "direct"}
+                })),
+            },
+            ObjectPositionFact {
+                chart_object_id: 3,
+                object_code: "mercury".to_string(),
+                object_name: "Mercury".to_string(),
+                zodiacal_reference_system_id: 1,
+                coordinate_reference_system_id: 1,
+                sign_id: 3,
+                sign_code: "gemini".to_string(),
+                sign_name: "Gemini".to_string(),
+                house_id: Some(9),
+                house_number: Some(9),
+                house_name: Some("Beliefs".to_string()),
+                motion_state_id: Some(1),
+                horizon_position_id: None,
+                longitude_deg: 70.0,
+                latitude_deg: None,
+                apparent_speed_deg_per_day: Some(1.0),
+                altitude_deg: None,
+                is_visible: None,
+                facts_json: Some(json!({
+                    "sign_context": {"element": "air", "modality": "mutable", "polarity": "yang"},
+                    "house_modality": {"code": "cadent"},
+                    "object_context": {"role": "planet"},
+                    "motion_context": {"motion_state": "direct"}
+                })),
+            },
+        ];
+
+        let payload = build_basic_payload(42, &input(), &positions, &signals);
+
+        assert!(payload
+            .chart_emphasis
+            .dominant_objects
+            .iter()
+            .any(|entry| entry.object_code == "mercury"));
+        assert!(!payload
+            .chart_emphasis
+            .dominant_objects
+            .iter()
+            .any(|entry| entry.object_code == "moon"
+                && entry.reasons == vec!["placement".to_string()]));
+    }
+
+    #[test]
+    fn chart_emphasis_scores_do_not_overstate_weak_distributions() {
+        let signals = vec![placement_signal_row(1, "object_position:sun", "sun")];
+        let payload = build_basic_payload(42, &input(), &[position()], &signals);
+
+        let dominant_sign = payload
+            .chart_emphasis
+            .dominant_signs
+            .first()
+            .expect("expected fallback dominant sign");
+        let dominant_house = payload
+            .chart_emphasis
+            .dominant_houses
+            .first()
+            .expect("expected fallback dominant house");
+        let dominant_object = payload
+            .chart_emphasis
+            .dominant_objects
+            .first()
+            .expect("expected fallback dominant object");
+
+        assert_eq!(dominant_sign.sign_code, "gemini");
+        assert_eq!(dominant_house.house_number, 9);
+        assert_eq!(dominant_object.object_code, "sun");
+        assert!(dominant_sign.score < 0.35);
+        assert!(dominant_house.score < 0.35);
+        assert!(dominant_object.score < 0.5);
+        assert_eq!(dominant_object.reasons, vec!["placement"]);
     }
 
     #[test]
