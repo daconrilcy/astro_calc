@@ -440,6 +440,28 @@ impl RuntimeRepository {
         Ok(())
     }
 
+    pub async fn delete_generation_payload(
+        tx: &mut Transaction<'_, Postgres>,
+        chart_calculation_id: i32,
+        product_code: &str,
+        language_id: Option<i32>,
+    ) -> Result<(), RuntimeError> {
+        sqlx::query(
+            r#"
+            DELETE FROM astral_interpretation_generation_payloads
+            WHERE chart_calculation_id = $1
+              AND product_code IS NOT DISTINCT FROM $2
+              AND language_id IS NOT DISTINCT FROM $3
+            "#,
+        )
+        .bind(chart_calculation_id)
+        .bind(product_code)
+        .bind(language_id)
+        .execute(&mut **tx)
+        .await?;
+        Ok(())
+    }
+
     pub async fn persist_generated_reading_payload(
         tx: &mut Transaction<'_, Postgres>,
         language_id: Option<i32>,

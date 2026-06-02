@@ -12,7 +12,8 @@ use crate::ephemeris::EphemerisEngine;
 use crate::idempotency::{advisory_lock_key, idempotency_key, input_hash};
 use crate::models::ChartCalculationRow;
 use crate::payload::{
-    build_basic_payload, build_fake_generated_reading, is_valid_fake_generated_reading,
+    build_basic_payload, build_fake_generated_reading, generated_product_code,
+    is_valid_fake_generated_reading,
 };
 use crate::repositories::RuntimeRepository;
 use crate::signals::aggregate_basic_signals;
@@ -118,6 +119,21 @@ where
                 aspects,
             });
             let mut payload_tx = self.repository.pool().begin().await?;
+            let generated_product_code = generated_product_code(&product_code);
+            RuntimeRepository::delete_generation_payload(
+                &mut payload_tx,
+                completed_id,
+                &product_code,
+                input.language_id,
+            )
+            .await?;
+            RuntimeRepository::delete_generation_payload(
+                &mut payload_tx,
+                completed_id,
+                &generated_product_code,
+                input.language_id,
+            )
+            .await?;
             let signals = RuntimeRepository::persist_signals(
                 &mut payload_tx,
                 completed_id,
@@ -426,36 +442,9 @@ fn has_current_drafting_language(item: &crate::domain::BasicDraftingPlanItem) ->
         .chain(std::iter::once(item.writing_objective.as_str()))
         .chain(item.avoid.iter().map(String::as_str));
 
-    fields.into_iter().all(|field| {
-        !contains_legacy_french_drafting_text(field) && !contains_non_ascii_letter(field)
-    })
-}
-
-fn contains_legacy_french_drafting_text(text: &str) -> bool {
-    const LEGACY_FRENCH_FRAGMENTS: &[&str] = &[
-        "Les reperes",
-        "Les dynamiques",
-        "Les facteurs",
-        "Une dominante",
-        "Presenter en langage",
-        "Expliquer en langage",
-        "Expliquer les principales",
-        "Montrer comment",
-        "Situer les facteurs",
-        "Rediger une section",
-        "repeter chaque",
-        "utiliser des IDs",
-        "faire une prediction",
-        "ajouter des informations",
-        "presenter un aspect",
-        "donner trop de poids",
-        "en regroupant",
-        "sans lister",
-    ];
-
-    LEGACY_FRENCH_FRAGMENTS
-        .iter()
-        .any(|fragment| text.contains(fragment))
+    fields
+        .into_iter()
+        .all(|field| !contains_non_ascii_letter(field))
 }
 
 fn contains_non_ascii_letter(text: &str) -> bool {
@@ -663,17 +652,6 @@ mod tests {
         payload.drafting_plan[0]
             .source_signal_keys
             .push("object_position:moon".to_string());
-
-        assert!(!is_current_basic_payload(&payload));
-    }
-
-    #[test]
-    fn current_payload_rejects_legacy_french_drafting_plan() {
-        let mut payload = current_payload();
-        payload.drafting_plan[0].section_title = "Les reperes centraux du theme".to_string();
-        payload.drafting_plan[0].writing_objective =
-            "Presenter en langage simple les marqueurs centraux.".to_string();
-        payload.drafting_plan[0].avoid = vec!["utiliser des IDs techniques".to_string()];
 
         assert!(!is_current_basic_payload(&payload));
     }
