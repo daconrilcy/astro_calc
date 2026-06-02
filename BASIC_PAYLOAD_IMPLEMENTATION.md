@@ -1408,3 +1408,21 @@ exemple :
   dignites accidentelles.
 - Le programme consomme les libelles des referentiels tels quels. Il ne gere pas la traduction.
 - La redaction LLM doit rester une etape ulterieure.
+
+## Organisation du module payload
+
+`rust_sqlx_connection_test/src/payload.rs` a ete remplace par le dossier
+`rust_sqlx_connection_test/src/payload/` afin de separer les responsabilites
+sans modifier le contrat public `rust_sqlx_connection_test::payload`.
+
+- `mod.rs` orchestre la construction du `BasicPayload`.
+- `angles.rs`, `dignities.rs`, `emphasis.rs`, `reading_plan.rs` et
+  `drafting_plan.rs` isolent les blocs metier du payload Basic.
+- `signal_filters.rs` centralise les predicats partages sur les signaux et
+  aspects.
+- `json.rs` centralise les extractions defensives depuis les payloads JSON.
+- `contract.rs` conserve le contrat LLM Basic v8.
+
+Ce decoupage reste volontairement simple: aucune nouvelle donnee canonique n'a
+ete ajoutee en dur, et les fonctions gardent une portee limitee au module quand
+elles ne font pas partie de l'API publique.
