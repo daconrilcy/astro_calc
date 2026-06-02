@@ -36,6 +36,14 @@ maintenant le contexte utile du signe, de la maison, de l'objet et du mouvement.
 Ces contextes alimentent aussi les signaux de placement, les tags semantiques et
 une legere ponderation de priorite.
 
+L'etape 2B ajoute un moteur MVP de dignites essentielles. Le payload expose une
+liste top-level `dignities`, les positions concernees portent un
+`dignity_context`, les placements actifs sont enrichis par leurs dignites et des
+signaux `dignity:*` sont produits uniquement pour les dignites majeures
+significatives. Les etats retrogrades gardent leur role de contexte de
+placement, mais leur resume et leur `writing_guidance` sont maintenant plus
+precis.
+
 Le runtime conserve la chaine existante :
 
 1. calcul des faits astrologiques ;
@@ -53,6 +61,7 @@ editorialement.
 - `rust_sqlx_connection_test/src/facts.rs` : helpers de libelles signe/maison.
 - `rust_sqlx_connection_test/src/ephemeris.rs` : enrichissement des positions calculees.
 - `rust_sqlx_connection_test/src/aspects.rs` : detection des aspects avec libelles objet/aspect.
+- `rust_sqlx_connection_test/src/dignities.rs` : detection MVP des dignites essentielles majeures.
 - `rust_sqlx_connection_test/src/signals.rs` : construction et filtrage des signaux Basic.
 - `rust_sqlx_connection_test/src/payload.rs` : assemblage du payload final.
 - `rust_sqlx_connection_test/src/repositories.rs` : enrichissement SQL et persistance.
@@ -101,7 +110,16 @@ Chaque position expose maintenant les champs lisibles en plus des IDs :
     "motion_state": "direct",
     "label": "Direct",
     "motion_family": "forward"
-  }
+  },
+  "dignity_context": [
+    {
+      "fact_type": "essential_dignity",
+      "dignity_type": "domicile",
+      "dignity_label": "Domicile",
+      "polarity": "dignity",
+      "strength_score": 1.0
+    }
+  ]
 }
 ```
 
@@ -117,8 +135,14 @@ Le calcul geometrique conserve seulement les operations derivees de la
 longitude : slot zodiacal et numero de maison. Les IDs, codes et noms de signes
 ou de maisons sont resolus depuis les tables. Le runtime refuse de calculer si
 les 12 signes ou les 12 maisons ne sont pas presents ou si les references sont
-ambigues. Le contrat Basic v2 refuse aussi de reutiliser un payload existant si
+ambigues. Le contrat Basic v3 refuse aussi de reutiliser un payload existant si
 les contextes de placement utiles sont absents ou incomplets.
+
+Depuis 2B, `dignity_context` est absent quand l'objet ne recoit aucune dignite
+essentielle majeure reconnue par le MVP. Il est expose comme tableau, car
+certains placements peuvent cumuler deux dignites classiques, par exemple
+Mercure en Vierge (`domicile` et `exaltation`) ou Mercure en Poissons
+(`detriment` et `fall`).
 
 ## Contrat des signaux
 
@@ -183,8 +207,10 @@ preuves techniques dans `evidence` :
         "motion_state": "direct",
         "label": "Direct",
         "motion_family": "forward"
-      }
-    }
+      },
+      "dignity_context": []
+    },
+    "essential_dignities": []
   }
 }
 ```
@@ -277,6 +303,96 @@ Les tags semantiques des placements integrent aussi les codes utiles comme
 placement est legerement ajustee par la modalite de maison : angular augmente le
 poids, succedent l'augmente faiblement, cadent le baisse faiblement.
 
+### Champs de dignite 2B
+
+Les champs ajoutes par l'etape 2B sont :
+
+- `dignities` : liste top-level des dignites essentielles detectees dans le
+  theme, avec objet, signe, type de dignite, polarite, score et eventuel
+  `signal_key` actif associe.
+- `positions[].dignity_context` : preuve courte de dignite pour la position,
+  exposee comme tableau quand plusieurs dignites s'appliquent.
+- `signals[].evidence.essential_dignities` : tableau de preuves de dignite
+  rattache a un signal de placement.
+- `dignity:*` : signaux autonomes produits seulement pour les dignites majeures
+  significatives.
+
+Exemple top-level :
+
+```json
+{
+  "dignities": [
+    {
+      "object_code": "saturn",
+      "object_name": "Saturn",
+      "sign_id": 10,
+      "sign_code": "capricorn",
+      "sign_name": "Capricorn",
+      "dignity_type": "domicile",
+      "dignity_label": "Domicile",
+      "polarity": "dignity",
+      "strength_score": 1.0,
+      "signal_key": "dignity:saturn:domicile:capricorn"
+    }
+  ]
+}
+```
+
+Exemple de signal de dignite :
+
+```json
+{
+  "signal_key": "dignity:saturn:domicile:capricorn",
+  "theme_code": "functional_strength",
+  "title": "Saturn strongly placed in Capricorn",
+  "summary": "Saturn is in Capricorn, a sign where its function is reinforced by domicile.",
+  "priority_score": 88.0,
+  "confidence_score": 0.95,
+  "interpretive_hint": "Treat Saturn in Capricorn as a domicile modifier for the existing placement signal.",
+  "semantic_tags": [
+    "dignity",
+    "saturn",
+    "capricorn",
+    "domicile",
+    "functional_strength",
+    "structure",
+    "responsibility"
+  ],
+  "source_weight": 0.75,
+  "aggregation_group": "dignity:saturn",
+  "writing_guidance": "Use this to strengthen the object's placement signal without overstating ease or outcome.",
+  "evidence": {
+    "fact_type": "essential_dignity",
+    "chart_object": "saturn",
+    "sign_code": "capricorn",
+    "dignity_type": "domicile",
+    "polarity": "dignity",
+    "strength_score": 1.0,
+    "is_major": true
+  }
+}
+```
+
+Les dignites modifient les placements de facon moderee :
+
+- le `priority_score` d'un placement recoit un delta borne a `+9.0` meme si
+  plusieurs dignites s'appliquent ;
+- le `source_weight` d'un placement recoit un delta borne a `+0.2` ;
+- les signaux `dignity:*` ont leur propre `priority_score`, mais restent soumis
+  au filtrage Basic de 12 signaux actifs ;
+- les dignites actives liees a un objet selectionne dans `reading_plan` sont
+  ajoutees aux sources du slot, y compris quand le placement de l'objet a ete
+  fusionne dans un cluster.
+
+Le MVP couvre les dignites essentielles majeures par signe :
+
+- `domicile` ;
+- `exaltation` ;
+- `detriment` ;
+- `fall`.
+
+Il ne couvre pas encore les dignites mineures par triplicite, terme ou face.
+
 ## Signaux agreges Basic
 
 L'etape 1B ajoute un premier type de signal agrege :
@@ -336,6 +452,8 @@ Le filtrage est applique dans `signals.rs` :
 
 - les signaux sont tries par `priority_score` decroissant ;
 - les aspects dont `strength_score < 0.4` passent en `suppressed` ;
+- les signaux `dignity:*` sont ajoutes avant le tri final quand la dignite est
+  majeure et suffisamment significative ;
 - les clusters semantiques sont ajoutes avant le tri final ;
 - les sources secondaires d'un cluster retenu actif passent en `merged`, sauf
   Soleil, Lune, Ascendant et MC qui restent actifs comme marqueurs centraux ;
@@ -380,7 +498,8 @@ Le payload final contient maintenant `reading_plan` :
       "title": "Dominant repeated theme",
       "source_signal_keys": [
         "cluster:capricorn:house_2",
-        "object_position:sun"
+        "object_position:sun",
+        "dignity:saturn:domicile:capricorn"
       ]
     },
     {
@@ -398,11 +517,13 @@ Le plan est construit dans `payload.rs` a partir des signaux actifs, avec les
 slots suivants quand les sources correspondantes existent :
 
 - `core_identity` : Soleil, Lune, Ascendant, MC ;
-- `dominant_cluster` : premier cluster actif et sources actives associees ;
+- `dominant_cluster` : premier cluster actif, sources actives associees et
+  dignites actives des objets sources ;
 - `main_tension_or_support` : jusqu'a trois aspects actifs prioritaires ;
-- `expression_style` : Mercure, Venus, Mars ;
+- `expression_style` : Mercure, Venus, Mars, avec leurs dignites actives si
+  elles sont presentes ;
 - `background_factors` : Jupiter, Saturne, Uranus, Neptune, Pluton si encore
-  actifs.
+  actifs, avec leurs dignites actives si elles sont presentes.
 
 Pour eviter une lecture trop lisse, `main_tension_or_support` force maintenant
 l'inclusion d'au moins un aspect de tension fort quand un carre ou une opposition
@@ -418,12 +539,13 @@ doit respecter :
 ```json
 {
   "llm_handoff_contract": {
-    "contract_version": "basic_natal_structured_v2",
+    "contract_version": "basic_natal_structured_v3",
     "payload_language_code": "en",
     "target_language_policy": "provided_by_llm_service",
     "audience_level": "beginner",
     "tone": "clear, warm, non fatalistic",
     "must_use": [
+      "dignities",
       "signals",
       "reading_plan",
       "drafting_plan"
@@ -460,9 +582,10 @@ une langue cible finale.
       "section_title": "A Capricorn dominant theme around Resources",
       "source_signal_keys": [
         "cluster:capricorn:house_2",
-        "object_position:sun"
+        "object_position:sun",
+        "dignity:saturn:domicile:capricorn"
       ],
-      "writing_objective": "Explain in plain language that the chart emphasizes Capricorn, Resources, and structure, responsibility, security, grouping the related placements instead of enumerating them.",
+      "writing_objective": "Explain in plain language that the chart emphasizes Capricorn, Resources, and structure, responsibility, security, grouping the related placements and the Saturn dignity context instead of enumerating them.",
       "max_words": 120,
       "avoid": [
         "repeat each placement one by one",
@@ -541,13 +664,19 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
 - 12 signaux maximum ;
 - au moins un signal ;
 - `llm_handoff_contract` present et conforme au contrat canonique
-  `basic_natal_structured_v2` ;
+  `basic_natal_structured_v3` ;
+- `dignities` structurees presentes et coherentes avec les signaux
+  `dignity:*` actifs ;
 - positions avec `sign_code`, `sign_name`, `sign_context`, `house_modality`,
-  `object_context` et `motion_context` ;
+  `object_context`, `motion_context` et le cas echeant `dignity_context` ;
 - signaux avec `evidence` ;
 - signaux avec `theme_code`, `interpretive_hint`, `semantic_tags`,
   `aggregation_group` et `writing_guidance` non vides ;
 - signaux de placement avec `evidence.placement_context` complet ;
+- signaux de placement avec `evidence.essential_dignities` sous forme de
+  tableau ;
+- signaux `dignity:*` rattaches a une entree correspondante dans
+  `payload.dignities` ;
 - `reading_plan` present, non vide, compose de slots uniques et de sources qui
   existent dans les signaux du payload ;
 - `drafting_plan` present, non vide, aligne sur les slots et sources du
@@ -586,14 +715,20 @@ Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
 - `product_code = "basic"` ;
 - `llm_handoff_contract.payload_language_code = "en"` ;
 - `llm_handoff_contract.target_language_policy = "provided_by_llm_service"` ;
+- `llm_handoff_contract.contract_version = "basic_natal_structured_v3"` ;
 - des positions avec `sign_code`, `sign_name`, `house_number`, `house_name`,
-  `sign_context`, `house_modality`, `object_context` et `motion_context` ;
+  `sign_context`, `house_modality`, `object_context`, `motion_context` et
+  `dignity_context` quand une dignite est detectee ;
+- une liste `dignities` top-level, vide ou non selon le theme, mais coherente
+  avec les signaux `dignity:*` actifs ;
 - au plus 12 signaux ;
 - un `reading_plan` non vide ;
 - un `drafting_plan` non vide et aligne sur le `reading_plan` ;
 - des titres sans IDs techniques ;
 - des champs semantiques 1B sur chaque signal ;
 - un `evidence.placement_context` complet sur chaque signal de placement ;
+- un `evidence.essential_dignities` tableau sur chaque signal de placement ;
+- des signaux `dignity:*` seulement pour les dignites majeures significatives ;
 - un cluster `cluster:<sign_code>:house_<number>` quand au moins trois objets
   partagent le meme signe et la meme maison ;
 - des IDs conserves dans `evidence` ;
@@ -618,5 +753,8 @@ exemple :
 - Les `interpretive_hint` et `writing_guidance` restent aussi des templates.
 - Les clusters Basic ne couvrent pour l'instant que les concentrations
   `sign_house`.
+- Le moteur de dignites 2B est un MVP code-side. Il couvre les dignites
+  essentielles majeures par signe, pas encore les dignites mineures ni les
+  dignites accidentelles.
 - Le programme consomme les libelles des referentiels tels quels. Il ne gere pas la traduction.
 - La redaction LLM doit rester une etape ulterieure.

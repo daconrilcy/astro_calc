@@ -132,11 +132,27 @@ pub struct BasicPayload {
     #[serde(default)]
     pub llm_handoff_contract: Option<BasicLlmHandoffContract>,
     pub positions: Vec<BasicObjectPosition>,
+    #[serde(default)]
+    pub dignities: Vec<BasicDignity>,
     pub signals: Vec<BasicSignal>,
     #[serde(default)]
     pub reading_plan: Vec<BasicReadingPlanItem>,
     #[serde(default)]
     pub drafting_plan: Vec<BasicDraftingPlanItem>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BasicDignity {
+    pub object_code: String,
+    pub object_name: String,
+    pub sign_id: i32,
+    pub sign_code: String,
+    pub sign_name: String,
+    pub dignity_type: String,
+    pub dignity_label: String,
+    pub polarity: String,
+    pub strength_score: f64,
+    pub signal_key: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -175,6 +191,8 @@ pub struct BasicObjectPosition {
     pub object_context: Option<Value>,
     #[serde(default)]
     pub motion_context: Option<Value>,
+    #[serde(default)]
+    pub dignity_context: Option<Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

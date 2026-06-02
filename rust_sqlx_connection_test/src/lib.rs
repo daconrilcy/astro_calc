@@ -1,6 +1,7 @@
 pub mod aspects;
 pub mod config;
 pub mod db;
+pub mod dignities;
 pub mod domain;
 pub mod ephemeris;
 pub mod facts;

@@ -274,6 +274,7 @@ fn is_current_basic_payload(payload: &BasicPayload) -> bool {
     !payload.signals.is_empty()
         && payload.signals.len() <= 12
         && has_current_llm_handoff_contract(payload)
+        && has_current_dignities(payload)
         && has_current_reading_plan(payload)
         && has_current_drafting_plan(payload)
         && payload.positions.iter().all(has_current_position_context)
@@ -298,12 +299,12 @@ fn has_current_llm_handoff_contract(payload: &BasicPayload) -> bool {
         return false;
     };
 
-    contract.contract_version == "basic_natal_structured_v2"
+    contract.contract_version == "basic_natal_structured_v3"
         && contract.payload_language_code == "en"
         && contract.target_language_policy == "provided_by_llm_service"
         && contract.audience_level == "beginner"
         && contract.tone == "clear, warm, non fatalistic"
-        && contract.must_use.as_slice() == ["signals", "reading_plan", "drafting_plan"]
+        && contract.must_use.as_slice() == ["dignities", "signals", "reading_plan", "drafting_plan"]
         && contract.must_not.as_slice()
             == [
                 "invent facts not present in source signals",
@@ -314,6 +315,43 @@ fn has_current_llm_handoff_contract(payload: &BasicPayload) -> bool {
                 "make deterministic or fatalistic predictions",
             ]
         && contract.output_format == "structured_sections"
+}
+
+fn has_current_dignities(payload: &BasicPayload) -> bool {
+    let all_dignities_are_valid = payload.dignities.iter().all(|dignity| {
+        !dignity.object_code.trim().is_empty()
+            && !dignity.object_name.trim().is_empty()
+            && !dignity.sign_code.trim().is_empty()
+            && !dignity.sign_name.trim().is_empty()
+            && !dignity.dignity_type.trim().is_empty()
+            && !dignity.dignity_label.trim().is_empty()
+            && matches!(dignity.polarity.as_str(), "dignity" | "debility")
+            && dignity.strength_score > 0.0
+            && dignity.signal_key.as_deref().is_none_or(|signal_key| {
+                payload
+                    .signals
+                    .iter()
+                    .any(|signal| signal.signal_key == signal_key)
+            })
+    });
+
+    all_dignities_are_valid
+        && payload
+            .signals
+            .iter()
+            .filter(|signal| signal.signal_key.starts_with("dignity:"))
+            .all(|signal| {
+                payload
+                    .dignities
+                    .iter()
+                    .any(|dignity| dignity.signal_key.as_deref() == Some(&signal.signal_key))
+                    && signal
+                        .evidence
+                        .as_ref()
+                        .and_then(|evidence| evidence.get("fact_type"))
+                        .and_then(|value| value.as_str())
+                        == Some("essential_dignity")
+            })
 }
 
 fn has_current_reading_plan(payload: &BasicPayload) -> bool {
@@ -481,8 +519,8 @@ mod tests {
 
     use super::*;
     use crate::domain::{
-        BasicDraftingPlanItem, BasicLlmHandoffContract, BasicObjectPosition, BasicReadingPlanItem,
-        BasicSignal,
+        BasicDignity, BasicDraftingPlanItem, BasicLlmHandoffContract, BasicObjectPosition,
+        BasicReadingPlanItem, BasicSignal,
     };
     use crate::models::{HouseReference, SignReference};
 
@@ -494,12 +532,13 @@ mod tests {
             subject_label: None,
             birth_datetime_utc: Utc.with_ymd_and_hms(2024, 6, 15, 12, 0, 0).unwrap(),
             llm_handoff_contract: Some(BasicLlmHandoffContract {
-                contract_version: "basic_natal_structured_v2".to_string(),
+                contract_version: "basic_natal_structured_v3".to_string(),
                 payload_language_code: "en".to_string(),
                 target_language_policy: "provided_by_llm_service".to_string(),
                 audience_level: "beginner".to_string(),
                 tone: "clear, warm, non fatalistic".to_string(),
                 must_use: vec![
+                    "dignities".to_string(),
                     "signals".to_string(),
                     "reading_plan".to_string(),
                     "drafting_plan".to_string(),
@@ -546,7 +585,9 @@ mod tests {
                     "label": "Direct",
                     "motion_family": "forward"
                 })),
+                dignity_context: None,
             }],
+            dignities: Vec::new(),
             signals: vec![BasicSignal {
                 signal_key: "object_position:sun".to_string(),
                 theme_code: Some("beliefs".to_string()),
@@ -653,6 +694,47 @@ mod tests {
         }));
 
         assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
+    fn current_payload_rejects_dignity_signal_without_structured_dignity() {
+        let mut payload = current_payload();
+        payload.signals.push(BasicSignal {
+            signal_key: "dignity:saturn:domicile:capricorn".to_string(),
+            theme_code: Some("functional_strength".to_string()),
+            title: "Saturn strongly placed in Capricorn".to_string(),
+            summary: Some("summary".to_string()),
+            priority_score: 88.0,
+            confidence_score: Some(0.95),
+            interpretive_hint: Some("hint".to_string()),
+            semantic_tags: vec!["dignity".to_string(), "saturn".to_string()],
+            source_weight: Some(0.75),
+            aggregation_group: Some("dignity:saturn".to_string()),
+            writing_guidance: Some("guidance".to_string()),
+            evidence: Some(json!({
+                "fact_type": "essential_dignity",
+                "chart_object": "saturn",
+                "sign_code": "capricorn",
+                "dignity_type": "domicile"
+            })),
+        });
+
+        assert!(!is_current_basic_payload(&payload));
+
+        payload.dignities.push(BasicDignity {
+            object_code: "saturn".to_string(),
+            object_name: "Saturn".to_string(),
+            sign_id: 10,
+            sign_code: "capricorn".to_string(),
+            sign_name: "Capricorn".to_string(),
+            dignity_type: "domicile".to_string(),
+            dignity_label: "Domicile".to_string(),
+            polarity: "dignity".to_string(),
+            strength_score: 1.0,
+            signal_key: Some("dignity:saturn:domicile:capricorn".to_string()),
+        });
+
+        assert!(is_current_basic_payload(&payload));
     }
 
     #[test]

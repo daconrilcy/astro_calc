@@ -1,6 +1,10 @@
+use crate::dignities::{
+    dignity_is_signal_worthy, essential_dignities_for_position, essential_dignities_for_positions,
+    EssentialDignityFact,
+};
 use crate::domain::{
-    BasicDraftingPlanItem, BasicLlmHandoffContract, BasicObjectPosition, BasicPayload,
-    BasicReadingPlanItem, BasicSignal, NatalChartInput, ObjectPositionFact,
+    BasicDignity, BasicDraftingPlanItem, BasicLlmHandoffContract, BasicObjectPosition,
+    BasicPayload, BasicReadingPlanItem, BasicSignal, NatalChartInput, ObjectPositionFact,
 };
 use crate::models::InterpretationSignalRow;
 
@@ -29,6 +33,7 @@ pub fn build_basic_payload(
         })
         .collect();
 
+    let dignities = build_payload_dignities(positions, &basic_signals);
     let reading_plan = build_reading_plan(&basic_signals);
     let drafting_plan = build_drafting_plan(&reading_plan, &basic_signals);
 
@@ -56,22 +61,47 @@ pub fn build_basic_payload(
                 house_modality: position_context(position, "house_modality"),
                 object_context: position_context(position, "object_context"),
                 motion_context: position_context(position, "motion_context"),
+                dignity_context: position_dignity_context(position),
             })
             .collect(),
+        dignities,
         signals: basic_signals,
         reading_plan,
         drafting_plan,
     }
 }
 
+fn position_dignity_context(position: &ObjectPositionFact) -> Option<serde_json::Value> {
+    let dignities = essential_dignities_for_position(position);
+    if dignities.is_empty() {
+        None
+    } else {
+        Some(serde_json::Value::Array(
+            dignities
+                .into_iter()
+                .map(|dignity| {
+                    serde_json::json!({
+                        "fact_type": "essential_dignity",
+                        "dignity_type": dignity.dignity_type,
+                        "dignity_label": dignity.dignity_label,
+                        "polarity": dignity.polarity,
+                        "strength_score": dignity.strength_score,
+                    })
+                })
+                .collect(),
+        ))
+    }
+}
+
 pub fn basic_llm_handoff_contract() -> BasicLlmHandoffContract {
     BasicLlmHandoffContract {
-        contract_version: "basic_natal_structured_v2".to_string(),
+        contract_version: "basic_natal_structured_v3".to_string(),
         payload_language_code: "en".to_string(),
         target_language_policy: "provided_by_llm_service".to_string(),
         audience_level: "beginner".to_string(),
         tone: "clear, warm, non fatalistic".to_string(),
         must_use: vec![
+            "dignities".to_string(),
             "signals".to_string(),
             "reading_plan".to_string(),
             "drafting_plan".to_string(),
@@ -85,6 +115,46 @@ pub fn basic_llm_handoff_contract() -> BasicLlmHandoffContract {
             "make deterministic or fatalistic predictions".to_string(),
         ],
         output_format: "structured_sections".to_string(),
+    }
+}
+
+fn build_payload_dignities(
+    positions: &[ObjectPositionFact],
+    signals: &[BasicSignal],
+) -> Vec<BasicDignity> {
+    essential_dignities_for_positions(positions)
+        .into_iter()
+        .map(|dignity| {
+            let signal_key = dignity_signal_key(&dignity);
+            let signal_key = signals
+                .iter()
+                .any(|signal| signal.signal_key == signal_key)
+                .then_some(signal_key);
+
+            BasicDignity {
+                object_code: dignity.object_code,
+                object_name: dignity.object_name,
+                sign_id: dignity.sign_id,
+                sign_code: dignity.sign_code,
+                sign_name: dignity.sign_name,
+                dignity_type: dignity.dignity_type,
+                dignity_label: dignity.dignity_label,
+                polarity: dignity.polarity,
+                strength_score: dignity.strength_score,
+                signal_key,
+            }
+        })
+        .collect()
+}
+
+fn dignity_signal_key(dignity: &EssentialDignityFact) -> String {
+    if dignity_is_signal_worthy(dignity) {
+        format!(
+            "dignity:{}:{}:{}",
+            dignity.object_code, dignity.dignity_type, dignity.sign_code
+        )
+    } else {
+        String::new()
     }
 }
 
@@ -119,6 +189,7 @@ fn build_reading_plan(signals: &[BasicSignal]) -> Vec<BasicReadingPlanItem> {
                 })
                 .map(ToString::to_string),
         );
+        source_signal_keys.extend(cluster_source_dignity_keys(signals, cluster));
         dedupe_strings(&mut source_signal_keys);
 
         push_plan_item(
@@ -235,12 +306,37 @@ fn signal_keys_for_objects(
         if signals.iter().any(|signal| signal.signal_key == signal_key) {
             keys.push(signal_key);
         }
+        keys.extend(dignity_signal_keys_for_object(signals, object_code));
         if keys.len() >= limit {
             break;
         }
     }
 
+    keys.truncate(limit);
+    dedupe_strings(&mut keys);
     keys
+}
+
+fn cluster_source_dignity_keys(signals: &[BasicSignal], cluster: &BasicSignal) -> Vec<String> {
+    cluster
+        .evidence
+        .as_ref()
+        .and_then(|evidence| evidence.get("source_objects"))
+        .and_then(|value| value.as_array())
+        .into_iter()
+        .flatten()
+        .filter_map(|value| value.as_str())
+        .flat_map(|object_code| dignity_signal_keys_for_object(signals, object_code))
+        .collect()
+}
+
+fn dignity_signal_keys_for_object(signals: &[BasicSignal], object_code: &str) -> Vec<String> {
+    let prefix = format!("dignity:{object_code}:");
+    signals
+        .iter()
+        .filter(|signal| signal.signal_key.starts_with(&prefix))
+        .map(|signal| signal.signal_key.clone())
+        .collect()
 }
 
 fn dedupe_strings(values: &mut Vec<String>) {
@@ -535,6 +631,45 @@ mod tests {
         }
     }
 
+    fn saturn_capricorn_position() -> ObjectPositionFact {
+        ObjectPositionFact {
+            chart_object_id: 7,
+            object_code: "saturn".to_string(),
+            object_name: "Saturn".to_string(),
+            zodiacal_reference_system_id: 1,
+            coordinate_reference_system_id: 1,
+            sign_id: 10,
+            sign_code: "capricorn".to_string(),
+            sign_name: "Capricorn".to_string(),
+            house_id: Some(2),
+            house_number: Some(2),
+            house_name: Some("Resources".to_string()),
+            motion_state_id: Some(1),
+            horizon_position_id: None,
+            longitude_deg: 276.0,
+            latitude_deg: None,
+            apparent_speed_deg_per_day: Some(0.05),
+            altitude_deg: None,
+            is_visible: None,
+            facts_json: Some(json!({
+                "sign_context": {
+                    "element": "earth",
+                    "modality": "cardinal",
+                    "polarity": "yin"
+                },
+                "house_modality": {
+                    "code": "succedent"
+                },
+                "object_context": {
+                    "role": "planet"
+                },
+                "motion_context": {
+                    "motion_state": "direct"
+                }
+            })),
+        }
+    }
+
     #[test]
     fn basic_payload_exposes_semantic_signal_fields() {
         let signal = InterpretationSignalRow {
@@ -597,12 +732,13 @@ mod tests {
                 .as_ref()
                 .expect("llm handoff contract")
                 .contract_version,
-            "basic_natal_structured_v2"
+            "basic_natal_structured_v3"
         );
         let contract = payload
             .llm_handoff_contract
             .as_ref()
             .expect("llm handoff contract");
+        assert!(contract.must_use.contains(&"dignities".to_string()));
         assert_eq!(contract.payload_language_code, "en");
         assert_eq!(contract.target_language_policy, "provided_by_llm_service");
         assert!(contract.must_use.contains(&"signals".to_string()));
@@ -723,6 +859,137 @@ mod tests {
     }
 
     #[test]
+    fn basic_payload_exposes_structured_dignities() {
+        let signal = InterpretationSignalRow {
+            id: 1,
+            signal_key: "dignity:saturn:domicile:capricorn".to_string(),
+            theme_code: Some("functional_strength".to_string()),
+            title: "Saturn strongly placed in Capricorn".to_string(),
+            summary: Some("summary".to_string()),
+            priority_score: 88.0,
+            confidence_score: Some(0.95),
+            payload_json: Some(json!({
+                "interpretive_hint": "hint",
+                "semantic_tags": ["dignity", "saturn", "capricorn", "domicile"],
+                "source_weight": 0.75,
+                "aggregation_group": "dignity:saturn",
+                "writing_guidance": "guidance",
+                "evidence": {
+                    "fact_type": "essential_dignity",
+                    "chart_object": "saturn",
+                    "sign_code": "capricorn",
+                    "dignity_type": "domicile"
+                }
+            })),
+        };
+
+        let position = saturn_capricorn_position();
+        let payload = build_basic_payload(42, &input(), &[position], &[signal]);
+
+        assert_eq!(payload.dignities.len(), 1);
+        assert_eq!(payload.dignities[0].object_code, "saturn");
+        assert_eq!(payload.dignities[0].dignity_type, "domicile");
+        assert_eq!(
+            payload.dignities[0].signal_key.as_deref(),
+            Some("dignity:saturn:domicile:capricorn")
+        );
+        assert_eq!(
+            payload.positions[0]
+                .dignity_context
+                .as_ref()
+                .and_then(|context| context.as_array())
+                .and_then(|context| context.first())
+                .and_then(|context| context.get("dignity_type"))
+                .and_then(|value| value.as_str()),
+            Some("domicile")
+        );
+    }
+
+    #[test]
+    fn reading_plan_uses_active_dignity_signals() {
+        let signals = vec![
+            InterpretationSignalRow {
+                id: 1,
+                signal_key: "cluster:capricorn:house_2".to_string(),
+                theme_code: Some("resources".to_string()),
+                title: "Strong concentration in Capricorn, house 2".to_string(),
+                summary: Some("summary".to_string()),
+                priority_score: 99.0,
+                confidence_score: Some(0.9),
+                payload_json: Some(json!({
+                    "interpretive_hint": "hint",
+                    "semantic_tags": ["cluster", "capricorn", "house_2"],
+                    "source_weight": 2.0,
+                    "aggregation_group": "capricorn_house_2_cluster",
+                    "writing_guidance": "guidance",
+                    "evidence": {
+                        "fact_type": "position_cluster",
+                        "sign_name": "Capricorn",
+                        "house_name": "Resources",
+                        "source_signals": ["object_position:sun", "object_position:saturn"],
+                        "source_objects": ["sun", "saturn"]
+                    }
+                })),
+            },
+            InterpretationSignalRow {
+                id: 2,
+                signal_key: "object_position:sun".to_string(),
+                theme_code: Some("resources".to_string()),
+                title: "Sun in Capricorn, house 2".to_string(),
+                summary: Some("summary".to_string()),
+                priority_score: 100.0,
+                confidence_score: Some(0.95),
+                payload_json: Some(json!({
+                    "interpretive_hint": "hint",
+                    "semantic_tags": ["placement", "sun"],
+                    "source_weight": 1.0,
+                    "aggregation_group": "capricorn:house_2",
+                    "writing_guidance": "guidance",
+                    "evidence": {"fact_type": "object_position", "object_code": "sun"}
+                })),
+            },
+            dignity_signal_row(3, "dignity:saturn:domicile:capricorn", "saturn"),
+            InterpretationSignalRow {
+                id: 4,
+                signal_key: "object_position:jupiter".to_string(),
+                theme_code: Some("shared_resources".to_string()),
+                title: "Jupiter in Cancer, house 8".to_string(),
+                summary: Some("summary".to_string()),
+                priority_score: 81.75,
+                confidence_score: Some(0.95),
+                payload_json: Some(json!({
+                    "interpretive_hint": "hint",
+                    "semantic_tags": ["placement", "jupiter"],
+                    "source_weight": 0.75,
+                    "aggregation_group": "cancer:house_8",
+                    "writing_guidance": "guidance",
+                    "evidence": {"fact_type": "object_position", "object_code": "jupiter"}
+                })),
+            },
+            dignity_signal_row(5, "dignity:jupiter:exaltation:cancer", "jupiter"),
+        ];
+
+        let payload = build_basic_payload(42, &input(), &[position()], &signals);
+        let cluster_plan = payload
+            .reading_plan
+            .iter()
+            .find(|item| item.slot == "dominant_cluster")
+            .expect("expected cluster plan");
+        let background_plan = payload
+            .reading_plan
+            .iter()
+            .find(|item| item.slot == "background_factors")
+            .expect("expected background plan");
+
+        assert!(cluster_plan
+            .source_signal_keys
+            .contains(&"dignity:saturn:domicile:capricorn".to_string()));
+        assert!(background_plan
+            .source_signal_keys
+            .contains(&"dignity:jupiter:exaltation:cancer".to_string()));
+    }
+
+    #[test]
     fn main_dynamic_aspects_include_strong_tension_when_available() {
         let signals = vec![
             aspect_signal(1, "aspect:moon:neptune:sextile", "sextile", 0.95),
@@ -771,6 +1038,29 @@ mod tests {
                     "aspect_code": aspect_code,
                     "aspect_name": aspect_code,
                     "strength_score": strength_score
+                }
+            })),
+        }
+    }
+
+    fn dignity_signal_row(id: i32, signal_key: &str, object_code: &str) -> InterpretationSignalRow {
+        InterpretationSignalRow {
+            id,
+            signal_key: signal_key.to_string(),
+            theme_code: Some("functional_strength".to_string()),
+            title: format!("{object_code} dignity"),
+            summary: Some("summary".to_string()),
+            priority_score: 86.0,
+            confidence_score: Some(0.95),
+            payload_json: Some(json!({
+                "interpretive_hint": "hint",
+                "semantic_tags": ["dignity", object_code],
+                "source_weight": 0.75,
+                "aggregation_group": format!("dignity:{object_code}"),
+                "writing_guidance": "guidance",
+                "evidence": {
+                    "fact_type": "essential_dignity",
+                    "chart_object": object_code
                 }
             })),
         }

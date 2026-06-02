@@ -2,6 +2,11 @@ use std::collections::HashMap;
 
 use serde_json::json;
 
+use crate::dignities::{
+    dignity_is_signal_worthy, dignity_priority_delta_for_position, dignity_source_weight_delta,
+    dignity_source_weight_delta_for_position, essential_dignities_for_position,
+    essential_dignities_for_positions, EssentialDignityFact,
+};
 use crate::domain::{CalculatedChartFacts, InterpretationSignalDraft, ObjectPositionFact};
 
 const BASIC_MAX_ACTIVE_SIGNALS: usize = 12;
@@ -20,10 +25,16 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
             .as_deref()
             .map(|house_name| format!(" and the {house_name} house"))
             .unwrap_or_default();
+        let dignities = essential_dignities_for_position(position);
         let semantic_tags = position_semantic_tags(position);
-        let source_weight = object_source_weight(&position.object_code);
+        let source_weight = round4(
+            object_source_weight(&position.object_code)
+                + dignity_source_weight_delta_for_position(position),
+        );
         let theme_code = position_theme_code(position);
         let aggregation_group = position_aggregation_group(position);
+        let dignity_summary = dignity_summary_for_position(&dignities);
+        let motion_summary = retrograde_summary(position);
 
         signals.push(InterpretationSignalDraft {
             signal_key: format!("object_position:{}", position.object_code),
@@ -34,8 +45,12 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
                 position.object_name, position.sign_name, house_suffix
             ),
             summary: Some(format!(
-                "{} is placed in {}{}, emphasizing this chart factor through a concrete, readable placement.",
-                position.object_name, position.sign_name, summary_house
+                "{} is placed in {}{}, emphasizing this chart factor through a concrete, readable placement.{}{}",
+                position.object_name,
+                position.sign_name,
+                summary_house,
+                dignity_summary,
+                motion_summary
             )),
             priority_score: position_priority(position),
             confidence_score: Some(0.95),
@@ -45,7 +60,7 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
                 "semantic_tags": semantic_tags,
                 "source_weight": source_weight,
                 "aggregation_group": aggregation_group,
-                "writing_guidance": "Use this as a concise placement cue; combine it with nearby cluster or aspect signals before drafting final text.",
+                "writing_guidance": position_writing_guidance(position, &dignities),
                 "evidence": {
                     "fact_type": "object_position",
                     "chart_object_id": position.chart_object_id,
@@ -58,11 +73,14 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
                     "house_number": position.house_number,
                     "house_name": position.house_name,
                     "longitude_deg": position.longitude_deg,
-                    "placement_context": placement_context(position)
+                    "placement_context": placement_context(position),
+                    "essential_dignities": dignity_evidence_array(&dignities)
                 }
             })),
         });
     }
+
+    add_dignity_signals(facts, &mut signals);
 
     for aspect in &facts.aspects {
         let strength_score = aspect.strength_score.unwrap_or(0.5);
@@ -151,6 +169,46 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
         fill_basic_active_limit(&mut signals);
     }
     signals
+}
+
+fn add_dignity_signals(facts: &CalculatedChartFacts, signals: &mut Vec<InterpretationSignalDraft>) {
+    for dignity in essential_dignities_for_positions(&facts.positions)
+        .into_iter()
+        .filter(dignity_is_signal_worthy)
+    {
+        let theme_code = if dignity.polarity == "dignity" {
+            "functional_strength"
+        } else {
+            "functional_challenge"
+        };
+        let title = dignity_title(&dignity);
+        let summary = dignity_summary(&dignity);
+
+        signals.push(InterpretationSignalDraft {
+            signal_key: format!(
+                "dignity:{}:{}:{}",
+                dignity.object_code, dignity.dignity_type, dignity.sign_code
+            ),
+            signal_type_id: None,
+            theme_code: Some(theme_code.to_string()),
+            title,
+            summary: Some(summary),
+            priority_score: dignity_priority(&dignity),
+            confidence_score: Some(0.95),
+            suppression_state: "active".to_string(),
+            payload_json: Some(json!({
+                "interpretive_hint": dignity_interpretive_hint(&dignity),
+                "semantic_tags": dignity_semantic_tags(&dignity),
+                "source_weight": round4(
+                    object_source_weight(&dignity.object_code)
+                        + dignity_source_weight_delta(&dignity)
+                ),
+                "aggregation_group": format!("dignity:{}", dignity.object_code),
+                "writing_guidance": dignity_writing_guidance(&dignity),
+                "evidence": dignity_evidence(&dignity)
+            })),
+        });
+    }
 }
 
 fn add_position_cluster_signals(
@@ -361,7 +419,8 @@ fn position_priority(position: &ObjectPositionFact) -> f64 {
         "jupiter" | "saturn" => 75.0,
         _ => 60.0,
     };
-    round4((base + house_modality_priority_delta(position)).min(100.0))
+    let dignity_delta = dignity_priority_delta_for_position(position);
+    round4((base + house_modality_priority_delta(position) + dignity_delta).min(100.0))
 }
 
 fn house_modality_priority_delta(position: &ObjectPositionFact) -> f64 {
@@ -417,7 +476,7 @@ fn position_aggregation_group(position: &ObjectPositionFact) -> String {
 }
 
 fn position_interpretive_hint(position: &ObjectPositionFact) -> String {
-    match (position.house_name.as_deref(), position.house_number) {
+    let base = match (position.house_name.as_deref(), position.house_number) {
         (Some(house_name), Some(_)) => format!(
             "{} expresses through {} qualities in the field of {}.",
             position.object_name, position.sign_name, house_name
@@ -426,6 +485,17 @@ fn position_interpretive_hint(position: &ObjectPositionFact) -> String {
             "{} expresses through {} qualities.",
             position.object_name, position.sign_name
         ),
+    };
+
+    let dignities = essential_dignities_for_position(position);
+    if !dignities.is_empty() {
+        format!(
+            "{base} Its dignity context adds {}.{}",
+            dignity_effect_phrase_for_position(&dignities),
+            retrograde_hint(position)
+        )
+    } else {
+        format!("{base}{}", retrograde_hint(position))
     }
 }
 
@@ -459,6 +529,9 @@ fn position_semantic_tags(position: &ObjectPositionFact) -> Vec<String> {
     if let Some(motion_state) = placement_context_str(position, "motion_context", "motion_state") {
         tags.push(motion_state.to_string());
     }
+    for dignity in essential_dignities_for_position(position) {
+        tags.extend(dignity_semantic_tags(&dignity));
+    }
     dedupe_tags(tags)
 }
 
@@ -467,8 +540,190 @@ fn placement_context(position: &ObjectPositionFact) -> serde_json::Value {
         "sign_context": placement_context_object(position, "sign_context"),
         "house_modality": placement_context_object(position, "house_modality"),
         "object_context": placement_context_object(position, "object_context"),
-        "motion_context": placement_context_object(position, "motion_context")
+        "motion_context": placement_context_object(position, "motion_context"),
+        "dignity_context": dignity_evidence_array(&essential_dignities_for_position(position))
     })
+}
+
+fn position_writing_guidance(
+    position: &ObjectPositionFact,
+    dignities: &[EssentialDignityFact],
+) -> String {
+    match (!dignities.is_empty(), is_retrograde_position(position)) {
+        (true, true) => format!(
+            "Use this as a concise placement cue; include {} and retrograde motion as modifiers, not separate verdicts.",
+            dignity_type_list(dignities)
+        ),
+        (true, false) => format!(
+            "Use this as a concise placement cue and include {} as a modifier, not a separate verdict.",
+            dignity_type_list(dignities)
+        ),
+        (false, true) => "Use this as a concise placement cue; treat retrograde motion as an inward, revising, or reflective modifier before drafting final text.".to_string(),
+        (false, false) => "Use this as a concise placement cue; combine it with nearby cluster or aspect signals before drafting final text.".to_string(),
+    }
+}
+
+fn retrograde_summary(position: &ObjectPositionFact) -> String {
+    if is_retrograde_position(position) {
+        " Its retrograde motion adds a reflective or revising layer to the placement.".to_string()
+    } else {
+        String::new()
+    }
+}
+
+fn retrograde_hint(position: &ObjectPositionFact) -> String {
+    if is_retrograde_position(position) {
+        " Read the retrograde state as a modifier for pacing, review, and internal processing."
+            .to_string()
+    } else {
+        String::new()
+    }
+}
+
+fn is_retrograde_position(position: &ObjectPositionFact) -> bool {
+    placement_context_str(position, "motion_context", "motion_state") == Some("retrograde")
+}
+
+fn dignity_summary_for_position(dignities: &[EssentialDignityFact]) -> String {
+    if dignities.is_empty() {
+        String::new()
+    } else {
+        format!(
+            " Its dignity context adds {}.",
+            dignity_effect_phrase_for_position(dignities)
+        )
+    }
+}
+
+fn dignity_effect_phrase_for_position(dignities: &[EssentialDignityFact]) -> String {
+    let phrases = dignities
+        .iter()
+        .map(dignity_effect_phrase)
+        .collect::<Vec<_>>();
+    phrases.join(" and ")
+}
+
+fn dignity_type_list(dignities: &[EssentialDignityFact]) -> String {
+    let dignity_types = dignities
+        .iter()
+        .map(|dignity| dignity.dignity_type.as_str())
+        .collect::<Vec<_>>();
+
+    match dignity_types.as_slice() {
+        [] => "the dignity context".to_string(),
+        [one] => format!("the {one} context"),
+        [first, second] => format!("the {first} and {second} contexts"),
+        _ => format!("the {} contexts", dignity_types.join(", ")),
+    }
+}
+
+fn dignity_priority(dignity: &EssentialDignityFact) -> f64 {
+    let base: f64 = match dignity.object_code.as_str() {
+        "sun" | "moon" => 90.0,
+        "mercury" | "venus" | "mars" => 86.0,
+        "jupiter" | "saturn" => 82.0,
+        _ => 72.0,
+    };
+    let type_delta: f64 = match dignity.dignity_type.as_str() {
+        "domicile" => 6.0,
+        "exaltation" => 4.0,
+        "detriment" => 2.0,
+        "fall" => 1.0,
+        _ => 0.0,
+    };
+    round4((base + type_delta).min(95.0))
+}
+
+fn dignity_title(dignity: &EssentialDignityFact) -> String {
+    if dignity.polarity == "dignity" {
+        format!(
+            "{} strongly placed in {}",
+            dignity.object_name, dignity.sign_name
+        )
+    } else {
+        format!(
+            "{} under pressure in {}",
+            dignity.object_name, dignity.sign_name
+        )
+    }
+}
+
+fn dignity_summary(dignity: &EssentialDignityFact) -> String {
+    if dignity.polarity == "dignity" {
+        format!(
+            "{} is in {}, a sign where its function is reinforced by {}.",
+            dignity.object_name, dignity.sign_name, dignity.dignity_type
+        )
+    } else {
+        format!(
+            "{} is in {}, a sign where its function needs more adjustment because of {}.",
+            dignity.object_name, dignity.sign_name, dignity.dignity_type
+        )
+    }
+}
+
+fn dignity_interpretive_hint(dignity: &EssentialDignityFact) -> String {
+    format!(
+        "Treat {} in {} as a {} modifier for the existing placement signal.",
+        dignity.object_name, dignity.sign_name, dignity.dignity_type
+    )
+}
+
+fn dignity_writing_guidance(dignity: &EssentialDignityFact) -> String {
+    if dignity.polarity == "dignity" {
+        "Use this to strengthen the object's placement signal without overstating ease or outcome."
+            .to_string()
+    } else {
+        "Use this as a contextual constraint on the object's placement signal without fatalistic wording."
+            .to_string()
+    }
+}
+
+fn dignity_effect_phrase(dignity: &EssentialDignityFact) -> &'static str {
+    match dignity.dignity_type.as_str() {
+        "domicile" => "functional strength, coherence, and self-command",
+        "exaltation" => "heightened visibility and constructive emphasis",
+        "detriment" => "a need for translation, adaptation, and deliberate handling",
+        "fall" => "a more sensitive or constrained expression that needs care",
+        _ => "additional interpretive context",
+    }
+}
+
+fn dignity_semantic_tags(dignity: &EssentialDignityFact) -> Vec<String> {
+    let mut tags = vec![
+        "dignity".to_string(),
+        dignity.object_code.clone(),
+        dignity.sign_code.clone(),
+        dignity.dignity_type.clone(),
+    ];
+    if dignity.polarity == "dignity" {
+        tags.push("functional_strength".to_string());
+    } else {
+        tags.push("functional_challenge".to_string());
+    }
+    tags.extend(sign_tags(&dignity.sign_code));
+    dedupe_tags(tags)
+}
+
+fn dignity_evidence(dignity: &EssentialDignityFact) -> serde_json::Value {
+    json!({
+        "fact_type": "essential_dignity",
+        "chart_object_id": dignity.chart_object_id,
+        "chart_object": dignity.object_code,
+        "object_name": dignity.object_name,
+        "sign_id": dignity.sign_id,
+        "sign_code": dignity.sign_code,
+        "sign_name": dignity.sign_name,
+        "dignity_type": dignity.dignity_type,
+        "dignity_label": dignity.dignity_label,
+        "polarity": dignity.polarity,
+        "strength_score": dignity.strength_score,
+        "is_major": dignity.is_major
+    })
+}
+
+fn dignity_evidence_array(dignities: &[EssentialDignityFact]) -> serde_json::Value {
+    serde_json::Value::Array(dignities.iter().map(dignity_evidence).collect())
 }
 
 fn placement_context_object(position: &ObjectPositionFact, key: &str) -> Option<serde_json::Value> {
@@ -736,6 +991,29 @@ mod tests {
         position
     }
 
+    fn retrograde_mercury_position() -> ObjectPositionFact {
+        let mut position = position(3, "mercury", "Mercury", "capricorn", "Capricorn", 3);
+        position.facts_json = Some(json!({
+            "sign_context": {
+                "element": "earth",
+                "modality": "cardinal",
+                "polarity": "yin"
+            },
+            "house_modality": {
+                "code": "cadent"
+            },
+            "object_context": {
+                "role": "planet"
+            },
+            "motion_context": {
+                "motion_state": "retrograde",
+                "label": "Retrograde",
+                "motion_family": "reverse"
+            }
+        }));
+        position
+    }
+
     fn aspect(
         source_code: &str,
         source_name: &str,
@@ -762,6 +1040,93 @@ mod tests {
             strength_score: Some(strength_score),
             calculation_notes_json: None,
         }
+    }
+
+    #[test]
+    fn major_dignities_create_dedicated_signals_and_enrich_placements() {
+        let facts = CalculatedChartFacts {
+            positions: vec![
+                position(6, "jupiter", "Jupiter", "cancer", "Cancer", 8),
+                position(7, "saturn", "Saturn", "capricorn", "Capricorn", 2),
+            ],
+            house_cusps: Vec::new(),
+            aspects: Vec::new(),
+        };
+
+        let signals = aggregate_basic_signals(&facts);
+        let saturn_dignity = signals
+            .iter()
+            .find(|signal| signal.signal_key == "dignity:saturn:domicile:capricorn")
+            .expect("expected Saturn domicile dignity signal");
+        let jupiter_dignity = signals
+            .iter()
+            .find(|signal| signal.signal_key == "dignity:jupiter:exaltation:cancer")
+            .expect("expected Jupiter exaltation dignity signal");
+        let saturn_placement = signals
+            .iter()
+            .find(|signal| signal.signal_key == "object_position:saturn")
+            .expect("expected Saturn placement signal");
+
+        assert_eq!(
+            saturn_dignity.theme_code.as_deref(),
+            Some("functional_strength")
+        );
+        assert_eq!(saturn_dignity.priority_score, 88.0);
+        assert_eq!(jupiter_dignity.priority_score, 86.0);
+        assert_eq!(
+            saturn_dignity
+                .payload_json
+                .as_ref()
+                .and_then(|payload| payload.get("evidence"))
+                .and_then(|evidence| evidence.get("dignity_type"))
+                .and_then(|value| value.as_str()),
+            Some("domicile")
+        );
+        assert_eq!(
+            saturn_placement
+                .payload_json
+                .as_ref()
+                .and_then(|payload| payload.get("evidence"))
+                .and_then(|evidence| evidence.get("essential_dignities"))
+                .and_then(|dignities| dignities.as_array())
+                .and_then(|dignities| dignities.first())
+                .and_then(|dignity| dignity.get("dignity_type"))
+                .and_then(|value| value.as_str()),
+            Some("domicile")
+        );
+    }
+
+    #[test]
+    fn double_dignity_positions_create_all_signals_and_evidence() {
+        let facts = CalculatedChartFacts {
+            positions: vec![position(3, "mercury", "Mercury", "virgo", "Virgo", 6)],
+            house_cusps: Vec::new(),
+            aspects: Vec::new(),
+        };
+
+        let signals = aggregate_basic_signals(&facts);
+        let placement = signals
+            .iter()
+            .find(|signal| signal.signal_key == "object_position:mercury")
+            .expect("expected Mercury placement");
+
+        assert!(signals
+            .iter()
+            .any(|signal| signal.signal_key == "dignity:mercury:domicile:virgo"));
+        assert!(signals
+            .iter()
+            .any(|signal| signal.signal_key == "dignity:mercury:exaltation:virgo"));
+        assert_eq!(
+            placement
+                .payload_json
+                .as_ref()
+                .and_then(|payload| payload.get("evidence"))
+                .and_then(|evidence| evidence.get("essential_dignities"))
+                .and_then(|value| value.as_array())
+                .map(Vec::len),
+            Some(2)
+        );
+        assert_eq!(placement.priority_score, 94.0);
     }
 
     #[test]
@@ -838,6 +1203,38 @@ mod tests {
                 .and_then(|value| value.as_str()),
             Some("direct")
         );
+    }
+
+    #[test]
+    fn retrograde_placements_get_specific_writing_context() {
+        let facts = CalculatedChartFacts {
+            positions: vec![retrograde_mercury_position()],
+            house_cusps: Vec::new(),
+            aspects: Vec::new(),
+        };
+
+        let signals = aggregate_basic_signals(&facts);
+        let signal = signals
+            .iter()
+            .find(|signal| signal.signal_key == "object_position:mercury")
+            .expect("expected Mercury signal");
+        let payload = signal.payload_json.as_ref().expect("signal payload");
+
+        assert!(signal
+            .summary
+            .as_deref()
+            .expect("summary")
+            .contains("retrograde motion"));
+        assert!(payload
+            .get("interpretive_hint")
+            .and_then(|value| value.as_str())
+            .expect("hint")
+            .contains("internal processing"));
+        assert!(payload
+            .get("writing_guidance")
+            .and_then(|value| value.as_str())
+            .expect("guidance")
+            .contains("retrograde motion"));
     }
 
     #[test]
@@ -921,14 +1318,14 @@ mod tests {
             .iter()
             .find(|signal| signal.signal_key == "aspect:saturn:pluto:opposition")
             .expect("expected weak aspect signal");
-        let pluto = signals
+        let jupiter_dignity = signals
             .iter()
-            .find(|signal| signal.signal_key == "object_position:pluto")
-            .expect("expected Pluto signal");
+            .find(|signal| signal.signal_key == "dignity:jupiter:domicile:sagittarius")
+            .expect("expected Jupiter dignity signal");
 
         assert_eq!(active_count, BASIC_MAX_ACTIVE_SIGNALS);
         assert_eq!(weak_aspect.suppression_state, "suppressed");
-        assert_eq!(pluto.suppression_state, "active");
+        assert_eq!(jupiter_dignity.suppression_state, "active");
     }
 
     #[test]
