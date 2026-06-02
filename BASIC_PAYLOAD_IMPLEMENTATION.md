@@ -53,6 +53,14 @@ d'intensite (`intensity_modifier`) comme `amplifying`, ajoute une qualite
 dynamique (`flow`, `tension`, `intensification`, etc.) et enrichit les tags et
 la guidance redactionnelle.
 
+L'etape 2C.1 enrichit ensuite `interpretive_hint` des aspects avec cette meme
+couche interpretative. Le hint reste court et template, mais il ne dit plus
+seulement que deux objets sont connectes par un aspect : il nomme l'effet
+lisible de l'aspect, par exemple un flux de soutien, une tension active, une
+polarite a equilibrer ou un contact amplifiant. Si une valence principale et un
+modificateur d'intensite coexistent, le hint conserve la valence comme lecture
+principale et ajoute l'intensification comme nuance.
+
 Le runtime conserve la chaine existante :
 
 1. calcul des faits astrologiques ;
@@ -239,7 +247,7 @@ texte utilisateur :
   "summary": "Sun and Mercury form a conjunction with 1.01 degrees of orb; the phase is separating.",
   "priority_score": 69.92,
   "confidence_score": 0.85,
-  "interpretive_hint": "Sun and Mercury are connected by a conjunction, so their functions should be read together with attention to the separating phase.",
+  "interpretive_hint": "Read this conjunction as an amplifying contact between Sun and Mercury, with attention to the separating phase.",
   "semantic_tags": [
     "aspect",
     "conjunction",
@@ -298,8 +306,8 @@ Les champs ajoutes par l'etape 1B sont :
 - `theme_code` : theme editorial principal du signal, derive de la maison pour
   les placements quand elle est connue, ou de la famille de signal pour les
   aspects.
-- `interpretive_hint` : phrase courte orientee utilisateur, mais encore
-  templatee.
+- `interpretive_hint` : phrase courte orientee utilisateur. Pour les aspects,
+  elle inclut la qualite interpretative issue de `aspect_context`.
 - `semantic_tags` : tags stables utiles pour grouper, filtrer ou guider la
   redaction.
 - `source_weight` : poids relatif de la source astrologique. Soleil et Lune
@@ -468,6 +476,11 @@ Les champs ajoutes par l'etape 2C sont :
   depuis `astral_interpretive_valence`, completee par le runtime quand il faut
   rappeler qu'un modificateur d'intensite ne doit pas etre lu comme une valence
   favorable ou difficile.
+- `signals[].interpretive_hint` pour les aspects : phrase courte derivee de
+  `primary_valence`, `intensity_modifier` ou `dynamic_quality`, sans exposer les
+  cles techniques au lecteur final. Quand une valence principale et un
+  modificateur sont presents ensemble, le hint exprime les deux sans traiter le
+  modificateur comme une valence autonome.
 
 Le runtime ne lit pas une colonne texte libre sur `astral_aspect_profiles` pour
 decider la valence. Il passe par :
@@ -958,7 +971,8 @@ exemple :
 
 - L'Ascendant et le MC ne sont pas encore exposes comme objets de position Basic.
 - Les resumes restent des phrases templatees, pas une interpretation finale.
-- Les `interpretive_hint` et `writing_guidance` restent aussi des templates.
+- Les `interpretive_hint` et `writing_guidance` restent aussi des templates,
+  meme si les hints d'aspect integrent maintenant la valence 2C.
 - Les clusters Basic ne couvrent pour l'instant que les concentrations
   `sign_house`.
 - Le moteur de dignites 2B est un MVP code-side. Il couvre les dignites

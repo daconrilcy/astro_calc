@@ -117,14 +117,7 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
             confidence_score: Some(0.85),
             suppression_state: suppression_state.to_string(),
             payload_json: Some(json!({
-                "interpretive_hint": format!(
-                    "{} and {} are connected by {} {}, so their functions should be read together with attention to the {} phase.",
-                    aspect.source_object_name,
-                    aspect.target_object_name,
-                    article,
-                    aspect_name,
-                    aspect.phase_state
-                ),
+                "interpretive_hint": aspect_interpretive_hint(aspect, &aspect_name),
                 "semantic_tags": aspect_semantic_tags(aspect, strength_score),
                 "source_weight": round4(
                     object_source_weight(&aspect.source_object_code)
@@ -848,6 +841,60 @@ fn aspect_writing_guidance(aspect: &crate::domain::AspectFact) -> String {
     }
 }
 
+fn aspect_interpretive_hint(aspect: &crate::domain::AspectFact, aspect_name: &str) -> String {
+    format!(
+        "Read this {aspect_name} as {} between {} and {}, with attention to the {} phase.",
+        aspect_hint_quality_phrase(aspect),
+        aspect.source_object_name,
+        aspect.target_object_name,
+        aspect.phase_state
+    )
+}
+
+fn aspect_hint_quality_phrase(aspect: &crate::domain::AspectFact) -> String {
+    let base = match aspect.primary_valence.as_deref() {
+        Some("supportive") => "a supportive flow",
+        Some("harmonious") => "a natural flow",
+        Some("creative" | "refined_creative" | "creative_ordering") => "a creative opening",
+        Some("dynamic_challenging") => "an active tension",
+        Some("polarizing") => "a polarity to balance",
+        Some("minor_friction") => "manageable friction",
+        Some("indirect_tension") => "indirect tension",
+        Some("adjustment") => "an adjustment",
+        Some("subtle_adjustment") => "a subtle adjustment",
+        Some("symbolic_fated") => "a symbolic emphasis",
+        Some("spiritual_integration") => "an integrating connection",
+        Some(_) => "a contextual relationship",
+        None => return intensity_only_aspect_hint_phrase(aspect).to_string(),
+    };
+
+    match aspect.intensity_modifier.as_deref() {
+        Some("amplifying") => format!("{base} with extra emphasis"),
+        Some("obsessive_focus") => format!("{base} with intensified focus"),
+        Some(_) => format!("{base} with extra intensity"),
+        None => base.to_string(),
+    }
+}
+
+fn intensity_only_aspect_hint_phrase(aspect: &crate::domain::AspectFact) -> &'static str {
+    match aspect.intensity_modifier.as_deref() {
+        Some("amplifying") => "an amplifying contact",
+        Some("obsessive_focus") => "an intensified focus",
+        Some(_) => "an intensified contact",
+        None => dynamic_quality_aspect_hint_phrase(aspect),
+    }
+}
+
+fn dynamic_quality_aspect_hint_phrase(aspect: &crate::domain::AspectFact) -> &'static str {
+    match aspect_dynamic_quality(aspect) {
+        "flow" => "a flow",
+        "tension" => "a tension",
+        "adjustment" => "an adjustment",
+        "intensification" => "an intensified contact",
+        _ => "a relationship",
+    }
+}
+
 fn aspect_default_writing_guidance(aspect: &crate::domain::AspectFact) -> &'static str {
     match aspect_dynamic_quality(aspect) {
         "flow" => {
@@ -1255,6 +1302,17 @@ mod tests {
         }
     }
 
+    trait AspectFactTestExt {
+        fn with_intensity_modifier(self, intensity_modifier: &str) -> Self;
+    }
+
+    impl AspectFactTestExt for AspectFact {
+        fn with_intensity_modifier(mut self, intensity_modifier: &str) -> Self {
+            self.intensity_modifier = Some(intensity_modifier.to_string());
+            self
+        }
+    }
+
     #[test]
     fn major_dignities_create_dedicated_signals_and_enrich_placements() {
         let facts = CalculatedChartFacts {
@@ -1617,7 +1675,7 @@ mod tests {
     }
 
     #[test]
-    fn aspect_hint_uses_indefinite_article() {
+    fn aspect_hint_uses_interpretive_quality() {
         let facts = CalculatedChartFacts {
             positions: Vec::new(),
             house_cusps: Vec::new(),
@@ -1662,7 +1720,7 @@ mod tests {
             payload
                 .get("interpretive_hint")
                 .and_then(|value| value.as_str()),
-            Some("Jupiter and Uranus are connected by an opposition, so their functions should be read together with attention to the separating phase.")
+            Some("Read this opposition as a polarity to balance between Jupiter and Uranus, with attention to the separating phase.")
         );
     }
 
@@ -1675,6 +1733,8 @@ mod tests {
                 aspect(
                     "venus", "Venus", "jupiter", "Jupiter", "sextile", "Sextile", 0.9,
                 ),
+                aspect("venus", "Venus", "pluto", "Pluto", "trine", "Trine", 0.89)
+                    .with_intensity_modifier("amplifying"),
                 aspect("moon", "Moon", "mars", "Mars", "square", "Square", 0.88),
                 aspect(
                     "sun",
@@ -1690,6 +1750,7 @@ mod tests {
 
         let signals = aggregate_basic_signals(&facts);
         let sextile = aspect_payload(&signals, "aspect:venus:jupiter:sextile");
+        let amplified_trine = aspect_payload(&signals, "aspect:venus:pluto:trine");
         let square = aspect_payload(&signals, "aspect:moon:mars:square");
         let conjunction = aspect_payload(&signals, "aspect:sun:neptune:conjunction");
 
@@ -1700,6 +1761,12 @@ mod tests {
                 .and_then(|value| value.as_str()),
             Some("supportive")
         );
+        assert_eq!(
+            sextile
+                .get("interpretive_hint")
+                .and_then(|value| value.as_str()),
+            Some("Read this sextile as a supportive flow between Venus and Jupiter, with attention to the applying phase.")
+        );
         assert!(sextile
             .get("semantic_tags")
             .and_then(|value| value.as_array())
@@ -1707,11 +1774,23 @@ mod tests {
             .iter()
             .any(|tag| tag.as_str() == Some("flow")));
         assert_eq!(
+            amplified_trine
+                .get("interpretive_hint")
+                .and_then(|value| value.as_str()),
+            Some("Read this trine as a natural flow with extra emphasis between Venus and Pluto, with attention to the applying phase.")
+        );
+        assert_eq!(
             square
                 .get("aspect_context")
                 .and_then(|context| context.get("primary_valence"))
                 .and_then(|value| value.as_str()),
             Some("dynamic_challenging")
+        );
+        assert_eq!(
+            square
+                .get("interpretive_hint")
+                .and_then(|value| value.as_str()),
+            Some("Read this square as an active tension between Moon and Mars, with attention to the applying phase.")
         );
         assert!(square
             .get("semantic_tags")
@@ -1731,6 +1810,12 @@ mod tests {
                 .and_then(|context| context.get("intensity_modifier"))
                 .and_then(|value| value.as_str()),
             Some("amplifying")
+        );
+        assert_eq!(
+            conjunction
+                .get("interpretive_hint")
+                .and_then(|value| value.as_str()),
+            Some("Read this conjunction as an amplifying contact between Sun and Neptune, with attention to the applying phase.")
         );
         assert_eq!(
             conjunction

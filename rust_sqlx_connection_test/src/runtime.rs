@@ -295,7 +295,7 @@ fn is_current_basic_payload(payload: &BasicPayload) -> bool {
                     .all(|tag| !tag.trim().is_empty())
                 && has_text(&signal.aggregation_group)
                 && has_text(&signal.writing_guidance)
-                && has_current_aspect_article(&signal.interpretive_hint)
+                && has_current_aspect_hint(&signal.interpretive_hint)
                 && has_current_placement_context(signal)
                 && has_current_aspect_context(signal)
         })
@@ -553,10 +553,10 @@ fn has_text(value: &Option<String>) -> bool {
     value.as_deref().is_some_and(|text| !text.trim().is_empty())
 }
 
-fn has_current_aspect_article(value: &Option<String>) -> bool {
-    value
-        .as_deref()
-        .is_none_or(|text| !text.contains(" by a opposition"))
+fn has_current_aspect_hint(value: &Option<String>) -> bool {
+    value.as_deref().is_none_or(|text| {
+        !text.contains(" by a opposition") && !text.contains(" are connected by ")
+    })
 }
 
 fn has_current_position_context(position: &crate::domain::BasicObjectPosition) -> bool {
@@ -836,6 +836,17 @@ mod tests {
             "is_intensity_modifier": true,
             "writing_guidance": "Treat amplifying as an intensity modifier."
         }));
+
+        assert!(!is_current_basic_payload(&payload));
+
+        payload
+            .signals
+            .last_mut()
+            .expect("aspect signal")
+            .interpretive_hint = Some(
+            "Read this conjunction as an amplifying contact between Sun and Mercury, with attention to the separating phase."
+                .to_string(),
+        );
 
         assert!(is_current_basic_payload(&payload));
     }
