@@ -1437,7 +1437,7 @@ signaux Basic par responsabilite, sans modifier l'API publique
 - `mod.rs` conserve l'orchestration de `aggregate_basic_signals`.
 - `constants.rs` centralise les constantes partagees du module.
 - `angles.rs`, `positions.rs`, `dignity.rs`, `dignity_helpers.rs`,
-  `aspects.rs` et `clusters.rs` isolent la construction des familles de
+  `aspect_signals.rs` et `clusters.rs` isolent la construction des familles de
   signaux.
 - `limits.rs` regroupe les regles de suppression, preservation et remplissage
   de la limite Basic.
@@ -1454,6 +1454,12 @@ Les sous-modules n'utilisent pas d'import global `use super::*`: chaque fichier
 declare ses dependances explicitement. Les helpers purement locaux restent
 prives au fichier, et les helpers partages entre sous-modules utilisent
 `pub(super)` uniquement quand c'est necessaire.
+
+Le fichier racine `rust_sqlx_connection_test/src/aspects.rs` reste separe du
+module `signals/aspect_signals.rs`: le premier detecte les faits d'aspects
+depuis les positions calculees, alors que le second transforme un `AspectFact`
+en contexte de signal Basic. Les fusionner melangerait le calcul des faits et
+la preparation editoriale du payload.
 
 Ce refactor reste strictement structurel: aucune nouvelle donnee canonique n'a
 ete ajoutee en dur et le comportement conserve est valide par:

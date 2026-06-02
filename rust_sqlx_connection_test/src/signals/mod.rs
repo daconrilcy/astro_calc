@@ -1,7 +1,7 @@
 use serde_json::json;
 
 mod angles;
-mod aspects;
+mod aspect_signals;
 mod clusters;
 mod constants;
 mod context;
@@ -14,7 +14,7 @@ mod tags;
 mod utils;
 
 use angles::{angle_signal, is_angle_position};
-use aspects::{
+use aspect_signals::{
     aspect_context, aspect_interpretive_hint, aspect_semantic_tags, aspect_writing_guidance,
 };
 use clusters::{add_position_cluster_signals, apply_cluster_source_deduplication};
