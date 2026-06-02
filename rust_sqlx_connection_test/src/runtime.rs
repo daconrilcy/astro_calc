@@ -328,10 +328,10 @@ fn has_current_dignities(payload: &BasicPayload) -> bool {
             && matches!(dignity.polarity.as_str(), "dignity" | "debility")
             && dignity.strength_score > 0.0
             && dignity.signal_key.as_deref().is_none_or(|signal_key| {
-                payload
-                    .signals
-                    .iter()
-                    .any(|signal| signal.signal_key == signal_key)
+                payload.signals.iter().any(|signal| {
+                    signal.signal_key == signal_key
+                        && signal_matches_structured_dignity(signal, dignity)
+                })
             })
     });
 
@@ -341,17 +341,36 @@ fn has_current_dignities(payload: &BasicPayload) -> bool {
             .iter()
             .filter(|signal| signal.signal_key.starts_with("dignity:"))
             .all(|signal| {
-                payload
-                    .dignities
-                    .iter()
-                    .any(|dignity| dignity.signal_key.as_deref() == Some(&signal.signal_key))
-                    && signal
-                        .evidence
-                        .as_ref()
-                        .and_then(|evidence| evidence.get("fact_type"))
-                        .and_then(|value| value.as_str())
-                        == Some("essential_dignity")
+                payload.dignities.iter().any(|dignity| {
+                    dignity.signal_key.as_deref() == Some(&signal.signal_key)
+                        && signal_matches_structured_dignity(signal, dignity)
+                }) && signal
+                    .evidence
+                    .as_ref()
+                    .and_then(|evidence| evidence.get("fact_type"))
+                    .and_then(|value| value.as_str())
+                    == Some("essential_dignity")
             })
+}
+
+fn signal_matches_structured_dignity(
+    signal: &crate::domain::BasicSignal,
+    dignity: &crate::domain::BasicDignity,
+) -> bool {
+    let Some(evidence) = signal.evidence.as_ref() else {
+        return false;
+    };
+
+    evidence
+        .get("chart_object")
+        .and_then(|value| value.as_str())
+        == Some(dignity.object_code.as_str())
+        && evidence.get("sign_code").and_then(|value| value.as_str())
+            == Some(dignity.sign_code.as_str())
+        && evidence
+            .get("dignity_type")
+            .and_then(|value| value.as_str())
+            == Some(dignity.dignity_type.as_str())
 }
 
 fn has_current_reading_plan(payload: &BasicPayload) -> bool {
@@ -467,6 +486,7 @@ fn has_current_aspect_article(value: &Option<String>) -> bool {
 fn has_current_position_context(position: &crate::domain::BasicObjectPosition) -> bool {
     !position.sign_code.is_empty()
         && !position.sign_name.is_empty()
+        && position.dignity_context.is_array()
         && option_json_has_text(&position.sign_context, "element")
         && option_json_has_text(&position.sign_context, "modality")
         && option_json_has_text(&position.sign_context, "polarity")
@@ -480,15 +500,18 @@ fn has_current_placement_context(signal: &crate::domain::BasicSignal) -> bool {
         return true;
     }
 
-    let Some(context) = signal
-        .evidence
-        .as_ref()
-        .and_then(|evidence| evidence.get("placement_context"))
-    else {
+    let Some(evidence) = signal.evidence.as_ref() else {
         return false;
     };
 
-    nested_json_has_text(context, "sign_context", "element")
+    let Some(context) = evidence.get("placement_context") else {
+        return false;
+    };
+
+    evidence
+        .get("essential_dignities")
+        .is_some_and(|value| value.is_array())
+        && nested_json_has_text(context, "sign_context", "element")
         && nested_json_has_text(context, "sign_context", "modality")
         && nested_json_has_text(context, "sign_context", "polarity")
         && nested_json_has_text(context, "house_modality", "code")
@@ -585,7 +608,7 @@ mod tests {
                     "label": "Direct",
                     "motion_family": "forward"
                 })),
-                dignity_context: None,
+                dignity_context: json!([]),
             }],
             dignities: Vec::new(),
             signals: vec![BasicSignal {
@@ -602,6 +625,7 @@ mod tests {
                 writing_guidance: Some("guidance".to_string()),
                 evidence: Some(json!({
                     "fact_type": "object_position",
+                    "essential_dignities": [],
                     "placement_context": {
                         "sign_context": {
                             "element": "air",
@@ -678,10 +702,19 @@ mod tests {
     }
 
     #[test]
+    fn current_payload_rejects_non_array_dignity_context() {
+        let mut payload = current_payload();
+        payload.positions[0].dignity_context = serde_json::Value::Null;
+
+        assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
     fn current_payload_rejects_incomplete_signal_placement_context() {
         let mut payload = current_payload();
         payload.signals[0].evidence = Some(json!({
             "fact_type": "object_position",
+            "essential_dignities": [],
             "placement_context": {
                 "sign_context": {
                     "element": "air",
@@ -694,6 +727,43 @@ mod tests {
         }));
 
         assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
+    fn current_payload_rejects_placement_signal_without_dignity_array() {
+        let mut payload = current_payload();
+        payload.signals[0].evidence = Some(json!({
+            "fact_type": "object_position",
+            "placement_context": {
+                "sign_context": {
+                    "element": "air",
+                    "modality": "mutable",
+                    "polarity": "yang"
+                },
+                "house_modality": {"code": "cadent"},
+                "object_context": {"role": "luminary"},
+                "motion_context": {"motion_state": "direct"}
+            }
+        }));
+
+        assert!(!is_current_basic_payload(&payload));
+
+        payload.signals[0].evidence = Some(json!({
+            "fact_type": "object_position",
+            "essential_dignities": [],
+            "placement_context": {
+                "sign_context": {
+                    "element": "air",
+                    "modality": "mutable",
+                    "polarity": "yang"
+                },
+                "house_modality": {"code": "cadent"},
+                "object_context": {"role": "luminary"},
+                "motion_context": {"motion_state": "direct"}
+            }
+        }));
+
+        assert!(is_current_basic_payload(&payload));
     }
 
     #[test]
@@ -735,6 +805,44 @@ mod tests {
         });
 
         assert!(is_current_basic_payload(&payload));
+    }
+
+    #[test]
+    fn current_payload_rejects_dignity_signal_mismatched_with_structured_dignity() {
+        let mut payload = current_payload();
+        payload.signals.push(BasicSignal {
+            signal_key: "dignity:saturn:domicile:capricorn".to_string(),
+            theme_code: Some("functional_strength".to_string()),
+            title: "Saturn strongly placed in Capricorn".to_string(),
+            summary: Some("summary".to_string()),
+            priority_score: 88.0,
+            confidence_score: Some(0.95),
+            interpretive_hint: Some("hint".to_string()),
+            semantic_tags: vec!["dignity".to_string(), "saturn".to_string()],
+            source_weight: Some(0.75),
+            aggregation_group: Some("dignity:saturn".to_string()),
+            writing_guidance: Some("guidance".to_string()),
+            evidence: Some(json!({
+                "fact_type": "essential_dignity",
+                "chart_object": "jupiter",
+                "sign_code": "cancer",
+                "dignity_type": "exaltation"
+            })),
+        });
+        payload.dignities.push(BasicDignity {
+            object_code: "saturn".to_string(),
+            object_name: "Saturn".to_string(),
+            sign_id: 10,
+            sign_code: "capricorn".to_string(),
+            sign_name: "Capricorn".to_string(),
+            dignity_type: "domicile".to_string(),
+            dignity_label: "Domicile".to_string(),
+            polarity: "dignity".to_string(),
+            strength_score: 1.0,
+            signal_key: Some("dignity:saturn:domicile:capricorn".to_string()),
+        });
+
+        assert!(!is_current_basic_payload(&payload));
     }
 
     #[test]

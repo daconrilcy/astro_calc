@@ -168,6 +168,7 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
         }
         fill_basic_active_limit(&mut signals);
     }
+    preserve_strong_tension_aspect(&mut signals);
     signals
 }
 
@@ -663,9 +664,10 @@ fn dignity_summary(dignity: &EssentialDignityFact) -> String {
 }
 
 fn dignity_interpretive_hint(dignity: &EssentialDignityFact) -> String {
+    let article = indefinite_article(&dignity.dignity_type);
     format!(
-        "Treat {} in {} as a {} modifier for the existing placement signal.",
-        dignity.object_name, dignity.sign_name, dignity.dignity_type
+        "Treat {} in {} as {} {} modifier for the existing placement signal.",
+        dignity.object_name, dignity.sign_name, article, dignity.dignity_type
     )
 }
 
@@ -842,6 +844,87 @@ fn suppress_over_basic_limit(signals: &mut [InterpretationSignalDraft]) {
             signal.suppression_state = "suppressed".to_string();
         }
     }
+}
+
+fn preserve_strong_tension_aspect(signals: &mut [InterpretationSignalDraft]) {
+    if signals
+        .iter()
+        .any(|signal| signal.suppression_state == "active" && is_strong_tension_signal(signal))
+    {
+        return;
+    }
+
+    let Some(tension_index) = signals
+        .iter()
+        .enumerate()
+        .filter(|(_, signal)| is_strong_tension_signal(signal))
+        .max_by(|(_, left), (_, right)| {
+            left.priority_score
+                .partial_cmp(&right.priority_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
+        .map(|(index, _)| index)
+    else {
+        return;
+    };
+
+    let Some(replacement_index) = signals
+        .iter()
+        .enumerate()
+        .rev()
+        .find(|(_, signal)| {
+            signal.suppression_state == "active" && !is_basic_required_signal(signal)
+        })
+        .map(|(index, _)| index)
+    else {
+        return;
+    };
+
+    signals[replacement_index].suppression_state = "suppressed".to_string();
+    signals[tension_index].suppression_state = "active".to_string();
+}
+
+fn is_strong_tension_signal(signal: &InterpretationSignalDraft) -> bool {
+    if !signal.signal_key.starts_with("aspect:") {
+        return false;
+    }
+
+    let Some(evidence) = signal
+        .payload_json
+        .as_ref()
+        .and_then(|payload| payload.get("evidence"))
+    else {
+        return false;
+    };
+
+    let aspect_code = evidence.get("aspect_code").and_then(|value| value.as_str());
+    let strength_score = evidence
+        .get("strength_score")
+        .and_then(|value| value.as_f64())
+        .unwrap_or(signal.priority_score / 80.0);
+
+    matches!(aspect_code, Some("square" | "opposition")) && strength_score >= 0.75
+}
+
+fn is_basic_required_signal(signal: &InterpretationSignalDraft) -> bool {
+    if signal.signal_key.starts_with("cluster:") {
+        return true;
+    }
+
+    let Some(object_code) = signal
+        .payload_json
+        .as_ref()
+        .and_then(|payload| payload.get("evidence"))
+        .and_then(|evidence| evidence.get("object_code"))
+        .and_then(|value| value.as_str())
+    else {
+        return false;
+    };
+
+    matches!(
+        object_code,
+        "sun" | "moon" | "ascendant" | "mc" | "mercury" | "venus" | "mars"
+    )
 }
 
 fn fill_basic_active_limit(signals: &mut [InterpretationSignalDraft]) {
@@ -1094,6 +1177,14 @@ mod tests {
                 .and_then(|value| value.as_str()),
             Some("domicile")
         );
+        assert_eq!(
+            jupiter_dignity
+                .payload_json
+                .as_ref()
+                .and_then(|payload| payload.get("interpretive_hint"))
+                .and_then(|value| value.as_str()),
+            Some("Treat Jupiter in Cancer as an exaltation modifier for the existing placement signal.")
+        );
     }
 
     #[test]
@@ -1329,8 +1420,69 @@ mod tests {
     }
 
     #[test]
+    fn basic_filter_preserves_one_strong_tension_aspect() {
+        let facts = CalculatedChartFacts {
+            positions: vec![
+                capricorn_house_2_position(1, "sun", "Sun"),
+                position(2, "moon", "Moon", "cancer", "Cancer", 4),
+                position(3, "mercury", "Mercury", "gemini", "Gemini", 3),
+                position(4, "venus", "Venus", "taurus", "Taurus", 5),
+                position(5, "mars", "Mars", "aries", "Aries", 1),
+                position(6, "jupiter", "Jupiter", "sagittarius", "Sagittarius", 9),
+                capricorn_house_2_position(7, "saturn", "Saturn"),
+                capricorn_house_2_position(8, "uranus", "Uranus"),
+                capricorn_house_2_position(9, "neptune", "Neptune"),
+                position(10, "pluto", "Pluto", "scorpio", "Scorpio", 8),
+                position(11, "north_node", "North Node", "aquarius", "Aquarius", 11),
+            ],
+            house_cusps: Vec::new(),
+            aspects: vec![
+                aspect("sun", "Sun", "moon", "Moon", "trine", "Trine", 0.99),
+                aspect(
+                    "mercury", "Mercury", "venus", "Venus", "sextile", "Sextile", 0.98,
+                ),
+                aspect(
+                    "sun",
+                    "Sun",
+                    "neptune",
+                    "Neptune",
+                    "conjunction",
+                    "Conjunction",
+                    0.97,
+                ),
+                aspect(
+                    "moon", "Moon", "neptune", "Neptune", "sextile", "Sextile", 0.96,
+                ),
+                aspect(
+                    "jupiter",
+                    "Jupiter",
+                    "uranus",
+                    "Uranus",
+                    "opposition",
+                    "Opposition",
+                    0.88,
+                ),
+            ],
+        };
+
+        let signals = aggregate_basic_signals(&facts);
+        let active_count = signals
+            .iter()
+            .filter(|signal| signal.suppression_state == "active")
+            .count();
+        let tension = signals
+            .iter()
+            .find(|signal| signal.signal_key == "aspect:jupiter:uranus:opposition")
+            .expect("expected strong opposition");
+
+        assert_eq!(active_count, BASIC_MAX_ACTIVE_SIGNALS);
+        assert_eq!(tension.suppression_state, "active");
+    }
+
+    #[test]
     fn indefinite_article_handles_opposition() {
         assert_eq!(indefinite_article("opposition"), "an");
+        assert_eq!(indefinite_article("exaltation"), "an");
         assert_eq!(indefinite_article("square"), "a");
     }
 

@@ -192,7 +192,7 @@ pub struct BasicObjectPosition {
     #[serde(default)]
     pub motion_context: Option<Value>,
     #[serde(default)]
-    pub dignity_context: Option<Value>,
+    pub dignity_context: Value,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

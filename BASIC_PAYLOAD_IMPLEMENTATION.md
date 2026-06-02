@@ -138,11 +138,11 @@ les 12 signes ou les 12 maisons ne sont pas presents ou si les references sont
 ambigues. Le contrat Basic v3 refuse aussi de reutiliser un payload existant si
 les contextes de placement utiles sont absents ou incomplets.
 
-Depuis 2B, `dignity_context` est absent quand l'objet ne recoit aucune dignite
-essentielle majeure reconnue par le MVP. Il est expose comme tableau, car
-certains placements peuvent cumuler deux dignites classiques, par exemple
-Mercure en Vierge (`domicile` et `exaltation`) ou Mercure en Poissons
-(`detriment` et `fall`).
+Depuis 2B.1, `dignity_context` est toujours expose comme tableau. Il vaut `[]`
+quand l'objet ne recoit aucune dignite essentielle majeure reconnue par le MVP.
+Cette convention evite les `null` dans le contrat JSON et couvre les placements
+qui peuvent cumuler deux dignites classiques, par exemple Mercure en Vierge
+(`domicile` et `exaltation`) ou Mercure en Poissons (`detriment` et `fall`).
 
 ## Contrat des signaux
 
@@ -382,7 +382,11 @@ Les dignites modifient les placements de facon moderee :
   au filtrage Basic de 12 signaux actifs ;
 - les dignites actives liees a un objet selectionne dans `reading_plan` sont
   ajoutees aux sources du slot, y compris quand le placement de l'objet a ete
-  fusionne dans un cluster.
+  fusionne dans un cluster ;
+- dans les slots qui limitent un nombre d'objets, comme `expression_style` ou
+  `background_factors`, les dignites associees ne consomment pas le quota
+  d'objets. Elles accompagnent l'objet selectionne au lieu de remplacer un autre
+  placement attendu.
 
 Le MVP couvre les dignites essentielles majeures par signe :
 
@@ -459,6 +463,10 @@ Le filtrage est applique dans `signals.rs` :
   Soleil, Lune, Ascendant et MC qui restent actifs comme marqueurs centraux ;
 - quand des fusions liberent des places dans les 12 signaux Basic, le runtime
   remonte les prochains signaux eligibles sans reactiver les aspects faibles ;
+- si aucun aspect de tension fort n'est actif apres le filtrage initial alors
+  qu'un carre ou une opposition atteint `strength_score >= 0.75`, le runtime
+  remplace le signal actif non essentiel le moins prioritaire par la meilleure
+  tension forte disponible ;
 - seuls les 12 premiers signaux actifs restent eligibles au payload ;
 - `payload.rs` applique aussi `.take(12)` comme garde de lecture.
 
@@ -506,7 +514,9 @@ Le payload final contient maintenant `reading_plan` :
       "slot": "main_tension_or_support",
       "title": "Main dynamic aspect",
       "source_signal_keys": [
-        "aspect:sun:neptune:conjunction"
+        "aspect:moon:neptune:sextile",
+        "aspect:sun:moon:sextile",
+        "aspect:jupiter:uranus:opposition"
       ]
     }
   ]
@@ -529,6 +539,13 @@ Pour eviter une lecture trop lisse, `main_tension_or_support` force maintenant
 l'inclusion d'au moins un aspect de tension fort quand un carre ou une opposition
 atteint `strength_score >= 0.75`. Si les trois premiers aspects prioritaires ne
 contiennent aucune tension forte, le troisieme est remplace par cette tension.
+
+Cette logique s'applique aussi quand le filtrage Basic a du liberer une place
+dans les 12 signaux actifs : un signal actif non essentiel peut etre remplace par
+la meilleure tension forte disponible. Les clusters et les marqueurs centraux ou
+expressifs restent proteges ; un signal de dignite autonome peut en revanche
+ceder sa place si le budget est sature et qu'aucune tension forte n'est encore
+active.
 
 ## Contrat canonique de handoff LLM
 
@@ -668,7 +685,7 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
 - `dignities` structurees presentes et coherentes avec les signaux
   `dignity:*` actifs ;
 - positions avec `sign_code`, `sign_name`, `sign_context`, `house_modality`,
-  `object_context`, `motion_context` et le cas echeant `dignity_context` ;
+  `object_context`, `motion_context` et `dignity_context` sous forme de tableau ;
 - signaux avec `evidence` ;
 - signaux avec `theme_code`, `interpretive_hint`, `semantic_tags`,
   `aggregation_group` et `writing_guidance` non vides ;
@@ -677,6 +694,9 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
   tableau ;
 - signaux `dignity:*` rattaches a une entree correspondante dans
   `payload.dignities` ;
+- pour chaque signal `dignity:*`, coherence stricte entre son `signal_key`, son
+  evidence (`chart_object`, `sign_code`, `dignity_type`) et l'entree
+  correspondante dans `payload.dignities` ;
 - `reading_plan` present, non vide, compose de slots uniques et de sources qui
   existent dans les signaux du payload ;
 - `drafting_plan` present, non vide, aligne sur les slots et sources du
@@ -718,7 +738,8 @@ Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
 - `llm_handoff_contract.contract_version = "basic_natal_structured_v3"` ;
 - des positions avec `sign_code`, `sign_name`, `house_number`, `house_name`,
   `sign_context`, `house_modality`, `object_context`, `motion_context` et
-  `dignity_context` quand une dignite est detectee ;
+  `dignity_context` sous forme de tableau, vide quand aucune dignite n'est
+  detectee ;
 - une liste `dignities` top-level, vide ou non selon le theme, mais coherente
   avec les signaux `dignity:*` actifs ;
 - au plus 12 signaux ;

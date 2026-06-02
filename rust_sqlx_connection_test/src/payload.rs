@@ -71,26 +71,22 @@ pub fn build_basic_payload(
     }
 }
 
-fn position_dignity_context(position: &ObjectPositionFact) -> Option<serde_json::Value> {
+fn position_dignity_context(position: &ObjectPositionFact) -> serde_json::Value {
     let dignities = essential_dignities_for_position(position);
-    if dignities.is_empty() {
-        None
-    } else {
-        Some(serde_json::Value::Array(
-            dignities
-                .into_iter()
-                .map(|dignity| {
-                    serde_json::json!({
-                        "fact_type": "essential_dignity",
-                        "dignity_type": dignity.dignity_type,
-                        "dignity_label": dignity.dignity_label,
-                        "polarity": dignity.polarity,
-                        "strength_score": dignity.strength_score,
-                    })
+    serde_json::Value::Array(
+        dignities
+            .into_iter()
+            .map(|dignity| {
+                serde_json::json!({
+                    "fact_type": "essential_dignity",
+                    "dignity_type": dignity.dignity_type,
+                    "dignity_label": dignity.dignity_label,
+                    "polarity": dignity.polarity,
+                    "strength_score": dignity.strength_score,
                 })
-                .collect(),
-        ))
-    }
+            })
+            .collect(),
+    )
 }
 
 pub fn basic_llm_handoff_contract() -> BasicLlmHandoffContract {
@@ -300,19 +296,20 @@ fn signal_keys_for_objects(
     limit: usize,
 ) -> Vec<String> {
     let mut keys = Vec::new();
+    let mut selected_objects = 0;
 
     for object_code in object_codes {
         let signal_key = format!("object_position:{object_code}");
         if signals.iter().any(|signal| signal.signal_key == signal_key) {
             keys.push(signal_key);
+            selected_objects += 1;
         }
         keys.extend(dignity_signal_keys_for_object(signals, object_code));
-        if keys.len() >= limit {
+        if selected_objects >= limit {
             break;
         }
     }
 
-    keys.truncate(limit);
     dedupe_strings(&mut keys);
     keys
 }
@@ -758,6 +755,13 @@ mod tests {
                 .and_then(|value| value.as_str()),
             Some("direct")
         );
+        assert_eq!(
+            payload.positions[0]
+                .dignity_context
+                .as_array()
+                .map(Vec::len),
+            Some(0)
+        );
     }
 
     #[test]
@@ -896,8 +900,7 @@ mod tests {
         assert_eq!(
             payload.positions[0]
                 .dignity_context
-                .as_ref()
-                .and_then(|context| context.as_array())
+                .as_array()
                 .and_then(|context| context.first())
                 .and_then(|context| context.get("dignity_type"))
                 .and_then(|value| value.as_str()),
@@ -990,6 +993,40 @@ mod tests {
     }
 
     #[test]
+    fn reading_plan_object_limits_do_not_count_dignity_sources() {
+        let signals = vec![
+            placement_signal_row(1, "object_position:mercury", "mercury"),
+            dignity_signal_row(2, "dignity:mercury:domicile:virgo", "mercury"),
+            dignity_signal_row(3, "dignity:mercury:exaltation:virgo", "mercury"),
+            placement_signal_row(4, "object_position:venus", "venus"),
+            placement_signal_row(5, "object_position:mars", "mars"),
+        ];
+
+        let payload = build_basic_payload(42, &input(), &[position()], &signals);
+        let expression_plan = payload
+            .reading_plan
+            .iter()
+            .find(|item| item.slot == "expression_style")
+            .expect("expected expression style plan");
+
+        assert!(expression_plan
+            .source_signal_keys
+            .contains(&"object_position:mercury".to_string()));
+        assert!(expression_plan
+            .source_signal_keys
+            .contains(&"dignity:mercury:domicile:virgo".to_string()));
+        assert!(expression_plan
+            .source_signal_keys
+            .contains(&"dignity:mercury:exaltation:virgo".to_string()));
+        assert!(expression_plan
+            .source_signal_keys
+            .contains(&"object_position:venus".to_string()));
+        assert!(expression_plan
+            .source_signal_keys
+            .contains(&"object_position:mars".to_string()));
+    }
+
+    #[test]
     fn main_dynamic_aspects_include_strong_tension_when_available() {
         let signals = vec![
             aspect_signal(1, "aspect:moon:neptune:sextile", "sextile", 0.95),
@@ -1061,6 +1098,33 @@ mod tests {
                 "evidence": {
                     "fact_type": "essential_dignity",
                     "chart_object": object_code
+                }
+            })),
+        }
+    }
+
+    fn placement_signal_row(
+        id: i32,
+        signal_key: &str,
+        object_code: &str,
+    ) -> InterpretationSignalRow {
+        InterpretationSignalRow {
+            id,
+            signal_key: signal_key.to_string(),
+            theme_code: Some("object_position".to_string()),
+            title: format!("{object_code} placement"),
+            summary: Some("summary".to_string()),
+            priority_score: 85.0,
+            confidence_score: Some(0.95),
+            payload_json: Some(json!({
+                "interpretive_hint": "hint",
+                "semantic_tags": ["placement", object_code],
+                "source_weight": 0.75,
+                "aggregation_group": object_code,
+                "writing_guidance": "guidance",
+                "evidence": {
+                    "fact_type": "object_position",
+                    "object_code": object_code
                 }
             })),
         }
