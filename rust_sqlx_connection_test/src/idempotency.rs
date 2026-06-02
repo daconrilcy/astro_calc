@@ -90,7 +90,6 @@ mod tests {
             coordinate_reference_system_id: 1,
             house_system_id: 1,
             product_code: Some("basic".to_string()),
-            language_id: Some(2),
         }
     }
 
@@ -121,13 +120,11 @@ mod tests {
     }
 
     #[test]
-    fn idempotency_ignores_generation_options() {
+    fn idempotency_ignores_product_options() {
         let mut left = input();
         let mut right = input();
         left.product_code = Some("basic".to_string());
-        left.language_id = Some(1);
         right.product_code = Some("premium".to_string());
-        right.language_id = Some(2);
 
         assert_eq!(
             idempotency_key(&left, &RuntimeOptions::default()).unwrap(),

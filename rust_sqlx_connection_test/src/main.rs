@@ -15,9 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ephemeris = SwissEphemerisEngine::new(ephemeris_path_from_env());
     let service = ChartCalculationRuntimeService::new(pool, ephemeris, runtime_options_from_env());
 
-    let output = service
-        .calculate_natal_basic_with_fake_generation(input)
-        .await?;
+    let output = service.calculate_natal_basic(input).await?;
     println!("{}", serde_json::to_string_pretty(&output)?);
     Ok(())
 }
@@ -39,7 +37,6 @@ fn natal_input_from_env() -> Result<NatalChartInput, Box<dyn std::error::Error>>
         product_code: Some(
             std::env::var("ASTRAL_PRODUCT_CODE").unwrap_or_else(|_| "basic".to_string()),
         ),
-        language_id: optional_parse("ASTRAL_LANGUAGE_ID")?,
     })
 }
 

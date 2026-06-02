@@ -5,16 +5,12 @@ use sqlx::PgPool;
 use thiserror::Error;
 
 use crate::domain::{
-    BasicControlledGenerationOutput, BasicGeneratedReadingPayload, BasicPayload,
-    CalculatedChartFacts, CalculationReferenceData, NatalChartInput, RuntimeOptions,
+    BasicPayload, CalculatedChartFacts, CalculationReferenceData, NatalChartInput, RuntimeOptions,
 };
 use crate::ephemeris::EphemerisEngine;
 use crate::idempotency::{advisory_lock_key, idempotency_key, input_hash};
 use crate::models::ChartCalculationRow;
-use crate::payload::{
-    build_basic_payload, build_fake_generated_reading, generated_product_code,
-    is_valid_fake_generated_reading,
-};
+use crate::payload::build_basic_payload;
 use crate::repositories::RuntimeRepository;
 use crate::signals::aggregate_basic_signals;
 
@@ -28,8 +24,6 @@ pub enum RuntimeError {
     Ephemeris(String),
     #[error("invalid runtime table: {0}")]
     InvalidRuntimeTable(String),
-    #[error("invalid generated reading payload: {0}")]
-    InvalidGeneratedPayload(String),
     #[error("calculation is already running for idempotency key {idempotency_key}")]
     RunningCalculationInProgress {
         idempotency_key: String,
@@ -44,7 +38,6 @@ impl RuntimeError {
             Self::Json(_) => "json_error",
             Self::Ephemeris(_) => "ephemeris_error",
             Self::InvalidRuntimeTable(_) => "invalid_runtime_table",
-            Self::InvalidGeneratedPayload(_) => "invalid_generated_payload",
             Self::RunningCalculationInProgress { .. } => "running_calculation_in_progress",
         }
     }
@@ -73,6 +66,7 @@ where
         input: NatalChartInput,
     ) -> Result<BasicPayload, RuntimeError> {
         let product_code = input.product_code().to_string();
+        let payload_language_id = self.repository.language_id_for_code("en").await?;
         let input_hash = input_hash(&input)?;
         let idempotency_key = idempotency_key(&input, &self.options)?;
         let lock_key = advisory_lock_key(&idempotency_key);
@@ -95,19 +89,10 @@ where
             tx.commit().await?;
             if let Some(payload) = self
                 .repository
-                .existing_basic_payload(completed_id, &product_code, input.language_id)
+                .existing_basic_payload(completed_id, &product_code, Some(payload_language_id))
                 .await?
             {
                 if is_current_basic_payload(&payload) {
-                    let generated_payload = build_validated_fake_generated_reading(&payload)?;
-                    let mut generated_tx = self.repository.pool().begin().await?;
-                    RuntimeRepository::persist_generated_reading_payload(
-                        &mut generated_tx,
-                        input.language_id,
-                        &generated_payload,
-                    )
-                    .await?;
-                    generated_tx.commit().await?;
                     return Ok(payload);
                 }
             }
@@ -119,21 +104,6 @@ where
                 aspects,
             });
             let mut payload_tx = self.repository.pool().begin().await?;
-            let generated_product_code = generated_product_code(&product_code);
-            RuntimeRepository::delete_generation_payload(
-                &mut payload_tx,
-                completed_id,
-                &product_code,
-                input.language_id,
-            )
-            .await?;
-            RuntimeRepository::delete_generation_payload(
-                &mut payload_tx,
-                completed_id,
-                &generated_product_code,
-                input.language_id,
-            )
-            .await?;
             let signals = RuntimeRepository::persist_signals(
                 &mut payload_tx,
                 completed_id,
@@ -142,12 +112,11 @@ where
             )
             .await?;
             let payload = build_basic_payload(completed_id, &input, &positions, &signals);
-            RuntimeRepository::persist_basic_payload(&mut payload_tx, &input, &payload).await?;
-            let generated_payload = build_validated_fake_generated_reading(&payload)?;
-            RuntimeRepository::persist_generated_reading_payload(
+            RuntimeRepository::persist_basic_payload(
                 &mut payload_tx,
-                input.language_id,
-                &generated_payload,
+                &input,
+                Some(payload_language_id),
+                &payload,
             )
             .await?;
             payload_tx.commit().await?;
@@ -214,44 +183,17 @@ where
         RuntimeRepository::heartbeat(&mut tx, chart_calculation_id, "building_payload").await?;
         let payload =
             build_basic_payload(chart_calculation_id, &input, &facts.positions, &signal_rows);
-        RuntimeRepository::persist_basic_payload(&mut tx, &input, &payload).await?;
-        let generated_payload = build_validated_fake_generated_reading(&payload)?;
-        RuntimeRepository::persist_generated_reading_payload(
+        RuntimeRepository::persist_basic_payload(
             &mut tx,
-            input.language_id,
-            &generated_payload,
+            &input,
+            Some(payload_language_id),
+            &payload,
         )
         .await?;
         RuntimeRepository::mark_completed(&mut tx, chart_calculation_id).await?;
         tx.commit().await?;
 
         Ok(payload)
-    }
-
-    pub async fn calculate_natal_basic_with_fake_generation(
-        &self,
-        input: NatalChartInput,
-    ) -> Result<BasicControlledGenerationOutput, RuntimeError> {
-        let source_payload = self.calculate_natal_basic(input).await?;
-        let generated_payload = build_validated_fake_generated_reading(&source_payload)?;
-
-        Ok(BasicControlledGenerationOutput {
-            source_payload,
-            generated_payload,
-        })
-    }
-}
-
-fn build_validated_fake_generated_reading(
-    payload: &BasicPayload,
-) -> Result<BasicGeneratedReadingPayload, RuntimeError> {
-    let generated_payload = build_fake_generated_reading(payload);
-    if is_valid_fake_generated_reading(payload, &generated_payload) {
-        Ok(generated_payload)
-    } else {
-        Err(RuntimeError::InvalidGeneratedPayload(
-            "fake provider output does not satisfy the Basic generation contract".to_string(),
-        ))
     }
 }
 
@@ -312,7 +254,7 @@ fn is_stale(row: &ChartCalculationRow, default_stale_after_seconds: i32) -> bool
 fn is_current_basic_payload(payload: &BasicPayload) -> bool {
     !payload.signals.is_empty()
         && payload.signals.len() <= 12
-        && has_current_writing_contract(payload)
+        && has_current_llm_handoff_contract(payload)
         && has_current_reading_plan(payload)
         && has_current_drafting_plan(payload)
         && payload
@@ -334,22 +276,27 @@ fn is_current_basic_payload(payload: &BasicPayload) -> bool {
         })
 }
 
-fn has_current_writing_contract(payload: &BasicPayload) -> bool {
-    let Some(contract) = payload.writing_contract.as_ref() else {
+fn has_current_llm_handoff_contract(payload: &BasicPayload) -> bool {
+    let Some(contract) = payload.llm_handoff_contract.as_ref() else {
         return false;
     };
 
-    contract.audience_level == "beginner"
+    contract.contract_version == "basic_natal_structured_v1"
+        && contract.payload_language_code == "en"
+        && contract.target_language_policy == "provided_by_llm_service"
+        && contract.audience_level == "beginner"
         && contract.tone == "clear, warm, non fatalistic"
-        && contract.language == "fr"
-        && contract.max_total_words == 650
+        && contract.must_use.as_slice() == ["signals", "reading_plan", "drafting_plan"]
         && contract.must_not.as_slice()
             == [
-                "list placements mechanically",
-                "mention internal IDs",
                 "invent facts not present in source signals",
-                "use deterministic or fatalistic wording",
+                "mention technical IDs",
+                "list placements mechanically",
+                "translate technical keys such as signal_key, theme_code, semantic_tags, slot, or aggregation_group",
+                "expose raw evidence unless explicitly requested",
+                "make deterministic or fatalistic predictions",
             ]
+        && contract.output_format == "structured_sections"
 }
 
 fn has_current_reading_plan(payload: &BasicPayload) -> bool {
@@ -469,8 +416,8 @@ mod tests {
 
     use super::*;
     use crate::domain::{
-        BasicDraftingPlanItem, BasicObjectPosition, BasicReadingPlanItem, BasicSignal,
-        BasicWritingContract,
+        BasicDraftingPlanItem, BasicLlmHandoffContract, BasicObjectPosition, BasicReadingPlanItem,
+        BasicSignal,
     };
     use crate::models::{HouseReference, SignReference};
 
@@ -481,17 +428,26 @@ mod tests {
             reference_version_id: 1,
             subject_label: None,
             birth_datetime_utc: Utc.with_ymd_and_hms(2024, 6, 15, 12, 0, 0).unwrap(),
-            writing_contract: Some(BasicWritingContract {
+            llm_handoff_contract: Some(BasicLlmHandoffContract {
+                contract_version: "basic_natal_structured_v1".to_string(),
+                payload_language_code: "en".to_string(),
+                target_language_policy: "provided_by_llm_service".to_string(),
                 audience_level: "beginner".to_string(),
                 tone: "clear, warm, non fatalistic".to_string(),
-                language: "fr".to_string(),
-                max_total_words: 650,
-                must_not: vec![
-                    "list placements mechanically".to_string(),
-                    "mention internal IDs".to_string(),
-                    "invent facts not present in source signals".to_string(),
-                    "use deterministic or fatalistic wording".to_string(),
+                must_use: vec![
+                    "signals".to_string(),
+                    "reading_plan".to_string(),
+                    "drafting_plan".to_string(),
                 ],
+                must_not: vec![
+                    "invent facts not present in source signals".to_string(),
+                    "mention technical IDs".to_string(),
+                    "list placements mechanically".to_string(),
+                    "translate technical keys such as signal_key, theme_code, semantic_tags, slot, or aggregation_group".to_string(),
+                    "expose raw evidence unless explicitly requested".to_string(),
+                    "make deterministic or fatalistic predictions".to_string(),
+                ],
+                output_format: "structured_sections".to_string(),
             }),
             positions: vec![BasicObjectPosition {
                 object_code: "sun".to_string(),
@@ -536,6 +492,26 @@ mod tests {
     }
 
     #[test]
+    fn current_payload_requires_canonical_llm_handoff_contract() {
+        let mut payload = current_payload();
+        payload
+            .llm_handoff_contract
+            .as_mut()
+            .expect("llm handoff contract")
+            .payload_language_code = "fr".to_string();
+
+        assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
+    fn current_payload_requires_llm_handoff_contract() {
+        let mut payload = current_payload();
+        payload.llm_handoff_contract = None;
+
+        assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
     fn current_payload_requires_signals() {
         let mut payload = current_payload();
         payload.signals.clear();
@@ -555,14 +531,6 @@ mod tests {
     fn current_payload_requires_reading_plan() {
         let mut payload = current_payload();
         payload.reading_plan.clear();
-
-        assert!(!is_current_basic_payload(&payload));
-    }
-
-    #[test]
-    fn current_payload_requires_writing_contract() {
-        let mut payload = current_payload();
-        payload.writing_contract = None;
 
         assert!(!is_current_basic_payload(&payload));
     }

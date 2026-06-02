@@ -1098,7 +1098,7 @@ Contrainte d'unicite : un signal est unique par `(chart_calculation_id, signal_k
 
 ### astral_interpretation_generation_payloads
 
-`astral_interpretation_generation_payloads` stocke le payload final transmis a la couche de generation.
+`astral_interpretation_generation_payloads` stocke le payload canonique produit par le moteur astro et transmis a la couche de generation.
 
 `payload_json` doit contenir uniquement les signaux retenus, les contraintes produit, le niveau de profondeur, les consignes de style et les preuves utiles a la generation. Il ne doit pas contenir une copie brute de tous les faits runtime.
 
@@ -1106,10 +1106,23 @@ Regle d'ecriture :
 
 - un payload doit etre cree apres l'agregation des signaux ;
 - `product_code` doit identifier le niveau produit quand il existe, par exemple `basic` ou `premium` ;
-- `language_id` doit identifier la langue cible quand elle est connue ;
+- `language_id` doit identifier la langue canonique du payload, pas la langue cible utilisateur ; pour le moteur Rust canonique, cette valeur doit etre `en` ;
 - `created_at` doit correspondre au moment ou le payload est fige ;
-- une nouvelle generation avec le meme calcul mais un produit ou une langue differente doit creer un nouveau payload ;
+- une nouvelle generation avec le meme calcul mais un produit ou une langue de payload differente doit creer un nouveau payload ;
 - un payload est unique par `(chart_calculation_id, product_code, language_id)`.
+
+### astral_interpretation_generated_outputs
+
+`astral_interpretation_generated_outputs` stocke les sorties localisees produites par un service LLM a partir d'un payload canonique.
+
+Regle d'ecriture :
+
+- `generation_payload_id` doit pointer vers le payload canonique utilise comme source ;
+- `target_language_id` doit identifier la langue finale demandee par l'utilisateur ;
+- `prompt_contract_version` doit identifier la version du contrat de prompt applique ;
+- `provider_code` et `model_code` doivent identifier le fournisseur et le modele LLM utilises ;
+- `generated_output_json` doit contenir la sortie finale structuree, deja localisee ;
+- une sortie est unique par `(generation_payload_id, target_language_id, prompt_contract_version, provider_code, model_code)`.
 
 ## Catalogue structurel retire
 

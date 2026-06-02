@@ -20,7 +20,6 @@ pub struct NatalChartInput {
     pub coordinate_reference_system_id: i32,
     pub house_system_id: i32,
     pub product_code: Option<String>,
-    pub language_id: Option<i32>,
 }
 
 impl NatalChartInput {
@@ -130,7 +129,7 @@ pub struct BasicPayload {
     pub subject_label: Option<String>,
     pub birth_datetime_utc: DateTime<Utc>,
     #[serde(default)]
-    pub writing_contract: Option<BasicWritingContract>,
+    pub llm_handoff_contract: Option<BasicLlmHandoffContract>,
     pub positions: Vec<BasicObjectPosition>,
     pub signals: Vec<BasicSignal>,
     #[serde(default)]
@@ -140,9 +139,17 @@ pub struct BasicPayload {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BasicControlledGenerationOutput {
-    pub source_payload: BasicPayload,
-    pub generated_payload: BasicGeneratedReadingPayload,
+pub struct BasicLlmHandoffContract {
+    pub contract_version: String,
+    pub payload_language_code: String,
+    pub target_language_policy: String,
+    pub audience_level: String,
+    pub tone: String,
+    #[serde(default)]
+    pub must_use: Vec<String>,
+    #[serde(default)]
+    pub must_not: Vec<String>,
+    pub output_format: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -196,38 +203,4 @@ pub struct BasicDraftingPlanItem {
     pub max_words: u16,
     #[serde(default)]
     pub avoid: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BasicWritingContract {
-    pub audience_level: String,
-    pub tone: String,
-    pub language: String,
-    pub max_total_words: u16,
-    #[serde(default)]
-    pub must_not: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BasicGeneratedReadingPayload {
-    pub product_code: String,
-    pub source_product_code: String,
-    pub chart_calculation_id: i32,
-    pub reference_version_id: i32,
-    pub subject_label: Option<String>,
-    pub birth_datetime_utc: DateTime<Utc>,
-    pub generation_provider: String,
-    pub writing_contract: BasicWritingContract,
-    #[serde(default)]
-    pub generated_sections: Vec<BasicGeneratedSection>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BasicGeneratedSection {
-    pub slot: String,
-    pub section_title: String,
-    #[serde(default)]
-    pub source_signal_keys: Vec<String>,
-    pub text: String,
-    pub word_count: u16,
 }

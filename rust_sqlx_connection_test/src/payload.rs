@@ -1,7 +1,6 @@
 use crate::domain::{
-    BasicDraftingPlanItem, BasicGeneratedReadingPayload, BasicGeneratedSection,
-    BasicObjectPosition, BasicPayload, BasicReadingPlanItem, BasicSignal, BasicWritingContract,
-    NatalChartInput, ObjectPositionFact,
+    BasicDraftingPlanItem, BasicLlmHandoffContract, BasicObjectPosition, BasicPayload,
+    BasicReadingPlanItem, BasicSignal, NatalChartInput, ObjectPositionFact,
 };
 use crate::models::InterpretationSignalRow;
 
@@ -39,7 +38,7 @@ pub fn build_basic_payload(
         reference_version_id: input.reference_version_id,
         subject_label: input.subject_label.clone(),
         birth_datetime_utc: input.birth_datetime_utc,
-        writing_contract: Some(basic_writing_contract()),
+        llm_handoff_contract: Some(basic_llm_handoff_contract()),
         positions: positions
             .iter()
             .map(|position| BasicObjectPosition {
@@ -58,6 +57,30 @@ pub fn build_basic_payload(
         signals: basic_signals,
         reading_plan,
         drafting_plan,
+    }
+}
+
+pub fn basic_llm_handoff_contract() -> BasicLlmHandoffContract {
+    BasicLlmHandoffContract {
+        contract_version: "basic_natal_structured_v1".to_string(),
+        payload_language_code: "en".to_string(),
+        target_language_policy: "provided_by_llm_service".to_string(),
+        audience_level: "beginner".to_string(),
+        tone: "clear, warm, non fatalistic".to_string(),
+        must_use: vec![
+            "signals".to_string(),
+            "reading_plan".to_string(),
+            "drafting_plan".to_string(),
+        ],
+        must_not: vec![
+            "invent facts not present in source signals".to_string(),
+            "mention technical IDs".to_string(),
+            "list placements mechanically".to_string(),
+            "translate technical keys such as signal_key, theme_code, semantic_tags, slot, or aggregation_group".to_string(),
+            "expose raw evidence unless explicitly requested".to_string(),
+            "make deterministic or fatalistic predictions".to_string(),
+        ],
+        output_format: "structured_sections".to_string(),
     }
 }
 
@@ -128,114 +151,6 @@ fn build_reading_plan(signals: &[BasicSignal]) -> Vec<BasicReadingPlanItem> {
     );
 
     plan
-}
-
-pub fn build_fake_generated_reading(payload: &BasicPayload) -> BasicGeneratedReadingPayload {
-    let writing_contract = payload
-        .writing_contract
-        .clone()
-        .unwrap_or_else(basic_writing_contract);
-    let generated_sections = payload
-        .drafting_plan
-        .iter()
-        .map(|item| {
-            let text = fake_section_text(
-                item,
-                &signals_for_keys(&payload.signals, &item.source_signal_keys),
-            );
-            let text = sanitize_generated_text(&truncate_words(&text, item.max_words));
-            BasicGeneratedSection {
-                slot: item.slot.clone(),
-                section_title: item.section_title.clone(),
-                source_signal_keys: item.source_signal_keys.clone(),
-                word_count: word_count(&text),
-                text,
-            }
-        })
-        .collect();
-
-    BasicGeneratedReadingPayload {
-        product_code: generated_product_code(&payload.product_code),
-        source_product_code: payload.product_code.clone(),
-        chart_calculation_id: payload.chart_calculation_id,
-        reference_version_id: payload.reference_version_id,
-        subject_label: payload.subject_label.clone(),
-        birth_datetime_utc: payload.birth_datetime_utc,
-        generation_provider: "fake_deterministic_v1".to_string(),
-        writing_contract,
-        generated_sections,
-    }
-}
-
-pub fn is_valid_fake_generated_reading(
-    source_payload: &BasicPayload,
-    generated_payload: &BasicGeneratedReadingPayload,
-) -> bool {
-    let Some(writing_contract) = source_payload.writing_contract.as_ref() else {
-        return false;
-    };
-    if generated_payload.source_product_code != source_payload.product_code
-        || generated_payload.chart_calculation_id != source_payload.chart_calculation_id
-        || generated_payload.reference_version_id != source_payload.reference_version_id
-        || generated_payload.generation_provider != "fake_deterministic_v1"
-        || generated_payload.writing_contract.audience_level != writing_contract.audience_level
-        || generated_payload.writing_contract.tone != writing_contract.tone
-        || generated_payload.writing_contract.language != writing_contract.language
-        || generated_payload.writing_contract.max_total_words != writing_contract.max_total_words
-        || generated_payload.writing_contract.must_not != writing_contract.must_not
-        || generated_payload.generated_sections.len() != source_payload.drafting_plan.len()
-    {
-        return false;
-    }
-
-    let signal_keys = source_payload
-        .signals
-        .iter()
-        .map(|signal| signal.signal_key.as_str())
-        .collect::<Vec<_>>();
-    let total_words: u32 = generated_payload
-        .generated_sections
-        .iter()
-        .map(|section| u32::from(section.word_count))
-        .sum();
-
-    total_words <= u32::from(writing_contract.max_total_words)
-        && generated_payload
-            .generated_sections
-            .iter()
-            .zip(&source_payload.drafting_plan)
-            .all(|(section, plan_item)| {
-                section.slot == plan_item.slot
-                    && section.section_title == plan_item.section_title
-                    && section.source_signal_keys == plan_item.source_signal_keys
-                    && section.word_count == word_count(&section.text)
-                    && section.word_count <= plan_item.max_words
-                    && !section.text.trim().is_empty()
-                    && !contains_technical_id_token(&section.text)
-                    && section
-                        .source_signal_keys
-                        .iter()
-                        .all(|key| signal_keys.contains(&key.as_str()))
-            })
-}
-
-pub fn generated_product_code(source_product_code: &str) -> String {
-    format!("{source_product_code}_generated_fake")
-}
-
-pub fn basic_writing_contract() -> BasicWritingContract {
-    BasicWritingContract {
-        audience_level: "beginner".to_string(),
-        tone: "clear, warm, non fatalistic".to_string(),
-        language: "fr".to_string(),
-        max_total_words: 650,
-        must_not: vec![
-            "list placements mechanically".to_string(),
-            "mention internal IDs".to_string(),
-            "invent facts not present in source signals".to_string(),
-            "use deterministic or fatalistic wording".to_string(),
-        ],
-    }
 }
 
 fn main_dynamic_aspect_keys(signals: &[BasicSignal]) -> Vec<String> {
@@ -499,86 +414,6 @@ fn avoid_rules_for_slot(slot: &str) -> Vec<String> {
     rules
 }
 
-fn fake_section_text(item: &BasicDraftingPlanItem, signals: &[&BasicSignal]) -> String {
-    let titles = signals
-        .iter()
-        .map(|signal| signal.title.as_str())
-        .collect::<Vec<_>>()
-        .join(", ");
-    let summaries = signals
-        .iter()
-        .filter_map(|signal| signal.summary.as_deref())
-        .take(2)
-        .collect::<Vec<_>>()
-        .join(" ");
-    let source_text = if titles.is_empty() {
-        "les signaux retenus".to_string()
-    } else {
-        titles
-    };
-    let summary_text = if summaries.is_empty() {
-        "Le texte reste volontairement limite aux signaux disponibles.".to_string()
-    } else {
-        summaries
-    };
-
-    match item.slot.as_str() {
-        "core_identity" => format!(
-            "Cette section presente les reperes centraux du theme a partir de {source_text}. {summary_text} La lecture reste simple et relie ces facteurs sans les transformer en certitudes."
-        ),
-        "dominant_cluster" => format!(
-            "Cette section regroupe la dominante principale au lieu de lister chaque placement. Les sources retenues sont {source_text}. {summary_text} Le propos souligne une tendance de fond avec une formulation prudente."
-        ),
-        "main_tension_or_support" => format!(
-            "Cette section explique les relations les plus visibles entre facteurs du theme. Elle s'appuie sur {source_text}. {summary_text} Les appuis et les tensions sont presentes comme des dynamiques, pas comme des verdicts."
-        ),
-        "expression_style" => format!(
-            "Cette section decrit la maniere de penser, choisir, aimer et agir au quotidien. Elle s'appuie sur {source_text}. {summary_text} Le texte cherche une synthese lisible plutot qu'une liste mecanique."
-        ),
-        "background_factors" => format!(
-            "Cette section place les facteurs de fond a leur juste niveau. Les sources retenues sont {source_text}. {summary_text} Elle donne du contexte sans alourdir la lecture principale."
-        ),
-        _ => format!(
-            "Cette section suit l'objectif editorial prevu pour {}. Elle s'appuie sur {source_text}. {summary_text}",
-            item.section_title
-        ),
-    }
-}
-
-fn sanitize_generated_text(text: &str) -> String {
-    technical_id_tokens()
-        .iter()
-        .fold(text.to_string(), |cleaned, token| {
-            cleaned.replace(token, "technical reference")
-        })
-}
-
-fn truncate_words(text: &str, max_words: u16) -> String {
-    let words = text.split_whitespace().collect::<Vec<_>>();
-    if words.len() <= usize::from(max_words) {
-        return text.to_string();
-    }
-    words
-        .into_iter()
-        .take(usize::from(max_words))
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-fn word_count(text: &str) -> u16 {
-    text.split_whitespace().count().min(u16::MAX as usize) as u16
-}
-
-fn contains_technical_id_token(text: &str) -> bool {
-    technical_id_tokens()
-        .iter()
-        .any(|token| text.contains(token))
-}
-
-fn technical_id_tokens() -> &'static [&'static str] {
-    &["chart_object_id", "aspect_id", "house_id", "sign_id"]
-}
-
 fn payload_value(signal: &InterpretationSignalRow, key: &str) -> Option<serde_json::Value> {
     signal
         .payload_json
@@ -638,7 +473,6 @@ mod tests {
             coordinate_reference_system_id: 1,
             house_system_id: 1,
             product_code: Some("basic".to_string()),
-            language_id: None,
         }
     }
 
@@ -722,10 +556,21 @@ mod tests {
             payload.reading_plan[0].source_signal_keys
         );
         assert_eq!(payload.drafting_plan[0].max_words, 110);
-        let contract = payload.writing_contract.as_ref().expect("writing contract");
-        assert_eq!(contract.audience_level, "beginner");
-        assert_eq!(contract.language, "fr");
-        assert_eq!(contract.max_total_words, 650);
+        assert_eq!(
+            payload
+                .llm_handoff_contract
+                .as_ref()
+                .expect("llm handoff contract")
+                .contract_version,
+            "basic_natal_structured_v1"
+        );
+        let contract = payload
+            .llm_handoff_contract
+            .as_ref()
+            .expect("llm handoff contract");
+        assert_eq!(contract.payload_language_code, "en");
+        assert_eq!(contract.target_language_policy, "provided_by_llm_service");
+        assert!(contract.must_use.contains(&"signals".to_string()));
     }
 
     #[test]
@@ -846,91 +691,6 @@ mod tests {
         assert!(aspect_plan
             .source_signal_keys
             .contains(&"aspect:moon:mars:square".to_string()));
-    }
-
-    #[test]
-    fn fake_generation_builds_bounded_sections_from_drafting_plan() {
-        let signals = vec![
-            InterpretationSignalRow {
-                id: 1,
-                signal_key: "object_position:sun".to_string(),
-                theme_code: Some("beliefs".to_string()),
-                title: "Sun in Gemini, house 9".to_string(),
-                summary: Some("summary".to_string()),
-                priority_score: 100.0,
-                confidence_score: Some(0.95),
-                payload_json: Some(json!({
-                    "interpretive_hint": "hint",
-                    "semantic_tags": ["placement", "sun"],
-                    "source_weight": 1.0,
-                    "aggregation_group": "gemini:house_9",
-                    "writing_guidance": "guidance",
-                    "evidence": {"fact_type": "object_position"}
-                })),
-            },
-            aspect_signal(2, "aspect:moon:mars:square", "square", 0.88),
-        ];
-        let payload = build_basic_payload(42, &input(), &[position()], &signals);
-        let generated = build_fake_generated_reading(&payload);
-        let signal_keys = payload
-            .signals
-            .iter()
-            .map(|signal| signal.signal_key.as_str())
-            .collect::<Vec<_>>();
-
-        assert_eq!(generated.product_code, "basic_generated_fake");
-        assert_eq!(generated.source_product_code, "basic");
-        assert_eq!(generated.generation_provider, "fake_deterministic_v1");
-        assert_eq!(
-            generated.generated_sections.len(),
-            payload.drafting_plan.len()
-        );
-        assert!(is_valid_fake_generated_reading(&payload, &generated));
-
-        for (section, plan_item) in generated
-            .generated_sections
-            .iter()
-            .zip(&payload.drafting_plan)
-        {
-            assert_eq!(section.slot, plan_item.slot);
-            assert_eq!(section.section_title, plan_item.section_title);
-            assert_eq!(section.source_signal_keys, plan_item.source_signal_keys);
-            assert!(section.word_count <= plan_item.max_words);
-            assert!(section
-                .source_signal_keys
-                .iter()
-                .all(|key| signal_keys.contains(&key.as_str())));
-            assert!(!contains_technical_id_token(&section.text));
-        }
-    }
-
-    #[test]
-    fn fake_generation_sanitizes_technical_tokens_from_source_text() {
-        let signals = vec![InterpretationSignalRow {
-            id: 1,
-            signal_key: "object_position:sun".to_string(),
-            theme_code: Some("beliefs".to_string()),
-            title: "Sun references chart_object_id".to_string(),
-            summary: Some("summary with aspect_id and house_id".to_string()),
-            priority_score: 100.0,
-            confidence_score: Some(0.95),
-            payload_json: Some(json!({
-                "interpretive_hint": "hint",
-                "semantic_tags": ["placement", "sun"],
-                "source_weight": 1.0,
-                "aggregation_group": "gemini:house_9",
-                "writing_guidance": "guidance",
-                "evidence": {"fact_type": "object_position"}
-            })),
-        }];
-        let payload = build_basic_payload(42, &input(), &[position()], &signals);
-        let generated = build_fake_generated_reading(&payload);
-
-        assert!(is_valid_fake_generated_reading(&payload, &generated));
-        assert!(generated
-            .generated_sections
-            .iter()
-            .all(|section| !contains_technical_id_token(&section.text)));
     }
 
     fn aspect_signal(

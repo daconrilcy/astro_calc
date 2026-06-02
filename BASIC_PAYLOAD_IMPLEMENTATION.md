@@ -25,10 +25,9 @@ pas encore un texte final, mais il transforme chaque item de `reading_plan` en
 section attendue via `drafting_plan` : titre editorial, sources, objectif de
 redaction, plafond de mots et consignes d'evitement.
 
-L'etape 1E ajoute une generation controlee avec provider fake deterministe. Le
-payload Basic source expose maintenant aussi `writing_contract`, puis le runtime
-produit un artefact separe avec `generated_sections`. Cette sortie sert a
-valider le workflow de generation sans appeler de LLM externe.
+L'etape 1E formalise le contrat canonique de handoff LLM. Le moteur Rust produit
+un payload anglophone stable, deterministe et auditable ; il ne traduit pas, ne
+choisit pas la formulation finale et ne depend pas d'une langue cible utilisateur.
 
 Le runtime conserve la chaine existante :
 
@@ -36,8 +35,7 @@ Le runtime conserve la chaine existante :
 2. ecriture des positions, cuspides et aspects calcules ;
 3. aggregation des signaux ;
 4. filtrage produit Basic ;
-5. ecriture du payload source dans `astral_interpretation_generation_payloads` ;
-6. generation fake controlee et ecriture d'un payload separe.
+5. ecriture du payload canonique dans `astral_interpretation_generation_payloads`.
 
 Cette etape prepare donc une entree propre, lisible, auditable et pre-orientee
 editorialement.
@@ -319,24 +317,34 @@ l'inclusion d'au moins un aspect de tension fort quand un carre ou une oppositio
 atteint `strength_score >= 0.75`. Si les trois premiers aspects prioritaires ne
 contiennent aucune tension forte, le troisieme est remplace par cette tension.
 
-## Contrat de redaction Basic
+## Contrat canonique de handoff LLM
 
-Le payload final contient aussi `writing_contract` et `drafting_plan`.
-`writing_contract` pose les contraintes globales de redaction :
+Le payload final contient aussi `llm_handoff_contract` et `drafting_plan`.
+`llm_handoff_contract` pose les contraintes globales que le futur service LLM
+doit respecter :
 
 ```json
 {
-  "writing_contract": {
+  "llm_handoff_contract": {
+    "contract_version": "basic_natal_structured_v1",
+    "payload_language_code": "en",
+    "target_language_policy": "provided_by_llm_service",
     "audience_level": "beginner",
     "tone": "clear, warm, non fatalistic",
-    "language": "fr",
-    "max_total_words": 650,
+    "must_use": [
+      "signals",
+      "reading_plan",
+      "drafting_plan"
+    ],
     "must_not": [
-      "list placements mechanically",
-      "mention internal IDs",
       "invent facts not present in source signals",
-      "use deterministic or fatalistic wording"
-    ]
+      "mention technical IDs",
+      "list placements mechanically",
+      "translate technical keys such as signal_key, theme_code, semantic_tags, slot, or aggregation_group",
+      "expose raw evidence unless explicitly requested",
+      "make deterministic or fatalistic predictions"
+    ],
+    "output_format": "structured_sections"
   }
 }
 ```
@@ -347,8 +355,10 @@ directement exploitables par une future couche de generation controlee.
 
 Les champs redactionnels generes par `drafting_plan` sont en anglais. Cette
 contrainte couvre `section_title`, `writing_objective` et `avoid`, afin que le
-payload Basic reste coherent avec les libelles de referentiel actuellement
-exposes par le runtime.
+payload Basic reste coherent avec les libelles de referentiel exposes par le
+runtime. Le moteur peut exprimer des contraintes comme `plain language`,
+`beginner` ou `non fatalistic`, mais il ne doit jamais demander de rediger dans
+une langue cible finale.
 
 ```json
 {
@@ -384,64 +394,21 @@ Les slots ont des objectifs specialises :
 
 Cette couche est volontairement contractuelle : elle donne au futur LLM une
 liste de sections a rediger, mais elle ne lui demande pas encore de produire un
-theme complet libre.
+theme complet libre. Le service LLM recevra ce payload canonique avec un champ
+separe comme `target_language_code = "fr"` et produira la sortie localisee dans
+un module distinct.
 
 La validation de reutilisation des payloads existants force maintenant aussi :
 
-- un `writing_contract` global exact pour Basic ;
+- un `llm_handoff_contract` canonique exact pour Basic ;
 - des slots connus uniquement ;
 - l'ordre canonique des slots Basic ;
 - un `drafting_plan` strictement aligne sur les sources du `reading_plan` ;
-- l'absence d'anciens fragments redactionnels en francais ;
 - l'absence de lettres non ASCII dans les consignes redactionnelles 1D.
-
-## Generation controlee fake
-
-L'etape 1E ajoute `build_fake_generated_reading`, un provider deterministe qui
-transforme chaque item du `drafting_plan` en section produite :
-
-```json
-{
-  "product_code": "basic_generated_fake",
-  "source_product_code": "basic",
-  "generation_provider": "fake_deterministic_v1",
-  "generated_sections": [
-    {
-      "slot": "core_identity",
-      "section_title": "Core chart markers",
-      "source_signal_keys": [
-        "object_position:sun"
-      ],
-      "text": "Cette section presente les reperes centraux du theme...",
-      "word_count": 24
-    }
-  ]
-}
-```
-
-Le provider fake :
-
-- produit une section par item du `drafting_plan` ;
-- conserve l'ordre canonique porte par `drafting_plan` ;
-- recopie `slot`, `section_title` et `source_signal_keys` ;
-- construit un texte simple a partir des titres et resumes des signaux sources ;
-- nettoie les tokens techniques interdits si une source textuelle en contient ;
-- tronque chaque section au `max_words` du slot ;
-- conserve le meme `writing_contract` que le payload source ;
-- n'ecrit pas dans le payload source.
-
-La methode runtime `calculate_natal_basic_with_fake_generation` retourne un
-objet combine avec `source_payload` et `generated_payload`. Le binaire principal
-l'utilise pour afficher directement les deux artefacts lors d'un run local.
-
-Les tests verifient que chaque source referencee existe dans `signals`, que le
-nombre de mots respecte `max_words`, que l'ordre des sections suit le
-`drafting_plan`, et que le texte fake ne contient pas de tokens d'IDs techniques
-comme `chart_object_id`, `aspect_id`, `house_id` ou `sign_id`.
 
 ## Persistance
 
-Le payload final est serialize et upserte dans :
+Le payload canonique est serialize et upserte dans :
 
 `astral_interpretation_generation_payloads`
 
@@ -457,34 +424,44 @@ Avant chaque reecriture des signaux d'un calcul, les signaux existants du meme
 ensuite re-upsertes avec leur etat courant. Cela evite qu'un ancien signal actif
 reste visible apres un changement de format de cle ou de filtrage.
 
-La sortie fake 1E est persistee dans la meme table, mais sous un `product_code`
-derive : `basic_generated_fake`. Le payload source `basic` n'est donc pas
-ecrase. La cle fonctionnelle reste
-`(chart_calculation_id, product_code, language_id)`.
+Dans cette table, `language_id` designe la langue canonique du payload, pas la
+langue cible utilisateur. Pour le moteur Rust, le runtime ecrit toujours la
+langue canonique `en`, afin de ne pas dupliquer le meme payload pour `fr`, `it`,
+`es`, etc.
 
-Avant persistance, le runtime valide que la sortie fake respecte le contrat :
-nombre de sections, ordre, sources existantes, limites de mots par section,
-plafond global `max_total_words`, absence de tokens techniques interdits et
-coherence du `writing_contract`.
+Les sorties localisees produites par le service LLM doivent etre stockees dans
+une table separee :
+
+`astral_interpretation_generated_outputs`
+
+La contrainte fonctionnelle proposee est :
+
+```text
+(generation_payload_id, target_language_id, prompt_contract_version, provider_code, model_code)
+```
+
+Cette table porte la langue cible finale via `target_language_id`, ainsi que le
+fournisseur, le modele, la version de prompt et la sortie structuree localisee.
 
 Si un calcul idempotent est deja `completed`, le runtime tente de reutiliser le
 payload existant. Il ne le reutilise que si le contrat enrichi est present :
 
 - 12 signaux maximum ;
 - au moins un signal ;
+- `llm_handoff_contract` present et conforme au contrat canonique
+  `basic_natal_structured_v1` ;
 - positions avec `sign_code` et `sign_name` ;
 - signaux avec `evidence` ;
 - signaux avec `theme_code`, `interpretive_hint`, `semantic_tags`,
   `aggregation_group` et `writing_guidance` non vides ;
 - `reading_plan` present, non vide, compose de slots uniques et de sources qui
   existent dans les signaux du payload ;
-- `writing_contract` global present et conforme au contrat Basic ;
 - `drafting_plan` present, non vide, aligne sur les slots et sources du
   `reading_plan`, avec `section_title`, `writing_objective`, `max_words` et
   `avoid` renseignes ;
 - slots du `reading_plan` connus et dans l'ordre Basic canonique ;
-- champs redactionnels du `drafting_plan` en anglais, sans anciens fragments
-  francais ni lettres non ASCII ;
+- champs redactionnels du `drafting_plan` en anglais canonique, sans lettres
+  non ASCII ;
 - absence d'anciens templates connus comme `by a opposition`.
 
 Sinon, les signaux sont reconstruits depuis les positions et aspects persistants,
@@ -510,14 +487,14 @@ $env:ASTRAL_EPHEMERIS_PATH = "..\ephe\se-2026a"
 cargo run --features swisseph-engine
 ```
 
-Le run attendu doit afficher un objet avec `source_payload` et
-`generated_payload`. `source_payload` doit contenir :
+Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
 
 - `product_code = "basic"` ;
+- `llm_handoff_contract.payload_language_code = "en"` ;
+- `llm_handoff_contract.target_language_policy = "provided_by_llm_service"` ;
 - des positions avec `sign_code`, `sign_name`, `house_number`, `house_name` ;
 - au plus 12 signaux ;
 - un `reading_plan` non vide ;
-- un `writing_contract` global Basic ;
 - un `drafting_plan` non vide et aligne sur le `reading_plan` ;
 - des titres sans IDs techniques ;
 - des champs semantiques 1B sur chaque signal ;
@@ -526,14 +503,17 @@ Le run attendu doit afficher un objet avec `source_payload` et
 - des IDs conserves dans `evidence` ;
 - une ecriture/upsert dans `astral_interpretation_generation_payloads`.
 
-`generated_payload` doit contenir :
+Le service LLM doit ensuite composer sa requete dans un module separe, par
+exemple :
 
-- `product_code = "basic_generated_fake"` ;
-- `source_product_code = "basic"` ;
-- `generation_provider = "fake_deterministic_v1"` ;
-- `generated_sections`, une section par item du `drafting_plan` ;
-- des `word_count` inferieurs ou egaux au `max_words` du slot correspondant ;
-- aucun token technique interdit dans le texte genere.
+```json
+{
+  "target_language_code": "fr",
+  "payload": {
+    "...": "canonical English payload produced by the Rust engine"
+  }
+}
+```
 
 ## Limites connues
 

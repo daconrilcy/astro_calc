@@ -2,8 +2,8 @@ use serde_json::Value;
 use sqlx::{PgPool, Postgres, Transaction};
 
 use crate::domain::{
-    AspectFact, BasicGeneratedReadingPayload, BasicPayload, CalculatedChartFacts, HouseCuspFact,
-    InterpretationSignalDraft, NatalChartInput, ObjectPositionFact, RuntimeOptions,
+    AspectFact, BasicPayload, CalculatedChartFacts, HouseCuspFact, InterpretationSignalDraft,
+    NatalChartInput, ObjectPositionFact, RuntimeOptions,
 };
 use crate::models::{
     AspectDefinition, ChartCalculationRow, ChartObject, HouseReference, HouseSystem,
@@ -83,6 +83,19 @@ impl RuntimeRepository {
             "#,
         )
         .bind(id)
+        .fetch_one(&self.pool)
+        .await?)
+    }
+
+    pub async fn language_id_for_code(&self, code: &str) -> Result<i32, RuntimeError> {
+        Ok(sqlx::query_scalar::<_, i32>(
+            r#"
+            SELECT id
+            FROM languages
+            WHERE code = $1
+            "#,
+        )
+        .bind(code)
         .fetch_one(&self.pool)
         .await?)
     }
@@ -413,6 +426,7 @@ impl RuntimeRepository {
     pub async fn persist_basic_payload(
         tx: &mut Transaction<'_, Postgres>,
         input: &NatalChartInput,
+        payload_language_id: Option<i32>,
         payload: &BasicPayload,
     ) -> Result<(), RuntimeError> {
         let id = next_id(tx, "astral_interpretation_generation_payloads").await?;
@@ -433,59 +447,7 @@ impl RuntimeRepository {
         .bind(payload.chart_calculation_id)
         .bind(input.reference_version_id)
         .bind(input.product_code())
-        .bind(input.language_id)
-        .bind(payload_json)
-        .execute(&mut **tx)
-        .await?;
-        Ok(())
-    }
-
-    pub async fn delete_generation_payload(
-        tx: &mut Transaction<'_, Postgres>,
-        chart_calculation_id: i32,
-        product_code: &str,
-        language_id: Option<i32>,
-    ) -> Result<(), RuntimeError> {
-        sqlx::query(
-            r#"
-            DELETE FROM astral_interpretation_generation_payloads
-            WHERE chart_calculation_id = $1
-              AND product_code IS NOT DISTINCT FROM $2
-              AND language_id IS NOT DISTINCT FROM $3
-            "#,
-        )
-        .bind(chart_calculation_id)
-        .bind(product_code)
-        .bind(language_id)
-        .execute(&mut **tx)
-        .await?;
-        Ok(())
-    }
-
-    pub async fn persist_generated_reading_payload(
-        tx: &mut Transaction<'_, Postgres>,
-        language_id: Option<i32>,
-        payload: &BasicGeneratedReadingPayload,
-    ) -> Result<(), RuntimeError> {
-        let id = next_id(tx, "astral_interpretation_generation_payloads").await?;
-        let payload_json = serde_json::to_value(payload)?;
-        sqlx::query(
-            r#"
-            INSERT INTO astral_interpretation_generation_payloads (
-                id, chart_calculation_id, reference_version_id, product_code,
-                language_id, payload_json, created_at
-            )
-            VALUES ($1,$2,$3,$4,$5,$6,now())
-            ON CONFLICT (chart_calculation_id, product_code, language_id) DO UPDATE
-            SET payload_json = EXCLUDED.payload_json,
-                created_at = EXCLUDED.created_at
-            "#,
-        )
-        .bind(id)
-        .bind(payload.chart_calculation_id)
-        .bind(payload.reference_version_id)
-        .bind(&payload.product_code)
-        .bind(language_id)
+        .bind(payload_language_id)
         .bind(payload_json)
         .execute(&mut **tx)
         .await?;
