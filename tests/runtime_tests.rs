@@ -20,7 +20,7 @@ fn current_payload() -> BasicPayload {
             subject_label: None,
             birth_datetime_utc: Utc.with_ymd_and_hms(2024, 6, 15, 12, 0, 0).unwrap(),
             llm_handoff_contract: Some(BasicLlmHandoffContract {
-                contract_version: "basic_natal_structured_v7".to_string(),
+                contract_version: "basic_natal_structured_v9".to_string(),
                 payload_language_code: "en".to_string(),
                 target_language_policy: "provided_by_llm_service".to_string(),
                 audience_level: "beginner".to_string(),
@@ -152,6 +152,8 @@ fn current_payload() -> BasicPayload {
                     evidence: Some(json!({
                         "fact_type": "chart_angle",
                         "angle_code": "ascendant",
+                        "opposite_angle_code": "dsc",
+                        "opposite_angle_object_code": "descendant",
                         "sign_code": "gemini"
                     })),
                 },
@@ -400,6 +402,92 @@ fn current_payload_rejects_legacy_unflagged_structural_axis_aspect() {
             "aspect_code": "opposition",
             "aspect_name": "Opposition",
             "strength_score": 1.0
+        })),
+    });
+
+    assert!(!is_current_basic_payload(&payload));
+}
+
+#[test]
+fn current_payload_rejects_angle_signal_without_opposite_object_code() {
+    let mut payload = current_payload();
+    payload.signals[1].evidence = Some(json!({
+        "fact_type": "chart_angle",
+        "angle_code": "ascendant",
+        "opposite_angle_code": "dsc",
+        "sign_code": "gemini"
+    }));
+
+    assert!(!is_current_basic_payload(&payload));
+}
+
+#[test]
+fn current_payload_rejects_angle_signal_without_short_opposite_code() {
+    let mut payload = current_payload();
+    payload.signals[1].evidence = Some(json!({
+        "fact_type": "chart_angle",
+        "angle_code": "ascendant",
+        "opposite_angle_object_code": "descendant",
+        "sign_code": "gemini"
+    }));
+
+    assert!(!is_current_basic_payload(&payload));
+}
+
+#[test]
+fn current_payload_rejects_angle_signal_with_mismatched_opposite_object_code() {
+    let mut payload = current_payload();
+    payload.signals[1].evidence = Some(json!({
+        "fact_type": "chart_angle",
+        "angle_code": "ascendant",
+        "opposite_angle_object_code": "dsc",
+        "sign_code": "gemini"
+    }));
+
+    assert!(!is_current_basic_payload(&payload));
+}
+
+#[test]
+fn current_payload_rejects_angle_to_angle_aspect() {
+    let mut payload = current_payload();
+    payload.signals.push(BasicSignal {
+        signal_key: "aspect:descendant:ic:square".to_string(),
+        theme_code: Some("aspect".to_string()),
+        title: "Descendant square IC".to_string(),
+        summary: Some("summary".to_string()),
+        priority_score: 80.0,
+        confidence_score: Some(0.85),
+        interpretive_hint: Some(
+            "Read this square as friction between Descendant and IC, with attention to the exact phase."
+                .to_string(),
+        ),
+        semantic_tags: vec![
+            "aspect".to_string(),
+            "square".to_string(),
+            "tension".to_string(),
+        ],
+        source_weight: Some(2.0),
+        aggregation_group: Some("aspect:square".to_string()),
+        writing_guidance: Some("Present as friction to work with.".to_string()),
+        aspect_context: Some(json!({
+            "aspect_family": "major",
+            "primary_valence": "challenging",
+            "intensity_modifier": null,
+            "secondary_effect": null,
+            "dynamic_quality": "friction",
+            "phase_state": "exact",
+            "valence_family": "tonal",
+            "is_tonal_valence": true,
+            "is_intensity_modifier": false,
+            "writing_guidance": "Present as friction to work with."
+        })),
+        evidence: Some(json!({
+            "fact_type": "aspect",
+            "source_object_code": "descendant",
+            "target_object_code": "ic",
+            "aspect_code": "square",
+            "aspect_name": "Square",
+            "strength_score": 0.9
         })),
     });
 

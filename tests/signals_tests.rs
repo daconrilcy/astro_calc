@@ -114,6 +114,40 @@ fn retrograde_mercury_position() -> ObjectPositionFact {
     position
 }
 
+fn angle_position(
+    id: i32,
+    object_code: &str,
+    object_name: &str,
+    angle_point_code: &str,
+    opposite_angle_code: &str,
+    axis: &str,
+) -> ObjectPositionFact {
+    let mut position = position(id, object_code, object_name, "aries", "Aries", 1);
+    position.apparent_speed_deg_per_day = None;
+    position.motion_state_id = None;
+    position.facts_json = Some(json!({
+        "sign_context": {
+            "element": "fire",
+            "modality": "cardinal",
+            "polarity": "yang"
+        },
+        "house_context": {"theme_code": "identity"},
+        "house_modality": {"code": "angular"},
+        "object_context": {"role": "angle"},
+        "angle_context": {
+            "angle_point_id": id,
+            "angle_point_code": angle_point_code,
+            "short_label": angle_point_code.to_ascii_uppercase(),
+            "full_name": object_name,
+            "axis": axis,
+            "opposite_angle_code": opposite_angle_code,
+            "associated_house_number": 1,
+            "chart_object_sort_order": id
+        }
+    }));
+    position
+}
+
 fn aspect(
     source_code: &str,
     source_name: &str,
@@ -548,6 +582,166 @@ fn basic_filter_preserves_one_strong_tension_aspect() {
 
     assert_eq!(active_count, BASIC_MAX_ACTIVE_SIGNALS);
     assert_eq!(tension.suppression_state, "active");
+}
+
+#[test]
+fn structural_axis_does_not_block_non_structural_tension_preservation() {
+    let facts = CalculatedChartFacts {
+        positions: vec![
+            capricorn_house_2_position(1, "sun", "Sun"),
+            position(2, "moon", "Moon", "cancer", "Cancer", 4),
+            position(3, "mercury", "Mercury", "gemini", "Gemini", 3),
+            position(4, "venus", "Venus", "taurus", "Taurus", 5),
+            position(5, "mars", "Mars", "aries", "Aries", 1),
+            position(6, "jupiter", "Jupiter", "sagittarius", "Sagittarius", 9),
+            capricorn_house_2_position(7, "saturn", "Saturn"),
+            capricorn_house_2_position(8, "uranus", "Uranus"),
+            capricorn_house_2_position(9, "neptune", "Neptune"),
+            position(10, "pluto", "Pluto", "scorpio", "Scorpio", 8),
+            angle_position(11, "ascendant", "Ascendant", "asc", "dsc", "horizontal"),
+            angle_position(12, "descendant", "Descendant", "dsc", "asc", "horizontal"),
+            angle_position(13, "ic", "IC", "ic", "mc", "vertical"),
+        ],
+        house_cusps: Vec::new(),
+        aspects: vec![
+            aspect(
+                "ascendant",
+                "Ascendant",
+                "descendant",
+                "Descendant",
+                "opposition",
+                "Opposition",
+                1.0,
+            ),
+            aspect(
+                "descendant",
+                "Descendant",
+                "ic",
+                "IC",
+                "square",
+                "Square",
+                0.995,
+            ),
+            aspect("sun", "Sun", "moon", "Moon", "trine", "Trine", 0.99),
+            aspect(
+                "mercury", "Mercury", "venus", "Venus", "sextile", "Sextile", 0.98,
+            ),
+            aspect(
+                "sun",
+                "Sun",
+                "neptune",
+                "Neptune",
+                "conjunction",
+                "Conjunction",
+                0.97,
+            ),
+            aspect(
+                "moon", "Moon", "neptune", "Neptune", "sextile", "Sextile", 0.96,
+            ),
+            aspect(
+                "jupiter",
+                "Jupiter",
+                "uranus",
+                "Uranus",
+                "opposition",
+                "Opposition",
+                0.88,
+            ),
+        ],
+    };
+
+    let signals = aggregate_basic_signals(&facts);
+    let structural_axis = signals
+        .iter()
+        .find(|signal| signal.signal_key == "aspect:ascendant:descendant:opposition");
+    let tension = signals
+        .iter()
+        .find(|signal| signal.signal_key == "aspect:jupiter:uranus:opposition")
+        .expect("expected non-structural strong opposition");
+    let angle_to_angle = signals
+        .iter()
+        .find(|signal| signal.signal_key == "aspect:descendant:ic:square")
+        .expect("expected angle-to-angle aspect signal");
+
+    assert!(structural_axis.is_none());
+    assert_eq!(tension.suppression_state, "active");
+    assert_ne!(angle_to_angle.suppression_state, "active");
+}
+
+#[test]
+fn angle_signal_evidence_exposes_opposite_angle_object_code() {
+    let facts = CalculatedChartFacts {
+        positions: vec![
+            angle_position(11, "ascendant", "Ascendant", "asc", "dsc", "horizontal"),
+            angle_position(12, "descendant", "Descendant", "dsc", "asc", "horizontal"),
+        ],
+        house_cusps: Vec::new(),
+        aspects: Vec::new(),
+    };
+
+    let signals = aggregate_basic_signals(&facts);
+    let ascendant = signals
+        .iter()
+        .find(|signal| signal.signal_key == "angle:ascendant:sign:aries")
+        .expect("expected ascendant signal");
+    let evidence = ascendant
+        .payload_json
+        .as_ref()
+        .and_then(|payload| payload.get("evidence"))
+        .expect("expected angle evidence");
+    let angle_context = ascendant
+        .payload_json
+        .as_ref()
+        .and_then(|payload| payload.get("angle_context"))
+        .expect("expected angle context");
+
+    assert_eq!(
+        evidence
+            .get("opposite_angle_code")
+            .and_then(|value| value.as_str()),
+        Some("dsc")
+    );
+    assert_eq!(
+        evidence
+            .get("opposite_angle_object_code")
+            .and_then(|value| value.as_str()),
+        Some("descendant")
+    );
+    assert_eq!(
+        angle_context
+            .get("opposite_angle_object_code")
+            .and_then(|value| value.as_str()),
+        Some("descendant")
+    );
+}
+
+#[test]
+fn angle_signal_uses_angle_context_even_without_angle_point_id() {
+    let mut ascendant = angle_position(11, "ascendant", "Ascendant", "asc", "dsc", "horizontal");
+    if let Some(facts) = ascendant.facts_json.as_mut() {
+        facts
+            .get_mut("angle_context")
+            .and_then(|context| context.as_object_mut())
+            .expect("angle context")
+            .remove("angle_point_id");
+    }
+    let facts = CalculatedChartFacts {
+        positions: vec![
+            ascendant,
+            angle_position(12, "descendant", "Descendant", "dsc", "asc", "horizontal"),
+        ],
+        house_cusps: Vec::new(),
+        aspects: Vec::new(),
+    };
+
+    let signals = aggregate_basic_signals(&facts);
+
+    assert!(signals
+        .iter()
+        .any(|signal| signal.signal_key == "angle:ascendant:sign:aries"));
+    assert!(!signals
+        .iter()
+        .any(|signal| signal.signal_key == "object_position:ascendant"));
 }
 
 #[test]

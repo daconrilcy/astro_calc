@@ -1,4 +1,4 @@
-# Implementation du payload Basic runtime
+﻿# Implementation du payload Basic runtime
 
 Ce document decrit l'implementation actuelle du payload Basic dans le binaire Rust
 `rust_sqlx_connection_test`.
@@ -99,6 +99,18 @@ signaux d'axe non marques sont rejetes a partir des paires d'angles qui
 partagent le meme `axis`. Le builder supprime aussi les slots de lecture qui
 n'ont plus aucune source primaire apres deduplication, afin de ne pas produire
 de section LLM vide.
+
+L'etape 2E.3 preserve les vrais aspects dynamiques apres l'exclusion des axes
+structurels. Les aspects angle-angle restent exclus du payload Basic comme
+dynamiques representatives, qu'ils soient l'axe Ascendant-Descendant, l'axe
+MC-IC, ou un autre aspect entre deux angles. Les aspects forts planete-planete
+et planete-angle restent en revanche eligibles. Le filtrage preserve d'abord une
+tension forte non structurelle si elle existe ; si aucune tension forte n'est
+disponible mais qu'un aspect fort planete-planete ou planete-angle existe, il
+preserve le meilleur aspect fort disponible afin que `main_tension_or_support`
+ne disparaisse pas artificiellement. Cette evolution bump le contrat canonique a
+`basic_natal_structured_v9` pour forcer la regeneration des anciens payloads v8
+qui pouvaient avoir recycle un axe structurel actif et perdu les vrais aspects.
 
 Le runtime conserve la chaine existante :
 
@@ -204,7 +216,7 @@ Le calcul geometrique conserve seulement les operations derivees de la
 longitude : slot zodiacal et numero de maison. Les IDs, codes et noms de signes
 ou de maisons sont resolus depuis les tables. Le runtime refuse de calculer si
 les 12 signes ou les 12 maisons ne sont pas presents ou si les references sont
-ambigues. Le contrat Basic v7 refuse aussi de reutiliser un payload existant si
+ambigues. Le contrat Basic v9 refuse aussi de reutiliser un payload existant si
 les contextes de placement utiles sont absents ou incomplets.
 
 Depuis 2B.1, `dignity_context` est toujours expose comme tableau. Il vaut `[]`
@@ -250,7 +262,10 @@ Les signaux d'angle utilisent la forme stable `angle:<angle_code>:sign:<sign>`,
 par exemple `angle:ascendant:sign:virgo`. L'Ascendant est place dans
 `core_identity` avec le Soleil et la Lune. Le MC peut alimenter
 `background_factors` comme contexte de vocation, visibilite ou direction
-publique.
+publique. Depuis v9, `signals[].evidence.opposite_angle_code` conserve le code
+court issu du referentiel (`dsc`, `asc`, `ic`, `mc`) et
+`signals[].evidence.opposite_angle_object_code` expose le code objet long
+homogene avec `angles[].opposite_angle_code`.
 
 Les oppositions Ascendant-Descendant et MC-IC restent des axes structurels. Elles
 ne doivent pas produire de signal actif `aspect:*`, ne doivent pas alimenter
@@ -829,6 +844,9 @@ Le filtrage est applique dans `signals.rs` :
 
 - les signaux sont tries par `priority_score` decroissant ;
 - les aspects dont `strength_score < 0.4` passent en `suppressed` ;
+- les aspects angle-angle passent aussi en `suppressed` des l'agregation, sauf
+  les axes structurels Ascendant-Descendant et MC-IC qui ne creent pas de signal
+  Basic du tout ;
 - les signaux `dignity:*` sont ajoutes avant le tri final quand la dignite est
   majeure et suffisamment significative ;
 - les clusters semantiques sont ajoutes avant le tri final ;
@@ -841,11 +859,16 @@ Le filtrage est applique dans `signals.rs` :
   remplace le signal actif non essentiel le moins prioritaire par la meilleure
   tension forte disponible. Cette protection de filtrage reste volontairement
   geometrique afin de ne pas perdre les tensions majeures classiques, mais les
-  axes structurels d'angles ne sont pas eligibles a cette preservation ;
+  axes structurels d'angles et les aspects angle-angle ne sont pas eligibles a
+  cette preservation ;
+- si aucun aspect fort planete-planete ou planete-angle n'est actif apres cette
+  premiere preservation, mais qu'un tel aspect atteint `strength_score >= 0.75`,
+  le runtime preserve le meilleur aspect fort disponible afin de garder une
+  dynamique redactionnelle exploitable ;
 - seuls les signaux actifs relus depuis la DB restent eligibles au payload ;
-- `payload.rs` filtre encore les anciens aspects d'axe structurel non marques
-  quand les positions d'angle definissent la paire d'axe, puis tronque le
-  resultat final a 12 signaux comme garde de lecture.
+- `payload.rs` filtre encore les anciens aspects d'axe structurel non marques et
+  les anciens aspects angle-angle actifs quand les positions d'angle definissent
+  ces objets, puis tronque le resultat final a 12 signaux comme garde de lecture.
 
 Les signaux supprimes restent persistables dans `astral_interpretation_signals`
 avec `suppression_state = 'suppressed'`, mais ne remontent pas dans le payload
@@ -935,7 +958,7 @@ slots suivants quand les sources correspondantes existent :
 - `main_tension_or_support` : jusqu'a trois aspects actifs prioritaires,
   reequilibres avec `aspect_context` pour conserver au moins un appui ou une
   tension quand ces dynamiques existent dans les aspects actifs ; les axes
-  structurels d'angles en sont exclus ;
+  structurels d'angles et les autres aspects angle-angle en sont exclus ;
 - `expression_style` : Mercure, Venus, Mars, avec leurs dignites actives si
   elles sont presentes ;
 - `background_factors` : MC, Jupiter, Saturne, Uranus, Neptune, Pluton si
@@ -982,10 +1005,16 @@ trois aspects.
 Cette logique s'applique aussi quand le filtrage Basic a du liberer une place
 dans les 12 signaux actifs : un signal actif non essentiel peut etre remplace par
 la meilleure tension forte disponible selon le garde-fou geometrique
-carre/opposition, hors axes structurels d'angles. Les clusters et les marqueurs
-centraux ou expressifs restent proteges ; un signal de dignite autonome peut en
-revanche ceder sa place si le budget est sature et qu'aucune tension forte n'est
-encore active.
+carre/opposition, hors axes structurels d'angles et hors aspects angle-angle.
+Les clusters et les marqueurs centraux ou expressifs restent proteges ; un signal
+de dignite autonome peut en revanche ceder sa place si le budget est sature et
+qu'aucune tension forte n'est encore active.
+
+Depuis 2E.3, si aucune tension forte n'est disponible mais qu'un aspect fort
+planete-planete ou planete-angle existe, le meme mecanisme preserve le meilleur
+aspect fort disponible. `main_tension_or_support` n'est donc absent que
+lorsqu'aucun aspect actif ou preservable ne reste apres l'exclusion des axes
+structurels et des autres aspects angle-angle.
 
 ## Contrat canonique de handoff LLM
 
@@ -996,7 +1025,7 @@ doit respecter :
 ```json
 {
   "llm_handoff_contract": {
-    "contract_version": "basic_natal_structured_v7",
+    "contract_version": "basic_natal_structured_v9",
     "payload_language_code": "en",
     "target_language_policy": "provided_by_llm_service",
     "audience_level": "beginner",
@@ -1146,7 +1175,7 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
 - 12 signaux maximum ;
 - au moins un signal ;
 - `llm_handoff_contract` present et conforme au contrat canonique
-  `basic_natal_structured_v7` ;
+  `basic_natal_structured_v9` ;
 - `dignities` structurees presentes et coherentes avec les signaux
   `dignity:*` actifs ;
 - `angles` top-level present avec quatre faits d'angle, un `axis`, un
@@ -1162,7 +1191,12 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
 - signaux avec `evidence` ;
 - signaux avec `theme_code`, `interpretive_hint`, `semantic_tags`,
   `aggregation_group` et `writing_guidance` non vides ;
-- signal `angle:ascendant:sign:*` avec `evidence.fact_type = "chart_angle"` ;
+- aucun signal actif `aspect:*` entre deux angles ; les anciens payloads qui
+  contiennent un aspect angle-angle actif sont regeneres ;
+- signaux `angle:*` avec `evidence.fact_type = "chart_angle"` et
+  `evidence.opposite_angle_code` court non vide ainsi que
+  `evidence.opposite_angle_object_code` coherent avec
+  `angles[].opposite_angle_code` ;
 - signaux `aspect:*` avec `aspect_context` complet, au moins un effet
   interpretatif non vide, `dynamic_quality`, `phase_state`, `valence_family`,
   `is_tonal_valence`, `is_intensity_modifier` et `writing_guidance` ;
@@ -1252,7 +1286,7 @@ Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
 - `product_code = "basic"` ;
 - `llm_handoff_contract.payload_language_code = "en"` ;
 - `llm_handoff_contract.target_language_policy = "provided_by_llm_service"` ;
-- `llm_handoff_contract.contract_version = "basic_natal_structured_v7"` ;
+- `llm_handoff_contract.contract_version = "basic_natal_structured_v9"` ;
 - des positions avec `sign_code`, `sign_name`, `house_number`, `house_name`,
   `sign_context`, `house_context`, `house_modality`, `object_context` et
   `dignity_context` sous forme de tableau, vide quand aucune dignite n'est
@@ -1261,6 +1295,9 @@ Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
 - une liste `angles` top-level avec Ascendant, Descendant, MC et IC, reliee aux
   signes et maisons calcules, avec `opposite_angle_code` resolu vers le code
   objet long correspondant quand il existe dans le payload ;
+- des signaux `angle:*` dont `evidence.opposite_angle_object_code` expose le meme
+  code objet long, tout en conservant le code court source dans
+  `evidence.opposite_angle_code` ;
 - une liste `dignities` top-level, vide ou non selon le theme, mais coherente
   avec les signaux `dignity:*` actifs ;
 - un `chart_emphasis` top-level avec `dominant_signs`, `dominant_houses` et

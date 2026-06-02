@@ -261,7 +261,7 @@ fn basic_payload_exposes_semantic_signal_fields() {
             .as_ref()
             .expect("llm handoff contract")
             .contract_version,
-        "basic_natal_structured_v7"
+        "basic_natal_structured_v9"
     );
     let contract = payload
         .llm_handoff_contract
@@ -1144,6 +1144,41 @@ fn legacy_unflagged_axis_aspects_are_excluded_when_angle_positions_define_axis()
         .signals
         .iter()
         .any(|signal| signal.signal_key == "aspect:ascendant:descendant:opposition"));
+    let aspect_plan = payload
+        .reading_plan
+        .iter()
+        .find(|item| item.slot == "main_tension_or_support")
+        .expect("expected aspect plan");
+    assert_eq!(
+        aspect_plan.source_signal_keys,
+        vec!["aspect:moon:mars:square"]
+    );
+}
+
+#[test]
+fn angle_to_angle_aspects_are_excluded_from_payload() {
+    let angle_square = aspect_signal(1, "aspect:descendant:ic:square", "square", 0.99);
+    let planet_square = aspect_signal(2, "aspect:moon:mars:square", "square", 0.88);
+    let positions = vec![
+        angle_position(
+            11,
+            "descendant",
+            "Descendant",
+            "dsc",
+            "asc",
+            "horizontal",
+            195.0,
+        ),
+        angle_position(12, "ic", "IC", "ic", "mc", "vertical", 285.0),
+        position(),
+    ];
+
+    let payload = build_basic_payload(42, &input(), &positions, &[angle_square, planet_square]);
+
+    assert!(!payload
+        .signals
+        .iter()
+        .any(|signal| signal.signal_key == "aspect:descendant:ic:square"));
     let aspect_plan = payload
         .reading_plan
         .iter()

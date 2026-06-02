@@ -18,6 +18,7 @@ pub fn build_basic_payload(
     signals: &[InterpretationSignalRow],
 ) -> BasicPayload {
     let structural_axis_pairs = structural_axis_pairs_from_positions(positions);
+    let angle_object_codes = angle_object_codes_from_positions(positions);
     let mut basic_signals: Vec<BasicSignal> = signals
         .iter()
         .map(|signal| BasicSignal {
@@ -36,8 +37,10 @@ pub fn build_basic_payload(
             evidence: payload_value(signal, "evidence"),
         })
         .collect();
-    basic_signals
-        .retain(|signal| !is_structural_axis_signal_for_pairs(signal, &structural_axis_pairs));
+    basic_signals.retain(|signal| {
+        !is_structural_axis_signal_for_pairs(signal, &structural_axis_pairs)
+            && !is_angle_to_angle_aspect_signal(signal, &angle_object_codes)
+    });
     basic_signals.truncate(12);
 
     let angles = build_payload_angles(positions);
@@ -178,6 +181,14 @@ fn structural_axis_pairs_from_positions(
     structural_axis_pairs(angle_positions)
 }
 
+fn angle_object_codes_from_positions(positions: &[ObjectPositionFact]) -> HashSet<String> {
+    positions
+        .iter()
+        .filter(|position| position_context(position, "angle_context").is_some())
+        .map(|position| position.object_code.clone())
+        .collect()
+}
+
 fn structural_axis_pairs(angle_positions: Vec<(String, String)>) -> HashSet<(String, String)> {
     let mut pairs = HashSet::new();
 
@@ -214,7 +225,7 @@ fn position_dignity_context(position: &ObjectPositionFact) -> serde_json::Value 
 
 pub fn basic_llm_handoff_contract() -> BasicLlmHandoffContract {
     BasicLlmHandoffContract {
-        contract_version: "basic_natal_structured_v7".to_string(),
+        contract_version: "basic_natal_structured_v9".to_string(),
         payload_language_code: "en".to_string(),
         target_language_policy: "provided_by_llm_service".to_string(),
         audience_level: "beginner".to_string(),
@@ -941,6 +952,19 @@ fn is_structural_axis_signal_for_pairs(
     }
 
     object_pair_from_aspect_signal(signal).is_some_and(|pair| structural_axis_pairs.contains(&pair))
+}
+
+fn is_angle_to_angle_aspect_signal(
+    signal: &BasicSignal,
+    angle_object_codes: &HashSet<String>,
+) -> bool {
+    if !signal.signal_key.starts_with("aspect:") {
+        return false;
+    }
+
+    object_pair_from_aspect_signal(signal).is_some_and(|(source, target)| {
+        angle_object_codes.contains(&source) && angle_object_codes.contains(&target)
+    })
 }
 
 fn aspect_code(signal: &BasicSignal) -> Option<&str> {

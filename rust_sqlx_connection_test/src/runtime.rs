@@ -330,6 +330,7 @@ fn is_stale(row: &ChartCalculationRow, default_stale_after_seconds: i32) -> bool
 
 pub fn is_current_basic_payload(payload: &BasicPayload) -> bool {
     let structural_axis_pairs = structural_axis_pairs_from_payload(payload);
+    let angle_object_codes = angle_object_codes_from_payload(payload);
 
     !payload.signals.is_empty()
         && payload.signals.len() <= 12
@@ -353,8 +354,10 @@ pub fn is_current_basic_payload(payload: &BasicPayload) -> bool {
                 && has_text(&signal.writing_guidance)
                 && has_current_aspect_hint(&signal.interpretive_hint)
                 && has_current_placement_context(signal)
+                && has_current_angle_evidence(payload, signal)
                 && has_current_aspect_context(signal)
                 && !is_structural_axis_aspect_signal(signal, &structural_axis_pairs)
+                && !is_angle_to_angle_aspect_signal(signal, &angle_object_codes)
         })
 }
 
@@ -363,7 +366,7 @@ fn has_current_llm_handoff_contract(payload: &BasicPayload) -> bool {
         return false;
     };
 
-    contract.contract_version == "basic_natal_structured_v7"
+    contract.contract_version == "basic_natal_structured_v9"
         && contract.payload_language_code == "en"
         && contract.target_language_policy == "provided_by_llm_service"
         && contract.audience_level == "beginner"
@@ -420,6 +423,44 @@ fn has_current_angles(payload: &BasicPayload) -> bool {
         })
 }
 
+fn has_current_angle_evidence(payload: &BasicPayload, signal: &BasicSignal) -> bool {
+    if !signal.signal_key.starts_with("angle:") {
+        return true;
+    }
+
+    let Some(evidence) = signal.evidence.as_ref() else {
+        return false;
+    };
+    if evidence.get("fact_type").and_then(|value| value.as_str()) != Some("chart_angle") {
+        return false;
+    }
+
+    let Some(angle_code) = evidence.get("angle_code").and_then(|value| value.as_str()) else {
+        return false;
+    };
+    let Some(expected_opposite) = payload
+        .angles
+        .iter()
+        .find(|angle| angle.angle_code == angle_code)
+        .map(|angle| angle.opposite_angle_code.as_str())
+    else {
+        return false;
+    };
+
+    if evidence
+        .get("opposite_angle_code")
+        .and_then(|value| value.as_str())
+        .is_none_or(|code| code.trim().is_empty())
+    {
+        return false;
+    }
+
+    evidence
+        .get("opposite_angle_object_code")
+        .and_then(|value| value.as_str())
+        == Some(expected_opposite)
+}
+
 fn structural_axis_pairs_from_payload(payload: &BasicPayload) -> HashSet<(String, String)> {
     let angle_positions = payload
         .angles
@@ -439,6 +480,14 @@ fn structural_axis_pairs_from_payload(payload: &BasicPayload) -> HashSet<(String
     }
 
     pairs
+}
+
+fn angle_object_codes_from_payload(payload: &BasicPayload) -> HashSet<String> {
+    payload
+        .angles
+        .iter()
+        .map(|angle| angle.angle_code.clone())
+        .collect()
 }
 
 fn is_structural_axis_aspect_signal(
@@ -493,6 +542,16 @@ fn object_pair_from_aspect_signal(signal: &BasicSignal) -> Option<(String, Strin
     } else {
         None
     }
+}
+
+fn is_angle_to_angle_aspect_signal(
+    signal: &BasicSignal,
+    angle_object_codes: &HashSet<String>,
+) -> bool {
+    signal.signal_key.starts_with("aspect:")
+        && object_pair_from_aspect_signal(signal).is_some_and(|(source, target)| {
+            angle_object_codes.contains(&source) && angle_object_codes.contains(&target)
+        })
 }
 
 fn normalized_pair(left: &str, right: &str) -> (String, String) {

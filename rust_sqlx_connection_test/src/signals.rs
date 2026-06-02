@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use serde_json::json;
 
@@ -14,10 +14,13 @@ const BASIC_ASPECT_MIN_STRENGTH: f64 = 0.4;
 
 pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<InterpretationSignalDraft> {
     let mut signals = Vec::new();
+    let structural_axis_pairs = structural_axis_pairs_from_positions(&facts.positions);
+    let angle_object_codes = angle_object_codes_from_positions(&facts.positions);
+    let angle_point_object_codes = angle_point_object_codes_from_positions(&facts.positions);
 
     for position in &facts.positions {
         if is_angle_position(position) {
-            signals.push(angle_signal(position));
+            signals.push(angle_signal(position, &angle_point_object_codes));
             continue;
         }
 
@@ -88,12 +91,14 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
     add_dignity_signals(facts, &mut signals);
 
     for aspect in &facts.aspects {
-        if is_structural_axis_aspect(aspect) {
+        if is_structural_axis_aspect(aspect, &structural_axis_pairs) {
             continue;
         }
 
         let strength_score = aspect.strength_score.unwrap_or(0.5);
-        let suppression_state = if strength_score >= BASIC_ASPECT_MIN_STRENGTH {
+        let suppression_state = if strength_score >= BASIC_ASPECT_MIN_STRENGTH
+            && !is_angle_to_angle_aspect(aspect, &angle_object_codes)
+        {
             "active"
         } else {
             "suppressed"
@@ -171,9 +176,10 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
         if !apply_cluster_source_deduplication(&mut signals) {
             break;
         }
-        fill_basic_active_limit(&mut signals);
+        fill_basic_active_limit(&mut signals, &angle_object_codes);
     }
-    preserve_strong_tension_aspect(&mut signals);
+    preserve_strong_tension_aspect(&mut signals, &angle_object_codes);
+    preserve_strong_non_structural_aspect(&mut signals, &angle_object_codes);
     signals
 }
 
@@ -421,14 +427,18 @@ fn is_core_chart_object(object_code: &str) -> bool {
 }
 
 fn is_angle_position(position: &ObjectPositionFact) -> bool {
-    placement_context_value(position, "angle_context", "angle_point_id").is_some()
+    placement_context_object(position, "angle_context").is_some()
 }
 
-fn angle_signal(position: &ObjectPositionFact) -> InterpretationSignalDraft {
-    let angle_context = angle_context(position);
+fn angle_signal(
+    position: &ObjectPositionFact,
+    angle_point_object_codes: &HashMap<String, String>,
+) -> InterpretationSignalDraft {
+    let angle_context = angle_context(position, angle_point_object_codes);
     let semantic_tags = angle_semantic_tags(position);
     let associated_house = angle_associated_house(position).or(position.house_number);
     let theme_code = house_theme_code(position);
+    let opposite_angle_object_code = opposite_angle_object_code(position, angle_point_object_codes);
 
     InterpretationSignalDraft {
         signal_key: format!("angle:{}:sign:{}", position.object_code, position.sign_code),
@@ -457,6 +467,7 @@ fn angle_signal(position: &ObjectPositionFact) -> InterpretationSignalDraft {
                 "short_label": placement_context_str(position, "angle_context", "short_label"),
                 "axis": placement_context_str(position, "angle_context", "axis"),
                 "opposite_angle_code": placement_context_str(position, "angle_context", "opposite_angle_code"),
+                "opposite_angle_object_code": opposite_angle_object_code,
                 "associated_house_number": associated_house,
                 "chart_object_id": position.chart_object_id,
                 "sign_id": position.sign_id,
@@ -483,7 +494,10 @@ fn angle_priority(position: &ObjectPositionFact) -> f64 {
     round4((base + house_modality_priority_delta(position)).min(100.0))
 }
 
-fn angle_context(position: &ObjectPositionFact) -> serde_json::Value {
+fn angle_context(
+    position: &ObjectPositionFact,
+    angle_point_object_codes: &HashMap<String, String>,
+) -> serde_json::Value {
     json!({
         "angle_code": position.object_code,
         "angle_name": position.object_name,
@@ -492,11 +506,21 @@ fn angle_context(position: &ObjectPositionFact) -> serde_json::Value {
         "full_name": placement_context_str(position, "angle_context", "full_name"),
         "axis": placement_context_str(position, "angle_context", "axis"),
         "opposite_angle_code": placement_context_str(position, "angle_context", "opposite_angle_code"),
+        "opposite_angle_object_code": opposite_angle_object_code(position, angle_point_object_codes),
         "associated_house_number": angle_associated_house(position),
         "sign_code": position.sign_code,
         "sign_name": position.sign_name,
         "longitude_deg": position.longitude_deg
     })
+}
+
+fn opposite_angle_object_code(
+    position: &ObjectPositionFact,
+    angle_point_object_codes: &HashMap<String, String>,
+) -> Option<String> {
+    placement_context_str(position, "angle_context", "opposite_angle_code")
+        .and_then(|code| angle_point_object_codes.get(code))
+        .cloned()
 }
 
 fn angle_interpretive_hint(position: &ObjectPositionFact) -> String {
@@ -1130,18 +1154,20 @@ fn suppress_over_basic_limit(signals: &mut [InterpretationSignalDraft]) {
     }
 }
 
-fn preserve_strong_tension_aspect(signals: &mut [InterpretationSignalDraft]) {
-    if signals
-        .iter()
-        .any(|signal| signal.suppression_state == "active" && is_strong_tension_signal(signal))
-    {
+fn preserve_strong_tension_aspect(
+    signals: &mut [InterpretationSignalDraft],
+    angle_object_codes: &HashSet<String>,
+) {
+    if signals.iter().any(|signal| {
+        signal.suppression_state == "active" && is_strong_tension_signal(signal, angle_object_codes)
+    }) {
         return;
     }
 
     let Some(tension_index) = signals
         .iter()
         .enumerate()
-        .filter(|(_, signal)| is_strong_tension_signal(signal))
+        .filter(|(_, signal)| is_strong_tension_signal(signal, angle_object_codes))
         .max_by(|(_, left), (_, right)| {
             left.priority_score
                 .partial_cmp(&right.priority_score)
@@ -1168,11 +1194,68 @@ fn preserve_strong_tension_aspect(signals: &mut [InterpretationSignalDraft]) {
     signals[tension_index].suppression_state = "active".to_string();
 }
 
-fn is_strong_tension_signal(signal: &InterpretationSignalDraft) -> bool {
+fn preserve_strong_non_structural_aspect(
+    signals: &mut [InterpretationSignalDraft],
+    angle_object_codes: &HashSet<String>,
+) {
+    if signals.iter().any(|signal| {
+        signal.suppression_state == "active"
+            && is_strong_non_structural_aspect_signal(signal, angle_object_codes)
+    }) {
+        return;
+    }
+
+    let Some(aspect_index) = signals
+        .iter()
+        .enumerate()
+        .filter(|(_, signal)| is_strong_non_structural_aspect_signal(signal, angle_object_codes))
+        .max_by(|(_, left), (_, right)| {
+            left.priority_score
+                .partial_cmp(&right.priority_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
+        .map(|(index, _)| index)
+    else {
+        return;
+    };
+
+    let Some(replacement_index) = signals
+        .iter()
+        .enumerate()
+        .rev()
+        .find(|(_, signal)| {
+            signal.suppression_state == "active" && !is_basic_required_signal(signal)
+        })
+        .map(|(index, _)| index)
+    else {
+        return;
+    };
+
+    signals[replacement_index].suppression_state = "suppressed".to_string();
+    signals[aspect_index].suppression_state = "active".to_string();
+}
+
+fn is_strong_non_structural_aspect_signal(
+    signal: &InterpretationSignalDraft,
+    angle_object_codes: &HashSet<String>,
+) -> bool {
+    signal.signal_key.starts_with("aspect:")
+        && !is_structural_axis_signal(signal)
+        && !is_angle_to_angle_aspect_signal(signal, angle_object_codes)
+        && aspect_strength_score(signal) >= 0.75
+}
+
+fn is_strong_tension_signal(
+    signal: &InterpretationSignalDraft,
+    angle_object_codes: &HashSet<String>,
+) -> bool {
     if !signal.signal_key.starts_with("aspect:") {
         return false;
     }
     if is_structural_axis_signal(signal) {
+        return false;
+    }
+    if is_angle_to_angle_aspect_signal(signal, angle_object_codes) {
         return false;
     }
 
@@ -1191,6 +1274,16 @@ fn is_strong_tension_signal(signal: &InterpretationSignalDraft) -> bool {
         .unwrap_or(signal.priority_score / 80.0);
 
     matches!(aspect_code, Some("square" | "opposition")) && strength_score >= 0.75
+}
+
+fn aspect_strength_score(signal: &InterpretationSignalDraft) -> f64 {
+    signal
+        .payload_json
+        .as_ref()
+        .and_then(|payload| payload.get("evidence"))
+        .and_then(|evidence| evidence.get("strength_score"))
+        .and_then(|value| value.as_f64())
+        .unwrap_or(signal.priority_score / 80.0)
 }
 
 fn is_basic_required_signal(signal: &InterpretationSignalDraft) -> bool {
@@ -1214,7 +1307,10 @@ fn is_basic_required_signal(signal: &InterpretationSignalDraft) -> bool {
     )
 }
 
-fn fill_basic_active_limit(signals: &mut [InterpretationSignalDraft]) {
+fn fill_basic_active_limit(
+    signals: &mut [InterpretationSignalDraft],
+    angle_object_codes: &HashSet<String>,
+) {
     let mut active_count = signals
         .iter()
         .filter(|signal| signal.suppression_state == "active")
@@ -1229,15 +1325,22 @@ fn fill_basic_active_limit(signals: &mut [InterpretationSignalDraft]) {
             break;
         }
 
-        if signal.suppression_state == "suppressed" && is_basic_fill_eligible(signal) {
+        if signal.suppression_state == "suppressed"
+            && is_basic_fill_eligible(signal, angle_object_codes)
+        {
             signal.suppression_state = "active".to_string();
             active_count += 1;
         }
     }
 }
 
-fn is_basic_fill_eligible(signal: &InterpretationSignalDraft) -> bool {
-    !is_weak_aspect_signal(signal) && !is_structural_axis_signal(signal)
+fn is_basic_fill_eligible(
+    signal: &InterpretationSignalDraft,
+    angle_object_codes: &HashSet<String>,
+) -> bool {
+    !is_weak_aspect_signal(signal)
+        && !is_structural_axis_signal(signal)
+        && !is_angle_to_angle_aspect_signal(signal, angle_object_codes)
 }
 
 fn is_weak_aspect_signal(signal: &InterpretationSignalDraft) -> bool {
@@ -1254,13 +1357,21 @@ fn is_weak_aspect_signal(signal: &InterpretationSignalDraft) -> bool {
         .is_some_and(|strength_score| strength_score < BASIC_ASPECT_MIN_STRENGTH)
 }
 
-fn is_structural_axis_aspect(aspect: &crate::domain::AspectFact) -> bool {
+fn is_structural_axis_aspect(
+    aspect: &crate::domain::AspectFact,
+    structural_axis_pairs: &HashSet<(String, String)>,
+) -> bool {
     aspect
         .calculation_notes_json
         .as_ref()
         .and_then(|notes| notes.get("is_structural_axis"))
         .and_then(|value| value.as_bool())
         .unwrap_or(false)
+        || (aspect.aspect_code == "opposition"
+            && structural_axis_pairs.contains(&normalized_pair(
+                &aspect.source_object_code,
+                &aspect.target_object_code,
+            )))
 }
 
 fn is_structural_axis_signal(signal: &InterpretationSignalDraft) -> bool {
@@ -1278,6 +1389,106 @@ fn is_structural_axis_signal(signal: &InterpretationSignalDraft) -> bool {
             .and_then(|evidence| evidence.get("is_structural_axis"))
             .and_then(|value| value.as_bool())
             .unwrap_or(false)
+}
+
+fn is_angle_to_angle_aspect_signal(
+    signal: &InterpretationSignalDraft,
+    angle_object_codes: &HashSet<String>,
+) -> bool {
+    if !signal.signal_key.starts_with("aspect:") {
+        return false;
+    }
+
+    object_pair_from_signal(signal).is_some_and(|(source, target)| {
+        angle_object_codes.contains(&source) && angle_object_codes.contains(&target)
+    })
+}
+
+fn is_angle_to_angle_aspect(
+    aspect: &crate::domain::AspectFact,
+    angle_object_codes: &HashSet<String>,
+) -> bool {
+    angle_object_codes.contains(&aspect.source_object_code)
+        && angle_object_codes.contains(&aspect.target_object_code)
+}
+
+fn object_pair_from_signal(signal: &InterpretationSignalDraft) -> Option<(String, String)> {
+    let evidence_pair = signal
+        .payload_json
+        .as_ref()
+        .and_then(|payload| payload.get("evidence"))
+        .and_then(|evidence| {
+            let source = evidence
+                .get("source_object_code")
+                .and_then(|value| value.as_str())?;
+            let target = evidence
+                .get("target_object_code")
+                .and_then(|value| value.as_str())?;
+            Some((source.to_string(), target.to_string()))
+        });
+    if evidence_pair.is_some() {
+        return evidence_pair;
+    }
+
+    let parts = signal.signal_key.split(':').collect::<Vec<_>>();
+    if parts.len() >= 4 && parts[0] == "aspect" {
+        Some((parts[1].to_string(), parts[2].to_string()))
+    } else {
+        None
+    }
+}
+
+fn angle_object_codes_from_positions(positions: &[ObjectPositionFact]) -> HashSet<String> {
+    positions
+        .iter()
+        .filter(|position| placement_context_object(position, "angle_context").is_some())
+        .map(|position| position.object_code.clone())
+        .collect()
+}
+
+fn angle_point_object_codes_from_positions(
+    positions: &[ObjectPositionFact],
+) -> HashMap<String, String> {
+    positions
+        .iter()
+        .filter_map(|position| {
+            placement_context_str(position, "angle_context", "angle_point_code")
+                .map(|code| (code.to_string(), position.object_code.clone()))
+        })
+        .collect()
+}
+
+fn structural_axis_pairs_from_positions(
+    positions: &[ObjectPositionFact],
+) -> HashSet<(String, String)> {
+    let angle_positions = positions
+        .iter()
+        .filter_map(|position| {
+            placement_context_str(position, "angle_context", "axis")
+                .map(|axis| (axis.to_string(), position.object_code.clone()))
+        })
+        .collect::<Vec<_>>();
+    let mut pairs = HashSet::new();
+
+    for left_index in 0..angle_positions.len() {
+        for right_index in (left_index + 1)..angle_positions.len() {
+            let (left_axis, left_code) = &angle_positions[left_index];
+            let (right_axis, right_code) = &angle_positions[right_index];
+            if !left_axis.trim().is_empty() && left_axis == right_axis {
+                pairs.insert(normalized_pair(left_code, right_code));
+            }
+        }
+    }
+
+    pairs
+}
+
+fn normalized_pair(left: &str, right: &str) -> (String, String) {
+    if left <= right {
+        (left.to_string(), right.to_string())
+    } else {
+        (right.to_string(), left.to_string())
+    }
 }
 
 pub fn indefinite_article(phrase: &str) -> &'static str {
