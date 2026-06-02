@@ -4,3 +4,4 @@ ephe/
 __pycache__/
 *.pyc
 target/
+output/

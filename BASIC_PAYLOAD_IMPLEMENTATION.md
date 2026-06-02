@@ -29,7 +29,8 @@ L'etape 1E formalise le contrat canonique de handoff LLM. Le moteur Rust produit
 un payload anglophone stable, deterministe et auditable ; il ne traduit pas, ne
 choisit pas la formulation finale et ne depend pas d'une langue cible utilisateur.
 
-L'etape 2A enrichit les placements sans transformer le payload en dump de base.
+L'etape 2A enrichit les placements sans transformer le payload en dump de faits
+runtime.
 Chaque position conserve son role de preuve structuree, mais elle porte
 maintenant le contexte utile du signe, de la maison, de l'objet et du mouvement.
 Ces contextes alimentent aussi les signaux de placement, les tags semantiques et
@@ -247,10 +248,13 @@ remontes dans le payload final par `payload.rs`.
 
 ### Champs contextuels 2A
 
-Les champs ajoutes par l'etape 2A sont volontairement limites aux preuves utiles :
+Les champs ajoutes par l'etape 2A sont volontairement limites aux preuves utiles
+pour le calcul et la redaction. Ils ne recopient pas les faits runtime bruts,
+mais ils peuvent embarquer un referentiel semantique complet quand ce
+referentiel est directement exploitable par le LLM.
 
-- `sign_context` : element, modalite zodiacale, polarite et mots-cles principaux
-  du signe.
+- `sign_context` : element, modalite zodiacale, polarite et liste complete des
+  mots-cles principaux du signe depuis `astral_sign_keywords.keywords_json`.
 - `house_modality` : modalite de maison, force accidentelle et poids
   d'interpretation.
 - `object_context` : role astrologique, nature principale et indicateurs de
@@ -261,6 +265,12 @@ Dans `positions`, ces contextes sont exposes directement comme preuves
 structurees. Dans les signaux de placement, ils sont imbriques dans
 `evidence.placement_context`, afin de rester associes au fait astrologique et de
 ne pas creer un bloc redactionnel autonome.
+
+La liste `sign_context.keywords` reste volontairement non tronquee. Elle
+represente le vocabulaire semantique disponible pour le signe, pas une liste de
+points a rediger un par un. Le contrat LLM continue donc d'interdire de lister
+les placements ou d'exposer les preuves brutes ; ces mots-cles servent a guider
+le choix lexical, a eviter l'invention et a permettre une synthese plus riche.
 
 Les tags semantiques des placements integrent aussi les codes utiles comme
 `air`, `mutable`, `yang`, `cadent`, `luminary` ou `direct`. La priorite d'un
