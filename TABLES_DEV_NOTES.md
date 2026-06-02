@@ -22,6 +22,7 @@ Tables documentees pour l'instant :
 - `astral_calculated_condition_matches`
 - `astral_chart_objects`
 - `astral_chart_object_definitions`
+- `astral_chart_object_signal_profiles`
 - `astral_heliacal_conditions`
 - `astral_horizon_positions`
 - `astral_house_modalities`
@@ -350,6 +351,7 @@ La table sert de typologie stable pour les calculs de force contextuelle, notamm
 | `house_numbers_json` | Liste documentaire des numeros de maisons concernes. |
 | `accidental_strength` | Niveau de force accidentelle associe. |
 | `score_modifier` | Symbole de ponderation technique (`+`, `0_or_light_plus`, `-`). |
+| `priority_delta` | Delta numerique applique par le runtime a la priorite des placements et signaux d'angle. |
 | `interpretation_weight` | Poids indicatif pour prioriser l'interpretation. |
 | `runtime_usage` | Usage attendu dans le moteur de calcul. |
 | `sort_order` | Ordre d'affichage ou de lecture. |
@@ -387,6 +389,17 @@ Le moteur peut utiliser cette table comme facteur de ponderation pour :
 - `manifestation_power`.
 
 La modalite de maison ne doit pas etre utilisee seule comme verdict final. Elle doit etre combinee avec d'autres facteurs, comme la proximite reelle aux angles, la secte, la vitesse, la combustion, les aspects, les dignites essentielles et les seuils retenus par le moteur.
+
+Pour le payload Basic, `priority_delta` est un champ runtime obligatoire. Les
+valeurs actives sont :
+
+- `angular` : `2.0` ;
+- `succedent` : `0.75` ;
+- `cadent` : `-0.75`.
+
+Le moteur ne doit pas reconstruire ce mapping en dur depuis le nom de la
+modalite. Il lit la valeur depuis PostgreSQL via `astral_house_modalities` et
+refuse les references de maisons si le delta manque.
 
 ## astral_houses
 
@@ -650,7 +663,7 @@ La separation retenue est :
 | Identite et calcul | `astral_chart_objects`, `astral_chart_object_definitions` | Identite stable, mode de calcul et proprietes astrologiques de l'objet. |
 | Doctrine | `astral_object_nature_types`, `astral_object_nature_assignments`, `astral_object_sign_dignities` | Classifications dependantes d'une tradition, d'un systeme ou d'une version de referentiel. |
 | Runtime | `astral_chart_calculations`, `astral_calculated_chart_object_positions`, `astral_calculated_house_cusps`, `astral_calculated_aspects`, `astral_calculated_dignity_evaluations`, `astral_calculated_condition_matches`, `astral_object_motion_states` | Faits calcules et traces d'evaluation au moment d'un theme ou d'une prediction. |
-| Interpretation | `astral_object_interpretation_profiles`, `interpretive_condition_signal_profiles` | Contrats redactionnels et traduction des scores en signaux lisibles. |
+| Interpretation | `astral_chart_object_signal_profiles`, `astral_object_interpretation_profiles`, `interpretive_condition_signal_profiles` | Scoring de signal, contrats redactionnels et traduction des scores en signaux lisibles. |
 | Produit et prediction | `prediction_object_category_weights`, `astral_prediction_daily_object_profiles` | Ponderation des objets pour la priorisation des contenus et predictions. |
 
 ### Renommages appliques
@@ -683,6 +696,33 @@ Le socle contient notamment `object_type_id`, `calculation_type_id`, `swe_id`, `
 Elle porte les proprietes astrologiques comme `astrological_role_id`, `speed_rank`, `speed_class_id`, `typical_polarity_id`, `is_luminary`, `is_planet_symbolic` et `is_visible_to_naked_eye`.
 
 Le champ `is_planet_symbolic` evite de confondre la classification astrologique et la classification astronomique.
+
+### astral_chart_object_signal_profiles
+
+`astral_chart_object_signal_profiles` porte les valeurs de scoring utilisees par
+le payload Basic pour transformer un objet calcule en signal priorise.
+
+Cette table reste separee de `astral_chart_object_definitions` : les definitions
+decrivent ce qu'est l'objet, alors que le profil de signal decrit comment le
+runtime doit ponderer sa presence dans un payload donne.
+
+Champs principaux :
+
+| Champ | Role |
+| --- | --- |
+| `id` | Identifiant stable du profil. |
+| `reference_version_id` | Version de referentiel a laquelle le profil appartient. |
+| `chart_object_id` | Objet concerne, via `astral_chart_objects.id`. |
+| `position_priority_base` | Base de priorite appliquee aux signaux de placement de l'objet. |
+| `angle_priority_base` | Base de priorite specifique aux signaux d'angle, obligatoire pour les objets dont le role est `angle`. |
+| `source_weight` | Poids de source injecte dans les signaux Basic. |
+| `notes` | Commentaire documentaire. |
+
+Le runtime exige une ligne pour chaque objet actif et calculable de la version de
+referentiel demandee. Les valeurs de priorite doivent rester entre `0` et `100`,
+et `source_weight` doit rester positif ou nul. En cas de ligne absente, le
+moteur doit echouer au chargement des references plutot que d'inventer un poids
+par defaut.
 
 ### Natures et dignites
 
@@ -1115,6 +1155,11 @@ Regle d'ecriture :
 
 `astral_interpretation_generated_outputs` stocke les sorties localisees produites par un service LLM a partir d'un payload canonique.
 
+La table fait partie du schema canonique meme lorsqu'elle est vide. Une base qui
+contient `astral_interpretation_generation_payloads` mais pas
+`astral_interpretation_generated_outputs` est une base partiellement alignee avec
+`json_db`.
+
 Regle d'ecriture :
 
 - `generation_payload_id` doit pointer vers le payload canonique utilise comme source ;
@@ -1146,6 +1191,14 @@ Les champs redondants `reference_version_code` ont ete retires de `astral_advanc
 L'importeur refuse maintenant les noms de fichiers differents du nom de table, les noms de tables dupliques et tout import qui ignorerait une FK declaree.
 
 Les marqueurs declaratifs `unique`, `snake_case` et `enum:` presents dans les descriptions de colonnes sont egalement materialises en contraintes PostgreSQL.
+
+Apres chaque ajout de fichier ou de colonne dans `json_db`, la base PostgreSQL
+locale doit etre resynchronisee avant de relancer le runtime. Les erreurs SQL de
+type relation ou colonne manquante, par exemple sur
+`astral_chart_object_signal_profiles` ou
+`astral_house_modalities.priority_delta`, indiquent un decalage de schema. La
+correction attendue est un import ou un patch schema issu de `json_db`, pas une
+valeur de secours dans le code applicatif.
 
 ## Version de referentiel de travail
 

@@ -126,6 +126,23 @@ Le runtime conserve la chaine existante :
 Cette etape prepare donc une entree propre, lisible, auditable et pre-orientee
 editorialement.
 
+## Etat de schema runtime
+
+Le payload Basic depend directement du schema PostgreSQL materialise depuis
+`json_db`. Apres les refactos de scoring, le runtime attend notamment :
+
+- la table `astral_chart_object_signal_profiles`, source canonique des bases de
+  priorite et des poids de source par objet calculable ;
+- la colonne `astral_house_modalities.priority_delta`, source canonique du delta
+  applique aux placements selon la modalite de maison ;
+- la table `astral_interpretation_generated_outputs`, reservee aux sorties LLM
+  localisees produites depuis un payload canonique.
+
+Ces donnees ne doivent pas etre compensees par des valeurs applicatives en dur.
+Si le binaire echoue avec une erreur SQL de relation ou de colonne manquante,
+la correction attendue est de resynchroniser PostgreSQL avec les fichiers
+`json_db`, pas de contourner la lecture en Rust.
+
 ## Fichiers concernes
 
 - `rust_sqlx_connection_test/src/domain.rs` : structures runtime et payload JSON.
@@ -512,6 +529,14 @@ renvoie une erreur de reference au lieu de produire un `priority_score` ou un
 pures et lisent uniquement `object_context.signal_scoring` et
 `house_modality.priority_delta`; elles ne redefinissent pas de mapping par
 `object_code`.
+
+Point de vigilance operationnel : une base deja creee avant l'ajout de ces
+referentiels peut contenir les anciennes tables mais manquer
+`astral_chart_object_signal_profiles`, `astral_interpretation_generated_outputs`
+ou `astral_house_modalities.priority_delta`. Dans ce cas, le programme ne doit
+pas demarrer avec des fallbacks. Il faut appliquer les ajouts issus de `json_db`
+ou relancer l'import PostgreSQL complet si la conservation des donnees runtime
+n'est pas requise.
 
 ### Champs de dignite 2B
 
@@ -1235,6 +1260,10 @@ Les sorties localisees produites par le service LLM doivent etre stockees dans
 une table separee :
 
 `astral_interpretation_generated_outputs`
+
+Cette table fait partie du schema canonique meme lorsqu'elle ne contient encore
+aucune ligne. Son absence indique une base PostgreSQL non alignee avec `json_db`
+et doit etre corrigee cote schema.
 
 La contrainte fonctionnelle proposee est :
 
