@@ -1,0 +1,479 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://astral-calculation.local/schemas/basic_natal_structured_v8.schema.json",
+  "title": "Basic Natal Structured Payload v8",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "product_code",
+    "chart_calculation_id",
+    "reference_version_id",
+    "subject_label",
+    "birth_datetime_utc",
+    "llm_handoff_contract",
+    "positions",
+    "angles",
+    "dignities",
+    "chart_emphasis",
+    "signals",
+    "reading_plan",
+    "drafting_plan"
+  ],
+  "properties": {
+    "product_code": { "const": "basic" },
+    "chart_calculation_id": { "type": "integer", "minimum": 1 },
+    "reference_version_id": { "type": "integer", "minimum": 1 },
+    "subject_label": { "type": ["string", "null"] },
+    "birth_datetime_utc": { "type": "string", "format": "date-time" },
+    "llm_handoff_contract": { "$ref": "#/$defs/llm_handoff_contract" },
+    "positions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/position" }
+    },
+    "angles": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "allOf": [
+        { "contains": { "properties": { "angle_code": { "const": "ascendant" } }, "required": ["angle_code"] } },
+        { "contains": { "properties": { "angle_code": { "const": "descendant" } }, "required": ["angle_code"] } },
+        { "contains": { "properties": { "angle_code": { "const": "mc" } }, "required": ["angle_code"] } },
+        { "contains": { "properties": { "angle_code": { "const": "ic" } }, "required": ["angle_code"] } }
+      ],
+      "items": { "$ref": "#/$defs/angle" }
+    },
+    "dignities": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/dignity" }
+    },
+    "chart_emphasis": { "$ref": "#/$defs/chart_emphasis" },
+    "signals": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "items": { "$ref": "#/$defs/signal" }
+    },
+    "reading_plan": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/reading_plan_item" }
+    },
+    "drafting_plan": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/drafting_plan_item" }
+    }
+  },
+  "$defs": {
+    "llm_handoff_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "payload_language_code",
+        "target_language_policy",
+        "audience_level",
+        "tone",
+        "must_use",
+        "must_not",
+        "output_format"
+      ],
+      "properties": {
+        "contract_version": { "const": "basic_natal_structured_v8" },
+        "payload_language_code": { "const": "en" },
+        "target_language_policy": { "const": "provided_by_llm_service" },
+        "audience_level": { "const": "beginner" },
+        "tone": { "type": "string", "minLength": 1 },
+        "must_use": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "chart_emphasis",
+              "dignities",
+              "angles",
+              "signals",
+              "reading_plan",
+              "drafting_plan"
+            ]
+          },
+          "allOf": [
+            { "contains": { "const": "chart_emphasis" } },
+            { "contains": { "const": "dignities" } },
+            { "contains": { "const": "angles" } },
+            { "contains": { "const": "signals" } },
+            { "contains": { "const": "reading_plan" } },
+            { "contains": { "const": "drafting_plan" } }
+          ]
+        },
+        "must_not": {
+          "type": "array",
+          "minItems": 7,
+          "maxItems": 7,
+          "items": { "type": "string", "minLength": 1 },
+          "allOf": [
+            { "contains": { "const": "invent facts not present in source signals" } },
+            { "contains": { "const": "mention technical IDs" } },
+            { "contains": { "const": "list placements mechanically" } },
+            { "contains": { "const": "translate technical keys such as signal_key, theme_code, semantic_tags, slot, or aggregation_group" } },
+            { "contains": { "const": "expose raw evidence unless explicitly requested" } },
+            { "contains": { "const": "treat chart_emphasis as a standalone section instead of weighting context" } },
+            { "contains": { "const": "make deterministic or fatalistic predictions" } }
+          ]
+        },
+        "output_format": { "const": "structured_sections" }
+      }
+    },
+    "position": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "object_code",
+        "object_name",
+        "longitude_deg",
+        "sign_id",
+        "sign_code",
+        "sign_name",
+        "house_id",
+        "house_number",
+        "house_name",
+        "motion_state_id",
+        "sign_context",
+        "house_context",
+        "house_modality",
+        "object_context",
+        "motion_context",
+        "dignity_context"
+      ],
+      "properties": {
+        "object_code": { "type": "string", "minLength": 1 },
+        "object_name": { "type": "string", "minLength": 1 },
+        "longitude_deg": { "type": "number", "minimum": 0, "exclusiveMaximum": 360 },
+        "sign_id": { "type": "integer", "minimum": 1 },
+        "sign_code": { "type": "string", "minLength": 1 },
+        "sign_name": { "type": "string", "minLength": 1 },
+        "house_id": { "type": ["integer", "null"], "minimum": 1 },
+        "house_number": { "type": ["integer", "null"], "minimum": 1, "maximum": 12 },
+        "house_name": { "type": ["string", "null"] },
+        "motion_state_id": { "type": ["integer", "null"], "minimum": 1 },
+        "sign_context": { "type": "object" },
+        "house_context": { "type": "object" },
+        "house_modality": { "type": "object" },
+        "object_context": { "type": "object" },
+        "motion_context": { "type": ["object", "null"] },
+        "dignity_context": { "type": "array" }
+      }
+    },
+    "angle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "angle_code",
+        "angle_name",
+        "axis",
+        "opposite_angle_code",
+        "longitude_deg",
+        "sign_id",
+        "sign_code",
+        "sign_name",
+        "house_id",
+        "house_number",
+        "house_name"
+      ],
+      "properties": {
+        "angle_code": { "enum": ["ascendant", "descendant", "mc", "ic"] },
+        "angle_name": { "type": "string", "minLength": 1 },
+        "axis": { "enum": ["horizontal", "vertical"] },
+        "opposite_angle_code": { "enum": ["ascendant", "descendant", "mc", "ic"] },
+        "longitude_deg": { "type": "number", "minimum": 0, "exclusiveMaximum": 360 },
+        "sign_id": { "type": "integer", "minimum": 1 },
+        "sign_code": { "type": "string", "minLength": 1 },
+        "sign_name": { "type": "string", "minLength": 1 },
+        "house_id": { "type": "integer", "minimum": 1 },
+        "house_number": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "house_name": { "type": "string", "minLength": 1 }
+      }
+    },
+    "dignity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "object_code",
+        "object_name",
+        "sign_id",
+        "sign_code",
+        "sign_name",
+        "dignity_type",
+        "dignity_label",
+        "polarity",
+        "strength_score",
+        "signal_key"
+      ],
+      "properties": {
+        "object_code": { "type": "string", "minLength": 1 },
+        "object_name": { "type": "string", "minLength": 1 },
+        "sign_id": { "type": "integer", "minimum": 1 },
+        "sign_code": { "type": "string", "minLength": 1 },
+        "sign_name": { "type": "string", "minLength": 1 },
+        "dignity_type": { "type": "string", "minLength": 1 },
+        "dignity_label": { "type": "string", "minLength": 1 },
+        "polarity": { "enum": ["dignity", "debility"] },
+        "strength_score": { "type": "number", "exclusiveMinimum": 0 },
+        "signal_key": { "type": ["string", "null"] }
+      }
+    },
+    "chart_emphasis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dominant_signs", "dominant_houses", "dominant_objects"],
+      "properties": {
+        "dominant_signs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/dominant_sign" }
+        },
+        "dominant_houses": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/dominant_house" }
+        },
+        "dominant_objects": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": { "$ref": "#/$defs/dominant_object" }
+        }
+      }
+    },
+    "dominant_sign": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sign_code", "score", "reasons"],
+      "properties": {
+        "sign_code": { "type": "string", "minLength": 1 },
+        "score": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+        "reasons": { "$ref": "#/$defs/non_empty_string_array" }
+      }
+    },
+    "dominant_house": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["house_number", "theme_code", "score", "reasons"],
+      "properties": {
+        "house_number": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "theme_code": { "type": "string", "minLength": 1 },
+        "score": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+        "reasons": { "$ref": "#/$defs/non_empty_string_array" }
+      }
+    },
+    "dominant_object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["object_code", "score", "reasons"],
+      "properties": {
+        "object_code": { "type": "string", "minLength": 1 },
+        "score": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+        "reasons": { "$ref": "#/$defs/non_empty_string_array" }
+      }
+    },
+    "signal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signal_key",
+        "theme_code",
+        "title",
+        "summary",
+        "priority_score",
+        "confidence_score",
+        "interpretive_hint",
+        "semantic_tags",
+        "source_weight",
+        "aggregation_group",
+        "writing_guidance",
+        "aspect_context",
+        "evidence"
+      ],
+      "properties": {
+        "signal_key": { "type": "string", "minLength": 1 },
+        "theme_code": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string", "minLength": 1 },
+        "priority_score": { "type": "number", "minimum": 0 },
+        "confidence_score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "interpretive_hint": { "type": "string", "minLength": 1 },
+        "semantic_tags": { "$ref": "#/$defs/non_empty_string_array" },
+        "source_weight": { "type": "number", "minimum": 0 },
+        "aggregation_group": { "type": "string", "minLength": 1 },
+        "writing_guidance": { "type": "string", "minLength": 1 },
+        "aspect_context": {
+          "anyOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/aspect_context" }
+          ]
+        },
+        "evidence": { "type": "object" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "signal_key": { "pattern": "^aspect:" } }, "required": ["signal_key"] },
+          "then": { "properties": { "aspect_context": { "$ref": "#/$defs/aspect_context" } } }
+        },
+        {
+          "if": { "properties": { "signal_key": { "pattern": "^(object_position|angle|dignity|cluster):" } }, "required": ["signal_key"] },
+          "then": { "properties": { "aspect_context": { "type": "null" } } }
+        },
+        {
+          "not": {
+            "properties": {
+              "signal_key": {
+                "pattern": "^aspect:(ascendant|descendant|mc|ic):(ascendant|descendant|mc|ic):"
+              }
+            },
+            "required": ["signal_key"]
+          }
+        }
+      ]
+    },
+    "aspect_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "aspect_family",
+        "primary_valence",
+        "intensity_modifier",
+        "secondary_effect",
+        "dynamic_quality",
+        "phase_state",
+        "valence_family",
+        "is_tonal_valence",
+        "is_intensity_modifier",
+        "writing_guidance"
+      ],
+      "properties": {
+        "aspect_family": { "type": "string", "minLength": 1 },
+        "primary_valence": { "type": ["string", "null"], "minLength": 1 },
+        "intensity_modifier": { "type": ["string", "null"], "minLength": 1 },
+        "secondary_effect": { "type": ["string", "null"], "minLength": 1 },
+        "dynamic_quality": {
+          "enum": [
+            "flow",
+            "tension",
+            "adjustment",
+            "intensification",
+            "symbolic",
+            "integration",
+            "contextual"
+          ]
+        },
+        "phase_state": { "type": "string", "minLength": 1 },
+        "valence_family": { "type": "string", "minLength": 1 },
+        "is_tonal_valence": { "type": "boolean" },
+        "is_intensity_modifier": { "type": "boolean" },
+        "writing_guidance": { "type": "string", "minLength": 1 }
+      },
+      "anyOf": [
+        { "properties": { "primary_valence": { "type": "string", "minLength": 1 } }, "required": ["primary_valence"] },
+        { "properties": { "intensity_modifier": { "type": "string", "minLength": 1 } }, "required": ["intensity_modifier"] },
+        { "properties": { "secondary_effect": { "type": "string", "minLength": 1 } }, "required": ["secondary_effect"] }
+      ]
+    },
+    "reading_plan_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "slot",
+        "title",
+        "source_signal_keys",
+        "primary_signal_keys",
+        "secondary_slot_candidates"
+      ],
+      "properties": {
+        "slot": { "$ref": "#/$defs/reading_slot" },
+        "title": { "type": "string", "minLength": 1 },
+        "source_signal_keys": { "$ref": "#/$defs/non_empty_string_array" },
+        "primary_signal_keys": { "$ref": "#/$defs/non_empty_string_array" },
+        "secondary_slot_candidates": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/secondary_slot_candidate" }
+        }
+      }
+    },
+    "drafting_plan_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "slot",
+        "section_title",
+        "source_signal_keys",
+        "primary_signal_keys",
+        "secondary_slot_candidates",
+        "emphasis_refs",
+        "writing_objective",
+        "max_words",
+        "avoid"
+      ],
+      "properties": {
+        "slot": { "$ref": "#/$defs/reading_slot" },
+        "section_title": { "type": "string", "minLength": 1 },
+        "source_signal_keys": { "$ref": "#/$defs/non_empty_string_array" },
+        "primary_signal_keys": { "$ref": "#/$defs/non_empty_string_array" },
+        "secondary_slot_candidates": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/secondary_slot_candidate" }
+        },
+        "emphasis_refs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["dominant_signs", "dominant_houses", "dominant_objects"],
+          "properties": {
+            "dominant_signs": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "dominant_houses": {
+              "type": "array",
+              "items": { "type": "integer", "minimum": 1, "maximum": 12 }
+            },
+            "dominant_objects": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "writing_objective": { "type": "string", "minLength": 1 },
+        "max_words": { "type": "integer", "minimum": 1 },
+        "avoid": { "$ref": "#/$defs/non_empty_string_array" }
+      }
+    },
+    "secondary_slot_candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signal_key", "primary_slot", "candidate_slot"],
+      "properties": {
+        "signal_key": { "type": "string", "minLength": 1 },
+        "primary_slot": { "$ref": "#/$defs/reading_slot" },
+        "candidate_slot": { "$ref": "#/$defs/reading_slot" }
+      }
+    },
+    "reading_slot": {
+      "enum": [
+        "core_identity",
+        "dominant_cluster",
+        "main_tension_or_support",
+        "expression_style",
+        "background_factors"
+      ]
+    },
+    "non_empty_string_array": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

@@ -20,7 +20,7 @@ fn current_payload() -> BasicPayload {
             subject_label: None,
             birth_datetime_utc: Utc.with_ymd_and_hms(2024, 6, 15, 12, 0, 0).unwrap(),
             llm_handoff_contract: Some(BasicLlmHandoffContract {
-                contract_version: "basic_natal_structured_v9".to_string(),
+                contract_version: "basic_natal_structured_v8".to_string(),
                 payload_language_code: "en".to_string(),
                 target_language_policy: "provided_by_llm_service".to_string(),
                 audience_level: "beginner".to_string(),
@@ -443,6 +443,37 @@ fn current_payload_rejects_angle_signal_with_mismatched_opposite_object_code() {
         "opposite_angle_object_code": "dsc",
         "sign_code": "gemini"
     }));
+
+    assert!(!is_current_basic_payload(&payload));
+}
+
+#[test]
+fn current_payload_rejects_missing_canonical_top_level_angle() {
+    let mut payload = current_payload();
+    payload.angles[1].angle_code = "vertex".to_string();
+
+    assert!(!is_current_basic_payload(&payload));
+}
+
+#[test]
+fn current_payload_rejects_mismatched_top_level_angle_opposite() {
+    let mut payload = current_payload();
+    payload.angles[0].opposite_angle_code = "mc".to_string();
+    payload.signals[1].evidence = Some(json!({
+        "fact_type": "chart_angle",
+        "angle_code": "ascendant",
+        "opposite_angle_code": "dsc",
+        "opposite_angle_object_code": "mc",
+        "sign_code": "gemini"
+    }));
+
+    assert!(!is_current_basic_payload(&payload));
+}
+
+#[test]
+fn current_payload_rejects_mismatched_top_level_angle_axis() {
+    let mut payload = current_payload();
+    payload.angles[0].axis = "vertical".to_string();
 
     assert!(!is_current_basic_payload(&payload));
 }

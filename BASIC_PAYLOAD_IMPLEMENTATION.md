@@ -108,9 +108,11 @@ et planete-angle restent en revanche eligibles. Le filtrage preserve d'abord une
 tension forte non structurelle si elle existe ; si aucune tension forte n'est
 disponible mais qu'un aspect fort planete-planete ou planete-angle existe, il
 preserve le meilleur aspect fort disponible afin que `main_tension_or_support`
-ne disparaisse pas artificiellement. Cette evolution bump le contrat canonique a
-`basic_natal_structured_v9` pour forcer la regeneration des anciens payloads v8
-qui pouvaient avoir recycle un axe structurel actif et perdu les vrais aspects.
+ne disparaisse pas artificiellement. Le contrat canonique stabilise reste
+`basic_natal_structured_v8`; les payloads existants qui recyclent un axe
+structurel actif, perdent les vrais aspects dynamiques ou manquent les champs
+d'angle obligatoires sont rejetes par la validation de reutilisation et
+regeneres.
 
 Le runtime conserve la chaine existante :
 
@@ -138,6 +140,12 @@ editorialement.
   positions et enrichissement SQL depuis les referentiels de signes, maisons,
   objets, angles et aspects.
 - `rust_sqlx_connection_test/src/runtime.rs` : orchestration et regeneration des anciens payloads.
+- `rust_sqlx_connection_test/schemas/basic_natal_structured_v8.schema.json` :
+  schema JSON du contrat Basic v8.
+- `tests/golden/basic_payload_v8_paris_1990.json` : fixture golden du contrat
+  Basic v8.
+- `tests/contract_basic_v8_tests.rs` : validation schema, golden et invariants
+  metier non negociables.
 
 ## Contrat des positions
 
@@ -1016,6 +1024,30 @@ aspect fort disponible. `main_tension_or_support` n'est donc absent que
 lorsqu'aucun aspect actif ou preservable ne reste apres l'exclusion des axes
 structurels et des autres aspects angle-angle.
 
+Depuis la passe de stabilisation du contrat, `basic_natal_structured_v8` est
+verrouille par trois niveaux complementaires :
+
+- le JSON Schema
+  `rust_sqlx_connection_test/schemas/basic_natal_structured_v8.schema.json`
+  valide la forme du contrat, les constantes LLM, les blocs obligatoires, les
+  quatre angles, les bornes de score et les contraintes schema exprimables. Il
+  refuse aussi les extensions silencieuses de `must_use`, les champs
+  semantiques de signal obligatoires a `null`, les contextes de position
+  obligatoires a `null` et les proprietes parasites dans `aspect_context` ;
+- la fixture `tests/golden/basic_payload_v8_paris_1990.json` conserve un payload
+  complet de reference pour le scenario Paris 1990 ;
+- `tests/contract_basic_v8_tests.rs` valide les invariants metier qui ne
+  doivent pas regresser : sources de plan existantes, alignement
+  `reading_plan` / `drafting_plan`, absence d'aspect angle-angle actif,
+  conservation de `aspect:jupiter:uranus:opposition`, unicite des signaux
+  primaires et garde-fou contre une section autonome `chart_emphasis`.
+
+La review adversariale de cette stabilisation a ajoute des tests negatifs et a
+resserre l'alignement entre schema et validation runtime. Un payload qui valide
+le schema ne doit plus pouvoir contourner les champs obligatoires attendus par
+`is_current_basic_payload`, et un payload runtime ne doit plus etre considere
+courant si ses angles top-level ne sont pas exactement le quatuor canonique.
+
 ## Contrat canonique de handoff LLM
 
 Le payload final contient aussi `llm_handoff_contract` et `drafting_plan`.
@@ -1025,7 +1057,7 @@ doit respecter :
 ```json
 {
   "llm_handoff_contract": {
-    "contract_version": "basic_natal_structured_v9",
+    "contract_version": "basic_natal_structured_v8",
     "payload_language_code": "en",
     "target_language_policy": "provided_by_llm_service",
     "audience_level": "beginner",
@@ -1175,12 +1207,15 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
 - 12 signaux maximum ;
 - au moins un signal ;
 - `llm_handoff_contract` present et conforme au contrat canonique
-  `basic_natal_structured_v9` ;
+  `basic_natal_structured_v8` ;
 - `dignities` structurees presentes et coherentes avec les signaux
   `dignity:*` actifs ;
-- `angles` top-level present avec quatre faits d'angle, un `axis`, un
-  `opposite_angle_code` non vide, une longitude normalisee et une maison
-  associee valide ; un signal `angle:ascendant:sign:*` actif doit aussi exister ;
+- `angles` top-level present avec exactement les quatre faits canoniques
+  `ascendant`, `descendant`, `mc` et `ic`, leurs axes attendus
+  (`horizontal` pour Ascendant/Descendant, `vertical` pour MC/IC), leurs
+  oppositions attendues (`ascendant <-> descendant`, `mc <-> ic`), une longitude
+  normalisee et une maison associee valide ; un signal
+  `angle:ascendant:sign:*` actif doit aussi exister ;
 - `chart_emphasis` present, avec au moins une dominante de signe, de maison et
   d'objet, chacune scoree, justifiee par des raisons non vides et triee par
   score decroissant dans sa famille ;
@@ -1188,9 +1223,10 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
   `house_modality`, `object_context` et `dignity_context` sous forme de tableau ;
   `motion_context` est requis pour les objets mobiles, mais les angles peuvent
   le laisser a `null` car ils n'ont pas d'etat de mouvement planetaire ;
-- signaux avec `evidence` ;
-- signaux avec `theme_code`, `interpretive_hint`, `semantic_tags`,
-  `aggregation_group` et `writing_guidance` non vides ;
+- signaux avec `evidence` objet non nul ;
+- signaux avec `theme_code`, `summary`, `confidence_score`,
+  `interpretive_hint`, `semantic_tags`, `source_weight`, `aggregation_group` et
+  `writing_guidance` non nuls et non vides quand le type est textuel ;
 - aucun signal actif `aspect:*` entre deux angles ; les anciens payloads qui
   contiennent un aspect angle-angle actif sont regeneres ;
 - signaux `angle:*` avec `evidence.fact_type = "chart_angle"` et
@@ -1286,15 +1322,16 @@ Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
 - `product_code = "basic"` ;
 - `llm_handoff_contract.payload_language_code = "en"` ;
 - `llm_handoff_contract.target_language_policy = "provided_by_llm_service"` ;
-- `llm_handoff_contract.contract_version = "basic_natal_structured_v9"` ;
+- `llm_handoff_contract.contract_version = "basic_natal_structured_v8"` ;
 - des positions avec `sign_code`, `sign_name`, `house_number`, `house_name`,
   `sign_context`, `house_context`, `house_modality`, `object_context` et
   `dignity_context` sous forme de tableau, vide quand aucune dignite n'est
   detectee ; `motion_context` est present pour les objets mobiles et peut etre
   `null` pour les angles ;
-- une liste `angles` top-level avec Ascendant, Descendant, MC et IC, reliee aux
-  signes et maisons calcules, avec `opposite_angle_code` resolu vers le code
-  objet long correspondant quand il existe dans le payload ;
+- une liste `angles` top-level avec exactement Ascendant, Descendant, MC et IC,
+  reliee aux signes et maisons calcules, avec les axes `horizontal` /
+  `vertical` attendus et `opposite_angle_code` resolu vers le code objet long
+  correspondant quand il existe dans le payload ;
 - des signaux `angle:*` dont `evidence.opposite_angle_object_code` expose le meme
   code objet long, tout en conservant le code court source dans
   `evidence.opposite_angle_code` ;

@@ -20,6 +20,9 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 default = []
 swisseph-engine = ["dep:swiss_eph"]
 
+[dev-dependencies]
+jsonschema = "0.18"
+
 [[bin]]
 name = "swe_smoke"
 path = "src/bin/swe_smoke.rs"
@@ -56,3 +59,7 @@ path = "../tests/runtime_tests.rs"
 [[test]]
 name = "signals_tests"
 path = "../tests/signals_tests.rs"
+
+[[test]]
+name = "contract_basic_v8_tests"
+path = "../tests/contract_basic_v8_tests.rs"

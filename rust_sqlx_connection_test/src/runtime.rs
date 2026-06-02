@@ -366,7 +366,7 @@ fn has_current_llm_handoff_contract(payload: &BasicPayload) -> bool {
         return false;
     };
 
-    contract.contract_version == "basic_natal_structured_v9"
+    contract.contract_version == "basic_natal_structured_v8"
         && contract.payload_language_code == "en"
         && contract.target_language_policy == "provided_by_llm_service"
         && contract.audience_level == "beginner"
@@ -394,13 +394,17 @@ fn has_current_llm_handoff_contract(payload: &BasicPayload) -> bool {
 }
 
 fn has_current_angles(payload: &BasicPayload) -> bool {
-    let angle_codes: HashSet<&str> = payload
+    let angles_by_code: HashMap<&str, &crate::domain::BasicAngleFact> = payload
         .angles
         .iter()
-        .map(|angle| angle.angle_code.as_str())
+        .map(|angle| (angle.angle_code.as_str(), angle))
         .collect();
 
-    angle_codes.len() == 4
+    angles_by_code.len() == 4
+        && canonical_angle_is_valid(&angles_by_code, "ascendant", "descendant", "horizontal")
+        && canonical_angle_is_valid(&angles_by_code, "descendant", "ascendant", "horizontal")
+        && canonical_angle_is_valid(&angles_by_code, "mc", "ic", "vertical")
+        && canonical_angle_is_valid(&angles_by_code, "ic", "mc", "vertical")
         && payload.angles.iter().all(|angle| {
             !angle.angle_code.trim().is_empty()
                 && !angle.angle_name.trim().is_empty()
@@ -421,6 +425,17 @@ fn has_current_angles(payload: &BasicPayload) -> bool {
                     .and_then(|value| value.as_str())
                     == Some("chart_angle")
         })
+}
+
+fn canonical_angle_is_valid(
+    angles_by_code: &HashMap<&str, &crate::domain::BasicAngleFact>,
+    angle_code: &str,
+    opposite_angle_code: &str,
+    axis: &str,
+) -> bool {
+    angles_by_code
+        .get(angle_code)
+        .is_some_and(|angle| angle.opposite_angle_code == opposite_angle_code && angle.axis == axis)
 }
 
 fn has_current_angle_evidence(payload: &BasicPayload, signal: &BasicSignal) -> bool {

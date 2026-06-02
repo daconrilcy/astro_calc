@@ -261,7 +261,7 @@ fn basic_payload_exposes_semantic_signal_fields() {
             .as_ref()
             .expect("llm handoff contract")
             .contract_version,
-        "basic_natal_structured_v9"
+        "basic_natal_structured_v8"
     );
     let contract = payload
         .llm_handoff_contract
