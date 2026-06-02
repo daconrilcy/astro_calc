@@ -9,10 +9,17 @@ use rust_sqlx_connection_test::runtime::is_current_basic_payload;
 
 const GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/basic_payload_v8_paris_1990.json";
 const SCHEMA_PATH: &str = "schemas/basic_natal_structured_v8.schema.json";
+const PAYLOAD_UNDER_TEST_ENV: &str = "BASIC_V8_SCHEMA_PAYLOAD_PATH";
 
 fn load_golden_payload() -> Value {
     let raw = fs::read_to_string(GOLDEN_PAYLOAD_PATH).expect("golden payload should exist");
     serde_json::from_str(&raw).expect("golden payload should be valid JSON")
+}
+
+fn load_payload_from_path(path: &str) -> Value {
+    let raw = fs::read_to_string(path).expect("payload under schema test should exist");
+    serde_json::from_str(raw.trim_start_matches('\u{feff}'))
+        .expect("payload under schema test should be valid JSON")
 }
 
 fn validate_with_schema(payload_json: &Value) -> Vec<String> {
@@ -102,6 +109,21 @@ fn golden_payload_matches_json_schema_v8() {
 }
 
 #[test]
+fn external_payload_matches_json_schema_v8_when_requested() {
+    let Ok(path) = std::env::var(PAYLOAD_UNDER_TEST_ENV) else {
+        return;
+    };
+    let payload_json = load_payload_from_path(&path);
+    let validation_errors = validate_with_schema(&payload_json);
+
+    assert!(
+        validation_errors.is_empty(),
+        "external payload does not match basic_natal_structured_v8 schema:\n{}",
+        validation_errors.join("\n")
+    );
+}
+
+#[test]
 fn schema_rejects_extra_must_use_item() {
     let mut payload = load_golden_payload();
     payload["llm_handoff_contract"]["must_use"]
@@ -138,6 +160,45 @@ fn schema_rejects_null_required_position_context() {
 }
 
 #[test]
+fn schema_rejects_position_context_without_house_theme_code() {
+    let mut payload = load_golden_payload();
+    payload["positions"][0]["house_context"]
+        .as_object_mut()
+        .expect("house_context should be an object")
+        .remove("theme_code");
+
+    assert!(
+        !validate_with_schema(&payload).is_empty(),
+        "schema should reject house_context without theme_code"
+    );
+}
+
+#[test]
+fn schema_rejects_signal_evidence_without_fact_type() {
+    let mut payload = load_golden_payload();
+    payload["signals"][0]["evidence"]
+        .as_object_mut()
+        .expect("evidence should be an object")
+        .remove("fact_type");
+
+    assert!(
+        !validate_with_schema(&payload).is_empty(),
+        "schema should reject evidence without fact_type"
+    );
+}
+
+#[test]
+fn schema_rejects_unknown_signal_key_family() {
+    let mut payload = load_golden_payload();
+    payload["signals"][0]["signal_key"] = Value::String("unknown_family:foo".to_string());
+
+    assert!(
+        !validate_with_schema(&payload).is_empty(),
+        "schema should reject unknown signal_key families"
+    );
+}
+
+#[test]
 fn schema_rejects_extra_aspect_context_property() {
     let mut payload = load_golden_payload();
     let aspect = payload["signals"]
@@ -166,6 +227,18 @@ fn golden_payload_is_accepted_by_runtime_reuse_validation() {
         serde_json::from_str(&raw).expect("golden payload should deserialize");
 
     assert!(is_current_basic_payload(&payload));
+}
+
+#[test]
+fn runtime_rejects_v7_contract_version() {
+    let mut payload = load_golden_payload();
+    payload["llm_handoff_contract"]["contract_version"] =
+        Value::String("basic_natal_structured_v7".to_string());
+
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
 }
 
 #[test]
@@ -250,6 +323,20 @@ fn background_contains_mc_when_mc_signal_is_active() {
         let background = find_slot(&payload, "reading_plan", "background_factors");
         assert_source(background, &mc_key);
     }
+}
+
+#[test]
+fn angle_signal_evidence_contains_long_opposite_object_code() {
+    let payload = load_golden_payload();
+
+    let ascendant = find_signal(&payload, "angle:ascendant:sign:scorpio");
+    assert_eq!(
+        ascendant["evidence"]["opposite_angle_object_code"],
+        "descendant"
+    );
+
+    let mc = find_signal(&payload, "angle:mc:sign:leo");
+    assert_eq!(mc["evidence"]["opposite_angle_object_code"], "ic");
 }
 
 #[test]

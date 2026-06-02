@@ -146,6 +146,8 @@ editorialement.
   Basic v8.
 - `tests/contract_basic_v8_tests.rs` : validation schema, golden et invariants
   metier non negociables.
+- `scripts/verify_basic_v8_golden.ps1` : verification CI/local de projection
+  stable apres regeneration du payload par le moteur.
 
 ## Contrat des positions
 
@@ -224,8 +226,9 @@ Le calcul geometrique conserve seulement les operations derivees de la
 longitude : slot zodiacal et numero de maison. Les IDs, codes et noms de signes
 ou de maisons sont resolus depuis les tables. Le runtime refuse de calculer si
 les 12 signes ou les 12 maisons ne sont pas presents ou si les references sont
-ambigues. Le contrat Basic v9 refuse aussi de reutiliser un payload existant si
-les contextes de placement utiles sont absents ou incomplets.
+ambigues. Depuis la stabilisation v8, le contrat refuse aussi de reutiliser un
+payload existant si les contextes de placement utiles sont absents ou
+incomplets.
 
 Depuis 2B.1, `dignity_context` est toujours expose comme tableau. Il vaut `[]`
 quand l'objet ne recoit aucune dignite essentielle majeure reconnue par le MVP.
@@ -270,8 +273,8 @@ Les signaux d'angle utilisent la forme stable `angle:<angle_code>:sign:<sign>`,
 par exemple `angle:ascendant:sign:virgo`. L'Ascendant est place dans
 `core_identity` avec le Soleil et la Lune. Le MC peut alimenter
 `background_factors` comme contexte de vocation, visibilite ou direction
-publique. Depuis v9, `signals[].evidence.opposite_angle_code` conserve le code
-court issu du referentiel (`dsc`, `asc`, `ic`, `mc`) et
+publique. Depuis la stabilisation v8, `signals[].evidence.opposite_angle_code`
+conserve le code court issu du referentiel (`dsc`, `asc`, `ic`, `mc`) et
 `signals[].evidence.opposite_angle_object_code` expose le code objet long
 homogene avec `angles[].opposite_angle_code`.
 
@@ -1047,6 +1050,20 @@ resserre l'alignement entre schema et validation runtime. Un payload qui valide
 le schema ne doit plus pouvoir contourner les champs obligatoires attendus par
 `is_current_basic_payload`, et un payload runtime ne doit plus etre considere
 courant si ses angles top-level ne sont pas exactement le quatuor canonique.
+
+La regeneration complete du golden depend de Postgres et de Swiss Ephemeris. Le
+test unitaire ne reconstruit donc pas le theme depuis le moteur. Pour couvrir ce
+risque en CI ou en verification locale, le script
+`scripts/verify_basic_v8_golden.ps1` lance le moteur avec le scenario golden
+Paris / `1990-01-02T03:04:05Z`, puis compare une projection stable du payload
+genere au golden. Le script force les variables d'environnement du scenario
+golden et les restaure ensuite, afin d'eviter qu'un `ASTRAL_OUTPUT_MODE`,
+`ASTRAL_PRODUCT_CODE` ou identifiant de referentiel deja present ne modifie la
+verification. Il peut aussi comparer un fichier deja genere via :
+
+```powershell
+.\scripts\verify_basic_v8_golden.ps1 -GeneratedPayloadPath .\output\basic_payload_current.json
+```
 
 ## Contrat canonique de handoff LLM
 

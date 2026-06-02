@@ -159,11 +159,16 @@
         "house_number": { "type": ["integer", "null"], "minimum": 1, "maximum": 12 },
         "house_name": { "type": ["string", "null"] },
         "motion_state_id": { "type": ["integer", "null"], "minimum": 1 },
-        "sign_context": { "type": "object" },
-        "house_context": { "type": "object" },
-        "house_modality": { "type": "object" },
-        "object_context": { "type": "object" },
-        "motion_context": { "type": ["object", "null"] },
+        "sign_context": { "$ref": "#/$defs/sign_context" },
+        "house_context": { "$ref": "#/$defs/house_context" },
+        "house_modality": { "$ref": "#/$defs/house_modality" },
+        "object_context": { "$ref": "#/$defs/object_context" },
+        "motion_context": {
+          "anyOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/motion_context" }
+          ]
+        },
         "dignity_context": { "type": "array" }
       }
     },
@@ -300,7 +305,11 @@
         "evidence"
       ],
       "properties": {
-        "signal_key": { "type": "string", "minLength": 1 },
+        "signal_key": {
+          "type": "string",
+          "pattern": "^(object_position|angle|dignity|cluster|aspect):",
+          "minLength": 1
+        },
         "theme_code": { "type": "string", "minLength": 1 },
         "title": { "type": "string", "minLength": 1 },
         "summary": { "type": "string", "minLength": 1 },
@@ -322,11 +331,48 @@
       "allOf": [
         {
           "if": { "properties": { "signal_key": { "pattern": "^aspect:" } }, "required": ["signal_key"] },
-          "then": { "properties": { "aspect_context": { "$ref": "#/$defs/aspect_context" } } }
+          "then": {
+            "properties": {
+              "aspect_context": { "$ref": "#/$defs/aspect_context" },
+              "evidence": { "$ref": "#/$defs/aspect_evidence" }
+            }
+          }
         },
         {
-          "if": { "properties": { "signal_key": { "pattern": "^(object_position|angle|dignity|cluster):" } }, "required": ["signal_key"] },
-          "then": { "properties": { "aspect_context": { "type": "null" } } }
+          "if": { "properties": { "signal_key": { "pattern": "^object_position:" } }, "required": ["signal_key"] },
+          "then": {
+            "properties": {
+              "aspect_context": { "type": "null" },
+              "evidence": { "$ref": "#/$defs/object_position_evidence" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "signal_key": { "pattern": "^angle:" } }, "required": ["signal_key"] },
+          "then": {
+            "properties": {
+              "aspect_context": { "type": "null" },
+              "evidence": { "$ref": "#/$defs/angle_evidence" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "signal_key": { "pattern": "^dignity:" } }, "required": ["signal_key"] },
+          "then": {
+            "properties": {
+              "aspect_context": { "type": "null" },
+              "evidence": { "$ref": "#/$defs/dignity_evidence" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "signal_key": { "pattern": "^cluster:" } }, "required": ["signal_key"] },
+          "then": {
+            "properties": {
+              "aspect_context": { "type": "null" },
+              "evidence": { "$ref": "#/$defs/cluster_evidence" }
+            }
+          }
         },
         {
           "not": {
@@ -382,6 +428,160 @@
         { "properties": { "intensity_modifier": { "type": "string", "minLength": 1 } }, "required": ["intensity_modifier"] },
         { "properties": { "secondary_effect": { "type": "string", "minLength": 1 } }, "required": ["secondary_effect"] }
       ]
+    },
+    "sign_context": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["element", "modality", "polarity"],
+      "properties": {
+        "element": { "type": "string", "minLength": 1 },
+        "modality": { "type": "string", "minLength": 1 },
+        "polarity": { "type": "string", "minLength": 1 }
+      }
+    },
+    "house_context": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["theme_code"],
+      "properties": {
+        "theme_code": { "type": "string", "minLength": 1 }
+      }
+    },
+    "house_modality": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["code"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1 }
+      }
+    },
+    "object_context": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["role"],
+      "properties": {
+        "role": { "type": "string", "minLength": 1 }
+      }
+    },
+    "motion_context": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["motion_state"],
+      "properties": {
+        "motion_state": { "type": "string", "minLength": 1 }
+      }
+    },
+    "placement_context": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "sign_context",
+        "house_context",
+        "house_modality",
+        "object_context",
+        "motion_context"
+      ],
+      "properties": {
+        "sign_context": { "$ref": "#/$defs/sign_context" },
+        "house_context": { "$ref": "#/$defs/house_context" },
+        "house_modality": { "$ref": "#/$defs/house_modality" },
+        "object_context": { "$ref": "#/$defs/object_context" },
+        "motion_context": {
+          "anyOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/motion_context" }
+          ]
+        }
+      }
+    },
+    "object_position_evidence": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "fact_type",
+        "object_code",
+        "sign_code",
+        "placement_context",
+        "essential_dignities"
+      ],
+      "properties": {
+        "fact_type": { "const": "object_position" },
+        "object_code": { "type": "string", "minLength": 1 },
+        "sign_code": { "type": "string", "minLength": 1 },
+        "placement_context": { "$ref": "#/$defs/placement_context" },
+        "essential_dignities": { "type": "array" }
+      }
+    },
+    "angle_evidence": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "fact_type",
+        "angle_code",
+        "opposite_angle_code",
+        "opposite_angle_object_code",
+        "sign_code",
+        "placement_context"
+      ],
+      "properties": {
+        "fact_type": { "const": "chart_angle" },
+        "angle_code": { "enum": ["ascendant", "descendant", "mc", "ic"] },
+        "opposite_angle_code": { "type": "string", "minLength": 1 },
+        "opposite_angle_object_code": { "enum": ["ascendant", "descendant", "mc", "ic"] },
+        "sign_code": { "type": "string", "minLength": 1 },
+        "placement_context": { "$ref": "#/$defs/placement_context" }
+      }
+    },
+    "aspect_evidence": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "fact_type",
+        "source_object_code",
+        "target_object_code",
+        "aspect_code",
+        "strength_score"
+      ],
+      "properties": {
+        "fact_type": { "const": "aspect" },
+        "source_object_code": { "type": "string", "minLength": 1 },
+        "target_object_code": { "type": "string", "minLength": 1 },
+        "aspect_code": { "type": "string", "minLength": 1 },
+        "strength_score": { "type": "number", "minimum": 0 }
+      }
+    },
+    "dignity_evidence": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["fact_type", "chart_object", "sign_code", "dignity_type"],
+      "properties": {
+        "fact_type": { "const": "essential_dignity" },
+        "chart_object": { "type": "string", "minLength": 1 },
+        "sign_code": { "type": "string", "minLength": 1 },
+        "dignity_type": { "type": "string", "minLength": 1 }
+      }
+    },
+    "cluster_evidence": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "fact_type",
+        "cluster_type",
+        "sign_code",
+        "house_number",
+        "house_theme_code",
+        "source_signals",
+        "source_objects"
+      ],
+      "properties": {
+        "fact_type": { "const": "position_cluster" },
+        "cluster_type": { "type": "string", "minLength": 1 },
+        "sign_code": { "type": "string", "minLength": 1 },
+        "house_number": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "house_theme_code": { "type": "string", "minLength": 1 },
+        "source_signals": { "$ref": "#/$defs/non_empty_string_array" },
+        "source_objects": { "$ref": "#/$defs/non_empty_string_array" }
+      }
     },
     "reading_plan_item": {
       "type": "object",
