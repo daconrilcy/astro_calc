@@ -386,7 +386,10 @@ Les dignites modifient les placements de facon moderee :
 - dans les slots qui limitent un nombre d'objets, comme `expression_style` ou
   `background_factors`, les dignites associees ne consomment pas le quota
   d'objets. Elles accompagnent l'objet selectionne au lieu de remplacer un autre
-  placement attendu.
+  placement attendu ;
+- un meme signal n'est redige qu'une fois par defaut. S'il est candidat a un
+  second slot sans role distinct, il reste dans son slot primaire et remonte
+  seulement dans `secondary_slot_candidates` pour audit.
 
 Le MVP couvre les dignites essentielles majeures par signe :
 
@@ -499,15 +502,30 @@ Le payload final contient maintenant `reading_plan` :
       "source_signal_keys": [
         "object_position:sun",
         "object_position:moon"
-      ]
+      ],
+      "primary_signal_keys": [
+        "object_position:sun",
+        "object_position:moon"
+      ],
+      "secondary_slot_candidates": []
     },
     {
       "slot": "dominant_cluster",
       "title": "Dominant repeated theme",
       "source_signal_keys": [
         "cluster:capricorn:house_2",
-        "object_position:sun",
         "dignity:saturn:domicile:capricorn"
+      ],
+      "primary_signal_keys": [
+        "cluster:capricorn:house_2",
+        "dignity:saturn:domicile:capricorn"
+      ],
+      "secondary_slot_candidates": [
+        {
+          "signal_key": "object_position:sun",
+          "primary_slot": "core_identity",
+          "candidate_slot": "dominant_cluster"
+        }
       ]
     },
     {
@@ -517,7 +535,13 @@ Le payload final contient maintenant `reading_plan` :
         "aspect:moon:neptune:sextile",
         "aspect:sun:moon:sextile",
         "aspect:jupiter:uranus:opposition"
-      ]
+      ],
+      "primary_signal_keys": [
+        "aspect:moon:neptune:sextile",
+        "aspect:sun:moon:sextile",
+        "aspect:jupiter:uranus:opposition"
+      ],
+      "secondary_slot_candidates": []
     }
   ]
 }
@@ -527,13 +551,34 @@ Le plan est construit dans `payload.rs` a partir des signaux actifs, avec les
 slots suivants quand les sources correspondantes existent :
 
 - `core_identity` : Soleil, Lune, Ascendant, MC ;
-- `dominant_cluster` : premier cluster actif, sources actives associees et
-  dignites actives des objets sources ;
+- `dominant_cluster` : premier cluster actif, sources candidates associees et
+  dignites actives des objets sources, puis resolution editoriale des doublons ;
 - `main_tension_or_support` : jusqu'a trois aspects actifs prioritaires ;
 - `expression_style` : Mercure, Venus, Mars, avec leurs dignites actives si
   elles sont presentes ;
 - `background_factors` : Jupiter, Saturne, Uranus, Neptune, Pluton si encore
   actifs, avec leurs dignites actives si elles sont presentes.
+
+Chaque item expose `source_signal_keys` et `primary_signal_keys`. Aujourd'hui,
+ces deux listes sont identiques apres resolution editoriale ; `primary_signal_keys`
+rend explicite que ces signaux doivent etre rediges dans ce slot. Quand un
+signal etait candidat a un slot ulterieur mais a deja ete assigne, le slot
+ulterieur ne le repete pas dans `source_signal_keys` et expose plutot :
+
+```json
+{
+  "secondary_slot_candidates": [
+    {
+      "signal_key": "dignity:saturn:domicile:capricorn",
+      "primary_slot": "dominant_cluster",
+      "candidate_slot": "background_factors"
+    }
+  ]
+}
+```
+
+`drafting_plan` reprend exactement `source_signal_keys`, `primary_signal_keys`
+et `secondary_slot_candidates` du `reading_plan`.
 
 Pour eviter une lecture trop lisse, `main_tension_or_support` force maintenant
 l'inclusion d'au moins un aspect de tension fort quand un carre ou une opposition
@@ -599,8 +644,18 @@ une langue cible finale.
       "section_title": "A Capricorn dominant theme around Resources",
       "source_signal_keys": [
         "cluster:capricorn:house_2",
-        "object_position:sun",
         "dignity:saturn:domicile:capricorn"
+      ],
+      "primary_signal_keys": [
+        "cluster:capricorn:house_2",
+        "dignity:saturn:domicile:capricorn"
+      ],
+      "secondary_slot_candidates": [
+        {
+          "signal_key": "object_position:sun",
+          "primary_slot": "core_identity",
+          "candidate_slot": "dominant_cluster"
+        }
       ],
       "writing_objective": "Explain in plain language that the chart emphasizes Capricorn, Resources, and structure, responsibility, security, grouping the related placements and the Saturn dignity context instead of enumerating them.",
       "max_words": 120,
@@ -702,6 +757,10 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
 - `drafting_plan` present, non vide, aligne sur les slots et sources du
   `reading_plan`, avec `section_title`, `writing_objective`, `max_words` et
   `avoid` renseignes ;
+- `primary_signal_keys` aligne avec `source_signal_keys`, et
+  `secondary_slot_candidates` coherents entre `reading_plan` et `drafting_plan` ;
+- chaque signal primaire apparait dans un seul slot de `reading_plan`; les
+  candidats editoriaux supplementaires passent par `secondary_slot_candidates` ;
 - slots du `reading_plan` connus et dans l'ordre Basic canonique ;
 - champs redactionnels du `drafting_plan` en anglais canonique, sans lettres
   non ASCII ;

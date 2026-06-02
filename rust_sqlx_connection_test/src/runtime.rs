@@ -383,7 +383,17 @@ fn has_current_reading_plan(payload: &BasicPayload) -> bool {
         .iter()
         .map(|signal| signal.signal_key.as_str())
         .collect();
+    let primary_signal_slots: HashMap<&str, &str> = payload
+        .reading_plan
+        .iter()
+        .flat_map(|item| {
+            item.source_signal_keys
+                .iter()
+                .map(move |signal_key| (signal_key.as_str(), item.slot.as_str()))
+        })
+        .collect();
     let mut slots = HashSet::new();
+    let mut primary_signal_keys = HashSet::new();
     let mut previous_slot_order = None;
 
     payload.reading_plan.iter().all(|item| {
@@ -399,10 +409,32 @@ fn has_current_reading_plan(payload: &BasicPayload) -> bool {
             && is_in_order
             && !item.title.trim().is_empty()
             && !item.source_signal_keys.is_empty()
+            && item.primary_signal_keys == item.source_signal_keys
+            && item
+                .source_signal_keys
+                .iter()
+                .all(|signal_key| primary_signal_keys.insert(signal_key.as_str()))
+            && secondary_candidates_are_valid(item, &signal_keys, &primary_signal_slots)
             && item.source_signal_keys.iter().all(|signal_key| {
                 let signal_key = signal_key.trim();
                 !signal_key.is_empty() && signal_keys.contains(signal_key)
             })
+    })
+}
+
+fn secondary_candidates_are_valid(
+    item: &crate::domain::BasicReadingPlanItem,
+    signal_keys: &HashSet<&str>,
+    primary_signal_slots: &HashMap<&str, &str>,
+) -> bool {
+    item.secondary_slot_candidates.iter().all(|candidate| {
+        !candidate.signal_key.trim().is_empty()
+            && signal_keys.contains(candidate.signal_key.as_str())
+            && primary_signal_slots
+                .get(candidate.signal_key.as_str())
+                .is_some_and(|primary_slot| *primary_slot == candidate.primary_slot)
+            && candidate.candidate_slot == item.slot
+            && !item.source_signal_keys.contains(&candidate.signal_key)
     })
 }
 
@@ -428,6 +460,11 @@ fn has_current_drafting_plan(payload: &BasicPayload) -> bool {
         .iter()
         .map(|item| (item.slot.as_str(), item.source_signal_keys.as_slice()))
         .collect();
+    let reading_items_by_slot: HashMap<&str, &crate::domain::BasicReadingPlanItem> = payload
+        .reading_plan
+        .iter()
+        .map(|item| (item.slot.as_str(), item))
+        .collect();
     let signal_keys: HashSet<&str> = payload
         .signals
         .iter()
@@ -444,6 +481,10 @@ fn has_current_drafting_plan(payload: &BasicPayload) -> bool {
                 .is_some_and(|reading_sources| {
                     *reading_sources == item.source_signal_keys.as_slice()
                 })
+            && reading_items_by_slot.get(slot).is_some_and(|reading_item| {
+                reading_item.primary_signal_keys == item.primary_signal_keys
+                    && reading_item.secondary_slot_candidates == item.secondary_slot_candidates
+            })
             && !item.section_title.trim().is_empty()
             && !item.writing_objective.trim().is_empty()
             && has_current_drafting_language(item)
@@ -543,7 +584,7 @@ mod tests {
     use super::*;
     use crate::domain::{
         BasicDignity, BasicDraftingPlanItem, BasicLlmHandoffContract, BasicObjectPosition,
-        BasicReadingPlanItem, BasicSignal,
+        BasicReadingPlanItem, BasicSecondarySlotCandidate, BasicSignal,
     };
     use crate::models::{HouseReference, SignReference};
 
@@ -642,11 +683,15 @@ mod tests {
                 slot: "core_identity".to_string(),
                 title: "Core identity markers".to_string(),
                 source_signal_keys: vec!["object_position:sun".to_string()],
+                primary_signal_keys: vec!["object_position:sun".to_string()],
+                secondary_slot_candidates: Vec::new(),
             }],
             drafting_plan: vec![BasicDraftingPlanItem {
                 slot: "core_identity".to_string(),
                 section_title: "Core chart markers".to_string(),
                 source_signal_keys: vec!["object_position:sun".to_string()],
+                primary_signal_keys: vec!["object_position:sun".to_string()],
+                secondary_slot_candidates: Vec::new(),
                 writing_objective: "Explain the central markers.".to_string(),
                 max_words: 110,
                 avoid: vec!["use technical IDs".to_string()],
@@ -872,12 +917,85 @@ mod tests {
     }
 
     #[test]
+    fn current_payload_rejects_repeated_primary_source_signal() {
+        let mut payload = current_payload();
+        payload.reading_plan.push(BasicReadingPlanItem {
+            slot: "dominant_cluster".to_string(),
+            title: "Dominant cluster".to_string(),
+            source_signal_keys: vec!["object_position:sun".to_string()],
+            primary_signal_keys: vec!["object_position:sun".to_string()],
+            secondary_slot_candidates: Vec::new(),
+        });
+        payload.drafting_plan.push(BasicDraftingPlanItem {
+            slot: "dominant_cluster".to_string(),
+            section_title: "Dominant cluster".to_string(),
+            source_signal_keys: vec!["object_position:sun".to_string()],
+            primary_signal_keys: vec!["object_position:sun".to_string()],
+            secondary_slot_candidates: Vec::new(),
+            writing_objective: "Explain the repeated primary signal.".to_string(),
+            max_words: 120,
+            avoid: vec!["repeat".to_string()],
+        });
+
+        assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
+    fn current_payload_rejects_secondary_candidate_without_primary_source() {
+        let mut payload = current_payload();
+        payload.signals.push(BasicSignal {
+            signal_key: "object_position:moon".to_string(),
+            theme_code: Some("emotional_style".to_string()),
+            title: "Moon in Pisces, house 4".to_string(),
+            summary: Some("summary".to_string()),
+            priority_score: 90.0,
+            confidence_score: Some(0.95),
+            interpretive_hint: Some("hint".to_string()),
+            semantic_tags: vec!["placement".to_string()],
+            source_weight: Some(0.75),
+            aggregation_group: Some("pisces:house_4".to_string()),
+            writing_guidance: Some("guidance".to_string()),
+            evidence: Some(json!({
+                "fact_type": "object_position",
+                "object_code": "moon",
+                "placement_context": {
+                    "sign_context": {
+                        "element": "water",
+                        "modality": "mutable",
+                        "polarity": "yin"
+                    },
+                    "house_modality": {"code": "angular"},
+                    "object_context": {"role": "luminary"},
+                    "motion_context": {"motion_state": "direct"}
+                },
+                "essential_dignities": []
+            })),
+        });
+
+        let candidate = BasicSecondarySlotCandidate {
+            signal_key: "object_position:moon".to_string(),
+            primary_slot: "dominant_cluster".to_string(),
+            candidate_slot: "core_identity".to_string(),
+        };
+        payload.reading_plan[0]
+            .secondary_slot_candidates
+            .push(candidate.clone());
+        payload.drafting_plan[0]
+            .secondary_slot_candidates
+            .push(candidate);
+
+        assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
     fn current_payload_rejects_duplicate_reading_plan_slots() {
         let mut payload = current_payload();
         payload.reading_plan.push(BasicReadingPlanItem {
             slot: "core_identity".to_string(),
             title: "Duplicate".to_string(),
             source_signal_keys: vec!["object_position:sun".to_string()],
+            primary_signal_keys: vec!["object_position:sun".to_string()],
+            secondary_slot_candidates: Vec::new(),
         });
 
         assert!(!is_current_basic_payload(&payload));
@@ -915,6 +1033,8 @@ mod tests {
                 slot: "expression_style".to_string(),
                 title: "Expression style".to_string(),
                 source_signal_keys: vec!["object_position:mercury".to_string()],
+                primary_signal_keys: vec!["object_position:mercury".to_string()],
+                secondary_slot_candidates: Vec::new(),
             },
         );
         payload.drafting_plan.insert(
@@ -923,6 +1043,8 @@ mod tests {
                 slot: "expression_style".to_string(),
                 section_title: "Expression and action style".to_string(),
                 source_signal_keys: vec!["object_position:mercury".to_string()],
+                primary_signal_keys: vec!["object_position:mercury".to_string()],
+                secondary_slot_candidates: Vec::new(),
                 writing_objective: "Show how the person thinks and acts.".to_string(),
                 max_words: 110,
                 avoid: vec!["use technical IDs".to_string()],

@@ -218,6 +218,17 @@ pub struct BasicReadingPlanItem {
     pub title: String,
     #[serde(default)]
     pub source_signal_keys: Vec<String>,
+    #[serde(default)]
+    pub primary_signal_keys: Vec<String>,
+    #[serde(default)]
+    pub secondary_slot_candidates: Vec<BasicSecondarySlotCandidate>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BasicSecondarySlotCandidate {
+    pub signal_key: String,
+    pub primary_slot: String,
+    pub candidate_slot: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -226,6 +237,10 @@ pub struct BasicDraftingPlanItem {
     pub section_title: String,
     #[serde(default)]
     pub source_signal_keys: Vec<String>,
+    #[serde(default)]
+    pub primary_signal_keys: Vec<String>,
+    #[serde(default)]
+    pub secondary_slot_candidates: Vec<BasicSecondarySlotCandidate>,
     pub writing_objective: String,
     pub max_words: u16,
     #[serde(default)]

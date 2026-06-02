@@ -4,7 +4,8 @@ use crate::dignities::{
 };
 use crate::domain::{
     BasicDignity, BasicDraftingPlanItem, BasicLlmHandoffContract, BasicObjectPosition,
-    BasicPayload, BasicReadingPlanItem, BasicSignal, NatalChartInput, ObjectPositionFact,
+    BasicPayload, BasicReadingPlanItem, BasicSecondarySlotCandidate, BasicSignal, NatalChartInput,
+    ObjectPositionFact,
 };
 use crate::models::InterpretationSignalRow;
 
@@ -221,6 +222,7 @@ fn build_reading_plan(signals: &[BasicSignal]) -> Vec<BasicReadingPlanItem> {
         ),
     );
 
+    finalize_reading_plan(&mut plan);
     plan
 }
 
@@ -286,8 +288,39 @@ fn push_plan_item(
     plan.push(BasicReadingPlanItem {
         slot: slot.to_string(),
         title: title.to_string(),
+        primary_signal_keys: source_signal_keys.clone(),
         source_signal_keys,
+        secondary_slot_candidates: Vec::new(),
     });
+}
+
+fn finalize_reading_plan(plan: &mut [BasicReadingPlanItem]) {
+    let mut primary_slots: Vec<(String, String)> = Vec::new();
+
+    for item in plan {
+        let mut primary_signal_keys = Vec::new();
+        let mut secondary_slot_candidates = Vec::new();
+
+        for signal_key in item.source_signal_keys.drain(..) {
+            if let Some((_, primary_slot)) = primary_slots
+                .iter()
+                .find(|(assigned_key, _)| assigned_key == &signal_key)
+            {
+                secondary_slot_candidates.push(BasicSecondarySlotCandidate {
+                    signal_key,
+                    primary_slot: primary_slot.clone(),
+                    candidate_slot: item.slot.clone(),
+                });
+            } else {
+                primary_slots.push((signal_key.clone(), item.slot.clone()));
+                primary_signal_keys.push(signal_key);
+            }
+        }
+
+        item.source_signal_keys = primary_signal_keys.clone();
+        item.primary_signal_keys = primary_signal_keys;
+        item.secondary_slot_candidates = secondary_slot_candidates;
+    }
 }
 
 fn signal_keys_for_objects(
@@ -358,6 +391,8 @@ fn build_drafting_plan(
                 slot: item.slot.clone(),
                 section_title: section_title(item, &source_signals),
                 source_signal_keys: item.source_signal_keys.clone(),
+                primary_signal_keys: item.primary_signal_keys.clone(),
+                secondary_slot_candidates: item.secondary_slot_candidates.clone(),
                 writing_objective: writing_objective(item, &source_signals),
                 max_words: max_words_for_slot(&item.slot),
                 avoid: avoid_rules_for_slot(&item.slot),
@@ -837,8 +872,20 @@ mod tests {
 
         assert_eq!(
             cluster_plan.source_signal_keys,
-            vec!["cluster:capricorn:house_2", "object_position:sun"]
+            vec!["cluster:capricorn:house_2"]
         );
+        assert_eq!(
+            cluster_plan.primary_signal_keys,
+            vec!["cluster:capricorn:house_2"]
+        );
+        assert!(cluster_plan
+            .secondary_slot_candidates
+            .iter()
+            .any(|candidate| {
+                candidate.signal_key == "object_position:sun"
+                    && candidate.primary_slot == "core_identity"
+                    && candidate.candidate_slot == "dominant_cluster"
+            }));
         assert!(payload
             .reading_plan
             .iter()
@@ -851,7 +898,15 @@ mod tests {
             .expect("expected dominant cluster drafting item");
         assert_eq!(
             cluster_drafting.source_signal_keys,
-            vec!["cluster:capricorn:house_2", "object_position:sun"]
+            cluster_plan.source_signal_keys
+        );
+        assert_eq!(
+            cluster_drafting.primary_signal_keys,
+            cluster_plan.primary_signal_keys
+        );
+        assert_eq!(
+            cluster_drafting.secondary_slot_candidates,
+            cluster_plan.secondary_slot_candidates
         );
         assert_eq!(
             cluster_drafting.section_title,
@@ -987,9 +1042,30 @@ mod tests {
         assert!(cluster_plan
             .source_signal_keys
             .contains(&"dignity:saturn:domicile:capricorn".to_string()));
+        assert!(!background_plan
+            .source_signal_keys
+            .contains(&"dignity:saturn:domicile:capricorn".to_string()));
+        assert!(background_plan
+            .secondary_slot_candidates
+            .iter()
+            .any(|candidate| {
+                candidate.signal_key == "dignity:saturn:domicile:capricorn"
+                    && candidate.primary_slot == "dominant_cluster"
+                    && candidate.candidate_slot == "background_factors"
+            }));
         assert!(background_plan
             .source_signal_keys
             .contains(&"dignity:jupiter:exaltation:cancer".to_string()));
+
+        let background_drafting = payload
+            .drafting_plan
+            .iter()
+            .find(|item| item.slot == "background_factors")
+            .expect("expected background drafting plan");
+        assert_eq!(
+            background_drafting.secondary_slot_candidates,
+            background_plan.secondary_slot_candidates
+        );
     }
 
     #[test]
