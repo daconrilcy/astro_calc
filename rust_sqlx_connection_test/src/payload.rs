@@ -9,7 +9,7 @@ use crate::domain::{
     BasicSignal, NatalChartInput, ObjectPositionFact,
 };
 use crate::models::InterpretationSignalRow;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 pub fn build_basic_payload(
     chart_calculation_id: i32,
@@ -17,9 +17,9 @@ pub fn build_basic_payload(
     positions: &[ObjectPositionFact],
     signals: &[InterpretationSignalRow],
 ) -> BasicPayload {
-    let basic_signals: Vec<BasicSignal> = signals
+    let structural_axis_pairs = structural_axis_pairs_from_positions(positions);
+    let mut basic_signals: Vec<BasicSignal> = signals
         .iter()
-        .take(12)
         .map(|signal| BasicSignal {
             signal_key: signal.signal_key.clone(),
             theme_code: signal.theme_code.clone(),
@@ -36,6 +36,9 @@ pub fn build_basic_payload(
             evidence: payload_value(signal, "evidence"),
         })
         .collect();
+    basic_signals
+        .retain(|signal| !is_structural_axis_signal_for_pairs(signal, &structural_axis_pairs));
+    basic_signals.truncate(12);
 
     let angles = build_payload_angles(positions);
     let dignities = build_payload_dignities(positions, &basic_signals);
@@ -81,10 +84,36 @@ pub fn build_basic_payload(
 }
 
 fn build_payload_angles(positions: &[ObjectPositionFact]) -> Vec<BasicAngleFact> {
+    let angle_object_codes: HashMap<String, String> = positions
+        .iter()
+        .filter_map(|position| {
+            position_context(position, "angle_context")
+                .and_then(|context| {
+                    context
+                        .get("angle_point_code")
+                        .and_then(|value| value.as_str())
+                        .map(ToString::to_string)
+                })
+                .map(|angle_point_code| (angle_point_code, position.object_code.clone()))
+        })
+        .collect();
+
     let mut angles: Vec<_> = positions
         .iter()
         .filter_map(|position| {
             let angle_context = position_context(position, "angle_context")?;
+            let opposite_angle_code = angle_context
+                .get("opposite_angle_code")
+                .and_then(|value| value.as_str())
+                .and_then(|code| angle_object_codes.get(code).map(String::as_str))
+                .or_else(|| {
+                    angle_context
+                        .get("opposite_angle_code")
+                        .and_then(|value| value.as_str())
+                })
+                .unwrap_or_default()
+                .to_string();
+
             Some(BasicAngleFact {
                 angle_code: position.object_code.clone(),
                 angle_name: angle_context
@@ -97,11 +126,7 @@ fn build_payload_angles(positions: &[ObjectPositionFact]) -> Vec<BasicAngleFact>
                     .and_then(|value| value.as_str())
                     .unwrap_or_default()
                     .to_string(),
-                opposite_angle_code: angle_context
-                    .get("opposite_angle_code")
-                    .and_then(|value| value.as_str())
-                    .unwrap_or_default()
-                    .to_string(),
+                opposite_angle_code,
                 longitude_deg: position.longitude_deg,
                 sign_id: position.sign_id,
                 sign_code: position.sign_code.clone(),
@@ -131,6 +156,42 @@ fn build_payload_angles(positions: &[ObjectPositionFact]) -> Vec<BasicAngleFact>
             .unwrap_or(i32::MAX)
     });
     angles
+}
+
+fn structural_axis_pairs_from_positions(
+    positions: &[ObjectPositionFact],
+) -> HashSet<(String, String)> {
+    let angle_positions: Vec<_> = positions
+        .iter()
+        .filter_map(|position| {
+            position_context(position, "angle_context")
+                .and_then(|context| {
+                    context
+                        .get("axis")
+                        .and_then(|value| value.as_str())
+                        .map(ToString::to_string)
+                })
+                .map(|axis| (axis, position.object_code.clone()))
+        })
+        .collect();
+
+    structural_axis_pairs(angle_positions)
+}
+
+fn structural_axis_pairs(angle_positions: Vec<(String, String)>) -> HashSet<(String, String)> {
+    let mut pairs = HashSet::new();
+
+    for left_index in 0..angle_positions.len() {
+        for right_index in (left_index + 1)..angle_positions.len() {
+            let (left_axis, left_code) = &angle_positions[left_index];
+            let (right_axis, right_code) = &angle_positions[right_index];
+            if left_axis == right_axis {
+                pairs.insert(normalized_pair(left_code, right_code));
+            }
+        }
+    }
+
+    pairs
 }
 
 fn position_dignity_context(position: &ObjectPositionFact) -> serde_json::Value {
@@ -379,7 +440,9 @@ fn add_signal_emphasis(
                 house_theme_codes,
                 object_scores,
             );
-        } else if signal.signal_key.starts_with("aspect:") && aspect_strength_score(signal) >= 0.75
+        } else if signal.signal_key.starts_with("aspect:")
+            && !is_structural_axis_signal(signal)
+            && aspect_strength_score(signal) >= 0.75
         {
             add_aspect_object_emphasis(signal, object_scores);
         }
@@ -725,7 +788,7 @@ fn build_reading_plan(signals: &[BasicSignal]) -> Vec<BasicReadingPlanItem> {
 fn main_dynamic_aspect_keys(signals: &[BasicSignal]) -> Vec<String> {
     let mut keys: Vec<String> = signals
         .iter()
-        .filter(|signal| signal.signal_key.starts_with("aspect:"))
+        .filter(|signal| is_interpretive_aspect_signal(signal))
         .take(3)
         .map(|signal| signal.signal_key.clone())
         .collect();
@@ -739,7 +802,7 @@ fn main_dynamic_aspect_keys(signals: &[BasicSignal]) -> Vec<String> {
     if !has_tension {
         if let Some(tension_key) = signals
             .iter()
-            .filter(|signal| signal.signal_key.starts_with("aspect:"))
+            .filter(|signal| is_interpretive_aspect_signal(signal))
             .find(|signal| is_interpretive_tension_aspect(signal))
             .map(|signal| signal.signal_key.clone())
         {
@@ -761,7 +824,7 @@ fn main_dynamic_aspect_keys(signals: &[BasicSignal]) -> Vec<String> {
     if !has_support {
         if let Some(support_key) = signals
             .iter()
-            .filter(|signal| signal.signal_key.starts_with("aspect:"))
+            .filter(|signal| is_interpretive_aspect_signal(signal))
             .find(|signal| is_interpretive_support_aspect(signal))
             .map(|signal| signal.signal_key.clone())
         {
@@ -817,6 +880,10 @@ fn push_balanced_aspect_key(
 }
 
 fn is_interpretive_tension_aspect(signal: &BasicSignal) -> bool {
+    if !is_interpretive_aspect_signal(signal) {
+        return false;
+    }
+
     let dynamic_quality = aspect_context_str(signal, "dynamic_quality");
     let primary_valence = aspect_context_str(signal, "primary_valence");
     let strength_score = aspect_strength_score(signal);
@@ -829,11 +896,90 @@ fn is_interpretive_tension_aspect(signal: &BasicSignal) -> bool {
 }
 
 fn is_interpretive_support_aspect(signal: &BasicSignal) -> bool {
+    if !is_interpretive_aspect_signal(signal) {
+        return false;
+    }
+
     matches!(aspect_context_str(signal, "dynamic_quality"), Some("flow"))
         || matches!(
             aspect_context_str(signal, "primary_valence"),
             Some("supportive" | "harmonious")
         )
+}
+
+fn is_interpretive_aspect_signal(signal: &BasicSignal) -> bool {
+    signal.signal_key.starts_with("aspect:") && !is_structural_axis_signal(signal)
+}
+
+fn is_structural_axis_signal(signal: &BasicSignal) -> bool {
+    signal
+        .aspect_context
+        .as_ref()
+        .and_then(|context| context.get("is_structural_axis"))
+        .and_then(|value| value.as_bool())
+        .unwrap_or(false)
+        || signal
+            .evidence
+            .as_ref()
+            .and_then(|evidence| evidence.get("is_structural_axis"))
+            .and_then(|value| value.as_bool())
+            .unwrap_or(false)
+}
+
+fn is_structural_axis_signal_for_pairs(
+    signal: &BasicSignal,
+    structural_axis_pairs: &HashSet<(String, String)>,
+) -> bool {
+    if !signal.signal_key.starts_with("aspect:") {
+        return false;
+    }
+    if is_structural_axis_signal(signal) {
+        return true;
+    }
+    if aspect_code(signal) != Some("opposition") {
+        return false;
+    }
+
+    object_pair_from_aspect_signal(signal).is_some_and(|pair| structural_axis_pairs.contains(&pair))
+}
+
+fn aspect_code(signal: &BasicSignal) -> Option<&str> {
+    signal
+        .evidence
+        .as_ref()
+        .and_then(|evidence| evidence.get("aspect_code"))
+        .and_then(|value| value.as_str())
+        .or_else(|| signal.signal_key.split(':').nth(3))
+}
+
+fn object_pair_from_aspect_signal(signal: &BasicSignal) -> Option<(String, String)> {
+    let evidence_pair = signal.evidence.as_ref().and_then(|evidence| {
+        let source = evidence
+            .get("source_object_code")
+            .and_then(|value| value.as_str())?;
+        let target = evidence
+            .get("target_object_code")
+            .and_then(|value| value.as_str())?;
+        Some(normalized_pair(source, target))
+    });
+    if evidence_pair.is_some() {
+        return evidence_pair;
+    }
+
+    let parts = signal.signal_key.split(':').collect::<Vec<_>>();
+    if parts.len() >= 4 {
+        Some(normalized_pair(parts[1], parts[2]))
+    } else {
+        None
+    }
+}
+
+fn normalized_pair(left: &str, right: &str) -> (String, String) {
+    if left <= right {
+        (left.to_string(), right.to_string())
+    } else {
+        (right.to_string(), left.to_string())
+    }
 }
 
 fn aspect_context_str<'a>(signal: &'a BasicSignal, key: &str) -> Option<&'a str> {
@@ -892,10 +1038,10 @@ fn push_plan_item(
     });
 }
 
-fn finalize_reading_plan(plan: &mut [BasicReadingPlanItem]) {
+fn finalize_reading_plan(plan: &mut Vec<BasicReadingPlanItem>) {
     let mut primary_slots: Vec<(String, String)> = Vec::new();
 
-    for item in plan {
+    for item in plan.iter_mut() {
         let mut primary_signal_keys = Vec::new();
         let mut secondary_slot_candidates = Vec::new();
 
@@ -919,6 +1065,8 @@ fn finalize_reading_plan(plan: &mut [BasicReadingPlanItem]) {
         item.primary_signal_keys = primary_signal_keys;
         item.secondary_slot_candidates = secondary_slot_candidates;
     }
+
+    plan.retain(|item| !item.source_signal_keys.is_empty());
 }
 
 fn signal_keys_for_objects(

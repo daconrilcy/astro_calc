@@ -5,7 +5,8 @@ use sqlx::PgPool;
 use thiserror::Error;
 
 use crate::domain::{
-    BasicPayload, CalculatedChartFacts, CalculationReferenceData, NatalChartInput, RuntimeOptions,
+    BasicPayload, BasicSignal, CalculatedChartFacts, CalculationReferenceData, NatalChartInput,
+    RuntimeOptions,
 };
 use crate::ephemeris::EphemerisEngine;
 use crate::idempotency::{advisory_lock_key, idempotency_key, input_hash};
@@ -328,6 +329,8 @@ fn is_stale(row: &ChartCalculationRow, default_stale_after_seconds: i32) -> bool
 }
 
 pub fn is_current_basic_payload(payload: &BasicPayload) -> bool {
+    let structural_axis_pairs = structural_axis_pairs_from_payload(payload);
+
     !payload.signals.is_empty()
         && payload.signals.len() <= 12
         && has_current_llm_handoff_contract(payload)
@@ -351,6 +354,7 @@ pub fn is_current_basic_payload(payload: &BasicPayload) -> bool {
                 && has_current_aspect_hint(&signal.interpretive_hint)
                 && has_current_placement_context(signal)
                 && has_current_aspect_context(signal)
+                && !is_structural_axis_aspect_signal(signal, &structural_axis_pairs)
         })
 }
 
@@ -414,6 +418,89 @@ fn has_current_angles(payload: &BasicPayload) -> bool {
                     .and_then(|value| value.as_str())
                     == Some("chart_angle")
         })
+}
+
+fn structural_axis_pairs_from_payload(payload: &BasicPayload) -> HashSet<(String, String)> {
+    let angle_positions = payload
+        .angles
+        .iter()
+        .map(|angle| (angle.axis.clone(), angle.angle_code.clone()))
+        .collect::<Vec<_>>();
+    let mut pairs = HashSet::new();
+
+    for left_index in 0..angle_positions.len() {
+        for right_index in (left_index + 1)..angle_positions.len() {
+            let (left_axis, left_code) = &angle_positions[left_index];
+            let (right_axis, right_code) = &angle_positions[right_index];
+            if !left_axis.trim().is_empty() && left_axis == right_axis {
+                pairs.insert(normalized_pair(left_code, right_code));
+            }
+        }
+    }
+
+    pairs
+}
+
+fn is_structural_axis_aspect_signal(
+    signal: &BasicSignal,
+    structural_axis_pairs: &HashSet<(String, String)>,
+) -> bool {
+    signal.signal_key.starts_with("aspect:")
+        && (signal
+            .aspect_context
+            .as_ref()
+            .and_then(|context| context.get("is_structural_axis"))
+            .and_then(|value| value.as_bool())
+            .unwrap_or(false)
+            || signal
+                .evidence
+                .as_ref()
+                .and_then(|evidence| evidence.get("is_structural_axis"))
+                .and_then(|value| value.as_bool())
+                .unwrap_or(false))
+        || (signal.signal_key.starts_with("aspect:")
+            && aspect_code(signal) == Some("opposition")
+            && object_pair_from_aspect_signal(signal)
+                .is_some_and(|pair| structural_axis_pairs.contains(&pair)))
+}
+
+fn aspect_code(signal: &BasicSignal) -> Option<&str> {
+    signal
+        .evidence
+        .as_ref()
+        .and_then(|evidence| evidence.get("aspect_code"))
+        .and_then(|value| value.as_str())
+        .or_else(|| signal.signal_key.split(':').nth(3))
+}
+
+fn object_pair_from_aspect_signal(signal: &BasicSignal) -> Option<(String, String)> {
+    let evidence_pair = signal.evidence.as_ref().and_then(|evidence| {
+        let source = evidence
+            .get("source_object_code")
+            .and_then(|value| value.as_str())?;
+        let target = evidence
+            .get("target_object_code")
+            .and_then(|value| value.as_str())?;
+        Some(normalized_pair(source, target))
+    });
+    if evidence_pair.is_some() {
+        return evidence_pair;
+    }
+
+    let parts = signal.signal_key.split(':').collect::<Vec<_>>();
+    if parts.len() >= 4 {
+        Some(normalized_pair(parts[1], parts[2]))
+    } else {
+        None
+    }
+}
+
+fn normalized_pair(left: &str, right: &str) -> (String, String) {
+    if left <= right {
+        (left.to_string(), right.to_string())
+    } else {
+        (right.to_string(), left.to_string())
+    }
 }
 
 fn has_current_chart_emphasis(payload: &BasicPayload) -> bool {

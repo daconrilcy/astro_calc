@@ -23,6 +23,10 @@ pub fn detect_aspects(
             let separation = shortest_distance(left.longitude_deg, right.longitude_deg);
 
             for aspect in &major_aspects {
+                if is_structural_axis_aspect(left, right, aspect) {
+                    continue;
+                }
+
                 let orb = (separation - aspect.angle).abs();
                 if orb > DEFAULT_MAJOR_ORB_DEG {
                     continue;
@@ -82,6 +86,41 @@ fn canonical_pair<'a>(
     } else {
         (right, left)
     }
+}
+
+fn is_structural_axis_aspect(
+    left: &ObjectPositionFact,
+    right: &ObjectPositionFact,
+    aspect: &AspectDefinition,
+) -> bool {
+    if aspect.code != "opposition" {
+        return false;
+    }
+
+    let Some(left_opposite_code) = angle_context_str(left, "opposite_angle_code") else {
+        return false;
+    };
+    let Some(right_opposite_code) = angle_context_str(right, "opposite_angle_code") else {
+        return false;
+    };
+
+    left_opposite_code == angle_identity_code(right)
+        && right_opposite_code == angle_identity_code(left)
+        && angle_context_str(left, "axis").is_some()
+        && angle_context_str(left, "axis") == angle_context_str(right, "axis")
+}
+
+fn angle_identity_code(position: &ObjectPositionFact) -> &str {
+    angle_context_str(position, "angle_point_code").unwrap_or(position.object_code.as_str())
+}
+
+fn angle_context_str<'a>(position: &'a ObjectPositionFact, key: &str) -> Option<&'a str> {
+    position
+        .facts_json
+        .as_ref()
+        .and_then(|facts| facts.get("angle_context"))
+        .and_then(|context| context.get(key))
+        .and_then(|value| value.as_str())
 }
 
 fn is_applying(

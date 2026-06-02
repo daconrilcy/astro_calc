@@ -551,6 +551,40 @@ fn basic_filter_preserves_one_strong_tension_aspect() {
 }
 
 #[test]
+fn structural_axis_aspects_do_not_create_basic_aspect_signals() {
+    let mut structural_axis = aspect(
+        "ascendant",
+        "Ascendant",
+        "descendant",
+        "Descendant",
+        "opposition",
+        "Opposition",
+        1.0,
+    );
+    structural_axis.calculation_notes_json = Some(json!({
+        "is_structural_axis": true
+    }));
+
+    let facts = CalculatedChartFacts {
+        positions: Vec::new(),
+        house_cusps: Vec::new(),
+        aspects: vec![
+            structural_axis,
+            aspect("moon", "Moon", "mars", "Mars", "square", "Square", 0.9),
+        ],
+    };
+
+    let signals = aggregate_basic_signals(&facts);
+
+    assert!(!signals
+        .iter()
+        .any(|signal| signal.signal_key == "aspect:ascendant:descendant:opposition"));
+    assert!(signals
+        .iter()
+        .any(|signal| signal.signal_key == "aspect:moon:mars:square"));
+}
+
+#[test]
 fn indefinite_article_handles_opposition() {
     assert_eq!(indefinite_article("opposition"), "an");
     assert_eq!(indefinite_article("exaltation"), "an");

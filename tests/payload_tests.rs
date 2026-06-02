@@ -145,6 +145,48 @@ fn capricorn_house_2_position(
     }
 }
 
+fn angle_position(
+    id: i32,
+    object_code: &str,
+    object_name: &str,
+    angle_point_code: &str,
+    opposite_angle_code: &str,
+    axis: &str,
+    longitude_deg: f64,
+) -> ObjectPositionFact {
+    ObjectPositionFact {
+        chart_object_id: id,
+        object_code: object_code.to_string(),
+        object_name: object_name.to_string(),
+        zodiacal_reference_system_id: 1,
+        coordinate_reference_system_id: 1,
+        sign_id: 1,
+        sign_code: "aries".to_string(),
+        sign_name: "Aries".to_string(),
+        house_id: Some(1),
+        house_number: Some(1),
+        house_name: Some("Self".to_string()),
+        motion_state_id: None,
+        horizon_position_id: None,
+        longitude_deg,
+        latitude_deg: None,
+        apparent_speed_deg_per_day: None,
+        altitude_deg: None,
+        is_visible: None,
+        facts_json: Some(json!({
+            "angle_context": {
+                "angle_point_code": angle_point_code,
+                "full_name": object_name,
+                "axis": axis,
+                "opposite_angle_code": opposite_angle_code,
+                "associated_house_number": 1,
+                "chart_object_sort_order": id
+            },
+            "house_context": {"theme_code": "identity"}
+        })),
+    }
+}
+
 #[test]
 fn basic_payload_exposes_semantic_signal_fields() {
     let signal = InterpretationSignalRow {
@@ -257,6 +299,45 @@ fn basic_payload_exposes_semantic_signal_fields() {
             .map(Vec::len),
         Some(0)
     );
+}
+
+#[test]
+fn basic_payload_resolves_angle_opposites_to_object_codes() {
+    let positions = vec![
+        angle_position(
+            11,
+            "ascendant",
+            "Ascendant",
+            "asc",
+            "dsc",
+            "horizontal",
+            15.0,
+        ),
+        angle_position(
+            12,
+            "descendant",
+            "Descendant",
+            "dsc",
+            "asc",
+            "horizontal",
+            195.0,
+        ),
+    ];
+
+    let payload = build_basic_payload(42, &input(), &positions, &[]);
+    let ascendant = payload
+        .angles
+        .iter()
+        .find(|angle| angle.angle_code == "ascendant")
+        .expect("ascendant angle");
+    let descendant = payload
+        .angles
+        .iter()
+        .find(|angle| angle.angle_code == "descendant")
+        .expect("descendant angle");
+
+    assert_eq!(ascendant.opposite_angle_code, "descendant");
+    assert_eq!(descendant.opposite_angle_code, "ascendant");
 }
 
 #[test]
@@ -845,6 +926,51 @@ fn reading_plan_uses_active_dignity_signals() {
 }
 
 #[test]
+fn reading_plan_drops_slots_that_only_have_secondary_candidates() {
+    let signals = vec![
+        InterpretationSignalRow {
+            id: 1,
+            signal_key: "cluster:capricorn:house_2".to_string(),
+            theme_code: Some("resources".to_string()),
+            title: "Strong concentration in Capricorn, house 2".to_string(),
+            summary: Some("summary".to_string()),
+            priority_score: 99.0,
+            confidence_score: Some(0.9),
+            payload_json: Some(json!({
+                "interpretive_hint": "hint",
+                "semantic_tags": ["cluster", "capricorn", "house_2"],
+                "source_weight": 2.0,
+                "aggregation_group": "capricorn_house_2_cluster",
+                "writing_guidance": "guidance",
+                "evidence": {
+                    "fact_type": "position_cluster",
+                    "sign_name": "Capricorn",
+                    "house_name": "Resources",
+                    "source_signals": ["object_position:saturn"],
+                    "source_objects": ["saturn"]
+                }
+            })),
+        },
+        dignity_signal_row(2, "dignity:saturn:domicile:capricorn", "saturn"),
+    ];
+
+    let payload = build_basic_payload(42, &input(), &[saturn_capricorn_position()], &signals);
+
+    assert!(payload
+        .reading_plan
+        .iter()
+        .any(|item| item.slot == "dominant_cluster"));
+    assert!(!payload
+        .reading_plan
+        .iter()
+        .any(|item| item.slot == "background_factors"));
+    assert!(!payload
+        .drafting_plan
+        .iter()
+        .any(|item| item.slot == "background_factors"));
+}
+
+#[test]
 fn reading_plan_object_limits_do_not_count_dignity_sources() {
     let signals = vec![
         placement_signal_row(1, "object_position:mercury", "mercury"),
@@ -924,6 +1050,109 @@ fn main_dynamic_aspects_balance_support_and_tension_by_valence() {
     assert!(aspect_plan
         .source_signal_keys
         .contains(&"aspect:venus:jupiter:sextile".to_string()));
+}
+
+#[test]
+fn structural_axis_aspects_are_excluded_from_payload_planning_and_emphasis() {
+    let mut structural_axis = aspect_signal(
+        1,
+        "aspect:ascendant:descendant:opposition",
+        "opposition",
+        1.0,
+    );
+    structural_axis.payload_json = Some(json!({
+        "interpretive_hint": "hint",
+        "semantic_tags": ["aspect", "opposition", "axis"],
+        "source_weight": 2.0,
+        "aggregation_group": "aspect:opposition",
+        "writing_guidance": "Use as background axis context, not as a main tension aspect.",
+        "aspect_context": {
+            "aspect_family": "major",
+            "primary_valence": "polarizing",
+            "dynamic_quality": "tension",
+            "phase_state": "exact",
+            "is_structural_axis": true,
+            "writing_guidance": "guidance"
+        },
+        "evidence": {
+            "fact_type": "aspect",
+            "source_object_code": "ascendant",
+            "target_object_code": "descendant",
+            "aspect_code": "opposition",
+            "aspect_name": "opposition",
+            "strength_score": 1.0,
+            "is_structural_axis": true
+        }
+    }));
+    let square = aspect_signal(2, "aspect:moon:mars:square", "square", 0.88);
+
+    let payload = build_basic_payload(42, &input(), &[position()], &[structural_axis, square]);
+    let aspect_plan = payload
+        .reading_plan
+        .iter()
+        .find(|item| item.slot == "main_tension_or_support")
+        .expect("expected aspect plan");
+
+    assert_eq!(
+        aspect_plan.source_signal_keys,
+        vec!["aspect:moon:mars:square"]
+    );
+    assert!(
+        !payload.chart_emphasis.dominant_objects.iter().any(|entry| {
+            entry.object_code == "ascendant"
+                && entry
+                    .reasons
+                    .contains(&"strong_aspect_participant".to_string())
+        })
+    );
+}
+
+#[test]
+fn legacy_unflagged_axis_aspects_are_excluded_when_angle_positions_define_axis() {
+    let structural_axis = aspect_signal(
+        1,
+        "aspect:ascendant:descendant:opposition",
+        "opposition",
+        1.0,
+    );
+    let square = aspect_signal(2, "aspect:moon:mars:square", "square", 0.88);
+    let positions = vec![
+        angle_position(
+            11,
+            "ascendant",
+            "Ascendant",
+            "asc",
+            "dsc",
+            "horizontal",
+            15.0,
+        ),
+        angle_position(
+            12,
+            "descendant",
+            "Descendant",
+            "dsc",
+            "asc",
+            "horizontal",
+            195.0,
+        ),
+        position(),
+    ];
+
+    let payload = build_basic_payload(42, &input(), &positions, &[structural_axis, square]);
+
+    assert!(!payload
+        .signals
+        .iter()
+        .any(|signal| signal.signal_key == "aspect:ascendant:descendant:opposition"));
+    let aspect_plan = payload
+        .reading_plan
+        .iter()
+        .find(|item| item.slot == "main_tension_or_support")
+        .expect("expected aspect plan");
+    assert_eq!(
+        aspect_plan.source_signal_keys,
+        vec!["aspect:moon:mars:square"]
+    );
 }
 
 fn aspect_signal(

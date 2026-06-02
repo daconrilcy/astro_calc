@@ -82,6 +82,24 @@ L'etape 2E.1 retire le mapping de themes de maisons code en dur. Les
 relus dans `HouseReference`, ajoutes a `house_context` et utilises par les
 signaux, les tags et `chart_emphasis.dominant_houses`.
 
+L'etape 2E.2 traite les axes Ascendant-Descendant et MC-IC comme des axes
+structurels, pas comme des aspects interpretatifs ordinaires. La detection
+d'aspects ignore maintenant une opposition lorsque les deux positions portent
+un `angle_context` reciproque sur le meme axe. L'agregation Basic ignore aussi
+les aspects deja marques `is_structural_axis` pour eviter de regenerer un
+signal `aspect:*` actif depuis une source d'audit. Enfin, le payload exclut ces
+anciens signaux du slot `main_tension_or_support` et de la raison
+`strong_aspect_participant`, afin que l'axe natal n'ecrase pas les vrais aspects
+dynamiques du theme.
+
+La revue adversariale de 2E.2 a corrige deux regressions observees sur un
+payload produit par l'application : les codes courts `asc` / `dsc` sont resolus
+vers les codes objets longs dans `angles[].opposite_angle_code`, et les anciens
+signaux d'axe non marques sont rejetes a partir des paires d'angles qui
+partagent le meme `axis`. Le builder supprime aussi les slots de lecture qui
+n'ont plus aucune source primaire apres deduplication, afin de ne pas produire
+de section LLM vide.
+
 Le runtime conserve la chaine existante :
 
 1. calcul des faits astrologiques ;
@@ -206,7 +224,7 @@ acces direct au triptyque Basic et aux axes :
   "angle_code": "ascendant",
   "angle_name": "Ascendant",
   "axis": "horizontal",
-  "opposite_angle_code": "dsc",
+  "opposite_angle_code": "descendant",
   "longitude_deg": 155.4787,
   "sign_id": 6,
   "sign_code": "virgo",
@@ -219,15 +237,29 @@ acces direct au triptyque Basic et aux axes :
 
 Les longitudes de l'Ascendant et du MC viennent de `swiss_eph::safe::houses`.
 Le Descendant et l'IC sont derives par opposition exacte a 180 degres. Les
-metadonnees non geometriques (`axis`, `opposite_angle_code`,
-`associated_house`, libelles, description) viennent de `astral_angle_points` et
-des objets calculables actifs de `astral_chart_objects`.
+metadonnees non geometriques (`axis`, code oppose, maison associee, libelles,
+description, ordre de tri) viennent de `astral_angle_points` et des objets
+calculables actifs de `astral_chart_objects`. La table de reference utilise des
+codes courts (`asc`, `dsc`, `mc`, `ic`) dans `angle_context`, mais le tableau
+top-level `angles` expose `opposite_angle_code` sous forme de code objet long
+quand le correspondant est present dans les positions (`ascendant`,
+`descendant`, `mc`, `ic`). Cette resolution est faite depuis les positions
+relues, pas depuis un mapping code en dur.
 
 Les signaux d'angle utilisent la forme stable `angle:<angle_code>:sign:<sign>`,
 par exemple `angle:ascendant:sign:virgo`. L'Ascendant est place dans
 `core_identity` avec le Soleil et la Lune. Le MC peut alimenter
 `background_factors` comme contexte de vocation, visibilite ou direction
 publique.
+
+Les oppositions Ascendant-Descendant et MC-IC restent des axes structurels. Elles
+ne doivent pas produire de signal actif `aspect:*`, ne doivent pas alimenter
+`main_tension_or_support`, et ne doivent pas ajouter la raison
+`strong_aspect_participant` a `chart_emphasis.dominant_objects`. Le runtime les
+reconnait soit au moment de la detection geometrique via
+`angle_context.angle_point_code`, `opposite_angle_code` et `axis`, soit au moment
+de l'assemblage/validation du payload via les paires d'angles qui partagent le
+meme `axis`.
 
 Pour eviter qu'un ancien calcul `completed` soit recycle sans angles, le runtime
 verifie que les positions persistantes contiennent tous les objets d'angle
@@ -808,9 +840,12 @@ Le filtrage est applique dans `signals.rs` :
   qu'un carre ou une opposition atteint `strength_score >= 0.75`, le runtime
   remplace le signal actif non essentiel le moins prioritaire par la meilleure
   tension forte disponible. Cette protection de filtrage reste volontairement
-  geometrique afin de ne pas perdre les tensions majeures classiques ;
-- seuls les 12 premiers signaux actifs restent eligibles au payload ;
-- `payload.rs` applique aussi `.take(12)` comme garde de lecture.
+  geometrique afin de ne pas perdre les tensions majeures classiques, mais les
+  axes structurels d'angles ne sont pas eligibles a cette preservation ;
+- seuls les signaux actifs relus depuis la DB restent eligibles au payload ;
+- `payload.rs` filtre encore les anciens aspects d'axe structurel non marques
+  quand les positions d'angle definissent la paire d'axe, puis tronque le
+  resultat final a 12 signaux comme garde de lecture.
 
 Les signaux supprimes restent persistables dans `astral_interpretation_signals`
 avec `suppression_state = 'suppressed'`, mais ne remontent pas dans le payload
@@ -827,6 +862,11 @@ d'anciens signaux en `suppressed`, par exemple d'anciens aspects avec des cles
 techniques historiques. Ils restent utiles pour l'audit, mais ne sont pas
 consideres par le payload final tant que leur `suppression_state` n'est pas
 `active`.
+
+Si un ancien signal d'axe structurel est encore actif, par exemple
+`aspect:ascendant:descendant:opposition`, le payload final le retire quand les
+positions contiennent deux angles du meme `axis`. Le validateur runtime refuse
+aussi de reutiliser un payload persiste qui contient encore un tel signal.
 
 ## Plan de lecture Basic
 
@@ -894,7 +934,8 @@ slots suivants quand les sources correspondantes existent :
   dignites actives des objets sources, puis resolution editoriale des doublons ;
 - `main_tension_or_support` : jusqu'a trois aspects actifs prioritaires,
   reequilibres avec `aspect_context` pour conserver au moins un appui ou une
-  tension quand ces dynamiques existent dans les aspects actifs ;
+  tension quand ces dynamiques existent dans les aspects actifs ; les axes
+  structurels d'angles en sont exclus ;
 - `expression_style` : Mercure, Venus, Mars, avec leurs dignites actives si
   elles sont presentes ;
 - `background_factors` : MC, Jupiter, Saturne, Uranus, Neptune, Pluton si
@@ -921,6 +962,13 @@ ulterieur ne le repete pas dans `source_signal_keys` et expose plutot :
 `drafting_plan` reprend exactement `source_signal_keys`, `primary_signal_keys`
 et `secondary_slot_candidates` du `reading_plan`.
 
+Apres cette deduplication editoriale, un slot qui n'a plus aucune source
+primaire est supprime du `reading_plan`. Le `drafting_plan` etant derive du
+`reading_plan`, il ne contient donc pas de section sans `source_signal_keys`.
+Un signal qui n'etait plus qu'un candidat secondaire reste auditable uniquement
+si le slot candidat est conserve par au moins une autre source primaire ; un
+candidat secondaire seul ne suffit pas a conserver une section vide.
+
 Pour eviter une lecture trop lisse, `main_tension_or_support` utilise maintenant
 `aspect_context.dynamic_quality` et `aspect_context.primary_valence` pour
 equilibrer les dynamiques. Si les premiers aspects selectionnes ne contiennent
@@ -934,9 +982,10 @@ trois aspects.
 Cette logique s'applique aussi quand le filtrage Basic a du liberer une place
 dans les 12 signaux actifs : un signal actif non essentiel peut etre remplace par
 la meilleure tension forte disponible selon le garde-fou geometrique
-carre/opposition. Les clusters et les marqueurs centraux ou expressifs restent
-proteges ; un signal de dignite autonome peut en revanche ceder sa place si le
-budget est sature et qu'aucune tension forte n'est encore active.
+carre/opposition, hors axes structurels d'angles. Les clusters et les marqueurs
+centraux ou expressifs restent proteges ; un signal de dignite autonome peut en
+revanche ceder sa place si le budget est sature et qu'aucune tension forte n'est
+encore active.
 
 ## Contrat canonique de handoff LLM
 
@@ -1100,20 +1149,26 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
   `basic_natal_structured_v7` ;
 - `dignities` structurees presentes et coherentes avec les signaux
   `dignity:*` actifs ;
-- `angles` top-level present avec Ascendant, Descendant, MC et IC ;
+- `angles` top-level present avec quatre faits d'angle, un `axis`, un
+  `opposite_angle_code` non vide, une longitude normalisee et une maison
+  associee valide ; un signal `angle:ascendant:sign:*` actif doit aussi exister ;
 - `chart_emphasis` present, avec au moins une dominante de signe, de maison et
   d'objet, chacune scoree, justifiee par des raisons non vides et triee par
   score decroissant dans sa famille ;
 - positions avec `sign_code`, `sign_name`, `sign_context`, `house_context`,
-  `house_modality`, `object_context`, `motion_context` et `dignity_context`
-  sous forme de tableau ;
+  `house_modality`, `object_context` et `dignity_context` sous forme de tableau ;
+  `motion_context` est requis pour les objets mobiles, mais les angles peuvent
+  le laisser a `null` car ils n'ont pas d'etat de mouvement planetaire ;
 - signaux avec `evidence` ;
 - signaux avec `theme_code`, `interpretive_hint`, `semantic_tags`,
   `aggregation_group` et `writing_guidance` non vides ;
-- signaux `angle:*` avec un `evidence.placement_context` coherent ;
+- signal `angle:ascendant:sign:*` avec `evidence.fact_type = "chart_angle"` ;
 - signaux `aspect:*` avec `aspect_context` complet, au moins un effet
   interpretatif non vide, `dynamic_quality`, `phase_state`, `valence_family`,
   `is_tonal_valence`, `is_intensity_modifier` et `writing_guidance` ;
+- absence de signal `aspect:*` qui represente une opposition structurelle entre
+  deux angles du meme `axis`, meme si l'ancien signal n'est pas marque
+  `is_structural_axis` ;
 - signaux de placement avec `evidence.placement_context` complet ;
 - signaux de placement avec `evidence.essential_dignities` sous forme de
   tableau ;
@@ -1122,11 +1177,12 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
 - pour chaque signal `dignity:*`, coherence stricte entre son `signal_key`, son
   evidence (`chart_object`, `sign_code`, `dignity_type`) et l'entree
   correspondante dans `payload.dignities` ;
-- `reading_plan` present, non vide, compose de slots uniques et de sources qui
-  existent dans les signaux du payload ;
+- `reading_plan` present, non vide, compose de slots uniques, ordonnes, sans
+  section vide, et de sources primaires qui existent dans les signaux du
+  payload ;
 - `drafting_plan` present, non vide, aligne sur les slots et sources du
-  `reading_plan`, avec `section_title`, `writing_objective`, `max_words` et
-  `avoid` renseignes ;
+  `reading_plan`, sans section vide, avec `section_title`,
+  `writing_objective`, `max_words` et `avoid` renseignes ;
 - `drafting_plan[].emphasis_refs` aligne sur `chart_emphasis`, renseigne sur
   `dominant_cluster` quand ce slot existe, sinon sur `core_identity`, et vide
   sur les autres slots ;
@@ -1198,20 +1254,25 @@ Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
 - `llm_handoff_contract.target_language_policy = "provided_by_llm_service"` ;
 - `llm_handoff_contract.contract_version = "basic_natal_structured_v7"` ;
 - des positions avec `sign_code`, `sign_name`, `house_number`, `house_name`,
-  `sign_context`, `house_context`, `house_modality`, `object_context`,
-  `motion_context` et `dignity_context` sous forme de tableau, vide quand
-  aucune dignite n'est detectee ;
+  `sign_context`, `house_context`, `house_modality`, `object_context` et
+  `dignity_context` sous forme de tableau, vide quand aucune dignite n'est
+  detectee ; `motion_context` est present pour les objets mobiles et peut etre
+  `null` pour les angles ;
 - une liste `angles` top-level avec Ascendant, Descendant, MC et IC, reliee aux
-  signes et maisons calcules ;
+  signes et maisons calcules, avec `opposite_angle_code` resolu vers le code
+  objet long correspondant quand il existe dans le payload ;
 - une liste `dignities` top-level, vide ou non selon le theme, mais coherente
   avec les signaux `dignity:*` actifs ;
 - un `chart_emphasis` top-level avec `dominant_signs`, `dominant_houses` et
   `dominant_objects` scorees et auditees par `reasons`, sans objet
   `placement`-only quand une vraie emphase existe par dignite, cluster,
-  dominante de signe ou aspect fort ;
+  dominante de signe ou aspect fort, et sans amplification artificielle des
+  angles par leurs axes structurels ;
 - au plus 12 signaux ;
 - un `reading_plan` non vide ;
-- un `drafting_plan` non vide et aligne sur le `reading_plan` ;
+- un `reading_plan` sans slot vide et sans opposition structurelle d'angle dans
+  `main_tension_or_support` ;
+- un `drafting_plan` non vide, sans slot vide, et aligne sur le `reading_plan` ;
 - des `emphasis_refs` dans `drafting_plan`, rattachees au slot
   `dominant_cluster` si present, sinon a `core_identity`, et utilisees comme
   contexte de ponderation ;
@@ -1220,6 +1281,8 @@ Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
 - un `aspect_context` sur chaque signal `aspect:*`, avec les modificateurs
   d'intensite separes de la valence primaire, et les flags
   `is_tonal_valence` / `is_intensity_modifier` renseignes ;
+- aucun signal actif `aspect:ascendant:descendant:opposition` ou
+  `aspect:mc:ic:opposition` produit par les axes structurels ;
 - un `evidence.placement_context` complet sur chaque signal de placement ;
 - un `evidence.essential_dignities` tableau sur chaque signal de placement ;
 - des signaux `dignity:*` seulement pour les dignites majeures significatives ;

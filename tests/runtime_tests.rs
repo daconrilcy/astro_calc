@@ -360,6 +360,53 @@ fn current_payload_rejects_aspect_context_without_reference_effect() {
 }
 
 #[test]
+fn current_payload_rejects_legacy_unflagged_structural_axis_aspect() {
+    let mut payload = current_payload();
+    payload.signals.push(BasicSignal {
+        signal_key: "aspect:ascendant:descendant:opposition".to_string(),
+        theme_code: Some("aspect".to_string()),
+        title: "Ascendant opposition Descendant".to_string(),
+        summary: Some("summary".to_string()),
+        priority_score: 80.0,
+        confidence_score: Some(0.85),
+        interpretive_hint: Some(
+            "Read this opposition as a polarity to balance between Ascendant and Descendant, with attention to the exact phase."
+                .to_string(),
+        ),
+        semantic_tags: vec![
+            "aspect".to_string(),
+            "opposition".to_string(),
+            "tension".to_string(),
+        ],
+        source_weight: Some(2.0),
+        aggregation_group: Some("aspect:opposition".to_string()),
+        writing_guidance: Some("Present as a polarity to balance.".to_string()),
+        aspect_context: Some(json!({
+            "aspect_family": "major",
+            "primary_valence": "polarizing",
+            "intensity_modifier": null,
+            "secondary_effect": null,
+            "dynamic_quality": "tension",
+            "phase_state": "exact",
+            "valence_family": "tonal",
+            "is_tonal_valence": true,
+            "is_intensity_modifier": false,
+            "writing_guidance": "Present as a polarity to balance."
+        })),
+        evidence: Some(json!({
+            "fact_type": "aspect",
+            "source_object_code": "ascendant",
+            "target_object_code": "descendant",
+            "aspect_code": "opposition",
+            "aspect_name": "Opposition",
+            "strength_score": 1.0
+        })),
+    });
+
+    assert!(!is_current_basic_payload(&payload));
+}
+
+#[test]
 fn current_payload_rejects_incomplete_placement_context() {
     let mut payload = current_payload();
     payload.positions[0].sign_context = Some(json!({

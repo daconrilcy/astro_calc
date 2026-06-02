@@ -88,6 +88,10 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
     add_dignity_signals(facts, &mut signals);
 
     for aspect in &facts.aspects {
+        if is_structural_axis_aspect(aspect) {
+            continue;
+        }
+
         let strength_score = aspect.strength_score.unwrap_or(0.5);
         let suppression_state = if strength_score >= BASIC_ASPECT_MIN_STRENGTH {
             "active"
@@ -1168,6 +1172,9 @@ fn is_strong_tension_signal(signal: &InterpretationSignalDraft) -> bool {
     if !signal.signal_key.starts_with("aspect:") {
         return false;
     }
+    if is_structural_axis_signal(signal) {
+        return false;
+    }
 
     let Some(evidence) = signal
         .payload_json
@@ -1230,7 +1237,7 @@ fn fill_basic_active_limit(signals: &mut [InterpretationSignalDraft]) {
 }
 
 fn is_basic_fill_eligible(signal: &InterpretationSignalDraft) -> bool {
-    !is_weak_aspect_signal(signal)
+    !is_weak_aspect_signal(signal) && !is_structural_axis_signal(signal)
 }
 
 fn is_weak_aspect_signal(signal: &InterpretationSignalDraft) -> bool {
@@ -1245,6 +1252,32 @@ fn is_weak_aspect_signal(signal: &InterpretationSignalDraft) -> bool {
         .and_then(|evidence| evidence.get("strength_score"))
         .and_then(|value| value.as_f64())
         .is_some_and(|strength_score| strength_score < BASIC_ASPECT_MIN_STRENGTH)
+}
+
+fn is_structural_axis_aspect(aspect: &crate::domain::AspectFact) -> bool {
+    aspect
+        .calculation_notes_json
+        .as_ref()
+        .and_then(|notes| notes.get("is_structural_axis"))
+        .and_then(|value| value.as_bool())
+        .unwrap_or(false)
+}
+
+fn is_structural_axis_signal(signal: &InterpretationSignalDraft) -> bool {
+    signal
+        .payload_json
+        .as_ref()
+        .and_then(|payload| payload.get("aspect_context"))
+        .and_then(|context| context.get("is_structural_axis"))
+        .and_then(|value| value.as_bool())
+        .unwrap_or(false)
+        || signal
+            .payload_json
+            .as_ref()
+            .and_then(|payload| payload.get("evidence"))
+            .and_then(|evidence| evidence.get("is_structural_axis"))
+            .and_then(|value| value.as_bool())
+            .unwrap_or(false)
 }
 
 pub fn indefinite_article(phrase: &str) -> &'static str {
