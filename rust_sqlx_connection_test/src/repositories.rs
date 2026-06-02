@@ -4,8 +4,8 @@ use sqlx::{PgPool, Postgres, Transaction};
 
 use crate::domain::{
     AspectDefinition, AspectFact, BasicGeneratedReadingPayload, BasicPayload, CalculatedChartFacts,
-    ChartObject, HouseCuspFact, HouseSystem, InterpretationSignalDraft, InterpretationSignalRow,
-    NatalChartInput, ObjectPositionFact, RuntimeOptions,
+    ChartObject, HouseCuspFact, HouseReference, HouseSystem, InterpretationSignalDraft,
+    InterpretationSignalRow, NatalChartInput, ObjectPositionFact, RuntimeOptions, SignReference,
 };
 use crate::runtime::RuntimeError;
 
@@ -51,6 +51,30 @@ impl RuntimeRepository {
             FROM astral_aspects
             WHERE family = 'major'
             ORDER BY id
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?)
+    }
+
+    pub async fn sign_references(&self) -> Result<Vec<SignReference>, RuntimeError> {
+        Ok(sqlx::query_as::<_, SignReference>(
+            r#"
+            SELECT id, code, name
+            FROM astral_signs
+            ORDER BY id
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?)
+    }
+
+    pub async fn house_references(&self) -> Result<Vec<HouseReference>, RuntimeError> {
+        Ok(sqlx::query_as::<_, HouseReference>(
+            r#"
+            SELECT id, number, name
+            FROM astral_houses
+            ORDER BY number
             "#,
         )
         .fetch_all(&self.pool)

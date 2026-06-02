@@ -9,44 +9,8 @@ pub fn normalize_degrees(value: f64) -> f64 {
     }
 }
 
-pub fn sign_id_for_longitude(longitude_deg: f64) -> i32 {
+pub fn zodiac_slot_for_longitude(longitude_deg: f64) -> i32 {
     (normalize_degrees(longitude_deg) / 30.0).floor() as i32 + 1
-}
-
-pub fn sign_code_name(sign_id: i32) -> (&'static str, &'static str) {
-    match sign_id {
-        1 => ("aries", "Aries"),
-        2 => ("taurus", "Taurus"),
-        3 => ("gemini", "Gemini"),
-        4 => ("cancer", "Cancer"),
-        5 => ("leo", "Leo"),
-        6 => ("virgo", "Virgo"),
-        7 => ("libra", "Libra"),
-        8 => ("scorpio", "Scorpio"),
-        9 => ("sagittarius", "Sagittarius"),
-        10 => ("capricorn", "Capricorn"),
-        11 => ("aquarius", "Aquarius"),
-        12 => ("pisces", "Pisces"),
-        _ => ("unknown", "Unknown"),
-    }
-}
-
-pub fn house_name(house_id: i32) -> &'static str {
-    match house_id {
-        1 => "Self",
-        2 => "Resources",
-        3 => "Communication",
-        4 => "Home",
-        5 => "Creativity",
-        6 => "Health",
-        7 => "Partnership",
-        8 => "Transformation",
-        9 => "Beliefs",
-        10 => "Career",
-        11 => "Community",
-        12 => "Subconscious",
-        _ => "Unknown",
-    }
 }
 
 pub fn motion_state_id(speed_deg_per_day: Option<f64>) -> Option<i32> {
@@ -60,13 +24,13 @@ pub fn motion_state_id(speed_deg_per_day: Option<f64>) -> Option<i32> {
     }
 }
 
-pub fn whole_sign_house_id(ascendant_longitude_deg: f64, body_longitude_deg: f64) -> i32 {
-    let asc_sign = sign_id_for_longitude(ascendant_longitude_deg);
-    let body_sign = sign_id_for_longitude(body_longitude_deg);
+pub fn whole_sign_house_number(ascendant_longitude_deg: f64, body_longitude_deg: f64) -> i32 {
+    let asc_sign = zodiac_slot_for_longitude(ascendant_longitude_deg);
+    let body_sign = zodiac_slot_for_longitude(body_longitude_deg);
     ((body_sign - asc_sign).rem_euclid(12)) + 1
 }
 
-pub fn house_id_from_cusps(longitude_deg: f64, cusps: &[HouseCuspFact]) -> Option<i32> {
+pub fn house_number_from_cusps(longitude_deg: f64, cusps: &[HouseCuspFact]) -> Option<i32> {
     if cusps.len() != 12 {
         return None;
     }
@@ -76,7 +40,7 @@ pub fn house_id_from_cusps(longitude_deg: f64, cusps: &[HouseCuspFact]) -> Optio
         let start = normalize_degrees(cusps[index].longitude_deg);
         let end = normalize_degrees(cusps[(index + 1) % 12].longitude_deg);
         if arc_contains(start, end, longitude) {
-            return Some(cusps[index].house_id);
+            return Some(cusps[index].house_number);
         }
     }
 
@@ -97,9 +61,9 @@ mod tests {
 
     #[test]
     fn sign_handles_wraparound() {
-        assert_eq!(sign_id_for_longitude(0.0), 1);
-        assert_eq!(sign_id_for_longitude(359.9), 12);
-        assert_eq!(sign_id_for_longitude(-1.0), 12);
+        assert_eq!(zodiac_slot_for_longitude(0.0), 1);
+        assert_eq!(zodiac_slot_for_longitude(359.9), 12);
+        assert_eq!(zodiac_slot_for_longitude(-1.0), 12);
     }
 
     #[test]

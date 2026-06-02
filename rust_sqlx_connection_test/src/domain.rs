@@ -64,6 +64,26 @@ pub struct HouseSystem {
     pub calculation_engine_code: String,
 }
 
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct SignReference {
+    pub id: i32,
+    pub code: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct HouseReference {
+    pub id: i32,
+    pub number: i32,
+    pub name: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct CalculationReferenceData {
+    pub signs: Vec<SignReference>,
+    pub houses: Vec<HouseReference>,
+}
+
 #[derive(Debug, Clone)]
 pub struct ObjectPositionFact {
     pub chart_object_id: i32,
@@ -90,6 +110,7 @@ pub struct ObjectPositionFact {
 #[derive(Debug, Clone)]
 pub struct HouseCuspFact {
     pub house_id: i32,
+    pub house_number: i32,
     pub sign_id: i32,
     pub longitude_deg: f64,
 }

@@ -189,10 +189,9 @@ fn add_position_cluster_signals(
         });
 
         let sign_name = positions[0].sign_name.clone();
-        let house_name = positions[0]
-            .house_name
-            .clone()
-            .unwrap_or_else(|| format!("House {house_number}"));
+        let Some(house_name) = positions[0].house_name.clone() else {
+            continue;
+        };
         let source_signals: Vec<String> = positions
             .iter()
             .map(|position| format!("object_position:{}", position.object_code))

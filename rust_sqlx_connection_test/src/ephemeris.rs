@@ -3,7 +3,8 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 
 use crate::domain::{
-    AspectDefinition, CalculatedChartFacts, ChartObject, HouseSystem, NatalChartInput,
+    AspectDefinition, CalculatedChartFacts, CalculationReferenceData, ChartObject, HouseSystem,
+    NatalChartInput,
 };
 use crate::runtime::RuntimeError;
 
@@ -14,6 +15,7 @@ pub trait EphemerisEngine {
         chart_objects: &[ChartObject],
         aspects: &[AspectDefinition],
         house_system: &HouseSystem,
+        references: &CalculationReferenceData,
     ) -> Result<CalculatedChartFacts, RuntimeError>;
 }
 
@@ -42,12 +44,13 @@ impl EphemerisEngine for SwissEphemerisEngine {
         chart_objects: &[ChartObject],
         aspects: &[AspectDefinition],
         house_system: &HouseSystem,
+        references: &CalculationReferenceData,
     ) -> Result<CalculatedChartFacts, RuntimeError> {
         use crate::aspects::detect_aspects;
         use crate::domain::{HouseCuspFact, ObjectPositionFact};
         use crate::facts::{
-            house_id_from_cusps, house_name, motion_state_id, normalize_degrees, sign_code_name,
-            sign_id_for_longitude, whole_sign_house_id,
+            house_number_from_cusps, motion_state_id, normalize_degrees, whole_sign_house_number,
+            zodiac_slot_for_longitude,
         };
         use serde_json::json;
         use swiss_eph::safe::{calc_ut, houses, set_ephe_path, CalcFlags};
@@ -70,9 +73,15 @@ impl EphemerisEngine for SwissEphemerisEngine {
         let mut house_cusps = Vec::with_capacity(12);
         for house_number in 1..=12 {
             let longitude = normalize_degrees(cusps_raw.cusps[(house_number - 1) as usize]);
+            let house = house_reference_for_number(&references.houses, house_number)?;
+            let sign = sign_reference_for_zodiac_slot(
+                &references.signs,
+                zodiac_slot_for_longitude(longitude),
+            )?;
             house_cusps.push(HouseCuspFact {
-                house_id: house_number,
-                sign_id: sign_id_for_longitude(longitude),
+                house_id: house.id,
+                house_number,
+                sign_id: sign.id,
                 longitude_deg: round4(longitude),
             });
         }
@@ -96,13 +105,18 @@ impl EphemerisEngine for SwissEphemerisEngine {
             let longitude = round4(normalize_degrees(position.longitude));
             let latitude = round4(position.latitude);
             let speed = round4(position.longitude_speed);
-            let house_id = if house_system.calculation_engine_code == "whole_sign" {
-                Some(whole_sign_house_id(ascendant_longitude, longitude))
+            let house_number = if house_system.calculation_engine_code == "whole_sign" {
+                Some(whole_sign_house_number(ascendant_longitude, longitude))
             } else {
-                house_id_from_cusps(longitude, &house_cusps)
+                house_number_from_cusps(longitude, &house_cusps)
             };
-            let sign_id = sign_id_for_longitude(longitude);
-            let (sign_code, sign_name) = sign_code_name(sign_id);
+            let sign = sign_reference_for_zodiac_slot(
+                &references.signs,
+                zodiac_slot_for_longitude(longitude),
+            )?;
+            let house = house_number
+                .map(|number| house_reference_for_number(&references.houses, number))
+                .transpose()?;
 
             positions.push(ObjectPositionFact {
                 chart_object_id: object.id,
@@ -110,12 +124,12 @@ impl EphemerisEngine for SwissEphemerisEngine {
                 object_name: object.name.clone(),
                 zodiacal_reference_system_id: input.zodiacal_reference_system_id,
                 coordinate_reference_system_id: input.coordinate_reference_system_id,
-                sign_id,
-                sign_code: sign_code.to_string(),
-                sign_name: sign_name.to_string(),
-                house_id,
-                house_number: house_id,
-                house_name: house_id.map(|id| house_name(id).to_string()),
+                sign_id: sign.id,
+                sign_code: sign.code.clone(),
+                sign_name: sign.name.clone(),
+                house_id: house.map(|house| house.id),
+                house_number,
+                house_name: house.map(|house| house.name.clone()),
                 motion_state_id: motion_state_id(Some(speed)),
                 horizon_position_id: None,
                 longitude_deg: longitude,
@@ -147,6 +161,7 @@ impl EphemerisEngine for SwissEphemerisEngine {
         _chart_objects: &[ChartObject],
         _aspects: &[AspectDefinition],
         _house_system: &HouseSystem,
+        _references: &CalculationReferenceData,
     ) -> Result<CalculatedChartFacts, RuntimeError> {
         Err(RuntimeError::Ephemeris(
             format!(
@@ -155,6 +170,45 @@ impl EphemerisEngine for SwissEphemerisEngine {
             ),
         ))
     }
+}
+
+#[cfg(feature = "swisseph-engine")]
+fn sign_reference_for_zodiac_slot(
+    signs: &[crate::domain::SignReference],
+    zodiac_slot: i32,
+) -> Result<&crate::domain::SignReference, RuntimeError> {
+    if !(1..=12).contains(&zodiac_slot) {
+        return Err(RuntimeError::Ephemeris(format!(
+            "invalid zodiac slot {zodiac_slot}"
+        )));
+    }
+    if signs.len() != 12 {
+        return Err(RuntimeError::Ephemeris(format!(
+            "expected 12 sign references, found {}",
+            signs.len()
+        )));
+    }
+
+    signs.get((zodiac_slot - 1) as usize).ok_or_else(|| {
+        RuntimeError::Ephemeris(format!(
+            "missing sign reference for zodiac slot {zodiac_slot}"
+        ))
+    })
+}
+
+#[cfg(feature = "swisseph-engine")]
+fn house_reference_for_number(
+    houses: &[crate::domain::HouseReference],
+    house_number: i32,
+) -> Result<&crate::domain::HouseReference, RuntimeError> {
+    houses
+        .iter()
+        .find(|house| house.number == house_number)
+        .ok_or_else(|| {
+            RuntimeError::Ephemeris(format!(
+                "missing house reference for house number {house_number}"
+            ))
+        })
 }
 
 #[cfg(feature = "swisseph-engine")]

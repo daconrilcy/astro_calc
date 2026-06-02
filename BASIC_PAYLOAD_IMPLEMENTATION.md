@@ -74,8 +74,15 @@ Chaque position expose maintenant les champs lisibles en plus des IDs :
 
 Les IDs restent presents pour l'audit et les relations DB. Les libelles viennent :
 
-- du calcul runtime pour les nouveaux faits ;
+- des referentiels `astral_signs` et `astral_houses` charges avant le calcul
+  pour les nouveaux faits ;
 - des joins `astral_signs` et `astral_houses` quand un payload est reconstruit depuis la DB.
+
+Le calcul geometrique conserve seulement les operations derivees de la
+longitude : slot zodiacal et numero de maison. Les IDs, codes et noms de signes
+ou de maisons sont resolus depuis les tables. Le runtime refuse de calculer si
+les 12 signes ou les 12 maisons ne sont pas presents ou si les references sont
+ambigues.
 
 ## Contrat des signaux
 

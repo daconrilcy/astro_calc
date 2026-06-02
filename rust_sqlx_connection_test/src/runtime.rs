@@ -6,7 +6,7 @@ use thiserror::Error;
 
 use crate::domain::{
     BasicControlledGenerationOutput, BasicGeneratedReadingPayload, BasicPayload,
-    CalculatedChartFacts, NatalChartInput, RuntimeOptions,
+    CalculatedChartFacts, CalculationReferenceData, NatalChartInput, RuntimeOptions,
 };
 use crate::ephemeris::EphemerisEngine;
 use crate::idempotency::{advisory_lock_key, idempotency_key, input_hash};
@@ -78,6 +78,11 @@ where
         let chart_objects = self.repository.active_chart_objects().await?;
         let aspect_definitions = self.repository.aspect_definitions().await?;
         let house_system = self.repository.house_system(input.house_system_id).await?;
+        let references = CalculationReferenceData {
+            signs: self.repository.sign_references().await?,
+            houses: self.repository.house_references().await?,
+        };
+        validate_calculation_references(&references)?;
 
         let mut tx = self.repository.pool().begin().await?;
         RuntimeRepository::lock_idempotency(&mut tx, lock_key).await?;
@@ -164,6 +169,7 @@ where
                 &chart_objects,
                 &aspect_definitions,
                 &house_system,
+                &references,
             )?;
             let signal_drafts = aggregate_basic_signals(&facts);
             Ok((facts, signal_drafts))
@@ -230,6 +236,49 @@ fn build_validated_fake_generated_reading(
             "fake provider output does not satisfy the Basic generation contract".to_string(),
         ))
     }
+}
+
+fn validate_calculation_references(
+    references: &CalculationReferenceData,
+) -> Result<(), RuntimeError> {
+    if references.signs.len() != 12 {
+        return Err(RuntimeError::Ephemeris(format!(
+            "expected 12 sign references, found {}",
+            references.signs.len()
+        )));
+    }
+    if references.houses.len() != 12 {
+        return Err(RuntimeError::Ephemeris(format!(
+            "expected 12 house references, found {}",
+            references.houses.len()
+        )));
+    }
+
+    let mut sign_ids = HashSet::new();
+    for sign in &references.signs {
+        if !sign_ids.insert(sign.id) || sign.code.trim().is_empty() || sign.name.trim().is_empty() {
+            return Err(RuntimeError::Ephemeris(
+                "invalid sign references: duplicate IDs or empty labels".to_string(),
+            ));
+        }
+    }
+
+    let mut house_ids = HashSet::new();
+    let mut house_numbers = HashSet::new();
+    for house in &references.houses {
+        if !house_ids.insert(house.id)
+            || !house_numbers.insert(house.number)
+            || !(1..=12).contains(&house.number)
+            || house.name.trim().is_empty()
+        {
+            return Err(RuntimeError::Ephemeris(
+                "invalid house references: duplicate IDs, invalid numbers, or empty labels"
+                    .to_string(),
+            ));
+        }
+    }
+
+    Ok(())
 }
 
 fn is_stale(row: &ChartCalculationRow, default_stale_after_seconds: i32) -> bool {
@@ -431,7 +480,7 @@ mod tests {
     use super::*;
     use crate::domain::{
         BasicDraftingPlanItem, BasicObjectPosition, BasicReadingPlanItem, BasicSignal,
-        BasicWritingContract,
+        BasicWritingContract, HouseReference, SignReference,
     };
 
     fn current_payload() -> BasicPayload {
@@ -636,5 +685,40 @@ mod tests {
         );
 
         assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
+    fn reference_validation_requires_twelve_signs() {
+        let mut references = reference_data();
+        references.signs.pop();
+
+        assert!(validate_calculation_references(&references).is_err());
+    }
+
+    #[test]
+    fn reference_validation_rejects_duplicate_house_numbers() {
+        let mut references = reference_data();
+        references.houses[1].number = 1;
+
+        assert!(validate_calculation_references(&references).is_err());
+    }
+
+    fn reference_data() -> CalculationReferenceData {
+        CalculationReferenceData {
+            signs: (1..=12)
+                .map(|id| SignReference {
+                    id,
+                    code: format!("sign_{id}"),
+                    name: format!("Sign {id}"),
+                })
+                .collect(),
+            houses: (1..=12)
+                .map(|number| HouseReference {
+                    id: number + 100,
+                    number,
+                    name: format!("House {number}"),
+                })
+                .collect(),
+        }
     }
 }
