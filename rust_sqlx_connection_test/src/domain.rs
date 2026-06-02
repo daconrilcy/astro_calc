@@ -194,6 +194,8 @@ pub struct BasicSectContext {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BasicHemisphereEmphasis {
+    #[serde(default)]
+    pub count_scope: String,
     pub above_horizon_count: i32,
     pub below_horizon_count: i32,
     pub on_horizon_count: i32,
@@ -358,6 +360,8 @@ pub struct BasicDraftingPlanItem {
     pub secondary_slot_candidates: Vec<BasicSecondarySlotCandidate>,
     #[serde(default)]
     pub emphasis_refs: BasicEmphasisRefs,
+    #[serde(default)]
+    pub context_refs: BasicContextRefs,
     pub writing_objective: String,
     pub max_words: u16,
     #[serde(default)]
@@ -372,4 +376,10 @@ pub struct BasicEmphasisRefs {
     pub dominant_houses: Vec<i32>,
     #[serde(default)]
     pub dominant_objects: Vec<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BasicContextRefs {
+    #[serde(default)]
+    pub chart_context: Vec<String>,
 }

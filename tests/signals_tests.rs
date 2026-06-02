@@ -482,6 +482,11 @@ fn placement_signal_includes_contextual_evidence_and_tags() {
             .and_then(|value| value.as_str()),
         Some("direct")
     );
+    assert!(payload
+        .get("evidence")
+        .and_then(|evidence| evidence.get("placement_context"))
+        .and_then(|context| context.get("visibility_context"))
+        .is_some_and(|value| value.is_object()));
 }
 
 #[test]

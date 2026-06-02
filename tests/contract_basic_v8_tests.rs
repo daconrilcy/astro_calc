@@ -7,9 +7,12 @@ use serde_json::Value;
 use rust_sqlx_connection_test::domain::BasicPayload;
 use rust_sqlx_connection_test::runtime::is_current_basic_payload;
 
-const GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/basic_payload_v8_paris_1990.json";
-const SCHEMA_PATH: &str = "schemas/basic_natal_structured_v8.schema.json";
-const PAYLOAD_UNDER_TEST_ENV: &str = "BASIC_V8_SCHEMA_PAYLOAD_PATH";
+const GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v9_paris_1990.json";
+const SCHEMA_PATH: &str = "schemas/natal_structured_v9.schema.json";
+const PAYLOAD_UNDER_TEST_ENV: &str = "NATAL_V9_SCHEMA_PAYLOAD_PATH";
+const V8_GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/basic_payload_v8_paris_1990.json";
+const V8_SCHEMA_PATH: &str = "schemas/basic_natal_structured_v8.schema.json";
+const V8_PAYLOAD_UNDER_TEST_ENV: &str = "BASIC_V8_SCHEMA_PAYLOAD_PATH";
 
 fn load_golden_payload() -> Value {
     let raw = fs::read_to_string(GOLDEN_PAYLOAD_PATH).expect("golden payload should exist");
@@ -23,7 +26,11 @@ fn load_payload_from_path(path: &str) -> Value {
 }
 
 fn validate_with_schema(payload_json: &Value) -> Vec<String> {
-    let schema_raw = fs::read_to_string(SCHEMA_PATH).expect("schema should exist");
+    validate_with_schema_at(payload_json, SCHEMA_PATH)
+}
+
+fn validate_with_schema_at(payload_json: &Value, schema_path: &str) -> Vec<String> {
+    let schema_raw = fs::read_to_string(schema_path).expect("schema should exist");
     let schema_json: Value = serde_json::from_str(&schema_raw).expect("schema should be JSON");
 
     let compiled = JSONSchema::options()
@@ -97,24 +104,52 @@ fn assert_source_prefix(item: &Value, prefix: &str) {
 }
 
 #[test]
-fn golden_payload_matches_json_schema_v8() {
+fn golden_payload_matches_json_schema_v9() {
     let payload_json = load_golden_payload();
     let validation_errors = validate_with_schema(&payload_json);
 
     assert!(
         validation_errors.is_empty(),
-        "golden payload does not match basic_natal_structured_v8 schema:\n{}",
+        "golden payload does not match natal_structured_v9 schema:\n{}",
+        validation_errors.join("\n")
+    );
+}
+
+#[test]
+fn historical_v8_golden_payload_matches_json_schema_v8() {
+    let raw = fs::read_to_string(V8_GOLDEN_PAYLOAD_PATH).expect("v8 golden payload should exist");
+    let payload_json: Value = serde_json::from_str(&raw).expect("v8 golden payload should be JSON");
+    let validation_errors = validate_with_schema_at(&payload_json, V8_SCHEMA_PATH);
+
+    assert!(
+        validation_errors.is_empty(),
+        "historical v8 golden payload does not match basic_natal_structured_v8 schema:\n{}",
+        validation_errors.join("\n")
+    );
+}
+
+#[test]
+fn external_payload_matches_json_schema_v9_when_requested() {
+    let Ok(path) = std::env::var(PAYLOAD_UNDER_TEST_ENV) else {
+        return;
+    };
+    let payload_json = load_payload_from_path(&path);
+    let validation_errors = validate_with_schema(&payload_json);
+
+    assert!(
+        validation_errors.is_empty(),
+        "external payload does not match natal_structured_v9 schema:\n{}",
         validation_errors.join("\n")
     );
 }
 
 #[test]
 fn external_payload_matches_json_schema_v8_when_requested() {
-    let Ok(path) = std::env::var(PAYLOAD_UNDER_TEST_ENV) else {
+    let Ok(path) = std::env::var(V8_PAYLOAD_UNDER_TEST_ENV) else {
         return;
     };
     let payload_json = load_payload_from_path(&path);
-    let validation_errors = validate_with_schema(&payload_json);
+    let validation_errors = validate_with_schema_at(&payload_json, V8_SCHEMA_PATH);
 
     assert!(
         validation_errors.is_empty(),
@@ -156,6 +191,54 @@ fn schema_rejects_null_required_position_context() {
     assert!(
         !validate_with_schema(&payload).is_empty(),
         "schema should reject null sign_context on a position"
+    );
+}
+
+#[test]
+fn schema_rejects_mobile_visibility_context_without_calculated_altitude() {
+    let mut payload = load_golden_payload();
+    let position = payload["positions"]
+        .as_array_mut()
+        .expect("positions should be an array")
+        .iter_mut()
+        .find(|position| {
+            position["object_context"]["role"]
+                .as_str()
+                .is_some_and(|role| role != "angle")
+        })
+        .expect("golden payload should contain a mobile position");
+    position["visibility_context"]["altitude_deg"] = Value::Null;
+    position["visibility_context"]["is_visible"] = Value::Null;
+
+    assert!(
+        !validate_with_schema(&payload).is_empty(),
+        "schema should reject null altitude/is_visible on mobile positions"
+    );
+}
+
+#[test]
+fn schema_rejects_mobile_signal_visibility_context_without_calculated_altitude() {
+    let mut payload = load_golden_payload();
+    let signal = payload["signals"]
+        .as_array_mut()
+        .expect("signals should be an array")
+        .iter_mut()
+        .find(|signal| {
+            signal["signal_key"]
+                .as_str()
+                .is_some_and(|key| key.starts_with("object_position:"))
+                && signal["evidence"]["placement_context"]["object_context"]["role"]
+                    .as_str()
+                    .is_some_and(|role| role != "angle")
+        })
+        .expect("golden payload should contain a mobile placement signal");
+    let visibility = &mut signal["evidence"]["placement_context"]["visibility_context"];
+    visibility["altitude_deg"] = Value::Null;
+    visibility["is_visible"] = Value::Null;
+
+    assert!(
+        !validate_with_schema(&payload).is_empty(),
+        "schema should reject null altitude/is_visible on mobile placement signals"
     );
 }
 
@@ -242,11 +325,11 @@ fn runtime_rejects_v7_contract_version() {
 }
 
 #[test]
-fn v8_handoff_contract_is_strict() {
+fn v9_handoff_contract_is_strict() {
     let payload = load_golden_payload();
     let contract = &payload["llm_handoff_contract"];
 
-    assert_eq!(contract["contract_version"], "basic_natal_structured_v8");
+    assert_eq!(contract["contract_version"], "natal_structured_v9");
     assert_eq!(contract["payload_language_code"], "en");
     assert_eq!(
         contract["target_language_policy"],
@@ -273,7 +356,7 @@ fn v8_handoff_contract_is_strict() {
 }
 
 #[test]
-fn v8_contains_four_canonical_angles() {
+fn v9_contains_four_canonical_angles() {
     let payload = load_golden_payload();
     let angles = array(&payload, "angles");
 

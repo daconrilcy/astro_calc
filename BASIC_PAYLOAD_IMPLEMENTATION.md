@@ -108,11 +108,7 @@ et planete-angle restent en revanche eligibles. Le filtrage preserve d'abord une
 tension forte non structurelle si elle existe ; si aucune tension forte n'est
 disponible mais qu'un aspect fort planete-planete ou planete-angle existe, il
 preserve le meilleur aspect fort disponible afin que `main_tension_or_support`
-ne disparaisse pas artificiellement. Le contrat canonique stabilise reste
-`basic_natal_structured_v8`; les payloads existants qui recyclent un axe
-structurel actif, perdent les vrais aspects dynamiques ou manquent les champs
-d'angle obligatoires sont rejetes par la validation de reutilisation et
-regeneres.
+ne disparaisse pas artificiellement.
 
 L'etape 3A ajoute le premier enrichissement global avant LLM avec
 `chart_context` et `positions[].visibility_context`. Le payload expose
@@ -133,6 +129,19 @@ Les anciens faits persistants sans altitude finie, sans reference d'horizon
 positive ou sans flag de visibilite ne sont plus reutilises : le runtime force
 alors un nouveau calcul ephemeride complet au lieu de reconstruire un payload
 enrichi depuis des faits obsoletes.
+
+L'etape 3A.2 stabilise officiellement le contrat courant en
+`natal_structured_v9`. Le `llm_handoff_contract.contract_version` ne melange
+plus v8 et v9, le schema et le golden v9 sont dedies, et les artefacts v8
+restent presents pour historique. `chart_context.hemisphere_emphasis` declare
+maintenant explicitement `count_scope = "mobile_chart_objects_only"`. Le
+`visibility_context` des signaux de placement est recopie dans
+`signals[].evidence.placement_context`, afin que le LLM n'ait plus a recroiser
+les signaux avec `positions`. Les angles gardent un contexte d'horizon, mais
+leur `is_visible` est `null` car un angle n'est pas visible comme un corps
+astronomique. Enfin, `drafting_plan` expose `context_refs.chart_context` et
+interdit de transformer `chart_context` en section autonome : la secte et
+l'accent d'hemisphere servent uniquement de contexte de ponderation.
 
 Le runtime conserve la chaine existante :
 
@@ -181,13 +190,20 @@ la correction attendue est de resynchroniser PostgreSQL avec les fichiers
 - `rust_sqlx_connection_test/src/runtime/` : orchestration runtime,
   validation des references et regeneration des anciens payloads.
 - `rust_sqlx_connection_test/schemas/basic_natal_structured_v8.schema.json` :
-  schema JSON du contrat Basic v8.
-- `tests/golden/basic_payload_v8_paris_1990.json` : fixture golden du contrat
-  Basic v8.
+  schema JSON historique du contrat Basic v8.
+- `rust_sqlx_connection_test/schemas/natal_structured_v9.schema.json` :
+  schema JSON du contrat courant `natal_structured_v9`.
+- `tests/golden/basic_payload_v8_paris_1990.json` : fixture golden historique
+  du contrat Basic v8.
+- `tests/golden/natal_payload_v9_paris_1990.json` : fixture golden du contrat
+  courant v9.
 - `tests/contract_basic_v8_tests.rs` : validation schema, golden et invariants
-  metier non negociables.
+  metier non negociables pour le contrat courant.
 - `scripts/verify_basic_v8_golden.ps1` : verification CI/local de projection
-  stable apres regeneration du payload par le moteur.
+  stable historique v8. Ce script ne regenere plus le payload courant ; il
+  valide le golden v8 conserve, ou un fichier v8 fourni explicitement.
+- `scripts/verify_natal_v9_golden.ps1` : verification CI/local de projection
+  stable v9 apres regeneration du payload par le moteur.
 
 ## Contrat des positions
 
@@ -244,7 +260,14 @@ Chaque position expose maintenant les champs lisibles en plus des IDs :
       "polarity": "dignity",
       "strength_score": 1.0
     }
-  ]
+  ],
+  "visibility_context": {
+    "horizon_position_id": 1,
+    "horizon_position": "above_horizon",
+    "altitude_deg": 12.5,
+    "is_visible": true,
+    "source": "calculated_altitude"
+  }
 }
 ```
 
@@ -266,7 +289,7 @@ Le calcul geometrique conserve seulement les operations derivees de la
 longitude : slot zodiacal et numero de maison. Les IDs, codes et noms de signes
 ou de maisons sont resolus depuis les tables. Le runtime refuse de calculer si
 les 12 signes ou les 12 maisons ne sont pas presents ou si les references sont
-ambigues. Depuis la stabilisation v8, le contrat refuse aussi de reutiliser un
+ambigues. Depuis la stabilisation v9, le contrat refuse aussi de reutiliser un
 payload existant si les contextes de placement utiles sont absents ou
 incomplets.
 
@@ -313,7 +336,7 @@ Les signaux d'angle utilisent la forme stable `angle:<angle_code>:sign:<sign>`,
 par exemple `angle:ascendant:sign:virgo`. L'Ascendant est place dans
 `core_identity` avec le Soleil et la Lune. Le MC peut alimenter
 `background_factors` comme contexte de vocation, visibilite ou direction
-publique. Depuis la stabilisation v8, `signals[].evidence.opposite_angle_code`
+publique. Depuis la stabilisation v9, `signals[].evidence.opposite_angle_code`
 conserve le code court issu du referentiel (`dsc`, `asc`, `ic`, `mc`) et
 `signals[].evidence.opposite_angle_object_code` expose le code objet long
 homogene avec `angles[].opposite_angle_code`.
@@ -400,7 +423,14 @@ preuves techniques dans `evidence` :
         "label": "Direct",
         "motion_family": "forward"
       },
-      "dignity_context": []
+      "dignity_context": [],
+      "visibility_context": {
+        "horizon_position_id": 1,
+        "horizon_position": "above_horizon",
+        "altitude_deg": 12.5,
+        "is_visible": true,
+        "source": "calculated_altitude"
+      }
     },
     "essential_dignities": []
   }
@@ -1102,43 +1132,53 @@ aspect fort disponible. `main_tension_or_support` n'est donc absent que
 lorsqu'aucun aspect actif ou preservable ne reste apres l'exclusion des axes
 structurels et des autres aspects angle-angle.
 
-Depuis la passe de stabilisation du contrat, `basic_natal_structured_v8` est
-verrouille par trois niveaux complementaires :
+Depuis la passe de stabilisation 3A.2, `natal_structured_v9` est le contrat
+courant verrouille par trois niveaux complementaires :
 
 - le JSON Schema
-  `rust_sqlx_connection_test/schemas/basic_natal_structured_v8.schema.json`
+  `rust_sqlx_connection_test/schemas/natal_structured_v9.schema.json`
   valide la forme du contrat, les constantes LLM, les blocs obligatoires, les
-  quatre angles, les bornes de score et les contraintes schema exprimables. Il
-  refuse aussi les extensions silencieuses de `must_use`, les champs
-  semantiques de signal obligatoires a `null`, les contextes de position
-  obligatoires a `null` et les proprietes parasites dans `aspect_context` ;
-- la fixture `tests/golden/basic_payload_v8_paris_1990.json` conserve un payload
-  complet de reference pour le scenario Paris 1990 ;
-- `tests/contract_basic_v8_tests.rs` valide les invariants metier qui ne
-  doivent pas regresser : sources de plan existantes, alignement
-  `reading_plan` / `drafting_plan`, absence d'aspect angle-angle actif,
-  conservation de `aspect:jupiter:uranus:opposition`, unicite des signaux
-  primaires et garde-fou contre une section autonome `chart_emphasis`.
+  quatre angles, les bornes de score, `chart_context`, `context_refs` et les
+  contraintes schema exprimables. Il refuse aussi les extensions silencieuses de
+  `must_use`, les champs semantiques de signal obligatoires a `null`, les
+  contextes de position obligatoires a `null`, les proprietes parasites dans
+  `aspect_context`, et les `visibility_context` mobiles sans altitude calculee
+  ou sans flag `is_visible` booleen ;
+- la fixture `tests/golden/natal_payload_v9_paris_1990.json` conserve un
+  payload complet de reference pour le scenario Paris 1990 ;
+- `tests/contract_basic_v8_tests.rs` valide les invariants metier du contrat
+  courant v9 et conserve aussi une validation schema du golden historique v8 :
+  sources de plan existantes, alignement `reading_plan` / `drafting_plan`,
+  absence d'aspect angle-angle actif, conservation de
+  `aspect:jupiter:uranus:opposition`, unicite des signaux primaires et
+  garde-fous contre des sections autonomes `chart_emphasis` / `chart_context`.
 
 La review adversariale de cette stabilisation a ajoute des tests negatifs et a
 resserre l'alignement entre schema et validation runtime. Un payload qui valide
 le schema ne doit plus pouvoir contourner les champs obligatoires attendus par
 `is_current_basic_payload`, et un payload runtime ne doit plus etre considere
-courant si ses angles top-level ne sont pas exactement le quatuor canonique.
+courant si ses angles top-level ne sont pas exactement le quatuor canonique ou
+si le `visibility_context` d'un signal de placement mobile contredit son
+altitude calculee.
 
-La regeneration complete du golden depend de Postgres et de Swiss Ephemeris. Le
-test unitaire ne reconstruit donc pas le theme depuis le moteur. Pour couvrir ce
-risque en CI ou en verification locale, le script
-`scripts/verify_basic_v8_golden.ps1` lance le moteur avec le scenario golden
+La regeneration complete du golden courant depend de Postgres et de Swiss
+Ephemeris. Le test unitaire ne reconstruit donc pas le theme depuis le moteur.
+Pour couvrir ce risque en CI ou en verification locale,
+`scripts/verify_natal_v9_golden.ps1` lance le moteur avec le scenario golden
 Paris / `1990-01-02T03:04:05Z`, puis compare une projection stable du payload
-genere au golden. Le script force les variables d'environnement du scenario
+genere au golden v9. Le script force les variables d'environnement du scenario
 golden et les restaure ensuite, afin d'eviter qu'un `ASTRAL_OUTPUT_MODE`,
 `ASTRAL_PRODUCT_CODE` ou identifiant de referentiel deja present ne modifie la
 verification. Il peut aussi comparer un fichier deja genere via :
 
 ```powershell
-.\scripts\verify_basic_v8_golden.ps1 -GeneratedPayloadPath .\output\basic_payload_current.json
+.\scripts\verify_natal_v9_golden.ps1 -GeneratedPayloadPath .\output\basic_payload_current.json
 ```
+
+Le script `scripts/verify_basic_v8_golden.ps1` reste disponible uniquement pour
+valider le golden historique v8 ou un fichier v8 fourni explicitement. Il ne
+regenere plus de payload depuis le moteur courant, car celui-ci produit
+desormais `natal_structured_v9`.
 
 ## Contrat canonique de handoff LLM
 
@@ -1149,12 +1189,13 @@ doit respecter :
 ```json
 {
   "llm_handoff_contract": {
-    "contract_version": "basic_natal_structured_v8",
+    "contract_version": "natal_structured_v9",
     "payload_language_code": "en",
     "target_language_policy": "provided_by_llm_service",
     "audience_level": "beginner",
     "tone": "clear, warm, non fatalistic",
     "must_use": [
+      "chart_context",
       "chart_emphasis",
       "dignities",
       "angles",
@@ -1169,6 +1210,7 @@ doit respecter :
       "translate technical keys such as signal_key, theme_code, semantic_tags, slot, or aggregation_group",
       "expose raw evidence unless explicitly requested",
       "treat chart_emphasis as a standalone section instead of weighting context",
+      "treat chart_context as a standalone section instead of contextual weighting",
       "make deterministic or fatalistic predictions"
     ],
     "output_format": "structured_sections"
@@ -1208,13 +1250,23 @@ une langue cible finale.
           "candidate_slot": "dominant_cluster"
         }
       ],
+      "emphasis_refs": {
+        "dominant_signs": ["capricorn"],
+        "dominant_houses": [2],
+        "dominant_objects": ["saturn"]
+      },
+      "context_refs": {
+        "chart_context": ["sect", "hemisphere_emphasis"]
+      },
       "writing_objective": "Explain in plain language that the chart emphasizes Capricorn, Resources, and structure, responsibility, security, grouping the cluster evidence and Saturn dignity context instead of enumerating placements.",
       "max_words": 120,
       "avoid": [
         "repeat each placement one by one",
         "use technical IDs",
         "make fatalistic predictions",
-        "add information that is absent from the source signals"
+        "add information that is absent from the source signals",
+        "turn chart_emphasis into a standalone section",
+        "turn chart_context into a standalone section"
       ]
     }
   ]
@@ -1303,7 +1355,7 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
 - 12 signaux maximum ;
 - au moins un signal ;
 - `llm_handoff_contract` present et conforme au contrat canonique
-  `basic_natal_structured_v8` ;
+  `natal_structured_v9` ;
 - `dignities` structurees presentes et coherentes avec les signaux
   `dignity:*` actifs ;
 - `angles` top-level present avec exactement les quatre faits canoniques
@@ -1326,7 +1378,8 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
   coherent avec le signe de l'altitude (`> 0` au-dessus, `< 0` en-dessous,
   `0` sur l'horizon) ;
   pour les angles, `visibility_context.source` doit rester `angle_context` et
-  `visibility_context.altitude_deg` doit rester `null` ;
+  `visibility_context.altitude_deg` / `visibility_context.is_visible` doivent
+  rester `null` ;
 - signaux avec `evidence` objet non nul ;
 - signaux avec `theme_code`, `summary`, `confidence_score`,
   `interpretive_hint`, `semantic_tags`, `source_weight`, `aggregation_group` et
@@ -1343,7 +1396,10 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
 - absence de signal `aspect:*` qui represente une opposition structurelle entre
   deux angles du meme `axis`, meme si l'ancien signal n'est pas marque
   `is_structural_axis` ;
-- signaux de placement avec `evidence.placement_context` complet ;
+- signaux de placement avec `evidence.placement_context` complet, incluant un
+  `visibility_context` mobile dont `source = "calculated_altitude"`,
+  `altitude_deg` est fini, `is_visible` est booleen, et `horizon_position` est
+  coherent avec le signe de l'altitude ;
 - signaux de placement avec `evidence.essential_dignities` sous forme de
   tableau ;
 - signaux `dignity:*` rattaches a une entree correspondante dans
@@ -1361,10 +1417,16 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
   `dominant_cluster` quand ce slot existe, sinon sur `core_identity`, et vide
   sur les autres slots ;
 - `chart_context` coherent avec la secte solaire, la source de visibilite du
-  Soleil, les comptes d'hemisphere et les positions enrichies par altitude /
+  Soleil, les comptes d'hemisphere, `hemisphere_emphasis.count_scope =
+  "mobile_chart_objects_only"` et les positions enrichies par altitude /
   horizon ;
 - chaque item de `drafting_plan` contient la regle d'evitement
   `turn chart_emphasis into a standalone section` ;
+- chaque item de `drafting_plan` contient la regle d'evitement
+  `turn chart_context into a standalone section` ;
+- `drafting_plan[].context_refs.chart_context` vaut
+  `["sect", "hemisphere_emphasis"]` pour `core_identity` et
+  `dominant_cluster`, et reste vide pour les autres slots ;
 - `primary_signal_keys` aligne avec `source_signal_keys`, et
   `secondary_slot_candidates` coherents entre `reading_plan` et `drafting_plan` ;
 - chaque signal primaire apparait dans un seul slot de `reading_plan`; les
@@ -1429,10 +1491,11 @@ Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
 - `product_code = "basic"` ;
 - `llm_handoff_contract.payload_language_code = "en"` ;
 - `llm_handoff_contract.target_language_policy = "provided_by_llm_service"` ;
-- `llm_handoff_contract.contract_version = "basic_natal_structured_v8"` ;
+- `llm_handoff_contract.contract_version = "natal_structured_v9"` ;
 - un `chart_context` top-level avec le type de theme, les IDs de referentiels,
   le contrat de projection `natal_structured_v9`, la secte et la synthese
-  d'hemisphere ;
+  d'hemisphere, dont `hemisphere_emphasis.count_scope =
+  "mobile_chart_objects_only"` ;
 - des positions avec `sign_code`, `sign_name`, `house_number`, `house_name`,
   `sign_context`, `house_context`, `house_modality`, `object_context` et
   `dignity_context` sous forme de tableau, vide quand aucune dignite n'est
@@ -1441,7 +1504,7 @@ Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
   exploitable avant LLM, avec `altitude_deg` calcule pour les corps mobiles et
   `horizon_position_id` renseigne pour toutes les positions ; pour les corps
   mobiles, `source` doit etre `calculated_altitude`, tandis que les angles
-  restent en `angle_context` avec `altitude_deg = null` ;
+  restent en `angle_context` avec `altitude_deg = null` et `is_visible = null` ;
 - une liste `angles` top-level avec exactement Ascendant, Descendant, MC et IC,
   reliee aux signes et maisons calcules, avec les axes `horizontal` /
   `vertical` attendus et `opposite_angle_code` resolu vers le code objet long
@@ -1464,6 +1527,9 @@ Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
 - des `emphasis_refs` dans `drafting_plan`, rattachees au slot
   `dominant_cluster` si present, sinon a `core_identity`, et utilisees comme
   contexte de ponderation ;
+- des `context_refs.chart_context` dans `drafting_plan` pour guider l'usage de
+  `sect` et `hemisphere_emphasis` comme ponderation contextuelle, pas comme
+  section autonome ;
 - des titres sans IDs techniques ;
 - des champs semantiques 1B sur chaque signal ;
 - un `aspect_context` sur chaque signal `aspect:*`, avec les modificateurs
@@ -1471,7 +1537,8 @@ Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
   `is_tonal_valence` / `is_intensity_modifier` renseignes ;
 - aucun signal actif `aspect:ascendant:descendant:opposition` ou
   `aspect:mc:ic:opposition` produit par les axes structurels ;
-- un `evidence.placement_context` complet sur chaque signal de placement ;
+- un `evidence.placement_context` complet sur chaque signal de placement,
+  incluant `visibility_context` ;
 - un `evidence.essential_dignities` tableau sur chaque signal de placement ;
 - des signaux `dignity:*` seulement pour les dignites majeures significatives ;
 - un cluster `cluster:<sign_code>:house_<number>` quand au moins trois objets
@@ -1519,7 +1586,7 @@ sans modifier le contrat public `rust_sqlx_connection_test::payload`.
 - `signal_filters.rs` centralise les predicats partages sur les signaux et
   aspects.
 - `json.rs` centralise les extractions defensives depuis les payloads JSON.
-- `contract.rs` conserve le contrat LLM Basic v8.
+- `contract.rs` conserve le contrat LLM courant `natal_structured_v9`.
 
 Ce decoupage reste volontairement simple: aucune nouvelle donnee canonique n'a
 ete ajoutee en dur, et les fonctions gardent une portee limitee au module quand
@@ -1587,7 +1654,8 @@ canoniques applicatives et ne contourne pas les referentiels lus depuis la base.
   base de donnees et des profils de scoring des objets.
 - `payload_freshness.rs` expose la facade `is_current_basic_payload` et compose
   les validations de reutilisation.
-- `payload_freshness/contract.rs` verifie le contrat LLM Basic v8.
+- `payload_freshness/contract.rs` verifie le contrat LLM courant
+  `natal_structured_v9`.
 - `payload_freshness/angles.rs` verifie les quatre angles canoniques et leurs
   preuves.
 - `payload_freshness/aspects.rs` verifie le contexte interpretatif des aspects
@@ -1597,9 +1665,10 @@ canoniques applicatives et ne contourne pas les referentiels lus depuis la base.
 - `payload_freshness/emphasis.rs` verifie les dominantes de signe, maison et
   objet.
 - `payload_freshness/placements.rs` verifie les contextes de positions et de
-  signaux de placement.
+  signaux de placement, dont le `visibility_context` mobile recopie dans
+  `evidence.placement_context`.
 - `payload_freshness/plan.rs` verifie `reading_plan`, `drafting_plan` et les
-  `emphasis_refs`.
+  `emphasis_refs` / `context_refs`.
 - `payload_freshness/json.rs` et `payload_freshness/text.rs` regroupent les
   helpers transverses limites a la validation de reutilisation.
 

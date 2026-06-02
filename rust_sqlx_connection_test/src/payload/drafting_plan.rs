@@ -1,5 +1,6 @@
 use crate::domain::{
-    BasicChartEmphasis, BasicDraftingPlanItem, BasicEmphasisRefs, BasicReadingPlanItem, BasicSignal,
+    BasicChartEmphasis, BasicContextRefs, BasicDraftingPlanItem, BasicEmphasisRefs,
+    BasicReadingPlanItem, BasicSignal,
 };
 pub(super) fn build_drafting_plan(
     reading_plan: &[BasicReadingPlanItem],
@@ -26,12 +27,24 @@ pub(super) fn build_drafting_plan(
                     chart_emphasis,
                     has_dominant_cluster,
                 ),
+                context_refs: context_refs_for_slot(&item.slot),
                 writing_objective: writing_objective(item, &source_signals, has_dominant_cluster),
                 max_words: max_words_for_slot(&item.slot),
                 avoid: avoid_rules_for_slot(&item.slot),
             }
         })
         .collect()
+}
+
+fn context_refs_for_slot(slot: &str) -> BasicContextRefs {
+    let chart_context = match slot {
+        "core_identity" | "dominant_cluster" => {
+            vec!["sect".to_string(), "hemisphere_emphasis".to_string()]
+        }
+        _ => Vec::new(),
+    };
+
+    BasicContextRefs { chart_context }
 }
 
 fn emphasis_refs_for_slot(
@@ -246,10 +259,10 @@ fn writing_objective(
 ) -> String {
     match item.slot.as_str() {
         "core_identity" if has_dominant_cluster => {
-            "Explain the central identity markers, emotional needs, and overall chart orientation in plain language, letting chart_emphasis only adjust relative weight without creating another section.".to_string()
+            "Explain the central identity markers, emotional needs, and overall chart orientation in plain language, using chart_context and chart_emphasis only as weighting context without creating another section.".to_string()
         }
         "core_identity" => {
-            "Explain the central identity markers, emotional needs, and overall chart orientation in plain language, using emphasis_refs as weighting context rather than as a separate topic.".to_string()
+            "Explain the central identity markers, emotional needs, and overall chart orientation in plain language, using context_refs and emphasis_refs as weighting context rather than as separate topics.".to_string()
         }
         "dominant_cluster" => dominant_cluster_objective(signals),
         "main_tension_or_support" => {
@@ -367,6 +380,7 @@ fn avoid_rules_for_slot(slot: &str) -> Vec<String> {
         "make fatalistic predictions".to_string(),
         "add information that is absent from the source signals".to_string(),
         "turn chart_emphasis into a standalone section".to_string(),
+        "turn chart_context into a standalone section".to_string(),
     ];
 
     match slot {

@@ -6,8 +6,8 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $crateDir = Join-Path $repoRoot "rust_sqlx_connection_test"
-$goldenPath = Join-Path $repoRoot "tests\golden\basic_payload_v8_paris_1990.json"
-$workDir = Join-Path $repoRoot "target\basic_v8_golden_diff"
+$goldenPath = Join-Path $repoRoot "tests\golden\natal_payload_v9_paris_1990.json"
+$workDir = Join-Path $repoRoot "target\natal_v9_golden_diff"
 $payloadUnderTestPath = Join-Path $workDir "payload_under_test.json"
 $utf8NoBom = New-Object System.Text.UTF8Encoding $false
 
@@ -51,10 +51,54 @@ function Restore-Env($values) {
     }
 }
 
-$generated = if ([string]::IsNullOrWhiteSpace($GeneratedPayloadPath)) {
-    Read-JsonFile $goldenPath
+if ([string]::IsNullOrWhiteSpace($GeneratedPayloadPath)) {
+    $envNames = @(
+        "ASTRAL_OUTPUT_FILE",
+        "ASTRAL_OUTPUT_MODE",
+        "ASTRAL_SUBJECT_LABEL",
+        "ASTRAL_BIRTH_DATETIME_UTC",
+        "ASTRAL_LATITUDE_DEG",
+        "ASTRAL_LONGITUDE_DEG",
+        "ASTRAL_ALTITUDE_M",
+        "ASTRAL_REFERENCE_VERSION_ID",
+        "ASTRAL_CALCULATION_PROFILE_ID",
+        "ASTRAL_ZODIACAL_REFERENCE_SYSTEM_ID",
+        "ASTRAL_COORDINATE_REFERENCE_SYSTEM_ID",
+        "ASTRAL_HOUSE_SYSTEM_ID",
+        "ASTRAL_PRODUCT_CODE",
+        "ASTRAL_EPHEMERIS_PATH"
+    )
+    $savedEnv = Save-Env $envNames
+
+    Push-Location $crateDir
+    try {
+        [Environment]::SetEnvironmentVariable("ASTRAL_OUTPUT_FILE", $null, "Process")
+        $env:ASTRAL_OUTPUT_MODE = "stdout"
+        $env:ASTRAL_SUBJECT_LABEL = "Test"
+        $env:ASTRAL_BIRTH_DATETIME_UTC = "1990-01-02T03:04:05Z"
+        $env:ASTRAL_LATITUDE_DEG = "48.8566"
+        $env:ASTRAL_LONGITUDE_DEG = "2.3522"
+        [Environment]::SetEnvironmentVariable("ASTRAL_ALTITUDE_M", $null, "Process")
+        $env:ASTRAL_REFERENCE_VERSION_ID = "1"
+        [Environment]::SetEnvironmentVariable("ASTRAL_CALCULATION_PROFILE_ID", $null, "Process")
+        $env:ASTRAL_ZODIACAL_REFERENCE_SYSTEM_ID = "1"
+        $env:ASTRAL_COORDINATE_REFERENCE_SYSTEM_ID = "1"
+        $env:ASTRAL_HOUSE_SYSTEM_ID = "1"
+        $env:ASTRAL_PRODUCT_CODE = "basic"
+        $env:ASTRAL_EPHEMERIS_PATH = "..\ephe\se-2026a"
+
+        $generatedJsonLines = cargo run --quiet --features swisseph-engine
+        if ($LASTEXITCODE -ne 0) {
+            throw "cargo run failed with exit code $LASTEXITCODE"
+        }
+        $generatedJson = $generatedJsonLines -join [Environment]::NewLine
+        $generated = $generatedJson | ConvertFrom-Json
+    } finally {
+        Pop-Location
+        Restore-Env $savedEnv
+    }
 } else {
-    Read-JsonFile $GeneratedPayloadPath
+    $generated = Read-JsonFile $GeneratedPayloadPath
 }
 
 New-Item -ItemType Directory -Force -Path $workDir | Out-Null
@@ -66,10 +110,10 @@ New-Item -ItemType Directory -Force -Path $workDir | Out-Null
 
 Push-Location $crateDir
 try {
-    $schemaEnv = Save-Env @("BASIC_V8_SCHEMA_PAYLOAD_PATH")
+    $schemaEnv = Save-Env @("NATAL_V9_SCHEMA_PAYLOAD_PATH")
     try {
-        $env:BASIC_V8_SCHEMA_PAYLOAD_PATH = $payloadUnderTestPath
-        cargo test --quiet --test contract_basic_v8_tests external_payload_matches_json_schema_v8_when_requested
+        $env:NATAL_V9_SCHEMA_PAYLOAD_PATH = $payloadUnderTestPath
+        cargo test --quiet --test contract_basic_v8_tests external_payload_matches_json_schema_v9_when_requested
         if ($LASTEXITCODE -ne 0) {
             throw "schema validation failed for $payloadUnderTestPath"
         }
@@ -89,7 +133,7 @@ if ($generatedProjection -ne $goldenProjection) {
     $goldenOut = Join-Path $workDir "golden_projection.json"
     [System.IO.File]::WriteAllText($generatedOut, $generatedProjection, $utf8NoBom)
     [System.IO.File]::WriteAllText($goldenOut, $goldenProjection, $utf8NoBom)
-    throw "Generated Basic v8 projection differs from golden. See $generatedOut and $goldenOut."
+    throw "Generated natal v9 projection differs from golden. See $generatedOut and $goldenOut."
 }
 
-Write-Host "Generated Basic v8 projection matches golden."
+Write-Host "Generated natal v9 projection matches golden."

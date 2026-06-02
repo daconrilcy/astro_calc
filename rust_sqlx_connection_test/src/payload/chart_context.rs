@@ -53,7 +53,7 @@ pub(super) fn visibility_context(position: &ObjectPositionFact) -> Value {
     json!({
         "horizon_position_id": position.horizon_position_id,
         "horizon_position": horizon_position_code(position),
-        "altitude_deg": position.altitude_deg,
+        "altitude_deg": if is_angle(position) { None } else { position.altitude_deg },
         "is_visible": visibility_flag(position),
         "source": visibility_source(position)
     })
@@ -74,6 +74,7 @@ fn build_hemisphere_emphasis(positions: &[ObjectPositionFact]) -> BasicHemispher
     }
 
     BasicHemisphereEmphasis {
+        count_scope: "mobile_chart_objects_only".to_string(),
         above_horizon_count,
         below_horizon_count,
         on_horizon_count,
@@ -114,6 +115,10 @@ fn horizon_position_code(position: &ObjectPositionFact) -> Option<String> {
 }
 
 fn visibility_flag(position: &ObjectPositionFact) -> Option<bool> {
+    if is_angle(position) {
+        return None;
+    }
+
     position
         .is_visible
         .or_else(|| match horizon_position_code(position).as_deref() {
@@ -124,6 +129,10 @@ fn visibility_flag(position: &ObjectPositionFact) -> Option<bool> {
 }
 
 fn visibility_source(position: &ObjectPositionFact) -> String {
+    if is_angle(position) {
+        return "angle_context".to_string();
+    }
+
     if !is_angle(position) && position.altitude_deg.is_some() {
         return "calculated_altitude".to_string();
     }

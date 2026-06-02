@@ -5,7 +5,7 @@ pub(super) fn has_current_llm_handoff_contract(payload: &BasicPayload) -> bool {
         return false;
     };
 
-    contract.contract_version == "basic_natal_structured_v8"
+    contract.contract_version == "natal_structured_v9"
         && contract.payload_language_code == "en"
         && contract.target_language_policy == "provided_by_llm_service"
         && contract.audience_level == "beginner"
@@ -28,6 +28,7 @@ pub(super) fn has_current_llm_handoff_contract(payload: &BasicPayload) -> bool {
                 "translate technical keys such as signal_key, theme_code, semantic_tags, slot, or aggregation_group",
                 "expose raw evidence unless explicitly requested",
                 "treat chart_emphasis as a standalone section instead of weighting context",
+                "treat chart_context as a standalone section instead of contextual weighting",
                 "make deterministic or fatalistic predictions",
             ]
         && contract.output_format == "structured_sections"

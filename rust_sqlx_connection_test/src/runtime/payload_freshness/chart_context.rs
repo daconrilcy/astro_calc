@@ -42,6 +42,7 @@ fn has_chart_context(payload: &BasicPayload) -> bool {
             .source
             .as_deref()
             .is_some_and(|source| !source.trim().is_empty())
+        && context.hemisphere_emphasis.count_scope == "mobile_chart_objects_only"
         && context.hemisphere_emphasis.above_horizon_count >= 0
         && context.hemisphere_emphasis.below_horizon_count >= 0
         && context.hemisphere_emphasis.on_horizon_count >= 0
@@ -62,11 +63,11 @@ fn has_current_visibility_context(position: &BasicObjectPosition) -> bool {
             .get("horizon_position_id")
             .is_some_and(|value| value.as_i64().is_some_and(|id| id > 0))
         && source.is_some_and(|source| !source.trim().is_empty())
-        && json::has_bool_value(value.get("is_visible"))
         && if is_angle {
             has_consistent_angle_visibility(value, source)
         } else {
-            has_consistent_calculated_altitude(horizon_position, altitude_deg, source)
+            json::has_bool_value(value.get("is_visible"))
+                && has_consistent_calculated_altitude(horizon_position, altitude_deg, source)
         }
 }
 
@@ -92,6 +93,7 @@ fn has_consistent_angle_visibility(value: &serde_json::Value, source: Option<&st
         && value
             .get("altitude_deg")
             .is_some_and(|value| value.is_null())
+        && value.get("is_visible").is_some_and(|value| value.is_null())
 }
 
 fn horizon_position_for_altitude(altitude_deg: f64) -> &'static str {

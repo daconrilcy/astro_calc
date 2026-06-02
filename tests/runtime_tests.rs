@@ -24,7 +24,7 @@ fn current_payload() -> BasicPayload {
             subject_label: None,
             birth_datetime_utc: Utc.with_ymd_and_hms(2024, 6, 15, 12, 0, 0).unwrap(),
             llm_handoff_contract: Some(BasicLlmHandoffContract {
-                contract_version: "basic_natal_structured_v8".to_string(),
+                contract_version: "natal_structured_v9".to_string(),
                 payload_language_code: "en".to_string(),
                 target_language_policy: "provided_by_llm_service".to_string(),
                 audience_level: "beginner".to_string(),
@@ -45,6 +45,7 @@ fn current_payload() -> BasicPayload {
                     "translate technical keys such as signal_key, theme_code, semantic_tags, slot, or aggregation_group".to_string(),
                     "expose raw evidence unless explicitly requested".to_string(),
                     "treat chart_emphasis as a standalone section instead of weighting context".to_string(),
+                    "treat chart_context as a standalone section instead of contextual weighting".to_string(),
                     "make deterministic or fatalistic predictions".to_string(),
                 ],
                 output_format: "structured_sections".to_string(),
@@ -72,6 +73,7 @@ fn current_payload() -> BasicPayload {
                     source: Some("calculated_altitude".to_string()),
                 },
                 hemisphere_emphasis: BasicHemisphereEmphasis {
+                    count_scope: "mobile_chart_objects_only".to_string(),
                     above_horizon_count: 1,
                     below_horizon_count: 0,
                     on_horizon_count: 0,
@@ -176,6 +178,13 @@ fn current_payload() -> BasicPayload {
                             "house_modality": {"code": "cadent"},
                             "object_context": {"role": "luminary"},
                             "motion_context": {"motion_state": "direct"}
+                            ,"visibility_context": {
+                                "horizon_position_id": 1,
+                                "horizon_position": "above_horizon",
+                                "altitude_deg": 12.5,
+                                "is_visible": true,
+                                "source": "calculated_altitude"
+                            }
                         }
                     })),
                 },
@@ -219,11 +228,15 @@ fn current_payload() -> BasicPayload {
                     dominant_houses: vec![9],
                     dominant_objects: vec!["sun".to_string()],
                 },
+                context_refs: rust_sqlx_connection_test::domain::BasicContextRefs {
+                    chart_context: vec!["sect".to_string(), "hemisphere_emphasis".to_string()],
+                },
                 writing_objective: "Explain the central markers.".to_string(),
                 max_words: 110,
                 avoid: vec![
                     "use technical IDs".to_string(),
                     "turn chart_emphasis into a standalone section".to_string(),
+                    "turn chart_context into a standalone section".to_string(),
                 ],
             }],
         }
@@ -675,6 +688,64 @@ fn current_payload_rejects_incomplete_signal_placement_context() {
 }
 
 #[test]
+fn current_payload_rejects_signal_placement_visibility_without_calculated_altitude() {
+    let mut payload = current_payload();
+    payload.signals[0].evidence = Some(json!({
+        "fact_type": "object_position",
+        "essential_dignities": [],
+        "placement_context": {
+            "sign_context": {
+                "element": "air",
+                "modality": "mutable",
+                "polarity": "yang"
+            },
+            "house_context": {"theme_code": "beliefs"},
+            "house_modality": {"code": "cadent"},
+            "object_context": {"role": "luminary"},
+            "motion_context": {"motion_state": "direct"},
+            "visibility_context": {
+                "horizon_position_id": 1,
+                "horizon_position": "above_horizon",
+                "altitude_deg": null,
+                "is_visible": null,
+                "source": "calculated_altitude"
+            }
+        }
+    }));
+
+    assert!(!is_current_basic_payload(&payload));
+}
+
+#[test]
+fn current_payload_rejects_signal_placement_visibility_inconsistent_with_altitude() {
+    let mut payload = current_payload();
+    payload.signals[0].evidence = Some(json!({
+        "fact_type": "object_position",
+        "essential_dignities": [],
+        "placement_context": {
+            "sign_context": {
+                "element": "air",
+                "modality": "mutable",
+                "polarity": "yang"
+            },
+            "house_context": {"theme_code": "beliefs"},
+            "house_modality": {"code": "cadent"},
+            "object_context": {"role": "luminary"},
+            "motion_context": {"motion_state": "direct"},
+            "visibility_context": {
+                "horizon_position_id": 1,
+                "horizon_position": "below_horizon",
+                "altitude_deg": 12.5,
+                "is_visible": true,
+                "source": "calculated_altitude"
+            }
+        }
+    }));
+
+    assert!(!is_current_basic_payload(&payload));
+}
+
+#[test]
 fn current_payload_rejects_placement_signal_without_dignity_array() {
     let mut payload = current_payload();
     payload.signals[0].evidence = Some(json!({
@@ -688,7 +759,14 @@ fn current_payload_rejects_placement_signal_without_dignity_array() {
             "house_context": {"theme_code": "beliefs"},
             "house_modality": {"code": "cadent"},
             "object_context": {"role": "luminary"},
-            "motion_context": {"motion_state": "direct"}
+            "motion_context": {"motion_state": "direct"},
+            "visibility_context": {
+                "horizon_position_id": 1,
+                "horizon_position": "above_horizon",
+                "altitude_deg": 12.5,
+                "is_visible": true,
+                "source": "calculated_altitude"
+            }
         }
     }));
 
@@ -706,7 +784,14 @@ fn current_payload_rejects_placement_signal_without_dignity_array() {
             "house_context": {"theme_code": "beliefs"},
             "house_modality": {"code": "cadent"},
             "object_context": {"role": "luminary"},
-            "motion_context": {"motion_state": "direct"}
+            "motion_context": {"motion_state": "direct"},
+            "visibility_context": {
+                "horizon_position_id": 1,
+                "horizon_position": "above_horizon",
+                "altitude_deg": 12.5,
+                "is_visible": true,
+                "source": "calculated_altitude"
+            }
         }
     }));
 
@@ -858,11 +943,15 @@ fn current_payload_rejects_repeated_primary_source_signal() {
         primary_signal_keys: vec!["object_position:sun".to_string()],
         secondary_slot_candidates: Vec::new(),
         emphasis_refs: BasicEmphasisRefs::default(),
+        context_refs: rust_sqlx_connection_test::domain::BasicContextRefs {
+            chart_context: vec!["sect".to_string(), "hemisphere_emphasis".to_string()],
+        },
         writing_objective: "Explain the repeated primary signal.".to_string(),
         max_words: 120,
         avoid: vec![
             "repeat".to_string(),
             "turn chart_emphasis into a standalone section".to_string(),
+            "turn chart_context into a standalone section".to_string(),
         ],
     });
 
@@ -977,11 +1066,13 @@ fn current_payload_rejects_out_of_order_reading_plan_slots() {
             primary_signal_keys: vec!["object_position:mercury".to_string()],
             secondary_slot_candidates: Vec::new(),
             emphasis_refs: BasicEmphasisRefs::default(),
+            context_refs: rust_sqlx_connection_test::domain::BasicContextRefs::default(),
             writing_objective: "Show how the person thinks and acts.".to_string(),
             max_words: 110,
             avoid: vec![
                 "use technical IDs".to_string(),
                 "turn chart_emphasis into a standalone section".to_string(),
+                "turn chart_context into a standalone section".to_string(),
             ],
         },
     );

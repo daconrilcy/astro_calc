@@ -51,4 +51,41 @@ pub(super) fn has_current_placement_context(signal: &BasicSignal) -> bool {
         && json::nested_json_has_text(context, "house_modality", "code")
         && json::nested_json_has_text(context, "object_context", "role")
         && json::nested_json_has_text(context, "motion_context", "motion_state")
+        && has_current_mobile_visibility_context(context.get("visibility_context"))
+}
+
+fn has_current_mobile_visibility_context(value: Option<&serde_json::Value>) -> bool {
+    let Some(value) = value else {
+        return false;
+    };
+    let horizon_position = value
+        .get("horizon_position")
+        .and_then(|value| value.as_str());
+    let altitude_deg = value.get("altitude_deg").and_then(|value| value.as_f64());
+
+    value.is_object()
+        && value
+            .get("horizon_position_id")
+            .is_some_and(|value| value.as_i64().is_some_and(|id| id > 0))
+        && horizon_position.is_some_and(is_horizon_position)
+        && altitude_deg.is_some_and(f64::is_finite)
+        && value.get("source").and_then(|value| value.as_str()) == Some("calculated_altitude")
+        && json::has_bool_value(value.get("is_visible"))
+        && altitude_deg
+            .map(horizon_position_for_altitude)
+            .is_some_and(|expected| horizon_position == Some(expected))
+}
+
+fn is_horizon_position(value: &str) -> bool {
+    matches!(value, "above_horizon" | "below_horizon" | "on_horizon")
+}
+
+fn horizon_position_for_altitude(altitude_deg: f64) -> &'static str {
+    if altitude_deg > 0.0 {
+        "above_horizon"
+    } else if altitude_deg < 0.0 {
+        "below_horizon"
+    } else {
+        "on_horizon"
+    }
 }

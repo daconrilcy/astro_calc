@@ -334,7 +334,7 @@ fn basic_payload_exposes_semantic_signal_fields() {
             .as_ref()
             .expect("llm handoff contract")
             .contract_version,
-        "basic_natal_structured_v8"
+        "natal_structured_v9"
     );
     let contract = payload
         .llm_handoff_contract
@@ -343,6 +343,9 @@ fn basic_payload_exposes_semantic_signal_fields() {
     assert!(contract.must_use.contains(&"chart_emphasis".to_string()));
     assert!(contract.must_not.contains(
         &"treat chart_emphasis as a standalone section instead of weighting context".to_string()
+    ));
+    assert!(contract.must_not.contains(
+        &"treat chart_context as a standalone section instead of contextual weighting".to_string()
     ));
     assert!(contract.must_use.contains(&"dignities".to_string()));
     assert!(contract.must_use.contains(&"angles".to_string()));
@@ -374,6 +377,10 @@ fn basic_payload_exposes_semantic_signal_fields() {
         Some(0)
     );
     assert_eq!(payload.chart_context.chart_type, "natal");
+    assert_eq!(
+        payload.chart_context.hemisphere_emphasis.count_scope,
+        "mobile_chart_objects_only"
+    );
     assert_eq!(
         payload.chart_context.sect.chart_sect.as_deref(),
         Some("day")

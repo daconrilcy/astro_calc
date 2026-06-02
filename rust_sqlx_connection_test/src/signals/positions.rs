@@ -126,8 +126,82 @@ pub(super) fn placement_context(position: &ObjectPositionFact) -> serde_json::Va
         "house_modality": placement_context_object(position, "house_modality"),
         "object_context": placement_context_object(position, "object_context"),
         "motion_context": placement_context_object(position, "motion_context"),
-        "dignity_context": dignity_evidence_array(&essential_dignities_for_position(position))
+        "dignity_context": dignity_evidence_array(&essential_dignities_for_position(position)),
+        "visibility_context": visibility_context(position)
     })
+}
+
+fn visibility_context(position: &ObjectPositionFact) -> serde_json::Value {
+    let is_angle = placement_context_object(position, "angle_context").is_some()
+        || placement_context_str(position, "object_context", "role") == Some("angle");
+    json!({
+        "horizon_position_id": position.horizon_position_id,
+        "horizon_position": horizon_position(position, is_angle),
+        "altitude_deg": if is_angle { None } else { position.altitude_deg },
+        "is_visible": if is_angle { None } else { visibility_flag(position) },
+        "source": if is_angle { "angle_context".to_string() } else { visibility_source(position) }
+    })
+}
+
+fn horizon_position(position: &ObjectPositionFact, is_angle: bool) -> Option<String> {
+    if !is_angle {
+        if let Some(altitude) = position.altitude_deg {
+            return Some(
+                if altitude > 0.0 {
+                    "above_horizon"
+                } else if altitude < 0.0 {
+                    "below_horizon"
+                } else {
+                    "on_horizon"
+                }
+                .to_string(),
+            );
+        }
+    }
+
+    placement_context_str(position, "visibility_context", "horizon_position")
+        .map(ToString::to_string)
+        .or_else(|| angle_horizon_position(position).map(ToString::to_string))
+        .or_else(|| {
+            position.house_number.and_then(|house_number| {
+                if (7..=12).contains(&house_number) {
+                    Some("above_horizon".to_string())
+                } else if (1..=6).contains(&house_number) {
+                    Some("below_horizon".to_string())
+                } else {
+                    None
+                }
+            })
+        })
+}
+
+fn visibility_flag(position: &ObjectPositionFact) -> Option<bool> {
+    position
+        .is_visible
+        .or_else(|| match horizon_position(position, false).as_deref() {
+            Some("above_horizon") | Some("on_horizon") => Some(true),
+            Some("below_horizon") => Some(false),
+            _ => None,
+        })
+}
+
+fn visibility_source(position: &ObjectPositionFact) -> String {
+    if position.altitude_deg.is_some() {
+        "calculated_altitude".to_string()
+    } else if position.is_visible.is_some() {
+        "calculated_altitude".to_string()
+    } else {
+        "house_hemisphere_projection".to_string()
+    }
+}
+
+fn angle_horizon_position(position: &ObjectPositionFact) -> Option<&'static str> {
+    match placement_context_str(position, "angle_context", "angle_point_code") {
+        Some("asc") | Some("dsc") => Some("on_horizon"),
+        Some("mc") => Some("above_horizon"),
+        Some("ic") => Some("below_horizon"),
+        _ => None,
+    }
 }
 
 pub(super) fn position_writing_guidance(

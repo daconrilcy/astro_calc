@@ -99,6 +99,7 @@ pub(super) fn has_current_drafting_plan(payload: &BasicPayload) -> bool {
                 item.emphasis_refs
                     == expected_emphasis_refs_for_slot(reading_item, payload, has_dominant_cluster)
             })
+            && item.context_refs == expected_context_refs_for_slot(slot)
             && !item.section_title.trim().is_empty()
             && !item.writing_objective.trim().is_empty()
             && text::has_current_drafting_language(item)
@@ -108,12 +109,26 @@ pub(super) fn has_current_drafting_plan(payload: &BasicPayload) -> bool {
             && item
                 .avoid
                 .contains(&"turn chart_emphasis into a standalone section".to_string())
+            && item
+                .avoid
+                .contains(&"turn chart_context into a standalone section".to_string())
             && !item.source_signal_keys.is_empty()
             && item.source_signal_keys.iter().all(|signal_key| {
                 let signal_key = signal_key.trim();
                 !signal_key.is_empty() && signal_keys.contains(signal_key)
             })
     })
+}
+
+fn expected_context_refs_for_slot(slot: &str) -> crate::domain::BasicContextRefs {
+    let chart_context = match slot {
+        "core_identity" | "dominant_cluster" => {
+            vec!["sect".to_string(), "hemisphere_emphasis".to_string()]
+        }
+        _ => Vec::new(),
+    };
+
+    crate::domain::BasicContextRefs { chart_context }
 }
 
 fn secondary_candidates_are_valid(
