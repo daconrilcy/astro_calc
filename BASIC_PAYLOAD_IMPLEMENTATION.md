@@ -58,6 +58,10 @@ dominantes de signe, de maison et d'objet a partir des placements, clusters,
 dignites et aspects forts deja calcules. Elle fournit une hierarchie quantifiee
 et auditable avant tout appel LLM.
 
+L'etape 2D.1 projette cette synthese dans `drafting_plan` via des
+`emphasis_refs` legeres. Ces references indiquent quel slot doit utiliser les
+dominantes comme contexte de ponderation, sans creer de section supplementaire.
+
 L'etape 2C.1 enrichit ensuite `interpretive_hint` des aspects avec cette meme
 couche interpretative. Le hint reste court et template, mais il ne dit plus
 seulement que deux objets sont connectes par un aspect : il nomme l'effet
@@ -648,6 +652,25 @@ Exemple reel genere avec les valeurs de verification Paris / 2024-06-15 :
 }
 ```
 
+L'etape 2D.1 ajoute ensuite des references legeres dans le plan de redaction :
+
+```json
+{
+  "slot": "dominant_cluster",
+  "emphasis_refs": {
+    "dominant_signs": ["gemini"],
+    "dominant_houses": [9],
+    "dominant_objects": ["mercury", "sun", "jupiter"]
+  }
+}
+```
+
+Ces references sont attachees au slot `dominant_cluster` quand il existe. Sinon,
+elles sont attachees au slot `core_identity` en fallback. Les autres slots
+gardent des `emphasis_refs` vides. Le LLM doit les lire comme un contexte de
+poids relatif pour les sections existantes, jamais comme une invitation a creer
+une section autonome `chart_emphasis`.
+
 ## Signaux agreges Basic
 
 L'etape 1B ajoute un premier type de signal agrege :
@@ -858,7 +881,7 @@ doit respecter :
 ```json
 {
   "llm_handoff_contract": {
-    "contract_version": "basic_natal_structured_v5",
+    "contract_version": "basic_natal_structured_v6",
     "payload_language_code": "en",
     "target_language_policy": "provided_by_llm_service",
     "audience_level": "beginner",
@@ -876,6 +899,7 @@ doit respecter :
       "list placements mechanically",
       "translate technical keys such as signal_key, theme_code, semantic_tags, slot, or aggregation_group",
       "expose raw evidence unless explicitly requested",
+      "treat chart_emphasis as a standalone section instead of weighting context",
       "make deterministic or fatalistic predictions"
     ],
     "output_format": "structured_sections"
@@ -1006,7 +1030,7 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
 - 12 signaux maximum ;
 - au moins un signal ;
 - `llm_handoff_contract` present et conforme au contrat canonique
-  `basic_natal_structured_v5` ;
+  `basic_natal_structured_v6` ;
 - `dignities` structurees presentes et coherentes avec les signaux
   `dignity:*` actifs ;
 - `chart_emphasis` present, avec au moins une dominante de signe, de maison et
@@ -1033,6 +1057,11 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
 - `drafting_plan` present, non vide, aligne sur les slots et sources du
   `reading_plan`, avec `section_title`, `writing_objective`, `max_words` et
   `avoid` renseignes ;
+- `drafting_plan[].emphasis_refs` aligne sur `chart_emphasis`, renseigne sur
+  `dominant_cluster` quand ce slot existe, sinon sur `core_identity`, et vide
+  sur les autres slots ;
+- chaque item de `drafting_plan` contient la regle d'evitement
+  `turn chart_emphasis into a standalone section` ;
 - `primary_signal_keys` aligne avec `source_signal_keys`, et
   `secondary_slot_candidates` coherents entre `reading_plan` et `drafting_plan` ;
 - chaque signal primaire apparait dans un seul slot de `reading_plan`; les
@@ -1077,7 +1106,7 @@ Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
 - `product_code = "basic"` ;
 - `llm_handoff_contract.payload_language_code = "en"` ;
 - `llm_handoff_contract.target_language_policy = "provided_by_llm_service"` ;
-- `llm_handoff_contract.contract_version = "basic_natal_structured_v5"` ;
+- `llm_handoff_contract.contract_version = "basic_natal_structured_v6"` ;
 - des positions avec `sign_code`, `sign_name`, `house_number`, `house_name`,
   `sign_context`, `house_modality`, `object_context`, `motion_context` et
   `dignity_context` sous forme de tableau, vide quand aucune dignite n'est
@@ -1091,6 +1120,9 @@ Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
 - au plus 12 signaux ;
 - un `reading_plan` non vide ;
 - un `drafting_plan` non vide et aligne sur le `reading_plan` ;
+- des `emphasis_refs` dans `drafting_plan`, rattachees au slot
+  `dominant_cluster` si present, sinon a `core_identity`, et utilisees comme
+  contexte de ponderation ;
 - des titres sans IDs techniques ;
 - des champs semantiques 1B sur chaque signal ;
 - un `aspect_context` sur chaque signal `aspect:*`, avec les modificateurs

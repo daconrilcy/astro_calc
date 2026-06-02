@@ -288,8 +288,20 @@ pub struct BasicDraftingPlanItem {
     pub primary_signal_keys: Vec<String>,
     #[serde(default)]
     pub secondary_slot_candidates: Vec<BasicSecondarySlotCandidate>,
+    #[serde(default)]
+    pub emphasis_refs: BasicEmphasisRefs,
     pub writing_objective: String,
     pub max_words: u16,
     #[serde(default)]
     pub avoid: Vec<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BasicEmphasisRefs {
+    #[serde(default)]
+    pub dominant_signs: Vec<String>,
+    #[serde(default)]
+    pub dominant_houses: Vec<i32>,
+    #[serde(default)]
+    pub dominant_objects: Vec<String>,
 }

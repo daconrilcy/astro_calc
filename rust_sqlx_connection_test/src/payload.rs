@@ -4,8 +4,8 @@ use crate::dignities::{
 };
 use crate::domain::{
     BasicChartEmphasis, BasicDignity, BasicDominantHouse, BasicDominantObject, BasicDominantSign,
-    BasicDraftingPlanItem, BasicLlmHandoffContract, BasicObjectPosition, BasicPayload,
-    BasicReadingPlanItem, BasicSecondarySlotCandidate, BasicSignal, NatalChartInput,
+    BasicDraftingPlanItem, BasicEmphasisRefs, BasicLlmHandoffContract, BasicObjectPosition,
+    BasicPayload, BasicReadingPlanItem, BasicSecondarySlotCandidate, BasicSignal, NatalChartInput,
     ObjectPositionFact,
 };
 use crate::models::InterpretationSignalRow;
@@ -40,7 +40,7 @@ pub fn build_basic_payload(
     let dignities = build_payload_dignities(positions, &basic_signals);
     let chart_emphasis = build_chart_emphasis(positions, &dignities, &basic_signals);
     let reading_plan = build_reading_plan(&basic_signals);
-    let drafting_plan = build_drafting_plan(&reading_plan, &basic_signals);
+    let drafting_plan = build_drafting_plan(&reading_plan, &basic_signals, &chart_emphasis);
 
     BasicPayload {
         product_code: input.product_code().to_string(),
@@ -97,7 +97,7 @@ fn position_dignity_context(position: &ObjectPositionFact) -> serde_json::Value 
 
 pub fn basic_llm_handoff_contract() -> BasicLlmHandoffContract {
     BasicLlmHandoffContract {
-        contract_version: "basic_natal_structured_v5".to_string(),
+        contract_version: "basic_natal_structured_v6".to_string(),
         payload_language_code: "en".to_string(),
         target_language_policy: "provided_by_llm_service".to_string(),
         audience_level: "beginner".to_string(),
@@ -115,6 +115,7 @@ pub fn basic_llm_handoff_contract() -> BasicLlmHandoffContract {
             "list placements mechanically".to_string(),
             "translate technical keys such as signal_key, theme_code, semantic_tags, slot, or aggregation_group".to_string(),
             "expose raw evidence unless explicitly requested".to_string(),
+            "treat chart_emphasis as a standalone section instead of weighting context".to_string(),
             "make deterministic or fatalistic predictions".to_string(),
         ],
         output_format: "structured_sections".to_string(),
@@ -902,7 +903,12 @@ fn dedupe_strings(values: &mut Vec<String>) {
 fn build_drafting_plan(
     reading_plan: &[BasicReadingPlanItem],
     signals: &[BasicSignal],
+    chart_emphasis: &BasicChartEmphasis,
 ) -> Vec<BasicDraftingPlanItem> {
+    let has_dominant_cluster = reading_plan
+        .iter()
+        .any(|item| item.slot == "dominant_cluster");
+
     reading_plan
         .iter()
         .map(|item| {
@@ -913,12 +919,174 @@ fn build_drafting_plan(
                 source_signal_keys: item.source_signal_keys.clone(),
                 primary_signal_keys: item.primary_signal_keys.clone(),
                 secondary_slot_candidates: item.secondary_slot_candidates.clone(),
-                writing_objective: writing_objective(item, &source_signals),
+                emphasis_refs: emphasis_refs_for_slot(
+                    item,
+                    &source_signals,
+                    chart_emphasis,
+                    has_dominant_cluster,
+                ),
+                writing_objective: writing_objective(item, &source_signals, has_dominant_cluster),
                 max_words: max_words_for_slot(&item.slot),
                 avoid: avoid_rules_for_slot(&item.slot),
             }
         })
         .collect()
+}
+
+fn emphasis_refs_for_slot(
+    item: &BasicReadingPlanItem,
+    signals: &[&BasicSignal],
+    chart_emphasis: &BasicChartEmphasis,
+    has_dominant_cluster: bool,
+) -> BasicEmphasisRefs {
+    let should_attach =
+        item.slot == "dominant_cluster" || (item.slot == "core_identity" && !has_dominant_cluster);
+    if !should_attach {
+        return BasicEmphasisRefs::default();
+    }
+
+    let (dominant_signs, dominant_houses) = if item.slot == "dominant_cluster" {
+        let cluster_signs = cluster_sign_refs(signals);
+        let cluster_houses = cluster_house_refs(signals);
+        (
+            filtered_or_all_sign_refs(chart_emphasis, &cluster_signs),
+            filtered_or_all_house_refs(chart_emphasis, &cluster_houses),
+        )
+    } else {
+        (
+            chart_emphasis
+                .dominant_signs
+                .iter()
+                .map(|entry| entry.sign_code.clone())
+                .collect(),
+            chart_emphasis
+                .dominant_houses
+                .iter()
+                .map(|entry| entry.house_number)
+                .collect(),
+        )
+    };
+
+    let slot_objects = emphasis_object_scope(item);
+    let dominant_objects = if slot_objects.is_empty() {
+        chart_emphasis
+            .dominant_objects
+            .iter()
+            .map(|entry| entry.object_code.clone())
+            .collect()
+    } else {
+        chart_emphasis
+            .dominant_objects
+            .iter()
+            .filter(|entry| slot_objects.contains(&entry.object_code))
+            .map(|entry| entry.object_code.clone())
+            .collect()
+    };
+
+    BasicEmphasisRefs {
+        dominant_signs,
+        dominant_houses,
+        dominant_objects,
+    }
+}
+
+fn cluster_sign_refs(signals: &[&BasicSignal]) -> Vec<String> {
+    signals
+        .iter()
+        .filter(|signal| signal.signal_key.starts_with("cluster:"))
+        .filter_map(|signal| {
+            signal
+                .evidence
+                .as_ref()
+                .and_then(|evidence| evidence.get("sign_code"))
+                .and_then(|value| value.as_str())
+                .map(ToString::to_string)
+        })
+        .collect()
+}
+
+fn cluster_house_refs(signals: &[&BasicSignal]) -> Vec<i32> {
+    signals
+        .iter()
+        .filter(|signal| signal.signal_key.starts_with("cluster:"))
+        .filter_map(|signal| {
+            signal
+                .evidence
+                .as_ref()
+                .and_then(|evidence| evidence.get("house_number"))
+                .and_then(|value| value.as_i64())
+                .and_then(|value| i32::try_from(value).ok())
+        })
+        .collect()
+}
+
+fn filtered_or_all_sign_refs(
+    chart_emphasis: &BasicChartEmphasis,
+    allowed_signs: &[String],
+) -> Vec<String> {
+    let refs = chart_emphasis
+        .dominant_signs
+        .iter()
+        .filter(|entry| allowed_signs.contains(&entry.sign_code))
+        .map(|entry| entry.sign_code.clone())
+        .collect::<Vec<_>>();
+    if refs.is_empty() {
+        chart_emphasis
+            .dominant_signs
+            .iter()
+            .map(|entry| entry.sign_code.clone())
+            .collect()
+    } else {
+        refs
+    }
+}
+
+fn filtered_or_all_house_refs(
+    chart_emphasis: &BasicChartEmphasis,
+    allowed_houses: &[i32],
+) -> Vec<i32> {
+    let refs = chart_emphasis
+        .dominant_houses
+        .iter()
+        .filter(|entry| allowed_houses.contains(&entry.house_number))
+        .map(|entry| entry.house_number)
+        .collect::<Vec<_>>();
+    if refs.is_empty() {
+        chart_emphasis
+            .dominant_houses
+            .iter()
+            .map(|entry| entry.house_number)
+            .collect()
+    } else {
+        refs
+    }
+}
+
+fn emphasis_object_scope(item: &BasicReadingPlanItem) -> Vec<String> {
+    let mut object_codes = Vec::new();
+    for signal_key in item.source_signal_keys.iter().chain(
+        item.secondary_slot_candidates
+            .iter()
+            .map(|candidate| &candidate.signal_key),
+    ) {
+        if let Some(object_code) = object_code_from_signal_key(signal_key) {
+            if !object_codes.contains(&object_code) {
+                object_codes.push(object_code);
+            }
+        }
+    }
+    object_codes
+}
+
+fn object_code_from_signal_key(signal_key: &str) -> Option<String> {
+    if let Some(object_code) = signal_key.strip_prefix("object_position:") {
+        return Some(object_code.to_string());
+    }
+    signal_key
+        .strip_prefix("dignity:")
+        .and_then(|tail| tail.split(':').next())
+        .filter(|object_code| !object_code.is_empty())
+        .map(ToString::to_string)
 }
 
 fn signals_for_keys<'a>(signals: &'a [BasicSignal], keys: &[String]) -> Vec<&'a BasicSignal> {
@@ -963,10 +1131,17 @@ fn cluster_section_title(signals: &[&BasicSignal]) -> String {
     format!("A {sign_name} dominant theme around {house_name}")
 }
 
-fn writing_objective(item: &BasicReadingPlanItem, signals: &[&BasicSignal]) -> String {
+fn writing_objective(
+    item: &BasicReadingPlanItem,
+    signals: &[&BasicSignal],
+    has_dominant_cluster: bool,
+) -> String {
     match item.slot.as_str() {
+        "core_identity" if has_dominant_cluster => {
+            "Explain the central identity markers, emotional needs, and overall chart orientation in plain language, letting chart_emphasis only adjust relative weight without creating another section.".to_string()
+        }
         "core_identity" => {
-            "Explain the central identity markers, emotional needs, and overall chart orientation in plain language.".to_string()
+            "Explain the central identity markers, emotional needs, and overall chart orientation in plain language, using emphasis_refs as weighting context rather than as a separate topic.".to_string()
         }
         "dominant_cluster" => dominant_cluster_objective(signals),
         "main_tension_or_support" => {
@@ -1032,7 +1207,7 @@ fn dominant_cluster_objective(signals: &[&BasicSignal]) -> String {
     let grouping_context = cluster_grouping_context(signals);
 
     format!(
-        "Explain in plain language that the chart emphasizes {sign_name}, {house_name}, and {theme_text}, grouping the {grouping_context} instead of enumerating placements."
+        "Explain in plain language that the chart emphasizes {sign_name}, {house_name}, and {theme_text}, grouping the {grouping_context} instead of enumerating placements. Use emphasis_refs only as weighting context, not as a separate section."
     )
 }
 
@@ -1083,6 +1258,7 @@ fn avoid_rules_for_slot(slot: &str) -> Vec<String> {
         "use technical IDs".to_string(),
         "make fatalistic predictions".to_string(),
         "add information that is absent from the source signals".to_string(),
+        "turn chart_emphasis into a standalone section".to_string(),
     ];
 
     match slot {
@@ -1355,18 +1531,34 @@ mod tests {
         );
         assert_eq!(payload.drafting_plan[0].max_words, 110);
         assert_eq!(
+            payload.drafting_plan[0].emphasis_refs.dominant_signs,
+            vec!["gemini"]
+        );
+        assert_eq!(
+            payload.drafting_plan[0].emphasis_refs.dominant_houses,
+            vec![9]
+        );
+        assert_eq!(
+            payload.drafting_plan[0].emphasis_refs.dominant_objects,
+            vec!["sun"]
+        );
+        assert_eq!(
             payload
                 .llm_handoff_contract
                 .as_ref()
                 .expect("llm handoff contract")
                 .contract_version,
-            "basic_natal_structured_v5"
+            "basic_natal_structured_v6"
         );
         let contract = payload
             .llm_handoff_contract
             .as_ref()
             .expect("llm handoff contract");
         assert!(contract.must_use.contains(&"chart_emphasis".to_string()));
+        assert!(contract.must_not.contains(
+            &"treat chart_emphasis as a standalone section instead of weighting context"
+                .to_string()
+        ));
         assert!(contract.must_use.contains(&"dignities".to_string()));
         assert_eq!(contract.payload_language_code, "en");
         assert_eq!(contract.target_language_policy, "provided_by_llm_service");
@@ -1460,7 +1652,12 @@ mod tests {
             },
         ];
 
-        let payload = build_basic_payload(42, &input(), &[position()], &signals);
+        let payload = build_basic_payload(
+            42,
+            &input(),
+            &[capricorn_house_2_position(1, "sun", "Sun")],
+            &signals,
+        );
         let cluster_plan = payload
             .reading_plan
             .iter()
@@ -1509,6 +1706,23 @@ mod tests {
             cluster_drafting.section_title,
             "A Capricorn dominant theme around Resources"
         );
+        assert_eq!(
+            cluster_drafting.emphasis_refs.dominant_signs,
+            vec!["capricorn"]
+        );
+        assert_eq!(cluster_drafting.emphasis_refs.dominant_houses, vec![2]);
+        assert!(cluster_drafting
+            .emphasis_refs
+            .dominant_objects
+            .contains(&"sun".to_string()));
+        let core_drafting = payload
+            .drafting_plan
+            .iter()
+            .find(|item| item.slot == "core_identity")
+            .expect("expected core identity drafting item");
+        assert!(core_drafting.emphasis_refs.dominant_signs.is_empty());
+        assert!(core_drafting.emphasis_refs.dominant_houses.is_empty());
+        assert!(core_drafting.emphasis_refs.dominant_objects.is_empty());
         assert!(cluster_drafting
             .avoid
             .contains(&"repeat each placement one by one".to_string()));
@@ -1681,6 +1895,99 @@ mod tests {
             .iter()
             .any(|entry| entry.object_code == "moon"
                 && entry.reasons == vec!["placement".to_string()]));
+    }
+
+    #[test]
+    fn drafting_emphasis_refs_scope_objects_to_the_receiving_slot() {
+        let signals = vec![
+            InterpretationSignalRow {
+                id: 1,
+                signal_key: "cluster:gemini:house_9".to_string(),
+                theme_code: Some("beliefs".to_string()),
+                title: "Strong concentration in Gemini, house 9".to_string(),
+                summary: Some("summary".to_string()),
+                priority_score: 99.0,
+                confidence_score: Some(0.9),
+                payload_json: Some(json!({
+                    "interpretive_hint": "hint",
+                    "semantic_tags": ["cluster", "gemini", "house_9"],
+                    "source_weight": 2.35,
+                    "aggregation_group": "gemini_house_9_cluster",
+                    "writing_guidance": "guidance",
+                    "evidence": {
+                        "fact_type": "position_cluster",
+                        "cluster_type": "sign_house",
+                        "sign_code": "gemini",
+                        "sign_name": "Gemini",
+                        "house_number": 9,
+                        "house_name": "Beliefs",
+                        "source_signals": [
+                            "object_position:sun",
+                            "object_position:mercury",
+                            "object_position:jupiter"
+                        ],
+                        "source_objects": ["sun", "mercury", "jupiter"]
+                    }
+                })),
+            },
+            placement_signal_row(2, "object_position:sun", "sun"),
+            placement_signal_row(3, "object_position:mercury", "mercury"),
+            placement_signal_row(4, "object_position:jupiter", "jupiter"),
+            placement_signal_row(5, "object_position:mars", "mars"),
+            dignity_signal_row(6, "dignity:mercury:domicile:gemini", "mercury"),
+            dignity_signal_row(7, "dignity:mars:detriment:taurus", "mars"),
+        ];
+        let positions = vec![
+            ObjectPositionFact {
+                object_code: "sun".to_string(),
+                object_name: "Sun".to_string(),
+                ..position()
+            },
+            ObjectPositionFact {
+                chart_object_id: 3,
+                object_code: "mercury".to_string(),
+                object_name: "Mercury".to_string(),
+                longitude_deg: 70.0,
+                ..position()
+            },
+            ObjectPositionFact {
+                chart_object_id: 6,
+                object_code: "jupiter".to_string(),
+                object_name: "Jupiter".to_string(),
+                longitude_deg: 80.0,
+                ..position()
+            },
+            ObjectPositionFact {
+                chart_object_id: 5,
+                object_code: "mars".to_string(),
+                object_name: "Mars".to_string(),
+                sign_id: 2,
+                sign_code: "taurus".to_string(),
+                sign_name: "Taurus".to_string(),
+                house_id: Some(8),
+                house_number: Some(8),
+                house_name: Some("Transformation".to_string()),
+                longitude_deg: 45.0,
+                ..position()
+            },
+        ];
+
+        let payload = build_basic_payload(42, &input(), &positions, &signals);
+        let cluster_drafting = payload
+            .drafting_plan
+            .iter()
+            .find(|item| item.slot == "dominant_cluster")
+            .expect("expected dominant cluster drafting item");
+
+        assert!(payload
+            .chart_emphasis
+            .dominant_objects
+            .iter()
+            .any(|entry| entry.object_code == "mars"));
+        assert!(!cluster_drafting
+            .emphasis_refs
+            .dominant_objects
+            .contains(&"mars".to_string()));
     }
 
     #[test]
