@@ -52,6 +52,10 @@ pub fn build_basic_payload(
                 house_number: position.house_number,
                 house_name: position.house_name.clone(),
                 motion_state_id: position.motion_state_id,
+                sign_context: position_context(position, "sign_context"),
+                house_modality: position_context(position, "house_modality"),
+                object_context: position_context(position, "object_context"),
+                motion_context: position_context(position, "motion_context"),
             })
             .collect(),
         signals: basic_signals,
@@ -62,7 +66,7 @@ pub fn build_basic_payload(
 
 pub fn basic_llm_handoff_contract() -> BasicLlmHandoffContract {
     BasicLlmHandoffContract {
-        contract_version: "basic_natal_structured_v1".to_string(),
+        contract_version: "basic_natal_structured_v2".to_string(),
         payload_language_code: "en".to_string(),
         target_language_policy: "provided_by_llm_service".to_string(),
         audience_level: "beginner".to_string(),
@@ -453,6 +457,15 @@ fn payload_string_array(signal: &InterpretationSignalRow, key: &str) -> Vec<Stri
         .unwrap_or_default()
 }
 
+fn position_context(position: &ObjectPositionFact, key: &str) -> Option<serde_json::Value> {
+    position
+        .facts_json
+        .as_ref()
+        .and_then(|facts| facts.get(key))
+        .filter(|value| !value.is_null())
+        .cloned()
+}
+
 #[cfg(test)]
 mod tests {
     use chrono::{TimeZone, Utc};
@@ -496,7 +509,29 @@ mod tests {
             apparent_speed_deg_per_day: Some(1.0),
             altitude_deg: None,
             is_visible: None,
-            facts_json: None,
+            facts_json: Some(json!({
+                "sign_context": {
+                    "element": "air",
+                    "modality": "mutable",
+                    "polarity": "yang",
+                    "keywords": ["communication"]
+                },
+                "house_modality": {
+                    "code": "cadent",
+                    "accidental_strength": "weak_or_background",
+                    "interpretation_weight": "lower_for_external_manifestation"
+                },
+                "object_context": {
+                    "role": "luminary",
+                    "nature": ["luminary"],
+                    "is_luminary": true
+                },
+                "motion_context": {
+                    "motion_state": "direct",
+                    "label": "Direct",
+                    "motion_family": "forward"
+                }
+            })),
         }
     }
 
@@ -562,7 +597,7 @@ mod tests {
                 .as_ref()
                 .expect("llm handoff contract")
                 .contract_version,
-            "basic_natal_structured_v1"
+            "basic_natal_structured_v2"
         );
         let contract = payload
             .llm_handoff_contract
@@ -571,6 +606,22 @@ mod tests {
         assert_eq!(contract.payload_language_code, "en");
         assert_eq!(contract.target_language_policy, "provided_by_llm_service");
         assert!(contract.must_use.contains(&"signals".to_string()));
+        assert_eq!(
+            payload.positions[0]
+                .sign_context
+                .as_ref()
+                .and_then(|context| context.get("element"))
+                .and_then(|value| value.as_str()),
+            Some("air")
+        );
+        assert_eq!(
+            payload.positions[0]
+                .motion_context
+                .as_ref()
+                .and_then(|context| context.get("motion_state"))
+                .and_then(|value| value.as_str()),
+            Some("direct")
+        );
     }
 
     #[test]

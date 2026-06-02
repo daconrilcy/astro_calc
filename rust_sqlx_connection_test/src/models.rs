@@ -7,6 +7,12 @@ pub struct ChartObject {
     pub code: String,
     pub name: String,
     pub swe_id: Option<i32>,
+    pub role_code: Option<String>,
+    pub role_label: Option<String>,
+    pub is_luminary: Option<bool>,
+    pub is_planet_symbolic: Option<bool>,
+    pub is_visible_to_naked_eye: Option<bool>,
+    pub nature_codes: Option<Value>,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -29,6 +35,14 @@ pub struct SignReference {
     pub id: i32,
     pub code: String,
     pub name: String,
+    pub element_code: Option<String>,
+    pub element_label: Option<String>,
+    pub modality_code: Option<String>,
+    pub modality_name: Option<String>,
+    pub polarity_code: Option<String>,
+    pub polarity_name: Option<String>,
+    pub keywords_json: Option<Value>,
+    pub shadow_keywords_json: Option<Value>,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -36,6 +50,18 @@ pub struct HouseReference {
     pub id: i32,
     pub number: i32,
     pub name: String,
+    pub modality_code: Option<String>,
+    pub modality_label: Option<String>,
+    pub accidental_strength: Option<String>,
+    pub interpretation_weight: Option<String>,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct MotionStateReference {
+    pub id: i32,
+    pub code: String,
+    pub label: String,
+    pub motion_family: String,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]

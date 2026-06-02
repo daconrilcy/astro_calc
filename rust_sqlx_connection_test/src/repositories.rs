@@ -7,7 +7,8 @@ use crate::domain::{
 };
 use crate::models::{
     AspectDefinition, ChartCalculationRow, ChartObject, HouseReference, HouseSystem,
-    InterpretationSignalRow, PersistedAspectFact, PersistedObjectPositionFact, SignReference,
+    InterpretationSignalRow, MotionStateReference, PersistedAspectFact,
+    PersistedObjectPositionFact, SignReference,
 };
 use crate::runtime::RuntimeError;
 
@@ -27,10 +28,24 @@ impl RuntimeRepository {
     pub async fn active_chart_objects(&self) -> Result<Vec<ChartObject>, RuntimeError> {
         Ok(sqlx::query_as::<_, ChartObject>(
             r#"
-            SELECT id, code, name, swe_id
-            FROM astral_chart_objects
-            WHERE is_active = true AND is_calculable = true
-            ORDER BY sort_order, id
+            SELECT o.id, o.code, o.name, o.swe_id,
+                   role.code AS role_code,
+                   role.label AS role_label,
+                   def.is_luminary,
+                   def.is_planet_symbolic,
+                   def.is_visible_to_naked_eye,
+                   (
+                       SELECT jsonb_agg(nt.code ORDER BY nt.sort_order, nt.id)
+                       FROM astral_object_nature_assignments na
+                       JOIN astral_object_nature_types nt ON nt.id = na.nature_type_id
+                       WHERE na.chart_object_id = o.id
+                         AND na.is_primary = true
+                   ) AS nature_codes
+            FROM astral_chart_objects o
+            LEFT JOIN astral_chart_object_definitions def ON def.chart_object_id = o.id
+            LEFT JOIN astral_astrological_roles role ON role.id = def.astrological_role_id
+            WHERE o.is_active = true AND o.is_calculable = true
+            ORDER BY o.sort_order, o.id
             "#,
         )
         .fetch_all(&self.pool)
@@ -53,9 +68,22 @@ impl RuntimeRepository {
     pub async fn sign_references(&self) -> Result<Vec<SignReference>, RuntimeError> {
         Ok(sqlx::query_as::<_, SignReference>(
             r#"
-            SELECT id, code, name
-            FROM astral_signs
-            ORDER BY id
+            SELECT s.id, s.code, s.name,
+                   element.code AS element_code,
+                   element.label AS element_label,
+                   modality.code AS modality_code,
+                   modality.name AS modality_name,
+                   polarity.code AS polarity_code,
+                   polarity.name AS polarity_name,
+                   keywords.keywords_json,
+                   keywords.shadow_keywords_json
+            FROM astral_signs s
+            LEFT JOIN astral_sign_profiles profile ON profile.astral_sign_id = s.id
+            LEFT JOIN astral_elements element ON element.id = profile.astral_element_id
+            LEFT JOIN astral_modalities modality ON modality.id = profile.astral_modality_id
+            LEFT JOIN astral_polarities polarity ON polarity.id = profile.astral_polarity_id
+            LEFT JOIN astral_sign_keywords keywords ON keywords.astral_sign_id = s.id
+            ORDER BY s.id
             "#,
         )
         .fetch_all(&self.pool)
@@ -65,9 +93,27 @@ impl RuntimeRepository {
     pub async fn house_references(&self) -> Result<Vec<HouseReference>, RuntimeError> {
         Ok(sqlx::query_as::<_, HouseReference>(
             r#"
-            SELECT id, number, name
-            FROM astral_houses
-            ORDER BY number
+            SELECT h.id, h.number, h.name,
+                   modality.name AS modality_code,
+                   modality.label AS modality_label,
+                   modality.accidental_strength,
+                   modality.interpretation_weight
+            FROM astral_houses h
+            LEFT JOIN astral_house_modalities modality ON modality.id = h.house_modality_id
+            ORDER BY h.number
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?)
+    }
+
+    pub async fn motion_state_references(&self) -> Result<Vec<MotionStateReference>, RuntimeError> {
+        Ok(sqlx::query_as::<_, MotionStateReference>(
+            r#"
+            SELECT id, code, label, motion_family
+            FROM astral_object_motion_states
+            WHERE is_active = true
+            ORDER BY sort_order, id
             "#,
         )
         .fetch_all(&self.pool)
@@ -150,11 +196,62 @@ impl RuntimeRepository {
                    p.apparent_speed_deg_per_day::float8 AS apparent_speed_deg_per_day,
                    p.altitude_deg::float8 AS altitude_deg,
                    p.is_visible,
-                   p.facts_json
+                   COALESCE(p.facts_json, '{}'::jsonb)
+                   || jsonb_build_object(
+                       'sign_context', jsonb_strip_nulls(jsonb_build_object(
+                           'element', element.code,
+                           'element_label', element.label,
+                           'modality', sign_modality.code,
+                           'modality_label', sign_modality.name,
+                           'polarity', polarity.code,
+                           'polarity_label', polarity.name,
+                           'keywords', sign_keywords.keywords_json
+                       )),
+                       'house_modality', CASE
+                           WHEN house_modality.id IS NULL THEN NULL
+                           ELSE jsonb_strip_nulls(jsonb_build_object(
+                               'code', house_modality.name,
+                               'label', house_modality.label,
+                               'accidental_strength', house_modality.accidental_strength,
+                               'interpretation_weight', house_modality.interpretation_weight
+                           ))
+                       END,
+                       'object_context', jsonb_strip_nulls(jsonb_build_object(
+                           'role', role.code,
+                           'role_label', role.label,
+                           'nature', (
+                               SELECT jsonb_agg(nt.code ORDER BY nt.sort_order, nt.id)
+                               FROM astral_object_nature_assignments na
+                               JOIN astral_object_nature_types nt ON nt.id = na.nature_type_id
+                               WHERE na.chart_object_id = o.id
+                                 AND na.is_primary = true
+                           ),
+                           'is_luminary', object_definition.is_luminary,
+                           'is_planet_symbolic', object_definition.is_planet_symbolic,
+                           'is_visible_to_naked_eye', object_definition.is_visible_to_naked_eye
+                       )),
+                       'motion_context', CASE
+                           WHEN motion.id IS NULL THEN NULL
+                           ELSE jsonb_strip_nulls(jsonb_build_object(
+                               'motion_state', motion.code,
+                               'label', motion.label,
+                               'motion_family', motion.motion_family
+                           ))
+                       END
+                   ) AS facts_json
             FROM astral_calculated_chart_object_positions p
             JOIN astral_chart_objects o ON o.id = p.chart_object_id
             JOIN astral_signs s ON s.id = p.sign_id
+            LEFT JOIN astral_sign_profiles sign_profile ON sign_profile.astral_sign_id = s.id
+            LEFT JOIN astral_elements element ON element.id = sign_profile.astral_element_id
+            LEFT JOIN astral_modalities sign_modality ON sign_modality.id = sign_profile.astral_modality_id
+            LEFT JOIN astral_polarities polarity ON polarity.id = sign_profile.astral_polarity_id
+            LEFT JOIN astral_sign_keywords sign_keywords ON sign_keywords.astral_sign_id = s.id
             LEFT JOIN astral_houses h ON h.id = p.house_id
+            LEFT JOIN astral_house_modalities house_modality ON house_modality.id = h.house_modality_id
+            LEFT JOIN astral_chart_object_definitions object_definition ON object_definition.chart_object_id = o.id
+            LEFT JOIN astral_astrological_roles role ON role.id = object_definition.astrological_role_id
+            LEFT JOIN astral_object_motion_states motion ON motion.id = p.motion_state_id
             WHERE p.chart_calculation_id = $1
             ORDER BY o.sort_order, o.id
             "#,

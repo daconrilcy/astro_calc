@@ -29,6 +29,12 @@ L'etape 1E formalise le contrat canonique de handoff LLM. Le moteur Rust produit
 un payload anglophone stable, deterministe et auditable ; il ne traduit pas, ne
 choisit pas la formulation finale et ne depend pas d'une langue cible utilisateur.
 
+L'etape 2A enrichit les placements sans transformer le payload en dump de base.
+Chaque position conserve son role de preuve structuree, mais elle porte
+maintenant le contexte utile du signe, de la maison, de l'objet et du mouvement.
+Ces contextes alimentent aussi les signaux de placement, les tags semantiques et
+une legere ponderation de priorite.
+
 Le runtime conserve la chaine existante :
 
 1. calcul des faits astrologiques ;
@@ -66,21 +72,52 @@ Chaque position expose maintenant les champs lisibles en plus des IDs :
   "house_id": 9,
   "house_number": 9,
   "house_name": "Beliefs",
-  "motion_state_id": 1
+  "motion_state_id": 1,
+  "sign_context": {
+    "element": "air",
+    "element_label": "Air",
+    "modality": "mutable",
+    "modality_label": "Mutable",
+    "polarity": "yang",
+    "polarity_label": "Yang",
+    "keywords": ["communication", "curiosity"]
+  },
+  "house_modality": {
+    "code": "cadent",
+    "label": "Cadent",
+    "accidental_strength": "weak_or_background",
+    "interpretation_weight": "lower_for_external_manifestation"
+  },
+  "object_context": {
+    "role": "luminary",
+    "role_label": "Luminary",
+    "nature": ["luminary"],
+    "is_luminary": true,
+    "is_planet_symbolic": false,
+    "is_visible_to_naked_eye": true
+  },
+  "motion_context": {
+    "motion_state": "direct",
+    "label": "Direct",
+    "motion_family": "forward"
+  }
 }
 ```
 
 Les IDs restent presents pour l'audit et les relations DB. Les libelles viennent :
 
-- des referentiels `astral_signs` et `astral_houses` charges avant le calcul
-  pour les nouveaux faits ;
-- des joins `astral_signs` et `astral_houses` quand un payload est reconstruit depuis la DB.
+- des referentiels `astral_signs`, `astral_sign_profiles`,
+  `astral_sign_keywords`, `astral_houses`, `astral_house_modalities`,
+  `astral_chart_object_definitions`, `astral_object_nature_assignments` et
+  `astral_object_motion_states` charges avant le calcul pour les nouveaux faits ;
+- des joins equivalents quand un payload est reconstruit depuis la DB.
 
 Le calcul geometrique conserve seulement les operations derivees de la
 longitude : slot zodiacal et numero de maison. Les IDs, codes et noms de signes
 ou de maisons sont resolus depuis les tables. Le runtime refuse de calculer si
 les 12 signes ou les 12 maisons ne sont pas presents ou si les references sont
-ambigues.
+ambigues. Le contrat Basic v2 refuse aussi de reutiliser un payload existant si
+les contextes de placement utiles sont absents ou incomplets.
 
 ## Contrat des signaux
 
@@ -123,7 +160,30 @@ preuves techniques dans `evidence` :
     "house_id": 9,
     "house_number": 9,
     "house_name": "Beliefs",
-    "longitude_deg": 84.8759
+    "longitude_deg": 84.8759,
+    "placement_context": {
+      "sign_context": {
+        "element": "air",
+        "modality": "mutable",
+        "polarity": "yang",
+        "keywords": ["communication", "curiosity"]
+      },
+      "house_modality": {
+        "code": "cadent",
+        "accidental_strength": "weak_or_background",
+        "interpretation_weight": "lower_for_external_manifestation"
+      },
+      "object_context": {
+        "role": "luminary",
+        "nature": ["luminary"],
+        "is_luminary": true
+      },
+      "motion_context": {
+        "motion_state": "direct",
+        "label": "Direct",
+        "motion_family": "forward"
+      }
+    }
   }
 }
 ```
@@ -184,6 +244,28 @@ Les champs ajoutes par l'etape 1B sont :
 
 Ces champs sont stockes dans `astral_interpretation_signals.payload_json`, puis
 remontes dans le payload final par `payload.rs`.
+
+### Champs contextuels 2A
+
+Les champs ajoutes par l'etape 2A sont volontairement limites aux preuves utiles :
+
+- `sign_context` : element, modalite zodiacale, polarite et mots-cles principaux
+  du signe.
+- `house_modality` : modalite de maison, force accidentelle et poids
+  d'interpretation.
+- `object_context` : role astrologique, nature principale et indicateurs de
+  visibilite/symbolique.
+- `motion_context` : etat de mouvement lisible, libelle et famille de mouvement.
+
+Dans `positions`, ces contextes sont exposes directement comme preuves
+structurees. Dans les signaux de placement, ils sont imbriques dans
+`evidence.placement_context`, afin de rester associes au fait astrologique et de
+ne pas creer un bloc redactionnel autonome.
+
+Les tags semantiques des placements integrent aussi les codes utiles comme
+`air`, `mutable`, `yang`, `cadent`, `luminary` ou `direct`. La priorite d'un
+placement est legerement ajustee par la modalite de maison : angular augmente le
+poids, succedent l'augmente faiblement, cadent le baisse faiblement.
 
 ## Signaux agreges Basic
 
@@ -326,7 +408,7 @@ doit respecter :
 ```json
 {
   "llm_handoff_contract": {
-    "contract_version": "basic_natal_structured_v1",
+    "contract_version": "basic_natal_structured_v2",
     "payload_language_code": "en",
     "target_language_policy": "provided_by_llm_service",
     "audience_level": "beginner",
@@ -449,11 +531,13 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
 - 12 signaux maximum ;
 - au moins un signal ;
 - `llm_handoff_contract` present et conforme au contrat canonique
-  `basic_natal_structured_v1` ;
-- positions avec `sign_code` et `sign_name` ;
+  `basic_natal_structured_v2` ;
+- positions avec `sign_code`, `sign_name`, `sign_context`, `house_modality`,
+  `object_context` et `motion_context` ;
 - signaux avec `evidence` ;
 - signaux avec `theme_code`, `interpretive_hint`, `semantic_tags`,
   `aggregation_group` et `writing_guidance` non vides ;
+- signaux de placement avec `evidence.placement_context` complet ;
 - `reading_plan` present, non vide, compose de slots uniques et de sources qui
   existent dans les signaux du payload ;
 - `drafting_plan` present, non vide, aligne sur les slots et sources du
@@ -492,12 +576,14 @@ Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
 - `product_code = "basic"` ;
 - `llm_handoff_contract.payload_language_code = "en"` ;
 - `llm_handoff_contract.target_language_policy = "provided_by_llm_service"` ;
-- des positions avec `sign_code`, `sign_name`, `house_number`, `house_name` ;
+- des positions avec `sign_code`, `sign_name`, `house_number`, `house_name`,
+  `sign_context`, `house_modality`, `object_context` et `motion_context` ;
 - au plus 12 signaux ;
 - un `reading_plan` non vide ;
 - un `drafting_plan` non vide et aligne sur le `reading_plan` ;
 - des titres sans IDs techniques ;
 - des champs semantiques 1B sur chaque signal ;
+- un `evidence.placement_context` complet sur chaque signal de placement ;
 - un cluster `cluster:<sign_code>:house_<number>` quand au moins trois objets
   partagent le meme signe et la meme maison ;
 - des IDs conserves dans `evidence` ;

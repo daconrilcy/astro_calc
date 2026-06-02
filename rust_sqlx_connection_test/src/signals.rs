@@ -37,7 +37,7 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
                 "{} is placed in {}{}, emphasizing this chart factor through a concrete, readable placement.",
                 position.object_name, position.sign_name, summary_house
             )),
-            priority_score: position_priority(&position.object_code),
+            priority_score: position_priority(position),
             confidence_score: Some(0.95),
             suppression_state: "active".to_string(),
             payload_json: Some(json!({
@@ -57,7 +57,8 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
                     "house_id": position.house_id,
                     "house_number": position.house_number,
                     "house_name": position.house_name,
-                    "longitude_deg": position.longitude_deg
+                    "longitude_deg": position.longitude_deg,
+                    "placement_context": placement_context(position)
                 }
             })),
         });
@@ -182,8 +183,8 @@ fn add_position_cluster_signals(
 
     for ((sign_code, house_number), mut positions) in groups {
         positions.sort_by(|left, right| {
-            position_priority(&right.object_code)
-                .partial_cmp(&position_priority(&left.object_code))
+            position_priority(right)
+                .partial_cmp(&position_priority(left))
                 .unwrap_or(std::cmp::Ordering::Equal)
                 .then_with(|| left.object_code.cmp(&right.object_code))
         });
@@ -353,12 +354,24 @@ fn is_core_chart_object(object_code: &str) -> bool {
     matches!(object_code, "sun" | "moon" | "ascendant" | "mc")
 }
 
-fn position_priority(object_code: &str) -> f64 {
-    match object_code {
+fn position_priority(position: &ObjectPositionFact) -> f64 {
+    let base = match position.object_code.as_str() {
         "sun" | "moon" => 100.0,
         "mercury" | "venus" | "mars" => 85.0,
         "jupiter" | "saturn" => 75.0,
         _ => 60.0,
+    };
+    round4((base + house_modality_priority_delta(position)).min(100.0))
+}
+
+fn house_modality_priority_delta(position: &ObjectPositionFact) -> f64 {
+    match placement_context_value(position, "house_modality", "code")
+        .and_then(|value| value.as_str())
+    {
+        Some("angular") => 2.0,
+        Some("succedent") => 0.75,
+        Some("cadent") => -0.75,
+        _ => 0.0,
     }
 }
 
@@ -428,7 +441,64 @@ fn position_semantic_tags(position: &ObjectPositionFact) -> Vec<String> {
         tags.push(house_theme_code(house_number).to_string());
         tags.extend(house_tags(house_number));
     }
+    if let Some(element) = placement_context_str(position, "sign_context", "element") {
+        tags.push(element.to_string());
+    }
+    if let Some(modality) = placement_context_str(position, "sign_context", "modality") {
+        tags.push(modality.to_string());
+    }
+    if let Some(polarity) = placement_context_str(position, "sign_context", "polarity") {
+        tags.push(polarity.to_string());
+    }
+    if let Some(house_modality) = placement_context_str(position, "house_modality", "code") {
+        tags.push(house_modality.to_string());
+    }
+    if let Some(role) = placement_context_str(position, "object_context", "role") {
+        tags.push(role.to_string());
+    }
+    if let Some(motion_state) = placement_context_str(position, "motion_context", "motion_state") {
+        tags.push(motion_state.to_string());
+    }
     dedupe_tags(tags)
+}
+
+fn placement_context(position: &ObjectPositionFact) -> serde_json::Value {
+    json!({
+        "sign_context": placement_context_object(position, "sign_context"),
+        "house_modality": placement_context_object(position, "house_modality"),
+        "object_context": placement_context_object(position, "object_context"),
+        "motion_context": placement_context_object(position, "motion_context")
+    })
+}
+
+fn placement_context_object(position: &ObjectPositionFact, key: &str) -> Option<serde_json::Value> {
+    position
+        .facts_json
+        .as_ref()
+        .and_then(|facts| facts.get(key))
+        .filter(|value| !value.is_null())
+        .cloned()
+}
+
+fn placement_context_value<'a>(
+    position: &'a ObjectPositionFact,
+    context_key: &str,
+    value_key: &str,
+) -> Option<&'a serde_json::Value> {
+    position
+        .facts_json
+        .as_ref()
+        .and_then(|facts| facts.get(context_key))
+        .and_then(|context| context.get(value_key))
+        .filter(|value| !value.is_null())
+}
+
+fn placement_context_str<'a>(
+    position: &'a ObjectPositionFact,
+    context_key: &str,
+    value_key: &str,
+) -> Option<&'a str> {
+    placement_context_value(position, context_key, value_key).and_then(|value| value.as_str())
 }
 
 fn cluster_semantic_tags(sign_code: &str, house_number: i32) -> Vec<String> {
@@ -638,6 +708,34 @@ mod tests {
         }
     }
 
+    fn enriched_position() -> ObjectPositionFact {
+        let mut position = position(1, "sun", "Sun", "gemini", "Gemini", 9);
+        position.facts_json = Some(json!({
+            "sign_context": {
+                "element": "air",
+                "modality": "mutable",
+                "polarity": "yang",
+                "keywords": ["communication", "curiosity"]
+            },
+            "house_modality": {
+                "code": "cadent",
+                "accidental_strength": "weak_or_background",
+                "interpretation_weight": "lower_for_external_manifestation"
+            },
+            "object_context": {
+                "role": "luminary",
+                "nature": ["luminary"],
+                "is_luminary": true
+            },
+            "motion_context": {
+                "motion_state": "direct",
+                "label": "Direct",
+                "motion_family": "forward"
+            }
+        }));
+        position
+    }
+
     fn aspect(
         source_code: &str,
         source_name: &str,
@@ -706,6 +804,39 @@ mod tests {
                 .and_then(|value| value.as_array())
                 .map(Vec::len),
             Some(3)
+        );
+    }
+
+    #[test]
+    fn placement_signal_includes_contextual_evidence_and_tags() {
+        let facts = CalculatedChartFacts {
+            positions: vec![enriched_position()],
+            house_cusps: Vec::new(),
+            aspects: Vec::new(),
+        };
+
+        let signals = aggregate_basic_signals(&facts);
+        let signal = signals
+            .iter()
+            .find(|signal| signal.signal_key == "object_position:sun")
+            .expect("expected Sun signal");
+        let payload = signal.payload_json.as_ref().expect("signal payload");
+        let tags = payload
+            .get("semantic_tags")
+            .and_then(|value| value.as_array())
+            .expect("semantic tags");
+
+        assert!(tags.iter().any(|tag| tag.as_str() == Some("air")));
+        assert!(tags.iter().any(|tag| tag.as_str() == Some("mutable")));
+        assert!(tags.iter().any(|tag| tag.as_str() == Some("cadent")));
+        assert_eq!(
+            payload
+                .get("evidence")
+                .and_then(|evidence| evidence.get("placement_context"))
+                .and_then(|context| context.get("motion_context"))
+                .and_then(|motion| motion.get("motion_state"))
+                .and_then(|value| value.as_str()),
+            Some("direct")
         );
     }
 

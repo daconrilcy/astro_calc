@@ -77,6 +77,7 @@ where
         let references = CalculationReferenceData {
             signs: self.repository.sign_references().await?,
             houses: self.repository.house_references().await?,
+            motion_states: self.repository.motion_state_references().await?,
         };
         validate_calculation_references(&references)?;
 
@@ -212,6 +213,11 @@ fn validate_calculation_references(
             references.houses.len()
         )));
     }
+    if references.motion_states.is_empty() {
+        return Err(RuntimeError::Ephemeris(
+            "expected motion state references".to_string(),
+        ));
+    }
 
     let mut sign_ids = HashSet::new();
     for sign in &references.signs {
@@ -237,6 +243,19 @@ fn validate_calculation_references(
         }
     }
 
+    let mut motion_state_ids = HashSet::new();
+    for motion_state in &references.motion_states {
+        if !motion_state_ids.insert(motion_state.id)
+            || motion_state.code.trim().is_empty()
+            || motion_state.label.trim().is_empty()
+            || motion_state.motion_family.trim().is_empty()
+        {
+            return Err(RuntimeError::Ephemeris(
+                "invalid motion state references: duplicate IDs or empty labels".to_string(),
+            ));
+        }
+    }
+
     Ok(())
 }
 
@@ -257,10 +276,7 @@ fn is_current_basic_payload(payload: &BasicPayload) -> bool {
         && has_current_llm_handoff_contract(payload)
         && has_current_reading_plan(payload)
         && has_current_drafting_plan(payload)
-        && payload
-            .positions
-            .iter()
-            .all(|position| !position.sign_code.is_empty() && !position.sign_name.is_empty())
+        && payload.positions.iter().all(has_current_position_context)
         && payload.signals.iter().all(|signal| {
             signal.evidence.is_some()
                 && has_text(&signal.theme_code)
@@ -273,6 +289,7 @@ fn is_current_basic_payload(payload: &BasicPayload) -> bool {
                 && has_text(&signal.aggregation_group)
                 && has_text(&signal.writing_guidance)
                 && has_current_aspect_article(&signal.interpretive_hint)
+                && has_current_placement_context(signal)
         })
 }
 
@@ -281,7 +298,7 @@ fn has_current_llm_handoff_contract(payload: &BasicPayload) -> bool {
         return false;
     };
 
-    contract.contract_version == "basic_natal_structured_v1"
+    contract.contract_version == "basic_natal_structured_v2"
         && contract.payload_language_code == "en"
         && contract.target_language_policy == "provided_by_llm_service"
         && contract.audience_level == "beginner"
@@ -409,6 +426,54 @@ fn has_current_aspect_article(value: &Option<String>) -> bool {
         .is_none_or(|text| !text.contains(" by a opposition"))
 }
 
+fn has_current_position_context(position: &crate::domain::BasicObjectPosition) -> bool {
+    !position.sign_code.is_empty()
+        && !position.sign_name.is_empty()
+        && option_json_has_text(&position.sign_context, "element")
+        && option_json_has_text(&position.sign_context, "modality")
+        && option_json_has_text(&position.sign_context, "polarity")
+        && option_json_has_text(&position.house_modality, "code")
+        && option_json_has_text(&position.object_context, "role")
+        && option_json_has_text(&position.motion_context, "motion_state")
+}
+
+fn has_current_placement_context(signal: &crate::domain::BasicSignal) -> bool {
+    if !signal.signal_key.starts_with("object_position:") {
+        return true;
+    }
+
+    let Some(context) = signal
+        .evidence
+        .as_ref()
+        .and_then(|evidence| evidence.get("placement_context"))
+    else {
+        return false;
+    };
+
+    nested_json_has_text(context, "sign_context", "element")
+        && nested_json_has_text(context, "sign_context", "modality")
+        && nested_json_has_text(context, "sign_context", "polarity")
+        && nested_json_has_text(context, "house_modality", "code")
+        && nested_json_has_text(context, "object_context", "role")
+        && nested_json_has_text(context, "motion_context", "motion_state")
+}
+
+fn option_json_has_text(value: &Option<serde_json::Value>, key: &str) -> bool {
+    value
+        .as_ref()
+        .and_then(|value| value.get(key))
+        .and_then(|value| value.as_str())
+        .is_some_and(|text| !text.trim().is_empty())
+}
+
+fn nested_json_has_text(value: &serde_json::Value, context_key: &str, key: &str) -> bool {
+    value
+        .get(context_key)
+        .and_then(|context| context.get(key))
+        .and_then(|value| value.as_str())
+        .is_some_and(|text| !text.trim().is_empty())
+}
+
 #[cfg(test)]
 mod tests {
     use chrono::TimeZone;
@@ -429,7 +494,7 @@ mod tests {
             subject_label: None,
             birth_datetime_utc: Utc.with_ymd_and_hms(2024, 6, 15, 12, 0, 0).unwrap(),
             llm_handoff_contract: Some(BasicLlmHandoffContract {
-                contract_version: "basic_natal_structured_v1".to_string(),
+                contract_version: "basic_natal_structured_v2".to_string(),
                 payload_language_code: "en".to_string(),
                 target_language_policy: "provided_by_llm_service".to_string(),
                 audience_level: "beginner".to_string(),
@@ -460,6 +525,27 @@ mod tests {
                 house_number: Some(9),
                 house_name: Some("Beliefs".to_string()),
                 motion_state_id: Some(1),
+                sign_context: Some(json!({
+                    "element": "air",
+                    "modality": "mutable",
+                    "polarity": "yang",
+                    "keywords": ["communication"]
+                })),
+                house_modality: Some(json!({
+                    "code": "cadent",
+                    "accidental_strength": "weak_or_background",
+                    "interpretation_weight": "lower_for_external_manifestation"
+                })),
+                object_context: Some(json!({
+                    "role": "luminary",
+                    "nature": ["luminary"],
+                    "is_luminary": true
+                })),
+                motion_context: Some(json!({
+                    "motion_state": "direct",
+                    "label": "Direct",
+                    "motion_family": "forward"
+                })),
             }],
             signals: vec![BasicSignal {
                 signal_key: "object_position:sun".to_string(),
@@ -473,7 +559,19 @@ mod tests {
                 source_weight: Some(1.0),
                 aggregation_group: Some("gemini:house_9".to_string()),
                 writing_guidance: Some("guidance".to_string()),
-                evidence: Some(json!({"fact_type": "object_position"})),
+                evidence: Some(json!({
+                    "fact_type": "object_position",
+                    "placement_context": {
+                        "sign_context": {
+                            "element": "air",
+                            "modality": "mutable",
+                            "polarity": "yang"
+                        },
+                        "house_modality": {"code": "cadent"},
+                        "object_context": {"role": "luminary"},
+                        "motion_context": {"motion_state": "direct"}
+                    }
+                })),
             }],
             reading_plan: vec![BasicReadingPlanItem {
                 slot: "core_identity".to_string(),
@@ -523,6 +621,36 @@ mod tests {
     fn current_payload_rejects_empty_semantic_contract_fields() {
         let mut payload = current_payload();
         payload.signals[0].interpretive_hint = Some(" ".to_string());
+
+        assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
+    fn current_payload_rejects_incomplete_placement_context() {
+        let mut payload = current_payload();
+        payload.positions[0].sign_context = Some(json!({
+            "element": "air",
+            "modality": "mutable"
+        }));
+
+        assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
+    fn current_payload_rejects_incomplete_signal_placement_context() {
+        let mut payload = current_payload();
+        payload.signals[0].evidence = Some(json!({
+            "fact_type": "object_position",
+            "placement_context": {
+                "sign_context": {
+                    "element": "air",
+                    "modality": "mutable"
+                },
+                "house_modality": {"code": "cadent"},
+                "object_context": {"role": "luminary"},
+                "motion_context": {"motion_state": "direct"}
+            }
+        }));
 
         assert!(!is_current_basic_payload(&payload));
     }
@@ -658,6 +786,14 @@ mod tests {
                     id,
                     code: format!("sign_{id}"),
                     name: format!("Sign {id}"),
+                    element_code: Some("earth".to_string()),
+                    element_label: Some("Earth".to_string()),
+                    modality_code: Some("cardinal".to_string()),
+                    modality_name: Some("Cardinal".to_string()),
+                    polarity_code: Some("yin".to_string()),
+                    polarity_name: Some("Yin".to_string()),
+                    keywords_json: Some(json!(["structure"])),
+                    shadow_keywords_json: None,
                 })
                 .collect(),
             houses: (1..=12)
@@ -665,8 +801,18 @@ mod tests {
                     id: number + 100,
                     number,
                     name: format!("House {number}"),
+                    modality_code: Some("angular".to_string()),
+                    modality_label: Some("Angular".to_string()),
+                    accidental_strength: Some("strong".to_string()),
+                    interpretation_weight: Some("high".to_string()),
                 })
                 .collect(),
+            motion_states: vec![crate::models::MotionStateReference {
+                id: 1,
+                code: "direct".to_string(),
+                label: "Direct".to_string(),
+                motion_family: "forward".to_string(),
+            }],
         }
     }
 }

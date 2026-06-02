@@ -115,6 +115,9 @@ impl EphemerisEngine for SwissEphemerisEngine {
             let house = house_number
                 .map(|number| house_reference_for_number(&references.houses, number))
                 .transpose()?;
+            let motion_state_id = motion_state_id(Some(speed));
+            let motion_state = motion_state_id
+                .and_then(|id| references.motion_states.iter().find(|state| state.id == id));
 
             positions.push(ObjectPositionFact {
                 chart_object_id: object.id,
@@ -128,7 +131,7 @@ impl EphemerisEngine for SwissEphemerisEngine {
                 house_id: house.map(|house| house.id),
                 house_number,
                 house_name: house.map(|house| house.name.clone()),
-                motion_state_id: motion_state_id(Some(speed)),
+                motion_state_id,
                 horizon_position_id: None,
                 longitude_deg: longitude,
                 latitude_deg: Some(latitude),
@@ -138,7 +141,11 @@ impl EphemerisEngine for SwissEphemerisEngine {
                 facts_json: Some(json!({
                     "distance": position.distance,
                     "speed_in_latitude": position.latitude_speed,
-                    "speed_in_distance": position.distance_speed
+                    "speed_in_distance": position.distance_speed,
+                    "sign_context": sign_context(sign),
+                    "house_modality": house.and_then(house_modality),
+                    "object_context": object_context(object),
+                    "motion_context": motion_state.map(motion_context)
                 })),
             });
         }
@@ -168,6 +175,52 @@ impl EphemerisEngine for SwissEphemerisEngine {
             ),
         ))
     }
+}
+
+#[cfg(feature = "swisseph-engine")]
+fn sign_context(sign: &crate::models::SignReference) -> serde_json::Value {
+    serde_json::json!({
+        "element": &sign.element_code,
+        "element_label": &sign.element_label,
+        "modality": &sign.modality_code,
+        "modality_label": &sign.modality_name,
+        "polarity": &sign.polarity_code,
+        "polarity_label": &sign.polarity_name,
+        "keywords": &sign.keywords_json
+    })
+}
+
+#[cfg(feature = "swisseph-engine")]
+fn house_modality(house: &crate::models::HouseReference) -> Option<serde_json::Value> {
+    house.modality_code.as_ref().map(|code| {
+        serde_json::json!({
+            "code": code,
+            "label": &house.modality_label,
+            "accidental_strength": &house.accidental_strength,
+            "interpretation_weight": &house.interpretation_weight
+        })
+    })
+}
+
+#[cfg(feature = "swisseph-engine")]
+fn object_context(object: &ChartObject) -> serde_json::Value {
+    serde_json::json!({
+        "role": &object.role_code,
+        "role_label": &object.role_label,
+        "nature": &object.nature_codes,
+        "is_luminary": &object.is_luminary,
+        "is_planet_symbolic": &object.is_planet_symbolic,
+        "is_visible_to_naked_eye": &object.is_visible_to_naked_eye
+    })
+}
+
+#[cfg(feature = "swisseph-engine")]
+fn motion_context(motion_state: &crate::models::MotionStateReference) -> serde_json::Value {
+    serde_json::json!({
+        "motion_state": motion_state.code,
+        "label": motion_state.label,
+        "motion_family": motion_state.motion_family
+    })
 }
 
 #[cfg(feature = "swisseph-engine")]

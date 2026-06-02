@@ -4,7 +4,7 @@ use serde_json::Value;
 
 pub use crate::models::{
     AspectDefinition, ChartObject, HouseReference, HouseSystem, InterpretationSignalRow,
-    SignReference,
+    MotionStateReference, SignReference,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,6 +49,7 @@ impl Default for RuntimeOptions {
 pub struct CalculationReferenceData {
     pub signs: Vec<SignReference>,
     pub houses: Vec<HouseReference>,
+    pub motion_states: Vec<MotionStateReference>,
 }
 
 #[derive(Debug, Clone)]
@@ -166,6 +167,14 @@ pub struct BasicObjectPosition {
     pub house_number: Option<i32>,
     pub house_name: Option<String>,
     pub motion_state_id: Option<i32>,
+    #[serde(default)]
+    pub sign_context: Option<Value>,
+    #[serde(default)]
+    pub house_modality: Option<Value>,
+    #[serde(default)]
+    pub object_context: Option<Value>,
+    #[serde(default)]
+    pub motion_context: Option<Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
