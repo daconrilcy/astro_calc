@@ -509,8 +509,43 @@ fn dominant_cluster_objective(signals: &[&BasicSignal]) -> String {
         themes.join(", ")
     };
 
+    let grouping_context = cluster_grouping_context(signals);
+
     format!(
-        "Explain in plain language that the chart emphasizes {sign_name}, {house_name}, and {theme_text}, grouping the related placements instead of enumerating them."
+        "Explain in plain language that the chart emphasizes {sign_name}, {house_name}, and {theme_text}, grouping the {grouping_context} instead of enumerating placements."
+    )
+}
+
+fn cluster_grouping_context(signals: &[&BasicSignal]) -> String {
+    let dignity_objects = signals
+        .iter()
+        .filter(|signal| signal.signal_key.starts_with("dignity:"))
+        .filter_map(|signal| {
+            signal
+                .evidence
+                .as_ref()
+                .and_then(|evidence| evidence.get("chart_object"))
+                .and_then(|value| value.as_str())
+                .map(capitalize_ascii)
+        })
+        .collect::<Vec<_>>();
+
+    match dignity_objects.as_slice() {
+        [] => "cluster evidence".to_string(),
+        [object] => format!("cluster evidence and {object} dignity context"),
+        _ => "cluster evidence and dignity contexts".to_string(),
+    }
+}
+
+fn capitalize_ascii(value: &str) -> String {
+    let mut chars = value.chars();
+    let Some(first) = chars.next() else {
+        return String::new();
+    };
+    format!(
+        "{}{}",
+        first.to_ascii_uppercase(),
+        chars.as_str().to_ascii_lowercase()
     )
 }
 

@@ -657,7 +657,7 @@ une langue cible finale.
           "candidate_slot": "dominant_cluster"
         }
       ],
-      "writing_objective": "Explain in plain language that the chart emphasizes Capricorn, Resources, and structure, responsibility, security, grouping the related placements and the Saturn dignity context instead of enumerating them.",
+      "writing_objective": "Explain in plain language that the chart emphasizes Capricorn, Resources, and structure, responsibility, security, grouping the cluster evidence and Saturn dignity context instead of enumerating placements.",
       "max_words": 120,
       "avoid": [
         "repeat each placement one by one",
