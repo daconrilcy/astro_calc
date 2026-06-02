@@ -70,11 +70,23 @@ polarite a equilibrer ou un contact amplifiant. Si une valence principale et un
 modificateur d'intensite coexistent, le hint conserve la valence comme lecture
 principale et ajoute l'intensification comme nuance.
 
+L'etape 2E ajoute les quatre angles natals Basic : Ascendant, Descendant,
+Midheaven / MC et IC. Le runtime les calcule depuis Swiss Ephemeris, les expose
+comme faits structures top-level `angles`, genere des signaux `angle:*`, ajoute
+l'Ascendant au slot `core_identity` et utilise le MC comme facteur de contexte
+public plus secondaire. Les metadonnees d'angle viennent de `astral_angle_points`
+et des objets `astral_chart_objects` associes, pas d'un mapping code.
+
+L'etape 2E.1 retire le mapping de themes de maisons code en dur. Les
+`theme_code` des maisons sont maintenant portes par `astral_houses.theme_code`,
+relus dans `HouseReference`, ajoutes a `house_context` et utilises par les
+signaux, les tags et `chart_emphasis.dominant_houses`.
+
 Le runtime conserve la chaine existante :
 
 1. calcul des faits astrologiques ;
 2. ecriture des positions, cuspides et aspects calcules ;
-3. relecture des aspects avec leur contexte interpretatif de referentiel ;
+3. relecture des positions et aspects avec leur contexte de referentiel ;
 4. aggregation des signaux ;
 5. filtrage produit Basic ;
 6. ecriture du payload canonique dans `astral_interpretation_generation_payloads`.
@@ -93,7 +105,8 @@ editorialement.
 - `rust_sqlx_connection_test/src/signals.rs` : construction et filtrage des signaux Basic.
 - `rust_sqlx_connection_test/src/payload.rs` : assemblage du payload final.
 - `rust_sqlx_connection_test/src/repositories.rs` : persistance, relecture des
-  positions et enrichissement SQL des aspects depuis les referentiels 2C.
+  positions et enrichissement SQL depuis les referentiels de signes, maisons,
+  objets, angles et aspects.
 - `rust_sqlx_connection_test/src/runtime.rs` : orchestration et regeneration des anciens payloads.
 
 ## Contrat des positions
@@ -120,6 +133,9 @@ Chaque position expose maintenant les champs lisibles en plus des IDs :
     "polarity": "yang",
     "polarity_label": "Yang",
     "keywords": ["communication", "curiosity"]
+  },
+  "house_context": {
+    "theme_code": "beliefs"
   },
   "house_modality": {
     "code": "cadent",
@@ -156,15 +172,21 @@ Les IDs restent presents pour l'audit et les relations DB. Les libelles viennent
 
 - des referentiels `astral_signs`, `astral_sign_profiles`,
   `astral_sign_keywords`, `astral_houses`, `astral_house_modalities`,
-  `astral_chart_object_definitions`, `astral_object_nature_assignments` et
-  `astral_object_motion_states` charges avant le calcul pour les nouveaux faits ;
+  `astral_chart_object_definitions`, `astral_object_nature_assignments`,
+  `astral_object_motion_states` et `astral_angle_points` charges avant le
+  calcul pour les nouveaux faits ;
 - des joins equivalents quand un payload est reconstruit depuis la DB.
+
+`house_context.theme_code` vient de `astral_houses.theme_code`. Le runtime ne
+derive pas ce code depuis le nom de maison, car certains cas ne sont pas
+mecaniques (`Self` -> `identity`, `Health` -> `work_health`,
+`Transformation` -> `shared_resources`, `Subconscious` -> `inner_world`).
 
 Le calcul geometrique conserve seulement les operations derivees de la
 longitude : slot zodiacal et numero de maison. Les IDs, codes et noms de signes
 ou de maisons sont resolus depuis les tables. Le runtime refuse de calculer si
 les 12 signes ou les 12 maisons ne sont pas presents ou si les references sont
-ambigues. Le contrat Basic v4 refuse aussi de reutiliser un payload existant si
+ambigues. Le contrat Basic v7 refuse aussi de reutiliser un payload existant si
 les contextes de placement utiles sont absents ou incomplets.
 
 Depuis 2B.1, `dignity_context` est toujours expose comme tableau. Il vaut `[]`
@@ -172,6 +194,45 @@ quand l'objet ne recoit aucune dignite essentielle majeure reconnue par le MVP.
 Cette convention evite les `null` dans le contrat JSON et couvre les placements
 qui peuvent cumuler deux dignites classiques, par exemple Mercure en Vierge
 (`domicile` et `exaltation`) ou Mercure en Poissons (`detriment` et `fall`).
+
+## Contrat des angles 2E
+
+Le payload expose les quatre angles principaux dans un tableau top-level
+`angles`. Ces faits sont aussi presents dans `positions`, mais `angles` donne un
+acces direct au triptyque Basic et aux axes :
+
+```json
+{
+  "angle_code": "ascendant",
+  "angle_name": "Ascendant",
+  "axis": "horizontal",
+  "opposite_angle_code": "dsc",
+  "longitude_deg": 155.4787,
+  "sign_id": 6,
+  "sign_code": "virgo",
+  "sign_name": "Virgo",
+  "house_id": 1,
+  "house_number": 1,
+  "house_name": "Self"
+}
+```
+
+Les longitudes de l'Ascendant et du MC viennent de `swiss_eph::safe::houses`.
+Le Descendant et l'IC sont derives par opposition exacte a 180 degres. Les
+metadonnees non geometriques (`axis`, `opposite_angle_code`,
+`associated_house`, libelles, description) viennent de `astral_angle_points` et
+des objets calculables actifs de `astral_chart_objects`.
+
+Les signaux d'angle utilisent la forme stable `angle:<angle_code>:sign:<sign>`,
+par exemple `angle:ascendant:sign:virgo`. L'Ascendant est place dans
+`core_identity` avec le Soleil et la Lune. Le MC peut alimenter
+`background_factors` comme contexte de vocation, visibilite ou direction
+publique.
+
+Pour eviter qu'un ancien calcul `completed` soit recycle sans angles, le runtime
+verifie que les positions persistantes contiennent tous les objets d'angle
+attendus par `astral_angle_points`. Si ce n'est pas le cas, il cree un nouvel
+`execution_attempt` au lieu de reconstruire un payload incomplet.
 
 ## Contrat des signaux
 
@@ -222,6 +283,9 @@ preuves techniques dans `evidence` :
         "modality": "mutable",
         "polarity": "yang",
         "keywords": ["communication", "curiosity"]
+      },
+      "house_context": {
+        "theme_code": "beliefs"
       },
       "house_modality": {
         "code": "cadent",
@@ -312,9 +376,9 @@ texte utilisateur :
 
 Les champs ajoutes par l'etape 1B sont :
 
-- `theme_code` : theme editorial principal du signal, derive de la maison pour
-  les placements quand elle est connue, ou de la famille de signal pour les
-  aspects.
+- `theme_code` : theme editorial principal du signal. Pour les placements et
+  angles, il vient de `astral_houses.theme_code` via `house_context`; pour les
+  aspects, dignites ou autres familles, il vient de la famille de signal.
 - `interpretive_hint` : phrase courte orientee utilisateur. Pour les aspects,
   elle inclut la qualite interpretative issue de `aspect_context`.
 - `semantic_tags` : tags stables utiles pour grouper, filtrer ou guider la
@@ -340,6 +404,8 @@ referentiel est directement exploitable par le LLM.
 
 - `sign_context` : element, modalite zodiacale, polarite et liste complete des
   mots-cles principaux du signe depuis `astral_sign_keywords.keywords_json`.
+- `house_context` : contexte editorial canonique de maison, dont
+  `theme_code`, depuis `astral_houses.theme_code`.
 - `house_modality` : modalite de maison, force accidentelle et poids
   d'interpretation.
 - `object_context` : role astrologique, nature principale et indicateurs de
@@ -823,7 +889,7 @@ Le payload final contient maintenant `reading_plan` :
 Le plan est construit dans `payload.rs` a partir des signaux actifs, avec les
 slots suivants quand les sources correspondantes existent :
 
-- `core_identity` : Soleil, Lune, Ascendant, MC ;
+- `core_identity` : Soleil, Lune, Ascendant ;
 - `dominant_cluster` : premier cluster actif, sources candidates associees et
   dignites actives des objets sources, puis resolution editoriale des doublons ;
 - `main_tension_or_support` : jusqu'a trois aspects actifs prioritaires,
@@ -831,8 +897,8 @@ slots suivants quand les sources correspondantes existent :
   tension quand ces dynamiques existent dans les aspects actifs ;
 - `expression_style` : Mercure, Venus, Mars, avec leurs dignites actives si
   elles sont presentes ;
-- `background_factors` : Jupiter, Saturne, Uranus, Neptune, Pluton si encore
-  actifs, avec leurs dignites actives si elles sont presentes.
+- `background_factors` : MC, Jupiter, Saturne, Uranus, Neptune, Pluton si
+  encore actifs, avec leurs dignites actives si elles sont presentes.
 
 Chaque item expose `source_signal_keys` et `primary_signal_keys`. Aujourd'hui,
 ces deux listes sont identiques apres resolution editoriale ; `primary_signal_keys`
@@ -881,7 +947,7 @@ doit respecter :
 ```json
 {
   "llm_handoff_contract": {
-    "contract_version": "basic_natal_structured_v6",
+    "contract_version": "basic_natal_structured_v7",
     "payload_language_code": "en",
     "target_language_policy": "provided_by_llm_service",
     "audience_level": "beginner",
@@ -889,6 +955,7 @@ doit respecter :
     "must_use": [
       "chart_emphasis",
       "dignities",
+      "angles",
       "signals",
       "reading_plan",
       "drafting_plan"
@@ -1030,17 +1097,20 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
 - 12 signaux maximum ;
 - au moins un signal ;
 - `llm_handoff_contract` present et conforme au contrat canonique
-  `basic_natal_structured_v6` ;
+  `basic_natal_structured_v7` ;
 - `dignities` structurees presentes et coherentes avec les signaux
   `dignity:*` actifs ;
+- `angles` top-level present avec Ascendant, Descendant, MC et IC ;
 - `chart_emphasis` present, avec au moins une dominante de signe, de maison et
   d'objet, chacune scoree, justifiee par des raisons non vides et triee par
   score decroissant dans sa famille ;
-- positions avec `sign_code`, `sign_name`, `sign_context`, `house_modality`,
-  `object_context`, `motion_context` et `dignity_context` sous forme de tableau ;
+- positions avec `sign_code`, `sign_name`, `sign_context`, `house_context`,
+  `house_modality`, `object_context`, `motion_context` et `dignity_context`
+  sous forme de tableau ;
 - signaux avec `evidence` ;
 - signaux avec `theme_code`, `interpretive_hint`, `semantic_tags`,
   `aggregation_group` et `writing_guidance` non vides ;
+- signaux `angle:*` avec un `evidence.placement_context` coherent ;
 - signaux `aspect:*` avec `aspect_context` complet, au moins un effet
   interpretatif non vide, `dynamic_quality`, `phase_state`, `valence_family`,
   `is_tonal_valence`, `is_intensity_modifier` et `writing_guidance` ;
@@ -1106,11 +1176,13 @@ Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
 - `product_code = "basic"` ;
 - `llm_handoff_contract.payload_language_code = "en"` ;
 - `llm_handoff_contract.target_language_policy = "provided_by_llm_service"` ;
-- `llm_handoff_contract.contract_version = "basic_natal_structured_v6"` ;
+- `llm_handoff_contract.contract_version = "basic_natal_structured_v7"` ;
 - des positions avec `sign_code`, `sign_name`, `house_number`, `house_name`,
-  `sign_context`, `house_modality`, `object_context`, `motion_context` et
-  `dignity_context` sous forme de tableau, vide quand aucune dignite n'est
-  detectee ;
+  `sign_context`, `house_context`, `house_modality`, `object_context`,
+  `motion_context` et `dignity_context` sous forme de tableau, vide quand
+  aucune dignite n'est detectee ;
+- une liste `angles` top-level avec Ascendant, Descendant, MC et IC, reliee aux
+  signes et maisons calcules ;
 - une liste `dignities` top-level, vide ou non selon le theme, mais coherente
   avec les signaux `dignity:*` actifs ;
 - un `chart_emphasis` top-level avec `dominant_signs`, `dominant_houses` et
@@ -1150,7 +1222,8 @@ exemple :
 
 ## Limites connues
 
-- L'Ascendant et le MC ne sont pas encore exposes comme objets de position Basic.
+- Les angles Basic sont exposes, mais leurs interpretations restent limitees aux
+  faits structures et aux signaux `angle:*`.
 - Les resumes restent des phrases templatees, pas une interpretation finale.
 - Les `interpretive_hint` et `writing_guidance` restent aussi des templates,
   meme si les hints d'aspect integrent maintenant la valence 2C.

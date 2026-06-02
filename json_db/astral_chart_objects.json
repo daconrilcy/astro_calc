@@ -148,6 +148,58 @@
       "is_mobile": true,
       "is_active": true,
       "sort_order": 10
+    },
+    {
+      "id": 11,
+      "code": "ascendant",
+      "name": "Ascendant",
+      "swe_id": null,
+      "object_type_id": 2,
+      "calculation_type_id": 2,
+      "is_physical_body": false,
+      "is_calculable": true,
+      "is_mobile": false,
+      "is_active": true,
+      "sort_order": 11
+    },
+    {
+      "id": 12,
+      "code": "descendant",
+      "name": "Descendant",
+      "swe_id": null,
+      "object_type_id": 2,
+      "calculation_type_id": 2,
+      "is_physical_body": false,
+      "is_calculable": true,
+      "is_mobile": false,
+      "is_active": true,
+      "sort_order": 12
+    },
+    {
+      "id": 13,
+      "code": "mc",
+      "name": "Midheaven",
+      "swe_id": null,
+      "object_type_id": 2,
+      "calculation_type_id": 2,
+      "is_physical_body": false,
+      "is_calculable": true,
+      "is_mobile": false,
+      "is_active": true,
+      "sort_order": 13
+    },
+    {
+      "id": 14,
+      "code": "ic",
+      "name": "Imum Coeli",
+      "swe_id": null,
+      "object_type_id": 2,
+      "calculation_type_id": 2,
+      "is_physical_body": false,
+      "is_calculable": true,
+      "is_mobile": false,
+      "is_active": true,
+      "sort_order": 14
     }
   ]
 }

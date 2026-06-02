@@ -84,6 +84,7 @@ where
             signs: self.repository.sign_references().await?,
             houses: self.repository.house_references().await?,
             motion_states: self.repository.motion_state_references().await?,
+            angle_points: self.repository.angle_point_references().await?,
         };
         validate_calculation_references(&references)?;
 
@@ -93,41 +94,44 @@ where
         let existing = RuntimeRepository::calculations_for_key(&mut tx, &idempotency_key).await?;
         if let Some(completed) = existing.iter().find(|row| row.status == "completed") {
             let completed_id = completed.id;
-            tx.commit().await?;
             if let Some(payload) = self
                 .repository
                 .existing_basic_payload(completed_id, &product_code, Some(payload_language_id))
                 .await?
             {
                 if is_current_basic_payload(&payload) {
+                    tx.commit().await?;
                     return Ok(payload);
                 }
             }
             let positions = self.repository.positions_for_payload(completed_id).await?;
-            let aspects = self.repository.aspects_for_payload(completed_id).await?;
-            let signal_drafts = aggregate_basic_signals(&CalculatedChartFacts {
-                positions: positions.clone(),
-                house_cusps: Vec::new(),
-                aspects,
-            });
-            let mut payload_tx = self.repository.pool().begin().await?;
-            let signals = RuntimeRepository::persist_signals(
-                &mut payload_tx,
-                completed_id,
-                input.reference_version_id,
-                &signal_drafts,
-            )
-            .await?;
-            let payload = build_basic_payload(completed_id, &input, &positions, &signals);
-            RuntimeRepository::persist_basic_payload(
-                &mut payload_tx,
-                &input,
-                Some(payload_language_id),
-                &payload,
-            )
-            .await?;
-            payload_tx.commit().await?;
-            return Ok(payload);
+            if has_required_angle_positions(&positions, &references) {
+                let aspects = self.repository.aspects_for_payload(completed_id).await?;
+                let signal_drafts = aggregate_basic_signals(&CalculatedChartFacts {
+                    positions: positions.clone(),
+                    house_cusps: Vec::new(),
+                    aspects,
+                });
+                tx.commit().await?;
+                let mut payload_tx = self.repository.pool().begin().await?;
+                let signals = RuntimeRepository::persist_signals(
+                    &mut payload_tx,
+                    completed_id,
+                    input.reference_version_id,
+                    &signal_drafts,
+                )
+                .await?;
+                let payload = build_basic_payload(completed_id, &input, &positions, &signals);
+                RuntimeRepository::persist_basic_payload(
+                    &mut payload_tx,
+                    &input,
+                    Some(payload_language_id),
+                    &payload,
+                )
+                .await?;
+                payload_tx.commit().await?;
+                return Ok(payload);
+            }
         } else if let Some(running) = existing.iter().find(|row| row.status == "running") {
             if is_stale(running, self.options.stale_after_seconds) {
                 RuntimeRepository::mark_stale_failed(&mut tx, running.id).await?;
@@ -230,6 +234,12 @@ fn validate_calculation_references(
             "expected motion state references".to_string(),
         ));
     }
+    if references.angle_points.len() != 4 {
+        return Err(RuntimeError::Ephemeris(format!(
+            "expected 4 angle point references, found {}",
+            references.angle_points.len()
+        )));
+    }
 
     let mut sign_ids = HashSet::new();
     for sign in &references.signs {
@@ -268,7 +278,42 @@ fn validate_calculation_references(
         }
     }
 
+    let mut angle_ids = HashSet::new();
+    let mut angle_object_ids = HashSet::new();
+    for angle in &references.angle_points {
+        if !angle_ids.insert(angle.id)
+            || !angle_object_ids.insert(angle.chart_object_id)
+            || angle.code.trim().is_empty()
+            || angle.short_label.trim().is_empty()
+            || angle.full_name.trim().is_empty()
+            || angle.axis.trim().is_empty()
+            || !(1..=12).contains(&angle.associated_house)
+            || angle.chart_object_code.trim().is_empty()
+            || angle.chart_object_name.trim().is_empty()
+        {
+            return Err(RuntimeError::Ephemeris(
+                "invalid angle point references: duplicate IDs, invalid houses, or empty labels"
+                    .to_string(),
+            ));
+        }
+    }
+
     Ok(())
+}
+
+fn has_required_angle_positions(
+    positions: &[crate::domain::ObjectPositionFact],
+    references: &CalculationReferenceData,
+) -> bool {
+    let position_object_ids: HashSet<i32> = positions
+        .iter()
+        .map(|position| position.chart_object_id)
+        .collect();
+
+    references
+        .angle_points
+        .iter()
+        .all(|angle| position_object_ids.contains(&angle.chart_object_id))
 }
 
 fn is_stale(row: &ChartCalculationRow, default_stale_after_seconds: i32) -> bool {
@@ -286,6 +331,7 @@ fn is_current_basic_payload(payload: &BasicPayload) -> bool {
     !payload.signals.is_empty()
         && payload.signals.len() <= 12
         && has_current_llm_handoff_contract(payload)
+        && has_current_angles(payload)
         && has_current_dignities(payload)
         && has_current_chart_emphasis(payload)
         && has_current_reading_plan(payload)
@@ -313,16 +359,17 @@ fn has_current_llm_handoff_contract(payload: &BasicPayload) -> bool {
         return false;
     };
 
-    contract.contract_version == "basic_natal_structured_v6"
+    contract.contract_version == "basic_natal_structured_v7"
         && contract.payload_language_code == "en"
         && contract.target_language_policy == "provided_by_llm_service"
         && contract.audience_level == "beginner"
         && contract.tone == "clear, warm, non fatalistic"
         && contract.must_use.as_slice()
             == [
-                "chart_emphasis",
-                "dignities",
-                "signals",
+            "chart_emphasis",
+            "dignities",
+            "angles",
+            "signals",
                 "reading_plan",
                 "drafting_plan",
             ]
@@ -337,6 +384,36 @@ fn has_current_llm_handoff_contract(payload: &BasicPayload) -> bool {
                 "make deterministic or fatalistic predictions",
             ]
         && contract.output_format == "structured_sections"
+}
+
+fn has_current_angles(payload: &BasicPayload) -> bool {
+    let angle_codes: HashSet<&str> = payload
+        .angles
+        .iter()
+        .map(|angle| angle.angle_code.as_str())
+        .collect();
+
+    angle_codes.len() == 4
+        && payload.angles.iter().all(|angle| {
+            !angle.angle_code.trim().is_empty()
+                && !angle.angle_name.trim().is_empty()
+                && !angle.axis.trim().is_empty()
+                && !angle.opposite_angle_code.trim().is_empty()
+                && !angle.sign_code.trim().is_empty()
+                && !angle.sign_name.trim().is_empty()
+                && (1..=12).contains(&angle.house_number)
+                && angle.longitude_deg >= 0.0
+                && angle.longitude_deg < 360.0
+        })
+        && payload.signals.iter().any(|signal| {
+            signal.signal_key.starts_with("angle:ascendant:sign:")
+                && signal
+                    .evidence
+                    .as_ref()
+                    .and_then(|evidence| evidence.get("fact_type"))
+                    .and_then(|value| value.as_str())
+                    == Some("chart_angle")
+        })
 }
 
 fn has_current_chart_emphasis(payload: &BasicPayload) -> bool {
@@ -823,15 +900,29 @@ fn has_current_aspect_hint(value: &Option<String>) -> bool {
 }
 
 fn has_current_position_context(position: &crate::domain::BasicObjectPosition) -> bool {
+    let is_angle = position
+        .object_context
+        .as_ref()
+        .and_then(|context| context.get("role"))
+        .and_then(|value| value.as_str())
+        == Some("angle")
+        || position
+            .object_context
+            .as_ref()
+            .and_then(|context| context.get("role_label"))
+            .and_then(|value| value.as_str())
+            == Some("Angle");
+
     !position.sign_code.is_empty()
         && !position.sign_name.is_empty()
         && position.dignity_context.is_array()
         && option_json_has_text(&position.sign_context, "element")
         && option_json_has_text(&position.sign_context, "modality")
         && option_json_has_text(&position.sign_context, "polarity")
+        && option_json_has_text(&position.house_context, "theme_code")
         && option_json_has_text(&position.house_modality, "code")
         && option_json_has_text(&position.object_context, "role")
-        && option_json_has_text(&position.motion_context, "motion_state")
+        && (is_angle || option_json_has_text(&position.motion_context, "motion_state"))
 }
 
 fn has_current_placement_context(signal: &crate::domain::BasicSignal) -> bool {
@@ -853,6 +944,7 @@ fn has_current_placement_context(signal: &crate::domain::BasicSignal) -> bool {
         && nested_json_has_text(context, "sign_context", "element")
         && nested_json_has_text(context, "sign_context", "modality")
         && nested_json_has_text(context, "sign_context", "polarity")
+        && nested_json_has_text(context, "house_context", "theme_code")
         && nested_json_has_text(context, "house_modality", "code")
         && nested_json_has_text(context, "object_context", "role")
         && nested_json_has_text(context, "motion_context", "motion_state")
@@ -891,11 +983,11 @@ mod tests {
 
     use super::*;
     use crate::domain::{
-        BasicChartEmphasis, BasicDignity, BasicDominantHouse, BasicDominantObject,
+        BasicAngleFact, BasicChartEmphasis, BasicDignity, BasicDominantHouse, BasicDominantObject,
         BasicDominantSign, BasicDraftingPlanItem, BasicEmphasisRefs, BasicLlmHandoffContract,
         BasicObjectPosition, BasicReadingPlanItem, BasicSecondarySlotCandidate, BasicSignal,
     };
-    use crate::models::{HouseReference, SignReference};
+    use crate::models::{AnglePointReference, HouseReference, SignReference};
 
     fn current_payload() -> BasicPayload {
         BasicPayload {
@@ -905,7 +997,7 @@ mod tests {
             subject_label: None,
             birth_datetime_utc: Utc.with_ymd_and_hms(2024, 6, 15, 12, 0, 0).unwrap(),
             llm_handoff_contract: Some(BasicLlmHandoffContract {
-                contract_version: "basic_natal_structured_v6".to_string(),
+                contract_version: "basic_natal_structured_v7".to_string(),
                 payload_language_code: "en".to_string(),
                 target_language_policy: "provided_by_llm_service".to_string(),
                 audience_level: "beginner".to_string(),
@@ -913,6 +1005,7 @@ mod tests {
                 must_use: vec![
                     "chart_emphasis".to_string(),
                     "dignities".to_string(),
+                    "angles".to_string(),
                     "signals".to_string(),
                     "reading_plan".to_string(),
                     "drafting_plan".to_string(),
@@ -945,6 +1038,9 @@ mod tests {
                     "polarity": "yang",
                     "keywords": ["communication"]
                 })),
+                house_context: Some(json!({
+                    "theme_code": "beliefs"
+                })),
                 house_modality: Some(json!({
                     "code": "cadent",
                     "accidental_strength": "weak_or_background",
@@ -962,6 +1058,12 @@ mod tests {
                 })),
                 dignity_context: json!([]),
             }],
+            angles: vec![
+                angle_fact("ascendant", "Ascendant", "horizontal", "descendant", 84.0, 1),
+                angle_fact("descendant", "Descendant", "horizontal", "ascendant", 264.0, 7),
+                angle_fact("mc", "Midheaven", "vertical", "ic", 10.0, 10),
+                angle_fact("ic", "Imum Coeli", "vertical", "mc", 190.0, 4),
+            ],
             dignities: Vec::new(),
             chart_emphasis: BasicChartEmphasis {
                 dominant_signs: vec![BasicDominantSign {
@@ -981,34 +1083,56 @@ mod tests {
                     reasons: vec!["placement".to_string()],
                 }],
             },
-            signals: vec![BasicSignal {
-                signal_key: "object_position:sun".to_string(),
-                theme_code: Some("beliefs".to_string()),
-                title: "Sun in Gemini, house 9".to_string(),
-                summary: Some("summary".to_string()),
-                priority_score: 100.0,
-                confidence_score: Some(0.95),
-                interpretive_hint: Some("hint".to_string()),
-                semantic_tags: vec!["placement".to_string()],
-                source_weight: Some(1.0),
-                aggregation_group: Some("gemini:house_9".to_string()),
-                writing_guidance: Some("guidance".to_string()),
-                aspect_context: None,
-                evidence: Some(json!({
-                    "fact_type": "object_position",
-                    "essential_dignities": [],
-                    "placement_context": {
-                        "sign_context": {
-                            "element": "air",
-                            "modality": "mutable",
-                            "polarity": "yang"
-                        },
-                        "house_modality": {"code": "cadent"},
-                        "object_context": {"role": "luminary"},
-                        "motion_context": {"motion_state": "direct"}
-                    }
-                })),
-            }],
+            signals: vec![
+                BasicSignal {
+                    signal_key: "object_position:sun".to_string(),
+                    theme_code: Some("beliefs".to_string()),
+                    title: "Sun in Gemini, house 9".to_string(),
+                    summary: Some("summary".to_string()),
+                    priority_score: 100.0,
+                    confidence_score: Some(0.95),
+                    interpretive_hint: Some("hint".to_string()),
+                    semantic_tags: vec!["placement".to_string()],
+                    source_weight: Some(1.0),
+                    aggregation_group: Some("gemini:house_9".to_string()),
+                    writing_guidance: Some("guidance".to_string()),
+                    aspect_context: None,
+                    evidence: Some(json!({
+                        "fact_type": "object_position",
+                        "essential_dignities": [],
+                        "placement_context": {
+                            "sign_context": {
+                                "element": "air",
+                                "modality": "mutable",
+                                "polarity": "yang"
+                            },
+                            "house_context": {"theme_code": "beliefs"},
+                            "house_modality": {"code": "cadent"},
+                            "object_context": {"role": "luminary"},
+                            "motion_context": {"motion_state": "direct"}
+                        }
+                    })),
+                },
+                BasicSignal {
+                    signal_key: "angle:ascendant:sign:gemini".to_string(),
+                    theme_code: Some("identity".to_string()),
+                    title: "Ascendant in Gemini".to_string(),
+                    summary: Some("summary".to_string()),
+                    priority_score: 99.0,
+                    confidence_score: Some(0.95),
+                    interpretive_hint: Some("hint".to_string()),
+                    semantic_tags: vec!["angle".to_string(), "ascendant".to_string()],
+                    source_weight: Some(1.0),
+                    aggregation_group: Some("angle:ascendant:gemini".to_string()),
+                    writing_guidance: Some("guidance".to_string()),
+                    aspect_context: None,
+                    evidence: Some(json!({
+                        "fact_type": "chart_angle",
+                        "angle_code": "ascendant",
+                        "sign_code": "gemini"
+                    })),
+                },
+            ],
             reading_plan: vec![BasicReadingPlanItem {
                 slot: "core_identity".to_string(),
                 title: "Core identity markers".to_string(),
@@ -1034,6 +1158,29 @@ mod tests {
                     "turn chart_emphasis into a standalone section".to_string(),
                 ],
             }],
+        }
+    }
+
+    fn angle_fact(
+        angle_code: &str,
+        angle_name: &str,
+        axis: &str,
+        opposite_angle_code: &str,
+        longitude_deg: f64,
+        house_number: i32,
+    ) -> BasicAngleFact {
+        BasicAngleFact {
+            angle_code: angle_code.to_string(),
+            angle_name: angle_name.to_string(),
+            axis: axis.to_string(),
+            opposite_angle_code: opposite_angle_code.to_string(),
+            longitude_deg,
+            sign_id: 3,
+            sign_code: "gemini".to_string(),
+            sign_name: "Gemini".to_string(),
+            house_id: Some(house_number),
+            house_number,
+            house_name: Some(format!("House {house_number}")),
         }
     }
 
@@ -1239,6 +1386,7 @@ mod tests {
                     "modality": "mutable",
                     "polarity": "yang"
                 },
+                "house_context": {"theme_code": "beliefs"},
                 "house_modality": {"code": "cadent"},
                 "object_context": {"role": "luminary"},
                 "motion_context": {"motion_state": "direct"}
@@ -1256,6 +1404,7 @@ mod tests {
                     "modality": "mutable",
                     "polarity": "yang"
                 },
+                "house_context": {"theme_code": "beliefs"},
                 "house_modality": {"code": "cadent"},
                 "object_context": {"role": "luminary"},
                 "motion_context": {"motion_state": "direct"}
@@ -1600,6 +1749,7 @@ mod tests {
                     id: number + 100,
                     number,
                     name: format!("House {number}"),
+                    theme_code: format!("house_{number}_theme"),
                     modality_code: Some("angular".to_string()),
                     modality_label: Some("Angular".to_string()),
                     accidental_strength: Some("strong".to_string()),
@@ -1612,6 +1762,57 @@ mod tests {
                 label: "Direct".to_string(),
                 motion_family: "forward".to_string(),
             }],
+            angle_points: vec![
+                angle_reference(
+                    1,
+                    "asc",
+                    "ASC",
+                    "Ascendant",
+                    "horizontal",
+                    Some("dsc"),
+                    1,
+                    11,
+                ),
+                angle_reference(
+                    2,
+                    "dsc",
+                    "DSC",
+                    "Descendant",
+                    "horizontal",
+                    Some("asc"),
+                    7,
+                    12,
+                ),
+                angle_reference(3, "mc", "MC", "Midheaven", "vertical", Some("ic"), 10, 13),
+                angle_reference(4, "ic", "IC", "Imum Coeli", "vertical", Some("mc"), 4, 14),
+            ],
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn angle_reference(
+        id: i32,
+        code: &str,
+        short_label: &str,
+        full_name: &str,
+        axis: &str,
+        opposite_angle_code: Option<&str>,
+        associated_house: i32,
+        chart_object_id: i32,
+    ) -> AnglePointReference {
+        AnglePointReference {
+            id,
+            code: code.to_string(),
+            short_label: short_label.to_string(),
+            full_name: full_name.to_string(),
+            axis: axis.to_string(),
+            opposite_angle_code: opposite_angle_code.map(ToString::to_string),
+            associated_house,
+            description: format!("{full_name} description"),
+            chart_object_id,
+            chart_object_code: full_name.to_ascii_lowercase().replace(' ', "_"),
+            chart_object_name: full_name.to_string(),
+            chart_object_sort_order: chart_object_id,
         }
     }
 }

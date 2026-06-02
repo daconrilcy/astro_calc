@@ -137,6 +137,54 @@
       "is_visible_to_naked_eye": false,
       "micro_note": "Pluto is treated as a transpersonal astrological planet/body despite its astronomical dwarf planet classification.",
       "is_planet_symbolic": true
+    },
+    {
+      "id": 11,
+      "chart_object_id": 11,
+      "astrological_role_id": 5,
+      "speed_rank": 10,
+      "speed_class_id": 3,
+      "typical_polarity_id": 2,
+      "is_luminary": false,
+      "is_visible_to_naked_eye": false,
+      "micro_note": "The Ascendant is a computed chart angle derived from the local horizon and birth time.",
+      "is_planet_symbolic": false
+    },
+    {
+      "id": 12,
+      "chart_object_id": 12,
+      "astrological_role_id": 5,
+      "speed_rank": 11,
+      "speed_class_id": 3,
+      "typical_polarity_id": 2,
+      "is_luminary": false,
+      "is_visible_to_naked_eye": false,
+      "micro_note": "The Descendant is the computed point opposite the Ascendant on the relationship horizon.",
+      "is_planet_symbolic": false
+    },
+    {
+      "id": 13,
+      "chart_object_id": 13,
+      "astrological_role_id": 5,
+      "speed_rank": 12,
+      "speed_class_id": 3,
+      "typical_polarity_id": 2,
+      "is_luminary": false,
+      "is_visible_to_naked_eye": false,
+      "micro_note": "The Midheaven is a computed chart angle derived from the local meridian and birth time.",
+      "is_planet_symbolic": false
+    },
+    {
+      "id": 14,
+      "chart_object_id": 14,
+      "astrological_role_id": 5,
+      "speed_rank": 13,
+      "speed_class_id": 3,
+      "typical_polarity_id": 2,
+      "is_luminary": false,
+      "is_visible_to_naked_eye": false,
+      "micro_note": "The IC is the computed point opposite the Midheaven, describing the lower meridian.",
+      "is_planet_symbolic": false
     }
   ]
 }

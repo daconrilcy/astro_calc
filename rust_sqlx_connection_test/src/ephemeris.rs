@@ -90,6 +90,16 @@ impl EphemerisEngine for SwissEphemerisEngine {
             .unwrap_or(0.0);
         let mut positions = Vec::new();
 
+        add_angle_positions(
+            input,
+            chart_objects,
+            references,
+            &house_cusps,
+            &mut positions,
+            cusps_raw.ascendant,
+            cusps_raw.mc,
+        )?;
+
         for object in chart_objects
             .iter()
             .filter(|object| object.swe_id.is_some())
@@ -144,6 +154,7 @@ impl EphemerisEngine for SwissEphemerisEngine {
                     "speed_in_distance": position.distance_speed,
                     "sign_context": sign_context(sign),
                     "house_modality": house.and_then(house_modality),
+                    "house_context": house.map(house_context),
                     "object_context": object_context(object),
                     "motion_context": motion_state.map(motion_context)
                 })),
@@ -203,6 +214,13 @@ fn house_modality(house: &crate::models::HouseReference) -> Option<serde_json::V
 }
 
 #[cfg(feature = "swisseph-engine")]
+fn house_context(house: &crate::models::HouseReference) -> serde_json::Value {
+    serde_json::json!({
+        "theme_code": &house.theme_code
+    })
+}
+
+#[cfg(feature = "swisseph-engine")]
 fn object_context(object: &ChartObject) -> serde_json::Value {
     serde_json::json!({
         "role": &object.role_code,
@@ -212,6 +230,100 @@ fn object_context(object: &ChartObject) -> serde_json::Value {
         "is_planet_symbolic": &object.is_planet_symbolic,
         "is_visible_to_naked_eye": &object.is_visible_to_naked_eye
     })
+}
+
+#[cfg(feature = "swisseph-engine")]
+fn add_angle_positions(
+    input: &NatalChartInput,
+    chart_objects: &[ChartObject],
+    references: &CalculationReferenceData,
+    house_cusps: &[crate::domain::HouseCuspFact],
+    positions: &mut Vec<crate::domain::ObjectPositionFact>,
+    ascendant_longitude: f64,
+    mc_longitude: f64,
+) -> Result<(), RuntimeError> {
+    for angle in &references.angle_points {
+        let Some(object) = chart_objects
+            .iter()
+            .find(|object| object.id == angle.chart_object_id)
+        else {
+            continue;
+        };
+        let longitude = round4(angle_longitude(angle, ascendant_longitude, mc_longitude)?);
+        let sign = sign_reference_for_zodiac_slot(
+            &references.signs,
+            crate::facts::zodiac_slot_for_longitude(longitude),
+        )?;
+        let house = house_reference_for_number(&references.houses, angle.associated_house)?;
+
+        positions.push(crate::domain::ObjectPositionFact {
+            chart_object_id: object.id,
+            object_code: object.code.clone(),
+            object_name: if object.name.trim().is_empty() {
+                angle.full_name.clone()
+            } else {
+                object.name.clone()
+            },
+            zodiacal_reference_system_id: input.zodiacal_reference_system_id,
+            coordinate_reference_system_id: input.coordinate_reference_system_id,
+            sign_id: sign.id,
+            sign_code: sign.code.clone(),
+            sign_name: sign.name.clone(),
+            house_id: Some(house.id),
+            house_number: Some(angle.associated_house),
+            house_name: Some(house.name.clone()),
+            motion_state_id: None,
+            horizon_position_id: None,
+            longitude_deg: longitude,
+            latitude_deg: None,
+            apparent_speed_deg_per_day: None,
+            altitude_deg: None,
+            is_visible: None,
+            facts_json: Some(serde_json::json!({
+                "sign_context": sign_context(sign),
+                "house_modality": house_modality(house),
+                "house_context": house_context(house),
+                "object_context": object_context(object),
+                "angle_context": {
+                    "angle_point_id": angle.id,
+                    "angle_point_code": angle.code,
+                    "short_label": angle.short_label,
+                    "full_name": angle.full_name,
+                    "axis": angle.axis,
+                    "opposite_angle_code": angle.opposite_angle_code,
+                    "associated_house_number": angle.associated_house,
+                    "description": angle.description,
+                    "chart_object_sort_order": angle.chart_object_sort_order,
+                    "house_cusp_longitude_deg": house_cusps
+                        .iter()
+                        .find(|cusp| cusp.house_number == angle.associated_house)
+                        .map(|cusp| cusp.longitude_deg)
+                }
+            })),
+        });
+    }
+
+    Ok(())
+}
+
+#[cfg(feature = "swisseph-engine")]
+fn angle_longitude(
+    angle: &crate::models::AnglePointReference,
+    ascendant_longitude: f64,
+    mc_longitude: f64,
+) -> Result<f64, RuntimeError> {
+    let longitude = match angle.code.as_str() {
+        "asc" => ascendant_longitude,
+        "dsc" => ascendant_longitude + 180.0,
+        "mc" => mc_longitude,
+        "ic" => mc_longitude + 180.0,
+        other => {
+            return Err(RuntimeError::Ephemeris(format!(
+                "unsupported angle point code {other}"
+            )))
+        }
+    };
+    Ok(crate::facts::normalize_degrees(longitude))
 }
 
 #[cfg(feature = "swisseph-engine")]

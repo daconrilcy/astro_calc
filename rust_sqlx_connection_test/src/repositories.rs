@@ -6,8 +6,8 @@ use crate::domain::{
     NatalChartInput, ObjectPositionFact, RuntimeOptions,
 };
 use crate::models::{
-    AspectDefinition, ChartCalculationRow, ChartObject, HouseReference, HouseSystem,
-    InterpretationSignalRow, MotionStateReference, PersistedAspectFact,
+    AnglePointReference, AspectDefinition, ChartCalculationRow, ChartObject, HouseReference,
+    HouseSystem, InterpretationSignalRow, MotionStateReference, PersistedAspectFact,
     PersistedObjectPositionFact, SignReference,
 };
 use crate::runtime::RuntimeError;
@@ -93,7 +93,7 @@ impl RuntimeRepository {
     pub async fn house_references(&self) -> Result<Vec<HouseReference>, RuntimeError> {
         Ok(sqlx::query_as::<_, HouseReference>(
             r#"
-            SELECT h.id, h.number, h.name,
+            SELECT h.id, h.number, h.name, h.theme_code,
                    modality.name AS modality_code,
                    modality.label AS modality_label,
                    modality.accidental_strength,
@@ -114,6 +114,33 @@ impl RuntimeRepository {
             FROM astral_object_motion_states
             WHERE is_active = true
             ORDER BY sort_order, id
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?)
+    }
+
+    pub async fn angle_point_references(&self) -> Result<Vec<AnglePointReference>, RuntimeError> {
+        Ok(sqlx::query_as::<_, AnglePointReference>(
+            r#"
+            SELECT angle.id,
+                   angle.code,
+                   angle.short_label,
+                   angle.full_name,
+                   angle.axis,
+                   angle.opposite_angle_code,
+                   angle.associated_house,
+                   angle.description,
+                   object.id AS chart_object_id,
+                   object.code AS chart_object_code,
+                   object.name AS chart_object_name,
+                   object.sort_order AS chart_object_sort_order
+            FROM astral_angle_points angle
+            JOIN astral_chart_objects object
+              ON lower(object.name) = lower(angle.full_name)
+             AND object.is_active = true
+             AND object.is_calculable = true
+            ORDER BY object.sort_order, angle.id
             "#,
         )
         .fetch_all(&self.pool)
@@ -214,6 +241,12 @@ impl RuntimeRepository {
                                'label', house_modality.label,
                                'accidental_strength', house_modality.accidental_strength,
                                'interpretation_weight', house_modality.interpretation_weight
+                           ))
+                       END,
+                       'house_context', CASE
+                           WHEN h.id IS NULL THEN NULL
+                           ELSE jsonb_strip_nulls(jsonb_build_object(
+                               'theme_code', h.theme_code
                            ))
                        END,
                        'object_context', jsonb_strip_nulls(jsonb_build_object(

@@ -3,10 +3,10 @@ use crate::dignities::{
     EssentialDignityFact,
 };
 use crate::domain::{
-    BasicChartEmphasis, BasicDignity, BasicDominantHouse, BasicDominantObject, BasicDominantSign,
-    BasicDraftingPlanItem, BasicEmphasisRefs, BasicLlmHandoffContract, BasicObjectPosition,
-    BasicPayload, BasicReadingPlanItem, BasicSecondarySlotCandidate, BasicSignal, NatalChartInput,
-    ObjectPositionFact,
+    BasicAngleFact, BasicChartEmphasis, BasicDignity, BasicDominantHouse, BasicDominantObject,
+    BasicDominantSign, BasicDraftingPlanItem, BasicEmphasisRefs, BasicLlmHandoffContract,
+    BasicObjectPosition, BasicPayload, BasicReadingPlanItem, BasicSecondarySlotCandidate,
+    BasicSignal, NatalChartInput, ObjectPositionFact,
 };
 use crate::models::InterpretationSignalRow;
 use std::collections::HashMap;
@@ -37,6 +37,7 @@ pub fn build_basic_payload(
         })
         .collect();
 
+    let angles = build_payload_angles(positions);
     let dignities = build_payload_dignities(positions, &basic_signals);
     let chart_emphasis = build_chart_emphasis(positions, &dignities, &basic_signals);
     let reading_plan = build_reading_plan(&basic_signals);
@@ -63,18 +64,73 @@ pub fn build_basic_payload(
                 house_name: position.house_name.clone(),
                 motion_state_id: position.motion_state_id,
                 sign_context: position_context(position, "sign_context"),
+                house_context: position_context(position, "house_context"),
                 house_modality: position_context(position, "house_modality"),
                 object_context: position_context(position, "object_context"),
                 motion_context: position_context(position, "motion_context"),
                 dignity_context: position_dignity_context(position),
             })
             .collect(),
+        angles,
         dignities,
         chart_emphasis,
         signals: basic_signals,
         reading_plan,
         drafting_plan,
     }
+}
+
+fn build_payload_angles(positions: &[ObjectPositionFact]) -> Vec<BasicAngleFact> {
+    let mut angles: Vec<_> = positions
+        .iter()
+        .filter_map(|position| {
+            let angle_context = position_context(position, "angle_context")?;
+            Some(BasicAngleFact {
+                angle_code: position.object_code.clone(),
+                angle_name: angle_context
+                    .get("full_name")
+                    .and_then(|value| value.as_str())
+                    .unwrap_or(&position.object_name)
+                    .to_string(),
+                axis: angle_context
+                    .get("axis")
+                    .and_then(|value| value.as_str())
+                    .unwrap_or_default()
+                    .to_string(),
+                opposite_angle_code: angle_context
+                    .get("opposite_angle_code")
+                    .and_then(|value| value.as_str())
+                    .unwrap_or_default()
+                    .to_string(),
+                longitude_deg: position.longitude_deg,
+                sign_id: position.sign_id,
+                sign_code: position.sign_code.clone(),
+                sign_name: position.sign_name.clone(),
+                house_id: position.house_id,
+                house_number: angle_context
+                    .get("associated_house_number")
+                    .and_then(|value| value.as_i64())
+                    .and_then(|value| i32::try_from(value).ok())
+                    .or(position.house_number)
+                    .unwrap_or_default(),
+                house_name: position.house_name.clone(),
+            })
+        })
+        .collect();
+    angles.sort_by_key(|angle| {
+        positions
+            .iter()
+            .find(|position| position.object_code == angle.angle_code)
+            .and_then(|position| position_context(position, "angle_context"))
+            .and_then(|context| {
+                context
+                    .get("chart_object_sort_order")
+                    .and_then(|value| value.as_i64())
+                    .and_then(|value| i32::try_from(value).ok())
+            })
+            .unwrap_or(i32::MAX)
+    });
+    angles
 }
 
 fn position_dignity_context(position: &ObjectPositionFact) -> serde_json::Value {
@@ -97,7 +153,7 @@ fn position_dignity_context(position: &ObjectPositionFact) -> serde_json::Value 
 
 pub fn basic_llm_handoff_contract() -> BasicLlmHandoffContract {
     BasicLlmHandoffContract {
-        contract_version: "basic_natal_structured_v6".to_string(),
+        contract_version: "basic_natal_structured_v7".to_string(),
         payload_language_code: "en".to_string(),
         target_language_policy: "provided_by_llm_service".to_string(),
         audience_level: "beginner".to_string(),
@@ -105,6 +161,7 @@ pub fn basic_llm_handoff_contract() -> BasicLlmHandoffContract {
         must_use: vec![
             "chart_emphasis".to_string(),
             "dignities".to_string(),
+            "angles".to_string(),
             "signals".to_string(),
             "reading_plan".to_string(),
             "drafting_plan".to_string(),
@@ -181,6 +238,7 @@ fn build_chart_emphasis(
 ) -> BasicChartEmphasis {
     let mut sign_scores: HashMap<String, EmphasisScore> = HashMap::new();
     let mut house_scores: HashMap<i32, EmphasisScore> = HashMap::new();
+    let mut house_theme_codes: HashMap<i32, String> = HashMap::new();
     let mut object_scores: HashMap<String, EmphasisScore> = HashMap::new();
     let positions_by_object: HashMap<&str, &ObjectPositionFact> = positions
         .iter()
@@ -204,6 +262,9 @@ fn build_chart_emphasis(
         );
 
         if let Some(house_number) = position.house_number {
+            if let Some(theme_code) = house_theme_code(position) {
+                house_theme_codes.entry(house_number).or_insert(theme_code);
+            }
             add_score(
                 house_scores.entry(house_number).or_default(),
                 object_weight,
@@ -224,13 +285,14 @@ fn build_chart_emphasis(
         signals,
         &mut sign_scores,
         &mut house_scores,
+        &mut house_theme_codes,
         &mut object_scores,
     );
     add_sign_emphasis_to_objects(positions, &sign_scores, &mut object_scores);
 
     BasicChartEmphasis {
         dominant_signs: normalized_signs(sign_scores),
-        dominant_houses: normalized_houses(house_scores),
+        dominant_houses: normalized_houses(house_scores, &house_theme_codes),
         dominant_objects: normalized_objects(object_scores),
     }
 }
@@ -305,11 +367,18 @@ fn add_signal_emphasis(
     signals: &[BasicSignal],
     sign_scores: &mut HashMap<String, EmphasisScore>,
     house_scores: &mut HashMap<i32, EmphasisScore>,
+    house_theme_codes: &mut HashMap<i32, String>,
     object_scores: &mut HashMap<String, EmphasisScore>,
 ) {
     for signal in signals {
         if signal.signal_key.starts_with("cluster:") {
-            add_cluster_emphasis(signal, sign_scores, house_scores, object_scores);
+            add_cluster_emphasis(
+                signal,
+                sign_scores,
+                house_scores,
+                house_theme_codes,
+                object_scores,
+            );
         } else if signal.signal_key.starts_with("aspect:") && aspect_strength_score(signal) >= 0.75
         {
             add_aspect_object_emphasis(signal, object_scores);
@@ -321,6 +390,7 @@ fn add_cluster_emphasis(
     signal: &BasicSignal,
     sign_scores: &mut HashMap<String, EmphasisScore>,
     house_scores: &mut HashMap<i32, EmphasisScore>,
+    house_theme_codes: &mut HashMap<i32, String>,
     object_scores: &mut HashMap<String, EmphasisScore>,
 ) {
     let Some(evidence) = signal.evidence.as_ref() else {
@@ -339,6 +409,14 @@ fn add_cluster_emphasis(
         .get("house_number")
         .and_then(|value| value.as_i64())
     {
+        if let Some(theme_code) = evidence
+            .get("house_theme_code")
+            .and_then(|value| value.as_str())
+        {
+            house_theme_codes
+                .entry(house_number as i32)
+                .or_insert_with(|| theme_code.to_string());
+        }
         add_score(
             house_scores.entry(house_number as i32).or_default(),
             cluster_weight,
@@ -443,13 +521,19 @@ fn normalized_signs(scores: HashMap<String, EmphasisScore>) -> Vec<BasicDominant
     values
 }
 
-fn normalized_houses(scores: HashMap<i32, EmphasisScore>) -> Vec<BasicDominantHouse> {
+fn normalized_houses(
+    scores: HashMap<i32, EmphasisScore>,
+    house_theme_codes: &HashMap<i32, String>,
+) -> Vec<BasicDominantHouse> {
     let mut values: Vec<_> = scores
         .into_iter()
         .filter(|(_, entry)| entry.score > 0.0)
         .map(|(house_number, entry)| BasicDominantHouse {
             house_number,
-            theme_code: house_theme_code(house_number).to_string(),
+            theme_code: house_theme_codes
+                .get(&house_number)
+                .cloned()
+                .unwrap_or_else(|| "object_position".to_string()),
             score: normalized_emphasis_score(entry.score, HOUSE_EMPHASIS_FULL_SCORE),
             reasons: entry.reasons,
         })
@@ -574,7 +658,7 @@ fn build_reading_plan(signals: &[BasicSignal]) -> Vec<BasicReadingPlanItem> {
         &mut plan,
         "core_identity",
         "Core identity markers",
-        signal_keys_for_objects(signals, &["sun", "moon", "ascendant", "mc"], 4),
+        signal_keys_for_objects(signals, &["sun", "moon", "ascendant"], 3),
     );
 
     if let Some(cluster) = signals
@@ -629,7 +713,7 @@ fn build_reading_plan(signals: &[BasicSignal]) -> Vec<BasicReadingPlanItem> {
         "Background factors",
         signal_keys_for_objects(
             signals,
-            &["jupiter", "saturn", "uranus", "neptune", "pluto"],
+            &["mc", "jupiter", "saturn", "uranus", "neptune", "pluto"],
             3,
         ),
     );
@@ -771,29 +855,22 @@ fn aspect_strength_score(signal: &BasicSignal) -> f64 {
 
 fn object_source_weight(object_code: &str) -> f64 {
     match object_code {
-        "sun" | "moon" => 1.0,
+        "sun" | "moon" | "ascendant" => 1.0,
+        "mc" => 0.8,
         "mercury" | "venus" | "mars" => 0.75,
         "jupiter" | "saturn" => 0.6,
+        "descendant" | "ic" => 0.4,
         _ => 0.35,
     }
 }
 
-fn house_theme_code(house_number: i32) -> &'static str {
-    match house_number {
-        1 => "identity",
-        2 => "resources",
-        3 => "communication",
-        4 => "roots",
-        5 => "creativity",
-        6 => "work_health",
-        7 => "relationships",
-        8 => "shared_resources",
-        9 => "beliefs",
-        10 => "career",
-        11 => "community",
-        12 => "inner_world",
-        _ => "object_position",
-    }
+fn house_theme_code(position: &ObjectPositionFact) -> Option<String> {
+    position_context(position, "house_context").and_then(|context| {
+        context
+            .get("theme_code")
+            .and_then(|value| value.as_str())
+            .map(ToString::to_string)
+    })
 }
 
 fn push_plan_item(
@@ -853,8 +930,7 @@ fn signal_keys_for_objects(
     let mut selected_objects = 0;
 
     for object_code in object_codes {
-        let signal_key = format!("object_position:{object_code}");
-        if signals.iter().any(|signal| signal.signal_key == signal_key) {
+        if let Some(signal_key) = position_signal_key_for_object(signals, object_code) {
             keys.push(signal_key);
             selected_objects += 1;
         }
@@ -866,6 +942,22 @@ fn signal_keys_for_objects(
 
     dedupe_strings(&mut keys);
     keys
+}
+
+fn position_signal_key_for_object(signals: &[BasicSignal], object_code: &str) -> Option<String> {
+    let object_position_key = format!("object_position:{object_code}");
+    if signals
+        .iter()
+        .any(|signal| signal.signal_key == object_position_key)
+    {
+        return Some(object_position_key);
+    }
+
+    let angle_prefix = format!("angle:{object_code}:sign:");
+    signals
+        .iter()
+        .find(|signal| signal.signal_key.starts_with(&angle_prefix))
+        .map(|signal| signal.signal_key.clone())
 }
 
 fn cluster_source_dignity_keys(signals: &[BasicSignal], cluster: &BasicSignal) -> Vec<String> {
@@ -1081,6 +1173,13 @@ fn emphasis_object_scope(item: &BasicReadingPlanItem) -> Vec<String> {
 fn object_code_from_signal_key(signal_key: &str) -> Option<String> {
     if let Some(object_code) = signal_key.strip_prefix("object_position:") {
         return Some(object_code.to_string());
+    }
+    if let Some(tail) = signal_key.strip_prefix("angle:") {
+        return tail
+            .split(':')
+            .next()
+            .filter(|object_code| !object_code.is_empty())
+            .map(ToString::to_string);
     }
     signal_key
         .strip_prefix("dignity:")
@@ -1379,6 +1478,7 @@ mod tests {
                     "polarity": "yang",
                     "keywords": ["communication"]
                 },
+                "house_context": {"theme_code": "beliefs"},
                 "house_modality": {
                     "code": "cadent",
                     "accidental_strength": "weak_or_background",
@@ -1424,6 +1524,7 @@ mod tests {
                     "modality": "cardinal",
                     "polarity": "yin"
                 },
+                "house_context": {"theme_code": "resources"},
                 "house_modality": {
                     "code": "succedent"
                 },
@@ -1467,6 +1568,7 @@ mod tests {
                     "modality": "cardinal",
                     "polarity": "yin"
                 },
+                "house_context": {"theme_code": "resources"},
                 "house_modality": {"code": "succedent"},
                 "object_context": {"role": "planet"},
                 "motion_context": {"motion_state": "direct"}
@@ -1548,7 +1650,7 @@ mod tests {
                 .as_ref()
                 .expect("llm handoff contract")
                 .contract_version,
-            "basic_natal_structured_v6"
+            "basic_natal_structured_v7"
         );
         let contract = payload
             .llm_handoff_contract
@@ -1560,6 +1662,7 @@ mod tests {
                 .to_string()
         ));
         assert!(contract.must_use.contains(&"dignities".to_string()));
+        assert!(contract.must_use.contains(&"angles".to_string()));
         assert_eq!(contract.payload_language_code, "en");
         assert_eq!(contract.target_language_policy, "provided_by_llm_service");
         assert!(contract.must_use.contains(&"signals".to_string()));

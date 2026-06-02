@@ -16,6 +16,11 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
     let mut signals = Vec::new();
 
     for position in &facts.positions {
+        if is_angle_position(position) {
+            signals.push(angle_signal(position));
+            continue;
+        }
+
         let house_suffix = position
             .house_number
             .map(|house_number| format!(", house {house_number}"))
@@ -265,12 +270,13 @@ fn add_position_cluster_signals(
         let priority_score =
             round4((90.0 + positions.len() as f64 * 1.5 + source_weight * 2.0).min(99.0));
         let aggregation_group = format!("{sign_code}_house_{house_number}_cluster");
-        let semantic_tags = cluster_semantic_tags(&sign_code, house_number);
+        let house_theme_code = house_theme_code(positions[0]);
+        let semantic_tags = cluster_semantic_tags(&sign_code, house_number, &house_theme_code);
 
         signals.push(InterpretationSignalDraft {
             signal_key: format!("cluster:{sign_code}:house_{house_number}"),
             signal_type_id: None,
-            theme_code: Some(house_theme_code(house_number).to_string()),
+            theme_code: Some(house_theme_code.clone()),
             title: format!("Strong concentration in {sign_name}, house {house_number}"),
             summary: Some(format!(
                 "{} chart factors are concentrated in {sign_name} and the {house_name} house, giving extra interpretive weight to this area of the chart.",
@@ -294,6 +300,7 @@ fn add_position_cluster_signals(
                     "sign_name": sign_name,
                     "house_number": house_number,
                     "house_name": house_name,
+                    "house_theme_code": house_theme_code,
                     "source_signals": source_signals,
                     "source_objects": source_objects
                 }
@@ -409,9 +416,156 @@ fn is_core_chart_object(object_code: &str) -> bool {
     matches!(object_code, "sun" | "moon" | "ascendant" | "mc")
 }
 
+fn is_angle_position(position: &ObjectPositionFact) -> bool {
+    placement_context_value(position, "angle_context", "angle_point_id").is_some()
+}
+
+fn angle_signal(position: &ObjectPositionFact) -> InterpretationSignalDraft {
+    let angle_context = angle_context(position);
+    let semantic_tags = angle_semantic_tags(position);
+    let associated_house = angle_associated_house(position).or(position.house_number);
+    let theme_code = house_theme_code(position);
+
+    InterpretationSignalDraft {
+        signal_key: format!("angle:{}:sign:{}", position.object_code, position.sign_code),
+        signal_type_id: None,
+        theme_code: Some(theme_code),
+        title: format!("{} in {}", position.object_name, position.sign_name),
+        summary: Some(format!(
+            "{} falls in {}, giving the chart a concrete orientation through this angle.",
+            position.object_name, position.sign_name
+        )),
+        priority_score: angle_priority(position),
+        confidence_score: Some(0.95),
+        suppression_state: "active".to_string(),
+        payload_json: Some(json!({
+            "interpretive_hint": angle_interpretive_hint(position),
+            "semantic_tags": semantic_tags,
+            "source_weight": round4(object_source_weight(&position.object_code)),
+            "aggregation_group": format!("angle:{}:{}", position.object_code, position.sign_code),
+            "writing_guidance": angle_writing_guidance(position),
+            "angle_context": angle_context,
+            "evidence": {
+                "fact_type": "chart_angle",
+                "angle_code": position.object_code,
+                "angle_name": position.object_name,
+                "angle_point_code": placement_context_str(position, "angle_context", "angle_point_code"),
+                "short_label": placement_context_str(position, "angle_context", "short_label"),
+                "axis": placement_context_str(position, "angle_context", "axis"),
+                "opposite_angle_code": placement_context_str(position, "angle_context", "opposite_angle_code"),
+                "associated_house_number": associated_house,
+                "chart_object_id": position.chart_object_id,
+                "sign_id": position.sign_id,
+                "sign_code": position.sign_code,
+                "sign_name": position.sign_name,
+                "house_id": position.house_id,
+                "house_number": position.house_number,
+                "house_name": position.house_name,
+                "longitude_deg": position.longitude_deg,
+                "placement_context": placement_context(position)
+            }
+        })),
+    }
+}
+
+fn angle_priority(position: &ObjectPositionFact) -> f64 {
+    let base = match position.object_code.as_str() {
+        "ascendant" => 99.0,
+        "mc" => 82.0,
+        "descendant" => 68.0,
+        "ic" => 66.0,
+        _ => 60.0,
+    };
+    round4((base + house_modality_priority_delta(position)).min(100.0))
+}
+
+fn angle_context(position: &ObjectPositionFact) -> serde_json::Value {
+    json!({
+        "angle_code": position.object_code,
+        "angle_name": position.object_name,
+        "angle_point_code": placement_context_str(position, "angle_context", "angle_point_code"),
+        "short_label": placement_context_str(position, "angle_context", "short_label"),
+        "full_name": placement_context_str(position, "angle_context", "full_name"),
+        "axis": placement_context_str(position, "angle_context", "axis"),
+        "opposite_angle_code": placement_context_str(position, "angle_context", "opposite_angle_code"),
+        "associated_house_number": angle_associated_house(position),
+        "sign_code": position.sign_code,
+        "sign_name": position.sign_name,
+        "longitude_deg": position.longitude_deg
+    })
+}
+
+fn angle_interpretive_hint(position: &ObjectPositionFact) -> String {
+    match position.object_code.as_str() {
+        "ascendant" => format!(
+            "Use the Ascendant as the chart's immediate orientation: embodiment, instinctive style, and first impression through {} qualities.",
+            position.sign_name
+        ),
+        "mc" => format!(
+            "Use the MC as public direction and visibility, colored by {} qualities.",
+            position.sign_name
+        ),
+        "descendant" => format!(
+            "Use the Descendant as the relationship horizon and encounter style through {} qualities.",
+            position.sign_name
+        ),
+        "ic" => format!(
+            "Use the IC as private foundation, roots, and inner base through {} qualities.",
+            position.sign_name
+        ),
+        _ => format!("Use this angle as a chart orientation marker in {}.", position.sign_name),
+    }
+}
+
+fn angle_writing_guidance(position: &ObjectPositionFact) -> String {
+    match position.object_code.as_str() {
+        "ascendant" => "Integrate this with Sun and Moon as a core identity marker, not as a physical description only.".to_string(),
+        "mc" => "Use this proportionately as public direction or visibility context; keep it secondary to Sun, Moon, and Ascendant in Basic.".to_string(),
+        "descendant" => "Use this as relationship orientation only when it supports a larger Basic theme.".to_string(),
+        "ic" => "Use this as roots and private-foundation context only when it supports a larger Basic theme.".to_string(),
+        _ => "Use this angle as concise orientation context.".to_string(),
+    }
+}
+
+fn angle_semantic_tags(position: &ObjectPositionFact) -> Vec<String> {
+    let mut tags = vec![
+        "angle".to_string(),
+        position.object_code.clone(),
+        position.sign_code.clone(),
+    ];
+    tags.extend(sign_tags(&position.sign_code));
+    if let Some(house_number) = angle_associated_house(position).or(position.house_number) {
+        tags.push(format!("house_{house_number}"));
+        tags.push(house_theme_code(position));
+        tags.extend(house_tags(house_number));
+    }
+    if let Some(element) = placement_context_str(position, "sign_context", "element") {
+        tags.push(element.to_string());
+    }
+    if let Some(modality) = placement_context_str(position, "sign_context", "modality") {
+        tags.push(modality.to_string());
+    }
+    if let Some(polarity) = placement_context_str(position, "sign_context", "polarity") {
+        tags.push(polarity.to_string());
+    }
+    if let Some(axis) = placement_context_str(position, "angle_context", "axis") {
+        tags.push(axis.to_string());
+    }
+    dedupe_tags(tags)
+}
+
+fn angle_associated_house(position: &ObjectPositionFact) -> Option<i32> {
+    placement_context_value(position, "angle_context", "associated_house_number")
+        .and_then(|value| value.as_i64())
+        .and_then(|value| i32::try_from(value).ok())
+}
+
 fn position_priority(position: &ObjectPositionFact) -> f64 {
     let base = match position.object_code.as_str() {
+        "ascendant" => 99.0,
         "sun" | "moon" => 100.0,
+        "mc" => 82.0,
+        "descendant" | "ic" => 68.0,
         "mercury" | "venus" | "mars" => 85.0,
         "jupiter" | "saturn" => 75.0,
         _ => 60.0,
@@ -433,36 +587,24 @@ fn house_modality_priority_delta(position: &ObjectPositionFact) -> f64 {
 
 fn object_source_weight(object_code: &str) -> f64 {
     match object_code {
-        "sun" | "moon" => 1.0,
+        "sun" | "moon" | "ascendant" => 1.0,
+        "mc" => 0.8,
         "mercury" | "venus" | "mars" => 0.75,
         "jupiter" | "saturn" => 0.6,
+        "descendant" | "ic" => 0.4,
         _ => 0.35,
     }
 }
 
-fn position_theme_code(position: &ObjectPositionFact) -> &'static str {
-    position
-        .house_number
-        .map(house_theme_code)
-        .unwrap_or("object_position")
+fn position_theme_code(position: &ObjectPositionFact) -> String {
+    house_theme_code(position)
 }
 
-fn house_theme_code(house_number: i32) -> &'static str {
-    match house_number {
-        1 => "identity",
-        2 => "resources",
-        3 => "communication",
-        4 => "roots",
-        5 => "creativity",
-        6 => "work_health",
-        7 => "relationships",
-        8 => "shared_resources",
-        9 => "beliefs",
-        10 => "career",
-        11 => "community",
-        12 => "inner_world",
-        _ => "object_position",
-    }
+fn house_theme_code(position: &ObjectPositionFact) -> String {
+    placement_context_str(position, "house_context", "theme_code")
+        .or_else(|| placement_context_str(position, "angle_context", "house_theme_code"))
+        .unwrap_or("object_position")
+        .to_string()
 }
 
 fn position_aggregation_group(position: &ObjectPositionFact) -> String {
@@ -505,7 +647,7 @@ fn position_semantic_tags(position: &ObjectPositionFact) -> Vec<String> {
     tags.extend(sign_tags(&position.sign_code));
     if let Some(house_number) = position.house_number {
         tags.push(format!("house_{house_number}"));
-        tags.push(house_theme_code(house_number).to_string());
+        tags.push(house_theme_code(position));
         tags.extend(house_tags(house_number));
     }
     if let Some(element) = placement_context_str(position, "sign_context", "element") {
@@ -535,6 +677,7 @@ fn position_semantic_tags(position: &ObjectPositionFact) -> Vec<String> {
 fn placement_context(position: &ObjectPositionFact) -> serde_json::Value {
     json!({
         "sign_context": placement_context_object(position, "sign_context"),
+        "house_context": placement_context_object(position, "house_context"),
         "house_modality": placement_context_object(position, "house_modality"),
         "object_context": placement_context_object(position, "object_context"),
         "motion_context": placement_context_object(position, "motion_context"),
@@ -754,12 +897,16 @@ fn placement_context_str<'a>(
     placement_context_value(position, context_key, value_key).and_then(|value| value.as_str())
 }
 
-fn cluster_semantic_tags(sign_code: &str, house_number: i32) -> Vec<String> {
+fn cluster_semantic_tags(
+    sign_code: &str,
+    house_number: i32,
+    house_theme_code: &str,
+) -> Vec<String> {
     let mut tags = vec![
         "cluster".to_string(),
         sign_code.to_string(),
         format!("house_{house_number}"),
-        house_theme_code(house_number).to_string(),
+        house_theme_code.to_string(),
     ];
     tags.extend(sign_tags(sign_code));
     tags.extend(house_tags(house_number));
@@ -1144,7 +1291,9 @@ mod tests {
             apparent_speed_deg_per_day: Some(1.0),
             altitude_deg: None,
             is_visible: None,
-            facts_json: None,
+            facts_json: Some(json!({
+                "house_context": {"theme_code": "resources"}
+            })),
         }
     }
 
@@ -1175,7 +1324,9 @@ mod tests {
             apparent_speed_deg_per_day: Some(1.0),
             altitude_deg: None,
             is_visible: None,
-            facts_json: None,
+            facts_json: Some(json!({
+                "house_context": {"theme_code": format!("house_{house_number}_theme")}
+            })),
         }
     }
 
@@ -1188,6 +1339,7 @@ mod tests {
                 "polarity": "yang",
                 "keywords": ["communication", "curiosity"]
             },
+            "house_context": {"theme_code": "beliefs"},
             "house_modality": {
                 "code": "cadent",
                 "accidental_strength": "weak_or_background",
@@ -1215,6 +1367,7 @@ mod tests {
                 "modality": "cardinal",
                 "polarity": "yin"
             },
+            "house_context": {"theme_code": "communication"},
             "house_modality": {
                 "code": "cadent"
             },

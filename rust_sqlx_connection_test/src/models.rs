@@ -50,6 +50,7 @@ pub struct HouseReference {
     pub id: i32,
     pub number: i32,
     pub name: String,
+    pub theme_code: String,
     pub modality_code: Option<String>,
     pub modality_label: Option<String>,
     pub accidental_strength: Option<String>,
@@ -62,6 +63,22 @@ pub struct MotionStateReference {
     pub code: String,
     pub label: String,
     pub motion_family: String,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct AnglePointReference {
+    pub id: i32,
+    pub code: String,
+    pub short_label: String,
+    pub full_name: String,
+    pub axis: String,
+    pub opposite_angle_code: Option<String>,
+    pub associated_house: i32,
+    pub description: String,
+    pub chart_object_id: i32,
+    pub chart_object_code: String,
+    pub chart_object_name: String,
+    pub chart_object_sort_order: i32,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]

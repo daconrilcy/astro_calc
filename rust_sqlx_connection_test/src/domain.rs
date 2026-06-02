@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 pub use crate::models::{
-    AspectDefinition, ChartObject, HouseReference, HouseSystem, InterpretationSignalRow,
-    MotionStateReference, SignReference,
+    AnglePointReference, AspectDefinition, ChartObject, HouseReference, HouseSystem,
+    InterpretationSignalRow, MotionStateReference, SignReference,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,6 +50,7 @@ pub struct CalculationReferenceData {
     pub signs: Vec<SignReference>,
     pub houses: Vec<HouseReference>,
     pub motion_states: Vec<MotionStateReference>,
+    pub angle_points: Vec<AnglePointReference>,
 }
 
 #[derive(Debug, Clone)]
@@ -141,6 +142,8 @@ pub struct BasicPayload {
     pub llm_handoff_contract: Option<BasicLlmHandoffContract>,
     pub positions: Vec<BasicObjectPosition>,
     #[serde(default)]
+    pub angles: Vec<BasicAngleFact>,
+    #[serde(default)]
     pub dignities: Vec<BasicDignity>,
     #[serde(default)]
     pub chart_emphasis: BasicChartEmphasis,
@@ -149,6 +152,21 @@ pub struct BasicPayload {
     pub reading_plan: Vec<BasicReadingPlanItem>,
     #[serde(default)]
     pub drafting_plan: Vec<BasicDraftingPlanItem>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BasicAngleFact {
+    pub angle_code: String,
+    pub angle_name: String,
+    pub axis: String,
+    pub opposite_angle_code: String,
+    pub longitude_deg: f64,
+    pub sign_id: i32,
+    pub sign_code: String,
+    pub sign_name: String,
+    pub house_id: Option<i32>,
+    pub house_number: i32,
+    pub house_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -230,6 +248,8 @@ pub struct BasicObjectPosition {
     pub motion_state_id: Option<i32>,
     #[serde(default)]
     pub sign_context: Option<Value>,
+    #[serde(default)]
+    pub house_context: Option<Value>,
     #[serde(default)]
     pub house_modality: Option<Value>,
     #[serde(default)]
