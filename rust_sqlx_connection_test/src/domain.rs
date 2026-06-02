@@ -94,11 +94,19 @@ pub struct AspectFact {
     pub aspect_id: i32,
     pub aspect_code: String,
     pub aspect_name: String,
+    pub aspect_family: String,
     pub orb_deg: f64,
     pub phase_state: String,
     pub is_applying: bool,
     pub is_exact: bool,
     pub strength_score: Option<f64>,
+    pub primary_valence: Option<String>,
+    pub intensity_modifier: Option<String>,
+    pub secondary_effect: Option<String>,
+    pub valence_family: Option<String>,
+    pub valence_is_tonal: Option<bool>,
+    pub valence_is_intensity_modifier: Option<bool>,
+    pub valence_writing_guidance: Option<String>,
     pub calculation_notes_json: Option<Value>,
 }
 
@@ -209,6 +217,8 @@ pub struct BasicSignal {
     pub source_weight: Option<f64>,
     pub aggregation_group: Option<String>,
     pub writing_guidance: Option<String>,
+    #[serde(default)]
+    pub aspect_context: Option<Value>,
     pub evidence: Option<Value>,
 }
 

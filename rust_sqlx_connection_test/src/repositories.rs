@@ -299,22 +299,209 @@ impl RuntimeRepository {
                    a.aspect_id,
                    aspect.code AS aspect_code,
                    aspect.name AS aspect_name,
+                   aspect.family AS aspect_family,
                    a.orb_deg::float8 AS orb_deg,
                    a.phase_state,
                    a.is_applying,
                    a.is_exact,
                    a.strength_score::float8 AS strength_score,
+                   primary_valence.name AS primary_valence,
+                   intensity_modifier.name AS intensity_modifier,
+                   secondary_effect.name AS secondary_effect,
+                   COALESCE(
+                       primary_valence.interpretive_family,
+                       intensity_modifier.interpretive_family,
+                       secondary_effect.interpretive_family
+                   ) AS valence_family,
+                   COALESCE(
+                       primary_valence.is_tonal_valence,
+                       intensity_modifier.is_tonal_valence,
+                       secondary_effect.is_tonal_valence
+                   ) AS valence_is_tonal,
+                   COALESCE(
+                       primary_valence.is_intensity_modifier,
+                       intensity_modifier.is_intensity_modifier,
+                       secondary_effect.is_intensity_modifier
+                   ) AS valence_is_intensity_modifier,
+                   COALESCE(primary_valence.writing_guidance, intensity_modifier.writing_guidance)
+                       AS valence_writing_guidance,
                    a.calculation_notes_json
             FROM astral_calculated_aspects a
             JOIN astral_chart_objects source ON source.id = a.source_chart_object_id
             JOIN astral_chart_objects target ON target.id = a.target_chart_object_id
             JOIN astral_aspects aspect ON aspect.id = a.aspect_id
+            LEFT JOIN astral_aspect_profiles profile
+              ON profile.aspect_id = aspect.id
+             AND profile.reference_version_id = (
+                 SELECT reference_version_id
+                 FROM astral_chart_calculations
+                 WHERE id = $1
+             )
+            LEFT JOIN LATERAL (
+                SELECT valence.name,
+                       valence.interpretive_family,
+                       valence.is_tonal_valence,
+                       valence.is_intensity_modifier,
+                       valence.writing_guidance
+                FROM astral_aspect_interpretive_effects effect
+                JOIN astral_interpretive_valence valence
+                  ON valence.id = effect.interpretive_valence_id
+                 AND valence.is_active = true
+                WHERE effect.aspect_profile_id = profile.id
+                  AND effect.reference_version_id = profile.reference_version_id
+                  AND effect.effect_role = 'primary_valence'
+                ORDER BY effect.weight DESC, effect.sort_order, effect.id
+                LIMIT 1
+            ) primary_valence ON true
+            LEFT JOIN LATERAL (
+                SELECT valence.name,
+                       valence.interpretive_family,
+                       valence.is_tonal_valence,
+                       valence.is_intensity_modifier,
+                       valence.writing_guidance
+                FROM astral_aspect_interpretive_effects effect
+                JOIN astral_interpretive_valence valence
+                  ON valence.id = effect.interpretive_valence_id
+                 AND valence.is_active = true
+                WHERE effect.aspect_profile_id = profile.id
+                  AND effect.reference_version_id = profile.reference_version_id
+                  AND effect.effect_role = 'intensity_modifier'
+                ORDER BY effect.weight DESC, effect.sort_order, effect.id
+                LIMIT 1
+            ) intensity_modifier ON true
+            LEFT JOIN LATERAL (
+                SELECT valence.name,
+                       valence.interpretive_family,
+                       valence.is_tonal_valence,
+                       valence.is_intensity_modifier
+                FROM astral_aspect_interpretive_effects effect
+                JOIN astral_interpretive_valence valence
+                  ON valence.id = effect.interpretive_valence_id
+                 AND valence.is_active = true
+                WHERE effect.aspect_profile_id = profile.id
+                  AND effect.reference_version_id = profile.reference_version_id
+                  AND effect.effect_role = 'secondary_effect'
+                ORDER BY effect.weight DESC, effect.sort_order, effect.id
+                LIMIT 1
+            ) secondary_effect ON true
             WHERE a.chart_calculation_id = $1
             ORDER BY a.strength_score DESC NULLS LAST, a.orb_deg, a.id
             "#,
         )
         .bind(chart_calculation_id)
         .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(Into::into)
+        .collect())
+    }
+
+    pub async fn aspects_for_payload_in_tx(
+        tx: &mut Transaction<'_, Postgres>,
+        chart_calculation_id: i32,
+    ) -> Result<Vec<AspectFact>, RuntimeError> {
+        Ok(sqlx::query_as::<_, PersistedAspectFact>(
+            r#"
+            SELECT a.source_chart_object_id,
+                   source.code AS source_object_code,
+                   source.name AS source_object_name,
+                   a.target_chart_object_id,
+                   target.code AS target_object_code,
+                   target.name AS target_object_name,
+                   a.aspect_id,
+                   aspect.code AS aspect_code,
+                   aspect.name AS aspect_name,
+                   aspect.family AS aspect_family,
+                   a.orb_deg::float8 AS orb_deg,
+                   a.phase_state,
+                   a.is_applying,
+                   a.is_exact,
+                   a.strength_score::float8 AS strength_score,
+                   primary_valence.name AS primary_valence,
+                   intensity_modifier.name AS intensity_modifier,
+                   secondary_effect.name AS secondary_effect,
+                   COALESCE(
+                       primary_valence.interpretive_family,
+                       intensity_modifier.interpretive_family,
+                       secondary_effect.interpretive_family
+                   ) AS valence_family,
+                   COALESCE(
+                       primary_valence.is_tonal_valence,
+                       intensity_modifier.is_tonal_valence,
+                       secondary_effect.is_tonal_valence
+                   ) AS valence_is_tonal,
+                   COALESCE(
+                       primary_valence.is_intensity_modifier,
+                       intensity_modifier.is_intensity_modifier,
+                       secondary_effect.is_intensity_modifier
+                   ) AS valence_is_intensity_modifier,
+                   COALESCE(primary_valence.writing_guidance, intensity_modifier.writing_guidance)
+                       AS valence_writing_guidance,
+                   a.calculation_notes_json
+            FROM astral_calculated_aspects a
+            JOIN astral_chart_objects source ON source.id = a.source_chart_object_id
+            JOIN astral_chart_objects target ON target.id = a.target_chart_object_id
+            JOIN astral_aspects aspect ON aspect.id = a.aspect_id
+            LEFT JOIN astral_aspect_profiles profile
+              ON profile.aspect_id = aspect.id
+             AND profile.reference_version_id = (
+                 SELECT reference_version_id
+                 FROM astral_chart_calculations
+                 WHERE id = $1
+             )
+            LEFT JOIN LATERAL (
+                SELECT valence.name,
+                       valence.interpretive_family,
+                       valence.is_tonal_valence,
+                       valence.is_intensity_modifier,
+                       valence.writing_guidance
+                FROM astral_aspect_interpretive_effects effect
+                JOIN astral_interpretive_valence valence
+                  ON valence.id = effect.interpretive_valence_id
+                 AND valence.is_active = true
+                WHERE effect.aspect_profile_id = profile.id
+                  AND effect.reference_version_id = profile.reference_version_id
+                  AND effect.effect_role = 'primary_valence'
+                ORDER BY effect.weight DESC, effect.sort_order, effect.id
+                LIMIT 1
+            ) primary_valence ON true
+            LEFT JOIN LATERAL (
+                SELECT valence.name,
+                       valence.interpretive_family,
+                       valence.is_tonal_valence,
+                       valence.is_intensity_modifier,
+                       valence.writing_guidance
+                FROM astral_aspect_interpretive_effects effect
+                JOIN astral_interpretive_valence valence
+                  ON valence.id = effect.interpretive_valence_id
+                 AND valence.is_active = true
+                WHERE effect.aspect_profile_id = profile.id
+                  AND effect.reference_version_id = profile.reference_version_id
+                  AND effect.effect_role = 'intensity_modifier'
+                ORDER BY effect.weight DESC, effect.sort_order, effect.id
+                LIMIT 1
+            ) intensity_modifier ON true
+            LEFT JOIN LATERAL (
+                SELECT valence.name,
+                       valence.interpretive_family,
+                       valence.is_tonal_valence,
+                       valence.is_intensity_modifier
+                FROM astral_aspect_interpretive_effects effect
+                JOIN astral_interpretive_valence valence
+                  ON valence.id = effect.interpretive_valence_id
+                 AND valence.is_active = true
+                WHERE effect.aspect_profile_id = profile.id
+                  AND effect.reference_version_id = profile.reference_version_id
+                  AND effect.effect_role = 'secondary_effect'
+                ORDER BY effect.weight DESC, effect.sort_order, effect.id
+                LIMIT 1
+            ) secondary_effect ON true
+            WHERE a.chart_calculation_id = $1
+            ORDER BY a.strength_score DESC NULLS LAST, a.orb_deg, a.id
+            "#,
+        )
+        .bind(chart_calculation_id)
+        .fetch_all(&mut **tx)
         .await?
         .into_iter()
         .map(Into::into)
@@ -779,11 +966,19 @@ impl From<PersistedAspectFact> for AspectFact {
             aspect_id: row.aspect_id,
             aspect_code: row.aspect_code,
             aspect_name: row.aspect_name,
+            aspect_family: row.aspect_family,
             orb_deg: row.orb_deg,
             phase_state: row.phase_state,
             is_applying: row.is_applying,
             is_exact: row.is_exact,
             strength_score: row.strength_score,
+            primary_valence: row.primary_valence,
+            intensity_modifier: row.intensity_modifier,
+            secondary_effect: row.secondary_effect,
+            valence_family: row.valence_family,
+            valence_is_tonal: row.valence_is_tonal,
+            valence_is_intensity_modifier: row.valence_is_intensity_modifier,
+            valence_writing_guidance: row.valence_writing_guidance,
             calculation_notes_json: row.calculation_notes_json,
         }
     }

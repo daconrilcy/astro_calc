@@ -44,13 +44,23 @@ significatives. Les etats retrogrades gardent leur role de contexte de
 placement, mais leur resume et leur `writing_guidance` sont maintenant plus
 precis.
 
+L'etape 2C ajoute une couche interpretative controlee aux aspects. Les signaux
+`aspect:*` ne portent plus seulement la geometrie, l'orbe, la phase et la force :
+ils exposent aussi `aspect_context`, construit depuis `astral_aspect_profiles`,
+`astral_aspect_interpretive_effects` et `astral_interpretive_valence`. Cette
+couche separe la valence principale (`primary_valence`) des modificateurs
+d'intensite (`intensity_modifier`) comme `amplifying`, ajoute une qualite
+dynamique (`flow`, `tension`, `intensification`, etc.) et enrichit les tags et
+la guidance redactionnelle.
+
 Le runtime conserve la chaine existante :
 
 1. calcul des faits astrologiques ;
 2. ecriture des positions, cuspides et aspects calcules ;
-3. aggregation des signaux ;
-4. filtrage produit Basic ;
-5. ecriture du payload canonique dans `astral_interpretation_generation_payloads`.
+3. relecture des aspects avec leur contexte interpretatif de referentiel ;
+4. aggregation des signaux ;
+5. filtrage produit Basic ;
+6. ecriture du payload canonique dans `astral_interpretation_generation_payloads`.
 
 Cette etape prepare donc une entree propre, lisible, auditable et pre-orientee
 editorialement.
@@ -60,11 +70,13 @@ editorialement.
 - `rust_sqlx_connection_test/src/domain.rs` : structures runtime et payload JSON.
 - `rust_sqlx_connection_test/src/facts.rs` : helpers de libelles signe/maison.
 - `rust_sqlx_connection_test/src/ephemeris.rs` : enrichissement des positions calculees.
-- `rust_sqlx_connection_test/src/aspects.rs` : detection des aspects avec libelles objet/aspect.
+- `rust_sqlx_connection_test/src/aspects.rs` : detection geometrique des aspects
+  et calcul de l'orbe, de la phase et de la force brute.
 - `rust_sqlx_connection_test/src/dignities.rs` : detection MVP des dignites essentielles majeures.
 - `rust_sqlx_connection_test/src/signals.rs` : construction et filtrage des signaux Basic.
 - `rust_sqlx_connection_test/src/payload.rs` : assemblage du payload final.
-- `rust_sqlx_connection_test/src/repositories.rs` : enrichissement SQL et persistance.
+- `rust_sqlx_connection_test/src/repositories.rs` : persistance, relecture des
+  positions et enrichissement SQL des aspects depuis les referentiels 2C.
 - `rust_sqlx_connection_test/src/runtime.rs` : orchestration et regeneration des anciens payloads.
 
 ## Contrat des positions
@@ -135,7 +147,7 @@ Le calcul geometrique conserve seulement les operations derivees de la
 longitude : slot zodiacal et numero de maison. Les IDs, codes et noms de signes
 ou de maisons sont resolus depuis les tables. Le runtime refuse de calculer si
 les 12 signes ou les 12 maisons ne sont pas presents ou si les references sont
-ambigues. Le contrat Basic v3 refuse aussi de reutiliser un payload existant si
+ambigues. Le contrat Basic v4 refuse aussi de reutiliser un payload existant si
 les contextes de placement utiles sont absents ou incomplets.
 
 Depuis 2B.1, `dignity_context` est toujours expose comme tableau. Il vaut `[]`
@@ -174,6 +186,7 @@ preuves techniques dans `evidence` :
   "source_weight": 1.0,
   "aggregation_group": "gemini:house_9",
   "writing_guidance": "Use this as a concise placement cue; combine it with nearby cluster or aspect signals before drafting final text.",
+  "aspect_context": null,
   "evidence": {
     "fact_type": "object_position",
     "chart_object_id": 1,
@@ -230,11 +243,26 @@ texte utilisateur :
   "semantic_tags": [
     "aspect",
     "conjunction",
+    "major",
+    "intensification",
+    "amplifying",
     "high_strength"
   ],
   "source_weight": 1.75,
   "aggregation_group": "aspect:conjunction",
-  "writing_guidance": "Use the aspect as a relationship between two chart factors, not as a standalone verdict.",
+  "writing_guidance": "Indicate that the factor intensifies what is already present, and combine it with another tonal valence when possible. Treat amplifying as an intensity modifier, not as a supportive or challenging valence by itself.",
+  "aspect_context": {
+    "aspect_family": "major",
+    "primary_valence": null,
+    "intensity_modifier": "amplifying",
+    "secondary_effect": null,
+    "dynamic_quality": "intensification",
+    "phase_state": "separating",
+    "valence_family": "intensity",
+    "is_tonal_valence": false,
+    "is_intensity_modifier": true,
+    "writing_guidance": "Indicate that the factor intensifies what is already present, and combine it with another tonal valence when possible."
+  },
   "evidence": {
     "fact_type": "aspect",
     "source_chart_object_id": 1,
@@ -246,9 +274,19 @@ texte utilisateur :
     "aspect_id": 1,
     "aspect_code": "conjunction",
     "aspect_name": "Conjunction",
+    "aspect_family": "major",
     "orb_deg": 1.0084,
     "phase_state": "separating",
-    "strength_score": 0.874
+    "is_applying": false,
+    "is_exact": false,
+    "strength_score": 0.874,
+    "calculation_notes": {
+      "aspect_code": "conjunction",
+      "aspect_name": "Conjunction",
+      "exact_angle_deg": 0.0,
+      "orb_limit_deg": 8.0,
+      "separation_deg": 1.0084
+    }
   }
 }
 ```
@@ -271,6 +309,10 @@ Les champs ajoutes par l'etape 1B sont :
 
 Ces champs sont stockes dans `astral_interpretation_signals.payload_json`, puis
 remontes dans le payload final par `payload.rs`.
+
+`aspect_context` est egalement expose au niveau de chaque `BasicSignal`. Il
+contient un objet structure uniquement pour les signaux `aspect:*` ; pour les
+placements, dignites et clusters, il est serialise a `null`.
 
 ### Champs contextuels 2A
 
@@ -361,6 +403,7 @@ Exemple de signal de dignite :
   "source_weight": 0.75,
   "aggregation_group": "dignity:saturn",
   "writing_guidance": "Use this to strengthen the object's placement signal without overstating ease or outcome.",
+  "aspect_context": null,
   "evidence": {
     "fact_type": "essential_dignity",
     "chart_object": "saturn",
@@ -400,6 +443,63 @@ Le MVP couvre les dignites essentielles majeures par signe :
 
 Il ne couvre pas encore les dignites mineures par triplicite, terme ou face.
 
+### Champs d'aspect 2C
+
+Les champs ajoutes par l'etape 2C sont :
+
+- `signals[].aspect_context` : contexte interpretatif structure pour chaque
+  signal `aspect:*` ; il vaut `null` pour les autres familles de signaux.
+- `aspect_context.aspect_family` : famille issue de `astral_aspects.family`.
+- `aspect_context.primary_valence` : valence principale issue des effets
+  `primary_valence` de `astral_aspect_interpretive_effects`.
+- `aspect_context.intensity_modifier` : modificateur d'intensite issu des
+  effets `intensity_modifier`, par exemple `amplifying`.
+- `aspect_context.secondary_effect` : effet secondaire eventuel issu des effets
+  `secondary_effect`.
+- `aspect_context.dynamic_quality` : qualite redactionnelle derivee de la
+  valence ou du modificateur (`flow`, `tension`, `adjustment`,
+  `intensification`, `symbolic`, `integration`, `contextual`).
+- `aspect_context.valence_family`, `is_tonal_valence` et
+  `is_intensity_modifier` : famille et flags issus de
+  `astral_interpretive_valence` pour l'effet effectivement expose. Quand un
+  aspect n'a pas de valence principale mais a un modificateur, comme la
+  conjonction avec `amplifying`, ces champs decrivent le modificateur.
+- `aspect_context.writing_guidance` : guidance de la valence ou du modificateur
+  depuis `astral_interpretive_valence`, completee par le runtime quand il faut
+  rappeler qu'un modificateur d'intensite ne doit pas etre lu comme une valence
+  favorable ou difficile.
+
+Le runtime ne lit pas une colonne texte libre sur `astral_aspect_profiles` pour
+decider la valence. Il passe par :
+
+1. `astral_aspect_profiles.aspect_id` ;
+2. `astral_aspect_interpretive_effects.aspect_profile_id` ;
+3. `astral_interpretive_valence.id`.
+
+Les roles d'effet sont contractuels. `primary_valence` peut guider le ton
+principal d'un aspect ; `intensity_modifier` augmente ou focalise l'intensite,
+mais ne decide pas seul si l'aspect est facilitant ou tendu. Ainsi une
+conjonction expose `intensity_modifier = "amplifying"` et
+`primary_valence = null`.
+
+Les tags semantiques des aspects reprennent cette couche interpretative. Une
+conjonction forte peut par exemple produire :
+
+```json
+[
+  "aspect",
+  "conjunction",
+  "major",
+  "intensification",
+  "amplifying",
+  "high_strength"
+]
+```
+
+Un sextile ou trigone ajoute typiquement `flow` et une valence comme
+`supportive` ou `harmonious`. Un carre ou une opposition ajoute typiquement
+`tension` et une valence comme `dynamic_challenging` ou `polarizing`.
+
 ## Signaux agreges Basic
 
 L'etape 1B ajoute un premier type de signal agrege :
@@ -426,6 +526,7 @@ L'etape 1B ajoute un premier type de signal agrege :
   "source_weight": 2.3,
   "aggregation_group": "capricorn_house_2_cluster",
   "writing_guidance": "Use this cluster before individual placements and merge repeated wording from its source signals.",
+  "aspect_context": null,
   "evidence": {
     "fact_type": "position_cluster",
     "cluster_type": "sign_house",
@@ -469,7 +570,8 @@ Le filtrage est applique dans `signals.rs` :
 - si aucun aspect de tension fort n'est actif apres le filtrage initial alors
   qu'un carre ou une opposition atteint `strength_score >= 0.75`, le runtime
   remplace le signal actif non essentiel le moins prioritaire par la meilleure
-  tension forte disponible ;
+  tension forte disponible. Cette protection de filtrage reste volontairement
+  geometrique afin de ne pas perdre les tensions majeures classiques ;
 - seuls les 12 premiers signaux actifs restent eligibles au payload ;
 - `payload.rs` applique aussi `.take(12)` comme garde de lecture.
 
@@ -553,7 +655,9 @@ slots suivants quand les sources correspondantes existent :
 - `core_identity` : Soleil, Lune, Ascendant, MC ;
 - `dominant_cluster` : premier cluster actif, sources candidates associees et
   dignites actives des objets sources, puis resolution editoriale des doublons ;
-- `main_tension_or_support` : jusqu'a trois aspects actifs prioritaires ;
+- `main_tension_or_support` : jusqu'a trois aspects actifs prioritaires,
+  reequilibres avec `aspect_context` pour conserver au moins un appui ou une
+  tension quand ces dynamiques existent dans les aspects actifs ;
 - `expression_style` : Mercure, Venus, Mars, avec leurs dignites actives si
   elles sont presentes ;
 - `background_factors` : Jupiter, Saturne, Uranus, Neptune, Pluton si encore
@@ -580,17 +684,22 @@ ulterieur ne le repete pas dans `source_signal_keys` et expose plutot :
 `drafting_plan` reprend exactement `source_signal_keys`, `primary_signal_keys`
 et `secondary_slot_candidates` du `reading_plan`.
 
-Pour eviter une lecture trop lisse, `main_tension_or_support` force maintenant
-l'inclusion d'au moins un aspect de tension fort quand un carre ou une opposition
-atteint `strength_score >= 0.75`. Si les trois premiers aspects prioritaires ne
-contiennent aucune tension forte, le troisieme est remplace par cette tension.
+Pour eviter une lecture trop lisse, `main_tension_or_support` utilise maintenant
+`aspect_context.dynamic_quality` et `aspect_context.primary_valence` pour
+equilibrer les dynamiques. Si les premiers aspects selectionnes ne contiennent
+aucune tension alors qu'un aspect actif porte `dynamic_quality = "tension"` ou
+une valence comme `dynamic_challenging` ou `polarizing`, un des aspects est
+remplace par cette tension. Symetriquement, si aucun appui n'est present alors
+qu'un aspect actif porte `dynamic_quality = "flow"` ou une valence comme
+`supportive` ou `harmonious`, un appui est reintegre. Le slot reste limite a
+trois aspects.
 
 Cette logique s'applique aussi quand le filtrage Basic a du liberer une place
 dans les 12 signaux actifs : un signal actif non essentiel peut etre remplace par
-la meilleure tension forte disponible. Les clusters et les marqueurs centraux ou
-expressifs restent proteges ; un signal de dignite autonome peut en revanche
-ceder sa place si le budget est sature et qu'aucune tension forte n'est encore
-active.
+la meilleure tension forte disponible selon le garde-fou geometrique
+carre/opposition. Les clusters et les marqueurs centraux ou expressifs restent
+proteges ; un signal de dignite autonome peut en revanche ceder sa place si le
+budget est sature et qu'aucune tension forte n'est encore active.
 
 ## Contrat canonique de handoff LLM
 
@@ -601,7 +710,7 @@ doit respecter :
 ```json
 {
   "llm_handoff_contract": {
-    "contract_version": "basic_natal_structured_v3",
+    "contract_version": "basic_natal_structured_v4",
     "payload_language_code": "en",
     "target_language_policy": "provided_by_llm_service",
     "audience_level": "beginner",
@@ -675,7 +784,7 @@ Les slots ont des objectifs specialises :
 - `core_identity` : presenter les marqueurs centraux ;
 - `dominant_cluster` : expliquer la dominante sans enumerer chaque placement ;
 - `main_tension_or_support` : decrire les dynamiques principales en distinguant
-  appuis et tensions ;
+  appuis et tensions a partir de la valence interpretative des aspects ;
 - `expression_style` : synthetiser pensee, communication, desir et action ;
 - `background_factors` : garder les facteurs de fond proportionnes.
 
@@ -688,6 +797,11 @@ un module distinct.
 La validation de reutilisation des payloads existants force maintenant aussi :
 
 - un `llm_handoff_contract` canonique exact pour Basic ;
+- pour chaque signal `aspect:*`, un `aspect_context` avec famille, valence
+  primaire eventuelle, modificateur d'intensite eventuel, qualite dynamique,
+  phase, `valence_family`, flags tonal/intensite et guidance redactionnelle ;
+- pour chaque signal `aspect:*`, au moins un effet interpretatif non vide parmi
+  `primary_valence`, `intensity_modifier` ou `secondary_effect` ;
 - des slots connus uniquement ;
 - l'ordre canonique des slots Basic ;
 - un `drafting_plan` strictement aligne sur les sources du `reading_plan` ;
@@ -710,6 +824,13 @@ Avant chaque reecriture des signaux d'un calcul, les signaux existants du meme
 `chart_calculation_id` sont passes en `suppressed`. Les signaux recalcules sont
 ensuite re-upsertes avec leur etat courant. Cela evite qu'un ancien signal actif
 reste visible apres un changement de format de cle ou de filtrage.
+
+Pour les aspects, le calcul ephemeride persiste d'abord les faits geometriques
+dans `astral_calculated_aspects`. Avant de construire les signaux, le runtime
+relit ces aspects via les joins de `repositories.rs` afin d'ajouter la famille,
+les effets interpretatifs et la guidance issus des referentiels. Ce meme chemin
+est utilise pour un calcul frais et pour la regeneration d'un payload existant
+juge obsolete.
 
 Dans cette table, `language_id` designe la langue canonique du payload, pas la
 langue cible utilisateur. Pour le moteur Rust, le runtime ecrit toujours la
@@ -736,7 +857,7 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
 - 12 signaux maximum ;
 - au moins un signal ;
 - `llm_handoff_contract` present et conforme au contrat canonique
-  `basic_natal_structured_v3` ;
+  `basic_natal_structured_v4` ;
 - `dignities` structurees presentes et coherentes avec les signaux
   `dignity:*` actifs ;
 - positions avec `sign_code`, `sign_name`, `sign_context`, `house_modality`,
@@ -744,6 +865,9 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
 - signaux avec `evidence` ;
 - signaux avec `theme_code`, `interpretive_hint`, `semantic_tags`,
   `aggregation_group` et `writing_guidance` non vides ;
+- signaux `aspect:*` avec `aspect_context` complet, au moins un effet
+  interpretatif non vide, `dynamic_quality`, `phase_state`, `valence_family`,
+  `is_tonal_valence`, `is_intensity_modifier` et `writing_guidance` ;
 - signaux de placement avec `evidence.placement_context` complet ;
 - signaux de placement avec `evidence.essential_dignities` sous forme de
   tableau ;
@@ -766,8 +890,9 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
   non ASCII ;
 - absence d'anciens templates connus comme `by a opposition`.
 
-Sinon, les signaux sont reconstruits depuis les positions et aspects persistants,
-puis le payload est reecrit.
+Sinon, les signaux sont reconstruits depuis les positions persistantes et les
+aspects persistants relus avec leur contexte interpretatif, puis le payload est
+reecrit.
 
 ## Verification
 
@@ -794,7 +919,7 @@ Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
 - `product_code = "basic"` ;
 - `llm_handoff_contract.payload_language_code = "en"` ;
 - `llm_handoff_contract.target_language_policy = "provided_by_llm_service"` ;
-- `llm_handoff_contract.contract_version = "basic_natal_structured_v3"` ;
+- `llm_handoff_contract.contract_version = "basic_natal_structured_v4"` ;
 - des positions avec `sign_code`, `sign_name`, `house_number`, `house_name`,
   `sign_context`, `house_modality`, `object_context`, `motion_context` et
   `dignity_context` sous forme de tableau, vide quand aucune dignite n'est
@@ -806,6 +931,9 @@ Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
 - un `drafting_plan` non vide et aligne sur le `reading_plan` ;
 - des titres sans IDs techniques ;
 - des champs semantiques 1B sur chaque signal ;
+- un `aspect_context` sur chaque signal `aspect:*`, avec les modificateurs
+  d'intensite separes de la valence primaire, et les flags
+  `is_tonal_valence` / `is_intensity_modifier` renseignes ;
 - un `evidence.placement_context` complet sur chaque signal de placement ;
 - un `evidence.essential_dignities` tableau sur chaque signal de placement ;
 - des signaux `dignity:*` seulement pour les dignites majeures significatives ;

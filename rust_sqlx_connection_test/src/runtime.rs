@@ -150,19 +150,13 @@ where
         .await?;
         RuntimeRepository::heartbeat(&mut tx, chart_calculation_id, "calculating_facts").await?;
 
-        let result = (|| {
-            let facts = self.ephemeris.calculate_natal(
-                &input,
-                &chart_objects,
-                &aspect_definitions,
-                &house_system,
-                &references,
-            )?;
-            let signal_drafts = aggregate_basic_signals(&facts);
-            Ok((facts, signal_drafts))
-        })();
-
-        let (facts, signal_drafts) = match result {
+        let facts = match self.ephemeris.calculate_natal(
+            &input,
+            &chart_objects,
+            &aspect_definitions,
+            &house_system,
+            &references,
+        ) {
             Ok(value) => value,
             Err(error) => {
                 RuntimeRepository::mark_failed(&mut tx, chart_calculation_id, &error).await?;
@@ -173,6 +167,14 @@ where
 
         RuntimeRepository::persist_facts(&mut tx, chart_calculation_id, &facts).await?;
         RuntimeRepository::heartbeat(&mut tx, chart_calculation_id, "aggregating_signals").await?;
+        let aspects =
+            RuntimeRepository::aspects_for_payload_in_tx(&mut tx, chart_calculation_id).await?;
+        let enriched_facts = CalculatedChartFacts {
+            positions: facts.positions,
+            house_cusps: Vec::new(),
+            aspects,
+        };
+        let signal_drafts = aggregate_basic_signals(&enriched_facts);
         let signal_rows = RuntimeRepository::persist_signals(
             &mut tx,
             chart_calculation_id,
@@ -182,8 +184,12 @@ where
         .await?;
 
         RuntimeRepository::heartbeat(&mut tx, chart_calculation_id, "building_payload").await?;
-        let payload =
-            build_basic_payload(chart_calculation_id, &input, &facts.positions, &signal_rows);
+        let payload = build_basic_payload(
+            chart_calculation_id,
+            &input,
+            &enriched_facts.positions,
+            &signal_rows,
+        );
         RuntimeRepository::persist_basic_payload(
             &mut tx,
             &input,
@@ -291,6 +297,7 @@ fn is_current_basic_payload(payload: &BasicPayload) -> bool {
                 && has_text(&signal.writing_guidance)
                 && has_current_aspect_article(&signal.interpretive_hint)
                 && has_current_placement_context(signal)
+                && has_current_aspect_context(signal)
         })
 }
 
@@ -299,7 +306,7 @@ fn has_current_llm_handoff_contract(payload: &BasicPayload) -> bool {
         return false;
     };
 
-    contract.contract_version == "basic_natal_structured_v3"
+    contract.contract_version == "basic_natal_structured_v4"
         && contract.payload_language_code == "en"
         && contract.target_language_policy == "provided_by_llm_service"
         && contract.audience_level == "beginner"
@@ -315,6 +322,34 @@ fn has_current_llm_handoff_contract(payload: &BasicPayload) -> bool {
                 "make deterministic or fatalistic predictions",
             ]
         && contract.output_format == "structured_sections"
+}
+
+fn has_current_aspect_context(signal: &crate::domain::BasicSignal) -> bool {
+    if !signal.signal_key.starts_with("aspect:") {
+        return true;
+    }
+
+    let Some(context) = signal.aspect_context.as_ref() else {
+        return false;
+    };
+
+    has_text_value(context.get("aspect_family"))
+        && context.get("primary_valence").is_some()
+        && context.get("intensity_modifier").is_some()
+        && context.get("secondary_effect").is_some()
+        && has_any_aspect_effect(context)
+        && has_text_value(context.get("dynamic_quality"))
+        && has_text_value(context.get("phase_state"))
+        && has_text_value(context.get("valence_family"))
+        && has_bool_value(context.get("is_tonal_valence"))
+        && has_bool_value(context.get("is_intensity_modifier"))
+        && has_text_value(context.get("writing_guidance"))
+}
+
+fn has_any_aspect_effect(context: &serde_json::Value) -> bool {
+    ["primary_valence", "intensity_modifier", "secondary_effect"]
+        .into_iter()
+        .any(|key| has_text_value(context.get(key)))
 }
 
 fn has_current_dignities(payload: &BasicPayload) -> bool {
@@ -564,16 +599,26 @@ fn option_json_has_text(value: &Option<serde_json::Value>, key: &str) -> bool {
     value
         .as_ref()
         .and_then(|value| value.get(key))
-        .and_then(|value| value.as_str())
-        .is_some_and(|text| !text.trim().is_empty())
+        .is_some_and(json_value_has_text)
 }
 
 fn nested_json_has_text(value: &serde_json::Value, context_key: &str, key: &str) -> bool {
     value
         .get(context_key)
         .and_then(|context| context.get(key))
-        .and_then(|value| value.as_str())
-        .is_some_and(|text| !text.trim().is_empty())
+        .is_some_and(json_value_has_text)
+}
+
+fn has_text_value(value: Option<&serde_json::Value>) -> bool {
+    value.is_some_and(json_value_has_text)
+}
+
+fn has_bool_value(value: Option<&serde_json::Value>) -> bool {
+    value.is_some_and(serde_json::Value::is_boolean)
+}
+
+fn json_value_has_text(value: &serde_json::Value) -> bool {
+    value.as_str().is_some_and(|text| !text.trim().is_empty())
 }
 
 #[cfg(test)]
@@ -596,7 +641,7 @@ mod tests {
             subject_label: None,
             birth_datetime_utc: Utc.with_ymd_and_hms(2024, 6, 15, 12, 0, 0).unwrap(),
             llm_handoff_contract: Some(BasicLlmHandoffContract {
-                contract_version: "basic_natal_structured_v3".to_string(),
+                contract_version: "basic_natal_structured_v4".to_string(),
                 payload_language_code: "en".to_string(),
                 target_language_policy: "provided_by_llm_service".to_string(),
                 audience_level: "beginner".to_string(),
@@ -664,6 +709,7 @@ mod tests {
                 source_weight: Some(1.0),
                 aggregation_group: Some("gemini:house_9".to_string()),
                 writing_guidance: Some("guidance".to_string()),
+                aspect_context: None,
                 evidence: Some(json!({
                     "fact_type": "object_position",
                     "essential_dignities": [],
@@ -733,6 +779,65 @@ mod tests {
         payload.signals[0].interpretive_hint = Some(" ".to_string());
 
         assert!(!is_current_basic_payload(&payload));
+    }
+
+    #[test]
+    fn current_payload_rejects_aspect_context_without_reference_effect() {
+        let mut payload = current_payload();
+        payload.signals.push(BasicSignal {
+            signal_key: "aspect:sun:mercury:conjunction".to_string(),
+            theme_code: Some("aspect".to_string()),
+            title: "Sun conjunction Mercury".to_string(),
+            summary: Some("summary".to_string()),
+            priority_score: 70.0,
+            confidence_score: Some(0.85),
+            interpretive_hint: Some("Sun and Mercury are connected by a conjunction.".to_string()),
+            semantic_tags: vec![
+                "aspect".to_string(),
+                "conjunction".to_string(),
+                "contextual".to_string(),
+            ],
+            source_weight: Some(1.75),
+            aggregation_group: Some("aspect:conjunction".to_string()),
+            writing_guidance: Some(
+                "Use the aspect as a relationship between two chart factors.".to_string(),
+            ),
+            aspect_context: Some(json!({
+                "aspect_family": "major",
+                "primary_valence": null,
+                "intensity_modifier": null,
+                "secondary_effect": null,
+                "dynamic_quality": "contextual",
+                "phase_state": "separating",
+                "writing_guidance": "Use the aspect as a relationship between two chart factors."
+            })),
+            evidence: Some(json!({
+                "fact_type": "aspect",
+                "aspect_code": "conjunction",
+                "strength_score": 0.875
+            })),
+        });
+
+        assert!(!is_current_basic_payload(&payload));
+
+        payload
+            .signals
+            .last_mut()
+            .expect("aspect signal")
+            .aspect_context = Some(json!({
+            "aspect_family": "major",
+            "primary_valence": null,
+            "intensity_modifier": "amplifying",
+            "secondary_effect": null,
+            "dynamic_quality": "intensification",
+            "phase_state": "separating",
+            "valence_family": "intensity",
+            "is_tonal_valence": false,
+            "is_intensity_modifier": true,
+            "writing_guidance": "Treat amplifying as an intensity modifier."
+        }));
+
+        assert!(is_current_basic_payload(&payload));
     }
 
     #[test]
@@ -826,6 +931,7 @@ mod tests {
             source_weight: Some(0.75),
             aggregation_group: Some("dignity:saturn".to_string()),
             writing_guidance: Some("guidance".to_string()),
+            aspect_context: None,
             evidence: Some(json!({
                 "fact_type": "essential_dignity",
                 "chart_object": "saturn",
@@ -867,6 +973,7 @@ mod tests {
             source_weight: Some(0.75),
             aggregation_group: Some("dignity:saturn".to_string()),
             writing_guidance: Some("guidance".to_string()),
+            aspect_context: None,
             evidence: Some(json!({
                 "fact_type": "essential_dignity",
                 "chart_object": "jupiter",
@@ -955,6 +1062,7 @@ mod tests {
             source_weight: Some(0.75),
             aggregation_group: Some("pisces:house_4".to_string()),
             writing_guidance: Some("guidance".to_string()),
+            aspect_context: None,
             evidence: Some(json!({
                 "fact_type": "object_position",
                 "object_code": "moon",
@@ -1025,6 +1133,7 @@ mod tests {
             source_weight: Some(0.75),
             aggregation_group: Some("gemini:house_9".to_string()),
             writing_guidance: Some("guidance".to_string()),
+            aspect_context: None,
             evidence: Some(json!({"fact_type": "object_position"})),
         });
         payload.reading_plan.insert(

@@ -30,6 +30,7 @@ pub fn build_basic_payload(
             source_weight: payload_f64(signal, "source_weight"),
             aggregation_group: payload_string(signal, "aggregation_group"),
             writing_guidance: payload_string(signal, "writing_guidance"),
+            aspect_context: payload_value(signal, "aspect_context"),
             evidence: payload_value(signal, "evidence"),
         })
         .collect();
@@ -92,7 +93,7 @@ fn position_dignity_context(position: &ObjectPositionFact) -> serde_json::Value 
 
 pub fn basic_llm_handoff_contract() -> BasicLlmHandoffContract {
     BasicLlmHandoffContract {
-        contract_version: "basic_natal_structured_v3".to_string(),
+        contract_version: "basic_natal_structured_v4".to_string(),
         payload_language_code: "en".to_string(),
         target_language_policy: "provided_by_llm_service".to_string(),
         audience_level: "beginner".to_string(),
@@ -234,45 +235,127 @@ fn main_dynamic_aspect_keys(signals: &[BasicSignal]) -> Vec<String> {
         .map(|signal| signal.signal_key.clone())
         .collect();
 
-    if keys.iter().any(|key| {
+    let has_tension = keys.iter().any(|key| {
         signals
             .iter()
             .find(|signal| signal.signal_key == *key)
-            .is_some_and(is_strong_tension_aspect)
-    }) {
-        return keys;
-    }
-
-    if let Some(tension_key) = signals
-        .iter()
-        .filter(|signal| signal.signal_key.starts_with("aspect:"))
-        .find(|signal| is_strong_tension_aspect(signal))
-        .map(|signal| signal.signal_key.clone())
-    {
-        if keys.len() >= 3 {
-            keys.pop();
+            .is_some_and(is_interpretive_tension_aspect)
+    });
+    if !has_tension {
+        if let Some(tension_key) = signals
+            .iter()
+            .filter(|signal| signal.signal_key.starts_with("aspect:"))
+            .find(|signal| is_interpretive_tension_aspect(signal))
+            .map(|signal| signal.signal_key.clone())
+        {
+            push_balanced_aspect_key(
+                &mut keys,
+                tension_key,
+                signals,
+                is_interpretive_support_aspect,
+            );
         }
-        keys.push(tension_key);
-        dedupe_strings(&mut keys);
     }
 
+    let has_support = keys.iter().any(|key| {
+        signals
+            .iter()
+            .find(|signal| signal.signal_key == *key)
+            .is_some_and(is_interpretive_support_aspect)
+    });
+    if !has_support {
+        if let Some(support_key) = signals
+            .iter()
+            .filter(|signal| signal.signal_key.starts_with("aspect:"))
+            .find(|signal| is_interpretive_support_aspect(signal))
+            .map(|signal| signal.signal_key.clone())
+        {
+            push_balanced_aspect_key(
+                &mut keys,
+                support_key,
+                signals,
+                is_interpretive_tension_aspect,
+            );
+        }
+    }
+
+    dedupe_strings(&mut keys);
+    keys.truncate(3);
     keys
 }
 
-fn is_strong_tension_aspect(signal: &BasicSignal) -> bool {
-    let aspect_code = signal
-        .evidence
+fn push_balanced_aspect_key(
+    keys: &mut Vec<String>,
+    new_key: String,
+    signals: &[BasicSignal],
+    preserve: fn(&BasicSignal) -> bool,
+) {
+    if keys.contains(&new_key) {
+        return;
+    }
+
+    if keys.len() < 3 {
+        keys.push(new_key);
+        return;
+    }
+
+    let preserved_count = keys
+        .iter()
+        .filter_map(|key| signals.iter().find(|signal| signal.signal_key == **key))
+        .filter(|signal| preserve(signal))
+        .count();
+
+    let replacement_index = keys
+        .iter()
+        .enumerate()
+        .rev()
+        .find(|(_, key)| {
+            signals
+                .iter()
+                .find(|signal| signal.signal_key == **key)
+                .is_none_or(|signal| !preserve(signal) || preserved_count > 1)
+        })
+        .map(|(index, _)| index)
+        .unwrap_or(keys.len() - 1);
+
+    keys[replacement_index] = new_key;
+}
+
+fn is_interpretive_tension_aspect(signal: &BasicSignal) -> bool {
+    let dynamic_quality = aspect_context_str(signal, "dynamic_quality");
+    let primary_valence = aspect_context_str(signal, "primary_valence");
+    let strength_score = aspect_strength_score(signal);
+
+    matches!(dynamic_quality, Some("tension"))
+        || matches!(
+            primary_valence,
+            Some("dynamic_challenging" | "polarizing" | "minor_friction" | "indirect_tension")
+        ) && strength_score >= 0.75
+}
+
+fn is_interpretive_support_aspect(signal: &BasicSignal) -> bool {
+    matches!(aspect_context_str(signal, "dynamic_quality"), Some("flow"))
+        || matches!(
+            aspect_context_str(signal, "primary_valence"),
+            Some("supportive" | "harmonious")
+        )
+}
+
+fn aspect_context_str<'a>(signal: &'a BasicSignal, key: &str) -> Option<&'a str> {
+    signal
+        .aspect_context
         .as_ref()
-        .and_then(|evidence| evidence.get("aspect_code"))
-        .and_then(|value| value.as_str());
-    let strength_score = signal
+        .and_then(|context| context.get(key))
+        .and_then(|value| value.as_str())
+}
+
+fn aspect_strength_score(signal: &BasicSignal) -> f64 {
+    signal
         .evidence
         .as_ref()
         .and_then(|evidence| evidence.get("strength_score"))
         .and_then(|value| value.as_f64())
-        .unwrap_or(signal.priority_score / 80.0);
-
-    matches!(aspect_code, Some("square" | "opposition")) && strength_score >= 0.75
+        .unwrap_or(signal.priority_score / 80.0)
 }
 
 fn push_plan_item(
@@ -799,7 +882,7 @@ mod tests {
                 .as_ref()
                 .expect("llm handoff contract")
                 .contract_version,
-            "basic_natal_structured_v3"
+            "basic_natal_structured_v4"
         );
         let contract = payload
             .llm_handoff_contract
@@ -1159,6 +1242,32 @@ mod tests {
             .contains(&"aspect:moon:mars:square".to_string()));
     }
 
+    #[test]
+    fn main_dynamic_aspects_balance_support_and_tension_by_valence() {
+        let signals = vec![
+            aspect_signal(1, "aspect:sun:neptune:conjunction", "conjunction", 0.99),
+            aspect_signal(2, "aspect:moon:pluto:conjunction", "conjunction", 0.98),
+            aspect_signal(3, "aspect:mars:saturn:conjunction", "conjunction", 0.97),
+            aspect_signal(4, "aspect:moon:mars:square", "square", 0.86),
+            aspect_signal(5, "aspect:venus:jupiter:sextile", "sextile", 0.84),
+        ];
+
+        let payload = build_basic_payload(42, &input(), &[position()], &signals);
+        let aspect_plan = payload
+            .reading_plan
+            .iter()
+            .find(|item| item.slot == "main_tension_or_support")
+            .expect("expected aspect plan");
+
+        assert_eq!(aspect_plan.source_signal_keys.len(), 3);
+        assert!(aspect_plan
+            .source_signal_keys
+            .contains(&"aspect:moon:mars:square".to_string()));
+        assert!(aspect_plan
+            .source_signal_keys
+            .contains(&"aspect:venus:jupiter:sextile".to_string()));
+    }
+
     fn aspect_signal(
         id: i32,
         signal_key: &str,
@@ -1181,6 +1290,15 @@ mod tests {
                 "source_weight": 1.0,
                 "aggregation_group": format!("aspect:{aspect_code}"),
                 "writing_guidance": "guidance",
+                "aspect_context": {
+                    "aspect_family": "major",
+                    "primary_valence": primary_valence_for_test(aspect_code),
+                    "intensity_modifier": intensity_modifier_for_test(aspect_code),
+                    "secondary_effect": null,
+                    "dynamic_quality": dynamic_quality_for_test(aspect_code),
+                    "phase_state": "applying",
+                    "writing_guidance": "guidance"
+                },
                 "evidence": {
                     "fact_type": "aspect",
                     "aspect_code": aspect_code,
@@ -1188,6 +1306,32 @@ mod tests {
                     "strength_score": strength_score
                 }
             })),
+        }
+    }
+
+    fn primary_valence_for_test(aspect_code: &str) -> Option<&'static str> {
+        match aspect_code {
+            "sextile" => Some("supportive"),
+            "square" => Some("dynamic_challenging"),
+            "trine" => Some("harmonious"),
+            "opposition" => Some("polarizing"),
+            _ => None,
+        }
+    }
+
+    fn intensity_modifier_for_test(aspect_code: &str) -> Option<&'static str> {
+        match aspect_code {
+            "conjunction" => Some("amplifying"),
+            _ => None,
+        }
+    }
+
+    fn dynamic_quality_for_test(aspect_code: &str) -> &'static str {
+        match aspect_code {
+            "sextile" | "trine" => "flow",
+            "square" | "opposition" => "tension",
+            "conjunction" => "intensification",
+            _ => "contextual",
         }
     }
 

@@ -91,6 +91,7 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
         };
         let aspect_name = aspect.aspect_name.to_lowercase();
         let article = indefinite_article(&aspect_name);
+        let aspect_context = aspect_context(aspect);
 
         signals.push(InterpretationSignalDraft {
             signal_key: format!(
@@ -124,13 +125,14 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
                     aspect_name,
                     aspect.phase_state
                 ),
-                "semantic_tags": aspect_semantic_tags(&aspect.aspect_code, strength_score),
+                "semantic_tags": aspect_semantic_tags(aspect, strength_score),
                 "source_weight": round4(
                     object_source_weight(&aspect.source_object_code)
                         + object_source_weight(&aspect.target_object_code)
                 ),
                 "aggregation_group": format!("aspect:{}", aspect.aspect_code),
-                "writing_guidance": "Use the aspect as a relationship between two chart factors, not as a standalone verdict.",
+                "writing_guidance": aspect_writing_guidance(aspect),
+                "aspect_context": aspect_context,
                 "evidence": {
                     "fact_type": "aspect",
                     "source_chart_object_id": aspect.source_chart_object_id,
@@ -142,6 +144,7 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
                     "aspect_id": aspect.aspect_id,
                     "aspect_code": aspect.aspect_code,
                     "aspect_name": aspect.aspect_name,
+                    "aspect_family": aspect.aspect_family,
                     "orb_deg": aspect.orb_deg,
                     "phase_state": aspect.phase_state,
                     "is_applying": aspect.is_applying,
@@ -770,14 +773,97 @@ fn cluster_semantic_tags(sign_code: &str, house_number: i32) -> Vec<String> {
     dedupe_tags(tags)
 }
 
-fn aspect_semantic_tags(aspect_code: &str, strength_score: f64) -> Vec<String> {
-    let mut tags = vec!["aspect".to_string(), aspect_code.to_string()];
+fn aspect_semantic_tags(aspect: &crate::domain::AspectFact, strength_score: f64) -> Vec<String> {
+    let mut tags = vec![
+        "aspect".to_string(),
+        aspect.aspect_code.clone(),
+        aspect.aspect_family.clone(),
+        aspect_dynamic_quality(aspect).to_string(),
+    ];
+    if let Some(primary_valence) = aspect.primary_valence.as_ref() {
+        tags.push(primary_valence.clone());
+    }
+    if let Some(intensity_modifier) = aspect.intensity_modifier.as_ref() {
+        tags.push(intensity_modifier.clone());
+    }
+    if let Some(secondary_effect) = aspect.secondary_effect.as_ref() {
+        tags.push(secondary_effect.clone());
+    }
     if strength_score >= 0.75 {
         tags.push("high_strength".to_string());
     } else if strength_score < BASIC_ASPECT_MIN_STRENGTH {
         tags.push("low_strength".to_string());
     }
-    tags
+    dedupe_tags(tags)
+}
+
+fn aspect_context(aspect: &crate::domain::AspectFact) -> serde_json::Value {
+    json!({
+        "aspect_family": aspect.aspect_family,
+        "primary_valence": aspect.primary_valence,
+        "intensity_modifier": aspect.intensity_modifier,
+        "secondary_effect": aspect.secondary_effect,
+        "dynamic_quality": aspect_dynamic_quality(aspect),
+        "phase_state": aspect.phase_state,
+        "valence_family": aspect.valence_family,
+        "is_tonal_valence": aspect.valence_is_tonal,
+        "is_intensity_modifier": aspect.valence_is_intensity_modifier,
+        "writing_guidance": aspect.valence_writing_guidance
+            .as_deref()
+            .unwrap_or_else(|| aspect_default_writing_guidance(aspect))
+    })
+}
+
+fn aspect_dynamic_quality(aspect: &crate::domain::AspectFact) -> &'static str {
+    match aspect.primary_valence.as_deref() {
+        Some(
+            "supportive" | "harmonious" | "creative" | "refined_creative" | "creative_ordering",
+        ) => "flow",
+        Some("dynamic_challenging" | "polarizing" | "minor_friction" | "indirect_tension") => {
+            "tension"
+        }
+        Some("adjustment" | "subtle_adjustment") => "adjustment",
+        Some("symbolic_fated") => "symbolic",
+        Some("spiritual_integration") => "integration",
+        Some(_) => "contextual",
+        None if aspect.intensity_modifier.is_some() => "intensification",
+        None => "contextual",
+    }
+}
+
+fn aspect_writing_guidance(aspect: &crate::domain::AspectFact) -> String {
+    let base = aspect
+        .valence_writing_guidance
+        .as_deref()
+        .unwrap_or_else(|| aspect_default_writing_guidance(aspect));
+
+    match aspect.intensity_modifier.as_deref() {
+        Some(modifier) if aspect.primary_valence.is_none() => format!(
+            "{base} Treat {modifier} as an intensity modifier, not as a supportive or challenging valence by itself."
+        ),
+        Some(modifier) => format!(
+            "{base} Use {modifier} only as an intensity modifier layered onto the primary valence."
+        ),
+        None => base.to_string(),
+    }
+}
+
+fn aspect_default_writing_guidance(aspect: &crate::domain::AspectFact) -> &'static str {
+    match aspect_dynamic_quality(aspect) {
+        "flow" => {
+            "Describe ease or cooperation between the two chart factors without presenting it as an automatic benefit."
+        }
+        "tension" => {
+            "Describe the tension between the two chart factors without making it unstable or negative by default."
+        }
+        "adjustment" => {
+            "Describe this as an adjustment between the two chart factors, with practical recalibration rather than blame."
+        }
+        "intensification" => {
+            "Describe this as intensified contact between the two chart factors, and use the planets involved to qualify the tone."
+        }
+        _ => "Use the aspect as a relationship between two chart factors, not as a standalone verdict.",
+    }
 }
 
 fn sign_tags(sign_code: &str) -> Vec<String> {
@@ -1116,12 +1202,56 @@ mod tests {
             aspect_id: 1,
             aspect_code: aspect_code.to_string(),
             aspect_name: aspect_name.to_string(),
+            aspect_family: "major".to_string(),
             orb_deg: 1.0,
             phase_state: "applying".to_string(),
             is_applying: true,
             is_exact: false,
             strength_score: Some(strength_score),
+            primary_valence: primary_valence_for_test(aspect_code).map(ToString::to_string),
+            intensity_modifier: intensity_modifier_for_test(aspect_code).map(ToString::to_string),
+            secondary_effect: None,
+            valence_family: primary_valence_for_test(aspect_code)
+                .map(|_| "tonal".to_string())
+                .or_else(|| {
+                    intensity_modifier_for_test(aspect_code).map(|_| "intensity".to_string())
+                }),
+            valence_is_tonal: primary_valence_for_test(aspect_code)
+                .map(|_| true)
+                .or_else(|| intensity_modifier_for_test(aspect_code).map(|_| false)),
+            valence_is_intensity_modifier: primary_valence_for_test(aspect_code)
+                .map(|_| false)
+                .or_else(|| intensity_modifier_for_test(aspect_code).map(|_| true)),
+            valence_writing_guidance: valence_guidance_for_test(aspect_code)
+                .map(ToString::to_string),
             calculation_notes_json: None,
+        }
+    }
+
+    fn primary_valence_for_test(aspect_code: &str) -> Option<&'static str> {
+        match aspect_code {
+            "sextile" => Some("supportive"),
+            "square" => Some("dynamic_challenging"),
+            "trine" => Some("harmonious"),
+            "opposition" => Some("polarizing"),
+            _ => None,
+        }
+    }
+
+    fn intensity_modifier_for_test(aspect_code: &str) -> Option<&'static str> {
+        match aspect_code {
+            "conjunction" => Some("amplifying"),
+            _ => None,
+        }
+    }
+
+    fn valence_guidance_for_test(aspect_code: &str) -> Option<&'static str> {
+        match aspect_code {
+            "sextile" => Some("Present as a resource, support or facilitation that the native can mobilize."),
+            "square" => Some("Present as active tension or constructive challenge, not as a purely negative outcome."),
+            "trine" => Some("Present as ease, compatibility or natural cooperation without implying that no effort is ever needed."),
+            "opposition" => Some("Present as a polarity to balance, integrate or negotiate, especially across axes or oppositions."),
+            _ => None,
         }
     }
 
@@ -1501,11 +1631,22 @@ mod tests {
                 aspect_id: 5,
                 aspect_code: "opposition".to_string(),
                 aspect_name: "Opposition".to_string(),
+                aspect_family: "major".to_string(),
                 orb_deg: 0.7586,
                 phase_state: "separating".to_string(),
                 is_applying: false,
                 is_exact: false,
                 strength_score: Some(0.9052),
+                primary_valence: Some("polarizing".to_string()),
+                intensity_modifier: None,
+                secondary_effect: None,
+                valence_family: Some("tonal".to_string()),
+                valence_is_tonal: Some(true),
+                valence_is_intensity_modifier: Some(false),
+                valence_writing_guidance: Some(
+                    "Present as a polarity to balance, integrate or negotiate, especially across axes or oppositions."
+                        .to_string(),
+                ),
                 calculation_notes_json: None,
             }],
         };
@@ -1523,5 +1664,103 @@ mod tests {
                 .and_then(|value| value.as_str()),
             Some("Jupiter and Uranus are connected by an opposition, so their functions should be read together with attention to the separating phase.")
         );
+    }
+
+    #[test]
+    fn aspect_signals_include_interpretive_context_and_valence_tags() {
+        let facts = CalculatedChartFacts {
+            positions: Vec::new(),
+            house_cusps: Vec::new(),
+            aspects: vec![
+                aspect(
+                    "venus", "Venus", "jupiter", "Jupiter", "sextile", "Sextile", 0.9,
+                ),
+                aspect("moon", "Moon", "mars", "Mars", "square", "Square", 0.88),
+                aspect(
+                    "sun",
+                    "Sun",
+                    "neptune",
+                    "Neptune",
+                    "conjunction",
+                    "Conjunction",
+                    0.86,
+                ),
+            ],
+        };
+
+        let signals = aggregate_basic_signals(&facts);
+        let sextile = aspect_payload(&signals, "aspect:venus:jupiter:sextile");
+        let square = aspect_payload(&signals, "aspect:moon:mars:square");
+        let conjunction = aspect_payload(&signals, "aspect:sun:neptune:conjunction");
+
+        assert_eq!(
+            sextile
+                .get("aspect_context")
+                .and_then(|context| context.get("primary_valence"))
+                .and_then(|value| value.as_str()),
+            Some("supportive")
+        );
+        assert!(sextile
+            .get("semantic_tags")
+            .and_then(|value| value.as_array())
+            .expect("semantic tags")
+            .iter()
+            .any(|tag| tag.as_str() == Some("flow")));
+        assert_eq!(
+            square
+                .get("aspect_context")
+                .and_then(|context| context.get("primary_valence"))
+                .and_then(|value| value.as_str()),
+            Some("dynamic_challenging")
+        );
+        assert!(square
+            .get("semantic_tags")
+            .and_then(|value| value.as_array())
+            .expect("semantic tags")
+            .iter()
+            .any(|tag| tag.as_str() == Some("tension")));
+        assert_eq!(
+            conjunction
+                .get("aspect_context")
+                .and_then(|context| context.get("primary_valence")),
+            Some(&serde_json::Value::Null)
+        );
+        assert_eq!(
+            conjunction
+                .get("aspect_context")
+                .and_then(|context| context.get("intensity_modifier"))
+                .and_then(|value| value.as_str()),
+            Some("amplifying")
+        );
+        assert_eq!(
+            conjunction
+                .get("aspect_context")
+                .and_then(|context| context.get("valence_family"))
+                .and_then(|value| value.as_str()),
+            Some("intensity")
+        );
+        assert_eq!(
+            conjunction
+                .get("aspect_context")
+                .and_then(|context| context.get("is_intensity_modifier"))
+                .and_then(|value| value.as_bool()),
+            Some(true)
+        );
+        assert!(conjunction
+            .get("writing_guidance")
+            .and_then(|value| value.as_str())
+            .expect("writing guidance")
+            .contains("not as a supportive or challenging valence"));
+    }
+
+    fn aspect_payload<'a>(
+        signals: &'a [InterpretationSignalDraft],
+        signal_key: &str,
+    ) -> &'a serde_json::Value {
+        signals
+            .iter()
+            .find(|signal| signal.signal_key == signal_key)
+            .and_then(|signal| signal.payload_json.as_ref())
+            .expect("aspect payload")
     }
 }
