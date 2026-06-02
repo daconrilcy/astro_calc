@@ -1426,3 +1426,40 @@ sans modifier le contrat public `rust_sqlx_connection_test::payload`.
 Ce decoupage reste volontairement simple: aucune nouvelle donnee canonique n'a
 ete ajoutee en dur, et les fonctions gardent une portee limitee au module quand
 elles ne font pas partie de l'API publique.
+
+## Organisation du module signals
+
+`rust_sqlx_connection_test/src/signals.rs` a ete remplace par le dossier
+`rust_sqlx_connection_test/src/signals/` afin de separer l'agregation des
+signaux Basic par responsabilite, sans modifier l'API publique
+`rust_sqlx_connection_test::signals`.
+
+- `mod.rs` conserve l'orchestration de `aggregate_basic_signals`.
+- `constants.rs` centralise les constantes partagees du module.
+- `angles.rs`, `positions.rs`, `dignity.rs`, `dignity_helpers.rs`,
+  `aspects.rs` et `clusters.rs` isolent la construction des familles de
+  signaux.
+- `limits.rs` regroupe les regles de suppression, preservation et remplissage
+  de la limite Basic.
+- `relations.rs`, `context.rs`, `tags.rs` et `utils.rs` gardent les helpers
+  transverses limites au module.
+
+Le contrat public reste limite a:
+
+- `aggregate_basic_signals`;
+- `BASIC_MAX_ACTIVE_SIGNALS`;
+- `indefinite_article`.
+
+Les sous-modules n'utilisent pas d'import global `use super::*`: chaque fichier
+declare ses dependances explicitement. Les helpers purement locaux restent
+prives au fichier, et les helpers partages entre sous-modules utilisent
+`pub(super)` uniquement quand c'est necessaire.
+
+Ce refactor reste strictement structurel: aucune nouvelle donnee canonique n'a
+ete ajoutee en dur et le comportement conserve est valide par:
+
+```powershell
+cargo fmt --manifest-path rust_sqlx_connection_test/Cargo.toml
+cargo clippy --manifest-path rust_sqlx_connection_test/Cargo.toml --all-targets -- -D warnings
+cargo test --manifest-path rust_sqlx_connection_test/Cargo.toml
+```
