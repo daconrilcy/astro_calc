@@ -143,6 +143,13 @@ astronomique. Enfin, `drafting_plan` expose `context_refs.chart_context` et
 interdit de transformer `chart_context` en section autonome : la secte et
 l'accent d'hemisphere servent uniquement de contexte de ponderation.
 
+`product_code = "basic"` reste volontairement conserve comme cle de routage
+legacy pour les tables et les chemins runtime existants. Il ne decrit plus la
+profondeur fonctionnelle du contrat courant : celle-ci est portee par
+`llm_handoff_contract.contract_version = "natal_structured_v9"` et par
+`chart_context.payload_contract`, notamment `calculation_scope`,
+`interpretation_scope` et `projection_depth`.
+
 Le runtime conserve la chaine existante :
 
 1. calcul des faits astrologiques ;
