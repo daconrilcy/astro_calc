@@ -1,6 +1,6 @@
 {
   "product_code": "basic",
-  "chart_calculation_id": 23,
+  "chart_calculation_id": 27,
   "reference_version_id": 1,
   "subject_label": "Test",
   "birth_datetime_utc": "1990-01-02T03:04:05Z",
@@ -11,6 +11,7 @@
     "audience_level": "beginner",
     "tone": "clear, warm, non fatalistic",
     "must_use": [
+      "chart_context",
       "chart_emphasis",
       "dignities",
       "angles",
@@ -29,831 +30,36 @@
     ],
     "output_format": "structured_sections"
   },
+  "chart_context": {
+    "chart_type": "natal",
+    "zodiacal_reference_system_id": 1,
+    "coordinate_reference_system_id": 1,
+    "house_system_id": 1,
+    "reference_version_id": 1,
+    "payload_contract": {
+      "contract_version": "natal_structured_v9",
+      "calculation_scope": "full_natal",
+      "interpretation_scope": "structured_interpretation",
+      "projection_depth": "rich",
+      "writing_contract": "provided_by_llm_service"
+    },
+    "calculation_reliability": {
+      "birth_time_precision_required": true,
+      "house_system_sensitive": true
+    },
+    "sect": {
+      "chart_sect": "night",
+      "sun_horizon_position": "below_horizon",
+      "source": "calculated_altitude"
+    },
+    "hemisphere_emphasis": {
+      "above_horizon_count": 2,
+      "below_horizon_count": 8,
+      "on_horizon_count": 0,
+      "interpretive_hint": "The chart has a stronger private or interior emphasis."
+    }
+  },
   "positions": [
-    {
-      "object_code": "sun",
-      "object_name": "Sun",
-      "longitude_deg": 281.4543,
-      "sign_id": 10,
-      "sign_code": "capricorn",
-      "sign_name": "Capricorn",
-      "house_id": 2,
-      "house_number": 2,
-      "house_name": "Resources",
-      "motion_state_id": 1,
-      "sign_context": {
-        "element": "earth",
-        "element_label": "Earth",
-        "keywords": [
-          "ambition",
-          "discipline",
-          "structure",
-          "responsibility",
-          "maturity",
-          "authority",
-          "achievement",
-          "strategy",
-          "patience",
-          "endurance",
-          "realism",
-          "pragmatism",
-          "long-term planning",
-          "status",
-          "career",
-          "mastery",
-          "self-control",
-          "duty",
-          "perseverance",
-          "boundaries",
-          "tradition",
-          "competence",
-          "governance",
-          "effort",
-          "hierarchy",
-          "legacy",
-          "time",
-          "professionalism",
-          "seriousness",
-          "executive ability",
-          "accountability",
-          "resource management",
-          "construction",
-          "authority through experience"
-        ],
-        "modality": "cardinal",
-        "modality_label": "Cardinal",
-        "polarity": "yin",
-        "polarity_label": "Yin"
-      },
-      "house_context": {
-        "theme_code": "resources"
-      },
-      "house_modality": {
-        "accidental_strength": "medium",
-        "code": "succedent",
-        "interpretation_weight": "medium",
-        "label": "Succedent"
-      },
-      "object_context": {
-        "is_luminary": true,
-        "is_planet_symbolic": false,
-        "is_visible_to_naked_eye": true,
-        "nature": [
-          "luminary"
-        ],
-        "role": "luminary",
-        "role_label": "Luminary"
-      },
-      "motion_context": {
-        "label": "Direct",
-        "motion_family": "forward",
-        "motion_state": "direct"
-      },
-      "dignity_context": []
-    },
-    {
-      "object_code": "moon",
-      "object_name": "Moon",
-      "longitude_deg": 341.7641,
-      "sign_id": 12,
-      "sign_code": "pisces",
-      "sign_name": "Pisces",
-      "house_id": 4,
-      "house_number": 4,
-      "house_name": "Home",
-      "motion_state_id": 1,
-      "sign_context": {
-        "element": "water",
-        "element_label": "Water",
-        "keywords": [
-          "compassion",
-          "intuition",
-          "imagination",
-          "sensitivity",
-          "spirituality",
-          "empathy",
-          "dreams",
-          "mysticism",
-          "surrender",
-          "creativity",
-          "inspiration",
-          "healing",
-          "unconditional love",
-          "fluidity",
-          "receptivity",
-          "poetry",
-          "symbolism",
-          "transcendence",
-          "forgiveness",
-          "devotion",
-          "oneness",
-          "fantasy",
-          "psychic openness",
-          "subtle perception",
-          "music",
-          "artistic sensitivity",
-          "emotional permeability",
-          "sacrifice",
-          "inner vision",
-          "grace",
-          "liminality",
-          "gentleness",
-          "faith",
-          "soulfulness"
-        ],
-        "modality": "mutable",
-        "modality_label": "Mutable",
-        "polarity": "yin",
-        "polarity_label": "Yin"
-      },
-      "house_context": {
-        "theme_code": "roots"
-      },
-      "house_modality": {
-        "accidental_strength": "strong",
-        "code": "angular",
-        "interpretation_weight": "high",
-        "label": "Angular"
-      },
-      "object_context": {
-        "is_luminary": true,
-        "is_planet_symbolic": false,
-        "is_visible_to_naked_eye": true,
-        "nature": [
-          "luminary"
-        ],
-        "role": "luminary",
-        "role_label": "Luminary"
-      },
-      "motion_context": {
-        "label": "Direct",
-        "motion_family": "forward",
-        "motion_state": "direct"
-      },
-      "dignity_context": []
-    },
-    {
-      "object_code": "mercury",
-      "object_name": "Mercury",
-      "longitude_deg": 295.4488,
-      "sign_id": 10,
-      "sign_code": "capricorn",
-      "sign_name": "Capricorn",
-      "house_id": 3,
-      "house_number": 3,
-      "house_name": "Communication",
-      "motion_state_id": 2,
-      "sign_context": {
-        "element": "earth",
-        "element_label": "Earth",
-        "keywords": [
-          "ambition",
-          "discipline",
-          "structure",
-          "responsibility",
-          "maturity",
-          "authority",
-          "achievement",
-          "strategy",
-          "patience",
-          "endurance",
-          "realism",
-          "pragmatism",
-          "long-term planning",
-          "status",
-          "career",
-          "mastery",
-          "self-control",
-          "duty",
-          "perseverance",
-          "boundaries",
-          "tradition",
-          "competence",
-          "governance",
-          "effort",
-          "hierarchy",
-          "legacy",
-          "time",
-          "professionalism",
-          "seriousness",
-          "executive ability",
-          "accountability",
-          "resource management",
-          "construction",
-          "authority through experience"
-        ],
-        "modality": "cardinal",
-        "modality_label": "Cardinal",
-        "polarity": "yin",
-        "polarity_label": "Yin"
-      },
-      "house_context": {
-        "theme_code": "communication"
-      },
-      "house_modality": {
-        "accidental_strength": "weak_or_background",
-        "code": "cadent",
-        "interpretation_weight": "lower_for_external_manifestation",
-        "label": "Cadent"
-      },
-      "object_context": {
-        "is_luminary": false,
-        "is_planet_symbolic": true,
-        "is_visible_to_naked_eye": true,
-        "nature": [
-          "variable"
-        ],
-        "role": "personal_planet",
-        "role_label": "Personal planet"
-      },
-      "motion_context": {
-        "label": "Retrograde",
-        "motion_family": "backward",
-        "motion_state": "retrograde"
-      },
-      "dignity_context": []
-    },
-    {
-      "object_code": "venus",
-      "object_name": "Venus",
-      "longitude_deg": 306.1319,
-      "sign_id": 11,
-      "sign_code": "aquarius",
-      "sign_name": "Aquarius",
-      "house_id": 3,
-      "house_number": 3,
-      "house_name": "Communication",
-      "motion_state_id": 2,
-      "sign_context": {
-        "element": "air",
-        "element_label": "Air",
-        "keywords": [
-          "innovation",
-          "freedom",
-          "originality",
-          "individuality",
-          "collective vision",
-          "future-thinking",
-          "independence",
-          "intellectual detachment",
-          "humanitarianism",
-          "reform",
-          "experimentation",
-          "systems thinking",
-          "technology",
-          "networks",
-          "friendship",
-          "ideals",
-          "progress",
-          "rebellion",
-          "objectivity",
-          "nonconformity",
-          "social change",
-          "invention",
-          "rationality",
-          "uniqueness",
-          "group consciousness",
-          "disruption",
-          "eccentricity",
-          "universalism",
-          "strategic distance",
-          "liberation",
-          "visionary intelligence",
-          "unconventionality",
-          "social architecture",
-          "mental independence"
-        ],
-        "modality": "fixed",
-        "modality_label": "Fixed",
-        "polarity": "yang",
-        "polarity_label": "Yang"
-      },
-      "house_context": {
-        "theme_code": "communication"
-      },
-      "house_modality": {
-        "accidental_strength": "weak_or_background",
-        "code": "cadent",
-        "interpretation_weight": "lower_for_external_manifestation",
-        "label": "Cadent"
-      },
-      "object_context": {
-        "is_luminary": false,
-        "is_planet_symbolic": true,
-        "is_visible_to_naked_eye": true,
-        "nature": [
-          "benefic"
-        ],
-        "role": "personal_planet",
-        "role_label": "Personal planet"
-      },
-      "motion_context": {
-        "label": "Retrograde",
-        "motion_family": "backward",
-        "motion_state": "retrograde"
-      },
-      "dignity_context": []
-    },
-    {
-      "object_code": "mars",
-      "object_name": "Mars",
-      "longitude_deg": 250.442,
-      "sign_id": 9,
-      "sign_code": "sagittarius",
-      "sign_name": "Sagittarius",
-      "house_id": 1,
-      "house_number": 1,
-      "house_name": "Self",
-      "motion_state_id": 1,
-      "sign_context": {
-        "element": "fire",
-        "element_label": "Fire",
-        "keywords": [
-          "expansion",
-          "freedom",
-          "adventure",
-          "truth-seeking",
-          "optimism",
-          "faith",
-          "philosophy",
-          "travel",
-          "vision",
-          "enthusiasm",
-          "meaning",
-          "exploration",
-          "higher learning",
-          "belief",
-          "generosity",
-          "humor",
-          "openness",
-          "risk-taking",
-          "growth",
-          "inspiration",
-          "teaching",
-          "spiritual quest",
-          "worldview",
-          "confidence",
-          "spontaneity",
-          "big-picture thinking",
-          "cross-cultural curiosity",
-          "moral aspiration",
-          "movement",
-          "quest",
-          "frankness",
-          "hope",
-          "expansive intelligence",
-          "life philosophy"
-        ],
-        "modality": "mutable",
-        "modality_label": "Mutable",
-        "polarity": "yang",
-        "polarity_label": "Yang"
-      },
-      "house_context": {
-        "theme_code": "identity"
-      },
-      "house_modality": {
-        "accidental_strength": "strong",
-        "code": "angular",
-        "interpretation_weight": "high",
-        "label": "Angular"
-      },
-      "object_context": {
-        "is_luminary": false,
-        "is_planet_symbolic": true,
-        "is_visible_to_naked_eye": true,
-        "nature": [
-          "malefic"
-        ],
-        "role": "personal_planet",
-        "role_label": "Personal planet"
-      },
-      "motion_context": {
-        "label": "Direct",
-        "motion_family": "forward",
-        "motion_state": "direct"
-      },
-      "dignity_context": []
-    },
-    {
-      "object_code": "jupiter",
-      "object_name": "Jupiter",
-      "longitude_deg": 95.0645,
-      "sign_id": 4,
-      "sign_code": "cancer",
-      "sign_name": "Cancer",
-      "house_id": 8,
-      "house_number": 8,
-      "house_name": "Transformation",
-      "motion_state_id": 2,
-      "sign_context": {
-        "element": "water",
-        "element_label": "Water",
-        "keywords": [
-          "emotional sensitivity",
-          "nurturing",
-          "protection",
-          "family",
-          "home",
-          "memory",
-          "belonging",
-          "care",
-          "empathy",
-          "intuition",
-          "receptivity",
-          "attachment",
-          "roots",
-          "inner life",
-          "emotional intelligence",
-          "ancestry",
-          "mothering",
-          "security",
-          "tenderness",
-          "imagination",
-          "privacy",
-          "domesticity",
-          "support",
-          "protective instinct",
-          "emotional depth",
-          "loyalty",
-          "sentimentality",
-          "healing presence",
-          "cyclical rhythm",
-          "emotional containment",
-          "safe space",
-          "closeness",
-          "caregiving"
-        ],
-        "modality": "cardinal",
-        "modality_label": "Cardinal",
-        "polarity": "yin",
-        "polarity_label": "Yin"
-      },
-      "house_context": {
-        "theme_code": "shared_resources"
-      },
-      "house_modality": {
-        "accidental_strength": "medium",
-        "code": "succedent",
-        "interpretation_weight": "medium",
-        "label": "Succedent"
-      },
-      "object_context": {
-        "is_luminary": false,
-        "is_planet_symbolic": true,
-        "is_visible_to_naked_eye": true,
-        "nature": [
-          "benefic"
-        ],
-        "role": "social_planet",
-        "role_label": "Social planet"
-      },
-      "motion_context": {
-        "label": "Retrograde",
-        "motion_family": "backward",
-        "motion_state": "retrograde"
-      },
-      "dignity_context": [
-        {
-          "dignity_label": "Exaltation",
-          "dignity_type": "exaltation",
-          "fact_type": "essential_dignity",
-          "polarity": "dignity",
-          "strength_score": 0.9
-        }
-      ]
-    },
-    {
-      "object_code": "saturn",
-      "object_name": "Saturn",
-      "longitude_deg": 285.7318,
-      "sign_id": 10,
-      "sign_code": "capricorn",
-      "sign_name": "Capricorn",
-      "house_id": 2,
-      "house_number": 2,
-      "house_name": "Resources",
-      "motion_state_id": 1,
-      "sign_context": {
-        "element": "earth",
-        "element_label": "Earth",
-        "keywords": [
-          "ambition",
-          "discipline",
-          "structure",
-          "responsibility",
-          "maturity",
-          "authority",
-          "achievement",
-          "strategy",
-          "patience",
-          "endurance",
-          "realism",
-          "pragmatism",
-          "long-term planning",
-          "status",
-          "career",
-          "mastery",
-          "self-control",
-          "duty",
-          "perseverance",
-          "boundaries",
-          "tradition",
-          "competence",
-          "governance",
-          "effort",
-          "hierarchy",
-          "legacy",
-          "time",
-          "professionalism",
-          "seriousness",
-          "executive ability",
-          "accountability",
-          "resource management",
-          "construction",
-          "authority through experience"
-        ],
-        "modality": "cardinal",
-        "modality_label": "Cardinal",
-        "polarity": "yin",
-        "polarity_label": "Yin"
-      },
-      "house_context": {
-        "theme_code": "resources"
-      },
-      "house_modality": {
-        "accidental_strength": "medium",
-        "code": "succedent",
-        "interpretation_weight": "medium",
-        "label": "Succedent"
-      },
-      "object_context": {
-        "is_luminary": false,
-        "is_planet_symbolic": true,
-        "is_visible_to_naked_eye": true,
-        "nature": [
-          "malefic"
-        ],
-        "role": "social_planet",
-        "role_label": "Social planet"
-      },
-      "motion_context": {
-        "label": "Direct",
-        "motion_family": "forward",
-        "motion_state": "direct"
-      },
-      "dignity_context": [
-        {
-          "dignity_label": "Domicile",
-          "dignity_type": "domicile",
-          "fact_type": "essential_dignity",
-          "polarity": "dignity",
-          "strength_score": 1.0
-        }
-      ]
-    },
-    {
-      "object_code": "uranus",
-      "object_name": "Uranus",
-      "longitude_deg": 275.8231,
-      "sign_id": 10,
-      "sign_code": "capricorn",
-      "sign_name": "Capricorn",
-      "house_id": 2,
-      "house_number": 2,
-      "house_name": "Resources",
-      "motion_state_id": 1,
-      "sign_context": {
-        "element": "earth",
-        "element_label": "Earth",
-        "keywords": [
-          "ambition",
-          "discipline",
-          "structure",
-          "responsibility",
-          "maturity",
-          "authority",
-          "achievement",
-          "strategy",
-          "patience",
-          "endurance",
-          "realism",
-          "pragmatism",
-          "long-term planning",
-          "status",
-          "career",
-          "mastery",
-          "self-control",
-          "duty",
-          "perseverance",
-          "boundaries",
-          "tradition",
-          "competence",
-          "governance",
-          "effort",
-          "hierarchy",
-          "legacy",
-          "time",
-          "professionalism",
-          "seriousness",
-          "executive ability",
-          "accountability",
-          "resource management",
-          "construction",
-          "authority through experience"
-        ],
-        "modality": "cardinal",
-        "modality_label": "Cardinal",
-        "polarity": "yin",
-        "polarity_label": "Yin"
-      },
-      "house_context": {
-        "theme_code": "resources"
-      },
-      "house_modality": {
-        "accidental_strength": "medium",
-        "code": "succedent",
-        "interpretation_weight": "medium",
-        "label": "Succedent"
-      },
-      "object_context": {
-        "is_luminary": false,
-        "is_planet_symbolic": true,
-        "is_visible_to_naked_eye": false,
-        "nature": [
-          "transpersonal"
-        ],
-        "role": "transpersonal_planet",
-        "role_label": "Transpersonal planet"
-      },
-      "motion_context": {
-        "label": "Direct",
-        "motion_family": "forward",
-        "motion_state": "direct"
-      },
-      "dignity_context": []
-    },
-    {
-      "object_code": "neptune",
-      "object_name": "Neptune",
-      "longitude_deg": 282.0619,
-      "sign_id": 10,
-      "sign_code": "capricorn",
-      "sign_name": "Capricorn",
-      "house_id": 2,
-      "house_number": 2,
-      "house_name": "Resources",
-      "motion_state_id": 1,
-      "sign_context": {
-        "element": "earth",
-        "element_label": "Earth",
-        "keywords": [
-          "ambition",
-          "discipline",
-          "structure",
-          "responsibility",
-          "maturity",
-          "authority",
-          "achievement",
-          "strategy",
-          "patience",
-          "endurance",
-          "realism",
-          "pragmatism",
-          "long-term planning",
-          "status",
-          "career",
-          "mastery",
-          "self-control",
-          "duty",
-          "perseverance",
-          "boundaries",
-          "tradition",
-          "competence",
-          "governance",
-          "effort",
-          "hierarchy",
-          "legacy",
-          "time",
-          "professionalism",
-          "seriousness",
-          "executive ability",
-          "accountability",
-          "resource management",
-          "construction",
-          "authority through experience"
-        ],
-        "modality": "cardinal",
-        "modality_label": "Cardinal",
-        "polarity": "yin",
-        "polarity_label": "Yin"
-      },
-      "house_context": {
-        "theme_code": "resources"
-      },
-      "house_modality": {
-        "accidental_strength": "medium",
-        "code": "succedent",
-        "interpretation_weight": "medium",
-        "label": "Succedent"
-      },
-      "object_context": {
-        "is_luminary": false,
-        "is_planet_symbolic": true,
-        "is_visible_to_naked_eye": false,
-        "nature": [
-          "transpersonal"
-        ],
-        "role": "transpersonal_planet",
-        "role_label": "Transpersonal planet"
-      },
-      "motion_context": {
-        "label": "Direct",
-        "motion_family": "forward",
-        "motion_state": "direct"
-      },
-      "dignity_context": []
-    },
-    {
-      "object_code": "pluto",
-      "object_name": "Pluto",
-      "longitude_deg": 227.1102,
-      "sign_id": 8,
-      "sign_code": "scorpio",
-      "sign_name": "Scorpio",
-      "house_id": 1,
-      "house_number": 1,
-      "house_name": "Self",
-      "motion_state_id": 1,
-      "sign_context": {
-        "element": "water",
-        "element_label": "Water",
-        "keywords": [
-          "intensity",
-          "transformation",
-          "depth",
-          "passion",
-          "power",
-          "mystery",
-          "psychological insight",
-          "resilience",
-          "sexuality",
-          "regeneration",
-          "emotional truth",
-          "focus",
-          "magnetism",
-          "investigation",
-          "taboo",
-          "crisis",
-          "alchemy",
-          "loyalty",
-          "secrecy",
-          "emotional courage",
-          "survival",
-          "shadow work",
-          "penetration",
-          "strategic awareness",
-          "intimacy",
-          "rebirth",
-          "control of energy",
-          "hidden resources",
-          "obsessive focus",
-          "truth-seeking",
-          "emotional endurance",
-          "depth psychology",
-          "radical honesty"
-        ],
-        "modality": "fixed",
-        "modality_label": "Fixed",
-        "polarity": "yin",
-        "polarity_label": "Yin"
-      },
-      "house_context": {
-        "theme_code": "identity"
-      },
-      "house_modality": {
-        "accidental_strength": "strong",
-        "code": "angular",
-        "interpretation_weight": "high",
-        "label": "Angular"
-      },
-      "object_context": {
-        "is_luminary": false,
-        "is_planet_symbolic": true,
-        "is_visible_to_naked_eye": false,
-        "nature": [
-          "transpersonal"
-        ],
-        "role": "transpersonal_planet",
-        "role_label": "Transpersonal planet"
-      },
-      "motion_context": {
-        "label": "Direct",
-        "motion_family": "forward",
-        "motion_state": "direct"
-      },
-      "dignity_context": []
-    },
     {
       "object_code": "ascendant",
       "object_name": "Ascendant",
@@ -915,17 +121,31 @@
         "accidental_strength": "strong",
         "code": "angular",
         "interpretation_weight": "high",
-        "label": "Angular"
+        "label": "Angular",
+        "priority_delta": 2.0
       },
       "object_context": {
         "is_luminary": false,
         "is_planet_symbolic": false,
         "is_visible_to_naked_eye": false,
+        "nature": null,
         "role": "angle",
-        "role_label": "Angle"
+        "role_label": "Angle",
+        "signal_scoring": {
+          "angle_priority_base": 99.0,
+          "position_priority_base": 99.0,
+          "source_weight": 1.0
+        }
       },
       "motion_context": null,
-      "dignity_context": []
+      "dignity_context": [],
+      "visibility_context": {
+        "altitude_deg": null,
+        "horizon_position": "on_horizon",
+        "horizon_position_id": 3,
+        "is_visible": true,
+        "source": "angle_context"
+      }
     },
     {
       "object_code": "descendant",
@@ -989,17 +209,31 @@
         "accidental_strength": "strong",
         "code": "angular",
         "interpretation_weight": "high",
-        "label": "Angular"
+        "label": "Angular",
+        "priority_delta": 2.0
       },
       "object_context": {
         "is_luminary": false,
         "is_planet_symbolic": false,
         "is_visible_to_naked_eye": false,
+        "nature": null,
         "role": "angle",
-        "role_label": "Angle"
+        "role_label": "Angle",
+        "signal_scoring": {
+          "angle_priority_base": 68.0,
+          "position_priority_base": 68.0,
+          "source_weight": 0.4
+        }
       },
       "motion_context": null,
-      "dignity_context": []
+      "dignity_context": [],
+      "visibility_context": {
+        "altitude_deg": null,
+        "horizon_position": "on_horizon",
+        "horizon_position_id": 3,
+        "is_visible": true,
+        "source": "angle_context"
+      }
     },
     {
       "object_code": "mc",
@@ -1063,17 +297,31 @@
         "accidental_strength": "strong",
         "code": "angular",
         "interpretation_weight": "high",
-        "label": "Angular"
+        "label": "Angular",
+        "priority_delta": 2.0
       },
       "object_context": {
         "is_luminary": false,
         "is_planet_symbolic": false,
         "is_visible_to_naked_eye": false,
+        "nature": null,
         "role": "angle",
-        "role_label": "Angle"
+        "role_label": "Angle",
+        "signal_scoring": {
+          "angle_priority_base": 82.0,
+          "position_priority_base": 82.0,
+          "source_weight": 0.8
+        }
       },
       "motion_context": null,
-      "dignity_context": []
+      "dignity_context": [],
+      "visibility_context": {
+        "altitude_deg": null,
+        "horizon_position": "above_horizon",
+        "horizon_position_id": 1,
+        "is_visible": true,
+        "source": "angle_context"
+      }
     },
     {
       "object_code": "ic",
@@ -1137,17 +385,985 @@
         "accidental_strength": "strong",
         "code": "angular",
         "interpretation_weight": "high",
-        "label": "Angular"
+        "label": "Angular",
+        "priority_delta": 2.0
       },
       "object_context": {
         "is_luminary": false,
         "is_planet_symbolic": false,
         "is_visible_to_naked_eye": false,
+        "nature": null,
         "role": "angle",
-        "role_label": "Angle"
+        "role_label": "Angle",
+        "signal_scoring": {
+          "angle_priority_base": 68.0,
+          "position_priority_base": 68.0,
+          "source_weight": 0.4
+        }
       },
       "motion_context": null,
-      "dignity_context": []
+      "dignity_context": [],
+      "visibility_context": {
+        "altitude_deg": null,
+        "horizon_position": "below_horizon",
+        "horizon_position_id": 2,
+        "is_visible": false,
+        "source": "angle_context"
+      }
+    },
+    {
+      "object_code": "sun",
+      "object_name": "Sun",
+      "longitude_deg": 281.4543,
+      "sign_id": 10,
+      "sign_code": "capricorn",
+      "sign_name": "Capricorn",
+      "house_id": 2,
+      "house_number": 2,
+      "house_name": "Resources",
+      "motion_state_id": 1,
+      "sign_context": {
+        "element": "earth",
+        "element_label": "Earth",
+        "keywords": [
+          "ambition",
+          "discipline",
+          "structure",
+          "responsibility",
+          "maturity",
+          "authority",
+          "achievement",
+          "strategy",
+          "patience",
+          "endurance",
+          "realism",
+          "pragmatism",
+          "long-term planning",
+          "status",
+          "career",
+          "mastery",
+          "self-control",
+          "duty",
+          "perseverance",
+          "boundaries",
+          "tradition",
+          "competence",
+          "governance",
+          "effort",
+          "hierarchy",
+          "legacy",
+          "time",
+          "professionalism",
+          "seriousness",
+          "executive ability",
+          "accountability",
+          "resource management",
+          "construction",
+          "authority through experience"
+        ],
+        "modality": "cardinal",
+        "modality_label": "Cardinal",
+        "polarity": "yin",
+        "polarity_label": "Yin"
+      },
+      "house_context": {
+        "theme_code": "resources"
+      },
+      "house_modality": {
+        "accidental_strength": "medium",
+        "code": "succedent",
+        "interpretation_weight": "medium",
+        "label": "Succedent",
+        "priority_delta": 0.75
+      },
+      "object_context": {
+        "is_luminary": true,
+        "is_planet_symbolic": false,
+        "is_visible_to_naked_eye": true,
+        "nature": [
+          "luminary"
+        ],
+        "role": "luminary",
+        "role_label": "Luminary",
+        "signal_scoring": {
+          "angle_priority_base": null,
+          "position_priority_base": 100.0,
+          "source_weight": 1.0
+        }
+      },
+      "motion_context": {
+        "label": "Direct",
+        "motion_family": "forward",
+        "motion_state": "direct"
+      },
+      "dignity_context": [],
+      "visibility_context": {
+        "altitude_deg": -44.7173,
+        "horizon_position": "below_horizon",
+        "horizon_position_id": 2,
+        "is_visible": false,
+        "source": "calculated_altitude"
+      }
+    },
+    {
+      "object_code": "moon",
+      "object_name": "Moon",
+      "longitude_deg": 341.7642,
+      "sign_id": 12,
+      "sign_code": "pisces",
+      "sign_name": "Pisces",
+      "house_id": 4,
+      "house_number": 4,
+      "house_name": "Home",
+      "motion_state_id": 1,
+      "sign_context": {
+        "element": "water",
+        "element_label": "Water",
+        "keywords": [
+          "compassion",
+          "intuition",
+          "imagination",
+          "sensitivity",
+          "spirituality",
+          "empathy",
+          "dreams",
+          "mysticism",
+          "surrender",
+          "creativity",
+          "inspiration",
+          "healing",
+          "unconditional love",
+          "fluidity",
+          "receptivity",
+          "poetry",
+          "symbolism",
+          "transcendence",
+          "forgiveness",
+          "devotion",
+          "oneness",
+          "fantasy",
+          "psychic openness",
+          "subtle perception",
+          "music",
+          "artistic sensitivity",
+          "emotional permeability",
+          "sacrifice",
+          "inner vision",
+          "grace",
+          "liminality",
+          "gentleness",
+          "faith",
+          "soulfulness"
+        ],
+        "modality": "mutable",
+        "modality_label": "Mutable",
+        "polarity": "yin",
+        "polarity_label": "Yin"
+      },
+      "house_context": {
+        "theme_code": "roots"
+      },
+      "house_modality": {
+        "accidental_strength": "strong",
+        "code": "angular",
+        "interpretation_weight": "high",
+        "label": "Angular",
+        "priority_delta": 2.0
+      },
+      "object_context": {
+        "is_luminary": true,
+        "is_planet_symbolic": false,
+        "is_visible_to_naked_eye": true,
+        "nature": [
+          "luminary"
+        ],
+        "role": "luminary",
+        "role_label": "Luminary",
+        "signal_scoring": {
+          "angle_priority_base": null,
+          "position_priority_base": 100.0,
+          "source_weight": 1.0
+        }
+      },
+      "motion_context": {
+        "label": "Direct",
+        "motion_family": "forward",
+        "motion_state": "direct"
+      },
+      "dignity_context": [],
+      "visibility_context": {
+        "altitude_deg": -45.6728,
+        "horizon_position": "below_horizon",
+        "horizon_position_id": 2,
+        "is_visible": false,
+        "source": "calculated_altitude"
+      }
+    },
+    {
+      "object_code": "mercury",
+      "object_name": "Mercury",
+      "longitude_deg": 295.4488,
+      "sign_id": 10,
+      "sign_code": "capricorn",
+      "sign_name": "Capricorn",
+      "house_id": 3,
+      "house_number": 3,
+      "house_name": "Communication",
+      "motion_state_id": 2,
+      "sign_context": {
+        "element": "earth",
+        "element_label": "Earth",
+        "keywords": [
+          "ambition",
+          "discipline",
+          "structure",
+          "responsibility",
+          "maturity",
+          "authority",
+          "achievement",
+          "strategy",
+          "patience",
+          "endurance",
+          "realism",
+          "pragmatism",
+          "long-term planning",
+          "status",
+          "career",
+          "mastery",
+          "self-control",
+          "duty",
+          "perseverance",
+          "boundaries",
+          "tradition",
+          "competence",
+          "governance",
+          "effort",
+          "hierarchy",
+          "legacy",
+          "time",
+          "professionalism",
+          "seriousness",
+          "executive ability",
+          "accountability",
+          "resource management",
+          "construction",
+          "authority through experience"
+        ],
+        "modality": "cardinal",
+        "modality_label": "Cardinal",
+        "polarity": "yin",
+        "polarity_label": "Yin"
+      },
+      "house_context": {
+        "theme_code": "communication"
+      },
+      "house_modality": {
+        "accidental_strength": "weak_or_background",
+        "code": "cadent",
+        "interpretation_weight": "lower_for_external_manifestation",
+        "label": "Cadent",
+        "priority_delta": -0.75
+      },
+      "object_context": {
+        "is_luminary": false,
+        "is_planet_symbolic": true,
+        "is_visible_to_naked_eye": true,
+        "nature": [
+          "variable"
+        ],
+        "role": "personal_planet",
+        "role_label": "Personal planet",
+        "signal_scoring": {
+          "angle_priority_base": null,
+          "position_priority_base": 85.0,
+          "source_weight": 0.75
+        }
+      },
+      "motion_context": {
+        "label": "Retrograde",
+        "motion_family": "backward",
+        "motion_state": "retrograde"
+      },
+      "dignity_context": [],
+      "visibility_context": {
+        "altitude_deg": -51.3049,
+        "horizon_position": "below_horizon",
+        "horizon_position_id": 2,
+        "is_visible": false,
+        "source": "calculated_altitude"
+      }
+    },
+    {
+      "object_code": "venus",
+      "object_name": "Venus",
+      "longitude_deg": 306.1317,
+      "sign_id": 11,
+      "sign_code": "aquarius",
+      "sign_name": "Aquarius",
+      "house_id": 3,
+      "house_number": 3,
+      "house_name": "Communication",
+      "motion_state_id": 2,
+      "sign_context": {
+        "element": "air",
+        "element_label": "Air",
+        "keywords": [
+          "innovation",
+          "freedom",
+          "originality",
+          "individuality",
+          "collective vision",
+          "future-thinking",
+          "independence",
+          "intellectual detachment",
+          "humanitarianism",
+          "reform",
+          "experimentation",
+          "systems thinking",
+          "technology",
+          "networks",
+          "friendship",
+          "ideals",
+          "progress",
+          "rebellion",
+          "objectivity",
+          "nonconformity",
+          "social change",
+          "invention",
+          "rationality",
+          "uniqueness",
+          "group consciousness",
+          "disruption",
+          "eccentricity",
+          "universalism",
+          "strategic distance",
+          "liberation",
+          "visionary intelligence",
+          "unconventionality",
+          "social architecture",
+          "mental independence"
+        ],
+        "modality": "fixed",
+        "modality_label": "Fixed",
+        "polarity": "yang",
+        "polarity_label": "Yang"
+      },
+      "house_context": {
+        "theme_code": "communication"
+      },
+      "house_modality": {
+        "accidental_strength": "weak_or_background",
+        "code": "cadent",
+        "interpretation_weight": "lower_for_external_manifestation",
+        "label": "Cadent",
+        "priority_delta": -0.75
+      },
+      "object_context": {
+        "is_luminary": false,
+        "is_planet_symbolic": true,
+        "is_visible_to_naked_eye": true,
+        "nature": [
+          "benefic"
+        ],
+        "role": "personal_planet",
+        "role_label": "Personal planet",
+        "signal_scoring": {
+          "angle_priority_base": null,
+          "position_priority_base": 85.0,
+          "source_weight": 0.75
+        }
+      },
+      "motion_context": {
+        "label": "Retrograde",
+        "motion_family": "backward",
+        "motion_state": "retrograde"
+      },
+      "dignity_context": [],
+      "visibility_context": {
+        "altitude_deg": -53.2896,
+        "horizon_position": "below_horizon",
+        "horizon_position_id": 2,
+        "is_visible": false,
+        "source": "calculated_altitude"
+      }
+    },
+    {
+      "object_code": "mars",
+      "object_name": "Mars",
+      "longitude_deg": 250.442,
+      "sign_id": 9,
+      "sign_code": "sagittarius",
+      "sign_name": "Sagittarius",
+      "house_id": 1,
+      "house_number": 1,
+      "house_name": "Self",
+      "motion_state_id": 1,
+      "sign_context": {
+        "element": "fire",
+        "element_label": "Fire",
+        "keywords": [
+          "expansion",
+          "freedom",
+          "adventure",
+          "truth-seeking",
+          "optimism",
+          "faith",
+          "philosophy",
+          "travel",
+          "vision",
+          "enthusiasm",
+          "meaning",
+          "exploration",
+          "higher learning",
+          "belief",
+          "generosity",
+          "humor",
+          "openness",
+          "risk-taking",
+          "growth",
+          "inspiration",
+          "teaching",
+          "spiritual quest",
+          "worldview",
+          "confidence",
+          "spontaneity",
+          "big-picture thinking",
+          "cross-cultural curiosity",
+          "moral aspiration",
+          "movement",
+          "quest",
+          "frankness",
+          "hope",
+          "expansive intelligence",
+          "life philosophy"
+        ],
+        "modality": "mutable",
+        "modality_label": "Mutable",
+        "polarity": "yang",
+        "polarity_label": "Yang"
+      },
+      "house_context": {
+        "theme_code": "identity"
+      },
+      "house_modality": {
+        "accidental_strength": "strong",
+        "code": "angular",
+        "interpretation_weight": "high",
+        "label": "Angular",
+        "priority_delta": 2.0
+      },
+      "object_context": {
+        "is_luminary": false,
+        "is_planet_symbolic": true,
+        "is_visible_to_naked_eye": true,
+        "nature": [
+          "malefic"
+        ],
+        "role": "personal_planet",
+        "role_label": "Personal planet",
+        "signal_scoring": {
+          "angle_priority_base": null,
+          "position_priority_base": 85.0,
+          "source_weight": 0.75
+        }
+      },
+      "motion_context": {
+        "label": "Direct",
+        "motion_family": "forward",
+        "motion_state": "direct"
+      },
+      "dignity_context": [],
+      "visibility_context": {
+        "altitude_deg": -22.1926,
+        "horizon_position": "below_horizon",
+        "horizon_position_id": 2,
+        "is_visible": false,
+        "source": "calculated_altitude"
+      }
+    },
+    {
+      "object_code": "jupiter",
+      "object_name": "Jupiter",
+      "longitude_deg": 95.0644,
+      "sign_id": 4,
+      "sign_code": "cancer",
+      "sign_name": "Cancer",
+      "house_id": 8,
+      "house_number": 8,
+      "house_name": "Transformation",
+      "motion_state_id": 2,
+      "sign_context": {
+        "element": "water",
+        "element_label": "Water",
+        "keywords": [
+          "emotional sensitivity",
+          "nurturing",
+          "protection",
+          "family",
+          "home",
+          "memory",
+          "belonging",
+          "care",
+          "empathy",
+          "intuition",
+          "receptivity",
+          "attachment",
+          "roots",
+          "inner life",
+          "emotional intelligence",
+          "ancestry",
+          "mothering",
+          "security",
+          "tenderness",
+          "imagination",
+          "privacy",
+          "domesticity",
+          "support",
+          "protective instinct",
+          "emotional depth",
+          "loyalty",
+          "sentimentality",
+          "healing presence",
+          "cyclical rhythm",
+          "emotional containment",
+          "safe space",
+          "closeness",
+          "caregiving"
+        ],
+        "modality": "cardinal",
+        "modality_label": "Cardinal",
+        "polarity": "yin",
+        "polarity_label": "Yin"
+      },
+      "house_context": {
+        "theme_code": "shared_resources"
+      },
+      "house_modality": {
+        "accidental_strength": "medium",
+        "code": "succedent",
+        "interpretation_weight": "medium",
+        "label": "Succedent",
+        "priority_delta": 0.75
+      },
+      "object_context": {
+        "is_luminary": false,
+        "is_planet_symbolic": true,
+        "is_visible_to_naked_eye": true,
+        "nature": [
+          "benefic"
+        ],
+        "role": "social_planet",
+        "role_label": "Social planet",
+        "signal_scoring": {
+          "angle_priority_base": null,
+          "position_priority_base": 75.0,
+          "source_weight": 0.6
+        }
+      },
+      "motion_context": {
+        "label": "Retrograde",
+        "motion_family": "backward",
+        "motion_state": "retrograde"
+      },
+      "dignity_context": [
+        {
+          "dignity_label": "Exaltation",
+          "dignity_type": "exaltation",
+          "fact_type": "essential_dignity",
+          "polarity": "dignity",
+          "strength_score": 0.9
+        }
+      ],
+      "visibility_context": {
+        "altitude_deg": 40.4911,
+        "horizon_position": "above_horizon",
+        "horizon_position_id": 1,
+        "is_visible": true,
+        "source": "calculated_altitude"
+      }
+    },
+    {
+      "object_code": "saturn",
+      "object_name": "Saturn",
+      "longitude_deg": 285.7318,
+      "sign_id": 10,
+      "sign_code": "capricorn",
+      "sign_name": "Capricorn",
+      "house_id": 2,
+      "house_number": 2,
+      "house_name": "Resources",
+      "motion_state_id": 1,
+      "sign_context": {
+        "element": "earth",
+        "element_label": "Earth",
+        "keywords": [
+          "ambition",
+          "discipline",
+          "structure",
+          "responsibility",
+          "maturity",
+          "authority",
+          "achievement",
+          "strategy",
+          "patience",
+          "endurance",
+          "realism",
+          "pragmatism",
+          "long-term planning",
+          "status",
+          "career",
+          "mastery",
+          "self-control",
+          "duty",
+          "perseverance",
+          "boundaries",
+          "tradition",
+          "competence",
+          "governance",
+          "effort",
+          "hierarchy",
+          "legacy",
+          "time",
+          "professionalism",
+          "seriousness",
+          "executive ability",
+          "accountability",
+          "resource management",
+          "construction",
+          "authority through experience"
+        ],
+        "modality": "cardinal",
+        "modality_label": "Cardinal",
+        "polarity": "yin",
+        "polarity_label": "Yin"
+      },
+      "house_context": {
+        "theme_code": "resources"
+      },
+      "house_modality": {
+        "accidental_strength": "medium",
+        "code": "succedent",
+        "interpretation_weight": "medium",
+        "label": "Succedent",
+        "priority_delta": 0.75
+      },
+      "object_context": {
+        "is_luminary": false,
+        "is_planet_symbolic": true,
+        "is_visible_to_naked_eye": true,
+        "nature": [
+          "malefic"
+        ],
+        "role": "social_planet",
+        "role_label": "Social planet",
+        "signal_scoring": {
+          "angle_priority_base": null,
+          "position_priority_base": 75.0,
+          "source_weight": 0.6
+        }
+      },
+      "motion_context": {
+        "label": "Direct",
+        "motion_family": "forward",
+        "motion_state": "direct"
+      },
+      "dignity_context": [
+        {
+          "dignity_label": "Domicile",
+          "dignity_type": "domicile",
+          "fact_type": "essential_dignity",
+          "polarity": "dignity",
+          "strength_score": 1.0
+        }
+      ],
+      "visibility_context": {
+        "altitude_deg": -47.007,
+        "horizon_position": "below_horizon",
+        "horizon_position_id": 2,
+        "is_visible": false,
+        "source": "calculated_altitude"
+      }
+    },
+    {
+      "object_code": "uranus",
+      "object_name": "Uranus",
+      "longitude_deg": 275.8231,
+      "sign_id": 10,
+      "sign_code": "capricorn",
+      "sign_name": "Capricorn",
+      "house_id": 2,
+      "house_number": 2,
+      "house_name": "Resources",
+      "motion_state_id": 1,
+      "sign_context": {
+        "element": "earth",
+        "element_label": "Earth",
+        "keywords": [
+          "ambition",
+          "discipline",
+          "structure",
+          "responsibility",
+          "maturity",
+          "authority",
+          "achievement",
+          "strategy",
+          "patience",
+          "endurance",
+          "realism",
+          "pragmatism",
+          "long-term planning",
+          "status",
+          "career",
+          "mastery",
+          "self-control",
+          "duty",
+          "perseverance",
+          "boundaries",
+          "tradition",
+          "competence",
+          "governance",
+          "effort",
+          "hierarchy",
+          "legacy",
+          "time",
+          "professionalism",
+          "seriousness",
+          "executive ability",
+          "accountability",
+          "resource management",
+          "construction",
+          "authority through experience"
+        ],
+        "modality": "cardinal",
+        "modality_label": "Cardinal",
+        "polarity": "yin",
+        "polarity_label": "Yin"
+      },
+      "house_context": {
+        "theme_code": "resources"
+      },
+      "house_modality": {
+        "accidental_strength": "medium",
+        "code": "succedent",
+        "interpretation_weight": "medium",
+        "label": "Succedent",
+        "priority_delta": 0.75
+      },
+      "object_context": {
+        "is_luminary": false,
+        "is_planet_symbolic": true,
+        "is_visible_to_naked_eye": false,
+        "nature": [
+          "transpersonal"
+        ],
+        "role": "transpersonal_planet",
+        "role_label": "Transpersonal planet",
+        "signal_scoring": {
+          "angle_priority_base": null,
+          "position_priority_base": 60.0,
+          "source_weight": 0.35
+        }
+      },
+      "motion_context": {
+        "label": "Direct",
+        "motion_family": "forward",
+        "motion_state": "direct"
+      },
+      "dignity_context": [],
+      "visibility_context": {
+        "altitude_deg": -41.2877,
+        "horizon_position": "below_horizon",
+        "horizon_position_id": 2,
+        "is_visible": false,
+        "source": "calculated_altitude"
+      }
+    },
+    {
+      "object_code": "neptune",
+      "object_name": "Neptune",
+      "longitude_deg": 282.0619,
+      "sign_id": 10,
+      "sign_code": "capricorn",
+      "sign_name": "Capricorn",
+      "house_id": 2,
+      "house_number": 2,
+      "house_name": "Resources",
+      "motion_state_id": 1,
+      "sign_context": {
+        "element": "earth",
+        "element_label": "Earth",
+        "keywords": [
+          "ambition",
+          "discipline",
+          "structure",
+          "responsibility",
+          "maturity",
+          "authority",
+          "achievement",
+          "strategy",
+          "patience",
+          "endurance",
+          "realism",
+          "pragmatism",
+          "long-term planning",
+          "status",
+          "career",
+          "mastery",
+          "self-control",
+          "duty",
+          "perseverance",
+          "boundaries",
+          "tradition",
+          "competence",
+          "governance",
+          "effort",
+          "hierarchy",
+          "legacy",
+          "time",
+          "professionalism",
+          "seriousness",
+          "executive ability",
+          "accountability",
+          "resource management",
+          "construction",
+          "authority through experience"
+        ],
+        "modality": "cardinal",
+        "modality_label": "Cardinal",
+        "polarity": "yin",
+        "polarity_label": "Yin"
+      },
+      "house_context": {
+        "theme_code": "resources"
+      },
+      "house_modality": {
+        "accidental_strength": "medium",
+        "code": "succedent",
+        "interpretation_weight": "medium",
+        "label": "Succedent",
+        "priority_delta": 0.75
+      },
+      "object_context": {
+        "is_luminary": false,
+        "is_planet_symbolic": true,
+        "is_visible_to_naked_eye": false,
+        "nature": [
+          "transpersonal"
+        ],
+        "role": "transpersonal_planet",
+        "role_label": "Transpersonal planet",
+        "signal_scoring": {
+          "angle_priority_base": null,
+          "position_priority_base": 60.0,
+          "source_weight": 0.35
+        }
+      },
+      "motion_context": {
+        "label": "Direct",
+        "motion_family": "forward",
+        "motion_state": "direct"
+      },
+      "dignity_context": [],
+      "visibility_context": {
+        "altitude_deg": -44.4144,
+        "horizon_position": "below_horizon",
+        "horizon_position_id": 2,
+        "is_visible": false,
+        "source": "calculated_altitude"
+      }
+    },
+    {
+      "object_code": "pluto",
+      "object_name": "Pluto",
+      "longitude_deg": 227.1102,
+      "sign_id": 8,
+      "sign_code": "scorpio",
+      "sign_name": "Scorpio",
+      "house_id": 1,
+      "house_number": 1,
+      "house_name": "Self",
+      "motion_state_id": 1,
+      "sign_context": {
+        "element": "water",
+        "element_label": "Water",
+        "keywords": [
+          "intensity",
+          "transformation",
+          "depth",
+          "passion",
+          "power",
+          "mystery",
+          "psychological insight",
+          "resilience",
+          "sexuality",
+          "regeneration",
+          "emotional truth",
+          "focus",
+          "magnetism",
+          "investigation",
+          "taboo",
+          "crisis",
+          "alchemy",
+          "loyalty",
+          "secrecy",
+          "emotional courage",
+          "survival",
+          "shadow work",
+          "penetration",
+          "strategic awareness",
+          "intimacy",
+          "rebirth",
+          "control of energy",
+          "hidden resources",
+          "obsessive focus",
+          "truth-seeking",
+          "emotional endurance",
+          "depth psychology",
+          "radical honesty"
+        ],
+        "modality": "fixed",
+        "modality_label": "Fixed",
+        "polarity": "yin",
+        "polarity_label": "Yin"
+      },
+      "house_context": {
+        "theme_code": "identity"
+      },
+      "house_modality": {
+        "accidental_strength": "strong",
+        "code": "angular",
+        "interpretation_weight": "high",
+        "label": "Angular",
+        "priority_delta": 2.0
+      },
+      "object_context": {
+        "is_luminary": false,
+        "is_planet_symbolic": true,
+        "is_visible_to_naked_eye": false,
+        "nature": [
+          "transpersonal"
+        ],
+        "role": "transpersonal_planet",
+        "role_label": "Transpersonal planet",
+        "signal_scoring": {
+          "angle_priority_base": null,
+          "position_priority_base": 60.0,
+          "source_weight": 0.35
+        }
+      },
+      "motion_context": {
+        "label": "Direct",
+        "motion_family": "forward",
+        "motion_state": "direct"
+      },
+      "dignity_context": [],
+      "visibility_context": {
+        "altitude_deg": 5.4659,
+        "horizon_position": "above_horizon",
+        "horizon_position_id": 1,
+        "is_visible": true,
+        "source": "calculated_altitude"
+      }
     }
   ],
   "angles": [
@@ -1267,9 +1483,9 @@
         "theme_code": "identity",
         "score": 0.4565,
         "reasons": [
+          "ascendant_in_house",
           "mars_in_house",
           "pluto_in_house",
-          "ascendant_in_house",
           "multiple_objects"
         ]
       }
@@ -1356,15 +1572,22 @@
             "accidental_strength": "strong",
             "code": "angular",
             "interpretation_weight": "high",
-            "label": "Angular"
+            "label": "Angular",
+            "priority_delta": 2.0
           },
           "motion_context": null,
           "object_context": {
             "is_luminary": false,
             "is_planet_symbolic": false,
             "is_visible_to_naked_eye": false,
+            "nature": null,
             "role": "angle",
-            "role_label": "Angle"
+            "role_label": "Angle",
+            "signal_scoring": {
+              "angle_priority_base": 99.0,
+              "position_priority_base": 99.0,
+              "source_weight": 1.0
+            }
           },
           "sign_context": {
             "element": "water",
@@ -1464,7 +1687,8 @@
             "accidental_strength": "medium",
             "code": "succedent",
             "interpretation_weight": "medium",
-            "label": "Succedent"
+            "label": "Succedent",
+            "priority_delta": 0.75
           },
           "motion_context": {
             "label": "Direct",
@@ -1479,7 +1703,12 @@
               "luminary"
             ],
             "role": "luminary",
-            "role_label": "Luminary"
+            "role_label": "Luminary",
+            "signal_scoring": {
+              "angle_priority_base": null,
+              "position_priority_base": 100.0,
+              "source_weight": 1.0
+            }
           },
           "sign_context": {
             "element": "earth",
@@ -1567,7 +1796,7 @@
         "house_id": 4,
         "house_name": "Home",
         "house_number": 4,
-        "longitude_deg": 341.7641,
+        "longitude_deg": 341.7642,
         "object_code": "moon",
         "object_name": "Moon",
         "placement_context": {
@@ -1579,7 +1808,8 @@
             "accidental_strength": "strong",
             "code": "angular",
             "interpretation_weight": "high",
-            "label": "Angular"
+            "label": "Angular",
+            "priority_delta": 2.0
           },
           "motion_context": {
             "label": "Direct",
@@ -1594,7 +1824,12 @@
               "luminary"
             ],
             "role": "luminary",
-            "role_label": "Luminary"
+            "role_label": "Luminary",
+            "signal_scoring": {
+              "angle_priority_base": null,
+              "position_priority_base": 100.0,
+              "source_weight": 1.0
+            }
           },
           "sign_context": {
             "element": "water",
@@ -1774,7 +2009,8 @@
             "accidental_strength": "strong",
             "code": "angular",
             "interpretation_weight": "high",
-            "label": "Angular"
+            "label": "Angular",
+            "priority_delta": 2.0
           },
           "motion_context": {
             "label": "Direct",
@@ -1789,7 +2025,12 @@
               "malefic"
             ],
             "role": "personal_planet",
-            "role_label": "Personal planet"
+            "role_label": "Personal planet",
+            "signal_scoring": {
+              "angle_priority_base": null,
+              "position_priority_base": 85.0,
+              "source_weight": 0.75
+            }
           },
           "sign_context": {
             "element": "fire",
@@ -1925,7 +2166,8 @@
             "accidental_strength": "weak_or_background",
             "code": "cadent",
             "interpretation_weight": "lower_for_external_manifestation",
-            "label": "Cadent"
+            "label": "Cadent",
+            "priority_delta": -0.75
           },
           "motion_context": {
             "label": "Retrograde",
@@ -1940,7 +2182,12 @@
               "variable"
             ],
             "role": "personal_planet",
-            "role_label": "Personal planet"
+            "role_label": "Personal planet",
+            "signal_scoring": {
+              "angle_priority_base": null,
+              "position_priority_base": 85.0,
+              "source_weight": 0.75
+            }
           },
           "sign_context": {
             "element": "earth",
@@ -2028,7 +2275,7 @@
         "house_id": 3,
         "house_name": "Communication",
         "house_number": 3,
-        "longitude_deg": 306.1319,
+        "longitude_deg": 306.1317,
         "object_code": "venus",
         "object_name": "Venus",
         "placement_context": {
@@ -2040,7 +2287,8 @@
             "accidental_strength": "weak_or_background",
             "code": "cadent",
             "interpretation_weight": "lower_for_external_manifestation",
-            "label": "Cadent"
+            "label": "Cadent",
+            "priority_delta": -0.75
           },
           "motion_context": {
             "label": "Retrograde",
@@ -2055,7 +2303,12 @@
               "benefic"
             ],
             "role": "personal_planet",
-            "role_label": "Personal planet"
+            "role_label": "Personal planet",
+            "signal_scoring": {
+              "angle_priority_base": null,
+              "position_priority_base": 85.0,
+              "source_weight": 0.75
+            }
           },
           "sign_context": {
             "element": "air",
@@ -2157,15 +2410,22 @@
             "accidental_strength": "strong",
             "code": "angular",
             "interpretation_weight": "high",
-            "label": "Angular"
+            "label": "Angular",
+            "priority_delta": 2.0
           },
           "motion_context": null,
           "object_context": {
             "is_luminary": false,
             "is_planet_symbolic": false,
             "is_visible_to_naked_eye": false,
+            "nature": null,
             "role": "angle",
-            "role_label": "Angle"
+            "role_label": "Angle",
+            "signal_scoring": {
+              "angle_priority_base": 82.0,
+              "position_priority_base": 82.0,
+              "source_weight": 0.8
+            }
           },
           "sign_context": {
             "element": "fire",
@@ -2272,7 +2532,7 @@
         "house_id": 8,
         "house_name": "Transformation",
         "house_number": 8,
-        "longitude_deg": 95.0645,
+        "longitude_deg": 95.0644,
         "object_code": "jupiter",
         "object_name": "Jupiter",
         "placement_context": {
@@ -2299,7 +2559,8 @@
             "accidental_strength": "medium",
             "code": "succedent",
             "interpretation_weight": "medium",
-            "label": "Succedent"
+            "label": "Succedent",
+            "priority_delta": 0.75
           },
           "motion_context": {
             "label": "Retrograde",
@@ -2314,7 +2575,12 @@
               "benefic"
             ],
             "role": "social_planet",
-            "role_label": "Social planet"
+            "role_label": "Social planet",
+            "signal_scoring": {
+              "angle_priority_base": null,
+              "position_priority_base": 75.0,
+              "source_weight": 0.6
+            }
           },
           "sign_context": {
             "element": "water",
@@ -2406,12 +2672,12 @@
           "aspect_name": "Opposition",
           "exact_angle_deg": 180.0,
           "orb_limit_deg": 8.0,
-          "separation_deg": 179.2414
+          "separation_deg": 179.2413
         },
         "fact_type": "aspect",
         "is_applying": false,
         "is_exact": false,
-        "orb_deg": 0.7586,
+        "orb_deg": 0.7587,
         "phase_state": "separating",
         "source_chart_object_id": 6,
         "source_object_code": "jupiter",

@@ -2,10 +2,11 @@ use chrono::{TimeZone, Utc};
 use serde_json::json;
 
 use rust_sqlx_connection_test::domain::{
-    BasicAngleFact, BasicChartEmphasis, BasicDignity, BasicDominantHouse, BasicDominantObject,
-    BasicDominantSign, BasicDraftingPlanItem, BasicEmphasisRefs, BasicLlmHandoffContract,
-    BasicObjectPosition, BasicPayload, BasicReadingPlanItem, BasicSecondarySlotCandidate,
-    BasicSignal, CalculationReferenceData,
+    BasicAngleFact, BasicCalculationReliability, BasicChartContext, BasicChartEmphasis,
+    BasicDignity, BasicDominantHouse, BasicDominantObject, BasicDominantSign,
+    BasicDraftingPlanItem, BasicEmphasisRefs, BasicHemisphereEmphasis, BasicLlmHandoffContract,
+    BasicObjectPosition, BasicPayload, BasicPayloadContract, BasicReadingPlanItem,
+    BasicSecondarySlotCandidate, BasicSectContext, BasicSignal, CalculationReferenceData,
 };
 use rust_sqlx_connection_test::models::{
     AnglePointReference, ChartObject, HouseReference, SignReference,
@@ -29,6 +30,7 @@ fn current_payload() -> BasicPayload {
                 audience_level: "beginner".to_string(),
                 tone: "clear, warm, non fatalistic".to_string(),
                 must_use: vec![
+                    "chart_context".to_string(),
                     "chart_emphasis".to_string(),
                     "dignities".to_string(),
                     "angles".to_string(),
@@ -47,6 +49,37 @@ fn current_payload() -> BasicPayload {
                 ],
                 output_format: "structured_sections".to_string(),
             }),
+            chart_context: BasicChartContext {
+                chart_type: "natal".to_string(),
+                zodiacal_reference_system_id: 1,
+                coordinate_reference_system_id: 1,
+                house_system_id: 1,
+                reference_version_id: 1,
+                payload_contract: BasicPayloadContract {
+                    contract_version: "natal_structured_v9".to_string(),
+                    calculation_scope: "full_natal".to_string(),
+                    interpretation_scope: "structured_interpretation".to_string(),
+                    projection_depth: "rich".to_string(),
+                    writing_contract: "provided_by_llm_service".to_string(),
+                },
+                calculation_reliability: BasicCalculationReliability {
+                    birth_time_precision_required: true,
+                    house_system_sensitive: true,
+                },
+                sect: BasicSectContext {
+                    chart_sect: Some("day".to_string()),
+                    sun_horizon_position: Some("above_horizon".to_string()),
+                    source: Some("calculated_altitude".to_string()),
+                },
+                hemisphere_emphasis: BasicHemisphereEmphasis {
+                    above_horizon_count: 1,
+                    below_horizon_count: 0,
+                    on_horizon_count: 0,
+                    interpretive_hint: Some(
+                        "The chart has a stronger visible or outward emphasis.".to_string(),
+                    ),
+                },
+            },
             positions: vec![BasicObjectPosition {
                 object_code: "sun".to_string(),
                 object_name: "Sun".to_string(),
@@ -83,6 +116,13 @@ fn current_payload() -> BasicPayload {
                     "motion_family": "forward"
                 })),
                 dignity_context: json!([]),
+                visibility_context: json!({
+                    "horizon_position_id": 1,
+                    "horizon_position": "above_horizon",
+                    "altitude_deg": 12.5,
+                    "is_visible": true,
+                    "source": "calculated_altitude"
+                }),
             }],
             angles: vec![
                 angle_fact("ascendant", "Ascendant", "horizontal", "descendant", 84.0, 1),
@@ -236,6 +276,73 @@ fn current_payload_requires_llm_handoff_contract() {
 fn current_payload_requires_signals() {
     let mut payload = current_payload();
     payload.signals.clear();
+
+    assert!(!is_current_basic_payload(&payload));
+}
+
+#[test]
+fn current_payload_rejects_mismatched_chart_context_reference_version() {
+    let mut payload = current_payload();
+    payload.chart_context.reference_version_id = 2;
+
+    assert!(!is_current_basic_payload(&payload));
+}
+
+#[test]
+fn current_payload_rejects_mismatched_sun_sect_context() {
+    let mut payload = current_payload();
+    payload.chart_context.sect.chart_sect = Some("night".to_string());
+
+    assert!(!is_current_basic_payload(&payload));
+}
+
+#[test]
+fn current_payload_rejects_mismatched_sun_sect_source() {
+    let mut payload = current_payload();
+    payload.chart_context.sect.source = Some("house_hemisphere_projection".to_string());
+
+    assert!(!is_current_basic_payload(&payload));
+}
+
+#[test]
+fn current_payload_rejects_mismatched_hemisphere_counts() {
+    let mut payload = current_payload();
+    payload
+        .chart_context
+        .hemisphere_emphasis
+        .above_horizon_count = 0;
+
+    assert!(!is_current_basic_payload(&payload));
+}
+
+#[test]
+fn current_payload_rejects_non_angle_without_calculated_altitude() {
+    let mut payload = current_payload();
+    payload.positions[0].visibility_context["altitude_deg"] = serde_json::Value::Null;
+
+    assert!(!is_current_basic_payload(&payload));
+}
+
+#[test]
+fn current_payload_rejects_non_angle_visibility_source_without_calculated_altitude() {
+    let mut payload = current_payload();
+    payload.positions[0].visibility_context["source"] = json!("house_hemisphere_projection");
+
+    assert!(!is_current_basic_payload(&payload));
+}
+
+#[test]
+fn current_payload_rejects_non_angle_horizon_position_inconsistent_with_altitude() {
+    let mut payload = current_payload();
+    payload.positions[0].visibility_context["horizon_position"] = json!("below_horizon");
+
+    assert!(!is_current_basic_payload(&payload));
+}
+
+#[test]
+fn current_payload_rejects_position_without_horizon_reference_id() {
+    let mut payload = current_payload();
+    payload.positions[0].visibility_context["horizon_position_id"] = serde_json::Value::Null;
 
     assert!(!is_current_basic_payload(&payload));
 }
@@ -928,6 +1035,16 @@ fn reference_validation_requires_house_modality_priority_delta() {
 }
 
 #[test]
+fn reference_validation_requires_horizon_positions() {
+    let mut references = reference_data();
+    references
+        .horizon_positions
+        .retain(|position| position.code != "on_horizon");
+
+    assert!(validate_calculation_references(&references).is_err());
+}
+
+#[test]
 fn chart_object_validation_requires_signal_profile() {
     let mut objects = chart_objects();
     objects[0].source_weight = None;
@@ -1014,6 +1131,23 @@ fn reference_data() -> CalculationReferenceData {
             label: "Direct".to_string(),
             motion_family: "forward".to_string(),
         }],
+        horizon_positions: vec![
+            rust_sqlx_connection_test::models::HorizonPositionReference {
+                id: 1,
+                code: "above_horizon".to_string(),
+                label: "Above horizon".to_string(),
+            },
+            rust_sqlx_connection_test::models::HorizonPositionReference {
+                id: 2,
+                code: "below_horizon".to_string(),
+                label: "Below horizon".to_string(),
+            },
+            rust_sqlx_connection_test::models::HorizonPositionReference {
+                id: 3,
+                code: "on_horizon".to_string(),
+                label: "On horizon".to_string(),
+            },
+        ],
         angle_points: vec![
             angle_reference(
                 1,

@@ -1,5 +1,6 @@
 mod angles;
 mod aspects;
+mod chart_context;
 mod contract;
 mod dignities;
 mod emphasis;
@@ -17,6 +18,7 @@ pub fn is_current_basic_payload(payload: &BasicPayload) -> bool {
     !payload.signals.is_empty()
         && payload.signals.len() <= 12
         && contract::has_current_llm_handoff_contract(payload)
+        && chart_context::has_current_chart_context(payload)
         && angles::has_current_angles(payload)
         && dignities::has_current_dignities(payload)
         && emphasis::has_current_chart_emphasis(payload)

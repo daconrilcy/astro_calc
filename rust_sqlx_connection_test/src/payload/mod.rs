@@ -1,4 +1,5 @@
 mod angles;
+mod chart_context;
 mod contract;
 mod dignities;
 mod drafting_plan;
@@ -14,6 +15,7 @@ use crate::models::InterpretationSignalRow;
 use angles::{
     angle_object_codes_from_positions, build_payload_angles, structural_axis_pairs_from_positions,
 };
+use chart_context::{build_chart_context, visibility_context};
 use dignities::{build_payload_dignities, position_dignity_context};
 use drafting_plan::build_drafting_plan;
 use emphasis::build_chart_emphasis;
@@ -58,6 +60,7 @@ pub fn build_basic_payload(
     let angles = build_payload_angles(positions);
     let dignities = build_payload_dignities(positions, &basic_signals);
     let chart_emphasis = build_chart_emphasis(positions, &dignities, &basic_signals);
+    let chart_context = build_chart_context(input, positions);
     let reading_plan = build_reading_plan(&basic_signals);
     let drafting_plan = build_drafting_plan(&reading_plan, &basic_signals, &chart_emphasis);
 
@@ -68,6 +71,7 @@ pub fn build_basic_payload(
         subject_label: input.subject_label.clone(),
         birth_datetime_utc: input.birth_datetime_utc,
         llm_handoff_contract: Some(basic_llm_handoff_contract()),
+        chart_context,
         positions: positions
             .iter()
             .map(|position| BasicObjectPosition {
@@ -87,6 +91,7 @@ pub fn build_basic_payload(
                 object_context: position_context(position, "object_context"),
                 motion_context: position_context(position, "motion_context"),
                 dignity_context: position_dignity_context(position),
+                visibility_context: visibility_context(position),
             })
             .collect(),
         angles,

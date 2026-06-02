@@ -257,6 +257,7 @@ fn v8_handoff_contract_is_strict() {
 
     let must_use = array(contract, "must_use");
     for expected in [
+        "chart_context",
         "chart_emphasis",
         "dignities",
         "angles",

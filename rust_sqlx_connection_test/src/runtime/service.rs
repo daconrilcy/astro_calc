@@ -56,6 +56,7 @@ where
             signs: self.repository.sign_references().await?,
             houses: self.repository.house_references().await?,
             motion_states: self.repository.motion_state_references().await?,
+            horizon_positions: self.repository.horizon_position_references().await?,
             angle_points: self.repository.angle_point_references().await?,
         };
         validate_calculation_references(&references)?;
@@ -77,7 +78,7 @@ where
                 }
             }
             let positions = self.repository.positions_for_payload(completed_id).await?;
-            if has_required_angle_positions(&positions, &references) {
+            if has_reusable_persisted_positions(&positions, &references) {
                 let aspects = self.repository.aspects_for_payload(completed_id).await?;
                 let signal_drafts = aggregate_basic_signals(&CalculatedChartFacts {
                     positions: positions.clone(),
@@ -186,7 +187,7 @@ where
     }
 }
 
-fn has_required_angle_positions(
+fn has_reusable_persisted_positions(
     positions: &[crate::domain::ObjectPositionFact],
     references: &CalculationReferenceData,
 ) -> bool {
@@ -199,6 +200,35 @@ fn has_required_angle_positions(
         .angle_points
         .iter()
         .all(|angle| position_object_ids.contains(&angle.chart_object_id))
+        && positions.iter().all(|position| {
+            has_reusable_horizon_context(position)
+                && (is_angle_position(position)
+                    || position
+                        .altitude_deg
+                        .is_some_and(|altitude| altitude.is_finite()))
+        })
+}
+
+fn has_reusable_horizon_context(position: &crate::domain::ObjectPositionFact) -> bool {
+    position
+        .horizon_position_id
+        .is_some_and(|horizon_position_id| horizon_position_id > 0)
+        && position.is_visible.is_some()
+}
+
+fn is_angle_position(position: &crate::domain::ObjectPositionFact) -> bool {
+    position
+        .facts_json
+        .as_ref()
+        .and_then(|facts| facts.get("object_context"))
+        .and_then(|context| context.get("role"))
+        .and_then(|value| value.as_str())
+        == Some("angle")
+        || position
+            .facts_json
+            .as_ref()
+            .and_then(|facts| facts.get("angle_context"))
+            .is_some()
 }
 
 fn is_stale(row: &ChartCalculationRow, default_stale_after_seconds: i32) -> bool {

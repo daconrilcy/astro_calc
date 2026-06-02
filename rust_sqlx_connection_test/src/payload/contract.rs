@@ -7,6 +7,7 @@ pub fn basic_llm_handoff_contract() -> BasicLlmHandoffContract {
         audience_level: "beginner".to_string(),
         tone: "clear, warm, non fatalistic".to_string(),
         must_use: vec![
+            "chart_context".to_string(),
             "chart_emphasis".to_string(),
             "dignities".to_string(),
             "angles".to_string(),

@@ -51,7 +51,10 @@ impl EphemerisEngine for SwissEphemerisEngine {
             zodiac_slot_for_longitude,
         };
         use serde_json::json;
-        use swiss_eph::safe::{calc_ut, houses, set_ephe_path, CalcFlags};
+        use swiss_eph::safe::{
+            azimuth_altitude, calc_ut, houses, set_ephe_path, set_topo, CalcFlags, GeoPos,
+        };
+        use swiss_eph::SE_EQU2HOR;
 
         validate_supported_reference_systems(input)?;
         let _guard = swiss_ephemeris_lock()
@@ -62,8 +65,15 @@ impl EphemerisEngine for SwissEphemerisEngine {
                 .to_str()
                 .ok_or_else(|| RuntimeError::Ephemeris("invalid ephemeris path".to_string()))?,
         );
+        let observer_altitude_m = input.altitude_m.unwrap_or(0.0);
+        set_topo(input.longitude_deg, input.latitude_deg, observer_altitude_m);
 
         let jd_ut = julian_day_ut(input)?;
+        let geopos = GeoPos {
+            longitude: input.longitude_deg,
+            latitude: input.latitude_deg,
+            altitude: observer_altitude_m,
+        };
         let house_code = house_system_code(&house_system.calculation_engine_code)?;
         let cusps_raw = houses(jd_ut, input.latitude_deg, input.longitude_deg, house_code)
             .map_err(|error| RuntimeError::Ephemeris(error.to_string()))?;
@@ -128,6 +138,23 @@ impl EphemerisEngine for SwissEphemerisEngine {
             let motion_state_id = motion_state_id(Some(speed));
             let motion_state = motion_state_id
                 .and_then(|id| references.motion_states.iter().find(|state| state.id == id));
+            let equatorial_position = calc_ut(
+                jd_ut,
+                object.swe_id.unwrap(),
+                CalcFlags::new()
+                    .with_swiss_ephemeris()
+                    .with_speed()
+                    .with_equatorial()
+                    .with_topocentric()
+                    .raw(),
+            )
+            .map_err(|error| RuntimeError::Ephemeris(error.to_string()))?;
+            let (_azimuth_deg, altitude_deg) =
+                azimuth_altitude(jd_ut, SE_EQU2HOR, geopos, equatorial_position)
+                    .map_err(|error| RuntimeError::Ephemeris(error.to_string()))?;
+            let altitude_deg = round4(altitude_deg);
+            let horizon_position_code = horizon_position_code_for_altitude(altitude_deg);
+            let horizon_position_id = horizon_position_id(references, horizon_position_code)?;
 
             positions.push(ObjectPositionFact {
                 chart_object_id: object.id,
@@ -142,16 +169,23 @@ impl EphemerisEngine for SwissEphemerisEngine {
                 house_number,
                 house_name: house.map(|house| house.name.clone()),
                 motion_state_id,
-                horizon_position_id: None,
+                horizon_position_id: Some(horizon_position_id),
                 longitude_deg: longitude,
                 latitude_deg: Some(latitude),
                 apparent_speed_deg_per_day: Some(speed),
-                altitude_deg: None,
-                is_visible: None,
+                altitude_deg: Some(altitude_deg),
+                is_visible: Some(matches!(
+                    horizon_position_code,
+                    "above_horizon" | "on_horizon"
+                )),
                 facts_json: Some(json!({
                     "distance": position.distance,
                     "speed_in_latitude": position.latitude_speed,
                     "speed_in_distance": position.distance_speed,
+                    "visibility_context": {
+                        "horizon_position": horizon_position_code,
+                        "source": "calculated_altitude"
+                    },
                     "sign_context": sign_context(sign),
                     "house_modality": house.and_then(house_modality),
                     "house_context": house.map(house_context),
@@ -261,6 +295,8 @@ fn add_angle_positions(
             crate::facts::zodiac_slot_for_longitude(longitude),
         )?;
         let house = house_reference_for_number(&references.houses, angle.associated_house)?;
+        let horizon_position_code = angle_horizon_position_code(angle.code.as_str())?;
+        let horizon_position_id = horizon_position_id(references, horizon_position_code)?;
 
         positions.push(crate::domain::ObjectPositionFact {
             chart_object_id: object.id,
@@ -279,13 +315,20 @@ fn add_angle_positions(
             house_number: Some(angle.associated_house),
             house_name: Some(house.name.clone()),
             motion_state_id: None,
-            horizon_position_id: None,
+            horizon_position_id: Some(horizon_position_id),
             longitude_deg: longitude,
             latitude_deg: None,
             apparent_speed_deg_per_day: None,
             altitude_deg: None,
-            is_visible: None,
+            is_visible: Some(matches!(
+                horizon_position_code,
+                "above_horizon" | "on_horizon"
+            )),
             facts_json: Some(serde_json::json!({
+                "visibility_context": {
+                    "horizon_position": horizon_position_code,
+                    "source": "angle_context"
+                },
                 "sign_context": sign_context(sign),
                 "house_modality": house_modality(house),
                 "house_context": house_context(house),
@@ -330,6 +373,42 @@ fn angle_longitude(
         }
     };
     Ok(crate::facts::normalize_degrees(longitude))
+}
+
+#[cfg(feature = "swisseph-engine")]
+fn horizon_position_code_for_altitude(altitude_deg: f64) -> &'static str {
+    if altitude_deg > 0.0 {
+        "above_horizon"
+    } else if altitude_deg < 0.0 {
+        "below_horizon"
+    } else {
+        "on_horizon"
+    }
+}
+
+#[cfg(feature = "swisseph-engine")]
+fn angle_horizon_position_code(angle_code: &str) -> Result<&'static str, RuntimeError> {
+    match angle_code {
+        "asc" | "dsc" => Ok("on_horizon"),
+        "mc" => Ok("above_horizon"),
+        "ic" => Ok("below_horizon"),
+        other => Err(RuntimeError::Ephemeris(format!(
+            "unsupported angle point code {other}"
+        ))),
+    }
+}
+
+#[cfg(feature = "swisseph-engine")]
+fn horizon_position_id(
+    references: &CalculationReferenceData,
+    code: &str,
+) -> Result<i32, RuntimeError> {
+    references
+        .horizon_positions
+        .iter()
+        .find(|position| position.code == code)
+        .map(|position| position.id)
+        .ok_or_else(|| RuntimeError::Ephemeris(format!("missing horizon position code {code}")))
 }
 
 #[cfg(feature = "swisseph-engine")]

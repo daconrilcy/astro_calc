@@ -114,6 +114,26 @@ structurel actif, perdent les vrais aspects dynamiques ou manquent les champs
 d'angle obligatoires sont rejetes par la validation de reutilisation et
 regeneres.
 
+L'etape 3A ajoute le premier enrichissement global avant LLM avec
+`chart_context` et `positions[].visibility_context`. Le payload expose
+desormais le cadre technique du theme natal, un contrat de projection
+`natal_structured_v9`, les contraintes de fiabilite, la secte deduite du Soleil
+et une synthese d'hemisphere. Chaque position porte aussi sa position
+d'horizon (`above_horizon`, `below_horizon` ou `on_horizon`), l'ID canonique
+issu de `astral_horizon_positions`, une source d'audit et le flag de visibilite
+local. Depuis 3A.1, l'engine Swiss Ephemeris calcule l'altitude topocentrique
+vraie des corps mobiles via un calcul equatorial topocentrique et `swe_azalt`.
+Les angles recoivent aussi `horizon_position_id` depuis le meme referentiel,
+mais gardent `altitude_deg = null` car leur contexte d'horizon vient de leur
+nature geometrique. Pour les corps non-angle, l'altitude calculee est la source
+autoritaire : si un ancien `facts_json.visibility_context` contient encore une
+projection d'hemisphere contradictoire, le builder reconstruit
+`horizon_position` et `source = "calculated_altitude"` depuis `altitude_deg`.
+Les anciens faits persistants sans altitude finie, sans reference d'horizon
+positive ou sans flag de visibilite ne sont plus reutilises : le runtime force
+alors un nouveau calcul ephemeride complet au lieu de reconstruire un payload
+enrichi depuis des faits obsoletes.
+
 Le runtime conserve la chaine existante :
 
 1. calcul des faits astrologiques ;
@@ -1299,6 +1319,14 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
   `house_modality`, `object_context` et `dignity_context` sous forme de tableau ;
   `motion_context` est requis pour les objets mobiles, mais les angles peuvent
   le laisser a `null` car ils n'ont pas d'etat de mouvement planetaire ;
+  `visibility_context.horizon_position_id` est requis pour toutes les positions
+  et `visibility_context.altitude_deg` est requis pour les corps non-angle ;
+  pour ces corps, `visibility_context.source` doit etre
+  `calculated_altitude` et `visibility_context.horizon_position` doit etre
+  coherent avec le signe de l'altitude (`> 0` au-dessus, `< 0` en-dessous,
+  `0` sur l'horizon) ;
+  pour les angles, `visibility_context.source` doit rester `angle_context` et
+  `visibility_context.altitude_deg` doit rester `null` ;
 - signaux avec `evidence` objet non nul ;
 - signaux avec `theme_code`, `summary`, `confidence_score`,
   `interpretive_hint`, `semantic_tags`, `source_weight`, `aggregation_group` et
@@ -1332,6 +1360,9 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
 - `drafting_plan[].emphasis_refs` aligne sur `chart_emphasis`, renseigne sur
   `dominant_cluster` quand ce slot existe, sinon sur `core_identity`, et vide
   sur les autres slots ;
+- `chart_context` coherent avec la secte solaire, la source de visibilite du
+  Soleil, les comptes d'hemisphere et les positions enrichies par altitude /
+  horizon ;
 - chaque item de `drafting_plan` contient la regle d'evitement
   `turn chart_emphasis into a standalone section` ;
 - `primary_signal_keys` aligne avec `source_signal_keys`, et
@@ -1399,11 +1430,18 @@ Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
 - `llm_handoff_contract.payload_language_code = "en"` ;
 - `llm_handoff_contract.target_language_policy = "provided_by_llm_service"` ;
 - `llm_handoff_contract.contract_version = "basic_natal_structured_v8"` ;
+- un `chart_context` top-level avec le type de theme, les IDs de referentiels,
+  le contrat de projection `natal_structured_v9`, la secte et la synthese
+  d'hemisphere ;
 - des positions avec `sign_code`, `sign_name`, `house_number`, `house_name`,
   `sign_context`, `house_context`, `house_modality`, `object_context` et
   `dignity_context` sous forme de tableau, vide quand aucune dignite n'est
   detectee ; `motion_context` est present pour les objets mobiles et peut etre
-  `null` pour les angles ;
+  `null` pour les angles ; `visibility_context` expose le contexte d'horizon
+  exploitable avant LLM, avec `altitude_deg` calcule pour les corps mobiles et
+  `horizon_position_id` renseigne pour toutes les positions ; pour les corps
+  mobiles, `source` doit etre `calculated_altitude`, tandis que les angles
+  restent en `angle_context` avec `altitude_deg = null` ;
 - une liste `angles` top-level avec exactement Ascendant, Descendant, MC et IC,
   reliee aux signes et maisons calcules, avec les axes `horizontal` /
   `vertical` attendus et `opposite_angle_code` resolu vers le code objet long
@@ -1475,7 +1513,8 @@ exemple :
 sans modifier le contrat public `rust_sqlx_connection_test::payload`.
 
 - `mod.rs` orchestre la construction du `BasicPayload`.
-- `angles.rs`, `dignities.rs`, `emphasis.rs`, `reading_plan.rs` et
+- `angles.rs`, `chart_context.rs`, `dignities.rs`, `emphasis.rs`,
+  `reading_plan.rs` et
   `drafting_plan.rs` isolent les blocs metier du payload Basic.
 - `signal_filters.rs` centralise les predicats partages sur les signaux et
   aspects.

@@ -70,6 +70,13 @@ pub struct MotionStateReference {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+pub struct HorizonPositionReference {
+    pub id: i32,
+    pub code: String,
+    pub label: String,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct AnglePointReference {
     pub id: i32,
     pub code: String,

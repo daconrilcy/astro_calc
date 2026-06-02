@@ -346,6 +346,7 @@ fn basic_payload_exposes_semantic_signal_fields() {
     ));
     assert!(contract.must_use.contains(&"dignities".to_string()));
     assert!(contract.must_use.contains(&"angles".to_string()));
+    assert!(contract.must_use.contains(&"chart_context".to_string()));
     assert_eq!(contract.payload_language_code, "en");
     assert_eq!(contract.target_language_policy, "provided_by_llm_service");
     assert!(contract.must_use.contains(&"signals".to_string()));
@@ -371,6 +372,101 @@ fn basic_payload_exposes_semantic_signal_fields() {
             .as_array()
             .map(Vec::len),
         Some(0)
+    );
+    assert_eq!(payload.chart_context.chart_type, "natal");
+    assert_eq!(
+        payload.chart_context.sect.chart_sect.as_deref(),
+        Some("day")
+    );
+    assert_eq!(
+        payload.chart_context.sect.sun_horizon_position.as_deref(),
+        Some("above_horizon")
+    );
+    assert_eq!(
+        payload.positions[0]
+            .visibility_context
+            .get("horizon_position")
+            .and_then(|value| value.as_str()),
+        Some("above_horizon")
+    );
+}
+
+#[test]
+fn chart_context_uses_calculated_altitude_for_sun_sect_boundary() {
+    let mut sun = position();
+    sun.altitude_deg = Some(0.0);
+    sun.is_visible = Some(true);
+
+    let payload = build_basic_payload(42, &input(), &[sun], &[]);
+
+    assert_eq!(
+        payload.chart_context.sect.chart_sect.as_deref(),
+        Some("all")
+    );
+    assert_eq!(
+        payload.chart_context.sect.sun_horizon_position.as_deref(),
+        Some("on_horizon")
+    );
+    assert_eq!(
+        payload.chart_context.sect.source.as_deref(),
+        Some("calculated_altitude")
+    );
+    assert_eq!(
+        payload.positions[0]
+            .visibility_context
+            .get("horizon_position")
+            .and_then(|value| value.as_str()),
+        Some("on_horizon")
+    );
+    assert_eq!(
+        payload.positions[0]
+            .visibility_context
+            .get("source")
+            .and_then(|value| value.as_str()),
+        Some("calculated_altitude")
+    );
+}
+
+#[test]
+fn chart_context_prefers_calculated_altitude_over_legacy_visibility_context() {
+    let mut sun = position();
+    sun.altitude_deg = Some(12.5);
+    sun.is_visible = Some(true);
+    sun.facts_json
+        .as_mut()
+        .and_then(|facts| facts.as_object_mut())
+        .expect("facts object")
+        .insert(
+            "visibility_context".to_string(),
+            json!({
+                "horizon_position": "below_horizon",
+                "source": "house_hemisphere_projection"
+            }),
+        );
+
+    let payload = build_basic_payload(42, &input(), &[sun], &[]);
+
+    assert_eq!(
+        payload.chart_context.sect.chart_sect.as_deref(),
+        Some("day")
+    );
+    assert_eq!(
+        payload.chart_context.sect.source.as_deref(),
+        Some("calculated_altitude")
+    );
+    assert_eq!(
+        payload.positions[0]
+            .visibility_context
+            .get("horizon_position")
+            .and_then(|value| value.as_str()),
+        Some("above_horizon")
+    );
+    assert_eq!(
+        payload.positions[0]
+            .visibility_context
+            .get("source")
+            .and_then(|value| value.as_str()),
+        Some("calculated_altitude")
     );
 }
 

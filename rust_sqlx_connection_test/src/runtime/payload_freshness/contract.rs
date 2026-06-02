@@ -12,6 +12,7 @@ pub(super) fn has_current_llm_handoff_contract(payload: &BasicPayload) -> bool {
         && contract.tone == "clear, warm, non fatalistic"
         && contract.must_use.as_slice()
             == [
+                "chart_context",
                 "chart_emphasis",
                 "dignities",
                 "angles",

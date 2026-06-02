@@ -25,6 +25,12 @@ pub fn validate_calculation_references(
             "expected motion state references".to_string(),
         ));
     }
+    if references.horizon_positions.len() != 3 {
+        return Err(RuntimeError::Ephemeris(format!(
+            "expected 3 horizon position references, found {}",
+            references.horizon_positions.len()
+        )));
+    }
     if references.angle_points.len() != 4 {
         return Err(RuntimeError::Ephemeris(format!(
             "expected 4 angle point references, found {}",
@@ -67,6 +73,27 @@ pub fn validate_calculation_references(
             return Err(RuntimeError::Ephemeris(
                 "invalid motion state references: duplicate IDs or empty labels".to_string(),
             ));
+        }
+    }
+
+    let mut horizon_position_ids = HashSet::new();
+    let mut horizon_position_codes = HashSet::new();
+    for horizon_position in &references.horizon_positions {
+        if !horizon_position_ids.insert(horizon_position.id)
+            || !horizon_position_codes.insert(horizon_position.code.as_str())
+            || horizon_position.code.trim().is_empty()
+            || horizon_position.label.trim().is_empty()
+        {
+            return Err(RuntimeError::Ephemeris(
+                "invalid horizon position references: duplicate IDs or empty labels".to_string(),
+            ));
+        }
+    }
+    for expected_code in ["above_horizon", "below_horizon", "on_horizon"] {
+        if !horizon_position_codes.contains(expected_code) {
+            return Err(RuntimeError::Ephemeris(format!(
+                "missing horizon position reference {expected_code}"
+            )));
         }
     }
 

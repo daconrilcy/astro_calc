@@ -6,9 +6,9 @@ use crate::domain::{
     NatalChartInput, ObjectPositionFact, RuntimeOptions,
 };
 use crate::models::{
-    AnglePointReference, AspectDefinition, ChartCalculationRow, ChartObject, HouseReference,
-    HouseSystem, InterpretationSignalRow, MotionStateReference, PersistedAspectFact,
-    PersistedObjectPositionFact, SignReference,
+    AnglePointReference, AspectDefinition, ChartCalculationRow, ChartObject,
+    HorizonPositionReference, HouseReference, HouseSystem, InterpretationSignalRow,
+    MotionStateReference, PersistedAspectFact, PersistedObjectPositionFact, SignReference,
 };
 use crate::runtime::RuntimeError;
 
@@ -124,6 +124,20 @@ impl RuntimeRepository {
             SELECT id, code, label, motion_family
             FROM astral_object_motion_states
             WHERE is_active = true
+            ORDER BY sort_order, id
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?)
+    }
+
+    pub async fn horizon_position_references(
+        &self,
+    ) -> Result<Vec<HorizonPositionReference>, RuntimeError> {
+        Ok(sqlx::query_as::<_, HorizonPositionReference>(
+            r#"
+            SELECT id, code, label
+            FROM astral_horizon_positions
             ORDER BY sort_order, id
             "#,
         )

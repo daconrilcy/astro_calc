@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 pub use crate::models::{
-    AnglePointReference, AspectDefinition, ChartObject, HouseReference, HouseSystem,
-    InterpretationSignalRow, MotionStateReference, SignReference,
+    AnglePointReference, AspectDefinition, ChartObject, HorizonPositionReference, HouseReference,
+    HouseSystem, InterpretationSignalRow, MotionStateReference, SignReference,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,6 +50,7 @@ pub struct CalculationReferenceData {
     pub signs: Vec<SignReference>,
     pub houses: Vec<HouseReference>,
     pub motion_states: Vec<MotionStateReference>,
+    pub horizon_positions: Vec<HorizonPositionReference>,
     pub angle_points: Vec<AnglePointReference>,
 }
 
@@ -140,6 +141,8 @@ pub struct BasicPayload {
     pub birth_datetime_utc: DateTime<Utc>,
     #[serde(default)]
     pub llm_handoff_contract: Option<BasicLlmHandoffContract>,
+    #[serde(default)]
+    pub chart_context: BasicChartContext,
     pub positions: Vec<BasicObjectPosition>,
     #[serde(default)]
     pub angles: Vec<BasicAngleFact>,
@@ -152,6 +155,49 @@ pub struct BasicPayload {
     pub reading_plan: Vec<BasicReadingPlanItem>,
     #[serde(default)]
     pub drafting_plan: Vec<BasicDraftingPlanItem>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BasicChartContext {
+    pub chart_type: String,
+    pub zodiacal_reference_system_id: i32,
+    pub coordinate_reference_system_id: i32,
+    pub house_system_id: i32,
+    pub reference_version_id: i32,
+    pub payload_contract: BasicPayloadContract,
+    pub calculation_reliability: BasicCalculationReliability,
+    pub sect: BasicSectContext,
+    pub hemisphere_emphasis: BasicHemisphereEmphasis,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BasicPayloadContract {
+    pub contract_version: String,
+    pub calculation_scope: String,
+    pub interpretation_scope: String,
+    pub projection_depth: String,
+    pub writing_contract: String,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BasicCalculationReliability {
+    pub birth_time_precision_required: bool,
+    pub house_system_sensitive: bool,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BasicSectContext {
+    pub chart_sect: Option<String>,
+    pub sun_horizon_position: Option<String>,
+    pub source: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BasicHemisphereEmphasis {
+    pub above_horizon_count: i32,
+    pub below_horizon_count: i32,
+    pub on_horizon_count: i32,
+    pub interpretive_hint: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -258,6 +304,8 @@ pub struct BasicObjectPosition {
     pub motion_context: Option<Value>,
     #[serde(default)]
     pub dignity_context: Value,
+    #[serde(default)]
+    pub visibility_context: Value,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

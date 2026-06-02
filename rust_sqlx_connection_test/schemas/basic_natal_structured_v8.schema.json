@@ -11,6 +11,7 @@
     "subject_label",
     "birth_datetime_utc",
     "llm_handoff_contract",
+    "chart_context",
     "positions",
     "angles",
     "dignities",
@@ -26,6 +27,7 @@
     "subject_label": { "type": ["string", "null"] },
     "birth_datetime_utc": { "type": "string", "format": "date-time" },
     "llm_handoff_contract": { "$ref": "#/$defs/llm_handoff_contract" },
+    "chart_context": { "$ref": "#/$defs/chart_context" },
     "positions": {
       "type": "array",
       "minItems": 1,
@@ -87,11 +89,12 @@
         "tone": { "type": "string", "minLength": 1 },
         "must_use": {
           "type": "array",
-          "minItems": 6,
-          "maxItems": 6,
+          "minItems": 7,
+          "maxItems": 7,
           "uniqueItems": true,
           "items": {
             "enum": [
+              "chart_context",
               "chart_emphasis",
               "dignities",
               "angles",
@@ -101,6 +104,7 @@
             ]
           },
           "allOf": [
+            { "contains": { "const": "chart_context" } },
             { "contains": { "const": "chart_emphasis" } },
             { "contains": { "const": "dignities" } },
             { "contains": { "const": "angles" } },
@@ -127,6 +131,85 @@
         "output_format": { "const": "structured_sections" }
       }
     },
+    "chart_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "chart_type",
+        "zodiacal_reference_system_id",
+        "coordinate_reference_system_id",
+        "house_system_id",
+        "reference_version_id",
+        "payload_contract",
+        "calculation_reliability",
+        "sect",
+        "hemisphere_emphasis"
+      ],
+      "properties": {
+        "chart_type": { "const": "natal" },
+        "zodiacal_reference_system_id": { "type": "integer", "minimum": 1 },
+        "coordinate_reference_system_id": { "type": "integer", "minimum": 1 },
+        "house_system_id": { "type": "integer", "minimum": 1 },
+        "reference_version_id": { "type": "integer", "minimum": 1 },
+        "payload_contract": { "$ref": "#/$defs/payload_contract" },
+        "calculation_reliability": { "$ref": "#/$defs/calculation_reliability" },
+        "sect": { "$ref": "#/$defs/sect_context" },
+        "hemisphere_emphasis": { "$ref": "#/$defs/hemisphere_emphasis" }
+      }
+    },
+    "payload_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "calculation_scope",
+        "interpretation_scope",
+        "projection_depth",
+        "writing_contract"
+      ],
+      "properties": {
+        "contract_version": { "const": "natal_structured_v9" },
+        "calculation_scope": { "const": "full_natal" },
+        "interpretation_scope": { "const": "structured_interpretation" },
+        "projection_depth": { "const": "rich" },
+        "writing_contract": { "const": "provided_by_llm_service" }
+      }
+    },
+    "calculation_reliability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["birth_time_precision_required", "house_system_sensitive"],
+      "properties": {
+        "birth_time_precision_required": { "const": true },
+        "house_system_sensitive": { "const": true }
+      }
+    },
+    "sect_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["chart_sect", "sun_horizon_position", "source"],
+      "properties": {
+        "chart_sect": { "enum": ["day", "night", "all"] },
+        "sun_horizon_position": { "$ref": "#/$defs/horizon_position" },
+        "source": { "type": "string", "minLength": 1 }
+      }
+    },
+    "hemisphere_emphasis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "above_horizon_count",
+        "below_horizon_count",
+        "on_horizon_count",
+        "interpretive_hint"
+      ],
+      "properties": {
+        "above_horizon_count": { "type": "integer", "minimum": 0 },
+        "below_horizon_count": { "type": "integer", "minimum": 0 },
+        "on_horizon_count": { "type": "integer", "minimum": 0 },
+        "interpretive_hint": { "type": ["string", "null"], "minLength": 1 }
+      }
+    },
     "position": {
       "type": "object",
       "additionalProperties": false,
@@ -146,7 +229,8 @@
         "house_modality",
         "object_context",
         "motion_context",
-        "dignity_context"
+        "dignity_context",
+        "visibility_context"
       ],
       "properties": {
         "object_code": { "type": "string", "minLength": 1 },
@@ -169,8 +253,30 @@
             { "$ref": "#/$defs/motion_context" }
           ]
         },
-        "dignity_context": { "type": "array" }
+        "dignity_context": { "type": "array" },
+        "visibility_context": { "$ref": "#/$defs/visibility_context" }
       }
+    },
+    "visibility_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "horizon_position_id",
+        "horizon_position",
+        "altitude_deg",
+        "is_visible",
+        "source"
+      ],
+      "properties": {
+        "horizon_position_id": { "type": "integer", "minimum": 1 },
+        "horizon_position": { "$ref": "#/$defs/horizon_position" },
+        "altitude_deg": { "type": ["number", "null"] },
+        "is_visible": { "type": "boolean" },
+        "source": { "type": "string", "minLength": 1 }
+      }
+    },
+    "horizon_position": {
+      "enum": ["above_horizon", "below_horizon", "on_horizon"]
     },
     "angle": {
       "type": "object",
