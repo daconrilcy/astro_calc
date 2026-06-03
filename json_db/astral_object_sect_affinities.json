@@ -1,0 +1,80 @@
+{
+  "name": "astral_object_sect_affinities",
+  "structure": {
+    "id": "integer",
+    "object_code": "string, FK -> astral_chart_objects.code",
+    "sect_affinity_code": "string, enum: day|night|variable",
+    "description": "string",
+    "is_variable": "boolean",
+    "sort_order": "integer",
+    "is_active": "boolean",
+    "constraints": {
+      "unique": [["object_code"]]
+    }
+  },
+  "data": [
+    {
+      "id": 1,
+      "object_code": "sun",
+      "sect_affinity_code": "day",
+      "description": "Sun belongs to the diurnal sect.",
+      "is_variable": false,
+      "sort_order": 1,
+      "is_active": true
+    },
+    {
+      "id": 2,
+      "object_code": "jupiter",
+      "sect_affinity_code": "day",
+      "description": "Jupiter belongs to the diurnal sect.",
+      "is_variable": false,
+      "sort_order": 2,
+      "is_active": true
+    },
+    {
+      "id": 3,
+      "object_code": "saturn",
+      "sect_affinity_code": "day",
+      "description": "Saturn belongs to the diurnal sect.",
+      "is_variable": false,
+      "sort_order": 3,
+      "is_active": true
+    },
+    {
+      "id": 4,
+      "object_code": "moon",
+      "sect_affinity_code": "night",
+      "description": "Moon belongs to the nocturnal sect.",
+      "is_variable": false,
+      "sort_order": 4,
+      "is_active": true
+    },
+    {
+      "id": 5,
+      "object_code": "venus",
+      "sect_affinity_code": "night",
+      "description": "Venus belongs to the nocturnal sect.",
+      "is_variable": false,
+      "sort_order": 5,
+      "is_active": true
+    },
+    {
+      "id": 6,
+      "object_code": "mars",
+      "sect_affinity_code": "night",
+      "description": "Mars belongs to the nocturnal sect.",
+      "is_variable": false,
+      "sort_order": 6,
+      "is_active": true
+    },
+    {
+      "id": 7,
+      "object_code": "mercury",
+      "sect_affinity_code": "variable",
+      "description": "Mercury sect affinity depends on oriental/occidental status.",
+      "is_variable": true,
+      "sort_order": 7,
+      "is_active": true
+    }
+  ]
+}

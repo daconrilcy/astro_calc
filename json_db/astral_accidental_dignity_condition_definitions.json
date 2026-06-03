@@ -1,0 +1,200 @@
+{
+  "name": "astral_accidental_dignity_condition_definitions",
+  "structure": {
+    "id": "integer",
+    "condition_code": "string, unique, snake_case",
+    "condition_family": "string, enum: house_modality|angle_proximity|motion|horizon|sect",
+    "label": "string",
+    "polarity": "string, enum: dignity|debility|contextual|intensifier",
+    "strength_score": "number",
+    "score_delta": "number",
+    "description": "string",
+    "sort_order": "integer",
+    "is_active": "boolean",
+    "constraints": {
+      "unique": [["condition_code"]]
+    }
+  },
+  "data": [
+    {
+      "id": 1,
+      "condition_code": "angular_house",
+      "condition_family": "house_modality",
+      "label": "Angular house",
+      "polarity": "dignity",
+      "strength_score": 0.75,
+      "score_delta": 0.25,
+      "description": "Object placed in an angular house.",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": 2,
+      "condition_code": "succedent_house",
+      "condition_family": "house_modality",
+      "label": "Succedent house",
+      "polarity": "contextual",
+      "strength_score": 0.45,
+      "score_delta": 0.05,
+      "description": "Object placed in a succedent house.",
+      "sort_order": 11,
+      "is_active": true
+    },
+    {
+      "id": 3,
+      "condition_code": "cadent_house",
+      "condition_family": "house_modality",
+      "label": "Cadent house",
+      "polarity": "debility",
+      "strength_score": 0.35,
+      "score_delta": -0.12,
+      "description": "Object placed in a cadent house with a more indirect expression context.",
+      "sort_order": 12,
+      "is_active": true
+    },
+    {
+      "id": 4,
+      "condition_code": "near_ascendant",
+      "condition_family": "angle_proximity",
+      "label": "Near Ascendant",
+      "polarity": "dignity",
+      "strength_score": 0.82,
+      "score_delta": 0.22,
+      "description": "Object within orb of the Ascendant.",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": 5,
+      "condition_code": "near_descendant",
+      "condition_family": "angle_proximity",
+      "label": "Near Descendant",
+      "polarity": "dignity",
+      "strength_score": 0.82,
+      "score_delta": 0.22,
+      "description": "Object within orb of the Descendant.",
+      "sort_order": 21,
+      "is_active": true
+    },
+    {
+      "id": 6,
+      "condition_code": "near_mc",
+      "condition_family": "angle_proximity",
+      "label": "Near Midheaven",
+      "polarity": "dignity",
+      "strength_score": 0.82,
+      "score_delta": 0.22,
+      "description": "Object within orb of the Midheaven.",
+      "sort_order": 22,
+      "is_active": true
+    },
+    {
+      "id": 7,
+      "condition_code": "near_ic",
+      "condition_family": "angle_proximity",
+      "label": "Near IC",
+      "polarity": "dignity",
+      "strength_score": 0.82,
+      "score_delta": 0.22,
+      "description": "Object within orb of the IC.",
+      "sort_order": 23,
+      "is_active": true
+    },
+    {
+      "id": 8,
+      "condition_code": "retrograde_motion",
+      "condition_family": "motion",
+      "label": "Retrograde motion",
+      "polarity": "debility",
+      "strength_score": 0.45,
+      "score_delta": -0.1,
+      "description": "Object is retrograde.",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": 9,
+      "condition_code": "stationary_motion",
+      "condition_family": "motion",
+      "label": "Stationary motion",
+      "polarity": "intensifier",
+      "strength_score": 0.7,
+      "score_delta": 0.1,
+      "description": "Object is stationary.",
+      "sort_order": 41,
+      "is_active": true
+    },
+    {
+      "id": 10,
+      "condition_code": "above_horizon",
+      "condition_family": "horizon",
+      "label": "Above horizon",
+      "polarity": "contextual",
+      "strength_score": 0.45,
+      "score_delta": 0.05,
+      "description": "Object is above the local horizon.",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": 11,
+      "condition_code": "below_horizon",
+      "condition_family": "horizon",
+      "label": "Below horizon",
+      "polarity": "contextual",
+      "strength_score": 0.35,
+      "score_delta": 0.0,
+      "description": "Object is below the local horizon.",
+      "sort_order": 51,
+      "is_active": true
+    },
+    {
+      "id": 12,
+      "condition_code": "on_horizon",
+      "condition_family": "horizon",
+      "label": "On horizon",
+      "polarity": "dignity",
+      "strength_score": 0.75,
+      "score_delta": 0.2,
+      "description": "Object is on the local horizon.",
+      "sort_order": 52,
+      "is_active": true
+    },
+    {
+      "id": 13,
+      "condition_code": "sect_affinity_match",
+      "condition_family": "sect",
+      "label": "Sect affinity match",
+      "polarity": "dignity",
+      "strength_score": 0.45,
+      "score_delta": 0.08,
+      "description": "Object sect affinity matches chart sect.",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": 14,
+      "condition_code": "sect_affinity_mismatch",
+      "condition_family": "sect",
+      "label": "Sect affinity mismatch",
+      "polarity": "debility",
+      "strength_score": 0.35,
+      "score_delta": -0.06,
+      "description": "Object sect affinity mismatches chart sect.",
+      "sort_order": 71,
+      "is_active": true
+    },
+    {
+      "id": 15,
+      "condition_code": "sect_affinity_variable_unresolved",
+      "condition_family": "sect",
+      "label": "Sect affinity variable unresolved",
+      "polarity": "contextual",
+      "strength_score": 0.2,
+      "score_delta": 0.0,
+      "description": "Object has variable sect affinity not resolved in this MVP.",
+      "sort_order": 72,
+      "is_active": true
+    }
+  ]
+}

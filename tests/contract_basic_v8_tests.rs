@@ -7,9 +7,11 @@ use serde_json::Value;
 use rust_sqlx_connection_test::domain::BasicPayload;
 use rust_sqlx_connection_test::runtime::is_current_basic_payload;
 
-const GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v12_paris_1990.json";
-const SCHEMA_PATH: &str = "schemas/natal_structured_v12.schema.json";
-const PAYLOAD_UNDER_TEST_ENV: &str = "NATAL_V12_SCHEMA_PAYLOAD_PATH";
+const GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v13_paris_1990.json";
+const SCHEMA_PATH: &str = "schemas/natal_structured_v13.schema.json";
+const PAYLOAD_UNDER_TEST_ENV: &str = "NATAL_V13_SCHEMA_PAYLOAD_PATH";
+const V12_GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v12_paris_1990.json";
+const V12_SCHEMA_PATH: &str = "schemas/natal_structured_v12.schema.json";
 const V11_GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v11_paris_1990.json";
 const V11_SCHEMA_PATH: &str = "schemas/natal_structured_v11.schema.json";
 const V10_GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v10_paris_1990.json";
@@ -115,13 +117,27 @@ fn assert_source_prefix(item: &Value, prefix: &str) {
 }
 
 #[test]
-fn golden_payload_matches_json_schema_v12() {
+fn golden_payload_matches_json_schema_v13() {
     let payload_json = load_golden_payload();
     let validation_errors = validate_with_schema(&payload_json);
 
     assert!(
         validation_errors.is_empty(),
-        "golden payload does not match natal_structured_v12 schema:\n{}",
+        "golden payload does not match natal_structured_v13 schema:\n{}",
+        validation_errors.join("\n")
+    );
+}
+
+#[test]
+fn historical_v12_golden_payload_matches_json_schema_v12() {
+    let raw = fs::read_to_string(V12_GOLDEN_PAYLOAD_PATH).expect("v12 golden payload should exist");
+    let payload_json: Value =
+        serde_json::from_str(&raw).expect("v12 golden payload should be JSON");
+    let validation_errors = validate_with_schema_at(&payload_json, V12_SCHEMA_PATH);
+
+    assert!(
+        validation_errors.is_empty(),
+        "historical v12 golden payload does not match natal_structured_v12 schema:\n{}",
         validation_errors.join("\n")
     );
 }
@@ -168,7 +184,7 @@ fn historical_v8_golden_payload_matches_json_schema_v8() {
 }
 
 #[test]
-fn external_payload_matches_json_schema_v12_when_requested() {
+fn external_payload_matches_json_schema_v13_when_requested() {
     let Ok(path) = std::env::var(PAYLOAD_UNDER_TEST_ENV) else {
         return;
     };
@@ -177,7 +193,7 @@ fn external_payload_matches_json_schema_v12_when_requested() {
 
     assert!(
         validation_errors.is_empty(),
-        "external payload does not match natal_structured_v12 schema:\n{}",
+        "external payload does not match natal_structured_v13 schema:\n{}",
         validation_errors.join("\n")
     );
 }
@@ -403,6 +419,15 @@ fn runtime_rejects_v11_without_lunar_phase_context() {
 }
 
 #[test]
+fn runtime_rejects_v12_without_accidental_dignities() {
+    let raw = fs::read_to_string(V12_GOLDEN_PAYLOAD_PATH).expect("v12 golden payload should exist");
+    let payload: BasicPayload =
+        serde_json::from_str(&raw).expect("v12 golden payload should deserialize");
+
+    assert!(!is_current_basic_payload(&payload));
+}
+
+#[test]
 fn runtime_rejects_axis_source_signal_key_that_does_not_exist() {
     let mut payload = load_golden_payload();
     payload["house_axis_emphasis"][0]["source_signal_keys"]
@@ -608,14 +633,283 @@ fn v11_contains_house_axis_emphasis() {
 }
 
 #[test]
-fn v12_contains_lunar_phase_context() {
+fn v13_contains_lunar_phase_context() {
     let payload = load_golden_payload();
     let phase = &payload["lunar_phase_context"];
 
     assert_eq!(phase["phase_code"], "waxing_crescent");
     assert_eq!(phase["cycle_family"], "waxing");
-    assert_eq!(phase["sun_moon_angle_deg"], serde_json::json!(60.3099));
+    let angle = phase["sun_moon_angle_deg"]
+        .as_f64()
+        .expect("sun_moon_angle_deg should be numeric");
+    assert!((angle - 60.3099).abs() <= 0.0002);
     assert_eq!(phase["phase_progress_ratio"], serde_json::json!(0.8402));
+}
+
+fn find_accidental_evaluation<'a>(payload: &'a Value, object_code: &str) -> &'a Value {
+    array(payload, "accidental_dignities")
+        .iter()
+        .find(|entry| entry["object_code"] == object_code)
+        .unwrap_or_else(|| panic!("missing accidental dignity evaluation for {object_code}"))
+}
+
+fn accidental_has_condition(evaluation: &Value, condition_code: &str) -> bool {
+    array(evaluation, "conditions")
+        .iter()
+        .any(|condition| condition["condition_code"] == condition_code)
+}
+
+#[test]
+fn v13_contains_accidental_dignities() {
+    let payload = load_golden_payload();
+
+    assert_eq!(
+        payload["chart_context"]["payload_contract"]["contract_version"],
+        "natal_structured_v13"
+    );
+    assert!(!array(&payload, "accidental_dignities").is_empty());
+}
+
+#[test]
+fn v13_rejects_missing_accidental_dignities() {
+    let mut payload = load_golden_payload();
+    payload.as_object_mut().expect("payload object").remove("accidental_dignities");
+
+    assert!(
+        !validate_with_schema(&payload).is_empty(),
+        "schema should require accidental_dignities"
+    );
+}
+
+#[test]
+fn mars_has_angular_house_condition() {
+    let payload = load_golden_payload();
+    let mars = find_accidental_evaluation(&payload, "mars");
+
+    assert!(accidental_has_condition(mars, "angular_house"));
+}
+
+#[test]
+fn mars_has_sect_affinity_match_in_night_chart() {
+    let payload = load_golden_payload();
+    assert_eq!(payload["chart_context"]["sect"]["chart_sect"], "night");
+    let mars = find_accidental_evaluation(&payload, "mars");
+
+    assert!(accidental_has_condition(mars, "sect_affinity_match"));
+}
+
+#[test]
+fn jupiter_has_retrograde_motion_condition() {
+    let payload = load_golden_payload();
+    let jupiter = find_accidental_evaluation(&payload, "jupiter");
+
+    assert!(accidental_has_condition(jupiter, "retrograde_motion"));
+}
+
+#[test]
+fn pluto_has_near_ascendant_condition() {
+    let payload = load_golden_payload();
+    let pluto = find_accidental_evaluation(&payload, "pluto");
+
+    assert!(accidental_has_condition(pluto, "near_ascendant"));
+    assert_eq!(string(pluto, "overall_polarity"), "fortified");
+}
+
+#[test]
+fn mercury_score_point_two_eight_is_strongly_weakened_not_weakened() {
+    let payload = load_golden_payload();
+    let mercury = find_accidental_evaluation(&payload, "mercury");
+
+    assert!((mercury["overall_score"].as_f64().unwrap() - 0.28).abs() <= 0.0001);
+    assert_eq!(string(mercury, "overall_polarity"), "strongly_weakened");
+    assert!(accidental_has_condition(mercury, "cadent_house"));
+    assert!(accidental_has_condition(mercury, "retrograde_motion"));
+    assert!(accidental_has_condition(mercury, "below_horizon"));
+}
+
+#[test]
+fn no_angle_has_accidental_dignity_entry() {
+    let payload = load_golden_payload();
+    let angle_codes = ["ascendant", "descendant", "mc", "ic"];
+
+    for angle_code in angle_codes {
+        assert!(
+            !array(&payload, "accidental_dignities")
+                .iter()
+                .any(|entry| entry["object_code"] == angle_code),
+            "angle {angle_code} should not have a top-level accidental dignity entry"
+        );
+    }
+}
+
+#[test]
+fn object_position_signals_include_accidental_dignity_context() {
+    let payload = load_golden_payload();
+
+    for signal in array(&payload, "signals") {
+        let signal_key = string(signal, "signal_key");
+        if !signal_key.starts_with("object_position:") {
+            continue;
+        }
+        let context = &signal["evidence"]["placement_context"];
+        assert!(
+            context.get("accidental_dignity_context").is_some(),
+            "signal {signal_key} should expose accidental_dignity_context"
+        );
+    }
+}
+
+#[test]
+fn accidental_condition_scores_are_bounded() {
+    let payload = load_golden_payload();
+
+    for evaluation in array(&payload, "accidental_dignities") {
+        for condition in array(evaluation, "conditions") {
+            let strength = condition["strength_score"]
+                .as_f64()
+                .expect("strength_score should be numeric");
+            let delta = condition["score_delta"]
+                .as_f64()
+                .expect("score_delta should be numeric");
+            assert!((0.0..=1.0).contains(&strength));
+            assert!((-1.0..=1.0).contains(&delta));
+        }
+    }
+}
+
+#[test]
+fn overall_polarity_matches_overall_score() {
+    let payload = load_golden_payload();
+
+    for evaluation in array(&payload, "accidental_dignities") {
+        let score = evaluation["overall_score"]
+            .as_f64()
+            .expect("overall_score should be numeric");
+        let polarity = string(evaluation, "overall_polarity");
+        let expected = if score >= 0.70 {
+            "fortified"
+        } else if score >= 0.45 {
+            "mixed_or_contextual"
+        } else if score >= 0.30 {
+            "weakened"
+        } else {
+            "strongly_weakened"
+        };
+        assert_eq!(polarity, expected, "object {}", string(evaluation, "object_code"));
+    }
+}
+
+#[test]
+fn schema_rejects_unknown_accidental_condition_family() {
+    let mut payload = load_golden_payload();
+    payload["accidental_dignities"][0]["conditions"][0]["condition_family"] =
+        Value::String("unknown_family".to_string());
+
+    assert!(
+        !validate_with_schema(&payload).is_empty(),
+        "schema should reject unknown accidental condition family"
+    );
+}
+
+#[test]
+fn schema_rejects_invalid_overall_score() {
+    let mut payload = load_golden_payload();
+    payload["accidental_dignities"][0]["overall_score"] = serde_json::json!(1.5);
+
+    assert!(
+        !validate_with_schema(&payload).is_empty(),
+        "schema should reject overall_score above 1"
+    );
+}
+
+#[test]
+fn runtime_rejects_unknown_accidental_condition_code() {
+    let mut payload = load_golden_payload();
+    payload["accidental_dignities"][0]["conditions"][0]["condition_code"] =
+        Value::String("combustion".to_string());
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
+#[test]
+fn runtime_rejects_accidental_overall_score_mismatch() {
+    let mut payload = load_golden_payload();
+    payload["accidental_dignities"][0]["overall_score"] = serde_json::json!(0.1);
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
+#[test]
+fn runtime_rejects_accidental_expression_quality_mismatch() {
+    let mut payload = load_golden_payload();
+    payload["accidental_dignities"][0]["expression_quality"] =
+        Value::String("wrong_expression".to_string());
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
+#[test]
+fn runtime_rejects_accidental_related_signal_key_mismatch() {
+    let mut payload = load_golden_payload();
+    payload["accidental_dignities"][0]["related_signal_key"] =
+        Value::String("object_position:moon".to_string());
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
+#[test]
+fn runtime_rejects_duplicate_accidental_condition_codes() {
+    let mut payload = load_golden_payload();
+    let duplicate = payload["accidental_dignities"][0]["conditions"][0].clone();
+    payload["accidental_dignities"][0]["conditions"]
+        .as_array_mut()
+        .expect("conditions should be an array")
+        .push(duplicate);
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
+#[test]
+fn runtime_rejects_signal_accidental_context_out_of_sync_with_position() {
+    let mut payload = load_golden_payload();
+    let mars_signal = payload["signals"]
+        .as_array_mut()
+        .expect("signals should be an array")
+        .iter_mut()
+        .find(|signal| signal["signal_key"] == "object_position:mars")
+        .expect("mars placement signal");
+    mars_signal["evidence"]["placement_context"]["accidental_dignity_context"] =
+        serde_json::json!([]);
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
+#[test]
+fn runtime_rejects_position_accidental_context_out_of_sync_with_evaluation() {
+    let mut payload = load_golden_payload();
+    let mars_position = payload["positions"]
+        .as_array_mut()
+        .expect("positions should be an array")
+        .iter_mut()
+        .find(|position| position["object_code"] == "mars")
+        .expect("mars position");
+    mars_position["accidental_dignity_context"] = serde_json::json!([]);
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
 }
 
 #[test]

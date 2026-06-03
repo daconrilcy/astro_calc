@@ -4,11 +4,13 @@ use serde_json::json;
 use rust_sqlx_connection_test::domain::{
     BasicAngleFact, BasicCalculationReliability, BasicChartContext, BasicChartEmphasis,
     BasicDignity, BasicDominantHouse, BasicDominantObject, BasicDominantSign,
-    BasicHemisphereEmphasis, BasicHouseAxisEmphasis, BasicHouseAxisScore, BasicLunarPhaseContext,
-    BasicObjectPosition, BasicPayload, BasicPayloadContract, BasicReadingPlanItem,
+    BasicAccidentalDignityCondition, BasicAccidentalDignityContextSummary,
+    BasicAccidentalDignityEvaluation, BasicHemisphereEmphasis, BasicHouseAxisEmphasis,
+    BasicHouseAxisScore, BasicLunarPhaseContext, BasicObjectPosition, BasicPayload,
+    BasicPayloadContract, BasicReadingPlanItem,
     BasicRulerContext, BasicRulerSource, BasicRulershipContext, BasicSecondarySlotCandidate,
     BasicSectContext, BasicSignal, CalculationReferenceData, HouseAxisReference,
-    LunarPhaseReference,
+    AccidentalDignityConditionReference, LunarPhaseReference, ObjectSectAffinityReference,
 };
 use rust_sqlx_connection_test::models::{
     AnglePointReference, ChartObject, DomicileRulerReference, HouseReference, SignReference,
@@ -17,7 +19,8 @@ use rust_sqlx_connection_test::repositories::parse_existing_basic_payload_value;
 use rust_sqlx_connection_test::runtime::{
     has_current_rulership_references, is_current_basic_payload, validate_calculation_references,
     validate_chart_object_signal_profiles, validate_house_axis_references,
-    validate_lunar_phase_references,
+    validate_accidental_dignity_condition_references, validate_lunar_phase_references,
+    validate_object_sect_affinity_references,
 };
 
 fn current_payload() -> BasicPayload {
@@ -34,7 +37,7 @@ fn current_payload() -> BasicPayload {
             house_system_id: 1,
             reference_version_id: 1,
             payload_contract: BasicPayloadContract {
-                contract_version: "natal_structured_v12".to_string(),
+                contract_version: "natal_structured_v13".to_string(),
                 calculation_scope: "full_natal".to_string(),
                 interpretation_scope: "structured_interpretation".to_string(),
                 projection_depth: "rich".to_string(),
@@ -102,6 +105,26 @@ fn current_payload() -> BasicPayload {
                     "is_visible": true,
                     "source": "calculated_altitude"
                 }),
+                accidental_dignity_context: vec![
+                    BasicAccidentalDignityContextSummary {
+                        condition_code: "cadent_house".to_string(),
+                        condition_family: "house_modality".to_string(),
+                        polarity: "debility".to_string(),
+                        strength_score: 0.35,
+                    },
+                    BasicAccidentalDignityContextSummary {
+                        condition_code: "above_horizon".to_string(),
+                        condition_family: "horizon".to_string(),
+                        polarity: "contextual".to_string(),
+                        strength_score: 0.45,
+                    },
+                    BasicAccidentalDignityContextSummary {
+                        condition_code: "sect_affinity_match".to_string(),
+                        condition_family: "sect".to_string(),
+                        polarity: "dignity".to_string(),
+                        strength_score: 0.45,
+                    },
+                ],
             },
             BasicObjectPosition {
                 object_code: "moon".to_string(),
@@ -145,6 +168,26 @@ fn current_payload() -> BasicPayload {
                     "is_visible": true,
                     "source": "calculated_altitude"
                 }),
+                accidental_dignity_context: vec![
+                    BasicAccidentalDignityContextSummary {
+                        condition_code: "succedent_house".to_string(),
+                        condition_family: "house_modality".to_string(),
+                        polarity: "contextual".to_string(),
+                        strength_score: 0.45,
+                    },
+                    BasicAccidentalDignityContextSummary {
+                        condition_code: "above_horizon".to_string(),
+                        condition_family: "horizon".to_string(),
+                        polarity: "contextual".to_string(),
+                        strength_score: 0.45,
+                    },
+                    BasicAccidentalDignityContextSummary {
+                        condition_code: "sect_affinity_mismatch".to_string(),
+                        condition_family: "sect".to_string(),
+                        polarity: "debility".to_string(),
+                        strength_score: 0.35,
+                    },
+                ],
             },
         ],
         angles: vec![
@@ -268,6 +311,102 @@ fn current_payload() -> BasicPayload {
                 "The Sun-Moon cycle is in a waxing crescent phase, indicating a structured waxing relationship between solar identity and lunar needs."
                     .to_string(),
         }),
+        accidental_dignities: vec![
+            BasicAccidentalDignityEvaluation {
+                object_code: "sun".to_string(),
+                object_name: "Sun".to_string(),
+                overall_score: 0.51,
+                overall_polarity: "mixed_or_contextual".to_string(),
+                expression_quality: "mixed_or_contextual_expression".to_string(),
+                related_signal_key: Some("object_position:sun".to_string()),
+                conditions: vec![
+                    BasicAccidentalDignityCondition {
+                        condition_code: "cadent_house".to_string(),
+                        condition_family: "house_modality".to_string(),
+                        polarity: "debility".to_string(),
+                        strength_score: 0.35,
+                        score_delta: -0.12,
+                        source: json!({
+                            "house_number": 9,
+                            "house_modality": "cadent",
+                            "theme_code": "beliefs"
+                        }),
+                        interpretive_hint: "Sun is placed in a cadent house, giving this factor a more indirect or contextual expression.".to_string(),
+                    },
+                    BasicAccidentalDignityCondition {
+                        condition_code: "above_horizon".to_string(),
+                        condition_family: "horizon".to_string(),
+                        polarity: "contextual".to_string(),
+                        strength_score: 0.45,
+                        score_delta: 0.05,
+                        source: json!({
+                            "horizon_position": "above_horizon",
+                            "altitude_deg": 12.5
+                        }),
+                        interpretive_hint: "Sun is above the horizon, giving this factor a more outward or visible expression context.".to_string(),
+                    },
+                    BasicAccidentalDignityCondition {
+                        condition_code: "sect_affinity_match".to_string(),
+                        condition_family: "sect".to_string(),
+                        polarity: "dignity".to_string(),
+                        strength_score: 0.45,
+                        score_delta: 0.08,
+                        source: json!({
+                            "chart_sect": "day",
+                            "object_sect_affinity": "day"
+                        }),
+                        interpretive_hint: "Sun matches the diurnal sect of the chart.".to_string(),
+                    },
+                ],
+            },
+            BasicAccidentalDignityEvaluation {
+                object_code: "moon".to_string(),
+                object_name: "Moon".to_string(),
+                overall_score: 0.54,
+                overall_polarity: "mixed_or_contextual".to_string(),
+                expression_quality: "mixed_or_contextual_expression".to_string(),
+                related_signal_key: None,
+                conditions: vec![
+                    BasicAccidentalDignityCondition {
+                        condition_code: "succedent_house".to_string(),
+                        condition_family: "house_modality".to_string(),
+                        polarity: "contextual".to_string(),
+                        strength_score: 0.45,
+                        score_delta: 0.05,
+                        source: json!({
+                            "house_number": 11,
+                            "house_modality": "succedent",
+                            "theme_code": "community"
+                        }),
+                        interpretive_hint: "Moon is placed in a succedent house, giving it a stabilizing but less immediate expression context.".to_string(),
+                    },
+                    BasicAccidentalDignityCondition {
+                        condition_code: "above_horizon".to_string(),
+                        condition_family: "horizon".to_string(),
+                        polarity: "contextual".to_string(),
+                        strength_score: 0.45,
+                        score_delta: 0.05,
+                        source: json!({
+                            "horizon_position": "above_horizon",
+                            "altitude_deg": 14.0
+                        }),
+                        interpretive_hint: "Moon is above the horizon, giving this factor a more outward or visible expression context.".to_string(),
+                    },
+                    BasicAccidentalDignityCondition {
+                        condition_code: "sect_affinity_mismatch".to_string(),
+                        condition_family: "sect".to_string(),
+                        polarity: "debility".to_string(),
+                        strength_score: 0.35,
+                        score_delta: -0.06,
+                        source: json!({
+                            "chart_sect": "day",
+                            "object_sect_affinity": "night"
+                        }),
+                        interpretive_hint: "Moon contrasts with the diurnal sect of the chart.".to_string(),
+                    },
+                ],
+            },
+        ],
         signals: vec![
             BasicSignal {
                 signal_key: "object_position:sun".to_string(),
@@ -300,7 +439,27 @@ fn current_payload() -> BasicPayload {
                             "altitude_deg": 12.5,
                             "is_visible": true,
                             "source": "calculated_altitude"
-                        }
+                        },
+                        "accidental_dignity_context": [
+                            {
+                                "condition_code": "cadent_house",
+                                "condition_family": "house_modality",
+                                "polarity": "debility",
+                                "strength_score": 0.35
+                            },
+                            {
+                                "condition_code": "above_horizon",
+                                "condition_family": "horizon",
+                                "polarity": "contextual",
+                                "strength_score": 0.45
+                            },
+                            {
+                                "condition_code": "sect_affinity_match",
+                                "condition_family": "sect",
+                                "polarity": "dignity",
+                                "strength_score": 0.45
+                            }
+                        ]
                     }
                 })),
             },
@@ -952,7 +1111,27 @@ fn current_payload_rejects_placement_signal_without_dignity_array() {
                 "altitude_deg": 12.5,
                 "is_visible": true,
                 "source": "calculated_altitude"
-            }
+            },
+            "accidental_dignity_context": [
+                {
+                    "condition_code": "cadent_house",
+                    "condition_family": "house_modality",
+                    "polarity": "debility",
+                    "strength_score": 0.35
+                },
+                {
+                    "condition_code": "above_horizon",
+                    "condition_family": "horizon",
+                    "polarity": "contextual",
+                    "strength_score": 0.45
+                },
+                {
+                    "condition_code": "sect_affinity_match",
+                    "condition_family": "sect",
+                    "polarity": "dignity",
+                    "strength_score": 0.45
+                }
+            ]
         }
     }));
 
@@ -1283,6 +1462,20 @@ fn lunar_phase_reference_validation_accepts_canonical_phases() {
     assert!(validate_lunar_phase_references(&phases).is_ok());
 }
 
+#[test]
+fn accidental_dignity_reference_validation_accepts_canonical_conditions() {
+    let conditions = accidental_dignity_condition_references();
+
+    assert!(validate_accidental_dignity_condition_references(&conditions).is_ok());
+}
+
+#[test]
+fn object_sect_affinity_reference_validation_accepts_canonical_rows() {
+    let affinities = object_sect_affinity_references();
+
+    assert!(validate_object_sect_affinity_references(&affinities).is_ok());
+}
+
 fn chart_objects() -> Vec<ChartObject> {
     vec![
         ChartObject {
@@ -1486,6 +1679,75 @@ fn lunar_phase(
         exact_anchor_deg,
         is_major_lunar_phase,
         description: format!("{label} description"),
+    }
+}
+
+fn accidental_dignity_condition_references() -> Vec<AccidentalDignityConditionReference> {
+    vec![
+        accidental_condition("angular_house", "house_modality", "dignity", 0.75, 0.25),
+        accidental_condition("succedent_house", "house_modality", "contextual", 0.45, 0.05),
+        accidental_condition("cadent_house", "house_modality", "debility", 0.35, -0.12),
+        accidental_condition("near_ascendant", "angle_proximity", "dignity", 0.82, 0.22),
+        accidental_condition("near_descendant", "angle_proximity", "dignity", 0.82, 0.22),
+        accidental_condition("near_mc", "angle_proximity", "dignity", 0.82, 0.22),
+        accidental_condition("near_ic", "angle_proximity", "dignity", 0.82, 0.22),
+        accidental_condition("retrograde_motion", "motion", "debility", 0.45, -0.1),
+        accidental_condition("stationary_motion", "motion", "intensifier", 0.7, 0.1),
+        accidental_condition("above_horizon", "horizon", "contextual", 0.45, 0.05),
+        accidental_condition("below_horizon", "horizon", "contextual", 0.35, 0.0),
+        accidental_condition("on_horizon", "horizon", "dignity", 0.75, 0.2),
+        accidental_condition("sect_affinity_match", "sect", "dignity", 0.45, 0.08),
+        accidental_condition("sect_affinity_mismatch", "sect", "debility", 0.35, -0.06),
+        accidental_condition(
+            "sect_affinity_variable_unresolved",
+            "sect",
+            "contextual",
+            0.2,
+            0.0,
+        ),
+    ]
+}
+
+fn accidental_condition(
+    condition_code: &str,
+    condition_family: &str,
+    polarity: &str,
+    strength_score: f64,
+    score_delta: f64,
+) -> AccidentalDignityConditionReference {
+    AccidentalDignityConditionReference {
+        condition_code: condition_code.to_string(),
+        condition_family: condition_family.to_string(),
+        label: condition_code.to_string(),
+        polarity: polarity.to_string(),
+        strength_score,
+        score_delta,
+        description: format!("{condition_code} description"),
+    }
+}
+
+fn object_sect_affinity_references() -> Vec<ObjectSectAffinityReference> {
+    vec![
+        sect_affinity("sun", "day", false),
+        sect_affinity("jupiter", "day", false),
+        sect_affinity("saturn", "day", false),
+        sect_affinity("moon", "night", false),
+        sect_affinity("venus", "night", false),
+        sect_affinity("mars", "night", false),
+        sect_affinity("mercury", "variable", true),
+    ]
+}
+
+fn sect_affinity(
+    object_code: &str,
+    sect_affinity_code: &str,
+    is_variable: bool,
+) -> ObjectSectAffinityReference {
+    ObjectSectAffinityReference {
+        object_code: object_code.to_string(),
+        sect_affinity_code: sect_affinity_code.to_string(),
+        is_variable,
+        description: format!("{object_code} sect affinity"),
     }
 }
 

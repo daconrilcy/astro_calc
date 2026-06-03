@@ -7,8 +7,9 @@ Ce document decrit l'implementation actuelle du payload moteur route par
 
 Etat courant au 2026-06-03 : le moteur Rust reste dans le perimetre du calcul
 astrologique et des cles d'interpretation. Le payload route basic expose les
-faits calcules, les contextes astrologiques, les dignites, les angles, les
-dominantes, le contexte de rulership, les signaux actifs et `reading_plan`.
+faits calcules, les contextes astrologiques, les dignites essentielles et
+accidentelles (MVP), les angles, les dominantes, le contexte de rulership, les
+signaux actifs et `reading_plan`.
 
 Les instructions destinees a un LLM sont hors perimetre et ne sont plus produites
 dans le JSON de sortie. Cela inclut `llm_handoff_contract`, `drafting_plan`,
@@ -120,7 +121,7 @@ ne disparaisse pas artificiellement.
 L'etape 3A ajoute le premier enrichissement global avant synthese externe avec
 `chart_context` et `positions[].visibility_context`. Le payload expose
 desormais le cadre technique du theme natal, un contrat de projection
-(evolue jusqu'au contrat courant `natal_structured_v12`), les contraintes de
+(evolue jusqu'au contrat courant `natal_structured_v13`), les contraintes de
 fiabilite, la secte deduite du Soleil
 et une synthese d'hemisphere. Chaque position porte aussi sa position
 d'horizon (`above_horizon`, `below_horizon` ou `on_horizon`), l'ID canonique
@@ -148,6 +149,19 @@ plus a recroiser les signaux avec `positions`. Les angles gardent un contexte
 d'horizon, mais leur `is_visible` est `null` car un angle n'est pas visible
 comme un corps astronomique. La secte et l'accent d'hemisphere servent
 uniquement de contexte de ponderation, pas de section autonome.
+
+L'etape 3D ajoute `lunar_phase_context` et fait passer le contrat a
+`natal_structured_v12` quand les references lunaires sont injectees et le bloc
+construit.
+
+L'etape 3E ajoute `accidental_dignities`, enrichit
+`positions[].accidental_dignity_context` et
+`signals[].evidence.placement_context.accidental_dignity_context` pour les
+signaux `object_position:*`, et fait passer le contrat courant a
+`natal_structured_v13` lorsque les trois jeux de references (lunaire,
+accidentel, secte) sont disponibles avec un `lunar_phase_context` construit.
+Sans references accidentelles ou secte, le moteur reste en v12 sans bloc
+accidentel.
 
 `product_code = "basic"` reste volontairement conserve comme cle de routage
 legacy pour les tables et les chemins runtime existants. Il ne decrit plus un
@@ -178,7 +192,13 @@ Le payload route basic depend directement du schema PostgreSQL materialise depui
 - la colonne `astral_house_modalities.priority_delta`, source canonique du delta
   applique aux placements selon la modalite de maison ;
 - la table `astral_interpretation_generated_outputs`, reservee aux sorties LLM
-  localisees produites depuis un payload canonique.
+  localisees produites depuis un payload canonique ;
+- la table `astral_accidental_dignity_condition_definitions`, source canonique
+  des 15 codes de condition accidentelle MVP et de leurs `score_delta` ;
+- la table `astral_object_sect_affinities`, source canonique des affinites de
+  secte par objet pour le calcul `sect_affinity_*` ;
+- la table `astral_lunar_phase_definitions`, source canonique des huit phases
+  Soleil-Lune.
 
 Ces donnees ne doivent pas etre compensees par des valeurs applicatives en dur.
 Si le binaire echoue avec une erreur SQL de relation ou de colonne manquante,
@@ -193,6 +213,10 @@ la correction attendue est de resynchroniser PostgreSQL avec les fichiers
 - `rust_sqlx_connection_test/src/aspects.rs` : detection geometrique des aspects
   et calcul de l'orbe, de la phase et de la force brute.
 - `rust_sqlx_connection_test/src/dignities.rs` : detection MVP des dignites essentielles majeures.
+- `rust_sqlx_connection_test/src/payload/accidental_dignities.rs` : evaluation MVP
+  des dignites accidentelles et projection vers positions, signaux et dominantes.
+- `rust_sqlx_connection_test/src/payload/lunar_phase.rs` : construction de
+  `lunar_phase_context` depuis les references lunaires.
 - `rust_sqlx_connection_test/src/signals/` : construction, filtrage et
   priorisation des signaux du payload route basic.
 - `rust_sqlx_connection_test/src/payload/` : assemblage du payload final et de
@@ -202,6 +226,10 @@ la correction attendue est de resynchroniser PostgreSQL avec les fichiers
   objets, angles et aspects.
 - `rust_sqlx_connection_test/src/runtime/` : orchestration runtime,
   validation des references et regeneration des anciens payloads.
+- `json_db/astral_accidental_dignity_condition_definitions.json` : definitions
+  canoniques des 15 conditions accidentelles MVP.
+- `json_db/astral_object_sect_affinities.json` : affinites de secte par objet.
+- `json_db/astral_lunar_phase_definitions.json` : definitions des phases lunaires.
 - `rust_sqlx_connection_test/schemas/basic_natal_structured_v8.schema.json` :
   schema JSON historique du contrat Basic v8.
 - `rust_sqlx_connection_test/schemas/natal_structured_v9.schema.json` :
@@ -211,7 +239,9 @@ la correction attendue est de resynchroniser PostgreSQL avec les fichiers
 - `rust_sqlx_connection_test/schemas/natal_structured_v11.schema.json` :
   schema JSON historique du contrat `natal_structured_v11`.
 - `rust_sqlx_connection_test/schemas/natal_structured_v12.schema.json` :
-  schema JSON du contrat courant `natal_structured_v12`.
+  schema JSON historique du contrat `natal_structured_v12`.
+- `rust_sqlx_connection_test/schemas/natal_structured_v13.schema.json` :
+  schema JSON du contrat courant `natal_structured_v13`.
 - `tests/golden/basic_payload_v8_paris_1990.json` : fixture golden historique
   du contrat Basic v8.
 - `tests/golden/natal_payload_v9_paris_1990.json` : fixture golden du contrat
@@ -220,10 +250,12 @@ la correction attendue est de resynchroniser PostgreSQL avec les fichiers
   du contrat v10.
 - `tests/golden/natal_payload_v11_paris_1990.json` : fixture golden historique
   du contrat v11.
-- `tests/golden/natal_payload_v12_paris_1990.json` : fixture golden du contrat
-  courant v12.
+- `tests/golden/natal_payload_v12_paris_1990.json` : fixture golden historique
+  du contrat v12.
+- `tests/golden/natal_payload_v13_paris_1990.json` : fixture golden du contrat
+  courant v13 (`chart_calculation_id: 27`).
 - `tests/contract_basic_v8_tests.rs` : validation schema, golden et invariants
-  metier non negociables pour le contrat courant v12.
+  metier non negociables pour le contrat courant v13.
 - `scripts/verify_basic_v8_golden.ps1` : verification CI/local de projection
   stable historique v8. Ce script ne regenere plus le payload courant ; il
   valide le golden v8 conserve, ou un fichier v8 fourni explicitement.
@@ -233,8 +265,10 @@ la correction attendue est de resynchroniser PostgreSQL avec les fichiers
   projection stable v10 apres regeneration du payload par le moteur.
 - `scripts/verify_natal_v11_golden.ps1` : verification CI/local historique de
   projection stable v11 apres regeneration du payload par le moteur.
-- `scripts/verify_natal_v12_golden.ps1` : verification CI/local de projection
-  stable v12 apres regeneration du payload par le moteur.
+- `scripts/verify_natal_v12_golden.ps1` : verification CI/local historique de
+  projection stable v12.
+- `scripts/verify_natal_v13_golden.ps1` : verification CI/local de projection
+  stable v13 apres regeneration du payload par le moteur.
 
 ## Contrat des positions
 
@@ -1145,8 +1179,27 @@ aspect fort disponible. `main_tension_or_support` n'est donc absent que
 lorsqu'aucun aspect actif ou preservable ne reste apres l'exclusion des axes
 structurels et des autres aspects angle-angle.
 
-Depuis l'etape 3D, `natal_structured_v12` est le contrat
+Depuis l'etape 3E, `natal_structured_v13` est le contrat
 courant verrouille par trois niveaux complementaires :
+
+- le JSON Schema
+  `rust_sqlx_connection_test/schemas/natal_structured_v13.schema.json`
+  valide la forme du contrat moteur, les blocs obligatoires, les quatre angles,
+  les bornes de score, `chart_context`, `house_axis_emphasis`,
+  `lunar_phase_context`, `accidental_dignities`,
+  `positions[].accidental_dignity_context` et
+  `signals[].evidence.placement_context.accidental_dignity_context` pour les
+  signaux `object_position:*` ;
+- la fixture `tests/golden/natal_payload_v13_paris_1990.json` conserve un
+  payload complet de reference pour le scenario Paris 1990 ;
+- `tests/contract_basic_v8_tests.rs` valide les invariants metier du contrat
+  courant v13 et conserve aussi une validation schema des goldens historiques
+  v8, v10, v11 et v12.
+
+`natal_structured_v12` reste historique avec `lunar_phase_context` uniquement.
+
+Avant 3E, `natal_structured_v12` etait le contrat courant verrouille par trois
+niveaux complementaires :
 
 - le JSON Schema
   `rust_sqlx_connection_test/schemas/natal_structured_v12.schema.json`
@@ -1177,21 +1230,25 @@ altitude calculee.
 La regeneration complete du golden courant depend de Postgres et de Swiss
 Ephemeris. Le test unitaire ne reconstruit donc pas le theme depuis le moteur.
 Pour couvrir ce risque en CI ou en verification locale,
-`scripts/verify_natal_v12_golden.ps1` lance le moteur avec le scenario golden
+`scripts/verify_natal_v13_golden.ps1` lance le moteur avec le scenario golden
 Paris / `1990-01-02T03:04:05Z`, puis compare une projection stable du payload
-genere au golden v12. Le script force les variables d'environnement du scenario
+genere au golden v13. Le script force les variables d'environnement du scenario
 golden et les restaure ensuite, afin d'eviter qu'un `ASTRAL_OUTPUT_MODE`,
 `ASTRAL_PRODUCT_CODE` ou identifiant de referentiel deja present ne modifie la
 verification. Il peut aussi comparer un fichier deja genere via :
 
 ```powershell
-.\scripts\verify_natal_v12_golden.ps1 -GeneratedPayloadPath .\output\basic_payload_current.json
+.\scripts\verify_natal_v13_golden.ps1 -GeneratedPayloadPath .\output\basic_payload_current.json
 ```
+
+`scripts/verify_natal_v12_golden.ps1` reste disponible pour le golden historique
+v12.
 
 Le script `scripts/verify_basic_v8_golden.ps1` reste disponible uniquement pour
 valider le golden historique v8 ou un fichier v8 fourni explicitement. Il ne
 regenere plus de payload depuis le moteur courant, car celui-ci produit
-desormais `natal_structured_v12`.
+desormais `natal_structured_v13` lorsque les references lunaires, accidentelles
+et secte sont chargees.
 Le script `scripts/verify_natal_v11_golden.ps1` reste disponible pour le golden
 historique v11.
 Le script `scripts/verify_natal_v9_golden.ps1` reste disponible pour le golden
@@ -1347,11 +1404,24 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
   Soleil, les comptes d'hemisphere, `hemisphere_emphasis.count_scope =
   "mobile_chart_objects_only"` et les positions enrichies par altitude /
   horizon ;
-- `chart_context.payload_contract.contract_version = "natal_structured_v12"` ;
+- `chart_context.payload_contract.contract_version = "natal_structured_v13"` ;
 - `lunar_phase_context` present, angle Soleil-Lune recalcule avec tolerance
   0.01 degre, `phase_code` coherent avec l'intervalle canonique,
   `related_signal_keys` limites aux signaux actifs Soleil/Lune, et tags
   `lunar_phase` et `sun_moon_cycle` dans `semantic_tags` ;
+- `accidental_dignities` present, non vide, sans entree pour les angles, avec
+  au moins une condition par evaluation, codes uniques par objet, scores bornes,
+  `overall_score` recalcule depuis les `score_delta`, `overall_polarity` et
+  `expression_quality` coherents, `related_signal_key` egal a
+  `object_position:<object_code>` quand le signal de placement est actif ;
+- `positions[].accidental_dignity_context` tableau (vide pour les angles) aligne
+  avec `accidental_dignities` ;
+- signaux `object_position:*` avec
+  `evidence.placement_context.accidental_dignity_context` recopie depuis la
+  position correspondante ;
+- coherence recalculee entre conditions accidentelles et faits de position
+  (`house_modality`, `motion_context`, `visibility_context`, proximite angle
+  <= 10 degre, secte chart) ;
 - `primary_signal_keys` aligne avec `source_signal_keys`, et
   `secondary_slot_candidates` coherents avec les slots conserves du
   `reading_plan` ;
@@ -1416,7 +1486,7 @@ Le run attendu doit afficher le payload moteur courant route par
 
 - `product_code = "basic"` ;
 - un `chart_context` top-level avec le type de theme, les IDs de referentiels,
-  le contrat de projection `natal_structured_v12`, la secte et la synthese
+  le contrat de projection `natal_structured_v13`, la secte et la synthese
   d'hemisphere, dont `hemisphere_emphasis.count_scope =
   "mobile_chart_objects_only"` ;
 - des positions avec `sign_code`, `sign_name`, `house_number`, `house_name`,
@@ -1447,6 +1517,11 @@ Le run attendu doit afficher le payload moteur courant route par
   `source_context_keys` et `reasons` ;
 - un `lunar_phase_context` top-level avec phase, angle Soleil-Lune, progression
   et tags `lunar_phase` / `sun_moon_cycle` ;
+- un bloc `accidental_dignities` top-level pour les objets mobiles avec au moins
+  une condition detectee, et `positions[].accidental_dignity_context` (tableau
+  vide pour les angles) ;
+- des signaux `object_position:*` dont `evidence.placement_context` inclut
+  `accidental_dignity_context` aligne avec la position ;
 - au plus 12 signaux ;
 - un `reading_plan` non vide ;
 - un `reading_plan` sans slot vide et sans opposition structurelle d'angle dans
@@ -1490,9 +1565,13 @@ exemple :
   d'aspect integrent maintenant la valence 2C.
 - Les clusters du payload route basic ne couvrent pour l'instant que les concentrations
   `sign_house`.
-- Le moteur de dignites 2B est un MVP code-side. Il couvre les dignites
-  essentielles majeures par signe, pas encore les dignites mineures ni les
-  dignites accidentelles.
+- Le moteur de dignites essentielles 2B est un MVP code-side. Il couvre les
+  dignites majeures par signe, pas encore les dignites mineures (terme,
+  triplicite, face).
+- Le moteur de dignites accidentelles 3E est un MVP base-references. Il couvre
+  15 conditions (maison, proximite angle, mouvement, horizon, secte) mais pas
+  combustion, cazimi, hayz complet ni paliers d'orb 3 degre / 6 degre ;
+  l'orb de proximite angle est fixe a 10 degre cote moteur.
 - Le programme consomme les libelles des referentiels tels quels. Il ne gere pas la traduction.
 - La redaction LLM doit rester une etape ulterieure.
 
@@ -1504,12 +1583,13 @@ sans modifier le contrat public `rust_sqlx_connection_test::payload`.
 
 - `mod.rs` orchestre la construction du payload moteur route basic.
 - `angles.rs`, `chart_context.rs`, `dignities.rs`, `emphasis.rs`,
-  `house_axes.rs`, `rulership.rs`,
+  `house_axes.rs`, `lunar_phase.rs`, `accidental_dignities.rs`, `rulership.rs`,
   `reading_plan.rs` isolent les blocs metier du payload.
 - `signal_filters.rs` centralise les predicats partages sur les signaux et
   aspects.
 - `json.rs` centralise les extractions defensives depuis les payloads JSON.
-- `chart_context.rs` porte le contrat moteur courant `natal_structured_v12`.
+- `chart_context.rs` porte le contrat moteur courant (`natal_structured_v13`
+  quand les references lunaires, accidentelles et secte sont injectees).
 
 ## Etape 3B - Rulership / dispositors context
 
@@ -1664,7 +1744,12 @@ canoniques applicatives et ne contourne pas les referentiels lus depuis la base.
 - `payload_freshness.rs` expose la facade `is_current_basic_payload` et compose
   les validations de reutilisation.
 - `payload_freshness/chart_context.rs` verifie le contrat moteur courant
-  `natal_structured_v12`.
+  `natal_structured_v13`.
+- `payload_freshness/lunar_phase.rs` verifie `lunar_phase_context` et l'angle
+  Soleil-Lune recalcule.
+- `payload_freshness/accidental_dignities.rs` verifie `accidental_dignities`,
+  les resumes de position, la recopie dans les signaux de placement et la
+  coherence conditions / faits.
 - `payload_freshness/angles.rs` verifie les quatre angles canoniques et leurs
   preuves.
 - `payload_freshness/aspects.rs` verifie le contexte interpretatif des aspects
@@ -1763,11 +1848,188 @@ Artefacts historiques de l'etape 3C :
   `tests/runtime_tests.rs` et `tests/contract_basic_v8_tests.rs`.
 
 Le contrat courant et ses artefacts de verification sont documentes dans la
-section 3D et dans `Fichiers concernes`.
+section 3E et dans `Fichiers concernes`.
+
+## 3E - Accidental dignity MVP
+
+Le contrat courant passe a `natal_structured_v13` avec un bloc top-level
+`accidental_dignities` organise par objet mobile. Ce bloc expose les
+conditions accidentelles deja calculables avec les donnees presentes : modalite
+de maison, proximite aux angles, mouvement (retrograde et stationnaire
+uniquement — pas de condition `direct_motion`), horizon local et secte MVP.
+
+### Gate de version et references
+
+Le builder choisit `natal_structured_v13` uniquement si les trois conditions
+suivantes sont reunies :
+
+- references lunaires injectees et `lunar_phase_context` construit ;
+- references accidentelles non vides (`astral_accidental_dignity_condition_definitions`) ;
+- references secte non vides (`astral_object_sect_affinities`).
+
+Sinon le moteur reste en `natal_structured_v12` (phase lunaire seule) ou
+`natal_structured_v11` (sans phase lunaire). Le service runtime charge toujours
+les trois jeux de references et appelle `build_basic_payload_with_accidental_references`.
+
+Validations au demarrage (`references.rs`) :
+
+- exactement 15 codes de condition (`ACCIDENTAL_CONDITION_CODES`) ;
+- exactement 7 objets de secte MVP (`sun`, `jupiter`, `saturn`, `moon`, `venus`,
+  `mars`, `mercury`).
+
+### Perimetre moteur strict
+
+- pas de famille de signaux `accidental_dignity:*` ;
+- pas de reranking massif de `chart_emphasis` : seule la raison
+  `accidental_context` peut etre ajoutee aux objets deja presents dans
+  `dominant_objects` ;
+- pas de `llm_handoff_contract`, `drafting_plan` ni `writing_guidance` ;
+- pas de persistance dediee dans `astral_calculated_condition_matches` ni
+  `astral_calculated_dignity_evaluations` (hors scope 3E).
+
+### Enrichissements de projection
+
+- `accidental_dignities[]` : evaluations par objet mobile avec au moins une
+  condition, triees par `object_code` ;
+- `positions[].accidental_dignity_context` : resume (`condition_code`,
+  `condition_family`, `polarity`, `strength_score`) ; tableau vide pour les
+  angles ;
+- `signals[].evidence.placement_context.accidental_dignity_context` pour les
+  signaux actifs `object_position:*` uniquement (les signaux `angle:*` ne
+  portent pas ce champ dans le schema v13).
+
+Structure type d'une evaluation :
+
+```json
+{
+  "object_code": "mars",
+  "object_name": "Mars",
+  "overall_score": 0.83,
+  "overall_polarity": "fortified",
+  "expression_quality": "strong_external_manifestation",
+  "related_signal_key": "object_position:mars",
+  "conditions": [
+    {
+      "condition_code": "angular_house",
+      "condition_family": "house_modality",
+      "polarity": "dignity",
+      "strength_score": 0.75,
+      "score_delta": 0.25,
+      "source": { "house_modality_code": "angular" },
+      "interpretive_hint": "Object placed in an angular house."
+    }
+  ]
+}
+```
+
+### Conditions MVP (canon DB)
+
+| Code | Famille | Declencheur moteur |
+|------|---------|-------------------|
+| `angular_house` | `house_modality` | `house_modality_code = angular` |
+| `succedent_house` | `house_modality` | `succedent` |
+| `cadent_house` | `house_modality` | `cadent` |
+| `near_ascendant` | `angle_proximity` | distance <= 10 degre a l'Ascendant |
+| `near_descendant` | `angle_proximity` | idem Descendant |
+| `near_mc` | `angle_proximity` | idem MC |
+| `near_ic` | `angle_proximity` | idem IC |
+| `retrograde_motion` | `motion` | `motion_context.is_retrograde = true` |
+| `stationary_motion` | `motion` | `motion_context.is_stationary = true` |
+| `above_horizon` | `horizon` | `visibility_context.horizon_position_id` |
+| `below_horizon` | `horizon` | idem |
+| `on_horizon` | `horizon` | idem |
+| `sect_affinity_match` | `sect` | affinite objet = `chart_context.sect.chart_sect` |
+| `sect_affinity_mismatch` | `sect` | affinite opposee |
+| `sect_affinity_variable_unresolved` | `sect` | affinite variable non resolue (ex. Mercure) |
+
+Les `score_delta` et `strength_score` viennent exclusivement de
+`json_db/astral_accidental_dignity_condition_definitions.json`. Les paliers
+d'orb 3 degre / 6 degre / 10 degre avec scores differencies ne sont pas
+implementes : l'orb angle est fixe a 10 degre dans le code.
+
+Detection des angles pour la proximite : longitude depuis `positions` dont
+`role` ou `role_label` indique un angle (`is_angle` dans le builder et la
+freshness).
+
+Score global par objet :
+
+- `raw_score = somme(score_delta)` ;
+- `overall_score = round4(clamp(0.5 + raw_score, 0.0, 1.0))` ;
+- `overall_polarity` (seuils inclusifs sur `overall_score`) :
+  - `fortified` : score >= 0.70 ;
+  - `mixed_or_contextual` : 0.45 <= score < 0.70 ;
+  - `weakened` : 0.30 <= score < 0.45 ;
+  - `strongly_weakened` : score < 0.30.
+  Exemple golden Paris : Mercure a `overall_score = 0.28` avec
+  `cadent_house`, `retrograde_motion` et `below_horizon` => `strongly_weakened`.
+  Pluton, lui, est `fortified` (`angular_house`, `near_ascendant`).
+- `expression_quality` derive de la polarite (`strong_external_manifestation`,
+  etc.) ;
+- `related_signal_key = object_position:<code>` seulement si le signal de
+  placement est actif dans les 12 signaux retenus.
+
+### Reutilisation runtime (`is_current_basic_payload`)
+
+Les payloads v12 sans `accidental_dignities` sont obsoletes et regeneres.
+La freshness `accidental_dignities.rs` verifie notamment :
+
+- bloc non vide, sans evaluation pour un angle ;
+- codes de condition connus, uniques par objet ;
+- `overall_score` recalcule depuis les deltas ;
+- alignement `accidental_dignities` <-> `positions[].accidental_dignity_context`
+  <-> `signals[].evidence.placement_context.accidental_dignity_context` ;
+- recalcul des conditions depuis les faits de position (maison, mouvement,
+  horizon, orb angle, secte).
+
+### Golden Paris 1990 (v13)
+
+Fixture : `tests/golden/natal_payload_v13_paris_1990.json`.
+
+Cas verifies dans `tests/contract_basic_v8_tests.rs` :
+
+- Mars : `angular_house`, `sect_affinity_match` ;
+- Jupiter : `retrograde_motion` ;
+- Pluton : `near_ascendant`, `overall_polarity = fortified` ;
+- Mercure : `overall_score = 0.28`, `overall_polarity = strongly_weakened` (seuil
+  `< 0.30`, pas `weakened`) ;
+- aucune entree accidentelle pour les angles ;
+- rejet runtime des payloads v12, scores incoherents, codes inconnus, doublons
+  de conditions, contextes signaux/positions desynchronises.
+
+### Review adversariale (corrections integrees)
+
+- gate v13 exige les trois jeux de references, pas seulement les conditions
+  accidentelles ;
+- validation stricte des 15 codes, familles, polarites, bornes de score ;
+- sync obligatoire signaux `object_position:*` <-> positions ;
+- detection angle alignee builder + freshness (`role` + `role_label`) ;
+- schema v13 : `accidental_dignity_context` requis sur preuve de placement
+  objet, pas sur signaux angle ;
+- tests negatifs supplementaires dans `contract_basic_v8_tests.rs` et
+  `payload_tests.rs`.
+
+### Hors perimetre 3E
+
+- combustion, cazimi, under beams, hayz complet, rejoicing ;
+- conditions heliacales fines, vitesse relative avancee ;
+- dignites mineures essentielles (terme, triplicite, face) ;
+- aspects aux maitres ou dispositors comme dignite accidentelle ;
+- tables de persistance `astral_calculated_condition_matches` /
+  `astral_calculated_dignity_evaluations`.
+
+### Artefacts
+
+- `rust_sqlx_connection_test/src/payload/accidental_dignities.rs` ;
+- `rust_sqlx_connection_test/src/runtime/payload_freshness/accidental_dignities.rs` ;
+- `rust_sqlx_connection_test/schemas/natal_structured_v13.schema.json` ;
+- `tests/golden/natal_payload_v13_paris_1990.json` ;
+- `scripts/verify_natal_v13_golden.ps1` ;
+- tests dans `tests/payload_tests.rs`, `tests/runtime_tests.rs`,
+  `tests/contract_basic_v8_tests.rs`.
 
 ## 3D - Lunar phase context
 
-Le contrat courant passe a `natal_structured_v12` avec un nouveau bloc top-level
+L'etape 3D a porte le contrat a `natal_structured_v12` avec un nouveau bloc top-level
 `lunar_phase_context`. Ce bloc qualifie la phase lunaire natale comme relation
 cyclique Soleil-Lune. Il reste dans le perimetre moteur: pas de signal actif
 `lunar_phase:*`, pas de nouveau slot `reading_plan`, et pas de consigne LLM.
@@ -1792,11 +2054,13 @@ Le calcul expose:
 - `related_reading_slots = ["core_identity"]` quand ce slot existe.
 
 Le builder marque le payload en `natal_structured_v12` uniquement quand le bloc
-`lunar_phase_context` a ete construit depuis les references lunaires injectees.
+`lunar_phase_context` a ete construit depuis les references lunaires injectees
+et que les references accidentelles ou secte ne sont pas injectees (sinon v13).
 Les chemins de construction historiques sans ces references restent en
 `natal_structured_v11` et n'emettent pas de champ `lunar_phase_context` nul.
 
-La validation runtime refuse desormais les payloads v11 comme obsoletes et
+La validation runtime refuse desormais les payloads v11 et v12 sans accidentel
+comme obsoletes lorsque le service charge les references 3E, et
 verifie que le bloc existe, que l'angle Soleil-Lune est recalcule avec une
 tolerance de 0.01 degre, que l'angle tombe dans l'intervalle du `phase_code`,
 que la progression est bornee entre 0 et 1, que les sources referencent des

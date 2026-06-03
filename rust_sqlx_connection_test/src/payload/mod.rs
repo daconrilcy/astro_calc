@@ -1,3 +1,4 @@
+mod accidental_dignities;
 mod angles;
 mod chart_context;
 mod dignities;
@@ -9,9 +10,12 @@ mod reading_plan;
 mod rulership;
 mod signal_filters;
 
+use std::collections::{HashMap, HashSet};
+
 use crate::domain::{
-    BasicObjectPosition, BasicPayload, BasicSignal, HouseAxisReference, LunarPhaseReference,
-    NatalChartInput, ObjectPositionFact,
+    AccidentalDignityConditionReference, BasicObjectPosition, BasicPayload, BasicSignal,
+    HouseAxisReference, LunarPhaseReference, NatalChartInput, ObjectPositionFact,
+    ObjectSectAffinityReference,
 };
 use crate::models::InterpretationSignalRow;
 use angles::{
@@ -82,6 +86,31 @@ pub fn build_basic_payload_with_all_references(
     house_axes: &[HouseAxisReference],
     lunar_phases: &[LunarPhaseReference],
 ) -> BasicPayload {
+    build_basic_payload_with_accidental_references(
+        chart_calculation_id,
+        input,
+        positions,
+        signals,
+        domicile_rulers,
+        house_axes,
+        lunar_phases,
+        &[],
+        &[],
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn build_basic_payload_with_accidental_references(
+    chart_calculation_id: i32,
+    input: &NatalChartInput,
+    positions: &[ObjectPositionFact],
+    signals: &[InterpretationSignalRow],
+    domicile_rulers: &[crate::domain::DomicileRulerReference],
+    house_axes: &[HouseAxisReference],
+    lunar_phases: &[LunarPhaseReference],
+    accidental_conditions: &[AccidentalDignityConditionReference],
+    sect_affinities: &[ObjectSectAffinityReference],
+) -> BasicPayload {
     let structural_axis_pairs = structural_axis_pairs_from_positions(positions);
     let angle_object_codes = angle_object_codes_from_positions(positions);
     let mut basic_signals: Vec<BasicSignal> = signals
@@ -128,12 +157,50 @@ pub fn build_basic_payload_with_all_references(
         &basic_signals,
         &reading_plan,
     );
-    let contract_version = if lunar_phase_context.is_some() {
+    let has_accidental_references = !accidental_conditions.is_empty()
+        && !sect_affinities.is_empty()
+        && lunar_phase_context.is_some();
+    let contract_version = if has_accidental_references {
+        "natal_structured_v13"
+    } else if lunar_phase_context.is_some() {
         "natal_structured_v12"
     } else {
         "natal_structured_v11"
     };
     let chart_context = build_chart_context(input, positions, contract_version);
+    let chart_sect = chart_context.sect.chart_sect.as_deref();
+    let active_signal_keys: HashSet<&str> = basic_signals
+        .iter()
+        .map(|signal| signal.signal_key.as_str())
+        .collect();
+    let accidental_build = if has_accidental_references {
+        accidental_dignities::build_accidental_dignities(
+            positions,
+            chart_sect,
+            accidental_conditions,
+            sect_affinities,
+            &active_signal_keys,
+        )
+    } else {
+        accidental_dignities::AccidentalDignityBuild {
+            evaluations: Vec::new(),
+            context_by_object: HashMap::new(),
+        }
+    };
+    if has_accidental_references {
+        accidental_dignities::apply_accidental_context_to_signals(
+            &mut basic_signals,
+            &accidental_build.context_by_object,
+        );
+    }
+
+    let mut chart_emphasis = chart_emphasis;
+    if has_accidental_references {
+        accidental_dignities::apply_accidental_context_to_emphasis(
+            &mut chart_emphasis,
+            &accidental_build.evaluations,
+        );
+    }
 
     BasicPayload {
         product_code: input.product_code().to_string(),
@@ -162,6 +229,11 @@ pub fn build_basic_payload_with_all_references(
                 motion_context: position_context(position, "motion_context"),
                 dignity_context: position_dignity_context(position),
                 visibility_context: visibility_context(position),
+                accidental_dignity_context: accidental_build
+                    .context_by_object
+                    .get(&position.object_code)
+                    .cloned()
+                    .unwrap_or_default(),
             })
             .collect(),
         angles,
@@ -170,6 +242,7 @@ pub fn build_basic_payload_with_all_references(
         rulership_context,
         house_axis_emphasis,
         lunar_phase_context,
+        accidental_dignities: accidental_build.evaluations,
         signals: basic_signals,
         reading_plan,
     }

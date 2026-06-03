@@ -1729,7 +1729,68 @@ fn resources_and_identity_axes_are_detected_with_existing_signal_sources() {
 }
 
 #[test]
-fn v12_contains_lunar_phase_context_from_reference_phases() {
+fn v13_requires_sect_affinities_to_emit_accidental_block() {
+    let mut sun = position();
+    sun.longitude_deg = 281.4543;
+    let mut moon = position();
+    moon.chart_object_id = 2;
+    moon.object_code = "moon".to_string();
+    moon.object_name = "Moon".to_string();
+    moon.longitude_deg = 341.7642;
+
+    let payload = build_basic_payload_with_accidental_references(
+        42,
+        &input(),
+        &[sun, moon],
+        &[
+            placement_signal_row(1, "object_position:sun", "sun"),
+            placement_signal_row(2, "object_position:moon", "moon"),
+        ],
+        &[],
+        &[],
+        &canonical_lunar_phases(),
+        &canonical_accidental_conditions(),
+        &[],
+    );
+
+    assert_eq!(
+        payload.chart_context.payload_contract.contract_version,
+        "natal_structured_v12"
+    );
+    assert!(payload.accidental_dignities.is_empty());
+}
+
+#[test]
+fn v13_contains_accidental_dignities_from_reference_definitions() {
+    let mut sun = position();
+    sun.longitude_deg = 281.4543;
+    let mut moon = position();
+    moon.chart_object_id = 2;
+    moon.object_code = "moon".to_string();
+    moon.object_name = "Moon".to_string();
+    moon.longitude_deg = 341.7642;
+
+    let payload = build_basic_payload_with_accidental_references(
+        42,
+        &input(),
+        &[sun, moon],
+        &[placement_signal_row(1, "object_position:sun", "sun")],
+        &[],
+        &[],
+        &canonical_lunar_phases(),
+        &canonical_accidental_conditions(),
+        &canonical_sect_affinities(),
+    );
+
+    assert!(!payload.accidental_dignities.is_empty());
+    assert!(payload
+        .positions
+        .iter()
+        .all(|position| position.object_code == "moon" || !position.accidental_dignity_context.is_empty()));
+}
+
+#[test]
+fn v13_contains_lunar_phase_context_from_reference_phases() {
     let mut sun = position();
     sun.longitude_deg = 281.4543;
     let mut moon = position();
@@ -1744,7 +1805,7 @@ fn v12_contains_lunar_phase_context_from_reference_phases() {
     moon.house_number = Some(4);
     moon.house_name = Some("Home".to_string());
 
-    let payload = build_basic_payload_with_all_references(
+    let payload = build_basic_payload_with_accidental_references(
         42,
         &input(),
         &[sun, moon],
@@ -1755,6 +1816,8 @@ fn v12_contains_lunar_phase_context_from_reference_phases() {
         &[],
         &[],
         &canonical_lunar_phases(),
+        &canonical_accidental_conditions(),
+        &canonical_sect_affinities(),
     );
     let phase = payload
         .lunar_phase_context
@@ -1762,7 +1825,7 @@ fn v12_contains_lunar_phase_context_from_reference_phases() {
 
     assert_eq!(
         payload.chart_context.payload_contract.contract_version,
-        "natal_structured_v12"
+        "natal_structured_v13"
     );
     assert_eq!(phase.phase_code, "waxing_crescent");
     assert_eq!(phase.cycle_family, "waxing");
@@ -1840,6 +1903,75 @@ fn aspect_signal(
                 "strength_score": strength_score
             }
         })),
+    }
+}
+
+fn canonical_accidental_conditions() -> Vec<AccidentalDignityConditionReference> {
+    vec![
+        accidental_condition_ref("angular_house", "house_modality", "dignity", 0.75, 0.25),
+        accidental_condition_ref("succedent_house", "house_modality", "contextual", 0.45, 0.05),
+        accidental_condition_ref("cadent_house", "house_modality", "debility", 0.35, -0.12),
+        accidental_condition_ref("near_ascendant", "angle_proximity", "dignity", 0.82, 0.22),
+        accidental_condition_ref("near_descendant", "angle_proximity", "dignity", 0.82, 0.22),
+        accidental_condition_ref("near_mc", "angle_proximity", "dignity", 0.82, 0.22),
+        accidental_condition_ref("near_ic", "angle_proximity", "dignity", 0.82, 0.22),
+        accidental_condition_ref("retrograde_motion", "motion", "debility", 0.45, -0.1),
+        accidental_condition_ref("stationary_motion", "motion", "intensifier", 0.7, 0.1),
+        accidental_condition_ref("above_horizon", "horizon", "contextual", 0.45, 0.05),
+        accidental_condition_ref("below_horizon", "horizon", "contextual", 0.35, 0.0),
+        accidental_condition_ref("on_horizon", "horizon", "dignity", 0.75, 0.2),
+        accidental_condition_ref("sect_affinity_match", "sect", "dignity", 0.45, 0.08),
+        accidental_condition_ref("sect_affinity_mismatch", "sect", "debility", 0.35, -0.06),
+        accidental_condition_ref(
+            "sect_affinity_variable_unresolved",
+            "sect",
+            "contextual",
+            0.2,
+            0.0,
+        ),
+    ]
+}
+
+fn accidental_condition_ref(
+    condition_code: &str,
+    condition_family: &str,
+    polarity: &str,
+    strength_score: f64,
+    score_delta: f64,
+) -> AccidentalDignityConditionReference {
+    AccidentalDignityConditionReference {
+        condition_code: condition_code.to_string(),
+        condition_family: condition_family.to_string(),
+        label: condition_code.to_string(),
+        polarity: polarity.to_string(),
+        strength_score,
+        score_delta,
+        description: format!("{condition_code} description"),
+    }
+}
+
+fn canonical_sect_affinities() -> Vec<ObjectSectAffinityReference> {
+    vec![
+        sect_affinity_ref("sun", "day", false),
+        sect_affinity_ref("jupiter", "day", false),
+        sect_affinity_ref("saturn", "day", false),
+        sect_affinity_ref("moon", "night", false),
+        sect_affinity_ref("venus", "night", false),
+        sect_affinity_ref("mars", "night", false),
+        sect_affinity_ref("mercury", "variable", true),
+    ]
+}
+
+fn sect_affinity_ref(
+    object_code: &str,
+    sect_affinity_code: &str,
+    is_variable: bool,
+) -> ObjectSectAffinityReference {
+    ObjectSectAffinityReference {
+        object_code: object_code.to_string(),
+        sect_affinity_code: sect_affinity_code.to_string(),
+        is_variable,
+        description: format!("{object_code} sect affinity"),
     }
 }
 

@@ -8,7 +8,8 @@ use crate::domain::{
 use crate::models::{
     AnglePointReference, AspectDefinition, ChartCalculationRow, ChartObject,
     DomicileRulerReference, HorizonPositionReference, HouseAxisReferenceRow, HouseReference,
-    HouseSystem, InterpretationSignalRow, LunarPhaseReferenceRow, MotionStateReference,
+    AccidentalDignityConditionReferenceRow, HouseSystem, InterpretationSignalRow,
+    LunarPhaseReferenceRow, MotionStateReference, ObjectSectAffinityReferenceRow,
     PersistedAspectFact, PersistedObjectPositionFact, SignReference,
 };
 use crate::runtime::RuntimeError;
@@ -257,6 +258,51 @@ impl RuntimeRepository {
                    is_major_lunar_phase,
                    description
             FROM astral_lunar_phase_definitions
+            WHERE is_active = true
+            ORDER BY sort_order, id
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(Into::into)
+        .collect())
+    }
+
+    pub async fn accidental_dignity_condition_references(
+        &self,
+    ) -> Result<Vec<crate::domain::AccidentalDignityConditionReference>, RuntimeError> {
+        Ok(sqlx::query_as::<_, AccidentalDignityConditionReferenceRow>(
+            r#"
+            SELECT condition_code,
+                   condition_family,
+                   label,
+                   polarity,
+                   strength_score::float8 AS strength_score,
+                   score_delta::float8 AS score_delta,
+                   description
+            FROM astral_accidental_dignity_condition_definitions
+            WHERE is_active = true
+            ORDER BY sort_order, id
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(Into::into)
+        .collect())
+    }
+
+    pub async fn object_sect_affinity_references(
+        &self,
+    ) -> Result<Vec<crate::domain::ObjectSectAffinityReference>, RuntimeError> {
+        Ok(sqlx::query_as::<_, ObjectSectAffinityReferenceRow>(
+            r#"
+            SELECT object_code,
+                   sect_affinity_code,
+                   is_variable,
+                   description
+            FROM astral_object_sect_affinities
             WHERE is_active = true
             ORDER BY sort_order, id
             "#,
@@ -1151,6 +1197,33 @@ impl From<LunarPhaseReferenceRow> for crate::domain::LunarPhaseReference {
             range_end_deg: row.range_end_deg,
             exact_anchor_deg: row.exact_anchor_deg,
             is_major_lunar_phase: row.is_major_lunar_phase,
+            description: row.description,
+        }
+    }
+}
+
+impl From<AccidentalDignityConditionReferenceRow>
+    for crate::domain::AccidentalDignityConditionReference
+{
+    fn from(row: AccidentalDignityConditionReferenceRow) -> Self {
+        Self {
+            condition_code: row.condition_code,
+            condition_family: row.condition_family,
+            label: row.label,
+            polarity: row.polarity,
+            strength_score: row.strength_score,
+            score_delta: row.score_delta,
+            description: row.description,
+        }
+    }
+}
+
+impl From<ObjectSectAffinityReferenceRow> for crate::domain::ObjectSectAffinityReference {
+    fn from(row: ObjectSectAffinityReferenceRow) -> Self {
+        Self {
+            object_code: row.object_code,
+            sect_affinity_code: row.sect_affinity_code,
+            is_variable: row.is_variable,
             description: row.description,
         }
     }

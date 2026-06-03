@@ -1,6 +1,9 @@
 use std::collections::HashSet;
 
-use crate::domain::{CalculationReferenceData, HouseAxisReference, LunarPhaseReference};
+use crate::domain::{
+    AccidentalDignityConditionReference, CalculationReferenceData, HouseAxisReference,
+    LunarPhaseReference, ObjectSectAffinityReference,
+};
 use crate::models::ChartObject;
 
 use super::RuntimeError;
@@ -308,4 +311,118 @@ fn lunar_phase_ranges_cover_cycle(references: &[LunarPhaseReference]) -> bool {
             .first()
             .zip(intervals.last())
             .is_some_and(|(first, last)| degree_matches(last.1, first.0 + 360.0))
+}
+
+pub(crate) const ACCIDENTAL_CONDITION_CODES: &[&str] = &[
+    "angular_house",
+    "succedent_house",
+    "cadent_house",
+    "near_ascendant",
+    "near_descendant",
+    "near_mc",
+    "near_ic",
+    "retrograde_motion",
+    "stationary_motion",
+    "above_horizon",
+    "below_horizon",
+    "on_horizon",
+    "sect_affinity_match",
+    "sect_affinity_mismatch",
+    "sect_affinity_variable_unresolved",
+];
+
+const MVP_SECT_OBJECT_CODES: &[&str] = &[
+    "sun", "jupiter", "saturn", "moon", "venus", "mars", "mercury",
+];
+
+pub fn validate_accidental_dignity_condition_references(
+    references: &[AccidentalDignityConditionReference],
+) -> Result<(), RuntimeError> {
+    if references.len() != ACCIDENTAL_CONDITION_CODES.len() {
+        return Err(RuntimeError::Ephemeris(format!(
+            "expected {} accidental dignity condition references, found {}",
+            ACCIDENTAL_CONDITION_CODES.len(),
+            references.len()
+        )));
+    }
+
+    let mut seen_codes = HashSet::new();
+    for reference in references {
+        if !seen_codes.insert(reference.condition_code.as_str())
+            || reference.condition_code.trim().is_empty()
+            || reference.label.trim().is_empty()
+            || reference.description.trim().is_empty()
+            || !valid_accidental_condition_family(reference.condition_family.as_str())
+            || !valid_accidental_polarity(reference.polarity.as_str())
+            || !(0.0..=1.0).contains(&reference.strength_score)
+            || !(-1.0..=1.0).contains(&reference.score_delta)
+        {
+            return Err(RuntimeError::Ephemeris(format!(
+                "invalid accidental dignity condition reference {}",
+                reference.condition_code
+            )));
+        }
+    }
+
+    for required_code in ACCIDENTAL_CONDITION_CODES {
+        if !seen_codes.contains(required_code) {
+            return Err(RuntimeError::Ephemeris(format!(
+                "missing accidental dignity condition reference {required_code}"
+            )));
+        }
+    }
+
+    Ok(())
+}
+
+pub fn validate_object_sect_affinity_references(
+    references: &[ObjectSectAffinityReference],
+) -> Result<(), RuntimeError> {
+    if references.len() != MVP_SECT_OBJECT_CODES.len() {
+        return Err(RuntimeError::Ephemeris(format!(
+            "expected {} object sect affinity references, found {}",
+            MVP_SECT_OBJECT_CODES.len(),
+            references.len()
+        )));
+    }
+
+    let mut seen_objects = HashSet::new();
+    for reference in references {
+        if !seen_objects.insert(reference.object_code.as_str())
+            || reference.object_code.trim().is_empty()
+            || reference.description.trim().is_empty()
+            || !valid_sect_affinity_code(reference.sect_affinity_code.as_str())
+            || reference.is_variable != (reference.sect_affinity_code == "variable")
+        {
+            return Err(RuntimeError::Ephemeris(format!(
+                "invalid object sect affinity reference {}",
+                reference.object_code
+            )));
+        }
+    }
+
+    for required_object in MVP_SECT_OBJECT_CODES {
+        if !seen_objects.contains(required_object) {
+            return Err(RuntimeError::Ephemeris(format!(
+                "missing object sect affinity reference {required_object}"
+            )));
+        }
+    }
+
+    Ok(())
+}
+
+fn valid_accidental_condition_family(value: &str) -> bool {
+    matches!(
+        value,
+        "house_modality" | "angle_proximity" | "motion" | "horizon" | "sect"
+    )
+}
+
+fn valid_accidental_polarity(value: &str) -> bool {
+    matches!(value, "dignity" | "debility" | "contextual" | "intensifier")
+}
+
+fn valid_sect_affinity_code(value: &str) -> bool {
+    matches!(value, "day" | "night" | "variable")
 }

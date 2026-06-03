@@ -5,6 +5,7 @@ mod dignities;
 mod emphasis;
 mod house_axes;
 mod json;
+mod accidental_dignities;
 mod lunar_phase;
 mod placements;
 mod plan;
@@ -28,6 +29,7 @@ pub fn is_current_basic_payload(payload: &BasicPayload) -> bool {
         && house_axes::has_current_house_axis_emphasis(payload)
         && plan::has_current_reading_plan(payload)
         && lunar_phase::has_current_lunar_phase_context(payload)
+        && accidental_dignities::has_current_accidental_dignities(payload)
         && payload
             .positions
             .iter()

@@ -79,6 +79,25 @@ pub struct LunarPhaseReference {
 }
 
 #[derive(Debug, Clone)]
+pub struct AccidentalDignityConditionReference {
+    pub condition_code: String,
+    pub condition_family: String,
+    pub label: String,
+    pub polarity: String,
+    pub strength_score: f64,
+    pub score_delta: f64,
+    pub description: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct ObjectSectAffinityReference {
+    pub object_code: String,
+    pub sect_affinity_code: String,
+    pub is_variable: bool,
+    pub description: String,
+}
+
+#[derive(Debug, Clone)]
 pub struct ObjectPositionFact {
     pub chart_object_id: i32,
     pub object_code: String,
@@ -177,6 +196,8 @@ pub struct BasicPayload {
     pub house_axis_emphasis: Vec<BasicHouseAxisEmphasis>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lunar_phase_context: Option<BasicLunarPhaseContext>,
+    #[serde(default)]
+    pub accidental_dignities: Vec<BasicAccidentalDignityEvaluation>,
     pub signals: Vec<BasicSignal>,
     #[serde(default)]
     pub reading_plan: Vec<BasicReadingPlanItem>,
@@ -432,6 +453,37 @@ pub struct BasicLunarPhaseContext {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BasicAccidentalDignityEvaluation {
+    pub object_code: String,
+    pub object_name: String,
+    pub overall_score: f64,
+    pub overall_polarity: String,
+    pub expression_quality: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub related_signal_key: Option<String>,
+    pub conditions: Vec<BasicAccidentalDignityCondition>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BasicAccidentalDignityCondition {
+    pub condition_code: String,
+    pub condition_family: String,
+    pub polarity: String,
+    pub strength_score: f64,
+    pub score_delta: f64,
+    pub source: serde_json::Value,
+    pub interpretive_hint: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BasicAccidentalDignityContextSummary {
+    pub condition_code: String,
+    pub condition_family: String,
+    pub polarity: String,
+    pub strength_score: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BasicObjectPosition {
     pub object_code: String,
     pub object_name: String,
@@ -459,6 +511,8 @@ pub struct BasicObjectPosition {
     pub dignity_context: Value,
     #[serde(default)]
     pub visibility_context: Value,
+    #[serde(default)]
+    pub accidental_dignity_context: Vec<BasicAccidentalDignityContextSummary>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

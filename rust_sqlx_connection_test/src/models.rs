@@ -132,6 +132,25 @@ pub struct LunarPhaseReferenceRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+pub struct AccidentalDignityConditionReferenceRow {
+    pub condition_code: String,
+    pub condition_family: String,
+    pub label: String,
+    pub polarity: String,
+    pub strength_score: f64,
+    pub score_delta: f64,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct ObjectSectAffinityReferenceRow {
+    pub object_code: String,
+    pub sect_affinity_code: String,
+    pub is_variable: bool,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct InterpretationSignalRow {
     pub id: i32,
     pub signal_key: String,

@@ -9,7 +9,7 @@ use crate::domain::{
 use crate::ephemeris::EphemerisEngine;
 use crate::idempotency::{advisory_lock_key, idempotency_key, input_hash};
 use crate::models::ChartCalculationRow;
-use crate::payload::build_basic_payload_with_all_references;
+use crate::payload::build_basic_payload_with_accidental_references;
 use crate::repositories::RuntimeRepository;
 use crate::signals::aggregate_basic_signals;
 
@@ -17,7 +17,8 @@ use super::error::RuntimeError;
 use super::payload_freshness::{has_current_rulership_references, is_current_basic_payload};
 use super::references::{
     validate_calculation_references, validate_chart_object_signal_profiles,
-    validate_house_axis_references, validate_lunar_phase_references,
+    validate_accidental_dignity_condition_references, validate_house_axis_references,
+    validate_lunar_phase_references, validate_object_sect_affinity_references,
 };
 
 pub struct ChartCalculationRuntimeService<E> {
@@ -71,6 +72,13 @@ where
         validate_house_axis_references(&house_axes)?;
         let lunar_phases = self.repository.lunar_phase_references().await?;
         validate_lunar_phase_references(&lunar_phases)?;
+        let accidental_conditions = self
+            .repository
+            .accidental_dignity_condition_references()
+            .await?;
+        validate_accidental_dignity_condition_references(&accidental_conditions)?;
+        let sect_affinities = self.repository.object_sect_affinity_references().await?;
+        validate_object_sect_affinity_references(&sect_affinities)?;
 
         let mut tx = self.repository.pool().begin().await?;
         RuntimeRepository::lock_idempotency(&mut tx, lock_key).await?;
@@ -107,7 +115,7 @@ where
                     &signal_drafts,
                 )
                 .await?;
-                let payload = build_basic_payload_with_all_references(
+                let payload = build_basic_payload_with_accidental_references(
                     completed_id,
                     &input,
                     &positions,
@@ -115,6 +123,8 @@ where
                     &domicile_rulers,
                     &house_axes,
                     &lunar_phases,
+                    &accidental_conditions,
+                    &sect_affinities,
                 );
                 RuntimeRepository::persist_basic_payload(
                     &mut payload_tx,
@@ -188,7 +198,7 @@ where
         .await?;
 
         RuntimeRepository::heartbeat(&mut tx, chart_calculation_id, "building_payload").await?;
-        let payload = build_basic_payload_with_all_references(
+        let payload = build_basic_payload_with_accidental_references(
             chart_calculation_id,
             &input,
             &enriched_facts.positions,
@@ -196,6 +206,8 @@ where
             &domicile_rulers,
             &house_axes,
             &lunar_phases,
+            &accidental_conditions,
+            &sect_affinities,
         );
         RuntimeRepository::persist_basic_payload(
             &mut tx,
