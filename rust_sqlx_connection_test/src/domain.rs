@@ -21,6 +21,8 @@ pub struct NatalChartInput {
     pub coordinate_reference_system_id: i32,
     pub house_system_id: i32,
     pub product_code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub client_idempotency_key: Option<String>,
 }
 
 impl NatalChartInput {

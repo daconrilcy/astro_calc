@@ -8,6 +8,7 @@ use crate::runtime::RuntimeError;
 struct StableIdempotencyDocument<'a> {
     chart_type: &'static str,
     input: StableCalculationInput<'a>,
+    client_idempotency_key: Option<&'a str>,
     reference_version_id: i32,
     calculation_profile_id: Option<i32>,
     engine_version: &'a str,
@@ -37,6 +38,10 @@ pub fn idempotency_key(
     let document = StableIdempotencyDocument {
         chart_type: "natal",
         input: stable_calculation_input(input),
+        client_idempotency_key: input
+            .client_idempotency_key
+            .as_deref()
+            .filter(|key| !key.trim().is_empty()),
         reference_version_id: input.reference_version_id,
         calculation_profile_id: input.calculation_profile_id,
         engine_version: &options.engine_version,

@@ -1,0 +1,784 @@
+{
+  "angles": {
+    "ascendant": {
+      "house": 1,
+      "keywords": [
+        "intensity",
+        "transformation",
+        "depth",
+        "passion",
+        "power",
+        "mystery"
+      ],
+      "sign": "Scorpio"
+    },
+    "descendant": {
+      "house": 7,
+      "keywords": [
+        "stability",
+        "security",
+        "patience",
+        "endurance",
+        "sensuality",
+        "comfort"
+      ],
+      "sign": "Taurus"
+    },
+    "imum_coeli": {
+      "house": 4,
+      "keywords": [
+        "innovation",
+        "freedom",
+        "originality",
+        "individuality",
+        "collective vision",
+        "future-thinking"
+      ],
+      "sign": "Aquarius"
+    },
+    "midheaven": {
+      "house": 10,
+      "keywords": [
+        "self-expression",
+        "creativity",
+        "radiance",
+        "confidence",
+        "generosity",
+        "leadership"
+      ],
+      "sign": "Leo"
+    }
+  },
+  "chart": {
+    "birth": {
+      "datetime_utc": "1990-01-02T03:04:05+00:00",
+      "location": "Paris, France"
+    },
+    "calculation": {
+      "coordinates": "Geocentric",
+      "house_system": "Placidus",
+      "zodiac": "Tropical"
+    },
+    "hemisphere_emphasis": {
+      "dominant_area": "Below horizon",
+      "summary": "The chart has a stronger private or interior emphasis."
+    },
+    "sect": "Night chart",
+    "type": "Natal chart"
+  },
+  "contract_version": "llm_projection_natal_v1",
+  "core_identity": {
+    "ascendant": {
+      "importance": "high",
+      "keywords": [
+        "intensity",
+        "transformation",
+        "depth",
+        "passion",
+        "power",
+        "mystery"
+      ],
+      "ruler": {
+        "modern": "Pluto",
+        "traditional": "Mars"
+      },
+      "sign": "Scorpio"
+    },
+    "moon": {
+      "conditions": [
+        "Angular house",
+        "Below horizon",
+        "Direct",
+        "Night sect match"
+      ],
+      "importance": "high",
+      "keywords": [
+        "compassion",
+        "intuition",
+        "imagination",
+        "sensitivity",
+        "spirituality",
+        "empathy"
+      ],
+      "placement": {
+        "house": {
+          "number": 4,
+          "theme": "Home"
+        },
+        "keywords": [],
+        "motion": "Direct",
+        "object": "Moon",
+        "sign": "Pisces"
+      }
+    },
+    "sun": {
+      "conditions": [
+        "Succedent house",
+        "Below horizon",
+        "Direct",
+        "Sect mismatch"
+      ],
+      "importance": "high",
+      "keywords": [
+        "ambition",
+        "discipline",
+        "structure",
+        "responsibility",
+        "maturity",
+        "authority"
+      ],
+      "placement": {
+        "house": {
+          "number": 2,
+          "theme": "Resources"
+        },
+        "keywords": [],
+        "motion": "Direct",
+        "object": "Sun",
+        "sign": "Capricorn"
+      }
+    }
+  },
+  "dominant_themes": {
+    "houses": [
+      {
+        "house": {
+          "number": 2,
+          "theme": "Resources"
+        },
+        "reasons": [
+          "Sun in house",
+          "Saturn in house",
+          "Uranus in house",
+          "Neptune in house",
+          "Multiple chart factors",
+          "Saturn in domicile"
+        ],
+        "strength": "very strong"
+      },
+      {
+        "house": {
+          "number": 1,
+          "theme": "Self"
+        },
+        "reasons": [
+          "Ascendant in house",
+          "Mars in house",
+          "Pluto in house",
+          "Multiple chart factors"
+        ],
+        "strength": "moderate"
+      }
+    ],
+    "objects": [
+      {
+        "object": "Saturn",
+        "reasons": [
+          "Strong placement",
+          "domicile",
+          "Participant in dominant theme",
+          "Capricorn emphasis",
+          "Accidental dignity context"
+        ],
+        "strength": "high"
+      },
+      {
+        "object": "Jupiter",
+        "reasons": [
+          "Strong placement",
+          "exaltation",
+          "strong aspect participant",
+          "Accidental dignity context"
+        ],
+        "strength": "moderate"
+      },
+      {
+        "object": "Sun",
+        "reasons": [
+          "Strong placement",
+          "Participant in dominant theme",
+          "Capricorn emphasis",
+          "Accidental dignity context"
+        ],
+        "strength": "moderate"
+      }
+    ],
+    "signs": [
+      {
+        "keywords": [
+          "ambition",
+          "discipline",
+          "structure",
+          "responsibility",
+          "maturity",
+          "authority"
+        ],
+        "reasons": [
+          "Sun in sign",
+          "Mercury in sign",
+          "Saturn in sign",
+          "Uranus in sign",
+          "Neptune in sign",
+          "Multiple chart factors"
+        ],
+        "sign": "Capricorn",
+        "strength": "very strong"
+      }
+    ]
+  },
+  "dynamics": {
+    "lunar_phase": {
+      "cycle": "Waxing",
+      "keywords": [
+        "lunar phase",
+        "sun moon cycle",
+        "waxing",
+        "waxing crescent"
+      ],
+      "phase": "Waxing Crescent",
+      "sun_moon_angle_degrees": 60.3098
+    },
+    "major_aspects": []
+  },
+  "house_axes": [
+    {
+      "axis": "Resources and Sharing",
+      "balance": "Mainly house 2",
+      "houses": [
+        {
+          "number": 2,
+          "theme": "Resources"
+        },
+        {
+          "number": 8,
+          "theme": "Transformation"
+        }
+      ],
+      "importance": "very high",
+      "summary": "Resources and Sharing is activated mainly through house 2 (resources), with house 8 (shared_resources) present as a secondary counterpoint."
+    },
+    {
+      "axis": "Self and Relationship",
+      "balance": "Mainly house 1",
+      "houses": [
+        {
+          "number": 1,
+          "theme": "Self"
+        },
+        {
+          "number": 7,
+          "theme": "Partnership"
+        }
+      ],
+      "importance": "very high",
+      "summary": "Self and Relationship is activated mainly through house 1 (identity), with house 7 (relationships) present as a secondary counterpoint."
+    }
+  ],
+  "keywords": {
+    "by_area": {
+      "communication": [
+        "ambition",
+        "discipline",
+        "structure",
+        "responsibility",
+        "maturity",
+        "authority"
+      ],
+      "identity": [
+        "expansion",
+        "freedom",
+        "adventure",
+        "truth-seeking",
+        "optimism",
+        "faith"
+      ],
+      "resources": [
+        "ambition",
+        "discipline",
+        "structure",
+        "responsibility",
+        "maturity",
+        "authority"
+      ],
+      "roots": [
+        "compassion",
+        "intuition",
+        "imagination",
+        "sensitivity",
+        "spirituality",
+        "empathy"
+      ],
+      "shared_resources": [
+        "emotional sensitivity",
+        "nurturing",
+        "protection",
+        "family",
+        "home",
+        "memory"
+      ]
+    },
+    "main": [
+      "ambition",
+      "discipline",
+      "structure",
+      "responsibility",
+      "maturity",
+      "authority",
+      "compassion",
+      "intuition",
+      "imagination",
+      "sensitivity",
+      "spirituality",
+      "empathy"
+    ]
+  },
+  "placements": {
+    "background": [
+      {
+        "conditions": [
+          "Succedent house",
+          "Below horizon",
+          "Direct",
+          "Sect mismatch"
+        ],
+        "house": {
+          "number": 2,
+          "theme": "Resources"
+        },
+        "importance": "moderate",
+        "keywords": [
+          "ambition",
+          "discipline",
+          "structure",
+          "responsibility",
+          "maturity",
+          "authority"
+        ],
+        "motion": "Direct",
+        "object": "Saturn",
+        "sign": "Capricorn"
+      },
+      {
+        "conditions": [
+          "Succedent house",
+          "Below horizon",
+          "Direct"
+        ],
+        "house": {
+          "number": 2,
+          "theme": "Resources"
+        },
+        "importance": "moderate",
+        "keywords": [
+          "ambition",
+          "discipline",
+          "structure",
+          "responsibility",
+          "maturity",
+          "authority"
+        ],
+        "motion": "Direct",
+        "object": "Uranus",
+        "sign": "Capricorn"
+      },
+      {
+        "conditions": [
+          "Succedent house",
+          "Below horizon",
+          "Direct"
+        ],
+        "house": {
+          "number": 2,
+          "theme": "Resources"
+        },
+        "importance": "moderate",
+        "keywords": [
+          "ambition",
+          "discipline",
+          "structure",
+          "responsibility",
+          "maturity",
+          "authority"
+        ],
+        "motion": "Direct",
+        "object": "Neptune",
+        "sign": "Capricorn"
+      },
+      {
+        "conditions": [
+          "Angular house",
+          "Above horizon",
+          "Direct",
+          "near ascendant"
+        ],
+        "house": {
+          "number": 1,
+          "theme": "Self"
+        },
+        "importance": "moderate",
+        "keywords": [
+          "intensity",
+          "transformation",
+          "depth",
+          "passion",
+          "power",
+          "mystery"
+        ],
+        "motion": "Direct",
+        "object": "Pluto",
+        "sign": "Scorpio"
+      }
+    ],
+    "primary": [
+      {
+        "conditions": [
+          "Succedent house",
+          "Below horizon",
+          "Direct",
+          "Sect mismatch"
+        ],
+        "house": {
+          "number": 2,
+          "theme": "Resources"
+        },
+        "importance": "high",
+        "keywords": [
+          "ambition",
+          "discipline",
+          "structure",
+          "responsibility",
+          "maturity",
+          "authority"
+        ],
+        "motion": "Direct",
+        "object": "Sun",
+        "sign": "Capricorn"
+      },
+      {
+        "conditions": [
+          "Angular house",
+          "Below horizon",
+          "Direct",
+          "Night sect match"
+        ],
+        "house": {
+          "number": 4,
+          "theme": "Home"
+        },
+        "importance": "high",
+        "keywords": [
+          "compassion",
+          "intuition",
+          "imagination",
+          "sensitivity",
+          "spirituality",
+          "empathy"
+        ],
+        "motion": "Direct",
+        "object": "Moon",
+        "sign": "Pisces"
+      }
+    ],
+    "supporting": [
+      {
+        "conditions": [
+          "Cadent house",
+          "Below horizon",
+          "Retrograde",
+          "Retrograde motion",
+          "sect affinity variable unresolved"
+        ],
+        "house": {
+          "number": 3,
+          "theme": "Communication"
+        },
+        "importance": "high",
+        "keywords": [
+          "ambition",
+          "discipline",
+          "structure",
+          "responsibility",
+          "maturity",
+          "authority"
+        ],
+        "motion": "Retrograde",
+        "object": "Mercury",
+        "sign": "Capricorn"
+      },
+      {
+        "conditions": [
+          "Cadent house",
+          "Below horizon",
+          "Retrograde",
+          "Retrograde motion",
+          "Night sect match"
+        ],
+        "house": {
+          "number": 3,
+          "theme": "Communication"
+        },
+        "importance": "high",
+        "keywords": [
+          "innovation",
+          "freedom",
+          "originality",
+          "individuality",
+          "collective vision",
+          "future-thinking"
+        ],
+        "motion": "Retrograde",
+        "object": "Venus",
+        "sign": "Aquarius"
+      },
+      {
+        "conditions": [
+          "Angular house",
+          "Below horizon",
+          "Direct",
+          "Night sect match"
+        ],
+        "house": {
+          "number": 1,
+          "theme": "Self"
+        },
+        "importance": "high",
+        "keywords": [
+          "expansion",
+          "freedom",
+          "adventure",
+          "truth-seeking",
+          "optimism",
+          "faith"
+        ],
+        "motion": "Direct",
+        "object": "Mars",
+        "sign": "Sagittarius"
+      },
+      {
+        "conditions": [
+          "Succedent house",
+          "Above horizon",
+          "Retrograde",
+          "Retrograde motion",
+          "Sect mismatch"
+        ],
+        "house": {
+          "number": 8,
+          "theme": "Transformation"
+        },
+        "importance": "high",
+        "keywords": [
+          "emotional sensitivity",
+          "nurturing",
+          "protection",
+          "family",
+          "home",
+          "memory"
+        ],
+        "motion": "Retrograde",
+        "object": "Jupiter",
+        "sign": "Cancer"
+      }
+    ]
+  },
+  "projection_level": "standard",
+  "projection_limits": {
+    "effective_limits": {
+      "include_accidental_dignities": true,
+      "include_degrees": false,
+      "include_minor_evidence": false,
+      "include_rulership_context": true,
+      "include_scores": false,
+      "max_aspects": 2,
+      "max_core_placements": 3,
+      "max_dominant_houses": 2,
+      "max_dominant_objects": 3,
+      "max_dominant_signs": 2,
+      "max_house_axes": 2,
+      "max_keywords_per_item": 6,
+      "max_supporting_placements": 6
+    },
+    "level": "standard"
+  },
+  "reading_order": [
+    {
+      "focus": [
+        "Sun in Capricorn, house 2",
+        "Moon in Pisces, house 4",
+        "Ascendant in Scorpio"
+      ],
+      "section": "Core identity"
+    },
+    {
+      "focus": [
+        "Strong concentration in Capricorn, house 2",
+        "Saturn strongly placed in Capricorn"
+      ],
+      "section": "Dominant repeated theme"
+    },
+    {
+      "focus": [
+        "Jupiter opposition Uranus"
+      ],
+      "section": "Main dynamic aspect"
+    },
+    {
+      "focus": [
+        "Mercury in Capricorn, house 3",
+        "Venus in Aquarius, house 3",
+        "Mars in Sagittarius, house 1"
+      ],
+      "section": "Expression style"
+    },
+    {
+      "focus": [
+        "Midheaven in Leo",
+        "Jupiter in Cancer, house 8",
+        "Jupiter strongly placed in Cancer"
+      ],
+      "section": "Background factors"
+    }
+  ],
+  "relationship_network": {
+    "ascendant_ruler": {
+      "ascendant_sign": "Scorpio",
+      "main_ruler": "Mars",
+      "meaning": "The angle ascendant in scorpio is routed through Mars, placed in Sagittarius house 1.",
+      "modern_ruler": "Pluto",
+      "ruler_placement": "Mars in Sagittarius, house 1"
+    },
+    "dominant_dispositor": {
+      "object": "Saturn",
+      "source_objects": [
+        "Mercury",
+        "Neptune",
+        "Saturn",
+        "Sun",
+        "Uranus",
+        "Venus"
+      ]
+    },
+    "midheaven_ruler": {
+      "midheaven_sign": "Leo",
+      "ruler": "Sun",
+      "ruler_placement": "Sun in Capricorn, house 2"
+    },
+    "mutual_receptions": [
+      {
+        "objects": [
+          "Jupiter",
+          "Moon"
+        ]
+      }
+    ]
+  },
+  "strengths": {
+    "accidental_conditions": [
+      {
+        "conditions": [
+          "Succedent house",
+          "Retrograde motion",
+          "Above horizon",
+          "Sect mismatch"
+        ],
+        "object": "Jupiter",
+        "overall": "Weakened"
+      },
+      {
+        "conditions": [
+          "Angular house",
+          "Below horizon",
+          "Sect match"
+        ],
+        "object": "Mars",
+        "overall": "Fortified"
+      },
+      {
+        "conditions": [
+          "Cadent house",
+          "Retrograde motion",
+          "Below horizon",
+          "sect affinity variable unresolved"
+        ],
+        "object": "Mercury",
+        "overall": "Strongly weakened"
+      },
+      {
+        "conditions": [
+          "Angular house",
+          "Below horizon",
+          "Sect match"
+        ],
+        "object": "Moon",
+        "overall": "Fortified"
+      },
+      {
+        "conditions": [
+          "Succedent house",
+          "Below horizon"
+        ],
+        "object": "Neptune",
+        "overall": "Mixed"
+      },
+      {
+        "conditions": [
+          "Angular house",
+          "near ascendant",
+          "Above horizon"
+        ],
+        "object": "Pluto",
+        "overall": "Fortified"
+      },
+      {
+        "conditions": [
+          "Succedent house",
+          "Below horizon",
+          "Sect mismatch"
+        ],
+        "object": "Saturn",
+        "overall": "Mixed"
+      },
+      {
+        "conditions": [
+          "Succedent house",
+          "Below horizon",
+          "Sect mismatch"
+        ],
+        "object": "Sun",
+        "overall": "Mixed"
+      },
+      {
+        "conditions": [
+          "Succedent house",
+          "Below horizon"
+        ],
+        "object": "Uranus",
+        "overall": "Mixed"
+      },
+      {
+        "conditions": [
+          "Cadent house",
+          "Retrograde motion",
+          "Below horizon",
+          "Sect match"
+        ],
+        "object": "Venus",
+        "overall": "Weakened"
+      }
+    ],
+    "essential_dignities": [
+      {
+        "dignity": "Domicile",
+        "effect": "Strong functional expression",
+        "object": "Saturn",
+        "sign": "Capricorn"
+      },
+      {
+        "dignity": "Exaltation",
+        "effect": "Constructive emphasis",
+        "object": "Jupiter",
+        "sign": "Cancer"
+      }
+    ]
+  }
+}

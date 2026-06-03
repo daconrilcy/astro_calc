@@ -15,6 +15,8 @@ pub enum RuntimeError {
         idempotency_key: String,
         chart_calculation_id: i32,
     },
+    #[error("invalid engine request: {0}")]
+    InvalidEngineRequest(String),
 }
 
 impl RuntimeError {
@@ -25,6 +27,7 @@ impl RuntimeError {
             Self::Ephemeris(_) => "ephemeris_error",
             Self::InvalidRuntimeTable(_) => "invalid_runtime_table",
             Self::RunningCalculationInProgress { .. } => "running_calculation_in_progress",
+            Self::InvalidEngineRequest(_) => "invalid_engine_request",
         }
     }
 }

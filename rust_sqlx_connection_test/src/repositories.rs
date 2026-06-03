@@ -17,8 +17,8 @@ use crate::models::{
     ChartObject, DomicileRulerReference, EssentialDignityRuleReferenceRow,
     HorizonPositionReference, HouseAxisReferenceRow, HouseReference,
     AccidentalDignityConditionReferenceRow, HouseSystem, InterpretationSignalRow,
-    LunarPhaseReferenceRow, MotionStateReference, ObjectSectAffinityReferenceRow,
-    PersistedAspectFact, PersistedObjectPositionFact, SignReference,
+    LunarPhaseReferenceRow, LlmProjectionProfileRow, MotionStateReference,
+    ObjectSectAffinityReferenceRow, PersistedAspectFact, PersistedObjectPositionFact, SignReference,
 };
 use crate::runtime::RuntimeError;
 
@@ -549,7 +549,7 @@ impl RuntimeRepository {
     pub async fn house_system(&self, id: i32) -> Result<HouseSystem, RuntimeError> {
         Ok(sqlx::query_as::<_, HouseSystem>(
             r#"
-            SELECT id, code, calculation_engine_code
+            SELECT id, code, name, calculation_engine_code
             FROM astral_house_systems
             WHERE id = $1
             "#,
@@ -557,6 +557,146 @@ impl RuntimeRepository {
         .bind(id)
         .fetch_one(&self.pool)
         .await?)
+    }
+
+    pub async fn house_system_id_by_code(&self, code: &str) -> Result<i32, RuntimeError> {
+        let id = sqlx::query_scalar::<_, i32>(
+            r#"
+            SELECT id
+            FROM astral_house_systems
+            WHERE code = $1 AND is_active = true
+            "#,
+        )
+        .bind(code)
+        .fetch_optional(&self.pool)
+        .await?;
+        id.ok_or_else(|| {
+            RuntimeError::InvalidEngineRequest(format!("unknown house_system: {code}"))
+        })
+    }
+
+    pub async fn zodiacal_reference_system_id_by_key(&self, key: &str) -> Result<i32, RuntimeError> {
+        let id = sqlx::query_scalar::<_, i32>(
+            r#"
+            SELECT id
+            FROM astral_zodiacal_reference_systems
+            WHERE key = $1
+            "#,
+        )
+        .bind(key)
+        .fetch_optional(&self.pool)
+        .await?;
+        id.ok_or_else(|| {
+            RuntimeError::InvalidEngineRequest(format!("unknown zodiacal_reference_system: {key}"))
+        })
+    }
+
+    pub async fn coordinate_reference_system_id_by_key(&self, key: &str) -> Result<i32, RuntimeError> {
+        let id = sqlx::query_scalar::<_, i32>(
+            r#"
+            SELECT id
+            FROM astral_coordinate_reference_systems
+            WHERE key = $1
+            "#,
+        )
+        .bind(key)
+        .fetch_optional(&self.pool)
+        .await?;
+        id.ok_or_else(|| {
+            RuntimeError::InvalidEngineRequest(format!(
+                "unknown coordinate_reference_system: {key}"
+            ))
+        })
+    }
+
+    pub async fn zodiacal_reference_system_display_name(&self, id: i32) -> Result<String, RuntimeError> {
+        let name = sqlx::query_scalar::<_, String>(
+            r#"
+            SELECT display_name
+            FROM astral_zodiacal_reference_systems
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+        name.ok_or_else(|| RuntimeError::InvalidRuntimeTable(format!("zodiac system {id} missing")))
+    }
+
+    pub async fn coordinate_reference_system_display_name(
+        &self,
+        id: i32,
+    ) -> Result<String, RuntimeError> {
+        let name = sqlx::query_scalar::<_, String>(
+            r#"
+            SELECT display_name
+            FROM astral_coordinate_reference_systems
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+        name.ok_or_else(|| {
+            RuntimeError::InvalidRuntimeTable(format!("coordinate system {id} missing"))
+        })
+    }
+
+    pub async fn default_reference_version_id(&self) -> Result<i32, RuntimeError> {
+        let id = sqlx::query_scalar::<_, i32>(
+            r#"
+            SELECT id
+            FROM astral_reference_versions
+            WHERE status IN ('published', 'draft')
+            ORDER BY CASE status WHEN 'published' THEN 0 ELSE 1 END, id ASC
+            LIMIT 1
+            "#,
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+        id.ok_or_else(|| {
+            RuntimeError::InvalidRuntimeTable("no active astral_reference_versions row".to_string())
+        })
+    }
+
+    pub async fn llm_projection_profile(
+        &self,
+        contract_version: &str,
+        level_code: &str,
+    ) -> Result<crate::llm_projection::LlmProjectionProfile, RuntimeError> {
+        let row = sqlx::query_as::<_, LlmProjectionProfileRow>(
+            r#"
+            SELECT contract_version,
+                   level_code,
+                   max_keywords_per_item,
+                   max_core_placements,
+                   max_supporting_placements,
+                   max_dominant_signs,
+                   max_dominant_houses,
+                   max_dominant_objects,
+                   max_house_axes,
+                   max_aspects,
+                   include_accidental_conditions,
+                   include_rulership_details,
+                   include_minor_evidence,
+                   include_degrees,
+                   include_scores
+            FROM astral_llm_projection_profiles
+            WHERE contract_version = $1
+              AND level_code = $2
+              AND is_active = true
+            "#,
+        )
+        .bind(contract_version)
+        .bind(level_code)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        row.map(Into::into).ok_or_else(|| {
+            RuntimeError::InvalidEngineRequest(format!(
+                "unknown llm projection profile: {contract_version}/{level_code}"
+            ))
+        })
     }
 
     pub async fn language_id_for_code(&self, code: &str) -> Result<i32, RuntimeError> {
@@ -1457,6 +1597,28 @@ impl From<ObjectSectAffinityReferenceRow> for crate::domain::ObjectSectAffinityR
             sect_affinity_code: row.sect_affinity_code,
             is_variable: row.is_variable,
             description: row.description,
+        }
+    }
+}
+
+impl From<LlmProjectionProfileRow> for crate::llm_projection::LlmProjectionProfile {
+    fn from(row: LlmProjectionProfileRow) -> Self {
+        Self {
+            contract_version: row.contract_version,
+            level_code: row.level_code,
+            max_keywords_per_item: row.max_keywords_per_item as usize,
+            max_core_placements: row.max_core_placements as usize,
+            max_supporting_placements: row.max_supporting_placements as usize,
+            max_dominant_signs: row.max_dominant_signs as usize,
+            max_dominant_houses: row.max_dominant_houses as usize,
+            max_dominant_objects: row.max_dominant_objects as usize,
+            max_house_axes: row.max_house_axes as usize,
+            max_aspects: row.max_aspects as usize,
+            include_accidental_conditions: row.include_accidental_conditions,
+            include_rulership_details: row.include_rulership_details,
+            include_minor_evidence: row.include_minor_evidence,
+            include_degrees: row.include_degrees,
+            include_scores: row.include_scores,
         }
     }
 }

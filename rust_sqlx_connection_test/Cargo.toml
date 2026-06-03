@@ -6,6 +6,7 @@ default-run = "rust_sqlx_connection_test"
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.10"
 dotenvy = "0.15"
 hex = "0.4"
 serde = { version = "1", features = ["derive"] }
@@ -63,3 +64,7 @@ path = "../tests/signals_tests.rs"
 [[test]]
 name = "contract_basic_v8_tests"
 path = "../tests/contract_basic_v8_tests.rs"
+
+[[test]]
+name = "engine_contract_tests"
+path = "../tests/engine_contract_tests.rs"

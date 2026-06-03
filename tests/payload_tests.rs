@@ -17,6 +17,7 @@ fn input() -> NatalChartInput {
         coordinate_reference_system_id: 1,
         house_system_id: 1,
         product_code: Some("basic".to_string()),
+        client_idempotency_key: None,
     }
 }
 

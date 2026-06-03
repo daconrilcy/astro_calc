@@ -6,6 +6,11 @@ use sqlx::PgPool;
 use crate::domain::{
     BasicPayload, CalculatedChartFacts, CalculationReferenceData, NatalChartInput, RuntimeOptions,
 };
+use crate::engine::{
+    build_engine_response, validate_and_resolve_request, validate_request_early,
+    AstroEngineRequest, AstroEngineResponse, LLM_PROJECTION_CONTRACT_VERSION,
+};
+use crate::llm_projection::resolve_projection_profile;
 use crate::ephemeris::EphemerisEngine;
 use crate::idempotency::{advisory_lock_key, idempotency_key, input_hash};
 use crate::models::ChartCalculationRow;
@@ -39,6 +44,67 @@ where
             ephemeris,
             options,
         }
+    }
+
+    pub async fn calculate_natal_engine(
+        &self,
+        request: AstroEngineRequest,
+    ) -> Result<AstroEngineResponse, RuntimeError> {
+        validate_request_early(&request)?;
+
+        let reference_version_id = self.repository.default_reference_version_id().await?;
+        let zodiacal_id = self
+            .repository
+            .zodiacal_reference_system_id_by_key(&request.calculation.zodiacal_reference_system)
+            .await?;
+        let coordinate_id = self
+            .repository
+            .coordinate_reference_system_id_by_key(&request.calculation.coordinate_reference_system)
+            .await?;
+        let house_system_id = self
+            .repository
+            .house_system_id_by_code(&request.calculation.house_system)
+            .await?;
+
+        let resolved = validate_and_resolve_request(
+            &request,
+            reference_version_id,
+            zodiacal_id,
+            coordinate_id,
+            house_system_id,
+        )?;
+
+        let profile = resolve_projection_profile(
+            &self.repository,
+            LLM_PROJECTION_CONTRACT_VERSION,
+            &resolved.projection_level,
+        )
+        .await?;
+
+        let zodiac_label = self
+            .repository
+            .zodiacal_reference_system_display_name(zodiacal_id)
+            .await?;
+        let coordinate_label = self
+            .repository
+            .coordinate_reference_system_display_name(coordinate_id)
+            .await?;
+        let house_system = self.repository.house_system(house_system_id).await?;
+        let house_system_label = house_system.name;
+
+        let house_axes = self.repository.house_axis_references().await?;
+        let audit = self.calculate_natal_basic(resolved.natal_input.clone()).await?;
+
+        build_engine_response(
+            &resolved,
+            audit,
+            &self.options,
+            &zodiac_label,
+            &coordinate_label,
+            &house_system_label,
+            &house_axes,
+            &profile,
+        )
     }
 
     pub async fn calculate_natal_basic(

@@ -49,6 +49,7 @@ fn natal_input_from_env() -> Result<NatalChartInput, Box<dyn std::error::Error>>
         product_code: Some(
             std::env::var("ASTRAL_PRODUCT_CODE").unwrap_or_else(|_| "basic".to_string()),
         ),
+        client_idempotency_key: None,
     })
 }
 

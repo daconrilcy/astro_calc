@@ -1,0 +1,468 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://astral-calculation.local/schemas/llm_projection_natal_v1.schema.json",
+  "title": "LLM Projection Natal v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "projection_level",
+    "projection_limits",
+    "chart",
+    "reading_order",
+    "core_identity",
+    "dominant_themes",
+    "placements",
+    "angles",
+    "strengths",
+    "relationship_network",
+    "dynamics",
+    "house_axes",
+    "keywords"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "llm_projection_natal_v1"
+    },
+    "projection_level": {
+      "type": "string",
+      "enum": ["compact", "standard", "rich", "expert"]
+    },
+    "projection_limits": {
+      "$ref": "#/$defs/projection_limits"
+    },
+    "chart": {
+      "$ref": "#/$defs/chart"
+    },
+    "reading_order": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/reading_order_item"
+      }
+    },
+    "core_identity": {
+      "$ref": "#/$defs/core_identity"
+    },
+    "dominant_themes": {
+      "$ref": "#/$defs/dominant_themes"
+    },
+    "placements": {
+      "$ref": "#/$defs/placements"
+    },
+    "angles": {
+      "$ref": "#/$defs/angles"
+    },
+    "strengths": {
+      "$ref": "#/$defs/strengths"
+    },
+    "relationship_network": {
+      "$ref": "#/$defs/relationship_network"
+    },
+    "dynamics": {
+      "$ref": "#/$defs/dynamics"
+    },
+    "house_axes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/house_axis"
+      }
+    },
+    "keywords": {
+      "$ref": "#/$defs/keywords"
+    }
+  },
+  "$defs": {
+    "projection_limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "effective_limits"],
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["compact", "standard", "rich", "expert"]
+        },
+        "effective_limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "max_keywords_per_item",
+            "max_supporting_placements",
+            "max_dominant_signs",
+            "max_dominant_houses",
+            "max_dominant_objects",
+            "max_house_axes",
+            "max_aspects",
+            "include_rulership_context",
+            "include_accidental_dignities"
+          ],
+          "properties": {
+            "max_keywords_per_item": { "type": "integer", "minimum": 0 },
+            "max_core_placements": { "type": "integer", "minimum": 0 },
+            "max_supporting_placements": { "type": "integer", "minimum": 0 },
+            "max_dominant_signs": { "type": "integer", "minimum": 0 },
+            "max_dominant_houses": { "type": "integer", "minimum": 0 },
+            "max_dominant_objects": { "type": "integer", "minimum": 0 },
+            "max_house_axes": { "type": "integer", "minimum": 0 },
+            "max_aspects": { "type": "integer", "minimum": 0 },
+            "include_rulership_context": { "type": "boolean" },
+            "include_accidental_dignities": { "type": "boolean" },
+            "include_minor_evidence": { "type": "boolean" },
+            "include_degrees": { "type": "boolean" },
+            "include_scores": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "chart": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "birth", "calculation"],
+      "properties": {
+        "type": { "type": "string" },
+        "birth": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["datetime_utc", "location"],
+          "properties": {
+            "datetime_utc": { "type": "string" },
+            "location": { "type": "string" }
+          }
+        },
+        "calculation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["zodiac", "coordinates", "house_system"],
+          "properties": {
+            "zodiac": { "type": "string" },
+            "coordinates": { "type": "string" },
+            "house_system": { "type": "string" }
+          }
+        },
+        "sect": { "type": "string" },
+        "hemisphere_emphasis": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["dominant_area", "summary"],
+          "properties": {
+            "dominant_area": { "type": "string" },
+            "summary": { "type": "string" }
+          }
+        }
+      }
+    },
+    "reading_order_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["section", "focus"],
+      "properties": {
+        "section": { "type": "string" },
+        "focus": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "house_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["number", "theme"],
+      "properties": {
+        "number": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "theme": { "type": "string" }
+      }
+    },
+    "placement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["object", "sign"],
+      "properties": {
+        "object": { "type": "string" },
+        "sign": { "type": "string" },
+        "house": { "$ref": "#/$defs/house_ref" },
+        "motion": { "type": "string" },
+        "keywords": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "conditions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "importance": { "type": "string" },
+        "longitude_deg": { "type": "number" }
+      }
+    },
+    "core_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sun": { "$ref": "#/$defs/core_body" },
+        "moon": { "$ref": "#/$defs/core_body" },
+        "ascendant": { "$ref": "#/$defs/ascendant_body" }
+      }
+    },
+    "core_body": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["placement", "keywords", "importance"],
+      "properties": {
+        "placement": { "$ref": "#/$defs/placement" },
+        "keywords": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "conditions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "importance": { "type": "string" }
+      }
+    },
+    "ascendant_body": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sign", "keywords", "importance"],
+      "properties": {
+        "sign": { "type": "string" },
+        "keywords": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "ruler": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "traditional": { "type": "string" },
+            "modern": { "type": "string" }
+          }
+        },
+        "importance": { "type": "string" }
+      }
+    },
+    "dominant_themes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signs", "houses", "objects"],
+      "properties": {
+        "signs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/dominant_sign" }
+        },
+        "houses": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/dominant_house" }
+        },
+        "objects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/dominant_object" }
+        }
+      }
+    },
+    "dominant_sign": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sign", "strength", "reasons", "keywords"],
+      "properties": {
+        "sign": { "type": "string" },
+        "strength": { "type": "string" },
+        "reasons": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "keywords": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "score": { "type": "number" }
+      }
+    },
+    "dominant_house": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["house", "strength", "reasons"],
+      "properties": {
+        "house": { "$ref": "#/$defs/house_ref" },
+        "strength": { "type": "string" },
+        "reasons": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "score": { "type": "number" }
+      }
+    },
+    "dominant_object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["object", "strength", "reasons"],
+      "properties": {
+        "object": { "type": "string" },
+        "strength": { "type": "string" },
+        "reasons": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "score": { "type": "number" }
+      }
+    },
+    "placements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["primary", "supporting", "background"],
+      "properties": {
+        "primary": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/placement" }
+        },
+        "supporting": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/placement" }
+        },
+        "background": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/placement" }
+        }
+      }
+    },
+    "angles": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ascendant": { "$ref": "#/$defs/angle_entry" },
+        "midheaven": { "$ref": "#/$defs/angle_entry" },
+        "descendant": { "$ref": "#/$defs/angle_entry" },
+        "imum_coeli": { "$ref": "#/$defs/angle_entry" }
+      }
+    },
+    "angle_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sign", "house"],
+      "properties": {
+        "sign": { "type": "string" },
+        "house": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "keywords": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "strengths": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["essential_dignities", "accidental_conditions"],
+      "properties": {
+        "essential_dignities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/essential_dignity" }
+        },
+        "accidental_conditions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/accidental_condition" }
+        }
+      }
+    },
+    "essential_dignity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["object", "dignity", "sign", "effect"],
+      "properties": {
+        "object": { "type": "string" },
+        "dignity": { "type": "string" },
+        "sign": { "type": "string" },
+        "effect": { "type": "string" },
+        "strength_score": { "type": "number" }
+      }
+    },
+    "accidental_condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["object", "overall", "conditions"],
+      "properties": {
+        "object": { "type": "string" },
+        "overall": { "type": "string" },
+        "conditions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "overall_score": { "type": "number" }
+      }
+    },
+    "relationship_network": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "dynamics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "lunar_phase": { "$ref": "#/$defs/lunar_phase" },
+        "major_aspects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/major_aspect" }
+        }
+      }
+    },
+    "lunar_phase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["phase", "cycle"],
+      "properties": {
+        "phase": { "type": "string" },
+        "cycle": { "type": "string" },
+        "sun_moon_angle_degrees": { "type": "number" },
+        "keywords": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "major_aspect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["aspect", "quality"],
+      "properties": {
+        "aspect": { "type": "string" },
+        "quality": { "type": "string" },
+        "orb_degrees": { "type": "number" },
+        "phase": { "type": "string" },
+        "keywords": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "house_axis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["axis", "houses", "balance", "importance", "summary"],
+      "properties": {
+        "axis": { "type": "string" },
+        "houses": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/house_ref" }
+        },
+        "balance": { "type": "string" },
+        "importance": { "type": "string" },
+        "summary": { "type": "string" }
+      }
+    },
+    "keywords": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["main", "by_area"],
+      "properties": {
+        "main": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "by_area": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

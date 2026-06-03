@@ -2423,6 +2423,110 @@ production et n'alimente pas `detect_aspects`.
 - `tests/runtime_tests.rs` ;
 - `scripts/verify_natal_v13_golden.ps1` (projection stable, complementaire).
 
+## 4A — Engine input contract and dual output envelope
+
+Objectif : separer explicitement la vue **audit** (payload moteur exhaustif) de la
+vue **LLM** (projection stable, epuree, parametrable par niveau), sans que le
+niveau de projection influence le calcul brut.
+
+### Contrats JSON
+
+- `rust_sqlx_connection_test/schemas/astro_engine_request_v1.schema.json` :
+  entree moteur (`calculation.type`, `birth.date/time/timezone`, localisation,
+  `projection.level`) ;
+- `rust_sqlx_connection_test/schemas/astro_engine_response_v1.schema.json` :
+  enveloppe de sortie (`request_echo`, `calculation_result`, `audit_payload`,
+  `llm_payload`) ;
+- `rust_sqlx_connection_test/schemas/llm_projection_natal_v1.schema.json` :
+  structure fixe de la projection LLM (cles stables ; la richesse varie par
+  tableaux et limites, pas par schema).
+
+### Donnees canoniques
+
+- `json_db/astral_llm_projection_profiles.json` : profils nommes
+  `compact`, `standard`, `rich`, `expert` pour `llm_projection_natal_v1`
+  (limites de keywords, placements, dominantes, axes, aspects, flags
+  rulership/accidentel/degres/scores).
+
+### Code
+
+- `rust_sqlx_connection_test/src/engine/` : types requete/reponse, resolution
+  timezone (`chrono-tz`), mapping vers `NatalChartInput`, assemblage de
+  `AstroEngineResponse` ;
+- `rust_sqlx_connection_test/src/llm_projection/` : mapper
+  `natal_structured_v13` → `llm_projection_natal_v1` (sans IDs techniques ni
+  redondances `id/code/name` dans la projection) ;
+- `ChartCalculationRuntimeService::calculate_natal_engine` : calcule toujours le
+  payload audit complet via `calculate_natal_basic`, puis projette selon
+  `projection.level` uniquement pour `llm_payload`.
+
+### Regles
+
+- `projection.level` ne modifie pas `audit_payload` ni le calcul ephemerides ;
+- `audit_payload.payload` reste le contrat `natal_structured_v13` courant ;
+- `llm_payload` est en anglais, sans langue cible, ton ni consigne redactionnelle ;
+- entree natal stricte : `date` + `time` + `timezone` + latitude/longitude
+  (pas de deduction implicite de fuseau).
+
+### Tests
+
+- `tests/engine_contract_tests.rs` : validation JSON Schema, structure identique
+  entre niveaux, absence de cles techniques interdites, goldens
+  `tests/golden/llm_projection_natal_v1_paris_1990_{compact,standard,rich}.json`.
+
+Regeneration des goldens LLM :
+
+```bash
+cd rust_sqlx_connection_test
+UPDATE_LLM_GOLDENS=1 cargo test --test engine_contract_tests write_llm_projection_goldens_when_env_set
+```
+
+### Criteres d'acceptation 4A
+
+1. Schemas `astro_engine_request_v1` et `astro_engine_response_v1` presents.
+2. Le moteur accepte une requete JSON avec `calculation.type`, naissance,
+   timezone, localisation et `projection.level` (natal seul pour l'instant).
+3. La reponse contient toujours `audit_payload` (v13 brut) et `llm_payload`
+   (projection epuree).
+4. `projection.level` ne change pas le calcul brut.
+5. `projection.level` ne change que la richesse de `llm_payload`.
+6. `llm_payload` sans IDs techniques ni redondances id/code/name.
+7. Pas de langue, ton ni consigne redactionnelle dans `llm_payload`.
+8. `llm_payload.contract_version = "llm_projection_natal_v1"`.
+9. Tests golden compact / standard / rich avec meme structure, contenus plus ou
+   moins riches.
+
+### Revue adversariale (correctifs 4A)
+
+Findings traites dans le code :
+
+- **Profil compact** : `ruler` ascendant et `relationship_network` desormais
+  coupes quand `include_rulership_details = false` (avant : ruler encore present).
+- **Scores** : `overall_score` / `strength_score` omis sauf profil `expert`
+  (`include_scores`).
+- **Limites effectives** : troncature `reasons`, `reading_order.focus`,
+  `essential_dignities` (top N par force), `house_axes` avec libelles canoniques
+  (`axis_labels` depuis `json_db`, pas `axis_code` brut).
+- **Conditions** : deduplication + secte correcte (`Day/Night sect match`, pas
+  toujours « Night »).
+- **Profils DB** : `resolve_projection_profile` — repli seed uniquement si table
+  absente ou profil inconnu en base, plus de `unwrap` masquant les erreurs DB.
+- **Reference version** : `default_reference_version_id()` au lieu de `1` en dur.
+- **Idempotence client** : `client_idempotency_key` dans `NatalChartInput` et
+  document d'idempotence stable.
+- **Validation** : `validate_request_early` avant les requetes SQL.
+- **House system** : libelle `name` depuis la base, pas capitalisation du code.
+- **Tests** : timezone Paris/UTC, regles compact, idempotence client, goldens
+  regeneres.
+
+Reste pour **4B** : aspects majeurs parfois absents si `aspect_context` manquant
+sur le signal ; enrichment des `reasons` ; endpoint HTTP/CLI.
+
+### Suite 4B
+
+Affiner le mapper `llm_projection` (formulations `reasons`, axes, aspects,
+keywords par zone) et brancher l'API HTTP/CLI sur `calculate_natal_engine`.
+
 ### Criteres d'acceptation 3F
 
 1. PostgreSQL : pour `major`, `expected_aspect_count = 5` et

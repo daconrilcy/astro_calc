@@ -39,6 +39,7 @@ pub struct MajorAspectFamilyReference {
 pub struct HouseSystem {
     pub id: i32,
     pub code: String,
+    pub name: String,
     pub calculation_engine_code: String,
 }
 
@@ -292,4 +293,23 @@ pub(crate) struct PersistedAspectFact {
     pub(crate) valence_is_tonal: Option<bool>,
     pub(crate) valence_is_intensity_modifier: Option<bool>,
     pub(crate) calculation_notes_json: Option<Value>,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct LlmProjectionProfileRow {
+    pub contract_version: String,
+    pub level_code: String,
+    pub max_keywords_per_item: i32,
+    pub max_core_placements: i32,
+    pub max_supporting_placements: i32,
+    pub max_dominant_signs: i32,
+    pub max_dominant_houses: i32,
+    pub max_dominant_objects: i32,
+    pub max_house_axes: i32,
+    pub max_aspects: i32,
+    pub include_accidental_conditions: bool,
+    pub include_rulership_details: bool,
+    pub include_minor_evidence: bool,
+    pub include_degrees: bool,
+    pub include_scores: bool,
 }

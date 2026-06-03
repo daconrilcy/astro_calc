@@ -16,7 +16,28 @@ fn input() -> NatalChartInput {
         coordinate_reference_system_id: 1,
         house_system_id: 1,
         product_code: Some("basic".to_string()),
+        client_idempotency_key: None,
     }
+}
+
+#[test]
+fn client_idempotency_key_changes_hash() {
+    let mut with_key = input();
+    with_key.client_idempotency_key = Some("client-abc".to_string());
+    let mut without_key = input();
+    without_key.client_idempotency_key = None;
+
+    let key_a = rust_sqlx_connection_test::idempotency::idempotency_key(
+        &with_key,
+        &rust_sqlx_connection_test::domain::RuntimeOptions::default(),
+    )
+    .expect("key");
+    let key_b = rust_sqlx_connection_test::idempotency::idempotency_key(
+        &without_key,
+        &rust_sqlx_connection_test::domain::RuntimeOptions::default(),
+    )
+    .expect("key");
+    assert_ne!(key_a, key_b);
 }
 
 #[test]
