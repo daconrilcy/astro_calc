@@ -2481,6 +2481,37 @@ cd rust_sqlx_connection_test
 UPDATE_LLM_GOLDENS=1 cargo test --test engine_contract_tests write_llm_projection_goldens_when_env_set
 ```
 
+### Sortie CLI (validation artefact 4A)
+
+Par defaut, `cargo run --features swisseph-engine` appelle `calculate_natal_engine`
+et ecrit une enveloppe `astro_engine_response_v1` (`output/astro_engine_response_*.json`
+avec `--file`). Ce JSON contient `request_echo`, `calculation_result`, `audit_payload`
+et `llm_payload`.
+
+Variables utiles :
+
+- `ASTRAL_PROJECTION_LEVEL` : `compact` | `standard` | `rich` | `expert`
+- `ASTRAL_BIRTH_DATE` + `ASTRAL_BIRTH_TIME` + `ASTRAL_BIRTH_TIMEZONE` (entree stricte 4A)
+- ou `ASTRAL_BIRTH_DATETIME_UTC` + `ASTRAL_BIRTH_TIMEZONE` (repli, timezone defaut `UTC`)
+- `ASTRAL_OUTPUT_CONTRACT=engine` (defaut) ou `audit` pour forcer le payload v13 brut
+
+Chemin legacy audit seul (scripts `verify_natal_v13_golden.ps1`) :
+
+```powershell
+cargo run --features swisseph-engine -- --audit-only
+```
+
+Verification enveloppe 4A :
+
+```powershell
+.\scripts\verify_engine_response_4a.ps1 -ProjectionLevel rich
+.\scripts\verify_engine_response_4a.ps1 -ProjectionLevel compact
+.\scripts\verify_engine_response_4a.ps1 -ProjectionLevel standard
+```
+
+Pour comparer les niveaux : `audit_payload` doit rester identique entre deux runs
+qui ne changent que `ASTRAL_PROJECTION_LEVEL` ; seul `llm_payload` varie en richesse.
+
 ### Criteres d'acceptation 4A
 
 1. Schemas `astro_engine_request_v1` et `astro_engine_response_v1` presents.
@@ -2521,6 +2552,32 @@ Findings traites dans le code :
 
 Reste pour **4B** : aspects majeurs parfois absents si `aspect_context` manquant
 sur le signal ; enrichment des `reasons` ; endpoint HTTP/CLI.
+
+### Revue adversariale CLI / env (correctifs)
+
+Findings traites apres branchement `calculate_natal_engine` par defaut :
+
+- **Divergence engine vs audit** : les cles `ASTRAL_*_REFERENCE_SYSTEM` /
+  `ASTRAL_HOUSE_SYSTEM` (prioritaires) et les `*_ID` sont resolus depuis le
+  seed `json_db` pour les deux chemins ; le mode `--audit-only` n'ignore plus
+  les cles string.
+- **Naissance partielle** : `ASTRAL_BIRTH_DATE` + `ASTRAL_BIRTH_TIME` sans
+  `ASTRAL_BIRTH_TIMEZONE` → erreur explicite (plus de repli silencieux sur UTC).
+- **Flags CLI** : `--engine` et `--audit-only` ensemble → erreur.
+- **Idempotence** : `ASTRAL_IDEMPOTENCY_KEY` vide filtree (engine + audit).
+- **Projection** : `ASTRAL_PROJECTION_LEVEL` validee a la construction de la
+  requete engine.
+- **`.env.example`** : variables 4A, cles metier et triplet date/heure/fuseau.
+- **Test structure** : `engine_envelope_is_not_flat_v13_payload` (pas de
+  `product_code` a la racine).
+
+Reste connu :
+
+- Golden enveloppe `astro_engine_response_v1_paris_1990_rich.json` construit
+  hors DB a partir du golden v13 (test de structure, pas run moteur complet).
+- `verify_engine_response_4a.ps1` verifie les cles, pas le JSON Schema complet.
+- `ASTRAL_BIRTH_DATETIME_UTC` seul reste un repli legacy ; preferer le triplet
+  local pour aligner engine et audit.
 
 ### Suite 4B
 

@@ -1,60 +1,88 @@
-use chrono::{DateTime, Utc};
 use rust_sqlx_connection_test::cli::{
-    output_mode_from_args, output_mode_from_env, root_output_dir, write_timestamped_output_file,
-    OutputMode,
+    cli_options_from_args, output_mode_from_env, root_output_dir, write_timestamped_output_file,
+    OutputContract, OutputMode,
 };
 use rust_sqlx_connection_test::config::{
     ephemeris_path_from_env, load_dotenv, runtime_options_from_env,
 };
 use rust_sqlx_connection_test::db::connect_from_env;
 use rust_sqlx_connection_test::domain::NatalChartInput;
+use rust_sqlx_connection_test::engine_env::{
+    birth_datetime_utc_from_env, coordinate_reference_system_id_from_env,
+    house_system_id_from_env, zodiacal_reference_system_id_from_env,
+};
+use rust_sqlx_connection_test::engine_request_from_env;
 use rust_sqlx_connection_test::ephemeris::SwissEphemerisEngine;
 use rust_sqlx_connection_test::runtime::ChartCalculationRuntimeService;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     load_dotenv();
-    let output_mode = output_mode_from_args(std::env::args().skip(1), output_mode_from_env())?;
-    let input = natal_input_from_env()?;
+    let cli = cli_options_from_args(std::env::args().skip(1), output_mode_from_env())?;
     let pool = connect_from_env().await?;
     let ephemeris = SwissEphemerisEngine::new(ephemeris_path_from_env());
     let service = ChartCalculationRuntimeService::new(pool, ephemeris, runtime_options_from_env());
 
-    let output = service.calculate_natal_basic(input).await?;
-    let json = serde_json::to_string_pretty(&output)?;
-    match output_mode {
+    let json = match cli.output_contract {
+        OutputContract::Engine => {
+            let request = engine_request_from_env()?;
+            let response = service.calculate_natal_engine(request).await?;
+            serde_json::to_string_pretty(&response)?
+        }
+        OutputContract::AuditOnly => {
+            let input = natal_input_from_env()?;
+            let output = service.calculate_natal_basic(input).await?;
+            serde_json::to_string_pretty(&output)?
+        }
+    };
+
+    match cli.output_mode {
         OutputMode::Stdout => println!("{json}"),
         OutputMode::File => {
-            let path = write_timestamped_output_file(root_output_dir(), &json)?;
-            println!("JSON payload written to {}", path.display());
+            let path =
+                write_timestamped_output_file(root_output_dir(), &json, cli.output_contract)?;
+            let label = match cli.output_contract {
+                OutputContract::Engine => "astro_engine_response_v1",
+                OutputContract::AuditOnly => "natal_structured_v13 audit payload",
+            };
+            println!("{label} written to {}", path.display());
         }
     }
     Ok(())
 }
 
 fn natal_input_from_env() -> Result<NatalChartInput, Box<dyn std::error::Error>> {
+    let idempotency_key = std::env::var("ASTRAL_IDEMPOTENCY_KEY")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+
     Ok(NatalChartInput {
         subject_label: std::env::var("ASTRAL_SUBJECT_LABEL").ok(),
-        birth_datetime_utc: required("ASTRAL_BIRTH_DATETIME_UTC")?.parse::<DateTime<Utc>>()?,
-        latitude_deg: required("ASTRAL_LATITUDE_DEG")?.parse()?,
-        longitude_deg: required("ASTRAL_LONGITUDE_DEG")?.parse()?,
+        birth_datetime_utc: birth_datetime_utc_from_env()?,
+        latitude_deg: required_parse("ASTRAL_LATITUDE_DEG")?,
+        longitude_deg: required_parse("ASTRAL_LONGITUDE_DEG")?,
         altitude_m: optional_parse("ASTRAL_ALTITUDE_M")?,
         reference_version_id: optional_parse("ASTRAL_REFERENCE_VERSION_ID")?.unwrap_or(1),
         calculation_profile_id: optional_parse("ASTRAL_CALCULATION_PROFILE_ID")?,
-        zodiacal_reference_system_id: optional_parse("ASTRAL_ZODIACAL_REFERENCE_SYSTEM_ID")?
-            .unwrap_or(1),
-        coordinate_reference_system_id: optional_parse("ASTRAL_COORDINATE_REFERENCE_SYSTEM_ID")?
-            .unwrap_or(1),
-        house_system_id: optional_parse("ASTRAL_HOUSE_SYSTEM_ID")?.unwrap_or(1),
+        zodiacal_reference_system_id: zodiacal_reference_system_id_from_env()?,
+        coordinate_reference_system_id: coordinate_reference_system_id_from_env()?,
+        house_system_id: house_system_id_from_env()?,
         product_code: Some(
             std::env::var("ASTRAL_PRODUCT_CODE").unwrap_or_else(|_| "basic".to_string()),
         ),
-        client_idempotency_key: None,
+        client_idempotency_key: idempotency_key,
     })
 }
 
-fn required(name: &str) -> Result<String, Box<dyn std::error::Error>> {
-    std::env::var(name).map_err(|_| format!("{name} must be set").into())
+fn required_parse<T>(name: &str) -> Result<T, Box<dyn std::error::Error>>
+where
+    T: std::str::FromStr,
+    T::Err: std::error::Error + 'static,
+{
+    std::env::var(name)?
+        .parse::<T>()
+        .map_err(|error| format!("{name} is invalid: {error}").into())
 }
 
 fn optional_parse<T>(name: &str) -> Result<Option<T>, Box<dyn std::error::Error>>

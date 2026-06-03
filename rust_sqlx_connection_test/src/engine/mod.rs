@@ -7,7 +7,10 @@ pub use request::{
     EngineProjectionRequest, LLM_PROJECTION_CONTRACT_VERSION, REQUEST_CONTRACT_VERSION,
     RESPONSE_CONTRACT_VERSION,
 };
-pub use resolve::{validate_and_resolve_request, validate_request_early, ResolvedEngineRequest};
+pub use resolve::{
+    local_birth_to_utc, validate_and_resolve_request, validate_request_early,
+    ResolvedEngineRequest,
+};
 pub use response::{
     AstroEngineResponse, EngineAuditPayload, EngineCalculationResult, EngineEchoLocation,
     EngineRequestEcho,

@@ -8,27 +8,87 @@ pub enum OutputMode {
     File,
 }
 
-pub fn output_mode_from_args(
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OutputContract {
+    /// Enveloppe `astro_engine_response_v1` (defaut 4A).
+    Engine,
+    /// Payload audit brut `natal_structured_v13` (scripts golden v13).
+    AuditOnly,
+}
+
+pub struct CliOptions {
+    pub output_mode: OutputMode,
+    pub output_contract: OutputContract,
+}
+
+pub fn cli_options_from_args(
     args: impl IntoIterator<Item = String>,
     default_mode: OutputMode,
-) -> Result<OutputMode, Box<dyn std::error::Error>> {
+) -> Result<CliOptions, Box<dyn std::error::Error>> {
     let mut output_mode = default_mode;
+    let mut output_contract = output_contract_from_env();
+    let mut saw_engine = false;
+    let mut saw_audit = false;
 
     for arg in args {
         match arg.as_str() {
             "--file" => output_mode = OutputMode::File,
+            "--audit-only" => {
+                output_contract = OutputContract::AuditOnly;
+                saw_audit = true;
+            }
+            "--engine" => {
+                output_contract = OutputContract::Engine;
+                saw_engine = true;
+            }
             "--help" | "-h" => {
-                return Err("usage: cargo run -- [--file]".into());
+                return Err(
+                    "usage: cargo run -- [--file] [--engine|--audit-only]\n\
+                     default: astro_engine_response_v1 envelope (4A)\n\
+                     --audit-only: raw natal_structured_v13 payload"
+                        .into(),
+                );
             }
             other => {
-                return Err(
-                    format!("unknown argument {other}; usage: cargo run -- [--file]").into(),
-                );
+                return Err(format!(
+                    "unknown argument {other}; usage: cargo run -- [--file] [--engine|--audit-only]"
+                )
+                .into());
             }
         }
     }
 
-    Ok(output_mode)
+    if saw_engine && saw_audit {
+        return Err(
+            "cannot use --engine and --audit-only together; choose one output contract".into(),
+        );
+    }
+
+    Ok(CliOptions {
+        output_mode,
+        output_contract,
+    })
+}
+
+pub fn output_mode_from_args(
+    args: impl IntoIterator<Item = String>,
+    default_mode: OutputMode,
+) -> Result<OutputMode, Box<dyn std::error::Error>> {
+    Ok(cli_options_from_args(args, default_mode)?.output_mode)
+}
+
+pub fn output_contract_from_env() -> OutputContract {
+    match std::env::var("ASTRAL_OUTPUT_CONTRACT")
+        .ok()
+        .map(|value| value.to_ascii_lowercase())
+        .as_deref()
+    {
+        Some("audit" | "audit_only" | "natal_structured_v13" | "v13") => {
+            OutputContract::AuditOnly
+        }
+        Some("engine" | "astro_engine_response_v1" | "4a") => OutputContract::Engine,
+        _ => OutputContract::Engine,
+    }
 }
 
 pub fn output_mode_from_env() -> OutputMode {
@@ -50,18 +110,23 @@ pub fn root_output_dir() -> PathBuf {
         .join("output")
 }
 
-pub fn timestamped_output_filename(datetime: DateTime<Utc>) -> String {
-    format!("basic_payload_{}.json", datetime.format("%Y%m%d_%H%M%S"))
+pub fn timestamped_output_filename(datetime: DateTime<Utc>, contract: OutputContract) -> String {
+    let stem = match contract {
+        OutputContract::Engine => "astro_engine_response",
+        OutputContract::AuditOnly => "basic_payload",
+    };
+    format!("{stem}_{}.json", datetime.format("%Y%m%d_%H%M%S"))
 }
 
 pub fn write_timestamped_output_file(
     output_dir: impl AsRef<Path>,
     json: &str,
+    contract: OutputContract,
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let output_dir = output_dir.as_ref();
     std::fs::create_dir_all(output_dir)?;
 
-    let path = output_dir.join(timestamped_output_filename(Utc::now()));
+    let path = output_dir.join(timestamped_output_filename(Utc::now(), contract));
     std::fs::write(&path, json)?;
     Ok(path)
 }

@@ -54,6 +54,33 @@ pub fn validate_request_early(request: &AstroEngineRequest) -> Result<(), Runtim
     Ok(())
 }
 
+pub fn local_birth_to_utc(
+    date: &str,
+    time: &str,
+    timezone: &str,
+) -> Result<DateTime<Utc>, RuntimeError> {
+    let naive_date = NaiveDate::parse_from_str(date, "%Y-%m-%d").map_err(|_| {
+        RuntimeError::InvalidEngineRequest("birth.date must be YYYY-MM-DD".to_string())
+    })?;
+    let naive_time = NaiveTime::parse_from_str(time, "%H:%M:%S").map_err(|_| {
+        RuntimeError::InvalidEngineRequest("birth.time must be HH:MM:SS".to_string())
+    })?;
+    let naive_local = NaiveDateTime::new(naive_date, naive_time);
+
+    let tz: Tz = timezone.parse().map_err(|_| {
+        RuntimeError::InvalidEngineRequest(format!("invalid timezone: {timezone}"))
+    })?;
+
+    tz.from_local_datetime(&naive_local)
+        .single()
+        .ok_or_else(|| {
+            RuntimeError::InvalidEngineRequest(
+                "ambiguous or invalid local birth datetime for timezone".to_string(),
+            )
+        })
+        .map(|local| local.with_timezone(&Utc))
+}
+
 pub fn validate_and_resolve_request(
     request: &AstroEngineRequest,
     reference_version_id: i32,
@@ -64,32 +91,19 @@ pub fn validate_and_resolve_request(
     validate_request_early(request)?;
     let projection_level = request.projection.level.clone();
 
-    let naive_date = NaiveDate::parse_from_str(&request.birth.date, "%Y-%m-%d").map_err(|_| {
-        RuntimeError::InvalidEngineRequest("birth.date must be YYYY-MM-DD".to_string())
-    })?;
-    let naive_time = NaiveTime::parse_from_str(&request.birth.time, "%H:%M:%S").map_err(|_| {
-        RuntimeError::InvalidEngineRequest("birth.time must be HH:MM:SS".to_string())
-    })?;
-    let naive_local = NaiveDateTime::new(naive_date, naive_time);
-
-    let tz: Tz = request
-        .birth
-        .timezone
-        .parse()
-        .map_err(|_| RuntimeError::InvalidEngineRequest(format!(
-            "invalid timezone: {}",
-            request.birth.timezone
-        )))?;
-
-    let local = tz
-        .from_local_datetime(&naive_local)
-        .single()
-        .ok_or_else(|| {
-            RuntimeError::InvalidEngineRequest(
-                "ambiguous or invalid local birth datetime for timezone".to_string(),
-            )
-        })?;
-    let birth_datetime_utc = local.with_timezone(&Utc);
+    let birth_datetime_utc = local_birth_to_utc(
+        &request.birth.date,
+        &request.birth.time,
+        &request.birth.timezone,
+    )?;
+    let naive_local = NaiveDateTime::new(
+        NaiveDate::parse_from_str(&request.birth.date, "%Y-%m-%d").map_err(|_| {
+            RuntimeError::InvalidEngineRequest("birth.date must be YYYY-MM-DD".to_string())
+        })?,
+        NaiveTime::parse_from_str(&request.birth.time, "%H:%M:%S").map_err(|_| {
+            RuntimeError::InvalidEngineRequest("birth.time must be HH:MM:SS".to_string())
+        })?,
+    );
 
     let location_label = request
         .birth

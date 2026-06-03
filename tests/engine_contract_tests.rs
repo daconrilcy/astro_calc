@@ -4,7 +4,10 @@ use std::fs;
 use jsonschema::JSONSchema;
 use serde_json::{json, Value};
 
-use rust_sqlx_connection_test::domain::BasicPayload;
+use rust_sqlx_connection_test::domain::{BasicPayload, RuntimeOptions};
+use rust_sqlx_connection_test::engine::{
+    build_engine_response, ResolvedEngineRequest, RESPONSE_CONTRACT_VERSION,
+};
 use rust_sqlx_connection_test::llm_projection::{
     build_llm_projection_natal_v1, profile_from_level, LlmProjectionBuildContext,
 };
@@ -13,6 +16,8 @@ const V13_GOLDEN: &str = "../tests/golden/natal_payload_v13_paris_1990.json";
 const LLM_SCHEMA: &str = "schemas/llm_projection_natal_v1.schema.json";
 const REQUEST_SCHEMA: &str = "schemas/astro_engine_request_v1.schema.json";
 const RESPONSE_SCHEMA: &str = "schemas/astro_engine_response_v1.schema.json";
+const ENGINE_RESPONSE_GOLDEN_RICH: &str =
+    "../tests/golden/astro_engine_response_v1_paris_1990_rich.json";
 
 const LLM_GOLDEN_COMPACT: &str = "../tests/golden/llm_projection_natal_v1_paris_1990_compact.json";
 const LLM_GOLDEN_STANDARD: &str = "../tests/golden/llm_projection_natal_v1_paris_1990_standard.json";
@@ -44,6 +49,52 @@ fn projection_context() -> LlmProjectionBuildContext<'static> {
         house_system_label: "Placidus",
         house_axes: &[],
     }
+}
+
+fn sample_resolved(level: &str, payload: &BasicPayload) -> ResolvedEngineRequest {
+    ResolvedEngineRequest {
+        natal_input: rust_sqlx_connection_test::domain::NatalChartInput {
+            subject_label: Some("Test".to_string()),
+            birth_datetime_utc: payload.birth_datetime_utc,
+            latitude_deg: 48.8566,
+            longitude_deg: 2.3522,
+            altitude_m: None,
+            reference_version_id: payload.reference_version_id,
+            calculation_profile_id: None,
+            zodiacal_reference_system_id: 1,
+            coordinate_reference_system_id: 1,
+            house_system_id: 1,
+            product_code: Some("basic".to_string()),
+            client_idempotency_key: None,
+        },
+        projection_level: level.to_string(),
+        birth_datetime_local: "1990-01-02T03:04:05".to_string(),
+        birth_timezone: "UTC".to_string(),
+        birth_datetime_utc: payload.birth_datetime_utc,
+        location_label: "Paris, France".to_string(),
+        zodiac_key: "tropical".to_string(),
+        coordinate_key: "geocentric".to_string(),
+        house_system_code: "placidus".to_string(),
+        calculation_type: "natal".to_string(),
+    }
+}
+
+fn build_engine_envelope(level: &str) -> Value {
+    let payload = load_v13_golden();
+    let profile = profile_from_level(level).expect("profile");
+    let resolved = sample_resolved(level, &payload);
+    let response = build_engine_response(
+        &resolved,
+        payload,
+        &RuntimeOptions::default(),
+        "Tropical",
+        "Geocentric",
+        "Placidus",
+        &[],
+        &profile,
+    )
+    .expect("engine response");
+    serde_json::to_value(response).expect("engine json")
 }
 
 fn build_level(level: &str) -> Value {
@@ -236,11 +287,54 @@ fn write_llm_projection_goldens_when_env_set() {
 }
 
 #[test]
+fn engine_envelope_is_not_flat_v13_payload() {
+    let envelope = build_engine_envelope("rich");
+    assert_eq!(
+        envelope["response_contract_version"], "astro_engine_response_v1"
+    );
+    assert!(envelope.get("product_code").is_none());
+    assert!(envelope.get("audit_payload").is_some());
+    assert!(envelope.get("llm_payload").is_some());
+}
+
+#[test]
+fn engine_envelope_golden_rich_matches_built_sample() {
+    let generated = build_engine_envelope("rich");
+    let golden_raw =
+        fs::read_to_string(ENGINE_RESPONSE_GOLDEN_RICH).unwrap_or_else(|_| {
+            panic!(
+                "missing {ENGINE_RESPONSE_GOLDEN_RICH}; run UPDATE_ENGINE_RESPONSE_GOLDEN=1 cargo test --test engine_contract_tests write_engine_response_golden_when_env_set"
+            )
+        });
+    let golden: Value = serde_json::from_str(&golden_raw).expect("golden json");
+    assert_eq!(generated, golden, "engine response rich golden mismatch");
+}
+
+#[test]
+fn write_engine_response_golden_when_env_set() {
+    if std::env::var("UPDATE_ENGINE_RESPONSE_GOLDEN").ok().as_deref() != Some("1") {
+        return;
+    }
+    let json = serde_json::to_string_pretty(&build_engine_envelope("rich")).expect("serialize");
+    fs::write(ENGINE_RESPONSE_GOLDEN_RICH, format!("{json}\n")).expect("write golden");
+}
+
+#[test]
+fn audit_payload_identical_across_projection_levels_in_envelope() {
+    let compact = build_engine_envelope("compact");
+    let rich = build_engine_envelope("rich");
+    assert_eq!(compact["audit_payload"], rich["audit_payload"]);
+    assert_ne!(compact["llm_payload"], rich["llm_payload"]);
+}
+
+#[test]
 fn engine_response_envelope_shape_from_v13_golden() {
     let payload = load_v13_golden();
     let profile = profile_from_level("rich").expect("profile");
     let llm = build_llm_projection_natal_v1(&payload, &profile, &projection_context());
     let llm_value = serde_json::to_value(&llm).expect("llm json");
+
+    assert_eq!(RESPONSE_CONTRACT_VERSION, "astro_engine_response_v1");
 
     let response = json!({
         "response_contract_version": "astro_engine_response_v1",

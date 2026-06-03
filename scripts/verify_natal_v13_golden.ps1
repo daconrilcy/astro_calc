@@ -89,7 +89,7 @@ if ([string]::IsNullOrWhiteSpace($GeneratedPayloadPath)) {
         $env:ASTRAL_PRODUCT_CODE = "basic"
         $env:ASTRAL_EPHEMERIS_PATH = "..\ephe\se-2026a"
 
-        $generatedJsonLines = cargo run --quiet --features swisseph-engine
+        $generatedJsonLines = cargo run --quiet --features swisseph-engine -- --audit-only
         if ($LASTEXITCODE -ne 0) {
             throw "cargo run failed with exit code $LASTEXITCODE"
         }
