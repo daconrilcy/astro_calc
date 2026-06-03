@@ -30,7 +30,7 @@ pub(super) fn build_chart_context(
         house_system_id: input.house_system_id,
         reference_version_id: input.reference_version_id,
         payload_contract: BasicPayloadContract {
-            contract_version: "natal_structured_v9".to_string(),
+            contract_version: "natal_structured_v10".to_string(),
             calculation_scope: "full_natal".to_string(),
             interpretation_scope: "structured_interpretation".to_string(),
             projection_depth: "rich".to_string(),

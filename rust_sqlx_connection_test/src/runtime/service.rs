@@ -9,7 +9,7 @@ use crate::domain::{
 use crate::ephemeris::EphemerisEngine;
 use crate::idempotency::{advisory_lock_key, idempotency_key, input_hash};
 use crate::models::ChartCalculationRow;
-use crate::payload::build_basic_payload;
+use crate::payload::build_basic_payload_with_rulership;
 use crate::repositories::RuntimeRepository;
 use crate::signals::aggregate_basic_signals;
 
@@ -60,6 +60,10 @@ where
             angle_points: self.repository.angle_point_references().await?,
         };
         validate_calculation_references(&references)?;
+        let domicile_rulers = self
+            .repository
+            .domicile_ruler_references(input.reference_version_id)
+            .await?;
 
         let mut tx = self.repository.pool().begin().await?;
         RuntimeRepository::lock_idempotency(&mut tx, lock_key).await?;
@@ -94,7 +98,13 @@ where
                     &signal_drafts,
                 )
                 .await?;
-                let payload = build_basic_payload(completed_id, &input, &positions, &signals);
+                let payload = build_basic_payload_with_rulership(
+                    completed_id,
+                    &input,
+                    &positions,
+                    &signals,
+                    &domicile_rulers,
+                );
                 RuntimeRepository::persist_basic_payload(
                     &mut payload_tx,
                     &input,
@@ -167,11 +177,12 @@ where
         .await?;
 
         RuntimeRepository::heartbeat(&mut tx, chart_calculation_id, "building_payload").await?;
-        let payload = build_basic_payload(
+        let payload = build_basic_payload_with_rulership(
             chart_calculation_id,
             &input,
             &enriched_facts.positions,
             &signal_rows,
+            &domicile_rulers,
         );
         RuntimeRepository::persist_basic_payload(
             &mut tx,

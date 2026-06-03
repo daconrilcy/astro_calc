@@ -7,6 +7,7 @@ mod emphasis;
 mod json;
 mod placements;
 mod plan;
+mod rulership;
 mod text;
 
 use crate::domain::{BasicPayload, BasicSignal};
@@ -22,6 +23,7 @@ pub fn is_current_basic_payload(payload: &BasicPayload) -> bool {
         && angles::has_current_angles(payload)
         && dignities::has_current_dignities(payload)
         && emphasis::has_current_chart_emphasis(payload)
+        && rulership::has_current_rulership_context(&payload.rulership_context)
         && plan::has_current_reading_plan(payload)
         && plan::has_current_drafting_plan(payload)
         && payload

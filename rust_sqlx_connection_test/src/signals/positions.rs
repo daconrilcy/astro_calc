@@ -186,9 +186,7 @@ fn visibility_flag(position: &ObjectPositionFact) -> Option<bool> {
 }
 
 fn visibility_source(position: &ObjectPositionFact) -> String {
-    if position.altitude_deg.is_some() {
-        "calculated_altitude".to_string()
-    } else if position.is_visible.is_some() {
+    if position.altitude_deg.is_some() || position.is_visible.is_some() {
         "calculated_altitude".to_string()
     } else {
         "house_hemisphere_projection".to_string()

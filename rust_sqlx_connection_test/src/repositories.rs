@@ -7,8 +7,9 @@ use crate::domain::{
 };
 use crate::models::{
     AnglePointReference, AspectDefinition, ChartCalculationRow, ChartObject,
-    HorizonPositionReference, HouseReference, HouseSystem, InterpretationSignalRow,
-    MotionStateReference, PersistedAspectFact, PersistedObjectPositionFact, SignReference,
+    DomicileRulerReference, HorizonPositionReference, HouseReference, HouseSystem,
+    InterpretationSignalRow, MotionStateReference, PersistedAspectFact,
+    PersistedObjectPositionFact, SignReference,
 };
 use crate::runtime::RuntimeError;
 
@@ -168,6 +169,46 @@ impl RuntimeRepository {
             ORDER BY object.sort_order, angle.id
             "#,
         )
+        .fetch_all(&self.pool)
+        .await?)
+    }
+
+    pub async fn domicile_ruler_references(
+        &self,
+        reference_version_id: i32,
+    ) -> Result<Vec<DomicileRulerReference>, RuntimeError> {
+        Ok(sqlx::query_as::<_, DomicileRulerReference>(
+            r#"
+            SELECT dignity.reference_version_id,
+                   dignity.astral_system_id,
+                   system.name AS astral_system_code,
+                   sign.id AS sign_id,
+                   sign.code AS sign_code,
+                   sign.name AS sign_name,
+                   object.id AS chart_object_id,
+                   object.code AS object_code,
+                   object.name AS object_name,
+                   dignity_type.code AS dignity_type,
+                   dignity.weight::float8 AS weight,
+                   dignity.is_primary
+            FROM astral_object_sign_dignities dignity
+            JOIN astral_systems system ON system.id = dignity.astral_system_id
+            JOIN astral_signs sign ON sign.id = dignity.astral_sign_id
+            JOIN astral_chart_objects object ON object.id = dignity.chart_object_id
+            JOIN astral_dignity_type dignity_type
+              ON dignity_type.id = dignity.astral_dignity_type_id
+            WHERE dignity_type.code = 'domicile'
+              AND dignity.reference_version_id IS NOT DISTINCT FROM $1
+              AND object.is_active = true
+            ORDER BY sign.id,
+                     dignity.is_primary DESC,
+                     dignity.weight DESC,
+                     system.id,
+                     object.sort_order,
+                     object.id
+            "#,
+        )
+        .bind(reference_version_id)
         .fetch_all(&self.pool)
         .await?)
     }

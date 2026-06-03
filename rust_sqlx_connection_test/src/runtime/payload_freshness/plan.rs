@@ -112,6 +112,9 @@ pub(super) fn has_current_drafting_plan(payload: &BasicPayload) -> bool {
             && item
                 .avoid
                 .contains(&"turn chart_context into a standalone section".to_string())
+            && item
+                .avoid
+                .contains(&"turn rulership_context into a standalone section".to_string())
             && !item.source_signal_keys.is_empty()
             && item.source_signal_keys.iter().all(|signal_key| {
                 let signal_key = signal_key.trim();
@@ -127,8 +130,21 @@ fn expected_context_refs_for_slot(slot: &str) -> crate::domain::BasicContextRefs
         }
         _ => Vec::new(),
     };
+    let rulership_context = match slot {
+        "core_identity" => vec!["ascendant_ruler".to_string()],
+        "dominant_cluster" => {
+            vec![
+                "dominant_sign_rulers".to_string(),
+                "dominant_house_rulers".to_string(),
+            ]
+        }
+        _ => Vec::new(),
+    };
 
-    crate::domain::BasicContextRefs { chart_context }
+    crate::domain::BasicContextRefs {
+        chart_context,
+        rulership_context,
+    }
 }
 
 fn secondary_candidates_are_valid(

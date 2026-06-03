@@ -43,8 +43,21 @@ fn context_refs_for_slot(slot: &str) -> BasicContextRefs {
         }
         _ => Vec::new(),
     };
+    let rulership_context = match slot {
+        "core_identity" => vec!["ascendant_ruler".to_string()],
+        "dominant_cluster" => {
+            vec![
+                "dominant_sign_rulers".to_string(),
+                "dominant_house_rulers".to_string(),
+            ]
+        }
+        _ => Vec::new(),
+    };
 
-    BasicContextRefs { chart_context }
+    BasicContextRefs {
+        chart_context,
+        rulership_context,
+    }
 }
 
 fn emphasis_refs_for_slot(
@@ -381,6 +394,7 @@ fn avoid_rules_for_slot(slot: &str) -> Vec<String> {
         "add information that is absent from the source signals".to_string(),
         "turn chart_emphasis into a standalone section".to_string(),
         "turn chart_context into a standalone section".to_string(),
+        "turn rulership_context into a standalone section".to_string(),
     ];
 
     match slot {

@@ -6,7 +6,8 @@ use rust_sqlx_connection_test::domain::{
     BasicDignity, BasicDominantHouse, BasicDominantObject, BasicDominantSign,
     BasicDraftingPlanItem, BasicEmphasisRefs, BasicHemisphereEmphasis, BasicLlmHandoffContract,
     BasicObjectPosition, BasicPayload, BasicPayloadContract, BasicReadingPlanItem,
-    BasicSecondarySlotCandidate, BasicSectContext, BasicSignal, CalculationReferenceData,
+    BasicRulerContext, BasicRulerSource, BasicRulershipContext, BasicSecondarySlotCandidate,
+    BasicSectContext, BasicSignal, CalculationReferenceData,
 };
 use rust_sqlx_connection_test::models::{
     AnglePointReference, ChartObject, HouseReference, SignReference,
@@ -24,7 +25,7 @@ fn current_payload() -> BasicPayload {
             subject_label: None,
             birth_datetime_utc: Utc.with_ymd_and_hms(2024, 6, 15, 12, 0, 0).unwrap(),
             llm_handoff_contract: Some(BasicLlmHandoffContract {
-                contract_version: "natal_structured_v9".to_string(),
+                contract_version: "natal_structured_v10".to_string(),
                 payload_language_code: "en".to_string(),
                 target_language_policy: "provided_by_llm_service".to_string(),
                 audience_level: "beginner".to_string(),
@@ -32,6 +33,7 @@ fn current_payload() -> BasicPayload {
                 must_use: vec![
                     "chart_context".to_string(),
                     "chart_emphasis".to_string(),
+                    "rulership_context".to_string(),
                     "dignities".to_string(),
                     "angles".to_string(),
                     "signals".to_string(),
@@ -46,6 +48,7 @@ fn current_payload() -> BasicPayload {
                     "expose raw evidence unless explicitly requested".to_string(),
                     "treat chart_emphasis as a standalone section instead of weighting context".to_string(),
                     "treat chart_context as a standalone section instead of contextual weighting".to_string(),
+                    "treat rulership_context as a standalone section instead of contextual weighting".to_string(),
                     "make deterministic or fatalistic predictions".to_string(),
                 ],
                 output_format: "structured_sections".to_string(),
@@ -57,7 +60,7 @@ fn current_payload() -> BasicPayload {
                 house_system_id: 1,
                 reference_version_id: 1,
                 payload_contract: BasicPayloadContract {
-                    contract_version: "natal_structured_v9".to_string(),
+                    contract_version: "natal_structured_v10".to_string(),
                     calculation_scope: "full_natal".to_string(),
                     interpretation_scope: "structured_interpretation".to_string(),
                     projection_depth: "rich".to_string(),
@@ -151,6 +154,25 @@ fn current_payload() -> BasicPayload {
                     reasons: vec!["placement".to_string()],
                 }],
             },
+            rulership_context: BasicRulershipContext {
+                ascendant_ruler: Some(test_ruler_context(
+                    "angle:ascendant:ruler",
+                    "angle",
+                    "ascendant",
+                    "gemini",
+                    "mercury",
+                    "identity_ruler",
+                )),
+                mc_ruler: Some(test_ruler_context(
+                    "angle:mc:ruler",
+                    "angle",
+                    "mc",
+                    "gemini",
+                    "mercury",
+                    "public_direction_ruler",
+                )),
+                ..BasicRulershipContext::default()
+            },
             signals: vec![
                 BasicSignal {
                     signal_key: "object_position:sun".to_string(),
@@ -230,6 +252,7 @@ fn current_payload() -> BasicPayload {
                 },
                 context_refs: rust_sqlx_connection_test::domain::BasicContextRefs {
                     chart_context: vec!["sect".to_string(), "hemisphere_emphasis".to_string()],
+                    rulership_context: vec!["ascendant_ruler".to_string()],
                 },
                 writing_objective: "Explain the central markers.".to_string(),
                 max_words: 110,
@@ -237,6 +260,7 @@ fn current_payload() -> BasicPayload {
                     "use technical IDs".to_string(),
                     "turn chart_emphasis into a standalone section".to_string(),
                     "turn chart_context into a standalone section".to_string(),
+                    "turn rulership_context into a standalone section".to_string(),
                 ],
             }],
         }
@@ -275,6 +299,39 @@ fn current_payload_requires_canonical_llm_handoff_contract() {
         .payload_language_code = "fr".to_string();
 
     assert!(!is_current_basic_payload(&payload));
+}
+
+fn test_ruler_context(
+    context_key: &str,
+    source_kind: &str,
+    source_code: &str,
+    sign_code: &str,
+    ruler_object_code: &str,
+    interpretive_role: &str,
+) -> BasicRulerContext {
+    BasicRulerContext {
+        context_key: context_key.to_string(),
+        source_kind: source_kind.to_string(),
+        source_code: source_code.to_string(),
+        sign_code: sign_code.to_string(),
+        ruler_object_codes: vec![ruler_object_code.to_string()],
+        ruler_object_code: ruler_object_code.to_string(),
+        ruler_position_signal_key: None,
+        ruler_house_number: None,
+        ruler_sign_code: None,
+        interpretive_role: interpretive_role.to_string(),
+        strength_context: Vec::new(),
+        ruler_sources: vec![BasicRulerSource {
+            object_code: ruler_object_code.to_string(),
+            reference_version_id: Some(1),
+            astral_system_id: 1,
+            astral_system_code: "traditional".to_string(),
+            dignity_type: "domicile".to_string(),
+            weight: 1.0,
+            is_primary: true,
+        }],
+        interpretive_hint: "Reference-derived ruler context.".to_string(),
+    }
 }
 
 #[test]
@@ -945,6 +1002,10 @@ fn current_payload_rejects_repeated_primary_source_signal() {
         emphasis_refs: BasicEmphasisRefs::default(),
         context_refs: rust_sqlx_connection_test::domain::BasicContextRefs {
             chart_context: vec!["sect".to_string(), "hemisphere_emphasis".to_string()],
+            rulership_context: vec![
+                "dominant_sign_rulers".to_string(),
+                "dominant_house_rulers".to_string(),
+            ],
         },
         writing_objective: "Explain the repeated primary signal.".to_string(),
         max_words: 120,
@@ -952,6 +1013,7 @@ fn current_payload_rejects_repeated_primary_source_signal() {
             "repeat".to_string(),
             "turn chart_emphasis into a standalone section".to_string(),
             "turn chart_context into a standalone section".to_string(),
+            "turn rulership_context into a standalone section".to_string(),
         ],
     });
 

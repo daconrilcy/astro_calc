@@ -113,7 +113,7 @@ ne disparaisse pas artificiellement.
 L'etape 3A ajoute le premier enrichissement global avant LLM avec
 `chart_context` et `positions[].visibility_context`. Le payload expose
 desormais le cadre technique du theme natal, un contrat de projection
-`natal_structured_v9`, les contraintes de fiabilite, la secte deduite du Soleil
+`natal_structured_v10`, les contraintes de fiabilite, la secte deduite du Soleil
 et une synthese d'hemisphere. Chaque position porte aussi sa position
 d'horizon (`above_horizon`, `below_horizon` ou `on_horizon`), l'ID canonique
 issu de `astral_horizon_positions`, une source d'audit et le flag de visibilite
@@ -146,7 +146,7 @@ l'accent d'hemisphere servent uniquement de contexte de ponderation.
 `product_code = "basic"` reste volontairement conserve comme cle de routage
 legacy pour les tables et les chemins runtime existants. Il ne decrit plus la
 profondeur fonctionnelle du contrat courant : celle-ci est portee par
-`llm_handoff_contract.contract_version = "natal_structured_v9"` et par
+`llm_handoff_contract.contract_version = "natal_structured_v10"` et par
 `chart_context.payload_contract`, notamment `calculation_scope`,
 `interpretation_scope` et `projection_depth`.
 
@@ -199,18 +199,24 @@ la correction attendue est de resynchroniser PostgreSQL avec les fichiers
 - `rust_sqlx_connection_test/schemas/basic_natal_structured_v8.schema.json` :
   schema JSON historique du contrat Basic v8.
 - `rust_sqlx_connection_test/schemas/natal_structured_v9.schema.json` :
-  schema JSON du contrat courant `natal_structured_v9`.
+  schema JSON historique du contrat v9.
+- `rust_sqlx_connection_test/schemas/natal_structured_v10.schema.json` :
+  schema JSON du contrat courant `natal_structured_v10`.
 - `tests/golden/basic_payload_v8_paris_1990.json` : fixture golden historique
   du contrat Basic v8.
 - `tests/golden/natal_payload_v9_paris_1990.json` : fixture golden du contrat
-  courant v9.
+  historique v9.
+- `tests/golden/natal_payload_v10_paris_1990.json` : fixture golden du contrat
+  courant v10.
 - `tests/contract_basic_v8_tests.rs` : validation schema, golden et invariants
   metier non negociables pour le contrat courant.
 - `scripts/verify_basic_v8_golden.ps1` : verification CI/local de projection
   stable historique v8. Ce script ne regenere plus le payload courant ; il
   valide le golden v8 conserve, ou un fichier v8 fourni explicitement.
 - `scripts/verify_natal_v9_golden.ps1` : verification CI/local de projection
-  stable v9 apres regeneration du payload par le moteur.
+  stable historique v9 apres regeneration du payload par le moteur.
+- `scripts/verify_natal_v10_golden.ps1` : verification CI/local de projection
+  stable v10 apres regeneration du payload par le moteur.
 
 ## Contrat des positions
 
@@ -1139,11 +1145,11 @@ aspect fort disponible. `main_tension_or_support` n'est donc absent que
 lorsqu'aucun aspect actif ou preservable ne reste apres l'exclusion des axes
 structurels et des autres aspects angle-angle.
 
-Depuis la passe de stabilisation 3A.2, `natal_structured_v9` est le contrat
+Depuis l'etape 3B, `natal_structured_v10` est le contrat
 courant verrouille par trois niveaux complementaires :
 
 - le JSON Schema
-  `rust_sqlx_connection_test/schemas/natal_structured_v9.schema.json`
+  `rust_sqlx_connection_test/schemas/natal_structured_v10.schema.json`
   valide la forme du contrat, les constantes LLM, les blocs obligatoires, les
   quatre angles, les bornes de score, `chart_context`, `context_refs` et les
   contraintes schema exprimables. Il refuse aussi les extensions silencieuses de
@@ -1151,10 +1157,10 @@ courant verrouille par trois niveaux complementaires :
   contextes de position obligatoires a `null`, les proprietes parasites dans
   `aspect_context`, et les `visibility_context` mobiles sans altitude calculee
   ou sans flag `is_visible` booleen ;
-- la fixture `tests/golden/natal_payload_v9_paris_1990.json` conserve un
+- la fixture `tests/golden/natal_payload_v10_paris_1990.json` conserve un
   payload complet de reference pour le scenario Paris 1990 ;
 - `tests/contract_basic_v8_tests.rs` valide les invariants metier du contrat
-  courant v9 et conserve aussi une validation schema du golden historique v8 :
+  courant v10 et conserve aussi une validation schema du golden historique v8 :
   sources de plan existantes, alignement `reading_plan` / `drafting_plan`,
   absence d'aspect angle-angle actif, conservation de
   `aspect:jupiter:uranus:opposition`, unicite des signaux primaires et
@@ -1171,21 +1177,23 @@ altitude calculee.
 La regeneration complete du golden courant depend de Postgres et de Swiss
 Ephemeris. Le test unitaire ne reconstruit donc pas le theme depuis le moteur.
 Pour couvrir ce risque en CI ou en verification locale,
-`scripts/verify_natal_v9_golden.ps1` lance le moteur avec le scenario golden
+`scripts/verify_natal_v10_golden.ps1` lance le moteur avec le scenario golden
 Paris / `1990-01-02T03:04:05Z`, puis compare une projection stable du payload
-genere au golden v9. Le script force les variables d'environnement du scenario
+genere au golden v10. Le script force les variables d'environnement du scenario
 golden et les restaure ensuite, afin d'eviter qu'un `ASTRAL_OUTPUT_MODE`,
 `ASTRAL_PRODUCT_CODE` ou identifiant de referentiel deja present ne modifie la
 verification. Il peut aussi comparer un fichier deja genere via :
 
 ```powershell
-.\scripts\verify_natal_v9_golden.ps1 -GeneratedPayloadPath .\output\basic_payload_current.json
+.\scripts\verify_natal_v10_golden.ps1 -GeneratedPayloadPath .\output\basic_payload_current.json
 ```
 
 Le script `scripts/verify_basic_v8_golden.ps1` reste disponible uniquement pour
 valider le golden historique v8 ou un fichier v8 fourni explicitement. Il ne
 regenere plus de payload depuis le moteur courant, car celui-ci produit
-desormais `natal_structured_v9`.
+desormais `natal_structured_v10`.
+Le script `scripts/verify_natal_v9_golden.ps1` reste disponible pour le golden
+historique v9.
 
 ## Contrat canonique de handoff LLM
 
@@ -1196,7 +1204,7 @@ doit respecter :
 ```json
 {
   "llm_handoff_contract": {
-    "contract_version": "natal_structured_v9",
+    "contract_version": "natal_structured_v10",
     "payload_language_code": "en",
     "target_language_policy": "provided_by_llm_service",
     "audience_level": "beginner",
@@ -1204,6 +1212,7 @@ doit respecter :
     "must_use": [
       "chart_context",
       "chart_emphasis",
+      "rulership_context",
       "dignities",
       "angles",
       "signals",
@@ -1362,7 +1371,7 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
 - 12 signaux maximum ;
 - au moins un signal ;
 - `llm_handoff_contract` present et conforme au contrat canonique
-  `natal_structured_v9` ;
+  `natal_structured_v10` ;
 - `dignities` structurees presentes et coherentes avec les signaux
   `dignity:*` actifs ;
 - `angles` top-level present avec exactement les quatre faits canoniques
@@ -1498,9 +1507,9 @@ Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
 - `product_code = "basic"` ;
 - `llm_handoff_contract.payload_language_code = "en"` ;
 - `llm_handoff_contract.target_language_policy = "provided_by_llm_service"` ;
-- `llm_handoff_contract.contract_version = "natal_structured_v9"` ;
+- `llm_handoff_contract.contract_version = "natal_structured_v10"` ;
 - un `chart_context` top-level avec le type de theme, les IDs de referentiels,
-  le contrat de projection `natal_structured_v9`, la secte et la synthese
+  le contrat de projection `natal_structured_v10`, la secte et la synthese
   d'hemisphere, dont `hemisphere_emphasis.count_scope =
   "mobile_chart_objects_only"` ;
 - des positions avec `sign_code`, `sign_name`, `house_number`, `house_name`,
@@ -1569,6 +1578,8 @@ exemple :
 
 - Les angles Basic sont exposes, mais leurs interpretations restent limitees aux
   faits structures et aux signaux `angle:*`.
+- Le contexte de maitrise 3B expose les liens structurels au LLM, mais ne cree
+  pas encore de signaux actifs `rulership:*`.
 - Les resumes restent des phrases templatees, pas une interpretation finale.
 - Les `interpretive_hint` et `writing_guidance` restent aussi des templates,
   meme si les hints d'aspect integrent maintenant la valence 2C.
@@ -1588,12 +1599,47 @@ sans modifier le contrat public `rust_sqlx_connection_test::payload`.
 
 - `mod.rs` orchestre la construction du `BasicPayload`.
 - `angles.rs`, `chart_context.rs`, `dignities.rs`, `emphasis.rs`,
+  `rulership.rs`,
   `reading_plan.rs` et
   `drafting_plan.rs` isolent les blocs metier du payload Basic.
 - `signal_filters.rs` centralise les predicats partages sur les signaux et
   aspects.
 - `json.rs` centralise les extractions defensives depuis les payloads JSON.
-- `contract.rs` conserve le contrat LLM courant `natal_structured_v9`.
+- `contract.rs` conserve le contrat LLM courant `natal_structured_v10`.
+
+## Etape 3B - Rulership / dispositors context
+
+Le contrat Basic natal est passe a `natal_structured_v10` pour ajouter le bloc
+top-level `rulership_context`. Ce bloc est contextuel: il aide le LLM a ponderer
+les sections existantes sans devenir une section autonome.
+
+Le moteur lit les maitres de signes depuis la base via
+`astral_object_sign_dignities`, filtre les dignites de type `domicile`, puis
+resout les objets, signes, versions de reference et systemes doctrinaux par
+jointure. Aucune correspondance signe -> maitre n'est codee dans le moteur.
+
+`rulership_context` expose:
+
+- `ascendant_ruler` et `mc_ruler`;
+- les maitres des signes et maisons dominants;
+- les `dispositor_links` des objets mobiles;
+- les `rulership_chains` limitees a une profondeur de 6 avec detection de cycle;
+- les `final_dispositors` et receptions/cycles detectes.
+
+Pour les signes ayant plusieurs maitres selon les systemes doctrinaux, le bloc
+expose a la fois `ruler_object_codes` et `ruler_sources[].object_code`. Ainsi,
+chaque source doctrinale reste explicitement rattachee au maitre qu'elle
+fournit, au lieu d'exposer une liste de sources ambiguë.
+
+`drafting_plan.context_refs` reference maintenant `rulership_context` pour
+`core_identity` et `dominant_cluster`. Les garde-fous `must_not` et `avoid`
+interdisent de transformer ce bloc en section autonome.
+
+Artefacts ajoutes:
+
+- `rust_sqlx_connection_test/schemas/natal_structured_v10.schema.json`;
+- `tests/golden/natal_payload_v10_paris_1990.json`;
+- `scripts/verify_natal_v10_golden.ps1`.
 
 Ce decoupage reste volontairement simple: aucune nouvelle donnee canonique n'a
 ete ajoutee en dur, et les fonctions gardent une portee limitee au module quand
@@ -1662,7 +1708,7 @@ canoniques applicatives et ne contourne pas les referentiels lus depuis la base.
 - `payload_freshness.rs` expose la facade `is_current_basic_payload` et compose
   les validations de reutilisation.
 - `payload_freshness/contract.rs` verifie le contrat LLM courant
-  `natal_structured_v9`.
+  `natal_structured_v10`.
 - `payload_freshness/angles.rs` verifie les quatre angles canoniques et leurs
   preuves.
 - `payload_freshness/aspects.rs` verifie le contexte interpretatif des aspects
@@ -1671,6 +1717,8 @@ canoniques applicatives et ne contourne pas les referentiels lus depuis la base.
   structurees et signaux `dignity:*`.
 - `payload_freshness/emphasis.rs` verifie les dominantes de signe, maison et
   objet.
+- `payload_freshness/rulership.rs` verifie la structure du contexte de maitrise
+  et des chaines de dispositors.
 - `payload_freshness/placements.rs` verifie les contextes de positions et de
   signaux de placement, dont le `visibility_context` mobile recopie dans
   `evidence.placement_context`.

@@ -7,9 +7,9 @@ use serde_json::Value;
 use rust_sqlx_connection_test::domain::BasicPayload;
 use rust_sqlx_connection_test::runtime::is_current_basic_payload;
 
-const GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v9_paris_1990.json";
-const SCHEMA_PATH: &str = "schemas/natal_structured_v9.schema.json";
-const PAYLOAD_UNDER_TEST_ENV: &str = "NATAL_V9_SCHEMA_PAYLOAD_PATH";
+const GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v10_paris_1990.json";
+const SCHEMA_PATH: &str = "schemas/natal_structured_v10.schema.json";
+const PAYLOAD_UNDER_TEST_ENV: &str = "NATAL_V10_SCHEMA_PAYLOAD_PATH";
 const V8_GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/basic_payload_v8_paris_1990.json";
 const V8_SCHEMA_PATH: &str = "schemas/basic_natal_structured_v8.schema.json";
 const V8_PAYLOAD_UNDER_TEST_ENV: &str = "BASIC_V8_SCHEMA_PAYLOAD_PATH";
@@ -104,13 +104,13 @@ fn assert_source_prefix(item: &Value, prefix: &str) {
 }
 
 #[test]
-fn golden_payload_matches_json_schema_v9() {
+fn golden_payload_matches_json_schema_v10() {
     let payload_json = load_golden_payload();
     let validation_errors = validate_with_schema(&payload_json);
 
     assert!(
         validation_errors.is_empty(),
-        "golden payload does not match natal_structured_v9 schema:\n{}",
+        "golden payload does not match natal_structured_v10 schema:\n{}",
         validation_errors.join("\n")
     );
 }
@@ -129,7 +129,7 @@ fn historical_v8_golden_payload_matches_json_schema_v8() {
 }
 
 #[test]
-fn external_payload_matches_json_schema_v9_when_requested() {
+fn external_payload_matches_json_schema_v10_when_requested() {
     let Ok(path) = std::env::var(PAYLOAD_UNDER_TEST_ENV) else {
         return;
     };
@@ -138,7 +138,7 @@ fn external_payload_matches_json_schema_v9_when_requested() {
 
     assert!(
         validation_errors.is_empty(),
-        "external payload does not match natal_structured_v9 schema:\n{}",
+        "external payload does not match natal_structured_v10 schema:\n{}",
         validation_errors.join("\n")
     );
 }
@@ -325,11 +325,11 @@ fn runtime_rejects_v7_contract_version() {
 }
 
 #[test]
-fn v9_handoff_contract_is_strict() {
+fn v10_handoff_contract_is_strict() {
     let payload = load_golden_payload();
     let contract = &payload["llm_handoff_contract"];
 
-    assert_eq!(contract["contract_version"], "natal_structured_v9");
+    assert_eq!(contract["contract_version"], "natal_structured_v10");
     assert_eq!(contract["payload_language_code"], "en");
     assert_eq!(
         contract["target_language_policy"],
@@ -342,6 +342,7 @@ fn v9_handoff_contract_is_strict() {
     for expected in [
         "chart_context",
         "chart_emphasis",
+        "rulership_context",
         "dignities",
         "angles",
         "signals",
@@ -356,7 +357,7 @@ fn v9_handoff_contract_is_strict() {
 }
 
 #[test]
-fn v9_contains_four_canonical_angles() {
+fn v10_contains_four_canonical_angles() {
     let payload = load_golden_payload();
     let angles = array(&payload, "angles");
 
@@ -373,6 +374,52 @@ fn v9_contains_four_canonical_angles() {
     assert_angle_opposite(angles, "descendant", "ascendant");
     assert_angle_opposite(angles, "mc", "ic");
     assert_angle_opposite(angles, "ic", "mc");
+}
+
+#[test]
+fn v10_rulership_sources_map_doctrines_to_ruler_objects() {
+    let payload = load_golden_payload();
+    let rulership = &payload["rulership_context"];
+
+    for key in ["ascendant_ruler", "mc_ruler"] {
+        assert_ruler_sources_map_to_objects(&rulership[key]);
+    }
+    for key in ["dominant_house_rulers", "dominant_sign_rulers"] {
+        for context in array(rulership, key) {
+            assert_ruler_sources_map_to_objects(context);
+        }
+    }
+    for link in array(rulership, "dispositor_links") {
+        for source in array(link, "ruler_sources") {
+            assert!(
+                source["object_code"]
+                    .as_str()
+                    .is_some_and(|value| !value.trim().is_empty()),
+                "dispositor source should expose its ruler object_code"
+            );
+        }
+    }
+}
+
+fn assert_ruler_sources_map_to_objects(context: &Value) {
+    let ruler_object_codes = array(context, "ruler_object_codes")
+        .iter()
+        .map(|value| {
+            value
+                .as_str()
+                .expect("ruler object code should be a string")
+        })
+        .collect::<HashSet<_>>();
+
+    for source in array(context, "ruler_sources") {
+        let object_code = source["object_code"]
+            .as_str()
+            .expect("ruler source should expose object_code");
+        assert!(
+            ruler_object_codes.contains(object_code),
+            "ruler source object_code {object_code} should be listed in ruler_object_codes"
+        );
+    }
 }
 
 fn assert_angle_opposite(angles: &[Value], angle_code: &str, opposite_angle_code: &str) {

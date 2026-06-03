@@ -6,6 +6,7 @@ mod drafting_plan;
 mod emphasis;
 mod json;
 mod reading_plan;
+mod rulership;
 mod signal_filters;
 
 use crate::domain::{
@@ -21,6 +22,7 @@ use drafting_plan::build_drafting_plan;
 use emphasis::build_chart_emphasis;
 use json::{payload_f64, payload_string, payload_string_array, payload_value, position_context};
 use reading_plan::build_reading_plan;
+use rulership::build_rulership_context;
 use signal_filters::{is_angle_to_angle_aspect_signal, is_structural_axis_signal_for_pairs};
 
 pub use contract::basic_llm_handoff_contract;
@@ -30,6 +32,16 @@ pub fn build_basic_payload(
     input: &NatalChartInput,
     positions: &[ObjectPositionFact],
     signals: &[InterpretationSignalRow],
+) -> BasicPayload {
+    build_basic_payload_with_rulership(chart_calculation_id, input, positions, signals, &[])
+}
+
+pub fn build_basic_payload_with_rulership(
+    chart_calculation_id: i32,
+    input: &NatalChartInput,
+    positions: &[ObjectPositionFact],
+    signals: &[InterpretationSignalRow],
+    domicile_rulers: &[crate::domain::DomicileRulerReference],
 ) -> BasicPayload {
     let structural_axis_pairs = structural_axis_pairs_from_positions(positions);
     let angle_object_codes = angle_object_codes_from_positions(positions);
@@ -60,6 +72,8 @@ pub fn build_basic_payload(
     let angles = build_payload_angles(positions);
     let dignities = build_payload_dignities(positions, &basic_signals);
     let chart_emphasis = build_chart_emphasis(positions, &dignities, &basic_signals);
+    let rulership_context =
+        build_rulership_context(positions, &chart_emphasis, domicile_rulers, &basic_signals);
     let chart_context = build_chart_context(input, positions);
     let reading_plan = build_reading_plan(&basic_signals);
     let drafting_plan = build_drafting_plan(&reading_plan, &basic_signals, &chart_emphasis);
@@ -97,6 +111,7 @@ pub fn build_basic_payload(
         angles,
         dignities,
         chart_emphasis,
+        rulership_context,
         signals: basic_signals,
         reading_plan,
         drafting_plan,

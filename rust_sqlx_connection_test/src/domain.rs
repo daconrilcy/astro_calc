@@ -3,8 +3,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 pub use crate::models::{
-    AnglePointReference, AspectDefinition, ChartObject, HorizonPositionReference, HouseReference,
-    HouseSystem, InterpretationSignalRow, MotionStateReference, SignReference,
+    AnglePointReference, AspectDefinition, ChartObject, DomicileRulerReference,
+    HorizonPositionReference, HouseReference, HouseSystem, InterpretationSignalRow,
+    MotionStateReference, SignReference,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -150,6 +151,8 @@ pub struct BasicPayload {
     pub dignities: Vec<BasicDignity>,
     #[serde(default)]
     pub chart_emphasis: BasicChartEmphasis,
+    #[serde(default)]
+    pub rulership_context: BasicRulershipContext,
     pub signals: Vec<BasicSignal>,
     #[serde(default)]
     pub reading_plan: Vec<BasicReadingPlanItem>,
@@ -264,6 +267,82 @@ pub struct BasicDignity {
     pub polarity: String,
     pub strength_score: f64,
     pub signal_key: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BasicRulershipContext {
+    #[serde(default)]
+    pub ascendant_ruler: Option<BasicRulerContext>,
+    #[serde(default)]
+    pub mc_ruler: Option<BasicRulerContext>,
+    #[serde(default)]
+    pub dominant_house_rulers: Vec<BasicRulerContext>,
+    #[serde(default)]
+    pub dominant_sign_rulers: Vec<BasicRulerContext>,
+    #[serde(default)]
+    pub dispositor_links: Vec<BasicDispositorLink>,
+    #[serde(default)]
+    pub rulership_chains: Vec<BasicRulershipChain>,
+    #[serde(default)]
+    pub final_dispositors: Vec<BasicFinalDispositor>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BasicRulerContext {
+    pub context_key: String,
+    pub source_kind: String,
+    pub source_code: String,
+    pub sign_code: String,
+    #[serde(default)]
+    pub ruler_object_codes: Vec<String>,
+    pub ruler_object_code: String,
+    pub ruler_position_signal_key: Option<String>,
+    pub ruler_house_number: Option<i32>,
+    pub ruler_sign_code: Option<String>,
+    pub interpretive_role: String,
+    #[serde(default)]
+    pub strength_context: Vec<String>,
+    #[serde(default)]
+    pub ruler_sources: Vec<BasicRulerSource>,
+    pub interpretive_hint: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BasicRulerSource {
+    pub object_code: String,
+    pub reference_version_id: Option<i32>,
+    pub astral_system_id: i32,
+    pub astral_system_code: String,
+    pub dignity_type: String,
+    pub weight: f64,
+    pub is_primary: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BasicDispositorLink {
+    pub object_code: String,
+    pub object_sign_code: String,
+    pub dispositor_object_code: String,
+    pub dispositor_signal_key: String,
+    #[serde(default)]
+    pub ruler_sources: Vec<BasicRulerSource>,
+    pub interpretive_hint: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BasicRulershipChain {
+    pub object_code: String,
+    #[serde(default)]
+    pub chain: Vec<String>,
+    pub termination: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BasicFinalDispositor {
+    pub object_code: String,
+    pub disposition_type: String,
+    #[serde(default)]
+    pub source_objects: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -382,4 +461,6 @@ pub struct BasicEmphasisRefs {
 pub struct BasicContextRefs {
     #[serde(default)]
     pub chart_context: Vec<String>,
+    #[serde(default)]
+    pub rulership_context: Vec<String>,
 }

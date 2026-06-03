@@ -93,6 +93,22 @@ pub struct AnglePointReference {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+pub struct DomicileRulerReference {
+    pub reference_version_id: Option<i32>,
+    pub astral_system_id: i32,
+    pub astral_system_code: String,
+    pub sign_id: i32,
+    pub sign_code: String,
+    pub sign_name: String,
+    pub chart_object_id: i32,
+    pub object_code: String,
+    pub object_name: String,
+    pub dignity_type: String,
+    pub weight: f64,
+    pub is_primary: bool,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct InterpretationSignalRow {
     pub id: i32,
     pub signal_key: String,

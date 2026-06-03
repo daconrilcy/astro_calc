@@ -334,7 +334,7 @@ fn basic_payload_exposes_semantic_signal_fields() {
             .as_ref()
             .expect("llm handoff contract")
             .contract_version,
-        "natal_structured_v9"
+        "natal_structured_v10"
     );
     let contract = payload
         .llm_handoff_contract
@@ -997,6 +997,100 @@ fn basic_payload_exposes_structured_dignities() {
 }
 
 #[test]
+fn basic_payload_exposes_rulership_context_from_reference_rules() {
+    let mut ascendant = angle_position(
+        11,
+        "ascendant",
+        "Ascendant",
+        "ascendant",
+        "descendant",
+        "horizontal",
+        222.0,
+    );
+    ascendant.sign_id = 8;
+    ascendant.sign_code = "scorpio".to_string();
+    ascendant.sign_name = "Scorpio".to_string();
+
+    let mut mc = angle_position(12, "mc", "Midheaven", "mc", "ic", "vertical", 125.0);
+    mc.sign_id = 5;
+    mc.sign_code = "leo".to_string();
+    mc.sign_name = "Leo".to_string();
+    mc.house_number = Some(10);
+
+    let mut mars = capricorn_house_2_position(5, "mars", "Mars");
+    mars.sign_id = 9;
+    mars.sign_code = "sagittarius".to_string();
+    mars.sign_name = "Sagittarius".to_string();
+    mars.house_id = Some(1);
+    mars.house_number = Some(1);
+    mars.house_name = Some("Self".to_string());
+
+    let sun = capricorn_house_2_position(1, "sun", "Sun");
+    let signals = vec![
+        placement_signal_row(1, "object_position:mars", "mars"),
+        placement_signal_row(2, "object_position:sun", "sun"),
+    ];
+    let rulers = vec![
+        domicile_ruler(8, "scorpio", "Scorpio", 5, "mars", "Mars"),
+        modern_domicile_ruler(8, "scorpio", "Scorpio", 10, "pluto", "Pluto"),
+        domicile_ruler(5, "leo", "Leo", 1, "sun", "Sun"),
+        domicile_ruler(10, "capricorn", "Capricorn", 7, "saturn", "Saturn"),
+        domicile_ruler(9, "sagittarius", "Sagittarius", 6, "jupiter", "Jupiter"),
+    ];
+
+    let payload = build_basic_payload_with_rulership(
+        42,
+        &input(),
+        &[ascendant, mc, mars, sun],
+        &signals,
+        &rulers,
+    );
+
+    let ascendant_ruler = payload
+        .rulership_context
+        .ascendant_ruler
+        .as_ref()
+        .expect("ascendant ruler");
+    assert_eq!(ascendant_ruler.sign_code, "scorpio");
+    assert_eq!(ascendant_ruler.ruler_object_codes, vec!["mars", "pluto"]);
+    assert_eq!(ascendant_ruler.ruler_object_code, "mars");
+    assert_eq!(ascendant_ruler.ruler_house_number, Some(1));
+    assert_eq!(
+        ascendant_ruler.ruler_position_signal_key.as_deref(),
+        Some("object_position:mars")
+    );
+
+    let mc_ruler = payload
+        .rulership_context
+        .mc_ruler
+        .as_ref()
+        .expect("mc ruler");
+    assert_eq!(mc_ruler.sign_code, "leo");
+    assert_eq!(mc_ruler.ruler_object_codes, vec!["sun"]);
+    assert_eq!(mc_ruler.ruler_object_code, "sun");
+    assert_eq!(mc_ruler.ruler_house_number, Some(2));
+    assert!(payload
+        .rulership_context
+        .dispositor_links
+        .iter()
+        .any(|link| link.object_code == "sun"
+            && link.object_sign_code == "capricorn"
+            && link.dispositor_object_code == "saturn"));
+    assert!(!payload
+        .rulership_context
+        .dispositor_links
+        .iter()
+        .any(|link| matches!(link.object_code.as_str(), "ascendant" | "mc")));
+    assert!(payload.drafting_plan.iter().any(|item| {
+        item.slot == "core_identity"
+            && item
+                .context_refs
+                .rulership_context
+                .contains(&"ascendant_ruler".to_string())
+    }));
+}
+
+#[test]
 fn reading_plan_uses_active_dignity_signals() {
     let signals = vec![
         InterpretationSignalRow {
@@ -1476,5 +1570,51 @@ fn placement_signal_row(id: i32, signal_key: &str, object_code: &str) -> Interpr
                 "object_code": object_code
             }
         })),
+    }
+}
+
+fn domicile_ruler(
+    sign_id: i32,
+    sign_code: &str,
+    sign_name: &str,
+    chart_object_id: i32,
+    object_code: &str,
+    object_name: &str,
+) -> DomicileRulerReference {
+    DomicileRulerReference {
+        reference_version_id: Some(1),
+        astral_system_id: 1,
+        astral_system_code: "traditional".to_string(),
+        sign_id,
+        sign_code: sign_code.to_string(),
+        sign_name: sign_name.to_string(),
+        chart_object_id,
+        object_code: object_code.to_string(),
+        object_name: object_name.to_string(),
+        dignity_type: "domicile".to_string(),
+        weight: 1.0,
+        is_primary: true,
+    }
+}
+
+fn modern_domicile_ruler(
+    sign_id: i32,
+    sign_code: &str,
+    sign_name: &str,
+    chart_object_id: i32,
+    object_code: &str,
+    object_name: &str,
+) -> DomicileRulerReference {
+    DomicileRulerReference {
+        astral_system_id: 2,
+        astral_system_code: "modern".to_string(),
+        ..domicile_ruler(
+            sign_id,
+            sign_code,
+            sign_name,
+            chart_object_id,
+            object_code,
+            object_name,
+        )
     }
 }

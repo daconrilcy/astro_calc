@@ -5,7 +5,7 @@ pub(super) fn has_current_llm_handoff_contract(payload: &BasicPayload) -> bool {
         return false;
     };
 
-    contract.contract_version == "natal_structured_v9"
+    contract.contract_version == "natal_structured_v10"
         && contract.payload_language_code == "en"
         && contract.target_language_policy == "provided_by_llm_service"
         && contract.audience_level == "beginner"
@@ -14,6 +14,7 @@ pub(super) fn has_current_llm_handoff_contract(payload: &BasicPayload) -> bool {
             == [
                 "chart_context",
                 "chart_emphasis",
+                "rulership_context",
                 "dignities",
                 "angles",
                 "signals",
@@ -29,6 +30,7 @@ pub(super) fn has_current_llm_handoff_contract(payload: &BasicPayload) -> bool {
                 "expose raw evidence unless explicitly requested",
                 "treat chart_emphasis as a standalone section instead of weighting context",
                 "treat chart_context as a standalone section instead of contextual weighting",
+                "treat rulership_context as a standalone section instead of contextual weighting",
                 "make deterministic or fatalistic predictions",
             ]
         && contract.output_format == "structured_sections"
