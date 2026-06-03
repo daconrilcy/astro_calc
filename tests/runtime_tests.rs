@@ -12,6 +12,7 @@ use rust_sqlx_connection_test::domain::{
 use rust_sqlx_connection_test::models::{
     AnglePointReference, ChartObject, HouseReference, SignReference,
 };
+use rust_sqlx_connection_test::repositories::parse_existing_basic_payload_value;
 use rust_sqlx_connection_test::runtime::{
     is_current_basic_payload, validate_calculation_references,
     validate_chart_object_signal_profiles,
@@ -264,6 +265,21 @@ fn current_payload() -> BasicPayload {
                 ],
             }],
         }
+}
+
+#[test]
+fn existing_payload_parser_treats_legacy_endpoint_shape_as_stale() {
+    let mut payload = serde_json::to_value(current_payload()).unwrap();
+    payload["rulership_context"]["final_dispositors"] = json!([
+        {
+            "object_codes": ["jupiter", "moon"],
+            "source_objects": ["jupiter", "mars", "moon", "pluto"]
+        }
+    ]);
+
+    let parsed = parse_existing_basic_payload_value(payload).unwrap();
+
+    assert!(parsed.is_none());
 }
 
 fn angle_fact(

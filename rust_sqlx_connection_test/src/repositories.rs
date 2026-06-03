@@ -260,9 +260,9 @@ impl RuntimeRepository {
         .fetch_optional(&self.pool)
         .await?;
 
-        row.map(serde_json::from_value)
+        row.map(parse_existing_basic_payload_value)
             .transpose()
-            .map_err(Into::into)
+            .map(Option::flatten)
     }
 
     pub async fn positions_for_payload(
@@ -894,6 +894,20 @@ impl RuntimeRepository {
         .await?;
         Ok(())
     }
+}
+
+pub fn parse_existing_basic_payload_value(
+    value: Value,
+) -> Result<Option<BasicPayload>, RuntimeError> {
+    match serde_json::from_value(value) {
+        Ok(payload) => Ok(Some(payload)),
+        Err(error) if is_stale_basic_payload_shape(&error) => Ok(None),
+        Err(error) => Err(error.into()),
+    }
+}
+
+fn is_stale_basic_payload_shape(error: &serde_json::Error) -> bool {
+    error.is_data() && error.to_string().contains("missing field")
 }
 
 async fn insert_house_cusp(

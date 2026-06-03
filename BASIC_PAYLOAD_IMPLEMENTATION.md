@@ -1682,6 +1682,12 @@ derivent exactement de `rulership_chains`. Un payload dont les endpoints sont
 coherents en forme JSON mais incoherents avec les chaines est rejete par
 `is_current_basic_payload`.
 
+La relecture des payloads persistants est compatible avec cette evolution de
+contrat: si un ancien payload stocke expose encore l'ancienne forme d'endpoint
+qui melangeait final dispositor et reception mutuelle, il est considere comme
+obsolete et le runtime reconstruit un payload courant depuis les faits
+persistes au lieu d'echouer au demarrage.
+
 Artefacts ajoutes:
 
 - `rust_sqlx_connection_test/schemas/natal_structured_v10.schema.json`;
