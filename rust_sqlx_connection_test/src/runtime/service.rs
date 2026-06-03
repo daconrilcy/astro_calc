@@ -16,9 +16,11 @@ use crate::signals::aggregate_basic_signals;
 use super::error::RuntimeError;
 use super::payload_freshness::{has_current_rulership_references, is_current_basic_payload};
 use super::references::{
+    validate_accidental_condition_triggers, validate_accidental_dignity_condition_references,
+    validate_accidental_polarity_bands, validate_accidental_scoring_params,
     validate_calculation_references, validate_chart_object_signal_profiles,
-    validate_accidental_dignity_condition_references, validate_house_axis_references,
-    validate_lunar_phase_references, validate_object_sect_affinity_references,
+    validate_house_axis_references, validate_lunar_phase_references,
+    validate_object_sect_affinity_references,
 };
 
 pub struct ChartCalculationRuntimeService<E> {
@@ -69,14 +71,28 @@ where
             .domicile_ruler_references(input.reference_version_id)
             .await?;
         let house_axes = self.repository.house_axis_references().await?;
-        validate_house_axis_references(&house_axes)?;
+        validate_house_axis_references(&house_axes, &references.houses)?;
         let lunar_phases = self.repository.lunar_phase_references().await?;
         validate_lunar_phase_references(&lunar_phases)?;
+        let catalog = self
+            .repository
+            .basic_payload_catalog(
+                &product_code,
+                "natal_structured_v13",
+                input.reference_version_id,
+            )
+            .await?;
         let accidental_conditions = self
             .repository
             .accidental_dignity_condition_references()
             .await?;
-        validate_accidental_dignity_condition_references(&accidental_conditions)?;
+        validate_accidental_dignity_condition_references(
+            &accidental_conditions,
+            &catalog.accidental_triggers,
+        )?;
+        validate_accidental_condition_triggers(&catalog.accidental_triggers)?;
+        validate_accidental_scoring_params(&catalog.accidental_scoring)?;
+        validate_accidental_polarity_bands(&catalog.accidental_polarity_bands)?;
         let sect_affinities = self.repository.object_sect_affinity_references().await?;
         validate_object_sect_affinity_references(&sect_affinities)?;
 
@@ -101,11 +117,14 @@ where
             let positions = self.repository.positions_for_payload(completed_id).await?;
             if has_reusable_persisted_positions(&positions, &references) {
                 let aspects = self.repository.aspects_for_payload(completed_id).await?;
-                let signal_drafts = aggregate_basic_signals(&CalculatedChartFacts {
-                    positions: positions.clone(),
-                    house_cusps: Vec::new(),
-                    aspects,
-                });
+                let signal_drafts = aggregate_basic_signals(
+                    &CalculatedChartFacts {
+                        positions: positions.clone(),
+                        house_cusps: Vec::new(),
+                        aspects,
+                    },
+                    &catalog,
+                );
                 tx.commit().await?;
                 let mut payload_tx = self.repository.pool().begin().await?;
                 let signals = RuntimeRepository::persist_signals(
@@ -125,6 +144,7 @@ where
                     &lunar_phases,
                     &accidental_conditions,
                     &sect_affinities,
+                    &catalog,
                 );
                 RuntimeRepository::persist_basic_payload(
                     &mut payload_tx,
@@ -170,6 +190,7 @@ where
             &aspect_definitions,
             &house_system,
             &references,
+            catalog.product_scoring.default_major_orb_deg,
         ) {
             Ok(value) => value,
             Err(error) => {
@@ -188,7 +209,7 @@ where
             house_cusps: Vec::new(),
             aspects,
         };
-        let signal_drafts = aggregate_basic_signals(&enriched_facts);
+        let signal_drafts = aggregate_basic_signals(&enriched_facts, &catalog);
         let signal_rows = RuntimeRepository::persist_signals(
             &mut tx,
             chart_calculation_id,
@@ -208,6 +229,7 @@ where
             &lunar_phases,
             &accidental_conditions,
             &sect_affinities,
+            &catalog,
         );
         RuntimeRepository::persist_basic_payload(
             &mut tx,

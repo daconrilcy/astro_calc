@@ -1,5 +1,6 @@
 use serde_json::json;
 
+use crate::catalog::BasicPayloadCatalog;
 use crate::dignities::{
     dignity_priority_delta_for_position, essential_dignities_for_position, EssentialDignityFact,
 };
@@ -13,9 +14,12 @@ use super::dignity_helpers::{
 use super::tags::{dedupe_tags, house_tags, sign_tags};
 use super::utils::round4;
 
-pub(super) fn position_priority(position: &ObjectPositionFact) -> f64 {
+pub(super) fn position_priority(
+    position: &ObjectPositionFact,
+    catalog: &BasicPayloadCatalog,
+) -> f64 {
     let base = object_signal_scoring_number(position, "position_priority_base").unwrap_or(0.0);
-    let dignity_delta = dignity_priority_delta_for_position(position);
+    let dignity_delta = dignity_priority_delta_for_position(position, catalog);
     round4((base + house_modality_priority_delta(position) + dignity_delta).min(100.0))
 }
 
@@ -35,7 +39,7 @@ pub(super) fn object_source_weight(position: &ObjectPositionFact) -> f64 {
     object_signal_scoring_number(position, "source_weight").unwrap_or(0.0)
 }
 
-fn object_signal_scoring_number(position: &ObjectPositionFact, key: &str) -> Option<f64> {
+pub(super) fn object_signal_scoring_number(position: &ObjectPositionFact, key: &str) -> Option<f64> {
     placement_context_value(position, "object_context", "signal_scoring")
         .and_then(|value| value.get(key))
         .and_then(|value| value.as_f64())
@@ -59,7 +63,10 @@ pub(super) fn position_aggregation_group(position: &ObjectPositionFact) -> Strin
     }
 }
 
-pub(super) fn position_interpretive_hint(position: &ObjectPositionFact) -> String {
+pub(super) fn position_interpretive_hint(
+    position: &ObjectPositionFact,
+    catalog: &BasicPayloadCatalog,
+) -> String {
     let base = match (position.house_name.as_deref(), position.house_number) {
         (Some(house_name), Some(_)) => format!(
             "{} expresses through {} qualities in the field of {}.",
@@ -71,7 +78,7 @@ pub(super) fn position_interpretive_hint(position: &ObjectPositionFact) -> Strin
         ),
     };
 
-    let dignities = essential_dignities_for_position(position);
+    let dignities = essential_dignities_for_position(position, catalog);
     if !dignities.is_empty() {
         format!(
             "{base} Its dignity context adds {}.{}",
@@ -83,7 +90,10 @@ pub(super) fn position_interpretive_hint(position: &ObjectPositionFact) -> Strin
     }
 }
 
-pub(super) fn position_semantic_tags(position: &ObjectPositionFact) -> Vec<String> {
+pub(super) fn position_semantic_tags(
+    position: &ObjectPositionFact,
+    catalog: &BasicPayloadCatalog,
+) -> Vec<String> {
     let mut tags = vec![
         "placement".to_string(),
         position.object_code.clone(),
@@ -113,20 +123,26 @@ pub(super) fn position_semantic_tags(position: &ObjectPositionFact) -> Vec<Strin
     if let Some(motion_state) = placement_context_str(position, "motion_context", "motion_state") {
         tags.push(motion_state.to_string());
     }
-    for dignity in essential_dignities_for_position(position) {
+    for dignity in essential_dignities_for_position(position, catalog) {
         tags.extend(dignity_semantic_tags(&dignity));
     }
     dedupe_tags(tags)
 }
 
-pub(super) fn placement_context(position: &ObjectPositionFact) -> serde_json::Value {
+pub(super) fn placement_context(
+    position: &ObjectPositionFact,
+    catalog: &BasicPayloadCatalog,
+) -> serde_json::Value {
     json!({
         "sign_context": placement_context_object(position, "sign_context"),
         "house_context": placement_context_object(position, "house_context"),
         "house_modality": placement_context_object(position, "house_modality"),
         "object_context": placement_context_object(position, "object_context"),
         "motion_context": placement_context_object(position, "motion_context"),
-        "dignity_context": dignity_evidence_array(&essential_dignities_for_position(position)),
+        "dignity_context": dignity_evidence_array(&essential_dignities_for_position(
+            position,
+            catalog,
+        )),
         "visibility_context": visibility_context(position)
     })
 }

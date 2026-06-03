@@ -5,9 +5,16 @@ use crate::domain::{
     AspectFact, BasicPayload, CalculatedChartFacts, HouseCuspFact, InterpretationSignalDraft,
     NatalChartInput, ObjectPositionFact, RuntimeOptions,
 };
+use crate::catalog::BasicPayloadCatalog;
+use crate::domain::{
+    AccidentalConditionTrigger, AccidentalPolarityBand, AccidentalScoringParams,
+    BasicProductScoringProfile, EssentialDignityRuleReference,
+};
 use crate::models::{
-    AnglePointReference, AspectDefinition, ChartCalculationRow, ChartObject,
-    DomicileRulerReference, HorizonPositionReference, HouseAxisReferenceRow, HouseReference,
+    AccidentalConditionTriggerRow, AccidentalPolarityBandRow, AccidentalScoringParamsRow,
+    AnglePointReference, AspectDefinition, BasicProductScoringProfileRow, ChartCalculationRow,
+    ChartObject, DomicileRulerReference, EssentialDignityRuleReferenceRow,
+    HorizonPositionReference, HouseAxisReferenceRow, HouseReference,
     AccidentalDignityConditionReferenceRow, HouseSystem, InterpretationSignalRow,
     LunarPhaseReferenceRow, MotionStateReference, ObjectSectAffinityReferenceRow,
     PersistedAspectFact, PersistedObjectPositionFact, SignReference,
@@ -67,7 +74,7 @@ impl RuntimeRepository {
     pub async fn aspect_definitions(&self) -> Result<Vec<AspectDefinition>, RuntimeError> {
         Ok(sqlx::query_as::<_, AspectDefinition>(
             r#"
-            SELECT id, code, name, angle::float8 AS angle
+            SELECT id, code, name, angle::float8 AS angle, default_orb_deg::float8 AS default_orb_deg
             FROM astral_aspects
             WHERE family = 'major'
             ORDER BY id
@@ -312,6 +319,189 @@ impl RuntimeRepository {
         .into_iter()
         .map(Into::into)
         .collect())
+    }
+
+    pub async fn basic_product_scoring_profile(
+        &self,
+        product_code: &str,
+        payload_contract_version: &str,
+    ) -> Result<BasicProductScoringProfile, RuntimeError> {
+        let row = sqlx::query_as::<_, BasicProductScoringProfileRow>(
+            r#"
+            SELECT product_code,
+                   payload_contract_version,
+                   default_major_orb_deg::float8 AS default_major_orb_deg,
+                   sign_emphasis_full_score::float8 AS sign_emphasis_full_score,
+                   house_emphasis_full_score::float8 AS house_emphasis_full_score,
+                   object_emphasis_full_score::float8 AS object_emphasis_full_score,
+                   sign_house_emphasis_min_score::float8 AS sign_house_emphasis_min_score,
+                   object_emphasis_min_score::float8 AS object_emphasis_min_score,
+                   house_axis_full_score::float8 AS house_axis_full_score,
+                   axis_min_score::float8 AS axis_min_score,
+                   axis_secondary_weight::float8 AS axis_secondary_weight,
+                   axis_polarity_dominance_delta::float8 AS axis_polarity_dominance_delta,
+                   axis_balanced_min_score::float8 AS axis_balanced_min_score,
+                   max_dominant_signs,
+                   max_dominant_houses,
+                   max_dominant_objects,
+                   max_active_signals,
+                   aspect_min_strength::float8 AS aspect_min_strength,
+                   max_house_axis_emphasis,
+                   accidental_scoring_params_id,
+                   essential_dignity_score_profile_id
+            FROM astral_basic_product_scoring_profiles
+            WHERE product_code = $1
+              AND payload_contract_version = $2
+              AND is_active = true
+            "#,
+        )
+        .bind(product_code)
+        .bind(payload_contract_version)
+        .fetch_one(&self.pool)
+        .await?;
+        Ok(row.into())
+    }
+
+    pub async fn essential_dignity_rule_references(
+        &self,
+        reference_version_id: i32,
+        score_profile_id: i32,
+    ) -> Result<Vec<EssentialDignityRuleReference>, RuntimeError> {
+        Ok(sqlx::query_as::<_, EssentialDignityRuleReferenceRow>(
+            r#"
+            SELECT object.code AS object_code,
+                   sign.code AS sign_code,
+                   dignity_type.code AS dignity_type,
+                   dignity_type.label AS dignity_label,
+                   CASE
+                       WHEN functional_effect.code = 'weakening' THEN 'debility'
+                       ELSE 'dignity'
+                   END AS polarity,
+                   weight.expression_weight::float8 AS strength_score,
+                   weight.priority_delta::float8 AS priority_delta,
+                   weight.signal_weight_delta::float8 AS signal_weight_delta,
+                   weight.signal_worthy_min_strength::float8 AS signal_worthy_min_strength,
+                   weight.emphasis_weight::float8 AS emphasis_weight
+            FROM astral_essential_dignity_rules rule
+            JOIN astral_chart_objects object ON object.id = rule.chart_object_id
+            JOIN astral_signs sign ON sign.id = rule.sign_id
+            JOIN astral_essential_dignity_types dignity_type
+              ON dignity_type.id = rule.essential_dignity_types_id
+            JOIN astral_dignity_functional_effects functional_effect
+              ON functional_effect.id = dignity_type.functional_effect_id
+            JOIN astral_essential_dignity_score_weights weight
+              ON weight.essential_dignity_types_id = dignity_type.id
+             AND weight.score_profile_id = $2
+            WHERE dignity_type.code IN ('domicile', 'exaltation', 'detriment', 'fall')
+              AND rule.reference_version_id IS NOT DISTINCT FROM $1
+            ORDER BY object.sort_order, sign.id, dignity_type.sort_order
+            "#,
+        )
+        .bind(reference_version_id)
+        .bind(score_profile_id)
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(Into::into)
+        .collect())
+    }
+
+    pub async fn accidental_condition_triggers(
+        &self,
+    ) -> Result<Vec<AccidentalConditionTrigger>, RuntimeError> {
+        Ok(sqlx::query_as::<_, AccidentalConditionTriggerRow>(
+            r#"
+            SELECT trigger_family,
+                   source_code,
+                   angle_object_code,
+                   condition_code
+            FROM astral_accidental_condition_triggers
+            WHERE is_active = true
+            ORDER BY sort_order, id
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(Into::into)
+        .collect())
+    }
+
+    pub async fn accidental_scoring_params(
+        &self,
+        params_id: i32,
+    ) -> Result<AccidentalScoringParams, RuntimeError> {
+        let row = sqlx::query_as::<_, AccidentalScoringParamsRow>(
+            r#"
+            SELECT code,
+                   overall_score_baseline::float8 AS overall_score_baseline,
+                   overall_score_min::float8 AS overall_score_min,
+                   overall_score_max::float8 AS overall_score_max,
+                   angle_proximity_max_orb_deg::float8 AS angle_proximity_max_orb_deg
+            FROM astral_accidental_scoring_params
+            WHERE id = $1
+              AND is_active = true
+            "#,
+        )
+        .bind(params_id)
+        .fetch_one(&self.pool)
+        .await?;
+        Ok(row.into())
+    }
+
+    pub async fn accidental_overall_polarity_bands(
+        &self,
+        params_id: i32,
+    ) -> Result<Vec<AccidentalPolarityBand>, RuntimeError> {
+        Ok(sqlx::query_as::<_, AccidentalPolarityBandRow>(
+            r#"
+            SELECT polarity_code,
+                   expression_quality_code,
+                   min_score::float8 AS min_score,
+                   max_score::float8 AS max_score,
+                   sort_order
+            FROM astral_accidental_overall_polarity_bands
+            WHERE accidental_scoring_params_id = $1
+            ORDER BY sort_order, id
+            "#,
+        )
+        .bind(params_id)
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(Into::into)
+        .collect())
+    }
+
+    pub async fn basic_payload_catalog(
+        &self,
+        product_code: &str,
+        payload_contract_version: &str,
+        reference_version_id: i32,
+    ) -> Result<BasicPayloadCatalog, RuntimeError> {
+        let product_scoring = self
+            .basic_product_scoring_profile(product_code, payload_contract_version)
+            .await?;
+        let essential_dignity_rules = self
+            .essential_dignity_rule_references(
+                reference_version_id,
+                product_scoring.essential_dignity_score_profile_id,
+            )
+            .await?;
+        let accidental_triggers = self.accidental_condition_triggers().await?;
+        let accidental_scoring = self
+            .accidental_scoring_params(product_scoring.accidental_scoring_params_id)
+            .await?;
+        let accidental_polarity_bands = self
+            .accidental_overall_polarity_bands(product_scoring.accidental_scoring_params_id)
+            .await?;
+        Ok(BasicPayloadCatalog::build(
+            product_scoring,
+            essential_dignity_rules,
+            accidental_triggers,
+            accidental_scoring,
+            accidental_polarity_bands,
+        ))
     }
 
     pub async fn house_system(&self, id: i32) -> Result<HouseSystem, RuntimeError> {
@@ -1225,6 +1415,86 @@ impl From<ObjectSectAffinityReferenceRow> for crate::domain::ObjectSectAffinityR
             sect_affinity_code: row.sect_affinity_code,
             is_variable: row.is_variable,
             description: row.description,
+        }
+    }
+}
+
+impl From<BasicProductScoringProfileRow> for BasicProductScoringProfile {
+    fn from(row: BasicProductScoringProfileRow) -> Self {
+        Self {
+            product_code: row.product_code,
+            payload_contract_version: row.payload_contract_version,
+            essential_dignity_score_profile_id: row.essential_dignity_score_profile_id,
+            accidental_scoring_params_id: row.accidental_scoring_params_id,
+            default_major_orb_deg: row.default_major_orb_deg,
+            sign_emphasis_full_score: row.sign_emphasis_full_score,
+            house_emphasis_full_score: row.house_emphasis_full_score,
+            object_emphasis_full_score: row.object_emphasis_full_score,
+            sign_house_emphasis_min_score: row.sign_house_emphasis_min_score,
+            object_emphasis_min_score: row.object_emphasis_min_score,
+            house_axis_full_score: row.house_axis_full_score,
+            axis_min_score: row.axis_min_score,
+            axis_secondary_weight: row.axis_secondary_weight,
+            axis_polarity_dominance_delta: row.axis_polarity_dominance_delta,
+            axis_balanced_min_score: row.axis_balanced_min_score,
+            max_dominant_signs: row.max_dominant_signs as usize,
+            max_dominant_houses: row.max_dominant_houses as usize,
+            max_dominant_objects: row.max_dominant_objects as usize,
+            max_active_signals: row.max_active_signals as usize,
+            aspect_min_strength: row.aspect_min_strength,
+            max_house_axis_emphasis: row.max_house_axis_emphasis as usize,
+        }
+    }
+}
+
+impl From<EssentialDignityRuleReferenceRow> for EssentialDignityRuleReference {
+    fn from(row: EssentialDignityRuleReferenceRow) -> Self {
+        Self {
+            object_code: row.object_code,
+            sign_code: row.sign_code,
+            dignity_type: row.dignity_type,
+            dignity_label: row.dignity_label,
+            polarity: row.polarity,
+            strength_score: row.strength_score,
+            priority_delta: row.priority_delta.unwrap_or(0.0),
+            signal_weight_delta: row.signal_weight_delta.unwrap_or(0.0),
+            signal_worthy_min_strength: row.signal_worthy_min_strength.unwrap_or(0.7),
+            emphasis_weight: row.emphasis_weight.unwrap_or(0.25),
+        }
+    }
+}
+
+impl From<AccidentalConditionTriggerRow> for AccidentalConditionTrigger {
+    fn from(row: AccidentalConditionTriggerRow) -> Self {
+        Self {
+            trigger_family: row.trigger_family,
+            source_code: row.source_code,
+            angle_object_code: row.angle_object_code,
+            condition_code: row.condition_code,
+        }
+    }
+}
+
+impl From<AccidentalScoringParamsRow> for AccidentalScoringParams {
+    fn from(row: AccidentalScoringParamsRow) -> Self {
+        Self {
+            code: row.code,
+            overall_score_baseline: row.overall_score_baseline,
+            overall_score_min: row.overall_score_min,
+            overall_score_max: row.overall_score_max,
+            angle_proximity_max_orb_deg: row.angle_proximity_max_orb_deg,
+        }
+    }
+}
+
+impl From<AccidentalPolarityBandRow> for AccidentalPolarityBand {
+    fn from(row: AccidentalPolarityBandRow) -> Self {
+        Self {
+            polarity_code: row.polarity_code,
+            expression_quality_code: row.expression_quality_code,
+            min_score: row.min_score,
+            max_score: row.max_score,
+            sort_order: row.sort_order,
         }
     }
 }

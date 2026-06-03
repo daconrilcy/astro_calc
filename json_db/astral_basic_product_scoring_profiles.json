@@ -1,0 +1,58 @@
+{
+  "name": "astral_basic_product_scoring_profiles",
+  "structure": {
+    "id": "integer",
+    "product_code": "string",
+    "payload_contract_version": "string",
+    "essential_dignity_score_profile_id": "integer, FK -> astral_dignity_score_profiles.id",
+    "accidental_scoring_params_id": "integer, FK -> astral_accidental_scoring_params.id",
+    "default_major_orb_deg": "number",
+    "sign_emphasis_full_score": "number",
+    "house_emphasis_full_score": "number",
+    "object_emphasis_full_score": "number",
+    "sign_house_emphasis_min_score": "number",
+    "object_emphasis_min_score": "number",
+    "house_axis_full_score": "number",
+    "axis_min_score": "number",
+    "axis_secondary_weight": "number",
+    "axis_polarity_dominance_delta": "number",
+    "axis_balanced_min_score": "number",
+    "max_dominant_signs": "integer",
+    "max_dominant_houses": "integer",
+    "max_dominant_objects": "integer",
+    "max_active_signals": "integer",
+    "aspect_min_strength": "number",
+    "max_house_axis_emphasis": "integer",
+    "is_active": "boolean",
+    "constraints": {
+      "unique": [["product_code", "payload_contract_version"]]
+    }
+  },
+  "data": [
+    {
+      "id": 1,
+      "product_code": "basic",
+      "payload_contract_version": "natal_structured_v13",
+      "essential_dignity_score_profile_id": 5,
+      "accidental_scoring_params_id": 1,
+      "default_major_orb_deg": 8.0,
+      "sign_emphasis_full_score": 4.6,
+      "house_emphasis_full_score": 4.6,
+      "object_emphasis_full_score": 2.4,
+      "sign_house_emphasis_min_score": 0.35,
+      "object_emphasis_min_score": 0.5,
+      "house_axis_full_score": 2.5,
+      "axis_min_score": 0.35,
+      "axis_secondary_weight": 0.35,
+      "axis_polarity_dominance_delta": 0.2,
+      "axis_balanced_min_score": 0.35,
+      "max_dominant_signs": 3,
+      "max_dominant_houses": 3,
+      "max_dominant_objects": 5,
+      "max_active_signals": 12,
+      "aspect_min_strength": 0.4,
+      "max_house_axis_emphasis": 3,
+      "is_active": true
+    }
+  ]
+}

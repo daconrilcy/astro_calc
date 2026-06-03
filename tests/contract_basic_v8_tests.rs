@@ -855,6 +855,37 @@ fn runtime_rejects_accidental_expression_quality_mismatch() {
 }
 
 #[test]
+fn runtime_rejects_v13_without_accidental_scoring_snapshot() {
+    let mut payload = load_golden_payload();
+    payload["chart_context"]["accidental_scoring"] = Value::Null;
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
+#[test]
+fn runtime_rejects_v13_without_product_scoring_snapshot() {
+    let mut payload = load_golden_payload();
+    payload["chart_context"]["product_scoring"] = Value::Null;
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
+#[test]
+fn runtime_rejects_v13_with_non_contiguous_polarity_bands() {
+    let mut payload = load_golden_payload();
+    payload["chart_context"]["accidental_scoring"]["polarity_bands"][1]["min_score"] =
+        serde_json::json!(0.5);
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
+#[test]
 fn runtime_rejects_accidental_related_signal_key_mismatch() {
     let mut payload = load_golden_payload();
     payload["accidental_dignities"][0]["related_signal_key"] =

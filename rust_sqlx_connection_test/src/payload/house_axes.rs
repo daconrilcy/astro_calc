@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use crate::catalog::BasicPayloadCatalog;
 use crate::domain::{
     BasicAngleFact, BasicChartEmphasis, BasicDignity, BasicHouseAxisEmphasis, BasicHouseAxisScore,
     BasicRulershipContext, BasicSignal, HouseAxisReference, ObjectPositionFact,
@@ -15,10 +16,6 @@ struct HouseScoreDraft {
     source_context_keys: Vec<String>,
 }
 
-const HOUSE_FULL_SCORE: f64 = 2.5;
-const AXIS_MIN_SCORE: f64 = 0.35;
-const AXIS_SECONDARY_WEIGHT: f64 = 0.35;
-
 pub(super) fn build_house_axis_emphasis(
     references: &[HouseAxisReference],
     positions: &[ObjectPositionFact],
@@ -27,7 +24,9 @@ pub(super) fn build_house_axis_emphasis(
     chart_emphasis: &BasicChartEmphasis,
     rulership_context: &BasicRulershipContext,
     signals: &[BasicSignal],
+    catalog: &BasicPayloadCatalog,
 ) -> Vec<BasicHouseAxisEmphasis> {
+    let scoring = &catalog.product_scoring;
     if references.is_empty() {
         return Vec::new();
     }
@@ -58,11 +57,14 @@ pub(super) fn build_house_axis_emphasis(
                 signals,
                 &signal_keys,
                 &position_house_by_object,
+                catalog,
             )
         })
         .collect::<Vec<_>>();
 
-    axes.retain(|axis| axis.axis_score >= AXIS_MIN_SCORE && axis.polarity_balance != "weak_axis");
+    axes.retain(|axis| {
+        axis.axis_score >= scoring.axis_min_score && axis.polarity_balance != "weak_axis"
+    });
     axes.sort_by(|left, right| {
         right
             .axis_score
@@ -70,7 +72,7 @@ pub(super) fn build_house_axis_emphasis(
             .unwrap_or(std::cmp::Ordering::Equal)
             .then_with(|| left.axis_code.cmp(&right.axis_code))
     });
-    axes.truncate(3);
+    axes.truncate(scoring.max_house_axis_emphasis);
     axes
 }
 
@@ -85,7 +87,9 @@ fn build_axis(
     signals: &[BasicSignal],
     signal_keys: &HashSet<&str>,
     position_house_by_object: &HashMap<&str, i32>,
+    catalog: &BasicPayloadCatalog,
 ) -> BasicHouseAxisEmphasis {
+    let scoring = &catalog.product_scoring;
     let mut first = score_house(
         reference.house_a_number,
         &reference.theme_a_code,
@@ -117,10 +121,11 @@ fn build_axis(
         &mut first,
         &mut second,
     );
-    let first_score = normalized_house_score(first.raw_score);
-    let second_score = normalized_house_score(second.raw_score);
+    let first_score = normalized_house_score(first.raw_score, scoring.house_axis_full_score);
+    let second_score = normalized_house_score(second.raw_score, scoring.house_axis_full_score);
     let axis_score = round4(
-        (first_score.max(second_score) + AXIS_SECONDARY_WEIGHT * first_score.min(second_score))
+        (first_score.max(second_score)
+            + scoring.axis_secondary_weight * first_score.min(second_score))
             .clamp(0.0, 1.0),
     );
     let (primary_house, secondary_house) = if first_score >= second_score {
@@ -137,7 +142,7 @@ fn build_axis(
     let mut reasons = first.reasons.clone();
     push_unique_all(&mut reasons, &second.reasons);
 
-    let polarity_balance = polarity_balance(first_score, second_score);
+    let polarity_balance = polarity_balance(first_score, second_score, scoring);
 
     BasicHouseAxisEmphasis {
         axis_code: reference.axis_code.clone(),
@@ -436,16 +441,22 @@ fn dignity_weight(dignity_type: &str) -> f64 {
     }
 }
 
-fn normalized_house_score(raw_score: f64) -> f64 {
-    round4((raw_score / HOUSE_FULL_SCORE).clamp(0.0, 1.0))
+fn normalized_house_score(raw_score: f64, house_axis_full_score: f64) -> f64 {
+    round4((raw_score / house_axis_full_score).clamp(0.0, 1.0))
 }
 
-fn polarity_balance(first_score: f64, second_score: f64) -> String {
-    if first_score >= second_score + 0.2 {
+fn polarity_balance(
+    first_score: f64,
+    second_score: f64,
+    scoring: &crate::domain::BasicProductScoringProfile,
+) -> String {
+    if first_score >= second_score + scoring.axis_polarity_dominance_delta {
         "primary_house_dominant".to_string()
-    } else if second_score >= first_score + 0.2 {
+    } else if second_score >= first_score + scoring.axis_polarity_dominance_delta {
         "secondary_house_dominant".to_string()
-    } else if first_score >= AXIS_MIN_SCORE && second_score >= AXIS_MIN_SCORE {
+    } else if first_score >= scoring.axis_balanced_min_score
+        && second_score >= scoring.axis_balanced_min_score
+    {
         "balanced_axis".to_string()
     } else {
         "weak_axis".to_string()

@@ -1,4 +1,5 @@
-use crate::domain::{BasicObjectPosition, BasicPayload};
+use crate::catalog::accidental_polarity_bands_are_valid;
+use crate::domain::{BasicChartContext, BasicObjectPosition, BasicPayload};
 
 use super::json;
 
@@ -45,6 +46,32 @@ fn has_chart_context(payload: &BasicPayload) -> bool {
         && context.hemisphere_emphasis.above_horizon_count >= 0
         && context.hemisphere_emphasis.below_horizon_count >= 0
         && context.hemisphere_emphasis.on_horizon_count >= 0
+        && has_valid_v13_scoring_snapshots(context)
+}
+
+fn has_valid_v13_scoring_snapshots(context: &BasicChartContext) -> bool {
+    let Some(accidental) = context.accidental_scoring.as_ref() else {
+        return false;
+    };
+    let Some(product) = context.product_scoring.as_ref() else {
+        return false;
+    };
+
+    accidental.overall_score_min <= accidental.overall_score_baseline
+        && accidental.overall_score_baseline <= accidental.overall_score_max
+        && accidental.overall_score_min >= 0.0
+        && accidental.overall_score_max <= 1.0
+        && accidental.angle_proximity_max_orb_deg > 0.0
+        && accidental_polarity_bands_are_valid(&accidental.polarity_bands)
+        && product.sign_house_emphasis_min_score >= 0.0
+        && product.object_emphasis_min_score >= 0.0
+        && product.aspect_min_strength >= 0.0
+        && product.aspect_min_strength <= 1.0
+        && product.max_dominant_signs > 0
+        && product.max_dominant_houses > 0
+        && product.max_dominant_objects > 0
+        && product.max_active_signals > 0
+        && product.max_house_axis_emphasis > 0
 }
 
 fn has_current_visibility_context(position: &BasicObjectPosition) -> bool {

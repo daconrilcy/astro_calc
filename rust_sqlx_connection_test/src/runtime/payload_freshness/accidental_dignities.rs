@@ -5,11 +5,10 @@ use crate::domain::{
     BasicPayload, BasicSignal,
 };
 
-use crate::runtime::references::ACCIDENTAL_CONDITION_CODES;
+use crate::catalog::overall_polarity_for_score_with_bands;
 
 const SCORE_TOLERANCE: f64 = 0.001;
 const ANGLE_ORB_TOLERANCE_DEG: f64 = 0.01;
-const ANGLE_PROXIMITY_MAX_ORB_DEG: f64 = 10.0;
 
 pub(super) fn has_current_accidental_dignities(payload: &BasicPayload) -> bool {
     payload.chart_context.payload_contract.contract_version == "natal_structured_v13"
@@ -49,19 +48,24 @@ fn has_valid_accidental_dignities_block(payload: &BasicPayload) -> bool {
             .iter()
             .any(|evaluation| is_angle_position_code(payload, &evaluation.object_code))
         && payload.accidental_dignities.iter().all(|evaluation| {
-            has_valid_evaluation(evaluation, &signal_keys)
+            has_valid_evaluation(payload, evaluation, &signal_keys)
         })
 }
 
 fn has_valid_evaluation(
+    payload: &BasicPayload,
     evaluation: &BasicAccidentalDignityEvaluation,
     signal_keys: &HashSet<&str>,
 ) -> bool {
     !evaluation.object_code.trim().is_empty()
         && !evaluation.object_name.trim().is_empty()
         && (0.0..=1.0).contains(&evaluation.overall_score)
-        && valid_overall_polarity(evaluation.overall_polarity.as_str())
-        && overall_polarity_matches_score(evaluation.overall_score, &evaluation.overall_polarity)
+        && valid_overall_polarity(payload, evaluation.overall_polarity.as_str())
+        && overall_polarity_matches_score(
+            payload,
+            evaluation.overall_score,
+            &evaluation.overall_polarity,
+        )
         && !evaluation.expression_quality.trim().is_empty()
         && evaluation
             .related_signal_key
@@ -70,8 +74,9 @@ fn has_valid_evaluation(
         && !evaluation.conditions.is_empty()
         && evaluation.conditions.iter().all(has_valid_condition)
         && has_unique_condition_codes(evaluation)
-        && overall_score_matches_deltas(evaluation)
+        && overall_score_matches_deltas(payload, evaluation)
         && expression_quality_matches_polarity(
+            payload,
             evaluation.overall_polarity.as_str(),
             evaluation.expression_quality.as_str(),
         )
@@ -80,17 +85,12 @@ fn has_valid_evaluation(
 
 fn has_valid_condition(condition: &BasicAccidentalDignityCondition) -> bool {
     !condition.condition_code.trim().is_empty()
-        && is_known_accidental_condition_code(condition.condition_code.as_str())
         && valid_condition_family(condition.condition_family.as_str())
         && valid_polarity(condition.polarity.as_str())
         && (0.0..=1.0).contains(&condition.strength_score)
         && (-1.0..=1.0).contains(&condition.score_delta)
         && condition.source.is_object()
         && !condition.interpretive_hint.trim().is_empty()
-}
-
-fn is_known_accidental_condition_code(code: &str) -> bool {
-    ACCIDENTAL_CONDITION_CODES.contains(&code)
 }
 
 fn has_unique_condition_codes(evaluation: &BasicAccidentalDignityEvaluation) -> bool {
@@ -107,18 +107,19 @@ fn related_signal_key_matches_object(evaluation: &BasicAccidentalDignityEvaluati
     })
 }
 
-fn expression_quality_matches_polarity(polarity: &str, expression_quality: &str) -> bool {
-    expression_quality == expression_quality_for_polarity(polarity)
-}
-
-fn expression_quality_for_polarity(polarity: &str) -> &'static str {
-    match polarity {
-        "fortified" => "strong_external_manifestation",
-        "mixed_or_contextual" => "mixed_or_contextual_expression",
-        "weakened" => "constrained_expression",
-        "strongly_weakened" => "strongly_constrained_expression",
-        _ => "",
-    }
+fn expression_quality_matches_polarity(
+    payload: &BasicPayload,
+    polarity: &str,
+    expression_quality: &str,
+) -> bool {
+    let Some(scoring) = payload.chart_context.accidental_scoring.as_ref() else {
+        return false;
+    };
+    scoring
+        .polarity_bands
+        .iter()
+        .find(|band| band.polarity_code == polarity)
+        .is_some_and(|band| band.expression_quality_code == expression_quality)
 }
 
 fn has_current_position_accidental_context(position: &BasicObjectPosition) -> bool {
@@ -184,6 +185,7 @@ pub(super) fn accidental_conditions_match_position_facts(payload: &BasicPayload)
         };
         evaluation.conditions.iter().all(|condition| {
             condition_matches_position(
+                payload,
                 condition,
                 position,
                 chart_sect,
@@ -194,6 +196,7 @@ pub(super) fn accidental_conditions_match_position_facts(payload: &BasicPayload)
 }
 
 fn condition_matches_position(
+    payload: &BasicPayload,
     condition: &BasicAccidentalDignityCondition,
     position: &BasicObjectPosition,
     chart_sect: Option<&str>,
@@ -208,12 +211,18 @@ fn condition_matches_position(
         "above_horizon" => horizon_position(position) == Some("above_horizon"),
         "below_horizon" => horizon_position(position) == Some("below_horizon"),
         "on_horizon" => horizon_position(position) == Some("on_horizon"),
-        "near_ascendant" => angle_proximity_matches(condition, position, "ascendant", angle_longitudes),
-        "near_descendant" => {
-            angle_proximity_matches(condition, position, "descendant", angle_longitudes)
+        "near_ascendant" => {
+            angle_proximity_matches(payload, condition, position, "ascendant", angle_longitudes)
         }
-        "near_mc" => angle_proximity_matches(condition, position, "mc", angle_longitudes),
-        "near_ic" => angle_proximity_matches(condition, position, "ic", angle_longitudes),
+        "near_descendant" => angle_proximity_matches(
+            payload,
+            condition,
+            position,
+            "descendant",
+            angle_longitudes,
+        ),
+        "near_mc" => angle_proximity_matches(payload, condition, position, "mc", angle_longitudes),
+        "near_ic" => angle_proximity_matches(payload, condition, position, "ic", angle_longitudes),
         "sect_affinity_match" => sect_matches(chart_sect, condition, true),
         "sect_affinity_mismatch" => sect_matches(chart_sect, condition, false),
         "sect_affinity_variable_unresolved" => condition
@@ -226,6 +235,7 @@ fn condition_matches_position(
 }
 
 fn angle_proximity_matches(
+    payload: &BasicPayload,
     condition: &BasicAccidentalDignityCondition,
     position: &BasicObjectPosition,
     angle_code: &str,
@@ -239,7 +249,7 @@ fn angle_proximity_matches(
         .source
         .get("orb_deg")
         .and_then(|value| value.as_f64());
-    orb <= ANGLE_PROXIMITY_MAX_ORB_DEG + ANGLE_ORB_TOLERANCE_DEG
+    orb <= max_angle_orb(payload) + ANGLE_ORB_TOLERANCE_DEG
         && source_orb.is_some_and(|value| (value - orb).abs() <= ANGLE_ORB_TOLERANCE_DEG)
 }
 
@@ -318,37 +328,51 @@ fn summaries_match_conditions(
     })
 }
 
-fn overall_score_matches_deltas(evaluation: &BasicAccidentalDignityEvaluation) -> bool {
+fn overall_score_matches_deltas(
+    payload: &BasicPayload,
+    evaluation: &BasicAccidentalDignityEvaluation,
+) -> bool {
     let raw_score: f64 = evaluation
         .conditions
         .iter()
         .map(|condition| condition.score_delta)
         .sum();
-    let expected = (0.5 + raw_score).clamp(0.0, 1.0);
+    let Some(scoring) = payload.chart_context.accidental_scoring.as_ref() else {
+        return false;
+    };
+    let expected = (scoring.overall_score_baseline + raw_score)
+        .clamp(scoring.overall_score_min, scoring.overall_score_max);
     (evaluation.overall_score - expected).abs() <= SCORE_TOLERANCE
 }
 
-fn overall_polarity_matches_score(score: f64, polarity: &str) -> bool {
-    overall_polarity_for_score(score) == polarity
+fn overall_polarity_matches_score(
+    payload: &BasicPayload,
+    score: f64,
+    polarity: &str,
+) -> bool {
+    let Some(scoring) = payload.chart_context.accidental_scoring.as_ref() else {
+        return false;
+    };
+    overall_polarity_for_score_with_bands(score, &scoring.polarity_bands).0 == polarity
 }
 
-fn overall_polarity_for_score(score: f64) -> &'static str {
-    if score >= 0.70 {
-        "fortified"
-    } else if score >= 0.45 {
-        "mixed_or_contextual"
-    } else if score >= 0.30 {
-        "weakened"
-    } else {
-        "strongly_weakened"
-    }
+fn max_angle_orb(payload: &BasicPayload) -> f64 {
+    payload
+        .chart_context
+        .accidental_scoring
+        .as_ref()
+        .map(|scoring| scoring.angle_proximity_max_orb_deg)
+        .unwrap_or(f64::INFINITY)
 }
 
-fn valid_overall_polarity(value: &str) -> bool {
-    matches!(
-        value,
-        "fortified" | "mixed_or_contextual" | "weakened" | "strongly_weakened"
-    )
+fn valid_overall_polarity(payload: &BasicPayload, value: &str) -> bool {
+    let Some(scoring) = payload.chart_context.accidental_scoring.as_ref() else {
+        return false;
+    };
+    scoring
+        .polarity_bands
+        .iter()
+        .any(|band| band.polarity_code == value)
 }
 
 fn valid_condition_family(value: &str) -> bool {

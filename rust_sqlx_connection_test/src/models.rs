@@ -24,6 +24,7 @@ pub struct AspectDefinition {
     pub code: String,
     pub name: String,
     pub angle: f64,
+    pub default_orb_deg: Option<f64>,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -148,6 +149,71 @@ pub struct ObjectSectAffinityReferenceRow {
     pub sect_affinity_code: String,
     pub is_variable: bool,
     pub description: String,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct EssentialDignityRuleReferenceRow {
+    pub object_code: String,
+    pub sign_code: String,
+    pub dignity_type: String,
+    pub dignity_label: String,
+    pub polarity: String,
+    pub strength_score: f64,
+    pub priority_delta: Option<f64>,
+    pub signal_weight_delta: Option<f64>,
+    pub signal_worthy_min_strength: Option<f64>,
+    pub emphasis_weight: Option<f64>,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct AccidentalConditionTriggerRow {
+    pub trigger_family: String,
+    pub source_code: Option<String>,
+    pub angle_object_code: Option<String>,
+    pub condition_code: String,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct AccidentalScoringParamsRow {
+    pub code: String,
+    pub overall_score_baseline: f64,
+    pub overall_score_min: f64,
+    pub overall_score_max: f64,
+    pub angle_proximity_max_orb_deg: f64,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct AccidentalPolarityBandRow {
+    pub polarity_code: String,
+    pub expression_quality_code: String,
+    pub min_score: f64,
+    pub max_score: f64,
+    pub sort_order: i32,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct BasicProductScoringProfileRow {
+    pub product_code: String,
+    pub payload_contract_version: String,
+    pub default_major_orb_deg: f64,
+    pub sign_emphasis_full_score: f64,
+    pub house_emphasis_full_score: f64,
+    pub object_emphasis_full_score: f64,
+    pub sign_house_emphasis_min_score: f64,
+    pub object_emphasis_min_score: f64,
+    pub house_axis_full_score: f64,
+    pub axis_min_score: f64,
+    pub axis_secondary_weight: f64,
+    pub axis_polarity_dominance_delta: f64,
+    pub axis_balanced_min_score: f64,
+    pub max_dominant_signs: i32,
+    pub max_dominant_houses: i32,
+    pub max_dominant_objects: i32,
+    pub max_active_signals: i32,
+    pub aspect_min_strength: f64,
+    pub max_house_axis_emphasis: i32,
+    pub accidental_scoring_params_id: i32,
+    pub essential_dignity_score_profile_id: i32,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]

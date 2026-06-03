@@ -1,0 +1,26 @@
+---
+description: Donnees canoniques en base — pas de constantes en dur, processus table/jointures
+alwaysApply: true
+---
+
+# Donnees canoniques (base de donnees)
+
+Les elements canoniques (codes, libelles, seuils, mappings, definitions metier) proviennent **uniquement** de la base de donnees. Ne pas les dupliquer en constantes, enums ou tableaux en dur dans le code Rust ou ailleurs si une table (ou vue) peut les porter.
+
+## Interdit
+
+- Ajouter des valeurs metier fixes dans le code quand elles existent ou peuvent exister en base.
+- Contourner la base avec des fichiers JSON locaux comme source de verite (sauf fixtures de test explicites).
+
+## Processus obligatoire avant d'utiliser une donnee canonique
+
+1. **Verifier** si la table (ou l'entite equivalente) existe deja et si les lignes necessaires sont presentes.
+2. **Completer** : inserer les valeurs manquantes si la table existe mais est incomplete.
+3. **Creer** si absent : definir la table, ses contraintes et ses **jointures** avec les tables de reference deja en place (cles etrangeres, tables de liaison, coherence avec le schema existant).
+4. **Ensuite seulement** : lire ces donnees depuis la base dans le code (repository, cache runtime, etc.).
+
+## Implementation
+
+- Le code charge et interprete ; il ne definit pas le referentiel.
+- Les migrations ou scripts d'initialisation de donnees portent la creation de tables et l'insertion des lignes canoniques.
+- Documenter toute nouvelle entite ou jeu de donnees dans `BASIC_PAYLOAD_IMPLEMENTATION.md`.

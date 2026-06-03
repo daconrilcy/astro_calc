@@ -1,3 +1,5 @@
+use crate::catalog::BasicPayloadCatalog;
+use crate::dignities::dignity_emphasis_weight;
 use crate::domain::{
     BasicChartEmphasis, BasicDignity, BasicDominantHouse, BasicDominantObject, BasicDominantSign,
     BasicSignal, ObjectPositionFact,
@@ -12,17 +14,13 @@ struct EmphasisScore {
     reasons: Vec<String>,
 }
 
-const SIGN_EMPHASIS_FULL_SCORE: f64 = 4.6;
-const HOUSE_EMPHASIS_FULL_SCORE: f64 = 4.6;
-const OBJECT_EMPHASIS_FULL_SCORE: f64 = 2.4;
-const SIGN_HOUSE_EMPHASIS_MIN_SCORE: f64 = 0.35;
-const OBJECT_EMPHASIS_MIN_SCORE: f64 = 0.5;
-
 pub(super) fn build_chart_emphasis(
     positions: &[ObjectPositionFact],
     dignities: &[BasicDignity],
     signals: &[BasicSignal],
+    catalog: &BasicPayloadCatalog,
 ) -> BasicChartEmphasis {
+    let scoring = &catalog.product_scoring;
     let mut sign_scores: HashMap<String, EmphasisScore> = HashMap::new();
     let mut house_scores: HashMap<i32, EmphasisScore> = HashMap::new();
     let mut house_theme_codes: HashMap<i32, String> = HashMap::new();
@@ -67,6 +65,7 @@ pub(super) fn build_chart_emphasis(
         &mut sign_scores,
         &mut house_scores,
         &mut object_scores,
+        catalog,
     );
     add_signal_emphasis(
         signals,
@@ -75,12 +74,12 @@ pub(super) fn build_chart_emphasis(
         &mut house_theme_codes,
         &mut object_scores,
     );
-    add_sign_emphasis_to_objects(positions, &sign_scores, &mut object_scores);
+    add_sign_emphasis_to_objects(positions, &sign_scores, &mut object_scores, scoring);
 
     BasicChartEmphasis {
-        dominant_signs: normalized_signs(sign_scores),
-        dominant_houses: normalized_houses(house_scores, &house_theme_codes),
-        dominant_objects: normalized_objects(object_scores),
+        dominant_signs: normalized_signs(sign_scores, scoring),
+        dominant_houses: normalized_houses(house_scores, &house_theme_codes, scoring),
+        dominant_objects: normalized_objects(object_scores, scoring),
     }
 }
 
@@ -122,9 +121,10 @@ fn add_dignity_emphasis(
     sign_scores: &mut HashMap<String, EmphasisScore>,
     house_scores: &mut HashMap<i32, EmphasisScore>,
     object_scores: &mut HashMap<String, EmphasisScore>,
+    catalog: &BasicPayloadCatalog,
 ) {
     for dignity in dignities {
-        let dignity_weight = dignity_emphasis_weight(dignity);
+        let dignity_weight = dignity_emphasis_weight(&dignity.dignity_type, catalog);
         add_score(
             sign_scores.entry(dignity.sign_code.clone()).or_default(),
             dignity_weight,
@@ -259,6 +259,7 @@ fn add_sign_emphasis_to_objects(
     positions: &[ObjectPositionFact],
     sign_scores: &HashMap<String, EmphasisScore>,
     object_scores: &mut HashMap<String, EmphasisScore>,
+    scoring: &crate::domain::BasicProductScoringProfile,
 ) {
     let Some(max_sign_score) = sign_scores
         .values()
@@ -278,9 +279,10 @@ fn add_sign_emphasis_to_objects(
         else {
             continue;
         };
-        let normalized_sign_score = normalized_emphasis_score(sign_score, SIGN_EMPHASIS_FULL_SCORE);
+        let normalized_sign_score =
+            normalized_emphasis_score(sign_score, scoring.sign_emphasis_full_score);
         if sign_score >= max_sign_score * 0.85
-            && normalized_sign_score >= SIGN_HOUSE_EMPHASIS_MIN_SCORE
+            && normalized_sign_score >= scoring.sign_house_emphasis_min_score
         {
             add_reason(
                 object_scores
@@ -292,27 +294,31 @@ fn add_sign_emphasis_to_objects(
     }
 }
 
-fn normalized_signs(scores: HashMap<String, EmphasisScore>) -> Vec<BasicDominantSign> {
+fn normalized_signs(
+    scores: HashMap<String, EmphasisScore>,
+    scoring: &crate::domain::BasicProductScoringProfile,
+) -> Vec<BasicDominantSign> {
     let mut values: Vec<_> = scores
         .into_iter()
         .filter(|(_, entry)| entry.score > 0.0)
         .map(|(sign_code, entry)| BasicDominantSign {
             sign_code,
-            score: normalized_emphasis_score(entry.score, SIGN_EMPHASIS_FULL_SCORE),
+            score: normalized_emphasis_score(entry.score, scoring.sign_emphasis_full_score),
             reasons: entry.reasons,
         })
         .collect();
     values.sort_by(|left, right| {
         sort_emphasis(left.score, &left.sign_code, right.score, &right.sign_code)
     });
-    retain_strong_or_top_signs(&mut values);
-    values.truncate(3);
+    retain_strong_or_top_signs(&mut values, scoring);
+    values.truncate(scoring.max_dominant_signs);
     values
 }
 
 fn normalized_houses(
     scores: HashMap<i32, EmphasisScore>,
     house_theme_codes: &HashMap<i32, String>,
+    scoring: &crate::domain::BasicProductScoringProfile,
 ) -> Vec<BasicDominantHouse> {
     let mut values: Vec<_> = scores
         .into_iter()
@@ -323,7 +329,7 @@ fn normalized_houses(
                 .get(&house_number)
                 .cloned()
                 .unwrap_or_else(|| "object_position".to_string()),
-            score: normalized_emphasis_score(entry.score, HOUSE_EMPHASIS_FULL_SCORE),
+            score: normalized_emphasis_score(entry.score, scoring.house_emphasis_full_score),
             reasons: entry.reasons,
         })
         .collect();
@@ -335,18 +341,21 @@ fn normalized_houses(
             &right.house_number,
         )
     });
-    retain_strong_or_top_houses(&mut values);
-    values.truncate(3);
+    retain_strong_or_top_houses(&mut values, scoring);
+    values.truncate(scoring.max_dominant_houses);
     values
 }
 
-fn normalized_objects(scores: HashMap<String, EmphasisScore>) -> Vec<BasicDominantObject> {
+fn normalized_objects(
+    scores: HashMap<String, EmphasisScore>,
+    scoring: &crate::domain::BasicProductScoringProfile,
+) -> Vec<BasicDominantObject> {
     let mut values: Vec<_> = scores
         .into_iter()
         .filter(|(_, entry)| entry.score > 0.0)
         .map(|(object_code, entry)| BasicDominantObject {
             object_code,
-            score: normalized_emphasis_score(entry.score, OBJECT_EMPHASIS_FULL_SCORE),
+            score: normalized_emphasis_score(entry.score, scoring.object_emphasis_full_score),
             reasons: entry.reasons,
         })
         .collect();
@@ -358,14 +367,17 @@ fn normalized_objects(scores: HashMap<String, EmphasisScore>) -> Vec<BasicDomina
             &right.object_code,
         )
     });
-    retain_strong_or_top_objects(&mut values);
-    values.truncate(5);
+    retain_strong_or_top_objects(&mut values, scoring);
+    values.truncate(scoring.max_dominant_objects);
     values
 }
 
-fn retain_strong_or_top_signs(values: &mut Vec<BasicDominantSign>) {
+fn retain_strong_or_top_signs(
+    values: &mut Vec<BasicDominantSign>,
+    scoring: &crate::domain::BasicProductScoringProfile,
+) {
     let top = values.first().cloned();
-    values.retain(|entry| entry.score >= SIGN_HOUSE_EMPHASIS_MIN_SCORE);
+    values.retain(|entry| entry.score >= scoring.sign_house_emphasis_min_score);
     if values.is_empty() {
         if let Some(top) = top {
             values.push(top);
@@ -373,9 +385,12 @@ fn retain_strong_or_top_signs(values: &mut Vec<BasicDominantSign>) {
     }
 }
 
-fn retain_strong_or_top_houses(values: &mut Vec<BasicDominantHouse>) {
+fn retain_strong_or_top_houses(
+    values: &mut Vec<BasicDominantHouse>,
+    scoring: &crate::domain::BasicProductScoringProfile,
+) {
     let top = values.first().cloned();
-    values.retain(|entry| entry.score >= SIGN_HOUSE_EMPHASIS_MIN_SCORE);
+    values.retain(|entry| entry.score >= scoring.sign_house_emphasis_min_score);
     if values.is_empty() {
         if let Some(top) = top {
             values.push(top);
@@ -383,10 +398,13 @@ fn retain_strong_or_top_houses(values: &mut Vec<BasicDominantHouse>) {
     }
 }
 
-fn retain_strong_or_top_objects(values: &mut Vec<BasicDominantObject>) {
+fn retain_strong_or_top_objects(
+    values: &mut Vec<BasicDominantObject>,
+    scoring: &crate::domain::BasicProductScoringProfile,
+) {
     let top = values.first().cloned();
     values.retain(|entry| {
-        entry.score >= OBJECT_EMPHASIS_MIN_SCORE
+        entry.score >= scoring.object_emphasis_min_score
             && entry
                 .reasons
                 .iter()
@@ -427,16 +445,6 @@ fn add_score(entry: &mut EmphasisScore, score: f64, reason: String) {
 fn add_reason(entry: &mut EmphasisScore, reason: &str) {
     if !entry.reasons.iter().any(|existing| existing == reason) {
         entry.reasons.push(reason.to_string());
-    }
-}
-
-fn dignity_emphasis_weight(dignity: &BasicDignity) -> f64 {
-    match dignity.dignity_type.as_str() {
-        "domicile" => 0.65,
-        "exaltation" => 0.55,
-        "detriment" => 0.45,
-        "fall" => 0.35,
-        _ => 0.25,
     }
 }
 

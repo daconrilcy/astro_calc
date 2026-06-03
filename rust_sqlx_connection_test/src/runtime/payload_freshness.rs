@@ -19,8 +19,16 @@ pub fn is_current_basic_payload(payload: &BasicPayload) -> bool {
     let structural_axis_pairs = angles::structural_axis_pairs_from_payload(payload);
     let angle_object_codes = angles::angle_object_codes_from_payload(payload);
 
+    let max_active_signals = payload
+        .chart_context
+        .product_scoring
+        .as_ref()
+        .map(|scoring| scoring.max_active_signals)
+        .unwrap_or(0);
+
     !payload.signals.is_empty()
-        && payload.signals.len() <= 12
+        && max_active_signals > 0
+        && payload.signals.len() <= max_active_signals
         && chart_context::has_current_chart_context(payload)
         && angles::has_current_angles(payload)
         && dignities::has_current_dignities(payload)

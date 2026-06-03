@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use serde_json::json;
 
+use crate::catalog::BasicPayloadCatalog;
 use crate::domain::{CalculatedChartFacts, InterpretationSignalDraft, ObjectPositionFact};
 
 use super::angles::is_core_chart_object;
@@ -13,6 +14,7 @@ use super::utils::round4;
 pub(super) fn add_position_cluster_signals(
     facts: &CalculatedChartFacts,
     signals: &mut Vec<InterpretationSignalDraft>,
+    catalog: &BasicPayloadCatalog,
 ) {
     let mut sign_house_groups: HashMap<(String, i32), Vec<&ObjectPositionFact>> = HashMap::new();
 
@@ -40,8 +42,8 @@ pub(super) fn add_position_cluster_signals(
 
     for ((sign_code, house_number), mut positions) in groups {
         positions.sort_by(|left, right| {
-            position_priority(right)
-                .partial_cmp(&position_priority(left))
+            position_priority(right, catalog)
+                .partial_cmp(&position_priority(left, catalog))
                 .unwrap_or(std::cmp::Ordering::Equal)
                 .then_with(|| left.object_code.cmp(&right.object_code))
         });

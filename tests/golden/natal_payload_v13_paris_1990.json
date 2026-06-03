@@ -31,6 +31,52 @@
       "below_horizon_count": 8,
       "on_horizon_count": 0,
       "interpretive_hint": "The chart has a stronger private or interior emphasis."
+    },
+    "accidental_scoring": {
+      "overall_score_baseline": 0.5,
+      "overall_score_min": 0.0,
+      "overall_score_max": 1.0,
+      "angle_proximity_max_orb_deg": 10.0,
+      "polarity_bands": [
+        {
+          "polarity_code": "strongly_weakened",
+          "expression_quality_code": "strongly_constrained_expression",
+          "min_score": 0.0,
+          "max_score": 0.3,
+          "sort_order": 1
+        },
+        {
+          "polarity_code": "weakened",
+          "expression_quality_code": "constrained_expression",
+          "min_score": 0.3,
+          "max_score": 0.45,
+          "sort_order": 2
+        },
+        {
+          "polarity_code": "mixed_or_contextual",
+          "expression_quality_code": "mixed_or_contextual_expression",
+          "min_score": 0.45,
+          "max_score": 0.7,
+          "sort_order": 3
+        },
+        {
+          "polarity_code": "fortified",
+          "expression_quality_code": "strong_external_manifestation",
+          "min_score": 0.7,
+          "max_score": 1.0,
+          "sort_order": 4
+        }
+      ]
+    },
+    "product_scoring": {
+      "sign_house_emphasis_min_score": 0.35,
+      "object_emphasis_min_score": 0.5,
+      "max_dominant_signs": 3,
+      "max_dominant_houses": 3,
+      "max_dominant_objects": 5,
+      "max_active_signals": 12,
+      "aspect_min_strength": 0.4,
+      "max_house_axis_emphasis": 3
     }
   },
   "positions": [

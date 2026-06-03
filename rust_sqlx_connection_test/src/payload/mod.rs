@@ -12,6 +12,7 @@ mod signal_filters;
 
 use std::collections::{HashMap, HashSet};
 
+use crate::catalog::BasicPayloadCatalog;
 use crate::domain::{
     AccidentalDignityConditionReference, BasicObjectPosition, BasicPayload, BasicSignal,
     HouseAxisReference, LunarPhaseReference, NatalChartInput, ObjectPositionFact,
@@ -96,6 +97,7 @@ pub fn build_basic_payload_with_all_references(
         lunar_phases,
         &[],
         &[],
+        &crate::catalog::test_catalog(),
     )
 }
 
@@ -110,6 +112,7 @@ pub fn build_basic_payload_with_accidental_references(
     lunar_phases: &[LunarPhaseReference],
     accidental_conditions: &[AccidentalDignityConditionReference],
     sect_affinities: &[ObjectSectAffinityReference],
+    catalog: &BasicPayloadCatalog,
 ) -> BasicPayload {
     let structural_axis_pairs = structural_axis_pairs_from_positions(positions);
     let angle_object_codes = angle_object_codes_from_positions(positions);
@@ -134,11 +137,11 @@ pub fn build_basic_payload_with_accidental_references(
         !is_structural_axis_signal_for_pairs(signal, &structural_axis_pairs)
             && !is_angle_to_angle_aspect_signal(signal, &angle_object_codes)
     });
-    basic_signals.truncate(12);
+    basic_signals.truncate(catalog.product_scoring.max_active_signals);
 
     let angles = build_payload_angles(positions);
-    let dignities = build_payload_dignities(positions, &basic_signals);
-    let chart_emphasis = build_chart_emphasis(positions, &dignities, &basic_signals);
+    let dignities = build_payload_dignities(positions, &basic_signals, catalog);
+    let chart_emphasis = build_chart_emphasis(positions, &dignities, &basic_signals, catalog);
     let rulership_context =
         build_rulership_context(positions, &chart_emphasis, domicile_rulers, &basic_signals);
     let house_axis_emphasis = house_axes::build_house_axis_emphasis(
@@ -149,6 +152,7 @@ pub fn build_basic_payload_with_accidental_references(
         &chart_emphasis,
         &rulership_context,
         &basic_signals,
+        catalog,
     );
     let reading_plan = build_reading_plan(&basic_signals);
     let lunar_phase_context = lunar_phase::build_lunar_phase_context(
@@ -167,7 +171,12 @@ pub fn build_basic_payload_with_accidental_references(
     } else {
         "natal_structured_v11"
     };
-    let chart_context = build_chart_context(input, positions, contract_version);
+    let chart_context = build_chart_context(
+        input,
+        positions,
+        contract_version,
+        has_accidental_references.then_some(catalog),
+    );
     let chart_sect = chart_context.sect.chart_sect.as_deref();
     let active_signal_keys: HashSet<&str> = basic_signals
         .iter()
@@ -180,6 +189,7 @@ pub fn build_basic_payload_with_accidental_references(
             accidental_conditions,
             sect_affinities,
             &active_signal_keys,
+            catalog,
         )
     } else {
         accidental_dignities::AccidentalDignityBuild {
@@ -227,7 +237,7 @@ pub fn build_basic_payload_with_accidental_references(
                 house_modality: position_context(position, "house_modality"),
                 object_context: position_context(position, "object_context"),
                 motion_context: position_context(position, "motion_context"),
-                dignity_context: position_dignity_context(position),
+                dignity_context: position_dignity_context(position, catalog),
                 visibility_context: visibility_context(position),
                 accidental_dignity_context: accidental_build
                     .context_by_object

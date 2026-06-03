@@ -2,8 +2,15 @@ use std::collections::{HashMap, HashSet};
 
 use crate::domain::{BasicHouseAxisEmphasis, BasicPayload, BasicSignal};
 
+use super::emphasis::product_scoring_snapshot;
+
 pub(super) fn has_current_house_axis_emphasis(payload: &BasicPayload) -> bool {
-    if payload.house_axis_emphasis.is_empty() || payload.house_axis_emphasis.len() > 3 {
+    let Some(scoring) = product_scoring_snapshot(payload) else {
+        return false;
+    };
+    if payload.house_axis_emphasis.is_empty()
+        || payload.house_axis_emphasis.len() > scoring.max_house_axis_emphasis
+    {
         return false;
     }
 

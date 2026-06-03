@@ -6,6 +6,7 @@
     "name": "string",
     "angle": "integer",
     "family": "string, FK -> astral_aspect_families.name",
+    "default_orb_deg": "number|null",
     "constraints": {
       "unique_key": [
         "code"
@@ -18,35 +19,40 @@
       "code": "conjunction",
       "name": "Conjunction",
       "angle": 0,
-      "family": "major"
+      "family": "major",
+      "default_orb_deg": 8.0
     },
     {
       "id": 2,
       "code": "sextile",
       "name": "Sextile",
       "angle": 60,
-      "family": "major"
+      "family": "major",
+      "default_orb_deg": 6.0
     },
     {
       "id": 3,
       "code": "square",
       "name": "Square",
       "angle": 90,
-      "family": "major"
+      "family": "major",
+      "default_orb_deg": 6.0
     },
     {
       "id": 4,
       "code": "trine",
       "name": "Trine",
       "angle": 120,
-      "family": "major"
+      "family": "major",
+      "default_orb_deg": 6.0
     },
     {
       "id": 5,
       "code": "opposition",
       "name": "Opposition",
       "angle": 180,
-      "family": "major"
+      "family": "major",
+      "default_orb_deg": 8.0
     },
     {
       "id": 6,

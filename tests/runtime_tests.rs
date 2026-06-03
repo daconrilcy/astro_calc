@@ -60,6 +60,30 @@ fn current_payload() -> BasicPayload {
                     "The chart has a stronger visible or outward emphasis.".to_string(),
                 ),
             },
+            accidental_scoring: Some({
+                let accidental = &rust_sqlx_connection_test::catalog::test_catalog().accidental_scoring;
+                rust_sqlx_connection_test::domain::BasicAccidentalScoringSnapshot {
+                    overall_score_baseline: accidental.overall_score_baseline,
+                    overall_score_min: accidental.overall_score_min,
+                    overall_score_max: accidental.overall_score_max,
+                    angle_proximity_max_orb_deg: accidental.angle_proximity_max_orb_deg,
+                    polarity_bands: rust_sqlx_connection_test::catalog::test_catalog()
+                        .accidental_polarity_bands,
+                }
+            }),
+            product_scoring: {
+                let scoring = &rust_sqlx_connection_test::catalog::test_catalog().product_scoring;
+                Some(rust_sqlx_connection_test::domain::BasicProductScoringSnapshot {
+                    sign_house_emphasis_min_score: scoring.sign_house_emphasis_min_score,
+                    object_emphasis_min_score: scoring.object_emphasis_min_score,
+                    max_dominant_signs: scoring.max_dominant_signs,
+                    max_dominant_houses: scoring.max_dominant_houses,
+                    max_dominant_objects: scoring.max_dominant_objects,
+                    max_active_signals: scoring.max_active_signals,
+                    aspect_min_strength: scoring.aspect_min_strength,
+                    max_house_axis_emphasis: scoring.max_house_axis_emphasis,
+                })
+            },
         },
         positions: vec![
             BasicObjectPosition {
@@ -1411,7 +1435,7 @@ fn house_axis_reference_validation_requires_six_canonical_axes() {
     let mut axes = house_axis_references();
     axes.pop();
 
-    assert!(validate_house_axis_references(&axes).is_err());
+    assert!(validate_house_axis_references(&axes, &canonical_houses_for_axis_tests()).is_err());
 }
 
 #[test]
@@ -1419,14 +1443,14 @@ fn house_axis_reference_validation_rejects_mismatched_theme_codes() {
     let mut axes = house_axis_references();
     axes[0].theme_a_code = "resources".to_string();
 
-    assert!(validate_house_axis_references(&axes).is_err());
+    assert!(validate_house_axis_references(&axes, &canonical_houses_for_axis_tests()).is_err());
 }
 
 #[test]
 fn house_axis_reference_validation_accepts_canonical_axes() {
     let axes = house_axis_references();
 
-    assert!(validate_house_axis_references(&axes).is_ok());
+    assert!(validate_house_axis_references(&axes, &canonical_houses_for_axis_tests()).is_ok());
 }
 
 #[test]
@@ -1466,7 +1490,12 @@ fn lunar_phase_reference_validation_accepts_canonical_phases() {
 fn accidental_dignity_reference_validation_accepts_canonical_conditions() {
     let conditions = accidental_dignity_condition_references();
 
-    assert!(validate_accidental_dignity_condition_references(&conditions).is_ok());
+    let catalog = rust_sqlx_connection_test::catalog::test_catalog();
+    assert!(validate_accidental_dignity_condition_references(
+        &conditions,
+        &catalog.accidental_triggers
+    )
+    .is_ok());
 }
 
 #[test]
@@ -1509,6 +1538,36 @@ fn chart_objects() -> Vec<ChartObject> {
             source_weight: Some(1.0),
         },
     ]
+}
+
+fn canonical_houses_for_axis_tests() -> Vec<HouseReference> {
+    [
+        (1, "identity"),
+        (2, "resources"),
+        (3, "communication"),
+        (4, "roots"),
+        (5, "creativity"),
+        (6, "work_health"),
+        (7, "relationships"),
+        (8, "shared_resources"),
+        (9, "beliefs"),
+        (10, "career"),
+        (11, "community"),
+        (12, "inner_world"),
+    ]
+    .into_iter()
+    .map(|(number, theme_code)| HouseReference {
+        id: number,
+        number,
+        name: format!("House {number}"),
+        theme_code: theme_code.to_string(),
+        modality_code: None,
+        modality_label: None,
+        accidental_strength: None,
+        modality_priority_delta: None,
+        interpretation_weight: None,
+    })
+    .collect()
 }
 
 fn house_axis_references() -> Vec<HouseAxisReference> {

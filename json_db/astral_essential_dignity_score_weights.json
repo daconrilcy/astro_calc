@@ -7,6 +7,10 @@
     "functional_weight": "number",
     "expression_weight": "number",
     "intensity_weight": "number",
+    "priority_delta": "number|null",
+    "signal_weight_delta": "number|null",
+    "signal_worthy_min_strength": "number|null",
+    "emphasis_weight": "number|null",
     "notes": "string",
     "constraints": {
       "unique_key": [
@@ -87,6 +91,58 @@
       "expression_weight": -0.5,
       "intensity_weight": 0.2,
       "notes": "Planète sans dignité essentielle. Valeur configurable selon doctrine."
+    },
+    {
+      "score_profile_id": 5,
+      "essential_dignity_types_id": 1,
+      "score_value": 1,
+      "functional_weight": 1.0,
+      "expression_weight": 1.0,
+      "intensity_weight": 0.6,
+      "priority_delta": 8.0,
+      "signal_weight_delta": 0.15,
+      "signal_worthy_min_strength": 0.7,
+      "emphasis_weight": 0.65,
+      "notes": "Basic MVP domicile strength_score."
+    },
+    {
+      "score_profile_id": 5,
+      "essential_dignity_types_id": 2,
+      "score_value": 1,
+      "functional_weight": 0.9,
+      "expression_weight": 0.9,
+      "intensity_weight": 0.9,
+      "priority_delta": 6.0,
+      "signal_weight_delta": 0.15,
+      "signal_worthy_min_strength": 0.7,
+      "emphasis_weight": 0.55,
+      "notes": "Basic MVP exaltation strength_score."
+    },
+    {
+      "score_profile_id": 5,
+      "essential_dignity_types_id": 3,
+      "score_value": 1,
+      "functional_weight": -1.0,
+      "expression_weight": 0.85,
+      "intensity_weight": 0.4,
+      "priority_delta": 4.0,
+      "signal_weight_delta": 0.1,
+      "signal_worthy_min_strength": 0.7,
+      "emphasis_weight": 0.45,
+      "notes": "Basic MVP detriment strength_score."
+    },
+    {
+      "score_profile_id": 5,
+      "essential_dignity_types_id": 4,
+      "score_value": 1,
+      "functional_weight": -0.9,
+      "expression_weight": 0.75,
+      "intensity_weight": 0.4,
+      "priority_delta": 3.0,
+      "signal_weight_delta": 0.1,
+      "signal_worthy_min_strength": 0.7,
+      "emphasis_weight": 0.35,
+      "notes": "Basic MVP fall strength_score."
     }
   ]
 }

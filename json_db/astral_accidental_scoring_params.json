@@ -1,0 +1,25 @@
+{
+  "name": "astral_accidental_scoring_params",
+  "structure": {
+    "id": "integer",
+    "code": "string, unique, snake_case",
+    "label": "string",
+    "overall_score_baseline": "number",
+    "overall_score_min": "number",
+    "overall_score_max": "number",
+    "angle_proximity_max_orb_deg": "number",
+    "is_active": "boolean"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "basic_mvp",
+      "label": "Basic MVP accidental scoring",
+      "overall_score_baseline": 0.5,
+      "overall_score_min": 0.0,
+      "overall_score_max": 1.0,
+      "angle_proximity_max_orb_deg": 10.0,
+      "is_active": true
+    }
+  ]
+}

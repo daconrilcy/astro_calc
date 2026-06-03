@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use serde_json::{json, Value};
 
+use crate::catalog::BasicPayloadCatalog;
 use crate::domain::{
     AccidentalDignityConditionReference, BasicAccidentalDignityCondition,
     BasicAccidentalDignityContextSummary, BasicAccidentalDignityEvaluation, BasicChartEmphasis,
@@ -10,14 +11,6 @@ use crate::domain::{
 
 use super::chart_context;
 use super::json::position_context;
-
-const ANGLE_PROXIMITY_MAX_ORB_DEG: f64 = 10.0;
-const ANGLE_CODES: [(&str, &str); 4] = [
-    ("ascendant", "near_ascendant"),
-    ("descendant", "near_descendant"),
-    ("mc", "near_mc"),
-    ("ic", "near_ic"),
-];
 
 pub(super) struct AccidentalDignityBuild {
     pub evaluations: Vec<BasicAccidentalDignityEvaluation>,
@@ -30,6 +23,7 @@ pub(super) fn build_accidental_dignities(
     condition_definitions: &[AccidentalDignityConditionReference],
     sect_affinities: &[ObjectSectAffinityReference],
     active_signal_keys: &HashSet<&str>,
+    catalog: &BasicPayloadCatalog,
 ) -> AccidentalDignityBuild {
     let definitions: HashMap<&str, &AccidentalDignityConditionReference> = condition_definitions
         .iter()
@@ -51,6 +45,7 @@ pub(super) fn build_accidental_dignities(
             &definitions,
             &sect_by_object,
             &angle_longitudes,
+            catalog,
         );
         if conditions.is_empty() {
             continue;
@@ -68,8 +63,12 @@ pub(super) fn build_accidental_dignities(
         context_by_object.insert(position.object_code.clone(), summaries);
 
         let raw_score: f64 = conditions.iter().map(|condition| condition.score_delta).sum();
-        let overall_score = round4((0.5 + raw_score).clamp(0.0, 1.0));
-        let overall_polarity = overall_polarity_for_score(overall_score).to_string();
+        let scoring = &catalog.accidental_scoring;
+        let overall_score = round4(
+            (scoring.overall_score_baseline + raw_score)
+                .clamp(scoring.overall_score_min, scoring.overall_score_max),
+        );
+        let (overall_polarity, expression_quality) = catalog.overall_polarity_for_score(overall_score);
         let signal_key = format!("object_position:{}", position.object_code);
         let related_signal_key = active_signal_keys
             .contains(signal_key.as_str())
@@ -80,7 +79,7 @@ pub(super) fn build_accidental_dignities(
             object_name: position.object_name.clone(),
             overall_score,
             overall_polarity: overall_polarity.clone(),
-            expression_quality: expression_quality_for_polarity(&overall_polarity).to_string(),
+            expression_quality,
             related_signal_key,
             conditions,
         });
@@ -151,23 +150,27 @@ fn evaluate_mobile_object(
     definitions: &HashMap<&str, &AccidentalDignityConditionReference>,
     sect_by_object: &HashMap<&str, &ObjectSectAffinityReference>,
     angle_longitudes: &HashMap<&str, f64>,
+    catalog: &BasicPayloadCatalog,
 ) -> Vec<BasicAccidentalDignityCondition> {
     let mut conditions = Vec::new();
-    if let Some(condition) = house_modality_condition(position, definitions) {
+    if let Some(condition) = house_modality_condition(position, definitions, catalog) {
         conditions.push(condition);
     }
     conditions.extend(angle_proximity_conditions(
         position,
         definitions,
         angle_longitudes,
+        catalog,
     ));
-    if let Some(condition) = motion_condition(position, definitions) {
+    if let Some(condition) = motion_condition(position, definitions, catalog) {
         conditions.push(condition);
     }
-    if let Some(condition) = horizon_condition(position, definitions) {
+    if let Some(condition) = horizon_condition(position, definitions, catalog) {
         conditions.push(condition);
     }
-    if let Some(condition) = sect_condition(position, chart_sect, definitions, sect_by_object) {
+    if let Some(condition) =
+        sect_condition(position, chart_sect, definitions, sect_by_object, catalog)
+    {
         conditions.push(condition);
     }
     conditions
@@ -176,15 +179,11 @@ fn evaluate_mobile_object(
 fn house_modality_condition(
     position: &ObjectPositionFact,
     definitions: &HashMap<&str, &AccidentalDignityConditionReference>,
+    catalog: &BasicPayloadCatalog,
 ) -> Option<BasicAccidentalDignityCondition> {
     let modality = position_context(position, "house_modality")?;
     let code = modality.get("code")?.as_str()?;
-    let condition_code = match code {
-        "angular" => "angular_house",
-        "succedent" => "succedent_house",
-        "cadent" => "cadent_house",
-        _ => return None,
-    };
+    let condition_code = catalog.condition_code_for_house_modality(code)?;
     let definition = definitions.get(condition_code)?;
     let theme_code = position_context(position, "house_context")
         .and_then(|context| context.get("theme_code").and_then(|value| value.as_str()).map(str::to_string))
@@ -204,17 +203,22 @@ fn angle_proximity_conditions(
     position: &ObjectPositionFact,
     definitions: &HashMap<&str, &AccidentalDignityConditionReference>,
     angle_longitudes: &HashMap<&str, f64>,
+    catalog: &BasicPayloadCatalog,
 ) -> Vec<BasicAccidentalDignityCondition> {
     let mut conditions = Vec::new();
-    for (angle_code, condition_code) in ANGLE_CODES {
+    let max_orb = catalog.accidental_scoring.angle_proximity_max_orb_deg;
+    for trigger in catalog.angle_proximity_triggers() {
+        let Some(angle_code) = trigger.angle_object_code.as_deref() else {
+            continue;
+        };
         let Some(angle_longitude) = angle_longitudes.get(angle_code) else {
             continue;
         };
         let orb = zodiac_distance(position.longitude_deg, *angle_longitude);
-        if orb > ANGLE_PROXIMITY_MAX_ORB_DEG {
+        if orb > max_orb {
             continue;
         }
-        let Some(definition) = definitions.get(condition_code) else {
+        let Some(definition) = definitions.get(trigger.condition_code.as_str()) else {
             continue;
         };
         conditions.push(build_condition(
@@ -234,16 +238,13 @@ fn angle_proximity_conditions(
 fn motion_condition(
     position: &ObjectPositionFact,
     definitions: &HashMap<&str, &AccidentalDignityConditionReference>,
+    catalog: &BasicPayloadCatalog,
 ) -> Option<BasicAccidentalDignityCondition> {
     let motion_context = position_context(position, "motion_context")?;
     let motion_state = motion_context
         .get("motion_state")
         .and_then(|value| value.as_str())?;
-    let condition_code = match motion_state {
-        "retrograde" => "retrograde_motion",
-        "stationary" => "stationary_motion",
-        _ => return None,
-    };
+    let condition_code = catalog.condition_code_for_motion_state(motion_state)?;
     let definition = definitions.get(condition_code)?;
     Some(build_condition(
         definition,
@@ -258,17 +259,13 @@ fn motion_condition(
 fn horizon_condition(
     position: &ObjectPositionFact,
     definitions: &HashMap<&str, &AccidentalDignityConditionReference>,
+    catalog: &BasicPayloadCatalog,
 ) -> Option<BasicAccidentalDignityCondition> {
     let visibility = chart_context::visibility_context(position);
     let horizon_position = visibility
         .get("horizon_position")
         .and_then(|value| value.as_str())?;
-    let condition_code = match horizon_position {
-        "above_horizon" => "above_horizon",
-        "below_horizon" => "below_horizon",
-        "on_horizon" => "on_horizon",
-        _ => return None,
-    };
+    let condition_code = catalog.condition_code_for_horizon_position(horizon_position)?;
     let definition = definitions.get(condition_code)?;
     let mut source = json!({
         "horizon_position": horizon_position
@@ -288,16 +285,11 @@ fn sect_condition(
     chart_sect: Option<&str>,
     definitions: &HashMap<&str, &AccidentalDignityConditionReference>,
     sect_by_object: &HashMap<&str, &ObjectSectAffinityReference>,
+    catalog: &BasicPayloadCatalog,
 ) -> Option<BasicAccidentalDignityCondition> {
     let affinity = sect_by_object.get(position.object_code.as_str())?;
     let chart_sect = chart_sect?;
-    let condition_code = if affinity.is_variable {
-        "sect_affinity_variable_unresolved"
-    } else if affinity.sect_affinity_code == chart_sect {
-        "sect_affinity_match"
-    } else {
-        "sect_affinity_mismatch"
-    };
+    let condition_code = catalog.sect_condition_code(chart_sect, affinity)?;
     let definition = definitions.get(condition_code)?;
     Some(build_condition(
         definition,
@@ -356,28 +348,6 @@ fn is_angle(position: &ObjectPositionFact) -> bool {
 fn zodiac_distance(left: f64, right: f64) -> f64 {
     let delta = (left - right).abs();
     delta.min(360.0 - delta)
-}
-
-fn overall_polarity_for_score(score: f64) -> &'static str {
-    if score >= 0.70 {
-        "fortified"
-    } else if score >= 0.45 {
-        "mixed_or_contextual"
-    } else if score >= 0.30 {
-        "weakened"
-    } else {
-        "strongly_weakened"
-    }
-}
-
-fn expression_quality_for_polarity(polarity: &str) -> &'static str {
-    match polarity {
-        "fortified" => "strong_external_manifestation",
-        "mixed_or_contextual" => "mixed_or_contextual_expression",
-        "weakened" => "constrained_expression",
-        "strongly_weakened" => "strongly_constrained_expression",
-        _ => "mixed_or_contextual_expression",
-    }
 }
 
 fn house_modality_hint(object_name: &str, modality: &str) -> String {
@@ -478,6 +448,7 @@ fn round4_degree(value: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::catalog::{overall_polarity_for_score_with_bands, test_catalog};
     use crate::domain::{
         AccidentalDignityConditionReference, ObjectPositionFact, ObjectSectAffinityReference,
     };
@@ -567,7 +538,14 @@ mod tests {
             angle_position("ascendant", 0.0),
             mobile_position("mars", 10.0, "angular"),
         ];
-        let build = build_accidental_dignities(&positions, Some("night"), &definitions(), &[], &HashSet::new());
+        let build = build_accidental_dignities(
+            &positions,
+            Some("night"),
+            &definitions(),
+            &[],
+            &HashSet::new(),
+            &test_catalog(),
+        );
         assert_eq!(build.evaluations.len(), 1);
         assert_eq!(build.evaluations[0].object_code, "mars");
     }
@@ -593,6 +571,7 @@ mod tests {
             &[definitions()[0].clone(), near_asc],
             &[],
             &HashSet::new(),
+            &test_catalog(),
         );
         assert!(build.evaluations[0]
             .conditions
@@ -602,17 +581,40 @@ mod tests {
 
     #[test]
     fn overall_polarity_uses_point_three_as_weakened_floor() {
-        assert_eq!(overall_polarity_for_score(0.30), "weakened");
-        assert_eq!(overall_polarity_for_score(0.299), "strongly_weakened");
-        assert_eq!(overall_polarity_for_score(0.28), "strongly_weakened");
-        assert_eq!(overall_polarity_for_score(0.45), "mixed_or_contextual");
-        assert_eq!(overall_polarity_for_score(0.70), "fortified");
+        let bands = test_catalog().accidental_polarity_bands;
+        assert_eq!(
+            overall_polarity_for_score_with_bands(0.30, &bands).0,
+            "weakened"
+        );
+        assert_eq!(
+            overall_polarity_for_score_with_bands(0.299, &bands).0,
+            "strongly_weakened"
+        );
+        assert_eq!(
+            overall_polarity_for_score_with_bands(0.28, &bands).0,
+            "strongly_weakened"
+        );
+        assert_eq!(
+            overall_polarity_for_score_with_bands(0.45, &bands).0,
+            "mixed_or_contextual"
+        );
+        assert_eq!(
+            overall_polarity_for_score_with_bands(0.70, &bands).0,
+            "fortified"
+        );
     }
 
     #[test]
     fn overall_score_clamps_after_delta_sum() {
         let positions = vec![mobile_position("pluto", 10.0, "angular")];
-        let build = build_accidental_dignities(&positions, Some("night"), &definitions(), &[], &HashSet::new());
+        let build = build_accidental_dignities(
+            &positions,
+            Some("night"),
+            &definitions(),
+            &[],
+            &HashSet::new(),
+            &test_catalog(),
+        );
         assert!((build.evaluations[0].overall_score - 0.75).abs() <= 0.0001);
         assert_eq!(build.evaluations[0].overall_polarity, "fortified");
     }
@@ -632,6 +634,7 @@ mod tests {
             &definitions(),
             &sects,
             &HashSet::new(),
+            &test_catalog(),
         );
         assert!(build.evaluations[0]
             .conditions

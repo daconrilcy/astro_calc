@@ -3,12 +3,15 @@ use std::collections::HashSet;
 use crate::domain::{AspectFact, InterpretationSignalDraft};
 
 use super::constants::{
-    BASIC_ASPECT_MIN_STRENGTH, BASIC_MAX_ACTIVE_SIGNALS, SIGNAL_PREFIX_ASPECT,
+    SIGNAL_PREFIX_ASPECT,
     SIGNAL_PREFIX_CLUSTER, SUPPRESSION_ACTIVE, SUPPRESSION_SUPPRESSED,
 };
 use super::relations::normalized_pair;
 
-pub(super) fn suppress_over_basic_limit(signals: &mut [InterpretationSignalDraft]) {
+pub(super) fn suppress_over_basic_limit(
+    signals: &mut [InterpretationSignalDraft],
+    max_active_signals: usize,
+) {
     let mut active_count = 0;
     for signal in signals {
         if signal.suppression_state != SUPPRESSION_ACTIVE {
@@ -16,7 +19,7 @@ pub(super) fn suppress_over_basic_limit(signals: &mut [InterpretationSignalDraft
         }
 
         active_count += 1;
-        if active_count > BASIC_MAX_ACTIVE_SIGNALS {
+        if active_count > max_active_signals {
             signal.suppression_state = SUPPRESSION_SUPPRESSED.to_string();
         }
     }
@@ -179,23 +182,25 @@ fn is_basic_required_signal(signal: &InterpretationSignalDraft) -> bool {
 pub(super) fn fill_basic_active_limit(
     signals: &mut [InterpretationSignalDraft],
     angle_object_codes: &HashSet<String>,
+    max_active_signals: usize,
+    aspect_min_strength: f64,
 ) {
     let mut active_count = signals
         .iter()
         .filter(|signal| signal.suppression_state == SUPPRESSION_ACTIVE)
         .count();
 
-    if active_count >= BASIC_MAX_ACTIVE_SIGNALS {
+    if active_count >= max_active_signals {
         return;
     }
 
     for signal in signals {
-        if active_count >= BASIC_MAX_ACTIVE_SIGNALS {
+        if active_count >= max_active_signals {
             break;
         }
 
         if signal.suppression_state == SUPPRESSION_SUPPRESSED
-            && is_basic_fill_eligible(signal, angle_object_codes)
+            && is_basic_fill_eligible(signal, angle_object_codes, aspect_min_strength)
         {
             signal.suppression_state = SUPPRESSION_ACTIVE.to_string();
             active_count += 1;
@@ -206,13 +211,17 @@ pub(super) fn fill_basic_active_limit(
 fn is_basic_fill_eligible(
     signal: &InterpretationSignalDraft,
     angle_object_codes: &HashSet<String>,
+    aspect_min_strength: f64,
 ) -> bool {
-    !is_weak_aspect_signal(signal)
+    !is_weak_aspect_signal(signal, aspect_min_strength)
         && !is_structural_axis_signal(signal)
         && !is_angle_to_angle_aspect_signal(signal, angle_object_codes)
 }
 
-fn is_weak_aspect_signal(signal: &InterpretationSignalDraft) -> bool {
+fn is_weak_aspect_signal(
+    signal: &InterpretationSignalDraft,
+    aspect_min_strength: f64,
+) -> bool {
     if !signal.signal_key.starts_with(SIGNAL_PREFIX_ASPECT) {
         return false;
     }
@@ -223,7 +232,7 @@ fn is_weak_aspect_signal(signal: &InterpretationSignalDraft) -> bool {
         .and_then(|payload| payload.get("evidence"))
         .and_then(|evidence| evidence.get("strength_score"))
         .and_then(|value| value.as_f64())
-        .is_some_and(|strength_score| strength_score < BASIC_ASPECT_MIN_STRENGTH)
+        .is_some_and(|strength_score| strength_score < aspect_min_strength)
 }
 
 pub(super) fn is_structural_axis_aspect(

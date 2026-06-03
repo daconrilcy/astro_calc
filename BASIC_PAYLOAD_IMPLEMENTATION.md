@@ -198,7 +198,21 @@ Le payload route basic depend directement du schema PostgreSQL materialise depui
 - la table `astral_object_sect_affinities`, source canonique des affinites de
   secte par objet pour le calcul `sect_affinity_*` ;
 - la table `astral_lunar_phase_definitions`, source canonique des huit phases
-  Soleil-Lune.
+  Soleil-Lune ;
+- `astral_basic_product_scoring_profiles` : seuils d'emphase, limite de signaux
+  actifs, orbe majeur par defaut, parametres d'axes de maisons ;
+- `astral_accidental_condition_triggers` : declencheurs MVP (modalite, mouvement,
+  horizon, proximite angle, secte) ;
+- `astral_accidental_scoring_params` et `astral_accidental_overall_polarity_bands` :
+  baseline, orbe angle, paliers `overall_polarity` / `expression_quality` ;
+- colonne `astral_aspects.default_orb_deg` et profil
+  `astral_essential_dignity_score_weights` (deltas de priorite/poids signaux).
+
+Le runtime charge ces references via `BasicPayloadCatalog` (`catalog.rs`) et
+projette dans `chart_context` les snapshots `accidental_scoring` (baseline,
+bornes min/max, orbe angle, bandes de polarite) et `product_scoring` pour la
+validation de fraicheur (freshness) sans constantes en dur. Les payloads v13
+sans ces snapshots ou avec des bandes non contigues sur `[0, 1]` sont rejetes.
 
 Ces donnees ne doivent pas etre compensees par des valeurs applicatives en dur.
 Si le binaire echoue avec une erreur SQL de relation ou de colonne manquante,
@@ -207,6 +221,8 @@ la correction attendue est de resynchroniser PostgreSQL avec les fichiers
 
 ## Fichiers concernes
 
+- `rust_sqlx_connection_test/src/catalog.rs` : catalogue en memoire (profil produit,
+  regles essentielles, triggers et scoring accidentel).
 - `rust_sqlx_connection_test/src/domain.rs` : structures runtime et payload JSON.
 - `rust_sqlx_connection_test/src/facts.rs` : helpers de libelles signe/maison.
 - `rust_sqlx_connection_test/src/ephemeris.rs` : enrichissement des positions calculees.
@@ -1943,9 +1959,11 @@ Structure type d'une evaluation :
 | `sect_affinity_variable_unresolved` | `sect` | affinite variable non resolue (ex. Mercure) |
 
 Les `score_delta` et `strength_score` viennent exclusivement de
-`json_db/astral_accidental_dignity_condition_definitions.json`. Les paliers
-d'orb 3 degre / 6 degre / 10 degre avec scores differencies ne sont pas
-implementes : l'orb angle est fixe a 10 degre dans le code.
+`json_db/astral_accidental_dignity_condition_definitions.json`. L'orbe de
+proximite aux angles et la baseline `0.5` viennent de
+`astral_accidental_scoring_params` ; les paliers de polarite globale viennent de
+`astral_accidental_overall_polarity_bands`. Les paliers d'orb 3 degre / 6 degre
+avec scores differencies ne sont pas implementes (MVP : un seul orbe max).
 
 Detection des angles pour la proximite : longitude depuis `positions` dont
 `role` ou `role_label` indique un angle (`is_angle` dans le builder et la

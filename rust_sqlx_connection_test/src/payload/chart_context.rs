@@ -1,7 +1,9 @@
 use serde_json::{json, Value};
 
+use crate::catalog::BasicPayloadCatalog;
 use crate::domain::{
-    BasicCalculationReliability, BasicChartContext, BasicHemisphereEmphasis, BasicPayloadContract,
+    BasicAccidentalScoringSnapshot, BasicCalculationReliability, BasicChartContext,
+    BasicHemisphereEmphasis, BasicPayloadContract, BasicProductScoringSnapshot,
     BasicSectContext, NatalChartInput, ObjectPositionFact,
 };
 
@@ -13,6 +15,7 @@ pub(super) fn build_chart_context(
     input: &NatalChartInput,
     positions: &[ObjectPositionFact],
     contract_version: &str,
+    catalog: Option<&BasicPayloadCatalog>,
 ) -> BasicChartContext {
     let sun_position = positions
         .iter()
@@ -46,6 +49,26 @@ pub(super) fn build_chart_context(
             source: sect_source,
         },
         hemisphere_emphasis,
+        accidental_scoring: catalog.map(|catalog| BasicAccidentalScoringSnapshot {
+            overall_score_baseline: catalog.accidental_scoring.overall_score_baseline,
+            overall_score_min: catalog.accidental_scoring.overall_score_min,
+            overall_score_max: catalog.accidental_scoring.overall_score_max,
+            angle_proximity_max_orb_deg: catalog.accidental_scoring.angle_proximity_max_orb_deg,
+            polarity_bands: catalog.accidental_polarity_bands.clone(),
+        }),
+        product_scoring: catalog.map(|catalog| {
+            let scoring = &catalog.product_scoring;
+            BasicProductScoringSnapshot {
+                sign_house_emphasis_min_score: scoring.sign_house_emphasis_min_score,
+                object_emphasis_min_score: scoring.object_emphasis_min_score,
+                max_dominant_signs: scoring.max_dominant_signs,
+                max_dominant_houses: scoring.max_dominant_houses,
+                max_dominant_objects: scoring.max_dominant_objects,
+                max_active_signals: scoring.max_active_signals,
+                aspect_min_strength: scoring.aspect_min_strength,
+                max_house_axis_emphasis: scoring.max_house_axis_emphasis,
+            }
+        }),
     }
 }
 

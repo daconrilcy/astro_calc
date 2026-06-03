@@ -1,0 +1,32 @@
+{
+  "name": "astral_accidental_condition_triggers",
+  "structure": {
+    "id": "integer",
+    "trigger_family": "string, enum: house_modality|motion_state|horizon_position|angle_proximity|sect_match|sect_mismatch|sect_variable",
+    "source_code": "string|null",
+    "angle_object_code": "string|null",
+    "condition_code": "string, FK -> astral_accidental_dignity_condition_definitions.condition_code",
+    "sort_order": "integer",
+    "is_active": "boolean",
+    "constraints": {
+      "unique": [["trigger_family", "source_code", "angle_object_code", "condition_code"]]
+    }
+  },
+  "data": [
+    { "id": 1, "trigger_family": "house_modality", "source_code": "angular", "angle_object_code": null, "condition_code": "angular_house", "sort_order": 10, "is_active": true },
+    { "id": 2, "trigger_family": "house_modality", "source_code": "succedent", "angle_object_code": null, "condition_code": "succedent_house", "sort_order": 11, "is_active": true },
+    { "id": 3, "trigger_family": "house_modality", "source_code": "cadent", "angle_object_code": null, "condition_code": "cadent_house", "sort_order": 12, "is_active": true },
+    { "id": 4, "trigger_family": "angle_proximity", "source_code": null, "angle_object_code": "ascendant", "condition_code": "near_ascendant", "sort_order": 20, "is_active": true },
+    { "id": 5, "trigger_family": "angle_proximity", "source_code": null, "angle_object_code": "descendant", "condition_code": "near_descendant", "sort_order": 21, "is_active": true },
+    { "id": 6, "trigger_family": "angle_proximity", "source_code": null, "angle_object_code": "mc", "condition_code": "near_mc", "sort_order": 22, "is_active": true },
+    { "id": 7, "trigger_family": "angle_proximity", "source_code": null, "angle_object_code": "ic", "condition_code": "near_ic", "sort_order": 23, "is_active": true },
+    { "id": 8, "trigger_family": "motion_state", "source_code": "retrograde", "angle_object_code": null, "condition_code": "retrograde_motion", "sort_order": 30, "is_active": true },
+    { "id": 9, "trigger_family": "motion_state", "source_code": "stationary", "angle_object_code": null, "condition_code": "stationary_motion", "sort_order": 31, "is_active": true },
+    { "id": 10, "trigger_family": "horizon_position", "source_code": "above_horizon", "angle_object_code": null, "condition_code": "above_horizon", "sort_order": 40, "is_active": true },
+    { "id": 11, "trigger_family": "horizon_position", "source_code": "below_horizon", "angle_object_code": null, "condition_code": "below_horizon", "sort_order": 41, "is_active": true },
+    { "id": 12, "trigger_family": "horizon_position", "source_code": "on_horizon", "angle_object_code": null, "condition_code": "on_horizon", "sort_order": 42, "is_active": true },
+    { "id": 13, "trigger_family": "sect_match", "source_code": null, "angle_object_code": null, "condition_code": "sect_affinity_match", "sort_order": 70, "is_active": true },
+    { "id": 14, "trigger_family": "sect_mismatch", "source_code": null, "angle_object_code": null, "condition_code": "sect_affinity_mismatch", "sort_order": 71, "is_active": true },
+    { "id": 15, "trigger_family": "sect_variable", "source_code": null, "angle_object_code": null, "condition_code": "sect_affinity_variable_unresolved", "sort_order": 72, "is_active": true }
+  ]
+}

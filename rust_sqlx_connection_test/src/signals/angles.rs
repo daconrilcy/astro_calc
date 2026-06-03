@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use serde_json::json;
 
+use crate::catalog::BasicPayloadCatalog;
 use crate::domain::{InterpretationSignalDraft, ObjectPositionFact};
 
 use super::constants::SUPPRESSION_ACTIVE;
@@ -24,6 +25,7 @@ pub(super) fn is_angle_position(position: &ObjectPositionFact) -> bool {
 pub(super) fn angle_signal(
     position: &ObjectPositionFact,
     angle_point_object_codes: &HashMap<String, String>,
+    catalog: &BasicPayloadCatalog,
 ) -> InterpretationSignalDraft {
     let angle_context = angle_context(position, angle_point_object_codes);
     let semantic_tags = angle_semantic_tags(position);
@@ -67,7 +69,7 @@ pub(super) fn angle_signal(
                 "house_number": position.house_number,
                 "house_name": position.house_name,
                 "longitude_deg": position.longitude_deg,
-                "placement_context": placement_context(position)
+                "placement_context": placement_context(position, catalog)
             }
         })),
     }

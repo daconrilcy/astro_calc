@@ -1,3 +1,4 @@
+use rust_sqlx_connection_test::catalog::test_catalog;
 use rust_sqlx_connection_test::dignities::*;
 use rust_sqlx_connection_test::domain::ObjectPositionFact;
 
@@ -27,14 +28,15 @@ fn position(object_code: &str, sign_code: &str) -> ObjectPositionFact {
 
 #[test]
 fn detects_requested_major_dignities() {
+    let catalog = test_catalog();
     assert_eq!(
-        essential_dignity_for_position(&position("saturn", "capricorn"))
+        essential_dignity_for_position(&position("saturn", "capricorn"), &catalog)
             .expect("saturn dignity")
             .dignity_type,
         "domicile"
     );
     assert_eq!(
-        essential_dignity_for_position(&position("jupiter", "cancer"))
+        essential_dignity_for_position(&position("jupiter", "cancer"), &catalog)
             .expect("jupiter dignity")
             .dignity_type,
         "exaltation"
@@ -43,8 +45,9 @@ fn detects_requested_major_dignities() {
 
 #[test]
 fn preserves_double_mercury_dignities() {
-    let virgo = essential_dignities_for_position(&position("mercury", "virgo"));
-    let pisces = essential_dignities_for_position(&position("mercury", "pisces"));
+    let catalog = test_catalog();
+    let virgo = essential_dignities_for_position(&position("mercury", "virgo"), &catalog);
+    let pisces = essential_dignities_for_position(&position("mercury", "pisces"), &catalog);
 
     assert_eq!(virgo.len(), 2);
     assert!(virgo.iter().any(|d| d.dignity_type == "domicile"));

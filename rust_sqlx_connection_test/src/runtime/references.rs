@@ -1,7 +1,9 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
+use crate::catalog::accidental_polarity_bands_are_valid;
 use crate::domain::{
-    AccidentalDignityConditionReference, CalculationReferenceData, HouseAxisReference,
+    AccidentalConditionTrigger, AccidentalDignityConditionReference, AccidentalPolarityBand,
+    AccidentalScoringParams, CalculationReferenceData, HouseAxisReference, HouseReference,
     LunarPhaseReference, ObjectSectAffinityReference,
 };
 use crate::models::ChartObject;
@@ -159,6 +161,7 @@ pub fn validate_chart_object_signal_profiles(
 
 pub fn validate_house_axis_references(
     references: &[HouseAxisReference],
+    houses: &[HouseReference],
 ) -> Result<(), RuntimeError> {
     if references.len() != 6 {
         return Err(RuntimeError::Ephemeris(format!(
@@ -167,28 +170,35 @@ pub fn validate_house_axis_references(
         )));
     }
 
+    let theme_by_house: HashMap<i32, &str> = houses
+        .iter()
+        .map(|house| (house.number, house.theme_code.as_str()))
+        .collect();
+    if theme_by_house.len() != 12 {
+        return Err(RuntimeError::Ephemeris(format!(
+            "expected 12 house theme references, found {}",
+            theme_by_house.len()
+        )));
+    }
+
     let mut seen_axis_codes = HashSet::new();
     let mut seen_house_pairs = HashSet::new();
     for reference in references {
-        let Some((expected_houses, expected_themes)) =
-            canonical_house_axis(reference.axis_code.as_str())
-        else {
-            return Err(RuntimeError::Ephemeris(format!(
-                "unknown house axis reference {}",
-                reference.axis_code
-            )));
-        };
-
         let house_pair = (reference.house_a_number, reference.house_b_number);
+        let theme_a = theme_by_house.get(&reference.house_a_number).copied();
+        let theme_b = theme_by_house.get(&reference.house_b_number).copied();
         if !seen_axis_codes.insert(reference.axis_code.as_str())
             || !seen_house_pairs.insert(house_pair)
-            || house_pair != expected_houses
-            || (
-                reference.theme_a_code.as_str(),
-                reference.theme_b_code.as_str(),
-            ) != expected_themes
+            || reference.house_a_number >= reference.house_b_number
+            || reference.house_b_number - reference.house_a_number != 6
+            || !(1..=12).contains(&reference.house_a_number)
+            || !(1..=12).contains(&reference.house_b_number)
+            || reference.theme_a_code.trim().is_empty()
+            || reference.theme_b_code.trim().is_empty()
             || reference.label.trim().is_empty()
             || reference.description.trim().is_empty()
+            || theme_a != Some(reference.theme_a_code.as_str())
+            || theme_b != Some(reference.theme_b_code.as_str())
         {
             return Err(RuntimeError::Ephemeris(format!(
                 "invalid house axis reference {}",
@@ -241,21 +251,6 @@ pub fn validate_lunar_phase_references(
     }
 
     Ok(())
-}
-
-type HouseAxisPair = (i32, i32);
-type HouseAxisThemes = (&'static str, &'static str);
-
-fn canonical_house_axis(axis_code: &str) -> Option<(HouseAxisPair, HouseAxisThemes)> {
-    match axis_code {
-        "self_relationship" => Some(((1, 7), ("identity", "relationships"))),
-        "resources_sharing" => Some(((2, 8), ("resources", "shared_resources"))),
-        "local_distant" => Some(((3, 9), ("communication", "beliefs"))),
-        "private_public" => Some(((4, 10), ("roots", "career"))),
-        "creation_collective" => Some(((5, 11), ("creativity", "community"))),
-        "control_surrender" => Some(((6, 12), ("work_health", "inner_world"))),
-        _ => None,
-    }
 }
 
 fn degree_matches(left: f64, right: f64) -> bool {
@@ -313,47 +308,26 @@ fn lunar_phase_ranges_cover_cycle(references: &[LunarPhaseReference]) -> bool {
             .is_some_and(|(first, last)| degree_matches(last.1, first.0 + 360.0))
 }
 
-pub(crate) const ACCIDENTAL_CONDITION_CODES: &[&str] = &[
-    "angular_house",
-    "succedent_house",
-    "cadent_house",
-    "near_ascendant",
-    "near_descendant",
-    "near_mc",
-    "near_ic",
-    "retrograde_motion",
-    "stationary_motion",
-    "above_horizon",
-    "below_horizon",
-    "on_horizon",
-    "sect_affinity_match",
-    "sect_affinity_mismatch",
-    "sect_affinity_variable_unresolved",
-];
-
-const MVP_SECT_OBJECT_CODES: &[&str] = &[
-    "sun", "jupiter", "saturn", "moon", "venus", "mars", "mercury",
-];
-
 pub fn validate_accidental_dignity_condition_references(
     references: &[AccidentalDignityConditionReference],
+    triggers: &[AccidentalConditionTrigger],
 ) -> Result<(), RuntimeError> {
-    if references.len() != ACCIDENTAL_CONDITION_CODES.len() {
-        return Err(RuntimeError::Ephemeris(format!(
-            "expected {} accidental dignity condition references, found {}",
-            ACCIDENTAL_CONDITION_CODES.len(),
-            references.len()
-        )));
+    if references.is_empty() {
+        return Err(RuntimeError::Ephemeris(
+            "expected accidental dignity condition references".to_string(),
+        ));
     }
 
     let mut seen_codes = HashSet::new();
+    let mut families = HashSet::new();
+    let mut polarities = HashSet::new();
     for reference in references {
         if !seen_codes.insert(reference.condition_code.as_str())
             || reference.condition_code.trim().is_empty()
             || reference.label.trim().is_empty()
             || reference.description.trim().is_empty()
-            || !valid_accidental_condition_family(reference.condition_family.as_str())
-            || !valid_accidental_polarity(reference.polarity.as_str())
+            || reference.condition_family.trim().is_empty()
+            || reference.polarity.trim().is_empty()
             || !(0.0..=1.0).contains(&reference.strength_score)
             || !(-1.0..=1.0).contains(&reference.score_delta)
         {
@@ -362,14 +336,73 @@ pub fn validate_accidental_dignity_condition_references(
                 reference.condition_code
             )));
         }
+        families.insert(reference.condition_family.as_str());
+        polarities.insert(reference.polarity.as_str());
     }
 
-    for required_code in ACCIDENTAL_CONDITION_CODES {
-        if !seen_codes.contains(required_code) {
+    for trigger in triggers {
+        if trigger.condition_code.trim().is_empty()
+            || trigger.trigger_family.trim().is_empty()
+            || !seen_codes.contains(trigger.condition_code.as_str())
+        {
             return Err(RuntimeError::Ephemeris(format!(
-                "missing accidental dignity condition reference {required_code}"
+                "invalid accidental condition trigger for {}",
+                trigger.condition_code
             )));
         }
+    }
+
+    let _ = (families, polarities);
+    Ok(())
+}
+
+pub fn validate_accidental_condition_triggers(
+    triggers: &[AccidentalConditionTrigger],
+) -> Result<(), RuntimeError> {
+    if triggers.is_empty() {
+        return Err(RuntimeError::Ephemeris(
+            "expected accidental condition triggers".to_string(),
+        ));
+    }
+
+    let mut seen = HashSet::new();
+    for trigger in triggers {
+        let key = (
+            trigger.trigger_family.as_str(),
+            trigger.source_code.as_deref(),
+            trigger.angle_object_code.as_deref(),
+            trigger.condition_code.as_str(),
+        );
+        if !seen.insert(key) || trigger.trigger_family.trim().is_empty() {
+            return Err(RuntimeError::Ephemeris(
+                "invalid accidental condition trigger row".to_string(),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+pub fn validate_accidental_scoring_params(params: &AccidentalScoringParams) -> Result<(), RuntimeError> {
+    if params.code.trim().is_empty()
+        || params.overall_score_min > params.overall_score_baseline
+        || params.overall_score_baseline > params.overall_score_max
+        || params.angle_proximity_max_orb_deg <= 0.0
+    {
+        return Err(RuntimeError::Ephemeris(
+            "invalid accidental scoring params".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+pub fn validate_accidental_polarity_bands(
+    bands: &[AccidentalPolarityBand],
+) -> Result<(), RuntimeError> {
+    if !accidental_polarity_bands_are_valid(bands) {
+        return Err(RuntimeError::Ephemeris(
+            "invalid accidental overall polarity bands".to_string(),
+        ));
     }
 
     Ok(())
@@ -378,20 +411,19 @@ pub fn validate_accidental_dignity_condition_references(
 pub fn validate_object_sect_affinity_references(
     references: &[ObjectSectAffinityReference],
 ) -> Result<(), RuntimeError> {
-    if references.len() != MVP_SECT_OBJECT_CODES.len() {
-        return Err(RuntimeError::Ephemeris(format!(
-            "expected {} object sect affinity references, found {}",
-            MVP_SECT_OBJECT_CODES.len(),
-            references.len()
-        )));
+    if references.is_empty() {
+        return Err(RuntimeError::Ephemeris(
+            "expected object sect affinity references".to_string(),
+        ));
     }
 
     let mut seen_objects = HashSet::new();
+    let mut affinity_codes = HashSet::new();
     for reference in references {
         if !seen_objects.insert(reference.object_code.as_str())
             || reference.object_code.trim().is_empty()
             || reference.description.trim().is_empty()
-            || !valid_sect_affinity_code(reference.sect_affinity_code.as_str())
+            || reference.sect_affinity_code.trim().is_empty()
             || reference.is_variable != (reference.sect_affinity_code == "variable")
         {
             return Err(RuntimeError::Ephemeris(format!(
@@ -399,30 +431,10 @@ pub fn validate_object_sect_affinity_references(
                 reference.object_code
             )));
         }
+        affinity_codes.insert(reference.sect_affinity_code.as_str());
     }
 
-    for required_object in MVP_SECT_OBJECT_CODES {
-        if !seen_objects.contains(required_object) {
-            return Err(RuntimeError::Ephemeris(format!(
-                "missing object sect affinity reference {required_object}"
-            )));
-        }
-    }
-
+    let _ = affinity_codes;
     Ok(())
 }
 
-fn valid_accidental_condition_family(value: &str) -> bool {
-    matches!(
-        value,
-        "house_modality" | "angle_proximity" | "motion" | "horizon" | "sect"
-    )
-}
-
-fn valid_accidental_polarity(value: &str) -> bool {
-    matches!(value, "dignity" | "debility" | "contextual" | "intensifier")
-}
-
-fn valid_sect_affinity_code(value: &str) -> bool {
-    matches!(value, "day" | "night" | "variable")
-}

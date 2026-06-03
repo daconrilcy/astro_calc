@@ -1,4 +1,5 @@
 use rust_sqlx_connection_test::aspects::detect_aspects;
+use rust_sqlx_connection_test::catalog::test_catalog;
 use rust_sqlx_connection_test::domain::ObjectPositionFact;
 use rust_sqlx_connection_test::models::AspectDefinition;
 use serde_json::json;
@@ -71,13 +72,23 @@ fn aspect_phase_uses_relative_speed() {
         code: "conjunction".to_string(),
         name: "Conjunction".to_string(),
         angle: 0.0,
+        default_orb_deg: Some(8.0),
     }];
+    let default_orb = test_catalog().product_scoring.default_major_orb_deg;
 
-    let applying = detect_aspects(&[position(1, 0.0, 1.0), position(2, 2.0, 0.0)], &aspects);
+    let applying = detect_aspects(
+        &[position(1, 0.0, 1.0), position(2, 2.0, 0.0)],
+        &aspects,
+        default_orb,
+    );
     assert_eq!(applying[0].phase_state, "applying");
     assert!(applying[0].is_applying);
 
-    let separating = detect_aspects(&[position(1, 0.0, -1.0), position(2, 2.0, 0.0)], &aspects);
+    let separating = detect_aspects(
+        &[position(1, 0.0, -1.0), position(2, 2.0, 0.0)],
+        &aspects,
+        default_orb,
+    );
     assert_eq!(separating[0].phase_state, "separating");
     assert!(!separating[0].is_applying);
 }
@@ -89,6 +100,7 @@ fn structural_angle_axes_are_not_detected_as_aspects() {
         code: "opposition".to_string(),
         name: "Opposition".to_string(),
         angle: 180.0,
+        default_orb_deg: Some(8.0),
     }];
 
     let detected = detect_aspects(
@@ -99,6 +111,7 @@ fn structural_angle_axes_are_not_detected_as_aspects() {
             position(2, 195.0, 0.0),
         ],
         &aspects,
+        test_catalog().product_scoring.default_major_orb_deg,
     );
 
     assert!(!detected.iter().any(|aspect| {

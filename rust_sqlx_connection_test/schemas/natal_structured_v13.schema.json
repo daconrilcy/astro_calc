@@ -204,6 +204,134 @@
         },
         "hemisphere_emphasis": {
           "$ref": "#/$defs/hemisphere_emphasis"
+        },
+        "accidental_scoring": {
+          "$ref": "#/$defs/accidental_scoring_snapshot"
+        },
+        "product_scoring": {
+          "$ref": "#/$defs/product_scoring_snapshot"
+        }
+      }
+    },
+    "accidental_scoring_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "overall_score_baseline",
+        "overall_score_min",
+        "overall_score_max",
+        "angle_proximity_max_orb_deg",
+        "polarity_bands"
+      ],
+      "properties": {
+        "overall_score_baseline": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "overall_score_min": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "overall_score_max": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "angle_proximity_max_orb_deg": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "polarity_bands": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/accidental_polarity_band"
+          }
+        }
+      }
+    },
+    "accidental_polarity_band": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "polarity_code",
+        "expression_quality_code",
+        "min_score",
+        "max_score",
+        "sort_order"
+      ],
+      "properties": {
+        "polarity_code": {
+          "$ref": "#/$defs/accidental_overall_polarity"
+        },
+        "expression_quality_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "min_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "max_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "sort_order": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "product_scoring_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sign_house_emphasis_min_score",
+        "object_emphasis_min_score",
+        "max_dominant_signs",
+        "max_dominant_houses",
+        "max_dominant_objects",
+        "max_active_signals",
+        "aspect_min_strength",
+        "max_house_axis_emphasis"
+      ],
+      "properties": {
+        "sign_house_emphasis_min_score": {
+          "type": "number",
+          "minimum": 0
+        },
+        "object_emphasis_min_score": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_dominant_signs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_dominant_houses": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_dominant_objects": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_active_signals": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "aspect_min_strength": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "max_house_axis_emphasis": {
+          "type": "integer",
+          "minimum": 1
         }
       }
     },

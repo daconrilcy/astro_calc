@@ -1,26 +1,21 @@
 use serde_json::json;
 
-use crate::dignities::EssentialDignityFact;
+use crate::catalog::BasicPayloadCatalog;
+use crate::dignities::{dignity_priority_delta, EssentialDignityFact};
+use crate::domain::ObjectPositionFact;
 
 use super::constants::{THEME_FUNCTIONAL_CHALLENGE, THEME_FUNCTIONAL_STRENGTH};
+use super::positions::object_signal_scoring_number;
 use super::tags::{dedupe_tags, sign_tags};
 use super::utils::{indefinite_article, round4};
 
-pub(super) fn dignity_priority(dignity: &EssentialDignityFact) -> f64 {
-    let base: f64 = match dignity.object_code.as_str() {
-        "sun" | "moon" => 90.0,
-        "mercury" | "venus" | "mars" => 86.0,
-        "jupiter" | "saturn" => 82.0,
-        _ => 72.0,
-    };
-    let type_delta: f64 = match dignity.dignity_type.as_str() {
-        "domicile" => 6.0,
-        "exaltation" => 4.0,
-        "detriment" => 2.0,
-        "fall" => 1.0,
-        _ => 0.0,
-    };
-    round4((base + type_delta).min(95.0))
+pub(super) fn dignity_priority(
+    dignity: &EssentialDignityFact,
+    position: &ObjectPositionFact,
+    catalog: &BasicPayloadCatalog,
+) -> f64 {
+    let base = object_signal_scoring_number(position, "position_priority_base").unwrap_or(0.0);
+    round4((base + dignity_priority_delta(dignity, catalog)).min(95.0))
 }
 
 pub(super) fn dignity_title(dignity: &EssentialDignityFact) -> String {

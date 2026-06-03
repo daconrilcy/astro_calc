@@ -4,11 +4,10 @@ use crate::domain::{AspectFact, ObjectPositionFact};
 use crate::facts::normalize_degrees;
 use crate::models::AspectDefinition;
 
-const DEFAULT_MAJOR_ORB_DEG: f64 = 8.0;
-
 pub fn detect_aspects(
     positions: &[ObjectPositionFact],
     aspect_definitions: &[AspectDefinition],
+    default_major_orb_deg: f64,
 ) -> Vec<AspectFact> {
     let major_aspects: Vec<&AspectDefinition> = aspect_definitions
         .iter()
@@ -27,8 +26,11 @@ pub fn detect_aspects(
                     continue;
                 }
 
+                let orb_limit = aspect
+                    .default_orb_deg
+                    .unwrap_or(default_major_orb_deg);
                 let orb = (separation - aspect.angle).abs();
-                if orb > DEFAULT_MAJOR_ORB_DEG {
+                if orb > orb_limit {
                     continue;
                 }
 
@@ -49,7 +51,7 @@ pub fn detect_aspects(
                     phase_state: phase_state(orb, is_applying).to_string(),
                     is_applying,
                     is_exact: orb <= 0.1,
-                    strength_score: Some(round4((1.0 - (orb / DEFAULT_MAJOR_ORB_DEG)).max(0.0))),
+                    strength_score: Some(round4((1.0 - (orb / orb_limit)).max(0.0))),
                     primary_valence: None,
                     intensity_modifier: None,
                     secondary_effect: None,
@@ -61,7 +63,7 @@ pub fn detect_aspects(
                         "aspect_name": aspect.name,
                         "exact_angle_deg": aspect.angle,
                         "separation_deg": round4(separation),
-                        "orb_limit_deg": DEFAULT_MAJOR_ORB_DEG
+                        "orb_limit_deg": orb_limit
                     })),
                 });
             }

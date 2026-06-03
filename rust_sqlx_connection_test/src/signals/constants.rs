@@ -1,5 +1,4 @@
 pub const BASIC_MAX_ACTIVE_SIGNALS: usize = 12;
-pub(super) const BASIC_ASPECT_MIN_STRENGTH: f64 = 0.4;
 
 pub(super) const SUPPRESSION_ACTIVE: &str = "active";
 pub(super) const SUPPRESSION_SUPPRESSED: &str = "suppressed";

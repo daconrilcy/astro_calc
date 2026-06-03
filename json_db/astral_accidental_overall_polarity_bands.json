@@ -1,0 +1,53 @@
+{
+  "name": "astral_accidental_overall_polarity_bands",
+  "structure": {
+    "id": "integer",
+    "accidental_scoring_params_id": "integer, FK -> astral_accidental_scoring_params.id",
+    "polarity_code": "string",
+    "expression_quality_code": "string",
+    "min_score": "number",
+    "max_score": "number",
+    "sort_order": "integer",
+    "constraints": {
+      "unique": [["accidental_scoring_params_id", "polarity_code"]]
+    }
+  },
+  "data": [
+    {
+      "id": 1,
+      "accidental_scoring_params_id": 1,
+      "polarity_code": "strongly_weakened",
+      "expression_quality_code": "strongly_constrained_expression",
+      "min_score": 0.0,
+      "max_score": 0.3,
+      "sort_order": 1
+    },
+    {
+      "id": 2,
+      "accidental_scoring_params_id": 1,
+      "polarity_code": "weakened",
+      "expression_quality_code": "constrained_expression",
+      "min_score": 0.3,
+      "max_score": 0.45,
+      "sort_order": 2
+    },
+    {
+      "id": 3,
+      "accidental_scoring_params_id": 1,
+      "polarity_code": "mixed_or_contextual",
+      "expression_quality_code": "mixed_or_contextual_expression",
+      "min_score": 0.45,
+      "max_score": 0.7,
+      "sort_order": 3
+    },
+    {
+      "id": 4,
+      "accidental_scoring_params_id": 1,
+      "polarity_code": "fortified",
+      "expression_quality_code": "strong_external_manifestation",
+      "min_score": 0.7,
+      "max_score": 1.0,
+      "sort_order": 4
+    }
+  ]
+}

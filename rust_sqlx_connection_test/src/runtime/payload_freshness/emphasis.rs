@@ -1,18 +1,16 @@
-use crate::domain::BasicPayload;
-
-const SIGN_HOUSE_EMPHASIS_MIN_SCORE: f64 = 0.35;
-const OBJECT_EMPHASIS_MIN_SCORE: f64 = 0.5;
-const MAX_DOMINANT_SIGNS: usize = 3;
-const MAX_DOMINANT_HOUSES: usize = 3;
-const MAX_DOMINANT_OBJECTS: usize = 5;
+use crate::domain::{BasicPayload, BasicProductScoringSnapshot};
 
 pub(super) fn has_current_chart_emphasis(payload: &BasicPayload) -> bool {
+    let Some(scoring) = payload.chart_context.product_scoring.as_ref() else {
+        return false;
+    };
+
     !payload.chart_emphasis.dominant_signs.is_empty()
         && !payload.chart_emphasis.dominant_houses.is_empty()
         && !payload.chart_emphasis.dominant_objects.is_empty()
-        && payload.chart_emphasis.dominant_signs.len() <= MAX_DOMINANT_SIGNS
-        && payload.chart_emphasis.dominant_houses.len() <= MAX_DOMINANT_HOUSES
-        && payload.chart_emphasis.dominant_objects.len() <= MAX_DOMINANT_OBJECTS
+        && payload.chart_emphasis.dominant_signs.len() <= scoring.max_dominant_signs
+        && payload.chart_emphasis.dominant_houses.len() <= scoring.max_dominant_houses
+        && payload.chart_emphasis.dominant_objects.len() <= scoring.max_dominant_objects
         && payload
             .chart_emphasis
             .dominant_signs
@@ -33,7 +31,7 @@ pub(super) fn has_current_chart_emphasis(payload: &BasicPayload) -> bool {
                 && valid_emphasis_score(entry.score)
                 && valid_emphasis_reasons(&entry.reasons)
                 && (payload.chart_emphasis.dominant_signs.len() == 1
-                    || entry.score >= SIGN_HOUSE_EMPHASIS_MIN_SCORE)
+                    || entry.score >= scoring.sign_house_emphasis_min_score)
         })
         && payload.chart_emphasis.dominant_houses.iter().all(|entry| {
             (1..=12).contains(&entry.house_number)
@@ -41,20 +39,26 @@ pub(super) fn has_current_chart_emphasis(payload: &BasicPayload) -> bool {
                 && valid_emphasis_score(entry.score)
                 && valid_emphasis_reasons(&entry.reasons)
                 && (payload.chart_emphasis.dominant_houses.len() == 1
-                    || entry.score >= SIGN_HOUSE_EMPHASIS_MIN_SCORE)
+                    || entry.score >= scoring.sign_house_emphasis_min_score)
         })
         && payload.chart_emphasis.dominant_objects.iter().all(|entry| {
             !entry.object_code.trim().is_empty()
                 && valid_emphasis_score(entry.score)
                 && valid_emphasis_reasons(&entry.reasons)
                 && (payload.chart_emphasis.dominant_objects.len() == 1
-                    || (entry.score >= OBJECT_EMPHASIS_MIN_SCORE
+                    || (entry.score >= scoring.object_emphasis_min_score
                         && has_non_placement_emphasis_reason(&entry.reasons)))
         })
 }
 
+pub(super) fn product_scoring_snapshot(
+    payload: &BasicPayload,
+) -> Option<&BasicProductScoringSnapshot> {
+    payload.chart_context.product_scoring.as_ref()
+}
+
 fn valid_emphasis_score(score: f64) -> bool {
-    score > 0.0 && score <= 1.0
+    score.is_finite() && score > 0.0
 }
 
 fn valid_emphasis_reasons(reasons: &[String]) -> bool {

@@ -18,9 +18,7 @@ use angles::{angle_signal, is_angle_position};
 use aspect_signals::{aspect_context, aspect_interpretive_hint, aspect_semantic_tags};
 use clusters::{add_position_cluster_signals, apply_cluster_source_deduplication};
 pub use constants::BASIC_MAX_ACTIVE_SIGNALS;
-use constants::{
-    BASIC_ASPECT_MIN_STRENGTH, SUPPRESSION_ACTIVE, SUPPRESSION_SUPPRESSED, THEME_ASPECT,
-};
+use constants::{SUPPRESSION_ACTIVE, SUPPRESSION_SUPPRESSED, THEME_ASPECT};
 use dignity::add_dignity_signals;
 use dignity_helpers::dignity_evidence_array;
 use limits::{
@@ -40,12 +38,18 @@ use relations::{
 pub use utils::indefinite_article;
 use utils::round4;
 
+use crate::catalog::BasicPayloadCatalog;
 use crate::dignities::{
     dignity_source_weight_delta_for_position, essential_dignities_for_position,
 };
 use crate::domain::{CalculatedChartFacts, InterpretationSignalDraft};
 
-pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<InterpretationSignalDraft> {
+pub fn aggregate_basic_signals(
+    facts: &CalculatedChartFacts,
+    catalog: &BasicPayloadCatalog,
+) -> Vec<InterpretationSignalDraft> {
+    let max_active_signals = catalog.product_scoring.max_active_signals;
+    let aspect_min_strength = catalog.product_scoring.aspect_min_strength;
     let mut signals = Vec::new();
     let structural_axis_pairs = structural_axis_pairs_from_positions(&facts.positions);
     let angle_object_codes = angle_object_codes_from_positions(&facts.positions);
@@ -63,7 +67,7 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
 
     for position in &facts.positions {
         if is_angle_position(position) {
-            signals.push(angle_signal(position, &angle_point_object_codes));
+            signals.push(angle_signal(position, &angle_point_object_codes, catalog));
             continue;
         }
 
@@ -76,10 +80,11 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
             .as_deref()
             .map(|house_name| format!(" and the {house_name} house"))
             .unwrap_or_default();
-        let dignities = essential_dignities_for_position(position);
-        let semantic_tags = position_semantic_tags(position);
+        let dignities = essential_dignities_for_position(position, catalog);
+        let semantic_tags = position_semantic_tags(position, catalog);
         let source_weight = round4(
-            object_source_weight(position) + dignity_source_weight_delta_for_position(position),
+            object_source_weight(position)
+                + dignity_source_weight_delta_for_position(position, catalog),
         );
         let theme_code = position_theme_code(position);
         let aggregation_group = position_aggregation_group(position);
@@ -102,11 +107,11 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
                 dignity_summary,
                 motion_summary
             )),
-            priority_score: position_priority(position),
+            priority_score: position_priority(position, catalog),
             confidence_score: Some(0.95),
             suppression_state: SUPPRESSION_ACTIVE.to_string(),
             payload_json: Some(json!({
-                "interpretive_hint": position_interpretive_hint(position),
+                "interpretive_hint": position_interpretive_hint(position, catalog),
                 "semantic_tags": semantic_tags,
                 "source_weight": source_weight,
                 "aggregation_group": aggregation_group,
@@ -122,14 +127,14 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
                     "house_number": position.house_number,
                     "house_name": position.house_name,
                     "longitude_deg": position.longitude_deg,
-                    "placement_context": placement_context(position),
+                    "placement_context": placement_context(position, catalog),
                     "essential_dignities": dignity_evidence_array(&dignities)
                 }
             })),
         });
     }
 
-    add_dignity_signals(facts, &object_source_weights, &mut signals);
+    add_dignity_signals(facts, &object_source_weights, &mut signals, catalog);
 
     for aspect in &facts.aspects {
         if is_structural_axis_aspect(aspect, &structural_axis_pairs) {
@@ -137,7 +142,7 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
         }
 
         let strength_score = aspect.strength_score.unwrap_or(0.5);
-        let suppression_state = if strength_score >= BASIC_ASPECT_MIN_STRENGTH
+        let suppression_state = if strength_score >= aspect_min_strength
             && !is_angle_to_angle_aspect(aspect, &angle_object_codes)
         {
             SUPPRESSION_ACTIVE
@@ -173,7 +178,7 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
             suppression_state: suppression_state.to_string(),
             payload_json: Some(json!({
                 "interpretive_hint": aspect_interpretive_hint(aspect, &aspect_name),
-                "semantic_tags": aspect_semantic_tags(aspect, strength_score),
+                "semantic_tags": aspect_semantic_tags(aspect, strength_score, aspect_min_strength),
                 "source_weight": round4(
                     object_source_weights
                         .get(aspect.source_object_code.as_str())
@@ -209,7 +214,7 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
         });
     }
 
-    add_position_cluster_signals(facts, &mut signals);
+    add_position_cluster_signals(facts, &mut signals, catalog);
 
     signals.sort_by(|left, right| {
         right
@@ -217,12 +222,17 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
             .partial_cmp(&left.priority_score)
             .unwrap_or(std::cmp::Ordering::Equal)
     });
-    suppress_over_basic_limit(&mut signals);
-    for _ in 0..BASIC_MAX_ACTIVE_SIGNALS {
+    suppress_over_basic_limit(&mut signals, max_active_signals);
+    for _ in 0..max_active_signals {
         if !apply_cluster_source_deduplication(&mut signals) {
             break;
         }
-        fill_basic_active_limit(&mut signals, &angle_object_codes);
+        fill_basic_active_limit(
+            &mut signals,
+            &angle_object_codes,
+            max_active_signals,
+            aspect_min_strength,
+        );
     }
     preserve_strong_tension_aspect(&mut signals, &angle_object_codes);
     preserve_strong_non_structural_aspect(&mut signals, &angle_object_codes);

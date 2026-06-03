@@ -98,6 +98,71 @@ pub struct ObjectSectAffinityReference {
 }
 
 #[derive(Debug, Clone)]
+pub struct EssentialDignityRuleReference {
+    pub object_code: String,
+    pub sign_code: String,
+    pub dignity_type: String,
+    pub dignity_label: String,
+    pub polarity: String,
+    pub strength_score: f64,
+    pub priority_delta: f64,
+    pub signal_weight_delta: f64,
+    pub signal_worthy_min_strength: f64,
+    pub emphasis_weight: f64,
+}
+
+#[derive(Debug, Clone)]
+pub struct AccidentalConditionTrigger {
+    pub trigger_family: String,
+    pub source_code: Option<String>,
+    pub angle_object_code: Option<String>,
+    pub condition_code: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct AccidentalScoringParams {
+    pub code: String,
+    pub overall_score_baseline: f64,
+    pub overall_score_min: f64,
+    pub overall_score_max: f64,
+    pub angle_proximity_max_orb_deg: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AccidentalPolarityBand {
+    pub polarity_code: String,
+    pub expression_quality_code: String,
+    pub min_score: f64,
+    pub max_score: f64,
+    pub sort_order: i32,
+}
+
+#[derive(Debug, Clone)]
+pub struct BasicProductScoringProfile {
+    pub product_code: String,
+    pub payload_contract_version: String,
+    pub essential_dignity_score_profile_id: i32,
+    pub accidental_scoring_params_id: i32,
+    pub default_major_orb_deg: f64,
+    pub sign_emphasis_full_score: f64,
+    pub house_emphasis_full_score: f64,
+    pub object_emphasis_full_score: f64,
+    pub sign_house_emphasis_min_score: f64,
+    pub object_emphasis_min_score: f64,
+    pub house_axis_full_score: f64,
+    pub axis_min_score: f64,
+    pub axis_secondary_weight: f64,
+    pub axis_polarity_dominance_delta: f64,
+    pub axis_balanced_min_score: f64,
+    pub max_dominant_signs: usize,
+    pub max_dominant_houses: usize,
+    pub max_dominant_objects: usize,
+    pub max_active_signals: usize,
+    pub aspect_min_strength: f64,
+    pub max_house_axis_emphasis: usize,
+}
+
+#[derive(Debug, Clone)]
 pub struct ObjectPositionFact {
     pub chart_object_id: i32,
     pub object_code: String,
@@ -204,6 +269,27 @@ pub struct BasicPayload {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BasicAccidentalScoringSnapshot {
+    pub overall_score_baseline: f64,
+    pub overall_score_min: f64,
+    pub overall_score_max: f64,
+    pub angle_proximity_max_orb_deg: f64,
+    pub polarity_bands: Vec<AccidentalPolarityBand>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BasicProductScoringSnapshot {
+    pub sign_house_emphasis_min_score: f64,
+    pub object_emphasis_min_score: f64,
+    pub max_dominant_signs: usize,
+    pub max_dominant_houses: usize,
+    pub max_dominant_objects: usize,
+    pub max_active_signals: usize,
+    pub aspect_min_strength: f64,
+    pub max_house_axis_emphasis: usize,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BasicChartContext {
     pub chart_type: String,
     pub zodiacal_reference_system_id: i32,
@@ -214,6 +300,10 @@ pub struct BasicChartContext {
     pub calculation_reliability: BasicCalculationReliability,
     pub sect: BasicSectContext,
     pub hemisphere_emphasis: BasicHemisphereEmphasis,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub accidental_scoring: Option<BasicAccidentalScoringSnapshot>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub product_scoring: Option<BasicProductScoringSnapshot>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

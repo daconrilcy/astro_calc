@@ -2,10 +2,13 @@ use serde_json::json;
 
 use crate::domain::AspectFact;
 
-use super::constants::BASIC_ASPECT_MIN_STRENGTH;
 use super::tags::dedupe_tags;
 
-pub(super) fn aspect_semantic_tags(aspect: &AspectFact, strength_score: f64) -> Vec<String> {
+pub(super) fn aspect_semantic_tags(
+    aspect: &AspectFact,
+    strength_score: f64,
+    aspect_min_strength: f64,
+) -> Vec<String> {
     let mut tags = vec![
         "aspect".to_string(),
         aspect.aspect_code.clone(),
@@ -23,7 +26,7 @@ pub(super) fn aspect_semantic_tags(aspect: &AspectFact, strength_score: f64) -> 
     }
     if strength_score >= 0.75 {
         tags.push("high_strength".to_string());
-    } else if strength_score < BASIC_ASPECT_MIN_STRENGTH {
+    } else if strength_score < aspect_min_strength {
         tags.push("low_strength".to_string());
     }
     dedupe_tags(tags)
