@@ -1029,6 +1029,29 @@ fn basic_payload_exposes_rulership_context_from_reference_rules() {
     let signals = vec![
         placement_signal_row(1, "object_position:mars", "mars"),
         placement_signal_row(2, "object_position:sun", "sun"),
+        InterpretationSignalRow {
+            id: 3,
+            signal_key: "angle:mc:sign:leo".to_string(),
+            theme_code: Some("public_direction".to_string()),
+            title: "MC in Leo".to_string(),
+            summary: Some("summary".to_string()),
+            priority_score: 82.0,
+            confidence_score: Some(0.95),
+            payload_json: Some(json!({
+                "interpretive_hint": "hint",
+                "semantic_tags": ["angle", "mc", "leo"],
+                "source_weight": 0.8,
+                "aggregation_group": "angle:mc:leo",
+                "writing_guidance": "guidance",
+                "evidence": {
+                    "fact_type": "chart_angle",
+                    "angle_code": "mc",
+                    "opposite_angle_code": "ic",
+                    "opposite_angle_object_code": "ic",
+                    "sign_code": "leo"
+                }
+            })),
+        },
     ];
     let rulers = vec![
         domicile_ruler(8, "scorpio", "Scorpio", 5, "mars", "Mars"),
@@ -1087,6 +1110,13 @@ fn basic_payload_exposes_rulership_context_from_reference_rules() {
                 .context_refs
                 .rulership_context
                 .contains(&"ascendant_ruler".to_string())
+    }));
+    assert!(payload.drafting_plan.iter().any(|item| {
+        item.slot == "background_factors"
+            && item
+                .context_refs
+                .rulership_context
+                .contains(&"mc_ruler".to_string())
     }));
 }
 

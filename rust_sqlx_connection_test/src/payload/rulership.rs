@@ -1,8 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::domain::{
-    BasicChartEmphasis, BasicDispositorLink, BasicFinalDispositor, BasicRulerContext,
-    BasicRulerSource, BasicRulershipChain, BasicRulershipContext, BasicSignal,
+    BasicChartEmphasis, BasicDispositorLink, BasicFinalDispositor, BasicMutualReception,
+    BasicRulerContext, BasicRulerSource, BasicRulershipChain, BasicRulershipContext, BasicSignal,
     DomicileRulerReference, ObjectPositionFact,
 };
 
@@ -80,6 +80,7 @@ pub(super) fn build_rulership_context(
     );
     let rulership_chains = rulership_chains(positions, &rules_by_sign);
     let final_dispositors = final_dispositors(&rulership_chains);
+    let mutual_receptions = mutual_receptions(&rulership_chains);
 
     BasicRulershipContext {
         ascendant_ruler,
@@ -89,6 +90,7 @@ pub(super) fn build_rulership_context(
         dispositor_links,
         rulership_chains,
         final_dispositors,
+        mutual_receptions,
     }
 }
 
@@ -264,35 +266,68 @@ fn rulership_chains(
 }
 
 fn final_dispositors(chains: &[BasicRulershipChain]) -> Vec<BasicFinalDispositor> {
-    let mut grouped: HashMap<(String, String), Vec<String>> = HashMap::new();
+    let mut grouped: HashMap<String, Vec<String>> = HashMap::new();
     for chain in chains {
-        match chain.termination.as_str() {
-            "final_dispositor" | "mutual_reception" | "cycle" => {
-                if let Some(last) = chain.chain.last() {
-                    grouped
-                        .entry((last.clone(), chain.termination.clone()))
-                        .or_default()
-                        .push(chain.object_code.clone());
-                }
+        if chain.termination == "final_dispositor" {
+            if let Some(last) = chain.chain.last() {
+                grouped
+                    .entry(last.clone())
+                    .or_default()
+                    .push(chain.object_code.clone());
             }
-            _ => {}
         }
     }
 
     let mut values = grouped
         .into_iter()
-        .map(|((object_code, disposition_type), mut source_objects)| {
+        .map(|(object_code, mut source_objects)| {
             source_objects.sort();
             source_objects.dedup();
             BasicFinalDispositor {
                 object_code,
-                disposition_type,
                 source_objects,
             }
         })
         .collect::<Vec<_>>();
     values.sort_by(|left, right| left.object_code.cmp(&right.object_code));
     values
+}
+
+fn mutual_receptions(chains: &[BasicRulershipChain]) -> Vec<BasicMutualReception> {
+    let mut grouped: HashMap<String, BasicMutualReception> = HashMap::new();
+    for chain in chains
+        .iter()
+        .filter(|chain| chain.termination == "mutual_reception")
+    {
+        let Some(pair) = mutual_reception_pair(chain) else {
+            continue;
+        };
+        let key = pair.join(":");
+        let entry = grouped.entry(key).or_insert_with(|| BasicMutualReception {
+            object_codes: pair,
+            source_objects: Vec::new(),
+        });
+        entry.source_objects.push(chain.object_code.clone());
+    }
+
+    let mut values = grouped.into_values().collect::<Vec<_>>();
+    for value in &mut values {
+        value.source_objects.sort();
+        value.source_objects.dedup();
+    }
+    values.sort_by(|left, right| left.object_codes.cmp(&right.object_codes));
+    values
+}
+
+fn mutual_reception_pair(chain: &BasicRulershipChain) -> Option<Vec<String>> {
+    let len = chain.chain.len();
+    if len < 3 || chain.chain[len - 1] != chain.chain[len - 3] {
+        return None;
+    }
+    let mut pair = vec![chain.chain[len - 2].clone(), chain.chain[len - 1].clone()];
+    pair.sort();
+    pair.dedup();
+    (pair.len() == 2).then_some(pair)
 }
 
 fn dominant_house_sign(positions: &[ObjectPositionFact], house_number: i32) -> Option<&str> {

@@ -1227,6 +1227,7 @@ doit respecter :
       "expose raw evidence unless explicitly requested",
       "treat chart_emphasis as a standalone section instead of weighting context",
       "treat chart_context as a standalone section instead of contextual weighting",
+      "treat rulership_context as a standalone section instead of contextual weighting",
       "make deterministic or fatalistic predictions"
     ],
     "output_format": "structured_sections"
@@ -1272,7 +1273,8 @@ une langue cible finale.
         "dominant_objects": ["saturn"]
       },
       "context_refs": {
-        "chart_context": ["sect", "hemisphere_emphasis"]
+        "chart_context": ["sect", "hemisphere_emphasis"],
+        "rulership_context": ["dominant_sign_rulers", "dominant_house_rulers"]
       },
       "writing_objective": "Explain in plain language that the chart emphasizes Capricorn, Resources, and structure, responsibility, security, grouping the cluster evidence and Saturn dignity context instead of enumerating placements.",
       "max_words": 120,
@@ -1282,7 +1284,8 @@ une langue cible finale.
         "make fatalistic predictions",
         "add information that is absent from the source signals",
         "turn chart_emphasis into a standalone section",
-        "turn chart_context into a standalone section"
+        "turn chart_context into a standalone section",
+        "turn rulership_context into a standalone section"
       ]
     }
   ]
@@ -1440,9 +1443,15 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
   `turn chart_emphasis into a standalone section` ;
 - chaque item de `drafting_plan` contient la regle d'evitement
   `turn chart_context into a standalone section` ;
+- chaque item de `drafting_plan` contient la regle d'evitement
+  `turn rulership_context into a standalone section` ;
 - `drafting_plan[].context_refs.chart_context` vaut
   `["sect", "hemisphere_emphasis"]` pour `core_identity` et
   `dominant_cluster`, et reste vide pour les autres slots ;
+- `drafting_plan[].context_refs.rulership_context` reference
+  `ascendant_ruler` pour `core_identity`, `dominant_sign_rulers` et
+  `dominant_house_rulers` pour `dominant_cluster`, et `mc_ruler` pour
+  `background_factors` ;
 - `primary_signal_keys` aligne avec `source_signal_keys`, et
   `secondary_slot_candidates` coherents entre `reading_plan` et `drafting_plan` ;
 - chaque signal primaire apparait dans un seul slot de `reading_plan`; les
@@ -1624,7 +1633,8 @@ jointure. Aucune correspondance signe -> maitre n'est codee dans le moteur.
 - les maitres des signes et maisons dominants;
 - les `dispositor_links` des objets mobiles;
 - les `rulership_chains` limitees a une profondeur de 6 avec detection de cycle;
-- les `final_dispositors` et receptions/cycles detectes.
+- les vrais `final_dispositors`;
+- les `mutual_receptions` separees des final dispositors.
 
 Pour les signes ayant plusieurs maitres selon les systemes doctrinaux, le bloc
 expose a la fois `ruler_object_codes` et `ruler_sources[].object_code`. Ainsi,
@@ -1632,8 +1642,45 @@ chaque source doctrinale reste explicitement rattachee au maitre qu'elle
 fournit, au lieu d'exposer une liste de sources ambiguë.
 
 `drafting_plan.context_refs` reference maintenant `rulership_context` pour
-`core_identity` et `dominant_cluster`. Les garde-fous `must_not` et `avoid`
-interdisent de transformer ce bloc en section autonome.
+`core_identity`, `dominant_cluster` et `background_factors`: le maitre de
+l'Ascendant sert l'identite, les maitres de dominantes servent le cluster, et
+`mc_ruler` sert le slot de fond lorsque le MC y est traite. Les garde-fous
+`must_not` et `avoid` interdisent de transformer ce bloc en section autonome.
+
+### Etape 3B.1 - Coherence du referentiel et endpoints
+
+La stabilisation 3B.1 corrige le referentiel moderne dans
+`json_db/astral_object_sign_dignities.json`:
+
+- Scorpion moderne -> Pluton;
+- Verseau moderne -> Uranus;
+- Poissons moderne -> Neptune;
+- les detriments modernes opposes sont alignes avec ces domiciles.
+
+Le golden v10 verrouille explicitement le cas Scorpion:
+
+```json
+{
+  "ruler_object_codes": ["mars", "pluto"],
+  "ruler_sources": [
+    { "astral_system_code": "traditional", "object_code": "mars" },
+    { "astral_system_code": "modern", "object_code": "pluto" }
+  ]
+}
+```
+
+Les terminaisons de chaines sont separees pour eviter toute ambiguite:
+
+- `final_dispositors` contient uniquement les objets qui disposent d'eux-memes
+  en fin de chaine;
+- `mutual_receptions` contient les boucles a deux objets;
+- les cycles plus longs restent visibles dans `rulership_chains` avec
+  `termination = "cycle"`.
+
+La validation runtime verifie que `final_dispositors` et `mutual_receptions`
+derivent exactement de `rulership_chains`. Un payload dont les endpoints sont
+coherents en forme JSON mais incoherents avec les chaines est rejete par
+`is_current_basic_payload`.
 
 Artefacts ajoutes:
 
@@ -1641,9 +1688,10 @@ Artefacts ajoutes:
 - `tests/golden/natal_payload_v10_paris_1990.json`;
 - `scripts/verify_natal_v10_golden.ps1`.
 
-Ce decoupage reste volontairement simple: aucune nouvelle donnee canonique n'a
-ete ajoutee en dur, et les fonctions gardent une portee limitee au module quand
-elles ne font pas partie de l'API publique.
+Ce decoupage reste volontairement simple: les donnees doctrinales restent dans
+les fichiers `json_db` et sont lues par la base; aucune correspondance
+signe -> maitre n'est codee en Rust. Les fonctions gardent une portee limitee
+au module quand elles ne font pas partie de l'API publique.
 
 ## Organisation du module signals
 

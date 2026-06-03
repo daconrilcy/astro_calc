@@ -1519,7 +1519,7 @@
       "sign_code": "scorpio",
       "ruler_object_codes": [
         "mars",
-        "uranus"
+        "pluto"
       ],
       "ruler_object_code": "mars",
       "ruler_position_signal_key": "object_position:mars",
@@ -1547,7 +1547,7 @@
           "dignity_type": "domicile",
           "weight": 1.0,
           "is_primary": true,
-          "object_code": "uranus"
+          "object_code": "pluto"
         }
       ],
       "interpretive_hint": "The angle ascendant in scorpio is routed through Mars, placed in Sagittarius house 1."
@@ -1619,7 +1619,7 @@
         "sign_code": "scorpio",
         "ruler_object_codes": [
           "mars",
-          "uranus"
+          "pluto"
         ],
         "ruler_object_code": "mars",
         "ruler_position_signal_key": "object_position:mars",
@@ -1647,7 +1647,7 @@
             "dignity_type": "domicile",
             "weight": 1.0,
             "is_primary": true,
-            "object_code": "uranus"
+            "object_code": "pluto"
           }
         ],
         "interpretive_hint": "The dominant_house house_1 in scorpio is routed through Mars, placed in Sagittarius house 1."
@@ -1887,7 +1887,7 @@
             "dignity_type": "domicile",
             "weight": 1.0,
             "is_primary": true,
-            "object_code": "uranus"
+            "object_code": "pluto"
           }
         ],
         "interpretive_hint": "Pluto in Scorpio is routed through Mars by domicile rulership."
@@ -1989,24 +1989,7 @@
     ],
     "final_dispositors": [
       {
-        "object_code": "jupiter",
-        "disposition_type": "mutual_reception",
-        "source_objects": [
-          "jupiter",
-          "mars",
-          "pluto"
-        ]
-      },
-      {
-        "object_code": "moon",
-        "disposition_type": "mutual_reception",
-        "source_objects": [
-          "moon"
-        ]
-      },
-      {
         "object_code": "saturn",
-        "disposition_type": "final_dispositor",
         "source_objects": [
           "mercury",
           "neptune",
@@ -2014,6 +1997,20 @@
           "sun",
           "uranus",
           "venus"
+        ]
+      }
+    ],
+    "mutual_receptions": [
+      {
+        "object_codes": [
+          "jupiter",
+          "moon"
+        ],
+        "source_objects": [
+          "jupiter",
+          "mars",
+          "moon",
+          "pluto"
         ]
       }
     ]
@@ -3501,7 +3498,9 @@
       },
       "context_refs": {
         "chart_context": [],
-        "rulership_context": []
+        "rulership_context": [
+          "mc_ruler"
+        ]
       },
       "writing_objective": "Place the more collective or less central factors in the background with brief, proportionate wording.",
       "max_words": 80,

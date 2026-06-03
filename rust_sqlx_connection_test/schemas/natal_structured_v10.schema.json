@@ -459,7 +459,8 @@
         "dominant_sign_rulers",
         "dispositor_links",
         "rulership_chains",
-        "final_dispositors"
+        "final_dispositors",
+        "mutual_receptions"
       ],
       "properties": {
         "ascendant_ruler": {
@@ -487,6 +488,10 @@
         "final_dispositors": {
           "type": "array",
           "items": { "$ref": "#/$defs/final_dispositor" }
+        },
+        "mutual_receptions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/mutual_reception" }
         }
       }
     },
@@ -597,12 +602,30 @@
     "final_dispositor": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["object_code", "disposition_type", "source_objects"],
+      "required": ["object_code", "source_objects"],
       "properties": {
         "object_code": { "type": "string", "minLength": 1 },
-        "disposition_type": { "enum": ["final_dispositor", "mutual_reception", "cycle"] },
         "source_objects": {
           "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "mutual_reception": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["object_codes", "source_objects"],
+      "properties": {
+        "object_codes": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "source_objects": {
+          "type": "array",
+          "minItems": 1,
           "items": { "type": "string", "minLength": 1 }
         }
       }
@@ -1009,6 +1032,7 @@
               "items": {
                 "enum": [
                   "ascendant_ruler",
+                  "mc_ruler",
                   "dominant_sign_rulers",
                   "dominant_house_rulers"
                 ]

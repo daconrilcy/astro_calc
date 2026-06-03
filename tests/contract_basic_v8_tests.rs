@@ -401,6 +401,88 @@ fn v10_rulership_sources_map_doctrines_to_ruler_objects() {
     }
 }
 
+#[test]
+fn v10_rulership_routes_mc_and_uses_consistent_modern_scorpio_ruler() {
+    let payload = load_golden_payload();
+    let rulership = &payload["rulership_context"];
+    let ascendant_ruler = &rulership["ascendant_ruler"];
+
+    assert_eq!(ascendant_ruler["sign_code"], "scorpio");
+    assert!(array(ascendant_ruler, "ruler_object_codes")
+        .iter()
+        .any(|value| value == "pluto"));
+    assert!(!array(ascendant_ruler, "ruler_object_codes")
+        .iter()
+        .any(|value| value == "uranus"));
+    assert!(array(ascendant_ruler, "ruler_sources")
+        .iter()
+        .any(|source| {
+            source["astral_system_code"] == "modern" && source["object_code"] == "pluto"
+        }));
+
+    let background = find_slot(&payload, "drafting_plan", "background_factors");
+    assert!(array(&background["context_refs"], "rulership_context")
+        .iter()
+        .any(|value| value == "mc_ruler"));
+}
+
+#[test]
+fn v10_rulership_splits_final_dispositors_from_mutual_receptions() {
+    let payload = load_golden_payload();
+    let rulership = &payload["rulership_context"];
+
+    let final_dispositors = array(rulership, "final_dispositors");
+    assert!(!final_dispositors.is_empty());
+    for final_dispositor in final_dispositors {
+        assert!(
+            final_dispositor.get("disposition_type").is_none(),
+            "final_dispositors must not carry mutual_reception/cycle endpoints"
+        );
+        assert!(
+            !array(final_dispositor, "source_objects").is_empty(),
+            "final_dispositor should keep source_objects"
+        );
+    }
+
+    let mutual_receptions = array(rulership, "mutual_receptions");
+    assert!(
+        !mutual_receptions.is_empty(),
+        "mutual receptions should be exposed separately"
+    );
+    for reception in mutual_receptions {
+        assert_eq!(array(reception, "object_codes").len(), 2);
+        assert!(!array(reception, "source_objects").is_empty());
+    }
+}
+
+#[test]
+fn runtime_rejects_final_dispositors_not_matching_chains() {
+    let mut payload = load_golden_payload();
+    payload["rulership_context"]["final_dispositors"][0]["source_objects"]
+        .as_array_mut()
+        .expect("source_objects should be an array")
+        .push(Value::String("moon".to_string()));
+
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
+#[test]
+fn runtime_rejects_mutual_receptions_not_matching_chains() {
+    let mut payload = load_golden_payload();
+    payload["rulership_context"]["mutual_receptions"][0]["source_objects"]
+        .as_array_mut()
+        .expect("source_objects should be an array")
+        .retain(|value| value != "moon");
+
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
 fn assert_ruler_sources_map_to_objects(context: &Value) {
     let ruler_object_codes = array(context, "ruler_object_codes")
         .iter()

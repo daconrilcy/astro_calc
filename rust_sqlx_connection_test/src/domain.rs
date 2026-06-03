@@ -285,6 +285,8 @@ pub struct BasicRulershipContext {
     pub rulership_chains: Vec<BasicRulershipChain>,
     #[serde(default)]
     pub final_dispositors: Vec<BasicFinalDispositor>,
+    #[serde(default)]
+    pub mutual_receptions: Vec<BasicMutualReception>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -340,7 +342,14 @@ pub struct BasicRulershipChain {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BasicFinalDispositor {
     pub object_code: String,
-    pub disposition_type: String,
+    #[serde(default)]
+    pub source_objects: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BasicMutualReception {
+    #[serde(default)]
+    pub object_codes: Vec<String>,
     #[serde(default)]
     pub source_objects: Vec<String>,
 }

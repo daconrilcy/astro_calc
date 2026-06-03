@@ -138,6 +138,7 @@ fn expected_context_refs_for_slot(slot: &str) -> crate::domain::BasicContextRefs
                 "dominant_house_rulers".to_string(),
             ]
         }
+        "background_factors" => vec!["mc_ruler".to_string()],
         _ => Vec::new(),
     };
 

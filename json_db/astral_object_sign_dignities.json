@@ -405,7 +405,7 @@
       "reference_version_id": 1,
       "astral_system_id": 2,
       "astral_sign_id": 8,
-      "chart_object_id": 8,
+      "chart_object_id": 10,
       "astral_dignity_type_id": 1,
       "weight": 1.0,
       "is_primary": true
@@ -415,7 +415,7 @@
       "reference_version_id": 1,
       "astral_system_id": 2,
       "astral_sign_id": 11,
-      "chart_object_id": 9,
+      "chart_object_id": 8,
       "astral_dignity_type_id": 1,
       "weight": 1.0,
       "is_primary": true
@@ -425,7 +425,7 @@
       "reference_version_id": 1,
       "astral_system_id": 2,
       "astral_sign_id": 12,
-      "chart_object_id": 10,
+      "chart_object_id": 9,
       "astral_dignity_type_id": 1,
       "weight": 1.0,
       "is_primary": true
@@ -435,7 +435,7 @@
       "reference_version_id": 1,
       "astral_system_id": 2,
       "astral_sign_id": 2,
-      "chart_object_id": 8,
+      "chart_object_id": 10,
       "astral_dignity_type_id": 2,
       "weight": -1.0,
       "is_primary": true
@@ -445,7 +445,7 @@
       "reference_version_id": 1,
       "astral_system_id": 2,
       "astral_sign_id": 5,
-      "chart_object_id": 9,
+      "chart_object_id": 8,
       "astral_dignity_type_id": 2,
       "weight": -1.0,
       "is_primary": true
@@ -455,7 +455,7 @@
       "reference_version_id": 1,
       "astral_system_id": 2,
       "astral_sign_id": 6,
-      "chart_object_id": 10,
+      "chart_object_id": 9,
       "astral_dignity_type_id": 2,
       "weight": -1.0,
       "is_primary": true
