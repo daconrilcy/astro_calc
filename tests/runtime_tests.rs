@@ -192,7 +192,7 @@ fn current_payload() -> BasicPayload {
                 "beliefs_theme".to_string(),
             ],
             interpretive_hint:
-                "Local and Distant is activated through house 9 (beliefs), with one side carrying most of the emphasis."
+                "Local and Distant is activated mainly through house 9 (beliefs), with house 3 (communication) present as a secondary counterpoint."
                     .to_string(),
         }],
         signals: vec![

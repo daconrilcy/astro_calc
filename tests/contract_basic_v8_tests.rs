@@ -437,6 +437,73 @@ fn runtime_rejects_duplicate_axis_source_signal_keys() {
 }
 
 #[test]
+fn runtime_rejects_axis_hint_inconsistent_with_polarity_balance() {
+    let mut payload = load_golden_payload();
+    payload["house_axis_emphasis"][0]["interpretive_hint"] =
+        Value::String("Resources and Sharing is activated through house 2 (resources), with both sides visibly active.".to_string());
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
+#[test]
+fn runtime_rejects_missing_cross_axis_reason_when_aspect_bridges_axis() {
+    let mut payload = load_golden_payload();
+    let axis = payload["house_axis_emphasis"]
+        .as_array_mut()
+        .expect("house_axis_emphasis should be an array")
+        .iter_mut()
+        .find(|axis| axis["axis_code"] == "resources_sharing")
+        .expect("resources_sharing axis");
+    axis["reasons"]
+        .as_array_mut()
+        .expect("axis reasons should be an array")
+        .retain(|reason| reason != "cross_axis_aspect");
+    for score in axis["house_scores"]
+        .as_array_mut()
+        .expect("house_scores should be an array")
+    {
+        score["reasons"]
+            .as_array_mut()
+            .expect("house score reasons should be an array")
+            .retain(|reason| reason != "cross_axis_aspect");
+    }
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
+#[test]
+fn runtime_rejects_cross_axis_reason_without_bridge_aspect() {
+    let mut payload = load_golden_payload();
+    let axis = payload["house_axis_emphasis"]
+        .as_array_mut()
+        .expect("house_axis_emphasis should be an array")
+        .iter_mut()
+        .find(|axis| axis["axis_code"] == "self_relationship")
+        .expect("self_relationship axis");
+    axis["reasons"]
+        .as_array_mut()
+        .expect("axis reasons should be an array")
+        .push(Value::String("cross_axis_aspect".to_string()));
+    for score in axis["house_scores"]
+        .as_array_mut()
+        .expect("house_scores should be an array")
+    {
+        score["reasons"]
+            .as_array_mut()
+            .expect("house score reasons should be an array")
+            .push(Value::String("cross_axis_aspect".to_string()));
+    }
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
+#[test]
 fn v11_payload_omits_llm_and_drafting_instructions() {
     let payload = load_golden_payload();
 
@@ -466,6 +533,13 @@ fn resources_sharing_axis_is_detected() {
 
     assert_eq!(axis["houses"], serde_json::json!([2, 8]));
     assert_eq!(axis["primary_house"], 2);
+    assert_eq!(
+        axis["interpretive_hint"],
+        "Resources and Sharing is activated mainly through house 2 (resources), with house 8 (shared_resources) present as a secondary counterpoint."
+    );
+    assert!(array(axis, "reasons")
+        .iter()
+        .any(|value| value == "cross_axis_aspect"));
     assert!(array(axis, "source_signal_keys")
         .iter()
         .any(|value| value == "cluster:capricorn:house_2"));
@@ -478,9 +552,29 @@ fn self_relationship_axis_is_detected() {
 
     assert_eq!(axis["houses"], serde_json::json!([1, 7]));
     assert_eq!(axis["primary_house"], 1);
+    assert_eq!(
+        axis["interpretive_hint"],
+        "Self and Relationship is activated mainly through house 1 (identity), with house 7 (relationships) present as a secondary counterpoint."
+    );
     assert!(array(axis, "source_signal_keys")
         .iter()
         .any(|value| value == "angle:ascendant:sign:scorpio"));
+}
+
+#[test]
+fn cross_axis_aspect_reason_is_exposed_on_both_house_scores() {
+    let payload = load_golden_payload();
+    let axis = find_axis(&payload, "resources_sharing");
+
+    for house_score in array(axis, "house_scores") {
+        assert!(
+            array(house_score, "reasons")
+                .iter()
+                .any(|value| value == "cross_axis_aspect"),
+            "house {} should expose cross_axis_aspect",
+            house_score["house_number"]
+        );
+    }
 }
 
 #[test]

@@ -120,7 +120,7 @@ ne disparaisse pas artificiellement.
 L'etape 3A ajoute le premier enrichissement global avant synthese externe avec
 `chart_context` et `positions[].visibility_context`. Le payload expose
 desormais le cadre technique du theme natal, un contrat de projection
-`natal_structured_v10`, les contraintes de fiabilite, la secte deduite du Soleil
+`natal_structured_v11`, les contraintes de fiabilite, la secte deduite du Soleil
 et une synthese d'hemisphere. Chaque position porte aussi sa position
 d'horizon (`above_horizon`, `below_horizon` ou `on_horizon`), l'ID canonique
 issu de `astral_horizon_positions`, une source d'audit et le flag de visibilite
@@ -137,9 +137,9 @@ positive ou sans flag de visibilite ne sont plus reutilises : le runtime force
 alors un nouveau calcul ephemeride complet au lieu de reconstruire un payload
 enrichi depuis des faits obsoletes.
 
-L'etape 3A.2 stabilise officiellement le contrat courant en
-`natal_structured_v9`. Le schema et le golden v9 sont dedies, et les artefacts
-v8 restent presents pour historique. `chart_context.hemisphere_emphasis`
+L'etape 3A.2 stabilisait alors le contrat en `natal_structured_v9`. Le schema
+et le golden v9 sont dedies, et les artefacts v8 restent presents pour
+historique. `chart_context.hemisphere_emphasis`
 declare maintenant explicitement `count_scope = "mobile_chart_objects_only"`.
 Le `visibility_context` des signaux de placement est recopie dans
 `signals[].evidence.placement_context`, afin que la couche applicative n'ait
@@ -206,13 +206,17 @@ la correction attendue est de resynchroniser PostgreSQL avec les fichiers
 - `rust_sqlx_connection_test/schemas/natal_structured_v9.schema.json` :
   schema JSON historique du contrat v9.
 - `rust_sqlx_connection_test/schemas/natal_structured_v10.schema.json` :
-  schema JSON du contrat courant `natal_structured_v10`.
+  schema JSON historique du contrat `natal_structured_v10`.
+- `rust_sqlx_connection_test/schemas/natal_structured_v11.schema.json` :
+  schema JSON du contrat courant `natal_structured_v11`.
 - `tests/golden/basic_payload_v8_paris_1990.json` : fixture golden historique
   du contrat Basic v8.
 - `tests/golden/natal_payload_v9_paris_1990.json` : fixture golden du contrat
   historique v9.
-- `tests/golden/natal_payload_v10_paris_1990.json` : fixture golden du contrat
-  courant v10.
+- `tests/golden/natal_payload_v10_paris_1990.json` : fixture golden historique
+  du contrat v10.
+- `tests/golden/natal_payload_v11_paris_1990.json` : fixture golden du contrat
+  courant v11.
 - `tests/contract_basic_v8_tests.rs` : validation schema, golden et invariants
   metier non negociables pour le contrat courant.
 - `scripts/verify_basic_v8_golden.ps1` : verification CI/local de projection
@@ -220,8 +224,10 @@ la correction attendue est de resynchroniser PostgreSQL avec les fichiers
   valide le golden v8 conserve, ou un fichier v8 fourni explicitement.
 - `scripts/verify_natal_v9_golden.ps1` : verification CI/local de projection
   stable historique v9 apres regeneration du payload par le moteur.
-- `scripts/verify_natal_v10_golden.ps1` : verification CI/local de projection
-  stable v10 apres regeneration du payload par le moteur.
+- `scripts/verify_natal_v10_golden.ps1` : verification CI/local historique de
+  projection stable v10 apres regeneration du payload par le moteur.
+- `scripts/verify_natal_v11_golden.ps1` : verification CI/local de projection
+  stable v11 apres regeneration du payload par le moteur.
 
 ## Contrat des positions
 
@@ -1132,24 +1138,25 @@ aspect fort disponible. `main_tension_or_support` n'est donc absent que
 lorsqu'aucun aspect actif ou preservable ne reste apres l'exclusion des axes
 structurels et des autres aspects angle-angle.
 
-Depuis l'etape 3B, `natal_structured_v10` est le contrat
+Depuis l'etape 3C, `natal_structured_v11` est le contrat
 courant verrouille par trois niveaux complementaires :
 
 - le JSON Schema
-  `rust_sqlx_connection_test/schemas/natal_structured_v10.schema.json`
+  `rust_sqlx_connection_test/schemas/natal_structured_v11.schema.json`
   valide la forme du contrat moteur, les blocs obligatoires, les quatre angles,
-  les bornes de score, `chart_context` et les contraintes schema exprimables.
+  les bornes de score, `chart_context`, `house_axis_emphasis` et les contraintes schema exprimables.
   Il refuse aussi les champs semantiques de signal obligatoires a `null`, les
   contextes de position obligatoires a `null`, les proprietes parasites dans
   `aspect_context`, et les `visibility_context` mobiles sans altitude calculee
   ou sans flag `is_visible` booleen ;
-- la fixture `tests/golden/natal_payload_v10_paris_1990.json` conserve un
+- la fixture `tests/golden/natal_payload_v11_paris_1990.json` conserve un
   payload complet de reference pour le scenario Paris 1990 ;
 - `tests/contract_basic_v8_tests.rs` valide les invariants metier du contrat
-  courant v10 et conserve aussi une validation schema du golden historique v8 :
+  courant v11 et conserve aussi une validation schema des goldens historiques v8 et v10 :
   sources de plan existantes, absence d'aspect angle-angle actif, conservation
   de `aspect:jupiter:uranus:opposition`, unicite des signaux primaires et
-  garde-fous contre des sections autonomes `chart_emphasis` / `chart_context`.
+  garde-fous contre des sections autonomes `chart_emphasis` / `chart_context`,
+  ainsi que la coherence des axes de maisons.
 
 La review adversariale de cette stabilisation a ajoute des tests negatifs et a
 resserre l'alignement entre schema et validation runtime. Un payload qui valide
@@ -1162,23 +1169,25 @@ altitude calculee.
 La regeneration complete du golden courant depend de Postgres et de Swiss
 Ephemeris. Le test unitaire ne reconstruit donc pas le theme depuis le moteur.
 Pour couvrir ce risque en CI ou en verification locale,
-`scripts/verify_natal_v10_golden.ps1` lance le moteur avec le scenario golden
+`scripts/verify_natal_v11_golden.ps1` lance le moteur avec le scenario golden
 Paris / `1990-01-02T03:04:05Z`, puis compare une projection stable du payload
-genere au golden v10. Le script force les variables d'environnement du scenario
+genere au golden v11. Le script force les variables d'environnement du scenario
 golden et les restaure ensuite, afin d'eviter qu'un `ASTRAL_OUTPUT_MODE`,
 `ASTRAL_PRODUCT_CODE` ou identifiant de referentiel deja present ne modifie la
 verification. Il peut aussi comparer un fichier deja genere via :
 
 ```powershell
-.\scripts\verify_natal_v10_golden.ps1 -GeneratedPayloadPath .\output\basic_payload_current.json
+.\scripts\verify_natal_v11_golden.ps1 -GeneratedPayloadPath .\output\basic_payload_current.json
 ```
 
 Le script `scripts/verify_basic_v8_golden.ps1` reste disponible uniquement pour
 valider le golden historique v8 ou un fichier v8 fourni explicitement. Il ne
 regenere plus de payload depuis le moteur courant, car celui-ci produit
-desormais `natal_structured_v10`.
+desormais `natal_structured_v11`.
 Le script `scripts/verify_natal_v9_golden.ps1` reste disponible pour le golden
 historique v9.
+Le script `scripts/verify_natal_v10_golden.ps1` reste disponible pour le golden
+historique v10.
 
 ## Annexe historique - handoff LLM retire
 
@@ -1382,7 +1391,7 @@ Le run attendu doit afficher le payload moteur courant route par
 
 - `product_code = "basic"` ;
 - un `chart_context` top-level avec le type de theme, les IDs de referentiels,
-  le contrat de projection `natal_structured_v10`, la secte et la synthese
+  le contrat de projection `natal_structured_v11`, la secte et la synthese
   d'hemisphere, dont `hemisphere_emphasis.count_scope =
   "mobile_chart_objects_only"` ;
 - des positions avec `sign_code`, `sign_name`, `house_number`, `house_name`,
@@ -1408,6 +1417,9 @@ Le run attendu doit afficher le payload moteur courant route par
   `placement`-only quand une vraie emphase existe par dignite, cluster,
   dominante de signe ou aspect fort, et sans amplification artificielle des
   angles par leurs axes structurels ;
+- un `house_axis_emphasis` top-level avec au plus trois axes de maisons
+  significatifs, audites par `house_scores`, `source_signal_keys`,
+  `source_context_keys` et `reasons` ;
 - au plus 12 signaux ;
 - un `reading_plan` non vide ;
 - un `reading_plan` sans slot vide et sans opposition structurelle d'angle dans
@@ -1465,13 +1477,12 @@ sans modifier le contrat public `rust_sqlx_connection_test::payload`.
 
 - `mod.rs` orchestre la construction du payload moteur route basic.
 - `angles.rs`, `chart_context.rs`, `dignities.rs`, `emphasis.rs`,
-  `rulership.rs`,
+  `house_axes.rs`, `rulership.rs`,
   `reading_plan.rs` isolent les blocs metier du payload.
 - `signal_filters.rs` centralise les predicats partages sur les signaux et
   aspects.
 - `json.rs` centralise les extractions defensives depuis les payloads JSON.
-- `contract.rs` conserve les constantes du contrat moteur courant
-  `natal_structured_v10`.
+- `chart_context.rs` porte le contrat moteur courant `natal_structured_v11`.
 
 ## Etape 3B - Rulership / dispositors context
 
@@ -1616,8 +1627,8 @@ canoniques applicatives et ne contourne pas les referentiels lus depuis la base.
 
 - `mod.rs` conserve les exports publics historiques :
   `ChartCalculationRuntimeService`, `RuntimeError`,
-  `is_current_basic_payload`, `validate_calculation_references` et
-  `validate_chart_object_signal_profiles`.
+  `is_current_basic_payload`, `validate_calculation_references`,
+  `validate_chart_object_signal_profiles` et `validate_house_axis_references`.
 - `error.rs` isole `RuntimeError` et ses codes d'erreur stables.
 - `service.rs` orchestre le calcul natal route basic, l'idempotence, la persistance
   et la regeneration des payloads obsoletes.
@@ -1625,8 +1636,8 @@ canoniques applicatives et ne contourne pas les referentiels lus depuis la base.
   base de donnees et des profils de scoring des objets.
 - `payload_freshness.rs` expose la facade `is_current_basic_payload` et compose
   les validations de reutilisation.
-- `payload_freshness/contract.rs` verifie le contrat moteur courant
-  `natal_structured_v10`.
+- `payload_freshness/chart_context.rs` verifie le contrat moteur courant
+  `natal_structured_v11`.
 - `payload_freshness/angles.rs` verifie les quatre angles canoniques et leurs
   preuves.
 - `payload_freshness/aspects.rs` verifie le contexte interpretatif des aspects
@@ -1637,6 +1648,8 @@ canoniques applicatives et ne contourne pas les referentiels lus depuis la base.
   objet.
 - `payload_freshness/rulership.rs` verifie la structure du contexte de maitrise
   et des chaines de dispositors.
+- `payload_freshness/house_axes.rs` verifie la structure, la coherence calculee
+  et les sources de `house_axis_emphasis`.
 - `payload_freshness/placements.rs` verifie les contextes de positions et de
   signaux de placement, dont le `visibility_context` mobile recopie dans
   `evidence.placement_context`.
@@ -1676,6 +1689,17 @@ Chaque item expose:
 - `source_signal_keys`, filtres sur les signaux actifs existants;
 - `source_context_keys`, `reasons`, `interpretive_hint`.
 
+`interpretive_hint` est aligne sur `polarity_balance`: un axe dominant d'un
+cote parle d'activation principale par la maison dominante et de contrepoint
+secondaire par la maison opposee; un axe equilibre parle explicitement des deux
+poles fortement actifs. Le hint reste factuel et moteur, sans instruction LLM.
+
+Quand un signal d'aspect actif relie un objet place dans chaque maison de
+l'axe, le builder ajoute la raison `cross_axis_aspect` au niveau de l'axe et
+dans les deux entrees `house_scores[].reasons`. Cette raison n'ajoute pas de
+bonus de score supplementaire: elle explique pourquoi l'aspect deja source est
+structurant pour la polarite.
+
 Les scores sont bornes entre 0 et 1. Le score d'axe combine la maison la plus
 forte et une part secondaire de la maison opposee. Le payload conserve au plus
 trois axes, tries par `axis_score` descendant, et ne remonte pas d'axe
@@ -1690,6 +1714,9 @@ La validation runtime refuse les payloads v10 comme obsoletes et verifie:
 - scores bornes;
 - coherence calculee de `axis_score`, `primary_house`, `secondary_house` et
   `polarity_balance` avec `house_scores`;
+- coherence exacte de `interpretive_hint` avec `polarity_balance`;
+- coherence de `cross_axis_aspect` avec un signal d'aspect actif reliant un
+  objet dans chaque maison de l'axe;
 - `source_signal_keys` existants dans `signals`;
 - absence de doublons dans les sources d'axe;
 - tri descendant et absence d'axe faible.

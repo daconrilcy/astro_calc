@@ -86,7 +86,7 @@ fn build_axis(
     signal_keys: &HashSet<&str>,
     position_house_by_object: &HashMap<&str, i32>,
 ) -> BasicHouseAxisEmphasis {
-    let first = score_house(
+    let mut first = score_house(
         reference.house_a_number,
         &reference.theme_a_code,
         positions,
@@ -98,7 +98,7 @@ fn build_axis(
         signal_keys,
         position_house_by_object,
     );
-    let second = score_house(
+    let mut second = score_house(
         reference.house_b_number,
         &reference.theme_b_code,
         positions,
@@ -109,6 +109,13 @@ fn build_axis(
         signals,
         signal_keys,
         position_house_by_object,
+    );
+    add_cross_axis_aspects(
+        reference,
+        signals,
+        position_house_by_object,
+        &mut first,
+        &mut second,
     );
     let first_score = normalized_house_score(first.raw_score);
     let second_score = normalized_house_score(second.raw_score);
@@ -129,6 +136,8 @@ fn build_axis(
     push_unique_all(&mut source_context_keys, &second.source_context_keys);
     let mut reasons = first.reasons.clone();
     push_unique_all(&mut reasons, &second.reasons);
+
+    let polarity_balance = polarity_balance(first_score, second_score);
 
     BasicHouseAxisEmphasis {
         axis_code: reference.axis_code.clone(),
@@ -154,11 +163,11 @@ fn build_axis(
         primary_house,
         secondary_house,
         axis_score,
-        polarity_balance: polarity_balance(first_score, second_score),
+        polarity_balance: polarity_balance.clone(),
         source_signal_keys,
         source_context_keys,
         reasons,
-        interpretive_hint: interpretive_hint(reference, primary_house, first_score, second_score),
+        interpretive_hint: interpretive_hint(reference, &polarity_balance),
     }
 }
 
@@ -293,6 +302,33 @@ fn add_rulership_context(
     }
 }
 
+fn add_cross_axis_aspects(
+    reference: &HouseAxisReference,
+    signals: &[BasicSignal],
+    position_house_by_object: &HashMap<&str, i32>,
+    first: &mut HouseScoreDraft,
+    second: &mut HouseScoreDraft,
+) {
+    for signal in signals
+        .iter()
+        .filter(|signal| signal.signal_key.starts_with("aspect:"))
+    {
+        let object_houses = signal_object_codes(signal)
+            .iter()
+            .filter_map(|object_code| position_house_by_object.get(object_code.as_str()).copied())
+            .collect::<HashSet<_>>();
+
+        if object_houses.contains(&reference.house_a_number)
+            && object_houses.contains(&reference.house_b_number)
+        {
+            add_reason(first, "cross_axis_aspect");
+            add_reason(second, "cross_axis_aspect");
+            push_unique(&mut first.source_signal_keys, signal.signal_key.clone());
+            push_unique(&mut second.source_signal_keys, signal.signal_key.clone());
+        }
+    }
+}
+
 fn signal_matches_house(
     signal: &BasicSignal,
     house_number: i32,
@@ -416,27 +452,41 @@ fn polarity_balance(first_score: f64, second_score: f64) -> String {
     }
 }
 
-fn interpretive_hint(
-    reference: &HouseAxisReference,
-    primary_house: i32,
-    first_score: f64,
-    second_score: f64,
-) -> String {
-    let primary_theme = if primary_house == reference.house_a_number {
-        &reference.theme_a_code
-    } else {
-        &reference.theme_b_code
-    };
-    let balance = if first_score >= AXIS_MIN_SCORE && second_score >= AXIS_MIN_SCORE {
-        "with both sides visibly active"
-    } else {
-        "with one side carrying most of the emphasis"
-    };
-
-    format!(
-        "{} is activated through house {primary_house} ({primary_theme}), {balance}.",
-        reference.label
-    )
+fn interpretive_hint(reference: &HouseAxisReference, polarity_balance: &str) -> String {
+    match polarity_balance {
+        "primary_house_dominant" => format!(
+            "{} is activated mainly through house {} ({}), with house {} ({}) present as a secondary counterpoint.",
+            reference.label,
+            reference.house_a_number,
+            reference.theme_a_code,
+            reference.house_b_number,
+            reference.theme_b_code
+        ),
+        "secondary_house_dominant" => format!(
+            "{} is activated mainly through house {} ({}), with house {} ({}) present as a secondary counterpoint.",
+            reference.label,
+            reference.house_b_number,
+            reference.theme_b_code,
+            reference.house_a_number,
+            reference.theme_a_code
+        ),
+        "balanced_axis" => format!(
+            "{} is activated with both house {} ({}) and house {} ({}) strongly active.",
+            reference.label,
+            reference.house_a_number,
+            reference.theme_a_code,
+            reference.house_b_number,
+            reference.theme_b_code
+        ),
+        _ => format!(
+            "{} is weakly activated across house {} ({}) and house {} ({}).",
+            reference.label,
+            reference.house_a_number,
+            reference.theme_a_code,
+            reference.house_b_number,
+            reference.theme_b_code
+        ),
+    }
 }
 
 fn add_score(draft: &mut HouseScoreDraft, score: f64, reason: &str) {
