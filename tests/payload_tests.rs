@@ -310,6 +310,7 @@ fn basic_payload_exposes_semantic_signal_fields() {
     let payload_json = serde_json::to_value(&payload).expect("payload should serialize");
     assert!(payload_json.get("llm_handoff_contract").is_none());
     assert!(payload_json.get("drafting_plan").is_none());
+    assert!(payload_json.get("lunar_phase_context").is_none());
     assert!(payload_json["signals"][0].get("writing_guidance").is_none());
     assert_eq!(
         payload.positions[0]
@@ -335,6 +336,10 @@ fn basic_payload_exposes_semantic_signal_fields() {
         Some(0)
     );
     assert_eq!(payload.chart_context.chart_type, "natal");
+    assert_eq!(
+        payload.chart_context.payload_contract.contract_version,
+        "natal_structured_v11"
+    );
     assert_eq!(
         payload.chart_context.hemisphere_emphasis.count_scope,
         "mobile_chart_objects_only"
@@ -1723,6 +1728,82 @@ fn resources_and_identity_axes_are_detected_with_existing_signal_sources() {
     }
 }
 
+#[test]
+fn v12_contains_lunar_phase_context_from_reference_phases() {
+    let mut sun = position();
+    sun.longitude_deg = 281.4543;
+    let mut moon = position();
+    moon.chart_object_id = 2;
+    moon.object_code = "moon".to_string();
+    moon.object_name = "Moon".to_string();
+    moon.longitude_deg = 341.7642;
+    moon.sign_id = 12;
+    moon.sign_code = "pisces".to_string();
+    moon.sign_name = "Pisces".to_string();
+    moon.house_id = Some(4);
+    moon.house_number = Some(4);
+    moon.house_name = Some("Home".to_string());
+
+    let payload = build_basic_payload_with_all_references(
+        42,
+        &input(),
+        &[sun, moon],
+        &[
+            placement_signal_row(1, "object_position:sun", "sun"),
+            placement_signal_row(2, "object_position:moon", "moon"),
+        ],
+        &[],
+        &[],
+        &canonical_lunar_phases(),
+    );
+    let phase = payload
+        .lunar_phase_context
+        .expect("expected lunar phase context");
+
+    assert_eq!(
+        payload.chart_context.payload_contract.contract_version,
+        "natal_structured_v12"
+    );
+    assert_eq!(phase.phase_code, "waxing_crescent");
+    assert_eq!(phase.cycle_family, "waxing");
+    assert!((phase.sun_moon_angle_deg - 60.3099).abs() <= 0.0001);
+    assert_eq!(
+        phase.related_signal_keys,
+        vec!["object_position:sun", "object_position:moon"]
+    );
+    assert_eq!(phase.related_reading_slots, vec!["core_identity"]);
+}
+
+#[test]
+fn lunar_phase_angle_rounding_stays_inside_zodiac_range() {
+    let mut sun = position();
+    sun.longitude_deg = 10.0;
+    let mut moon = position();
+    moon.chart_object_id = 2;
+    moon.object_code = "moon".to_string();
+    moon.object_name = "Moon".to_string();
+    moon.longitude_deg = 9.99996;
+
+    let payload = build_basic_payload_with_all_references(
+        42,
+        &input(),
+        &[sun, moon],
+        &[
+            placement_signal_row(1, "object_position:sun", "sun"),
+            placement_signal_row(2, "object_position:moon", "moon"),
+        ],
+        &[],
+        &[],
+        &canonical_lunar_phases(),
+    );
+    let phase = payload
+        .lunar_phase_context
+        .expect("expected lunar phase context");
+
+    assert_eq!(phase.sun_moon_angle_deg, 0.0);
+    assert_eq!(phase.phase_code, "new_moon");
+}
+
 fn aspect_signal(
     id: i32,
     signal_key: &str,
@@ -1759,6 +1840,105 @@ fn aspect_signal(
                 "strength_score": strength_score
             }
         })),
+    }
+}
+
+fn canonical_lunar_phases() -> Vec<LunarPhaseReference> {
+    vec![
+        lunar_phase(
+            "new_moon",
+            "New Moon",
+            "conjunction",
+            337.5,
+            22.5,
+            0.0,
+            true,
+        ),
+        lunar_phase(
+            "waxing_crescent",
+            "Waxing Crescent",
+            "waxing",
+            22.5,
+            67.5,
+            45.0,
+            false,
+        ),
+        lunar_phase(
+            "first_quarter",
+            "First Quarter",
+            "waxing",
+            67.5,
+            112.5,
+            90.0,
+            true,
+        ),
+        lunar_phase(
+            "waxing_gibbous",
+            "Waxing Gibbous",
+            "waxing",
+            112.5,
+            157.5,
+            135.0,
+            false,
+        ),
+        lunar_phase(
+            "full_moon",
+            "Full Moon",
+            "opposition",
+            157.5,
+            202.5,
+            180.0,
+            true,
+        ),
+        lunar_phase(
+            "waning_gibbous",
+            "Waning Gibbous",
+            "waning",
+            202.5,
+            247.5,
+            225.0,
+            false,
+        ),
+        lunar_phase(
+            "last_quarter",
+            "Last Quarter",
+            "waning",
+            247.5,
+            292.5,
+            270.0,
+            true,
+        ),
+        lunar_phase(
+            "waning_crescent",
+            "Waning Crescent",
+            "waning",
+            292.5,
+            337.5,
+            315.0,
+            false,
+        ),
+    ]
+}
+
+#[allow(clippy::too_many_arguments)]
+fn lunar_phase(
+    phase_code: &str,
+    label: &str,
+    cycle_family: &str,
+    range_start_deg: f64,
+    range_end_deg: f64,
+    exact_anchor_deg: f64,
+    is_major_lunar_phase: bool,
+) -> LunarPhaseReference {
+    LunarPhaseReference {
+        phase_code: phase_code.to_string(),
+        label: label.to_string(),
+        cycle_family: cycle_family.to_string(),
+        range_start_deg,
+        range_end_deg,
+        exact_anchor_deg,
+        is_major_lunar_phase,
+        description: format!("{label} description"),
     }
 }
 

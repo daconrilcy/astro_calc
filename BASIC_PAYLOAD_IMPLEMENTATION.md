@@ -1138,21 +1138,22 @@ aspect fort disponible. `main_tension_or_support` n'est donc absent que
 lorsqu'aucun aspect actif ou preservable ne reste apres l'exclusion des axes
 structurels et des autres aspects angle-angle.
 
-Depuis l'etape 3C, `natal_structured_v11` est le contrat
+Depuis l'etape 3D, `natal_structured_v12` est le contrat
 courant verrouille par trois niveaux complementaires :
 
 - le JSON Schema
-  `rust_sqlx_connection_test/schemas/natal_structured_v11.schema.json`
+  `rust_sqlx_connection_test/schemas/natal_structured_v12.schema.json`
   valide la forme du contrat moteur, les blocs obligatoires, les quatre angles,
-  les bornes de score, `chart_context`, `house_axis_emphasis` et les contraintes schema exprimables.
+  les bornes de score, `chart_context`, `house_axis_emphasis`,
+  `lunar_phase_context` et les contraintes schema exprimables.
   Il refuse aussi les champs semantiques de signal obligatoires a `null`, les
   contextes de position obligatoires a `null`, les proprietes parasites dans
   `aspect_context`, et les `visibility_context` mobiles sans altitude calculee
   ou sans flag `is_visible` booleen ;
-- la fixture `tests/golden/natal_payload_v11_paris_1990.json` conserve un
+- la fixture `tests/golden/natal_payload_v12_paris_1990.json` conserve un
   payload complet de reference pour le scenario Paris 1990 ;
 - `tests/contract_basic_v8_tests.rs` valide les invariants metier du contrat
-  courant v11 et conserve aussi une validation schema des goldens historiques v8 et v10 :
+  courant v12 et conserve aussi une validation schema des goldens historiques v8, v10 et v11 :
   sources de plan existantes, absence d'aspect angle-angle actif, conservation
   de `aspect:jupiter:uranus:opposition`, unicite des signaux primaires et
   garde-fous contre des sections autonomes `chart_emphasis` / `chart_context`,
@@ -1169,21 +1170,23 @@ altitude calculee.
 La regeneration complete du golden courant depend de Postgres et de Swiss
 Ephemeris. Le test unitaire ne reconstruit donc pas le theme depuis le moteur.
 Pour couvrir ce risque en CI ou en verification locale,
-`scripts/verify_natal_v11_golden.ps1` lance le moteur avec le scenario golden
+`scripts/verify_natal_v12_golden.ps1` lance le moteur avec le scenario golden
 Paris / `1990-01-02T03:04:05Z`, puis compare une projection stable du payload
-genere au golden v11. Le script force les variables d'environnement du scenario
+genere au golden v12. Le script force les variables d'environnement du scenario
 golden et les restaure ensuite, afin d'eviter qu'un `ASTRAL_OUTPUT_MODE`,
 `ASTRAL_PRODUCT_CODE` ou identifiant de referentiel deja present ne modifie la
 verification. Il peut aussi comparer un fichier deja genere via :
 
 ```powershell
-.\scripts\verify_natal_v11_golden.ps1 -GeneratedPayloadPath .\output\basic_payload_current.json
+.\scripts\verify_natal_v12_golden.ps1 -GeneratedPayloadPath .\output\basic_payload_current.json
 ```
 
 Le script `scripts/verify_basic_v8_golden.ps1` reste disponible uniquement pour
 valider le golden historique v8 ou un fichier v8 fourni explicitement. Il ne
 regenere plus de payload depuis le moteur courant, car celui-ci produit
-desormais `natal_structured_v11`.
+desormais `natal_structured_v12`.
+Le script `scripts/verify_natal_v11_golden.ps1` reste disponible pour le golden
+historique v11.
 Le script `scripts/verify_natal_v9_golden.ps1` reste disponible pour le golden
 historique v9.
 Le script `scripts/verify_natal_v10_golden.ps1` reste disponible pour le golden
@@ -1482,7 +1485,7 @@ sans modifier le contrat public `rust_sqlx_connection_test::payload`.
 - `signal_filters.rs` centralise les predicats partages sur les signaux et
   aspects.
 - `json.rs` centralise les extractions defensives depuis les payloads JSON.
-- `chart_context.rs` porte le contrat moteur courant `natal_structured_v11`.
+- `chart_context.rs` porte le contrat moteur courant `natal_structured_v12`.
 
 ## Etape 3B - Rulership / dispositors context
 
@@ -1637,7 +1640,7 @@ canoniques applicatives et ne contourne pas les referentiels lus depuis la base.
 - `payload_freshness.rs` expose la facade `is_current_basic_payload` et compose
   les validations de reutilisation.
 - `payload_freshness/chart_context.rs` verifie le contrat moteur courant
-  `natal_structured_v11`.
+  `natal_structured_v12`.
 - `payload_freshness/angles.rs` verifie les quatre angles canoniques et leurs
   preuves.
 - `payload_freshness/aspects.rs` verifie le contexte interpretatif des aspects
@@ -1731,5 +1734,52 @@ Les artefacts ajoutes sont:
 - `rust_sqlx_connection_test/schemas/natal_structured_v11.schema.json`;
 - `tests/golden/natal_payload_v11_paris_1990.json`;
 - `scripts/verify_natal_v11_golden.ps1`;
+- tests de non-regression dans `tests/payload_tests.rs`,
+  `tests/runtime_tests.rs` et `tests/contract_basic_v8_tests.rs`.
+
+## 3D - Lunar phase context
+
+Le contrat courant passe a `natal_structured_v12` avec un nouveau bloc top-level
+`lunar_phase_context`. Ce bloc qualifie la phase lunaire natale comme relation
+cyclique Soleil-Lune. Il reste dans le perimetre moteur: pas de signal actif
+`lunar_phase:*`, pas de nouveau slot `reading_plan`, et pas de consigne LLM.
+
+Les phases viennent de la table canonique
+`astral_lunar_phase_definitions`, ajoutee dans
+`json_db/astral_lunar_phase_definitions.json`. Le runtime valide que la table
+active contient huit phases structurellement coherentes: codes uniques, familles
+de cycle valides, degres dans `[0, 360)`, intervalles de 45 degres, ancres
+exactes incluses dans leurs intervalles et couverture circulaire continue de
+360 degres avant de construire le payload.
+
+Le calcul expose:
+
+- `sun_moon_angle_deg = normalize_360(moon_longitude_deg - sun_longitude_deg)`;
+- selection de la phase dont l'intervalle contient cet angle, y compris
+  l'intervalle circulaire `new_moon` autour de 0 degre;
+- `distance_to_exact_phase_deg` comme distance circulaire a l'ancre exacte;
+- `phase_progress_ratio` comme progression dans l'intervalle de phase;
+- `related_signal_keys` limite aux signaux actifs `object_position:sun` et
+  `object_position:moon`;
+- `related_reading_slots = ["core_identity"]` quand ce slot existe.
+
+Le builder marque le payload en `natal_structured_v12` uniquement quand le bloc
+`lunar_phase_context` a ete construit depuis les references lunaires injectees.
+Les chemins de construction historiques sans ces references restent en
+`natal_structured_v11` et n'emettent pas de champ `lunar_phase_context` nul.
+
+La validation runtime refuse desormais les payloads v11 comme obsoletes et
+verifie que le bloc existe, que l'angle Soleil-Lune est recalcule avec une
+tolerance de 0.01 degre, que l'angle tombe dans l'intervalle du `phase_code`,
+que la progression est bornee entre 0 et 1, que les sources referencent des
+signaux actifs, et que les tags `lunar_phase` et `sun_moon_cycle` sont presents.
+
+Les artefacts ajoutes sont:
+
+- `rust_sqlx_connection_test/src/payload/lunar_phase.rs`;
+- `rust_sqlx_connection_test/src/runtime/payload_freshness/lunar_phase.rs`;
+- `rust_sqlx_connection_test/schemas/natal_structured_v12.schema.json`;
+- `tests/golden/natal_payload_v12_paris_1990.json`;
+- `scripts/verify_natal_v12_golden.ps1`;
 - tests de non-regression dans `tests/payload_tests.rs`,
   `tests/runtime_tests.rs` et `tests/contract_basic_v8_tests.rs`.

@@ -4,10 +4,11 @@ use serde_json::json;
 use rust_sqlx_connection_test::domain::{
     BasicAngleFact, BasicCalculationReliability, BasicChartContext, BasicChartEmphasis,
     BasicDignity, BasicDominantHouse, BasicDominantObject, BasicDominantSign,
-    BasicHemisphereEmphasis, BasicHouseAxisEmphasis, BasicHouseAxisScore, BasicObjectPosition,
-    BasicPayload, BasicPayloadContract, BasicReadingPlanItem, BasicRulerContext, BasicRulerSource,
-    BasicRulershipContext, BasicSecondarySlotCandidate, BasicSectContext, BasicSignal,
-    CalculationReferenceData, HouseAxisReference,
+    BasicHemisphereEmphasis, BasicHouseAxisEmphasis, BasicHouseAxisScore, BasicLunarPhaseContext,
+    BasicObjectPosition, BasicPayload, BasicPayloadContract, BasicReadingPlanItem,
+    BasicRulerContext, BasicRulerSource, BasicRulershipContext, BasicSecondarySlotCandidate,
+    BasicSectContext, BasicSignal, CalculationReferenceData, HouseAxisReference,
+    LunarPhaseReference,
 };
 use rust_sqlx_connection_test::models::{
     AnglePointReference, ChartObject, DomicileRulerReference, HouseReference, SignReference,
@@ -16,6 +17,7 @@ use rust_sqlx_connection_test::repositories::parse_existing_basic_payload_value;
 use rust_sqlx_connection_test::runtime::{
     has_current_rulership_references, is_current_basic_payload, validate_calculation_references,
     validate_chart_object_signal_profiles, validate_house_axis_references,
+    validate_lunar_phase_references,
 };
 
 fn current_payload() -> BasicPayload {
@@ -32,7 +34,7 @@ fn current_payload() -> BasicPayload {
             house_system_id: 1,
             reference_version_id: 1,
             payload_contract: BasicPayloadContract {
-                contract_version: "natal_structured_v11".to_string(),
+                contract_version: "natal_structured_v12".to_string(),
                 calculation_scope: "full_natal".to_string(),
                 interpretation_scope: "structured_interpretation".to_string(),
                 projection_depth: "rich".to_string(),
@@ -48,7 +50,7 @@ fn current_payload() -> BasicPayload {
             },
             hemisphere_emphasis: BasicHemisphereEmphasis {
                 count_scope: "mobile_chart_objects_only".to_string(),
-                above_horizon_count: 1,
+                above_horizon_count: 2,
                 below_horizon_count: 0,
                 on_horizon_count: 0,
                 interpretive_hint: Some(
@@ -56,50 +58,95 @@ fn current_payload() -> BasicPayload {
                 ),
             },
         },
-        positions: vec![BasicObjectPosition {
-            object_code: "sun".to_string(),
-            object_name: "Sun".to_string(),
-            longitude_deg: 84.0,
-            sign_id: 3,
-            sign_code: "gemini".to_string(),
-            sign_name: "Gemini".to_string(),
-            house_id: Some(9),
-            house_number: Some(9),
-            house_name: Some("Beliefs".to_string()),
-            motion_state_id: Some(1),
-            sign_context: Some(json!({
-                "element": "air",
-                "modality": "mutable",
-                "polarity": "yang",
-                "keywords": ["communication"]
-            })),
-            house_context: Some(json!({
-                "theme_code": "beliefs"
-            })),
-            house_modality: Some(json!({
-                "code": "cadent",
-                "accidental_strength": "weak_or_background",
-                "interpretation_weight": "lower_for_external_manifestation"
-            })),
-            object_context: Some(json!({
-                "role": "luminary",
-                "nature": ["luminary"],
-                "is_luminary": true
-            })),
-            motion_context: Some(json!({
-                "motion_state": "direct",
-                "label": "Direct",
-                "motion_family": "forward"
-            })),
-            dignity_context: json!([]),
-            visibility_context: json!({
-                "horizon_position_id": 1,
-                "horizon_position": "above_horizon",
-                "altitude_deg": 12.5,
-                "is_visible": true,
-                "source": "calculated_altitude"
-            }),
-        }],
+        positions: vec![
+            BasicObjectPosition {
+                object_code: "sun".to_string(),
+                object_name: "Sun".to_string(),
+                longitude_deg: 84.0,
+                sign_id: 3,
+                sign_code: "gemini".to_string(),
+                sign_name: "Gemini".to_string(),
+                house_id: Some(9),
+                house_number: Some(9),
+                house_name: Some("Beliefs".to_string()),
+                motion_state_id: Some(1),
+                sign_context: Some(json!({
+                    "element": "air",
+                    "modality": "mutable",
+                    "polarity": "yang",
+                    "keywords": ["communication"]
+                })),
+                house_context: Some(json!({
+                    "theme_code": "beliefs"
+                })),
+                house_modality: Some(json!({
+                    "code": "cadent",
+                    "accidental_strength": "weak_or_background",
+                    "interpretation_weight": "lower_for_external_manifestation"
+                })),
+                object_context: Some(json!({
+                    "role": "luminary",
+                    "nature": ["luminary"],
+                    "is_luminary": true
+                })),
+                motion_context: Some(json!({
+                    "motion_state": "direct",
+                    "label": "Direct",
+                    "motion_family": "forward"
+                })),
+                dignity_context: json!([]),
+                visibility_context: json!({
+                    "horizon_position_id": 1,
+                    "horizon_position": "above_horizon",
+                    "altitude_deg": 12.5,
+                    "is_visible": true,
+                    "source": "calculated_altitude"
+                }),
+            },
+            BasicObjectPosition {
+                object_code: "moon".to_string(),
+                object_name: "Moon".to_string(),
+                longitude_deg: 144.0,
+                sign_id: 5,
+                sign_code: "leo".to_string(),
+                sign_name: "Leo".to_string(),
+                house_id: Some(11),
+                house_number: Some(11),
+                house_name: Some("Community".to_string()),
+                motion_state_id: Some(1),
+                sign_context: Some(json!({
+                    "element": "fire",
+                    "modality": "fixed",
+                    "polarity": "yang"
+                })),
+                house_context: Some(json!({
+                    "theme_code": "community"
+                })),
+                house_modality: Some(json!({
+                    "code": "succedent",
+                    "accidental_strength": "medium",
+                    "interpretation_weight": "medium"
+                })),
+                object_context: Some(json!({
+                    "role": "luminary",
+                    "nature": ["luminary"],
+                    "is_luminary": true
+                })),
+                motion_context: Some(json!({
+                    "motion_state": "direct",
+                    "label": "Direct",
+                    "motion_family": "forward"
+                })),
+                dignity_context: json!([]),
+                visibility_context: json!({
+                    "horizon_position_id": 1,
+                    "horizon_position": "above_horizon",
+                    "altitude_deg": 14.0,
+                    "is_visible": true,
+                    "source": "calculated_altitude"
+                }),
+            },
+        ],
         angles: vec![
             angle_fact(
                 "ascendant",
@@ -195,6 +242,32 @@ fn current_payload() -> BasicPayload {
                 "Local and Distant is activated mainly through house 9 (beliefs), with house 3 (communication) present as a secondary counterpoint."
                     .to_string(),
         }],
+        lunar_phase_context: Some(BasicLunarPhaseContext {
+            phase_code: "waxing_crescent".to_string(),
+            phase_label: "Waxing Crescent".to_string(),
+            cycle_family: "waxing".to_string(),
+            sun_object_code: "sun".to_string(),
+            moon_object_code: "moon".to_string(),
+            sun_longitude_deg: 84.0,
+            moon_longitude_deg: 144.0,
+            sun_moon_angle_deg: 60.0,
+            phase_angle_range_deg: vec![22.5, 67.5],
+            exact_phase_anchor_deg: 45.0,
+            distance_to_exact_phase_deg: 15.0,
+            phase_progress_ratio: 0.8333,
+            is_major_lunar_phase: false,
+            related_signal_keys: vec!["object_position:sun".to_string()],
+            related_reading_slots: vec!["core_identity".to_string()],
+            semantic_tags: vec![
+                "lunar_phase".to_string(),
+                "sun_moon_cycle".to_string(),
+                "waxing".to_string(),
+                "waxing_crescent".to_string(),
+            ],
+            interpretive_hint:
+                "The Sun-Moon cycle is in a waxing crescent phase, indicating a structured waxing relationship between solar identity and lunar needs."
+                    .to_string(),
+        }),
         signals: vec![
             BasicSignal {
                 signal_key: "object_position:sun".to_string(),
@@ -1177,6 +1250,39 @@ fn house_axis_reference_validation_accepts_canonical_axes() {
     assert!(validate_house_axis_references(&axes).is_ok());
 }
 
+#[test]
+fn lunar_phase_reference_validation_requires_eight_phases() {
+    let mut phases = lunar_phase_references();
+    phases.pop();
+
+    assert!(validate_lunar_phase_references(&phases).is_err());
+}
+
+#[test]
+fn lunar_phase_reference_validation_rejects_mismatched_range() {
+    let mut phases = lunar_phase_references();
+    phases[1].range_end_deg = 68.0;
+
+    assert!(validate_lunar_phase_references(&phases).is_err());
+}
+
+#[test]
+fn lunar_phase_reference_validation_rejects_cycle_gap() {
+    let mut phases = lunar_phase_references();
+    phases[2].range_start_deg = 68.5;
+    phases[2].range_end_deg = 113.5;
+    phases[2].exact_anchor_deg = 91.0;
+
+    assert!(validate_lunar_phase_references(&phases).is_err());
+}
+
+#[test]
+fn lunar_phase_reference_validation_accepts_canonical_phases() {
+    let phases = lunar_phase_references();
+
+    assert!(validate_lunar_phase_references(&phases).is_ok());
+}
+
 fn chart_objects() -> Vec<ChartObject> {
     vec![
         ChartObject {
@@ -1280,6 +1386,105 @@ fn house_axis_reference(
         theme_a_code: theme_a_code.to_string(),
         theme_b_code: theme_b_code.to_string(),
         label: label.to_string(),
+        description: format!("{label} description"),
+    }
+}
+
+fn lunar_phase_references() -> Vec<LunarPhaseReference> {
+    vec![
+        lunar_phase(
+            "new_moon",
+            "New Moon",
+            "conjunction",
+            337.5,
+            22.5,
+            0.0,
+            true,
+        ),
+        lunar_phase(
+            "waxing_crescent",
+            "Waxing Crescent",
+            "waxing",
+            22.5,
+            67.5,
+            45.0,
+            false,
+        ),
+        lunar_phase(
+            "first_quarter",
+            "First Quarter",
+            "waxing",
+            67.5,
+            112.5,
+            90.0,
+            true,
+        ),
+        lunar_phase(
+            "waxing_gibbous",
+            "Waxing Gibbous",
+            "waxing",
+            112.5,
+            157.5,
+            135.0,
+            false,
+        ),
+        lunar_phase(
+            "full_moon",
+            "Full Moon",
+            "opposition",
+            157.5,
+            202.5,
+            180.0,
+            true,
+        ),
+        lunar_phase(
+            "waning_gibbous",
+            "Waning Gibbous",
+            "waning",
+            202.5,
+            247.5,
+            225.0,
+            false,
+        ),
+        lunar_phase(
+            "last_quarter",
+            "Last Quarter",
+            "waning",
+            247.5,
+            292.5,
+            270.0,
+            true,
+        ),
+        lunar_phase(
+            "waning_crescent",
+            "Waning Crescent",
+            "waning",
+            292.5,
+            337.5,
+            315.0,
+            false,
+        ),
+    ]
+}
+
+#[allow(clippy::too_many_arguments)]
+fn lunar_phase(
+    phase_code: &str,
+    label: &str,
+    cycle_family: &str,
+    range_start_deg: f64,
+    range_end_deg: f64,
+    exact_anchor_deg: f64,
+    is_major_lunar_phase: bool,
+) -> LunarPhaseReference {
+    LunarPhaseReference {
+        phase_code: phase_code.to_string(),
+        label: label.to_string(),
+        cycle_family: cycle_family.to_string(),
+        range_start_deg,
+        range_end_deg,
+        exact_anchor_deg,
+        is_major_lunar_phase,
         description: format!("{label} description"),
     }
 }

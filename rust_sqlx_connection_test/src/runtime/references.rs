@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::domain::{CalculationReferenceData, HouseAxisReference};
+use crate::domain::{CalculationReferenceData, HouseAxisReference, LunarPhaseReference};
 use crate::models::ChartObject;
 
 use super::RuntimeError;
@@ -197,6 +197,49 @@ pub fn validate_house_axis_references(
     Ok(())
 }
 
+pub fn validate_lunar_phase_references(
+    references: &[LunarPhaseReference],
+) -> Result<(), RuntimeError> {
+    if references.len() != 8 {
+        return Err(RuntimeError::Ephemeris(format!(
+            "expected 8 lunar phase references, found {}",
+            references.len()
+        )));
+    }
+
+    let mut seen_phase_codes = HashSet::new();
+    for reference in references {
+        if !seen_phase_codes.insert(reference.phase_code.as_str())
+            || reference.phase_code.trim().is_empty()
+            || reference.label.trim().is_empty()
+            || reference.description.trim().is_empty()
+            || !valid_cycle_family(reference.cycle_family.as_str())
+            || !valid_degree(reference.range_start_deg)
+            || !valid_degree(reference.range_end_deg)
+            || !valid_degree(reference.exact_anchor_deg)
+            || !degree_matches(phase_width(reference), 45.0)
+            || !contains_angle(
+                reference.range_start_deg,
+                reference.range_end_deg,
+                reference.exact_anchor_deg,
+            )
+        {
+            return Err(RuntimeError::Ephemeris(format!(
+                "invalid lunar phase reference {}",
+                reference.phase_code
+            )));
+        }
+    }
+
+    if !lunar_phase_ranges_cover_cycle(references) {
+        return Err(RuntimeError::Ephemeris(
+            "lunar phase references do not cover a continuous 360 degree cycle".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
 type HouseAxisPair = (i32, i32);
 type HouseAxisThemes = (&'static str, &'static str);
 
@@ -210,4 +253,59 @@ fn canonical_house_axis(axis_code: &str) -> Option<(HouseAxisPair, HouseAxisThem
         "control_surrender" => Some(((6, 12), ("work_health", "inner_world"))),
         _ => None,
     }
+}
+
+fn degree_matches(left: f64, right: f64) -> bool {
+    (left - right).abs() <= 0.0001
+}
+
+fn valid_cycle_family(value: &str) -> bool {
+    matches!(value, "conjunction" | "waxing" | "opposition" | "waning")
+}
+
+fn valid_degree(value: f64) -> bool {
+    value.is_finite() && (0.0..360.0).contains(&value)
+}
+
+fn phase_width(reference: &LunarPhaseReference) -> f64 {
+    normalize_360(reference.range_end_deg - reference.range_start_deg)
+}
+
+fn contains_angle(range_start_deg: f64, range_end_deg: f64, angle: f64) -> bool {
+    if range_start_deg <= range_end_deg {
+        angle >= range_start_deg && angle < range_end_deg
+    } else {
+        angle >= range_start_deg || angle < range_end_deg
+    }
+}
+
+fn normalize_360(value: f64) -> f64 {
+    value.rem_euclid(360.0)
+}
+
+fn lunar_phase_ranges_cover_cycle(references: &[LunarPhaseReference]) -> bool {
+    let mut intervals = references
+        .iter()
+        .map(|reference| {
+            let start = reference.range_start_deg;
+            let mut end = reference.range_end_deg;
+            if end <= start {
+                end += 360.0;
+            }
+            (start, end)
+        })
+        .collect::<Vec<_>>();
+    intervals.sort_by(|left, right| {
+        left.0
+            .partial_cmp(&right.0)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    intervals
+        .windows(2)
+        .all(|window| degree_matches(window[0].1, window[1].0))
+        && intervals
+            .first()
+            .zip(intervals.last())
+            .is_some_and(|(first, last)| degree_matches(last.1, first.0 + 360.0))
 }

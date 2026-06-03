@@ -120,6 +120,18 @@ pub struct HouseAxisReferenceRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+pub struct LunarPhaseReferenceRow {
+    pub phase_code: String,
+    pub label: String,
+    pub cycle_family: String,
+    pub range_start_deg: f64,
+    pub range_end_deg: f64,
+    pub exact_anchor_deg: f64,
+    pub is_major_lunar_phase: bool,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct InterpretationSignalRow {
     pub id: i32,
     pub signal_key: String,

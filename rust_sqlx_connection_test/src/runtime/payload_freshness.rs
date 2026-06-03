@@ -5,6 +5,7 @@ mod dignities;
 mod emphasis;
 mod house_axes;
 mod json;
+mod lunar_phase;
 mod placements;
 mod plan;
 mod rulership;
@@ -26,6 +27,7 @@ pub fn is_current_basic_payload(payload: &BasicPayload) -> bool {
         && rulership::has_current_rulership_context(&payload.rulership_context)
         && house_axes::has_current_house_axis_emphasis(payload)
         && plan::has_current_reading_plan(payload)
+        && lunar_phase::has_current_lunar_phase_context(payload)
         && payload
             .positions
             .iter()

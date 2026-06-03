@@ -1,0 +1,146 @@
+{
+  "name": "astral_lunar_phase_definitions",
+  "structure": {
+    "id": "integer",
+    "phase_code": "string, unique, snake_case",
+    "label": "string",
+    "cycle_family": "string, enum:conjunction|waxing|opposition|waning",
+    "range_start_deg": "number",
+    "range_end_deg": "number",
+    "exact_anchor_deg": "number",
+    "is_major_lunar_phase": "boolean",
+    "description": "string",
+    "sort_order": "integer",
+    "is_active": "boolean",
+    "constraints": {
+      "unique": [
+        [
+          "phase_code"
+        ],
+        [
+          "sort_order"
+        ]
+      ],
+      "checks": [
+        {
+          "name": "range_start_deg_valid",
+          "expression": "range_start_deg >= 0 AND range_start_deg < 360"
+        },
+        {
+          "name": "range_end_deg_valid",
+          "expression": "range_end_deg >= 0 AND range_end_deg < 360"
+        },
+        {
+          "name": "exact_anchor_deg_valid",
+          "expression": "exact_anchor_deg >= 0 AND exact_anchor_deg < 360"
+        }
+      ]
+    }
+  },
+  "data": [
+    {
+      "id": 1,
+      "phase_code": "new_moon",
+      "label": "New Moon",
+      "cycle_family": "conjunction",
+      "range_start_deg": 337.5,
+      "range_end_deg": 22.5,
+      "exact_anchor_deg": 0.0,
+      "is_major_lunar_phase": true,
+      "description": "Sun and Moon are in the conjunction-centered part of the cycle.",
+      "sort_order": 1,
+      "is_active": true
+    },
+    {
+      "id": 2,
+      "phase_code": "waxing_crescent",
+      "label": "Waxing Crescent",
+      "cycle_family": "waxing",
+      "range_start_deg": 22.5,
+      "range_end_deg": 67.5,
+      "exact_anchor_deg": 45.0,
+      "is_major_lunar_phase": false,
+      "description": "The Moon is moving away from the Sun in the early waxing part of the cycle.",
+      "sort_order": 2,
+      "is_active": true
+    },
+    {
+      "id": 3,
+      "phase_code": "first_quarter",
+      "label": "First Quarter",
+      "cycle_family": "waxing",
+      "range_start_deg": 67.5,
+      "range_end_deg": 112.5,
+      "exact_anchor_deg": 90.0,
+      "is_major_lunar_phase": true,
+      "description": "The Sun-Moon cycle is near the waxing square.",
+      "sort_order": 3,
+      "is_active": true
+    },
+    {
+      "id": 4,
+      "phase_code": "waxing_gibbous",
+      "label": "Waxing Gibbous",
+      "cycle_family": "waxing",
+      "range_start_deg": 112.5,
+      "range_end_deg": 157.5,
+      "exact_anchor_deg": 135.0,
+      "is_major_lunar_phase": false,
+      "description": "The Moon is moving toward the opposition-centered full phase.",
+      "sort_order": 4,
+      "is_active": true
+    },
+    {
+      "id": 5,
+      "phase_code": "full_moon",
+      "label": "Full Moon",
+      "cycle_family": "opposition",
+      "range_start_deg": 157.5,
+      "range_end_deg": 202.5,
+      "exact_anchor_deg": 180.0,
+      "is_major_lunar_phase": true,
+      "description": "Sun and Moon are in the opposition-centered part of the cycle.",
+      "sort_order": 5,
+      "is_active": true
+    },
+    {
+      "id": 6,
+      "phase_code": "waning_gibbous",
+      "label": "Waning Gibbous",
+      "cycle_family": "waning",
+      "range_start_deg": 202.5,
+      "range_end_deg": 247.5,
+      "exact_anchor_deg": 225.0,
+      "is_major_lunar_phase": false,
+      "description": "The Moon is moving away from the full phase in the early waning part of the cycle.",
+      "sort_order": 6,
+      "is_active": true
+    },
+    {
+      "id": 7,
+      "phase_code": "last_quarter",
+      "label": "Last Quarter",
+      "cycle_family": "waning",
+      "range_start_deg": 247.5,
+      "range_end_deg": 292.5,
+      "exact_anchor_deg": 270.0,
+      "is_major_lunar_phase": true,
+      "description": "The Sun-Moon cycle is near the waning square.",
+      "sort_order": 7,
+      "is_active": true
+    },
+    {
+      "id": 8,
+      "phase_code": "waning_crescent",
+      "label": "Waning Crescent",
+      "cycle_family": "waning",
+      "range_start_deg": 292.5,
+      "range_end_deg": 337.5,
+      "exact_anchor_deg": 315.0,
+      "is_major_lunar_phase": false,
+      "description": "The Moon is in the final waning part of the cycle before the next conjunction.",
+      "sort_order": 8,
+      "is_active": true
+    }
+  ]
+}

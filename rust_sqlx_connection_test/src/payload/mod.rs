@@ -4,13 +4,14 @@ mod dignities;
 mod emphasis;
 mod house_axes;
 mod json;
+mod lunar_phase;
 mod reading_plan;
 mod rulership;
 mod signal_filters;
 
 use crate::domain::{
-    BasicObjectPosition, BasicPayload, BasicSignal, HouseAxisReference, NatalChartInput,
-    ObjectPositionFact,
+    BasicObjectPosition, BasicPayload, BasicSignal, HouseAxisReference, LunarPhaseReference,
+    NatalChartInput, ObjectPositionFact,
 };
 use crate::models::InterpretationSignalRow;
 use angles::{
@@ -61,6 +62,26 @@ pub fn build_basic_payload_with_references(
     domicile_rulers: &[crate::domain::DomicileRulerReference],
     house_axes: &[HouseAxisReference],
 ) -> BasicPayload {
+    build_basic_payload_with_all_references(
+        chart_calculation_id,
+        input,
+        positions,
+        signals,
+        domicile_rulers,
+        house_axes,
+        &[],
+    )
+}
+
+pub fn build_basic_payload_with_all_references(
+    chart_calculation_id: i32,
+    input: &NatalChartInput,
+    positions: &[ObjectPositionFact],
+    signals: &[InterpretationSignalRow],
+    domicile_rulers: &[crate::domain::DomicileRulerReference],
+    house_axes: &[HouseAxisReference],
+    lunar_phases: &[LunarPhaseReference],
+) -> BasicPayload {
     let structural_axis_pairs = structural_axis_pairs_from_positions(positions);
     let angle_object_codes = angle_object_codes_from_positions(positions);
     let mut basic_signals: Vec<BasicSignal> = signals
@@ -100,8 +121,19 @@ pub fn build_basic_payload_with_references(
         &rulership_context,
         &basic_signals,
     );
-    let chart_context = build_chart_context(input, positions);
     let reading_plan = build_reading_plan(&basic_signals);
+    let lunar_phase_context = lunar_phase::build_lunar_phase_context(
+        lunar_phases,
+        positions,
+        &basic_signals,
+        &reading_plan,
+    );
+    let contract_version = if lunar_phase_context.is_some() {
+        "natal_structured_v12"
+    } else {
+        "natal_structured_v11"
+    };
+    let chart_context = build_chart_context(input, positions, contract_version);
 
     BasicPayload {
         product_code: input.product_code().to_string(),
@@ -137,6 +169,7 @@ pub fn build_basic_payload_with_references(
         chart_emphasis,
         rulership_context,
         house_axis_emphasis,
+        lunar_phase_context,
         signals: basic_signals,
         reading_plan,
     }

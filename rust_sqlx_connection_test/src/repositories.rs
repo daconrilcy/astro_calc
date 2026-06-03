@@ -8,8 +8,8 @@ use crate::domain::{
 use crate::models::{
     AnglePointReference, AspectDefinition, ChartCalculationRow, ChartObject,
     DomicileRulerReference, HorizonPositionReference, HouseAxisReferenceRow, HouseReference,
-    HouseSystem, InterpretationSignalRow, MotionStateReference, PersistedAspectFact,
-    PersistedObjectPositionFact, SignReference,
+    HouseSystem, InterpretationSignalRow, LunarPhaseReferenceRow, MotionStateReference,
+    PersistedAspectFact, PersistedObjectPositionFact, SignReference,
 };
 use crate::runtime::RuntimeError;
 
@@ -234,6 +234,31 @@ impl RuntimeRepository {
               ON house_b.id = member_a.opposite_house_id
             WHERE house_a.number < house_b.number
             ORDER BY house_a.number
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(Into::into)
+        .collect())
+    }
+
+    pub async fn lunar_phase_references(
+        &self,
+    ) -> Result<Vec<crate::domain::LunarPhaseReference>, RuntimeError> {
+        Ok(sqlx::query_as::<_, LunarPhaseReferenceRow>(
+            r#"
+            SELECT phase_code,
+                   label,
+                   cycle_family,
+                   range_start_deg::float8 AS range_start_deg,
+                   range_end_deg::float8 AS range_end_deg,
+                   exact_anchor_deg::float8 AS exact_anchor_deg,
+                   is_major_lunar_phase,
+                   description
+            FROM astral_lunar_phase_definitions
+            WHERE is_active = true
+            ORDER BY sort_order, id
             "#,
         )
         .fetch_all(&self.pool)
@@ -1111,6 +1136,21 @@ impl From<HouseAxisReferenceRow> for crate::domain::HouseAxisReference {
             theme_a_code: row.theme_a_code,
             theme_b_code: row.theme_b_code,
             label: row.label,
+            description: row.description,
+        }
+    }
+}
+
+impl From<LunarPhaseReferenceRow> for crate::domain::LunarPhaseReference {
+    fn from(row: LunarPhaseReferenceRow) -> Self {
+        Self {
+            phase_code: row.phase_code,
+            label: row.label,
+            cycle_family: row.cycle_family,
+            range_start_deg: row.range_start_deg,
+            range_end_deg: row.range_end_deg,
+            exact_anchor_deg: row.exact_anchor_deg,
+            is_major_lunar_phase: row.is_major_lunar_phase,
             description: row.description,
         }
     }

@@ -12,6 +12,7 @@ const ON_HORIZON: &str = "on_horizon";
 pub(super) fn build_chart_context(
     input: &NatalChartInput,
     positions: &[ObjectPositionFact],
+    contract_version: &str,
 ) -> BasicChartContext {
     let sun_position = positions
         .iter()
@@ -30,7 +31,7 @@ pub(super) fn build_chart_context(
         house_system_id: input.house_system_id,
         reference_version_id: input.reference_version_id,
         payload_contract: BasicPayloadContract {
-            contract_version: "natal_structured_v11".to_string(),
+            contract_version: contract_version.to_string(),
             calculation_scope: "full_natal".to_string(),
             interpretation_scope: "structured_interpretation".to_string(),
             projection_depth: "rich".to_string(),

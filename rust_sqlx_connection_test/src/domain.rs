@@ -67,6 +67,18 @@ pub struct HouseAxisReference {
 }
 
 #[derive(Debug, Clone)]
+pub struct LunarPhaseReference {
+    pub phase_code: String,
+    pub label: String,
+    pub cycle_family: String,
+    pub range_start_deg: f64,
+    pub range_end_deg: f64,
+    pub exact_anchor_deg: f64,
+    pub is_major_lunar_phase: bool,
+    pub description: String,
+}
+
+#[derive(Debug, Clone)]
 pub struct ObjectPositionFact {
     pub chart_object_id: i32,
     pub object_code: String,
@@ -163,6 +175,8 @@ pub struct BasicPayload {
     pub rulership_context: BasicRulershipContext,
     #[serde(default)]
     pub house_axis_emphasis: Vec<BasicHouseAxisEmphasis>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lunar_phase_context: Option<BasicLunarPhaseContext>,
     pub signals: Vec<BasicSignal>,
     #[serde(default)]
     pub reading_plan: Vec<BasicReadingPlanItem>,
@@ -390,6 +404,31 @@ pub struct BasicHouseAxisScore {
     pub score: f64,
     #[serde(default)]
     pub reasons: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BasicLunarPhaseContext {
+    pub phase_code: String,
+    pub phase_label: String,
+    pub cycle_family: String,
+    pub sun_object_code: String,
+    pub moon_object_code: String,
+    pub sun_longitude_deg: f64,
+    pub moon_longitude_deg: f64,
+    pub sun_moon_angle_deg: f64,
+    #[serde(default)]
+    pub phase_angle_range_deg: Vec<f64>,
+    pub exact_phase_anchor_deg: f64,
+    pub distance_to_exact_phase_deg: f64,
+    pub phase_progress_ratio: f64,
+    pub is_major_lunar_phase: bool,
+    #[serde(default)]
+    pub related_signal_keys: Vec<String>,
+    #[serde(default)]
+    pub related_reading_slots: Vec<String>,
+    #[serde(default)]
+    pub semantic_tags: Vec<String>,
+    pub interpretive_hint: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -18,7 +18,7 @@ fn has_chart_context(payload: &BasicPayload) -> bool {
         && context.house_system_id > 0
         && context.reference_version_id > 0
         && context.reference_version_id == payload.reference_version_id
-        && context.payload_contract.contract_version == "natal_structured_v11"
+        && context.payload_contract.contract_version == "natal_structured_v12"
         && context.payload_contract.calculation_scope == "full_natal"
         && context.payload_contract.interpretation_scope == "structured_interpretation"
         && context.payload_contract.projection_depth == "rich"

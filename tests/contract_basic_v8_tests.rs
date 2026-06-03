@@ -7,9 +7,11 @@ use serde_json::Value;
 use rust_sqlx_connection_test::domain::BasicPayload;
 use rust_sqlx_connection_test::runtime::is_current_basic_payload;
 
-const GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v11_paris_1990.json";
-const SCHEMA_PATH: &str = "schemas/natal_structured_v11.schema.json";
-const PAYLOAD_UNDER_TEST_ENV: &str = "NATAL_V11_SCHEMA_PAYLOAD_PATH";
+const GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v12_paris_1990.json";
+const SCHEMA_PATH: &str = "schemas/natal_structured_v12.schema.json";
+const PAYLOAD_UNDER_TEST_ENV: &str = "NATAL_V12_SCHEMA_PAYLOAD_PATH";
+const V11_GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v11_paris_1990.json";
+const V11_SCHEMA_PATH: &str = "schemas/natal_structured_v11.schema.json";
 const V10_GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v10_paris_1990.json";
 const V10_SCHEMA_PATH: &str = "schemas/natal_structured_v10.schema.json";
 const V8_GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/basic_payload_v8_paris_1990.json";
@@ -113,13 +115,27 @@ fn assert_source_prefix(item: &Value, prefix: &str) {
 }
 
 #[test]
-fn golden_payload_matches_json_schema_v11() {
+fn golden_payload_matches_json_schema_v12() {
     let payload_json = load_golden_payload();
     let validation_errors = validate_with_schema(&payload_json);
 
     assert!(
         validation_errors.is_empty(),
-        "golden payload does not match natal_structured_v11 schema:\n{}",
+        "golden payload does not match natal_structured_v12 schema:\n{}",
+        validation_errors.join("\n")
+    );
+}
+
+#[test]
+fn historical_v11_golden_payload_matches_json_schema_v11() {
+    let raw = fs::read_to_string(V11_GOLDEN_PAYLOAD_PATH).expect("v11 golden payload should exist");
+    let payload_json: Value =
+        serde_json::from_str(&raw).expect("v11 golden payload should be JSON");
+    let validation_errors = validate_with_schema_at(&payload_json, V11_SCHEMA_PATH);
+
+    assert!(
+        validation_errors.is_empty(),
+        "historical v11 golden payload does not match natal_structured_v11 schema:\n{}",
         validation_errors.join("\n")
     );
 }
@@ -152,7 +168,7 @@ fn historical_v8_golden_payload_matches_json_schema_v8() {
 }
 
 #[test]
-fn external_payload_matches_json_schema_v11_when_requested() {
+fn external_payload_matches_json_schema_v12_when_requested() {
     let Ok(path) = std::env::var(PAYLOAD_UNDER_TEST_ENV) else {
         return;
     };
@@ -161,7 +177,7 @@ fn external_payload_matches_json_schema_v11_when_requested() {
 
     assert!(
         validation_errors.is_empty(),
-        "external payload does not match natal_structured_v11 schema:\n{}",
+        "external payload does not match natal_structured_v12 schema:\n{}",
         validation_errors.join("\n")
     );
 }
@@ -185,7 +201,7 @@ fn external_payload_matches_json_schema_v8_when_requested() {
 fn schema_rejects_llm_handoff_contract_property() {
     let mut payload = load_golden_payload();
     payload["llm_handoff_contract"] = serde_json::json!({
-        "contract_version": "natal_structured_v11"
+        "contract_version": "natal_structured_v12"
     });
 
     assert!(
@@ -378,6 +394,15 @@ fn runtime_rejects_v10_without_house_axis_emphasis() {
 }
 
 #[test]
+fn runtime_rejects_v11_without_lunar_phase_context() {
+    let raw = fs::read_to_string(V11_GOLDEN_PAYLOAD_PATH).expect("v11 golden payload should exist");
+    let payload: BasicPayload =
+        serde_json::from_str(&raw).expect("v11 golden payload should deserialize");
+
+    assert!(!is_current_basic_payload(&payload));
+}
+
+#[test]
 fn runtime_rejects_axis_source_signal_key_that_does_not_exist() {
     let mut payload = load_golden_payload();
     payload["house_axis_emphasis"][0]["source_signal_keys"]
@@ -441,6 +466,62 @@ fn runtime_rejects_axis_hint_inconsistent_with_polarity_balance() {
     let mut payload = load_golden_payload();
     payload["house_axis_emphasis"][0]["interpretive_hint"] =
         Value::String("Resources and Sharing is activated through house 2 (resources), with both sides visibly active.".to_string());
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
+#[test]
+fn runtime_rejects_lunar_phase_angle_mismatch() {
+    let mut payload = load_golden_payload();
+    payload["lunar_phase_context"]["sun_moon_angle_deg"] = serde_json::json!(61.0);
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
+#[test]
+fn runtime_rejects_lunar_phase_source_signal_key_that_does_not_exist() {
+    let mut payload = load_golden_payload();
+    payload["lunar_phase_context"]["related_signal_keys"]
+        .as_array_mut()
+        .expect("related_signal_keys should be an array")
+        .push(Value::String("object_position:not_active".to_string()));
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
+#[test]
+fn runtime_rejects_duplicate_lunar_phase_related_signal_keys() {
+    let mut payload = load_golden_payload();
+    payload["lunar_phase_context"]["related_signal_keys"]
+        .as_array_mut()
+        .expect("related_signal_keys should be an array")
+        .push(Value::String("object_position:sun".to_string()));
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
+#[test]
+fn runtime_rejects_lunar_phase_progress_mismatch() {
+    let mut payload = load_golden_payload();
+    payload["lunar_phase_context"]["phase_progress_ratio"] = serde_json::json!(0.5);
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
+#[test]
+fn runtime_rejects_lunar_phase_without_core_identity_slot_reference() {
+    let mut payload = load_golden_payload();
+    payload["lunar_phase_context"]["related_reading_slots"] = serde_json::json!([]);
     let parsed: BasicPayload =
         serde_json::from_value(payload).expect("modified payload should deserialize");
 
@@ -524,6 +605,131 @@ fn v11_contains_house_axis_emphasis() {
 
     assert!(!axes.is_empty());
     assert!(axes.len() <= 3);
+}
+
+#[test]
+fn v12_contains_lunar_phase_context() {
+    let payload = load_golden_payload();
+    let phase = &payload["lunar_phase_context"];
+
+    assert_eq!(phase["phase_code"], "waxing_crescent");
+    assert_eq!(phase["cycle_family"], "waxing");
+    assert_eq!(phase["sun_moon_angle_deg"], serde_json::json!(60.3099));
+    assert_eq!(phase["phase_progress_ratio"], serde_json::json!(0.8402));
+}
+
+#[test]
+fn lunar_phase_angle_is_moon_minus_sun_normalized() {
+    let payload = load_golden_payload();
+    let phase = &payload["lunar_phase_context"];
+    let sun = phase["sun_longitude_deg"]
+        .as_f64()
+        .expect("sun longitude should be numeric");
+    let moon = phase["moon_longitude_deg"]
+        .as_f64()
+        .expect("moon longitude should be numeric");
+    let expected = (moon - sun).rem_euclid(360.0);
+    let actual = phase["sun_moon_angle_deg"]
+        .as_f64()
+        .expect("lunar phase angle should be numeric");
+
+    assert!((actual - expected).abs() <= 0.0001);
+}
+
+#[test]
+fn lunar_phase_related_signal_keys_exist() {
+    let payload = load_golden_payload();
+    let signal_keys: HashSet<&str> = array(&payload, "signals")
+        .iter()
+        .map(|signal| string(signal, "signal_key"))
+        .collect();
+
+    for key in array(&payload["lunar_phase_context"], "related_signal_keys") {
+        let key = key.as_str().expect("related signal key should be string");
+        assert!(signal_keys.contains(key), "missing lunar signal key {key}");
+    }
+}
+
+#[test]
+fn lunar_phase_related_reading_slots_exist() {
+    let payload = load_golden_payload();
+    let slots: HashSet<&str> = array(&payload, "reading_plan")
+        .iter()
+        .map(|item| string(item, "slot"))
+        .collect();
+
+    assert!(
+        array(&payload["lunar_phase_context"], "related_reading_slots")
+            .iter()
+            .any(|slot| slot == "core_identity")
+    );
+    for slot in array(&payload["lunar_phase_context"], "related_reading_slots") {
+        let slot = slot
+            .as_str()
+            .expect("related reading slot should be string");
+        assert!(slots.contains(slot), "missing related reading slot {slot}");
+    }
+}
+
+#[test]
+fn lunar_phase_progress_ratio_is_valid() {
+    let payload = load_golden_payload();
+    let phase = &payload["lunar_phase_context"];
+    let ratio = phase["phase_progress_ratio"]
+        .as_f64()
+        .expect("phase_progress_ratio should be numeric");
+
+    assert!((0.0..=1.0).contains(&ratio));
+}
+
+#[test]
+fn schema_rejects_missing_lunar_phase_context() {
+    let mut payload = load_golden_payload();
+    payload
+        .as_object_mut()
+        .expect("payload should be object")
+        .remove("lunar_phase_context");
+
+    assert!(
+        !validate_with_schema(&payload).is_empty(),
+        "schema should reject missing lunar_phase_context"
+    );
+}
+
+#[test]
+fn schema_rejects_invalid_lunar_phase_code() {
+    let mut payload = load_golden_payload();
+    payload["lunar_phase_context"]["phase_code"] = Value::String("balsamic".to_string());
+
+    assert!(
+        !validate_with_schema(&payload).is_empty(),
+        "schema should reject unknown lunar phase code"
+    );
+}
+
+#[test]
+fn schema_rejects_lunar_angle_out_of_range() {
+    let mut payload = load_golden_payload();
+    payload["lunar_phase_context"]["sun_moon_angle_deg"] = serde_json::json!(360.0);
+
+    assert!(
+        !validate_with_schema(&payload).is_empty(),
+        "schema should reject lunar phase angles outside [0, 360)"
+    );
+}
+
+#[test]
+fn schema_rejects_duplicate_lunar_related_signal_keys() {
+    let mut payload = load_golden_payload();
+    payload["lunar_phase_context"]["related_signal_keys"]
+        .as_array_mut()
+        .expect("related_signal_keys should be an array")
+        .push(Value::String("object_position:sun".to_string()));
+
+    assert!(
+        !validate_with_schema(&payload).is_empty(),
+        "schema should reject duplicate lunar related signal keys"
+    );
 }
 
 #[test]
