@@ -46,6 +46,20 @@ pub fn all_profiles_from_seed() -> Vec<LlmProjectionProfile> {
                 .as_u64()
                 .expect("max_house_axes") as usize,
             max_aspects: row["max_aspects"].as_u64().expect("max_aspects") as usize,
+            max_background_placements: row["max_background_placements"]
+                .as_u64()
+                .unwrap_or_else(|| {
+                    default_max_background_placements_u64(
+                        row["level_code"].as_str().expect("level_code"),
+                    )
+                }) as usize,
+            max_accidental_conditions_per_object: row["max_accidental_conditions_per_object"]
+                .as_u64()
+                .unwrap_or_else(|| {
+                    default_max_accidental_conditions_u64(
+                        row["level_code"].as_str().expect("level_code"),
+                    )
+                }) as usize,
             include_accidental_conditions: row["include_accidental_conditions"]
                 .as_bool()
                 .expect("include_accidental_conditions"),
@@ -70,7 +84,7 @@ pub async fn resolve_projection_profile(
         .llm_projection_profile(contract_version, level)
         .await
     {
-        Ok(profile) => Ok(profile),
+        Ok(profile) => Ok(merge_seed_limits(profile)),
         Err(RuntimeError::Database(error)) if missing_relation(&error, "astral_llm_projection_profiles") => {
             profile_from_level(level)
         }
@@ -81,6 +95,44 @@ pub async fn resolve_projection_profile(
         }
         Err(error) => Err(error),
     }
+}
+
+pub fn default_max_background_placements(level: &str) -> usize {
+    default_max_background_placements_u64(level) as usize
+}
+
+fn default_max_background_placements_u64(level: &str) -> u64 {
+    match level {
+        "compact" => 0,
+        "standard" => 3,
+        "rich" => 5,
+        "expert" => 8,
+        _ => 3,
+    }
+}
+
+pub fn default_max_accidental_conditions(level: &str) -> usize {
+    default_max_accidental_conditions_u64(level) as usize
+}
+
+fn default_max_accidental_conditions_u64(level: &str) -> u64 {
+    match level {
+        "compact" => 2,
+        "standard" => 3,
+        "rich" => 4,
+        "expert" => 6,
+        _ => 3,
+    }
+}
+
+/// DB rows may predate seed fields (background limits, accidental caps). Overlay from seed.
+fn merge_seed_limits(mut profile: LlmProjectionProfile) -> LlmProjectionProfile {
+    let Ok(seed) = profile_from_level(&profile.level_code) else {
+        return profile;
+    };
+    profile.max_background_placements = seed.max_background_placements;
+    profile.max_accidental_conditions_per_object = seed.max_accidental_conditions_per_object;
+    profile
 }
 
 fn missing_relation(error: &sqlx::Error, table: &str) -> bool {
@@ -106,6 +158,8 @@ pub fn limits_envelope(profile: &LlmProjectionProfile) -> LlmProjectionLimitsEnv
             max_dominant_objects: profile.max_dominant_objects,
             max_house_axes: profile.max_house_axes,
             max_aspects: profile.max_aspects,
+            max_background_placements: profile.max_background_placements,
+            max_accidental_conditions_per_object: profile.max_accidental_conditions_per_object,
             include_rulership_context: profile.include_rulership_details,
             include_accidental_dignities: profile.include_accidental_conditions,
             include_minor_evidence: profile.include_minor_evidence,

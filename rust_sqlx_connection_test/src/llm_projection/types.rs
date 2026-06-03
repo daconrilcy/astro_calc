@@ -12,6 +12,8 @@ pub struct LlmProjectionProfile {
     pub max_dominant_objects: usize,
     pub max_house_axes: usize,
     pub max_aspects: usize,
+    pub max_background_placements: usize,
+    pub max_accidental_conditions_per_object: usize,
     pub include_accidental_conditions: bool,
     pub include_rulership_details: bool,
     pub include_minor_evidence: bool,
@@ -53,6 +55,8 @@ pub struct LlmEffectiveLimits {
     pub max_dominant_objects: usize,
     pub max_house_axes: usize,
     pub max_aspects: usize,
+    pub max_background_placements: usize,
+    pub max_accidental_conditions_per_object: usize,
     pub include_rulership_context: bool,
     pub include_accidental_dignities: bool,
     pub include_minor_evidence: bool,
@@ -142,28 +146,29 @@ pub struct LlmDominantThemes {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct LlmDominantSign {
-    pub sign: String,
-    pub strength: String,
-    pub reasons: Vec<String>,
+    pub name: String,
+    pub importance: String,
     pub keywords: Vec<String>,
+    pub supporting_factors: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub score: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct LlmDominantHouse {
-    pub house: LlmHouseRef,
-    pub strength: String,
-    pub reasons: Vec<String>,
+    pub number: i32,
+    pub theme: String,
+    pub importance: String,
+    pub supporting_factors: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub score: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct LlmDominantObject {
-    pub object: String,
-    pub strength: String,
-    pub reasons: Vec<String>,
+    pub name: String,
+    pub importance: String,
+    pub supporting_factors: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub score: Option<f64>,
 }
@@ -229,7 +234,7 @@ pub struct LlmEssentialDignity {
     pub object: String,
     pub dignity: String,
     pub sign: String,
-    pub effect: String,
+    pub meaning: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub strength_score: Option<f64>,
 }
@@ -249,8 +254,8 @@ pub struct LlmRelationshipNetwork {
     pub ascendant_ruler: Option<LlmAscendantRulerNetwork>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub midheaven_ruler: Option<LlmMcRulerNetwork>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub dominant_dispositor: Option<LlmDominantDispositor>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub final_dispositors: Vec<LlmFinalDispositor>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub mutual_receptions: Vec<LlmMutualReception>,
 }
@@ -258,11 +263,11 @@ pub struct LlmRelationshipNetwork {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct LlmAscendantRulerNetwork {
     pub ascendant_sign: String,
-    pub main_ruler: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub traditional_ruler: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub modern_ruler: Option<String>,
-    pub ruler_placement: String,
-    pub meaning: String,
+    pub main_ruler_placement: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -273,7 +278,7 @@ pub struct LlmMcRulerNetwork {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct LlmDominantDispositor {
+pub struct LlmFinalDispositor {
     pub object: String,
     pub source_objects: Vec<String>,
 }
@@ -281,6 +286,7 @@ pub struct LlmDominantDispositor {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct LlmMutualReception {
     pub objects: Vec<String>,
+    pub source_objects: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -302,7 +308,9 @@ pub struct LlmLunarPhase {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct LlmMajorAspect {
     pub aspect: String,
+    pub objects: Vec<String>,
     pub quality: String,
+    pub valence: String,
     pub orb_degrees: f64,
     pub phase: String,
     pub keywords: Vec<String>,
@@ -315,6 +323,8 @@ pub struct LlmHouseAxis {
     pub balance: String,
     pub importance: String,
     pub summary: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub supporting_factors: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

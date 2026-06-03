@@ -22,6 +22,7 @@ use crate::llm_projection::{
 };
 use crate::runtime::RuntimeError;
 
+#[allow(clippy::too_many_arguments)]
 pub fn build_engine_response(
     resolved: &ResolvedEngineRequest,
     audit: BasicPayload,
@@ -40,7 +41,7 @@ pub fn build_engine_response(
 
     let llm_payload = build_llm_projection_natal_v1(
         &audit,
-        &profile,
+        profile,
         &LlmProjectionBuildContext {
             birth_location_label: &resolved.location_label,
             zodiac_label,

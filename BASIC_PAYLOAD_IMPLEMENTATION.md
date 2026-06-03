@@ -2445,8 +2445,8 @@ niveau de projection influence le calcul brut.
 
 - `json_db/astral_llm_projection_profiles.json` : profils nommes
   `compact`, `standard`, `rich`, `expert` pour `llm_projection_natal_v1`
-  (limites de keywords, placements, dominantes, axes, aspects, flags
-  rulership/accidentel/degres/scores).
+  (limites documentees en table dans la section **4B** ;
+  `max_background_placements`, `max_accidental_conditions_per_object` ajoutes en 4B).
 
 ### Code
 
@@ -2454,8 +2454,9 @@ niveau de projection influence le calcul brut.
   timezone (`chrono-tz`), mapping vers `NatalChartInput`, assemblage de
   `AstroEngineResponse` ;
 - `rust_sqlx_connection_test/src/llm_projection/` : mapper
-  `natal_structured_v13` → `llm_projection_natal_v1` (sans IDs techniques ni
-  redondances `id/code/name` dans la projection) ;
+  `natal_structured_v13` → `llm_projection_natal_v1` (voir section **4B** pour
+  l'architecture `builder` / `dynamics` / `clean_text` et les regles de
+  humanisation) ;
 - `ChartCalculationRuntimeService::calculate_natal_engine` : calcule toujours le
   payload audit complet via `calculate_natal_basic`, puis projette selon
   `projection.level` uniquement pour `llm_payload`.
@@ -2470,9 +2471,9 @@ niveau de projection influence le calcul brut.
 
 ### Tests
 
-- `tests/engine_contract_tests.rs` : validation JSON Schema, structure identique
-  entre niveaux, absence de cles techniques interdites, goldens
-  `tests/golden/llm_projection_natal_v1_paris_1990_{compact,standard,rich}.json`.
+- `tests/engine_contract_tests.rs` : contrats 4A/4B (schema, enveloppe, invariance
+  `audit_payload`, goldens LLM et enveloppe rich). Liste complete des cas 4B dans
+  la section **4B — Tests**.
 
 Regeneration des goldens LLM :
 
@@ -2550,8 +2551,335 @@ Findings traites dans le code :
 - **Tests** : timezone Paris/UTC, regles compact, idempotence client, goldens
   regeneres.
 
-Reste pour **4B** : aspects majeurs parfois absents si `aspect_context` manquant
-sur le signal ; enrichment des `reasons` ; endpoint HTTP/CLI.
+## 4B — LLM projection quality hardening
+
+Objectif : rendre `llm_payload` **exploitable par un futur service LLM** — propre,
+stable, sans IDs techniques, sans redondances — sans modifier le calcul
+astrologique, sans toucher a `audit_payload`, et sans appel LLM.
+
+Contrat conserve : `llm_projection_natal_v1` (pas de bump v2). Les sections
+top-level restent identiques entre `compact`, `standard`, `rich` et `expert` ;
+seule la **richesse du contenu** change.
+
+```text
+audit_payload.payload  → natal_structured_v13 brut, technique, auditable
+llm_payload            → llm_projection_natal_v1 epure, lisible, stable
+```
+
+### Perimetre strict
+
+- pas de modification du pipeline `payload/` (calcul v13) ;
+- pas de reranking des signaux ;
+- pas de langue cible, ton, prompt ni `writing_guidance` dans `llm_payload` ;
+- la projection ne recopie jamais le brut : elle **traduit** les faits techniques.
+
+### Architecture code
+
+| Fichier | Role |
+|---------|------|
+| `src/llm_projection/mod.rs` | Point d'entree, exports publics |
+| `src/llm_projection/builder.rs` | Orchestration des sections |
+| `src/llm_projection/dynamics.rs` | Aspects majeurs + phase lunaire |
+| `src/llm_projection/clean_text.rs` | Humanisation, limites keywords, labels |
+| `src/llm_projection/humanize.rs` | Re-export `clean_text` (compat) |
+| `src/llm_projection/profiles.rs` | Profils seed + `merge_seed_limits` |
+| `src/llm_projection/types.rs` | Structures serde de la projection |
+| `src/llm_projection/axis_labels.rs` | Libelles d'axes depuis `json_db` |
+
+Point d'entree : `build_llm_projection_natal_v1(payload, profile, ctx)`.
+
+`build_dynamics` est appele **une seule fois** par build ; le resultat est
+reutilise pour `dynamics`, `reading_order` (slot Main dynamic) et
+`keywords.by_area.dynamics` (coherence garantie).
+
+### Profils de projection (donnees canoniques)
+
+Source : `json_db/astral_llm_projection_profiles.json` (table
+`astral_llm_projection_profiles` en base, repli seed si table absente ou profil
+inconnu).
+
+`resolve_projection_profile` charge la base puis applique `merge_seed_limits` :
+les champs `max_background_placements` et
+`max_accidental_conditions_per_object` sont toujours alignes sur le seed (les
+lignes DB anciennes peuvent ne pas porter ces colonnes).
+
+| Niveau | keywords | supporting | background | aspects | axes | accidental | rulership | degres | scores |
+|--------|----------|------------|------------|---------|------|------------|-----------|--------|--------|
+| compact | 3 | 3 | 0 | 1 | 1 | non (0 lignes) | non | non | non |
+| standard | 6 | 5 | 3 | 2 | 2 | oui (max 3 cond./objet) | oui | non | non |
+| rich | 12 | 8 | 5 | 3 | 3 | oui (max 4) | oui | oui | non |
+| expert | 20 | 10 | 8 | 5 | 3 | oui (max 6) | oui | oui | oui |
+
+`projection_limits.effective_limits` expose aussi `max_background_placements` et
+`max_accidental_conditions_per_object` pour transparence runtime.
+
+**Reserve** : `max_core_placements` est dans le schema/profils mais non branche
+sur `placements.primary` (vide par design : Soleil/Lune sont dans
+`core_identity` uniquement).
+
+### Mapping par section
+
+#### `dynamics.major_aspects`
+
+Selection (tous requis) :
+
+```text
+signal_key starts with "aspect:"
+evidence.fact_type = "aspect"
+aspect_context != null
+aspect_family = "major"   (evidence ou aspect_context)
+```
+
+Tri par `priority_score` decroissant, troncature `max_aspects`.
+
+Objet projete :
+
+```json
+{
+  "aspect": "Jupiter opposition Uranus",
+  "objects": ["Jupiter", "Uranus"],
+  "quality": "Tension",
+  "valence": "Polarizing",
+  "orb_degrees": 0.76,
+  "phase": "Separating",
+  "keywords": ["growth", "freedom", "..."]
+}
+```
+
+- `aspect` ← `signal.title`
+- `objects` ← `evidence.source_object_name` + `target_object_name`
+- `quality` ← `aspect_context.dynamic_quality` humanise
+- `valence` ← `primary_valence` ou `intensity_modifier` humanise
+- `orb_degrees` ← `evidence.orb_deg` arrondi 2 decimales (**pas** dans `aspect_context`)
+- `phase` ← `evidence.phase_state` humanise
+- `keywords` ← tags semantiques nettoyes + max **2** keywords signe par planete
+
+Cas golden Paris 1990 (`rich`) : opposition Jupiter–Uranus presente avec
+`quality = Tension`, `valence = Polarizing`, `orb_degrees ≈ 0.76`, `phase = Separating`.
+
+#### `dominant_themes`
+
+| Ancien (4A) | 4B |
+|-------------|-----|
+| `sign` / `strength` / `reasons` | `name` / `importance` / `supporting_factors` |
+| `house` imbrique | `number` + `theme` |
+| `object` | `name` |
+
+`importance` : `Very high` / `High` / `Moderate` / `Low` (seuils 0.85 / 0.65 / 0.45).
+`supporting_factors` : codes `reasons` du brut passes par `humanize_reason` (voir
+table ci-dessous), dedupliques, limites par `max_keywords_per_item`.
+`score` : uniquement si `include_scores` (profil `expert`).
+
+#### `strengths`
+
+- `essential_dignities[]` : toutes les dignites du payload (tri force), champs
+  `object`, `dignity`, `sign`, `meaning` (plus `effect`).
+- `accidental_conditions[]` : si `include_accidental_conditions` ; labels
+  humanises, dedupliques (casse ignoree), plafond
+  `max_accidental_conditions_per_object` ; `overall_score` seulement en `expert`.
+
+#### `relationship_network`
+
+Present si `include_rulership_details` (standard+). Forme epuree :
+
+- `ascendant_ruler` : `ascendant_sign`, `traditional_ruler`, `modern_ruler`,
+  `main_ruler_placement` (noms planetes depuis positions, pas codes bruts).
+- `midheaven_ruler` : `midheaven_sign`, `ruler`, `ruler_placement`.
+- `final_dispositors[]` : `{ object, source_objects[] }`.
+- `mutual_receptions[]` : `{ objects[], source_objects[] }`.
+
+Exclus de la projection : `context_key`, `ruler_sources`, `astral_system_id`,
+`dispositor_signal_key`, etc.
+
+#### `house_axes`
+
+Libelle d'axe via `axis_labels` (seed `astral_house_axis_definitions.json` ou
+refs runtime). Champs : `axis`, `houses[]`, `balance`, `importance`, `summary`,
+`supporting_factors` (raisons humanisees, limite `max_keywords_per_item`).
+
+#### `reading_order`
+
+Sections lisibles (plus de `slot` / `primary_signal_keys` dans la sortie) :
+
+| Slot moteur | Section LLM |
+|-------------|-------------|
+| `core_identity` | Core identity |
+| `dominant_cluster` | Dominant theme |
+| `main_tension_or_support` | Main dynamic |
+| `expression_style` | Expression style |
+| `background_factors` | Background factors |
+
+`focus` : titres de signaux ou synthese (ex. « Capricorn emphasis », « Jupiter
+opposition Uranus » depuis le premier `major_aspect`), jamais de `signal_key`.
+
+#### `placements`
+
+- `primary` : vide (Soleil/Lune exclus — deja dans `core_identity`).
+- `supporting` puis `background` : autres planetes mobiles, triees par priorite
+  metier, limites `max_supporting_placements` / `max_background_placements`.
+- `conditions` : humanisees, plafonnees comme les accidentelles ; mouvement
+  via `humanize_motion_label` (`Direct` → `Direct motion`, etc.).
+- `longitude_deg` : si `include_degrees` (`rich`, `expert`).
+
+#### `keywords`
+
+- `main` : deduplication, limite `max_keywords_per_item * 2`.
+- `by_area` : cles lisibles (`identity`, `resources`, `roots`, …) ;
+  sous-bloc `dynamics` alimente depuis les aspects deja calcules.
+- Termes techniques (`cadent`, `sect`, …) filtres sauf niveau `expert`
+  (**pas** lie a `include_scores`).
+
+### Humanisation (`clean_text.rs`)
+
+**Raisons dominantes** (extrait) :
+
+| Code brut | Libelle LLM |
+|-----------|-------------|
+| `sign_house_cluster` | Several chart factors are concentrated in the same sign and house |
+| `saturn_domicile` | Saturn in domicile |
+| `strong_aspect_participant` | Involved in a strong major aspect |
+| `accidental_context` | Reinforced or modified by accidental conditions |
+| `cross_axis_aspect` | A major aspect connects both sides of this house axis |
+| `sun_luminary_in_house` | The Sun highlights this house |
+| `rulership_context` | Supported by rulership links |
+
+**Conditions accidentelles** (extrait) :
+
+| Code | Libelle |
+|------|---------|
+| `cadent_house` | Cadent house |
+| `retrograde_motion` | Retrograde motion |
+| `near_ascendant` | Close to the Ascendant |
+| `sect_affinity_mismatch` | Sect mismatch: does not match the chart's day/night sect |
+| `sect_affinity_variable_unresolved` | Variable sect affinity |
+
+### Cles interdites dans `llm_payload`
+
+La projection ne doit pas contenir (test `assert_no_technical_ids`) :
+
+`signal_key`, `*_id`, `*_code`, `source_weight`, `priority_score`,
+`confidence_score`, `aggregation_group`, `evidence`, `chart_object_id`,
+`reference_version_id`, `product_code`, `context_key`, `ruler_sources`,
+`axis_code`, `primary_signal_keys`, `slot`, etc.
+
+Pas de `target_language`, `"tone"`, `prompt`, `writing_guidance` dans le JSON
+serialise.
+
+### Tests (`tests/engine_contract_tests.rs`)
+
+Structure et schema :
+
+- `llm_projection_levels_share_identical_structure`
+- `llm_projection_golden_compact_standard_rich`
+- `engine_response_envelope_shape_from_v13_golden`
+- `audit_payload_identical_across_projection_levels_in_envelope`
+
+Aspects :
+
+- `llm_projection_includes_active_major_aspect`
+- `llm_projection_maps_jupiter_uranus_opposition`
+
+Humanisation et dedup :
+
+- `llm_projection_humanizes_dominant_theme_reasons`
+- `llm_projection_humanizes_accidental_conditions`
+- `llm_projection_reading_order_has_no_signal_keys`
+- `llm_projection_placements_exclude_core_luminaries`
+- `llm_projection_accidental_conditions_are_deduplicated`
+
+Niveaux :
+
+- `non_expert_does_not_include_scores` / `expert_may_include_scores`
+- `compact_has_fewer_keywords_than_rich` / `compact_has_fewer_placements_than_rich`
+- `compact_has_zero_background_placements`
+
+### Goldens
+
+- `tests/golden/llm_projection_natal_v1_paris_1990_{compact,standard,rich}.json`
+- `tests/golden/astro_engine_response_v1_paris_1990_rich.json` (enveloppe complete ;
+  construit depuis le golden v13 en test, pas un run moteur DB complet)
+
+Regeneration :
+
+```powershell
+cd rust_sqlx_connection_test
+$env:UPDATE_LLM_GOLDENS = "1"
+$env:UPDATE_ENGINE_RESPONSE_GOLDEN = "1"
+cargo test --test engine_contract_tests write_
+```
+
+Validation locale :
+
+```powershell
+cd rust_sqlx_connection_test
+cargo test --test engine_contract_tests
+cargo clippy --features swisseph-engine -- -D warnings
+```
+
+### Criteres d'acceptation 4B
+
+1. `llm_payload.dynamics.major_aspects` contient l'opposition Jupiter–Uranus en
+   golden Paris 1990 (`rich`).
+2. Aucun champ technique interdit dans `llm_payload`.
+3. Raisons et conditions humanisees (pas de codes `snake_case` residuels dans les
+   blocs publics).
+4. `reading_order` sans cles de signaux.
+5. `relationship_network` sans champs rulership techniques.
+6. Meme structure JSON pour tous les niveaux ; richesse variable seulement.
+7. `audit_payload` identique entre niveaux pour une meme entree.
+8. `cargo test`, `cargo test --features swisseph-engine`, clippy `-D warnings`,
+   goldens LLM et enveloppe rich passent.
+
+### Revue adversariale — synthese des correctifs (4A + 4B)
+
+**4A (enveloppe)** : profil compact sans rulership ; scores reserves a `expert` ;
+limites effectives ; secte jour/nuit ; validation early ; alignement CLI engine/audit.
+
+**4B (qualite projection)** :
+
+| Finding | Correctif |
+|---------|-----------|
+| `major_aspects` vide (`orb` cherche dans `aspect_context`) | `orb_degrees` depuis `evidence.orb_deg` |
+| Triple calcul `build_dynamics` | Un seul appel, partage reading_order/keywords |
+| Soleil/Lune dupliques dans `placements` | Exclus de `placements` (present dans `core_identity`) |
+| Keywords d'aspect = dump signe (12+ tags) | Max 2 keywords objet + tags semantiques filtres |
+| Limite axes en dur (`8`) | `profile.max_keywords_per_item` |
+| `essential_dignities` plafonne par `max_dominant_objects` | Toutes les dignites du payload |
+| Conditions non dedupliquees | `push_unique` insensible a la casse |
+| `"Direct"` brut dans conditions | `humanize_motion_label` |
+| Rulers en `title_case` de code | Noms depuis `object_names` / positions |
+| Profil DB sans colonnes background | `merge_seed_limits` depuis seed |
+| Keywords techniques lies a `include_scores` | Filtre reserve au niveau `expert` |
+| `effective_limits` incomplets | `max_background_placements`, `max_accidental_conditions_per_object` |
+
+### 4B.1 — Final public wording cleanup (implemente)
+
+Micro-passe de polish sur les textes publics de `llm_payload` :
+
+| Correction | Implementation |
+|------------|----------------|
+| `shared_resources` dans `house_axes.summary` | `humanize_axis_summary` : parentheses remplacees par le libelle maison (`Transformation`, `Resources`, …) depuis `house_ref_from_payload` ; repli `humanize_residual_snake_case` |
+| `supporting_factors` mecaniques (`ascendant angle in house`, `identity theme`, …) | Extensions `humanize_reason` : `ascendant_angle_in_house`, `ic_angle_in_house`, `*_theme`, etc. |
+| `Direct motion` redondant dans `conditions` | `is_unremarkable_motion_condition` : pas de doublon avec `motion` ; seuls etats remarquables (retrograde, secte, maison, horizon, angles) |
+
+Tests ajoutes :
+
+- `llm_projection_axis_summary_has_no_snake_case_themes`
+- `llm_projection_humanizes_axis_supporting_factors`
+- `llm_projection_conditions_exclude_redundant_direct_motion`
+
+**4B est close** apres cette passe. Suite : brancher le service LLM aval sur `llm_payload`
+(sans `audit_payload` sauf mode debug).
+
+Vigilance non bloquante (hors scope 4B.1) : `keywords.by_area` utilise encore des
+cles internes en snake_case (ex. `shared_resources`). Ce ne sont pas des phrases
+publiques ; acceptable pour le contrat actuel. Si la regle devient « zero
+snake_case dans tout `llm_payload`, y compris les cles », migrer `by_area` vers
+un tableau `{ "area": "Shared resources", "keywords": [...] }` (changement de
+schema, a planifier en 4C ou avant branchement LLM).
+
+Reserve : `max_core_placements` non branche ; goldens enveloppe `compact`/`standard`
+optionnels (rich + 3 LLM de projection).
 
 ### Revue adversariale CLI / env (correctifs)
 
@@ -2578,11 +2906,6 @@ Reste connu :
 - `verify_engine_response_4a.ps1` verifie les cles, pas le JSON Schema complet.
 - `ASTRAL_BIRTH_DATETIME_UTC` seul reste un repli legacy ; preferer le triplet
   local pour aligner engine et audit.
-
-### Suite 4B
-
-Affiner le mapper `llm_projection` (formulations `reasons`, axes, aspects,
-keywords par zone) et brancher l'API HTTP/CLI sur `calculate_natal_engine`.
 
 ### Criteres d'acceptation 3F
 

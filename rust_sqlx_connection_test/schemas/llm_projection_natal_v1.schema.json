@@ -104,6 +104,8 @@
             "max_dominant_objects": { "type": "integer", "minimum": 0 },
             "max_house_axes": { "type": "integer", "minimum": 0 },
             "max_aspects": { "type": "integer", "minimum": 0 },
+            "max_background_placements": { "type": "integer", "minimum": 0 },
+            "max_accidental_conditions_per_object": { "type": "integer", "minimum": 0 },
             "include_rulership_context": { "type": "boolean" },
             "include_accidental_dignities": { "type": "boolean" },
             "include_minor_evidence": { "type": "boolean" },
@@ -261,11 +263,11 @@
     "dominant_sign": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["sign", "strength", "reasons", "keywords"],
+      "required": ["name", "importance", "keywords", "supporting_factors"],
       "properties": {
-        "sign": { "type": "string" },
-        "strength": { "type": "string" },
-        "reasons": {
+        "name": { "type": "string" },
+        "importance": { "type": "string" },
+        "supporting_factors": {
           "type": "array",
           "items": { "type": "string" }
         },
@@ -279,11 +281,12 @@
     "dominant_house": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["house", "strength", "reasons"],
+      "required": ["number", "theme", "importance", "supporting_factors"],
       "properties": {
-        "house": { "$ref": "#/$defs/house_ref" },
-        "strength": { "type": "string" },
-        "reasons": {
+        "number": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "theme": { "type": "string" },
+        "importance": { "type": "string" },
+        "supporting_factors": {
           "type": "array",
           "items": { "type": "string" }
         },
@@ -293,11 +296,11 @@
     "dominant_object": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["object", "strength", "reasons"],
+      "required": ["name", "importance", "supporting_factors"],
       "properties": {
-        "object": { "type": "string" },
-        "strength": { "type": "string" },
-        "reasons": {
+        "name": { "type": "string" },
+        "importance": { "type": "string" },
+        "supporting_factors": {
           "type": "array",
           "items": { "type": "string" }
         },
@@ -364,12 +367,12 @@
     "essential_dignity": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["object", "dignity", "sign", "effect"],
+      "required": ["object", "dignity", "sign", "meaning"],
       "properties": {
         "object": { "type": "string" },
         "dignity": { "type": "string" },
         "sign": { "type": "string" },
-        "effect": { "type": "string" },
+        "meaning": { "type": "string" },
         "strength_score": { "type": "number" }
       }
     },
@@ -419,10 +422,15 @@
     "major_aspect": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["aspect", "quality"],
+      "required": ["aspect", "objects", "quality", "valence"],
       "properties": {
         "aspect": { "type": "string" },
+        "objects": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
         "quality": { "type": "string" },
+        "valence": { "type": "string" },
         "orb_degrees": { "type": "number" },
         "phase": { "type": "string" },
         "keywords": {
@@ -443,7 +451,11 @@
         },
         "balance": { "type": "string" },
         "importance": { "type": "string" },
-        "summary": { "type": "string" }
+        "summary": { "type": "string" },
+        "supporting_factors": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
       }
     },
     "keywords": {

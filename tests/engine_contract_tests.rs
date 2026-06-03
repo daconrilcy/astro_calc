@@ -9,7 +9,8 @@ use rust_sqlx_connection_test::engine::{
     build_engine_response, ResolvedEngineRequest, RESPONSE_CONTRACT_VERSION,
 };
 use rust_sqlx_connection_test::llm_projection::{
-    build_llm_projection_natal_v1, profile_from_level, LlmProjectionBuildContext,
+    build_llm_projection_natal_v1, is_active_major_aspect_signal, profile_from_level,
+    LlmProjectionBuildContext,
 };
 
 const V13_GOLDEN: &str = "../tests/golden/natal_payload_v13_paris_1990.json";
@@ -134,8 +135,47 @@ fn assert_compact_profile_rules(value: &Value) {
 }
 
 fn assert_no_technical_ids(value: &Value) {
-    let forbidden_suffixes = ["_id", "_code", "signal_key", "chart_object_id"];
-    fn walk(node: &Value, path: &str, forbidden_suffixes: &[&str]) {
+    const FORBIDDEN_KEYS: &[&str] = &[
+        "signal_key",
+        "source_weight",
+        "priority_score",
+        "confidence_score",
+        "aggregation_group",
+        "evidence",
+        "chart_object_id",
+        "reference_version_id",
+        "product_code",
+        "context_key",
+        "source_kind",
+        "source_code",
+        "ruler_sources",
+        "ruler_object_code",
+        "ruler_position_signal_key",
+        "ruler_house_number",
+        "ruler_sign_code",
+        "interpretive_role",
+        "astral_system_id",
+        "astral_system_code",
+        "dispositor_signal_key",
+        "axis_code",
+        "theme_codes",
+        "source_signal_keys",
+        "source_context_keys",
+        "polarity_balance",
+        "axis_score",
+        "slot",
+        "primary_signal_keys",
+        "secondary_slot_candidates",
+        "source_signal_keys",
+    ];
+    const FORBIDDEN_SUFFIXES: &[&str] = &["_id", "_code"];
+
+    fn walk(
+        node: &Value,
+        path: &str,
+        forbidden_keys: &[&str],
+        forbidden_suffixes: &[&str],
+    ) {
         match node {
             Value::Object(map) => {
                 for (key, child) in map {
@@ -144,23 +184,54 @@ fn assert_no_technical_ids(value: &Value) {
                     } else {
                         format!("{path}.{key}")
                     };
+                    if forbidden_keys.contains(&key.as_str()) {
+                        panic!("forbidden technical key {child_path}");
+                    }
                     for suffix in forbidden_suffixes {
-                        if key.ends_with(suffix) || key.contains("signal_key") {
+                        if key.ends_with(suffix) {
                             panic!("forbidden technical key {child_path}");
                         }
                     }
-                    walk(child, &child_path, forbidden_suffixes);
+                    walk(child, &child_path, forbidden_keys, forbidden_suffixes);
                 }
             }
             Value::Array(items) => {
                 for (index, child) in items.iter().enumerate() {
-                    walk(child, &format!("{path}[{index}]"), forbidden_suffixes);
+                    walk(
+                        child,
+                        &format!("{path}[{index}]"),
+                        forbidden_keys,
+                        forbidden_suffixes,
+                    );
                 }
             }
             _ => {}
         }
     }
-    walk(value, "", &forbidden_suffixes);
+    walk(value, "", FORBIDDEN_KEYS, FORBIDDEN_SUFFIXES);
+}
+
+fn assert_no_language_or_tone(value: &Value) {
+    let serialized = value.to_string().to_ascii_lowercase();
+    for token in ["target_language", "\"tone\"", "prompt", "writing_guidance"] {
+        assert!(
+            !serialized.contains(token),
+            "llm_payload must not contain {token}"
+        );
+    }
+}
+
+fn placement_object_names(group: &Value) -> Vec<String> {
+    ["primary", "supporting", "background"]
+        .iter()
+        .flat_map(|bucket| {
+            group[*bucket]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|entry| entry["object"].as_str().map(str::to_string))
+        })
+        .collect()
 }
 
 #[test]
@@ -221,6 +292,7 @@ fn llm_projection_levels_share_identical_structure() {
             errors.join("\n")
         );
         assert_no_technical_ids(level.1);
+        assert_no_language_or_tone(level.1);
         assert_eq!(
             level.1["contract_version"], "llm_projection_natal_v1",
             "{} contract_version",
@@ -261,6 +333,8 @@ fn llm_projection_golden_compact_standard_rich() {
 
     for (level, path) in cases {
         let generated = build_level(level);
+        assert_no_technical_ids(&generated);
+        assert_no_language_or_tone(&generated);
         let golden_raw = fs::read_to_string(path).unwrap_or_else(|_| {
             panic!(
                 "missing golden {path}; run UPDATE_LLM_GOLDENS=1 cargo test --test engine_contract_tests llm_projection_golden_compact_standard_rich"
@@ -378,4 +452,260 @@ fn engine_response_envelope_shape_from_v13_golden() {
         "llm_payload schema errors:\n{}",
         llm_errors.join("\n")
     );
+}
+
+#[test]
+fn llm_projection_contains_all_top_level_sections() {
+    let rich = build_level("rich");
+    for key in [
+        "chart",
+        "reading_order",
+        "core_identity",
+        "dominant_themes",
+        "placements",
+        "angles",
+        "strengths",
+        "relationship_network",
+        "dynamics",
+        "house_axes",
+        "keywords",
+    ] {
+        assert!(rich.get(key).is_some(), "missing section {key}");
+    }
+}
+
+#[test]
+fn llm_projection_includes_active_major_aspect() {
+    let payload = load_v13_golden();
+    let aspect_count = payload
+        .signals
+        .iter()
+        .filter(|s| is_active_major_aspect_signal(s))
+        .count();
+    assert!(aspect_count >= 1, "golden must contain at least one major aspect signal");
+
+    let rich = build_level("rich");
+    let aspects = rich["dynamics"]["major_aspects"]
+        .as_array()
+        .expect("major_aspects array");
+    assert!(!aspects.is_empty(), "rich projection must include major aspects");
+}
+
+#[test]
+fn llm_projection_maps_jupiter_uranus_opposition() {
+    let rich = build_level("rich");
+    let aspects = rich["dynamics"]["major_aspects"]
+        .as_array()
+        .expect("major_aspects");
+    let jupiter_uranus = aspects
+        .iter()
+        .find(|aspect| aspect["aspect"] == "Jupiter opposition Uranus")
+        .expect("Jupiter opposition Uranus must be projected");
+    assert_eq!(jupiter_uranus["objects"], json!(["Jupiter", "Uranus"]));
+    assert_eq!(jupiter_uranus["quality"], "Tension");
+    assert_eq!(jupiter_uranus["valence"], "Polarizing");
+    assert_eq!(jupiter_uranus["phase"], "Separating");
+    let orb = jupiter_uranus["orb_degrees"].as_f64().expect("orb");
+    assert!((orb - 0.76).abs() < 0.01, "orb expected near 0.76, got {orb}");
+}
+
+#[test]
+fn llm_projection_humanizes_dominant_theme_reasons() {
+    let rich = build_level("rich");
+    let factors = rich["dominant_themes"]["objects"][0]["supporting_factors"]
+        .as_array()
+        .expect("supporting_factors");
+    let joined = factors
+        .iter()
+        .filter_map(|v| v.as_str())
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(!joined.contains("strong_aspect_participant"));
+    assert!(!joined.contains("accidental_context"));
+}
+
+#[test]
+fn llm_projection_humanizes_accidental_conditions() {
+    let standard = build_level("standard");
+    let conditions = standard["strengths"]["accidental_conditions"]
+        .as_array()
+        .expect("accidental_conditions");
+    assert!(!conditions.is_empty());
+    let first = &conditions[0]["conditions"]
+        .as_array()
+        .expect("conditions")[0];
+    let label = first.as_str().expect("condition label");
+    assert!(!label.contains('_'));
+}
+
+#[test]
+fn llm_projection_reading_order_has_no_signal_keys() {
+    let rich = build_level("rich");
+    let serialized = rich["reading_order"].to_string();
+    assert!(!serialized.contains("signal_key"));
+    assert!(!serialized.contains("object_position:"));
+    assert!(!serialized.contains("aspect:jupiter"));
+}
+
+#[test]
+fn non_expert_does_not_include_scores() {
+    for level in ["compact", "standard", "rich"] {
+        let projection = build_level(level);
+        assert!(
+            !projection.to_string().contains("strength_score"),
+            "{level} must not expose scores"
+        );
+        assert!(
+            !projection.to_string().contains("overall_score"),
+            "{level} must not expose scores"
+        );
+    }
+}
+
+#[test]
+fn expert_may_include_scores() {
+    let expert = build_level("expert");
+    assert!(
+        expert.to_string().contains("strength_score")
+            || expert["dominant_themes"]["signs"]
+                .as_array()
+                .and_then(|s| s.first())
+                .and_then(|s| s.get("score"))
+                .is_some(),
+        "expert should expose numeric scores when available"
+    );
+}
+
+#[test]
+fn compact_has_fewer_keywords_than_rich() {
+    let compact = build_level("compact");
+    let rich = build_level("rich");
+    assert!(
+        compact["keywords"]["main"].as_array().unwrap().len()
+            <= rich["keywords"]["main"].as_array().unwrap().len()
+    );
+}
+
+#[test]
+fn llm_projection_placements_exclude_core_luminaries() {
+    let rich = build_level("rich");
+    let names = placement_object_names(&rich["placements"]);
+    assert!(!names.iter().any(|name| name == "Sun"));
+    assert!(!names.iter().any(|name| name == "Moon"));
+}
+
+#[test]
+fn compact_has_zero_background_placements() {
+    let compact = build_level("compact");
+    assert_eq!(
+        compact["placements"]["background"]
+            .as_array()
+            .unwrap()
+            .len(),
+        0
+    );
+}
+
+#[test]
+fn llm_projection_accidental_conditions_are_deduplicated() {
+    let standard = build_level("standard");
+    for entry in standard["strengths"]["accidental_conditions"]
+        .as_array()
+        .unwrap()
+    {
+        let labels: Vec<&str> = entry["conditions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|v| v.as_str())
+            .collect();
+        let normalized: Vec<String> = labels.iter().map(|s| s.to_ascii_lowercase()).collect();
+        assert_eq!(
+            normalized.len(),
+            normalized.iter().collect::<std::collections::HashSet<_>>().len(),
+            "duplicate accidental labels: {labels:?}"
+        );
+    }
+}
+
+#[test]
+fn llm_projection_axis_summary_has_no_snake_case_themes() {
+    let rich = build_level("rich");
+    let summary = rich["house_axes"][0]["summary"]
+        .as_str()
+        .expect("summary");
+    assert!(
+        !summary.contains("shared_resources"),
+        "summary must not contain snake_case theme codes: {summary}"
+    );
+    assert!(
+        summary.contains("house 8 (Transformation)"),
+        "expected human house 8 theme label: {summary}"
+    );
+}
+
+#[test]
+fn llm_projection_humanizes_axis_supporting_factors() {
+    let rich = build_level("rich");
+    let factors = rich["house_axes"][1]["supporting_factors"]
+        .as_array()
+        .expect("supporting_factors");
+    let joined = factors
+        .iter()
+        .filter_map(|v| v.as_str())
+        .collect::<Vec<_>>()
+        .join("|");
+    assert!(!joined.contains("ascendant angle in house"));
+    assert!(!joined.contains("identity theme"));
+    assert!(joined.contains("Ascendant emphasizes this house"));
+    assert!(joined.contains("Identity theme emphasized"));
+}
+
+#[test]
+fn llm_projection_conditions_exclude_redundant_direct_motion() {
+    let rich = build_level("rich");
+    for bucket in ["primary", "supporting", "background"] {
+        for placement in rich["placements"][bucket].as_array().unwrap() {
+            let motion = placement["motion"].as_str();
+            let conditions = placement["conditions"].as_array().unwrap();
+            if motion == Some("Direct motion") {
+                for condition in conditions {
+                    assert_ne!(
+                        condition.as_str(),
+                        Some("Direct motion"),
+                        "redundant Direct motion in conditions for {}",
+                        placement["object"]
+                    );
+                }
+            }
+        }
+    }
+    let mars = rich["placements"]["supporting"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["object"] == "Mars")
+        .expect("Mars placement");
+    assert_eq!(mars["motion"], "Direct motion");
+    let mars_conditions: Vec<&str> = mars["conditions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|v| v.as_str())
+        .collect();
+    assert!(mars_conditions.contains(&"Angular house"));
+    assert!(!mars_conditions.contains(&"Direct motion"));
+}
+
+#[test]
+fn compact_has_fewer_placements_than_rich() {
+    let compact = build_level("compact");
+    let rich = build_level("rich");
+    let compact_total = compact["placements"]["primary"].as_array().unwrap().len()
+        + compact["placements"]["supporting"].as_array().unwrap().len()
+        + compact["placements"]["background"].as_array().unwrap().len();
+    let rich_total = rich["placements"]["primary"].as_array().unwrap().len()
+        + rich["placements"]["supporting"].as_array().unwrap().len()
+        + rich["placements"]["background"].as_array().unwrap().len();
+    assert!(compact_total <= rich_total);
 }

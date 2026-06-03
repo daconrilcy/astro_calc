@@ -1,14 +1,17 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use crate::domain::{
-    BasicAccidentalDignityEvaluation, BasicHouseAxisEmphasis, BasicObjectPosition,
-    BasicPayload, BasicSignal, HouseAxisReference,
+    BasicAccidentalDignityEvaluation, BasicHouseAxisEmphasis, BasicObjectPosition, BasicPayload,
+    HouseAxisReference,
 };
 use crate::llm_projection::axis_labels::house_axis_label;
+use crate::llm_projection::dynamics::build_dynamics;
 use crate::llm_projection::humanize::{
     accidental_overall_label, axis_balance_label, axis_importance, chart_sect_label,
-    dignity_effect, hemisphere_dominant_area, humanize_condition_code, humanize_reason,
-    push_unique, reading_slot_section, strength_label, title_case_sign,
+    dignity_meaning, hemisphere_dominant_area, humanize_condition, humanize_motion_label,
+    humanize_axis_summary, humanize_reason, importance_label,
+    is_unremarkable_motion_condition, limit_keywords, push_unique, reading_slot_section,
+    title_case_sign,
 };
 use crate::llm_projection::profiles::limits_envelope;
 use crate::llm_projection::types::*;
@@ -28,22 +31,25 @@ pub fn build_llm_projection_natal_v1(
 ) -> LlmProjectionNatalV1 {
     let limits = limits_envelope(profile);
     let object_names = object_name_map(payload);
+    let dynamics = build_dynamics(payload, profile);
+    let reading_order = build_reading_order(payload, profile, &dynamics);
+    let keywords = build_keywords(payload, profile, &dynamics);
 
     LlmProjectionNatalV1 {
         contract_version: "llm_projection_natal_v1".to_string(),
         projection_level: profile.level_code.clone(),
         projection_limits: limits,
         chart: build_chart(payload, ctx),
-        reading_order: build_reading_order(payload, profile),
-        core_identity: build_core_identity(payload, profile),
+        reading_order,
+        core_identity: build_core_identity(payload, profile, &object_names),
         dominant_themes: build_dominant_themes(payload, profile, &object_names),
-        placements: build_placements(payload, profile, &object_names),
+        placements: build_placements(payload, profile),
         angles: build_angles(payload, profile),
         strengths: build_strengths(payload, profile),
         relationship_network: build_relationship_network(payload, profile, &object_names),
-        dynamics: build_dynamics(payload, profile),
+        dynamics,
         house_axes: build_house_axes(payload, profile, ctx.house_axes),
-        keywords: build_keywords(payload, profile),
+        keywords,
     }
 }
 
@@ -89,22 +95,94 @@ fn build_chart(payload: &BasicPayload, ctx: &LlmProjectionBuildContext<'_>) -> L
     }
 }
 
-fn build_reading_order(payload: &BasicPayload, profile: &LlmProjectionProfile) -> Vec<LlmReadingOrderItem> {
+fn build_reading_order(
+    payload: &BasicPayload,
+    profile: &LlmProjectionProfile,
+    dynamics: &LlmDynamics,
+) -> Vec<LlmReadingOrderItem> {
     payload
         .reading_plan
         .iter()
         .map(|item| {
-            let focus = item
-                .primary_signal_keys
-                .iter()
-                .filter_map(|key| reading_focus_from_signal(payload, key))
-                .take(profile.max_keywords_per_item)
-                .collect();
+            let focus = match item.slot.as_str() {
+                "dominant_cluster" => dominant_cluster_reading_focus(payload, profile),
+                "main_tension_or_support" => main_dynamic_reading_focus(dynamics, payload, profile),
+                _ => item
+                    .primary_signal_keys
+                    .iter()
+                    .filter_map(|key| reading_focus_from_signal(payload, key))
+                    .collect(),
+            };
+            let focus = limit_keywords(&focus, profile.max_keywords_per_item);
             LlmReadingOrderItem {
                 section: reading_slot_section(&item.slot, &item.title),
                 focus,
             }
         })
+        .collect()
+}
+
+fn dominant_cluster_reading_focus(
+    payload: &BasicPayload,
+    profile: &LlmProjectionProfile,
+) -> Vec<String> {
+    let mut focus = Vec::new();
+    if let Some(sign) = payload.chart_emphasis.dominant_signs.first() {
+        push_unique(
+            &mut focus,
+            format!("{} emphasis", title_case_sign(&sign.sign_code)),
+        );
+    }
+    if let Some(house) = payload.chart_emphasis.dominant_houses.first() {
+        let theme = house_ref_from_payload(house.house_number, &house.theme_code, payload);
+        push_unique(
+            &mut focus,
+            format!("House {} {} emphasis", theme.number, theme.theme.to_lowercase()),
+        );
+    }
+    if let Some(object) = payload.chart_emphasis.dominant_objects.first() {
+        let name = payload
+            .positions
+            .iter()
+            .find(|p| p.object_code == object.object_code)
+            .map(|p| p.object_name.clone())
+            .unwrap_or_else(|| title_case_sign(&object.object_code));
+        push_unique(&mut focus, format!("{name} strength"));
+    }
+    if focus.is_empty() {
+        for key in payload
+            .reading_plan
+            .iter()
+            .find(|item| item.slot == "dominant_cluster")
+            .into_iter()
+            .flat_map(|item| item.primary_signal_keys.iter())
+        {
+            if let Some(label) = reading_focus_from_signal(payload, key) {
+                push_unique(&mut focus, label);
+            }
+            if focus.len() >= profile.max_keywords_per_item {
+                break;
+            }
+        }
+    }
+    focus
+}
+
+fn main_dynamic_reading_focus(
+    dynamics: &LlmDynamics,
+    payload: &BasicPayload,
+    _profile: &LlmProjectionProfile,
+) -> Vec<String> {
+    if let Some(aspect) = dynamics.major_aspects.first() {
+        return vec![aspect.aspect.clone()];
+    }
+    payload
+        .reading_plan
+        .iter()
+        .find(|item| item.slot == "main_tension_or_support")
+        .into_iter()
+        .flat_map(|item| item.primary_signal_keys.iter())
+        .filter_map(|key| reading_focus_from_signal(payload, key))
         .collect()
 }
 
@@ -153,15 +231,19 @@ fn reading_focus_from_signal(payload: &BasicPayload, signal_key: &str) -> Option
     None
 }
 
-fn build_core_identity(payload: &BasicPayload, profile: &LlmProjectionProfile) -> LlmCoreIdentity {
+fn build_core_identity(
+    payload: &BasicPayload,
+    profile: &LlmProjectionProfile,
+    object_names: &HashMap<String, String>,
+) -> LlmCoreIdentity {
     LlmCoreIdentity {
         sun: mobile_body(payload, "sun", profile),
         moon: mobile_body(payload, "moon", profile),
-        ascendant: build_ascendant_core(payload, profile),
+        ascendant: build_ascendant_core(payload, profile, object_names),
     }
 }
 
-fn chart_sect<'a>(payload: &'a BasicPayload) -> Option<&'a str> {
+fn chart_sect(payload: &BasicPayload) -> Option<&str> {
     payload.chart_context.sect.chart_sect.as_deref()
 }
 
@@ -170,12 +252,16 @@ fn mobile_body(payload: &BasicPayload, code: &str, profile: &LlmProjectionProfil
     Some(LlmCoreBody {
         placement: placement_from_position(position, profile.include_degrees),
         keywords: limited_keywords(position, profile.max_keywords_per_item),
-        conditions: position_conditions(position, chart_sect(payload)),
+        conditions: position_conditions(position, chart_sect(payload), profile),
         importance: "high".to_string(),
     })
 }
 
-fn build_ascendant_core(payload: &BasicPayload, profile: &LlmProjectionProfile) -> Option<LlmAscendantBody> {
+fn build_ascendant_core(
+    payload: &BasicPayload,
+    profile: &LlmProjectionProfile,
+    object_names: &HashMap<String, String>,
+) -> Option<LlmAscendantBody> {
     let asc = payload
         .angles
         .iter()
@@ -195,14 +281,29 @@ fn build_ascendant_core(payload: &BasicPayload, profile: &LlmProjectionProfile) 
         };
         for source in &r.ruler_sources {
             if source.astral_system_code == "traditional" {
-                rulers.traditional = Some(title_case_sign(&source.object_code));
+                rulers.traditional = Some(
+                    object_names
+                        .get(&source.object_code)
+                        .cloned()
+                        .unwrap_or_else(|| title_case_sign(&source.object_code)),
+                );
             }
             if source.astral_system_code == "modern" {
-                rulers.modern = Some(title_case_sign(&source.object_code));
+                rulers.modern = Some(
+                    object_names
+                        .get(&source.object_code)
+                        .cloned()
+                        .unwrap_or_else(|| title_case_sign(&source.object_code)),
+                );
             }
         }
         if rulers.traditional.is_none() {
-            rulers.traditional = Some(title_case_sign(&r.ruler_object_code));
+            rulers.traditional = Some(
+                object_names
+                    .get(&r.ruler_object_code)
+                    .cloned()
+                    .unwrap_or_else(|| title_case_sign(&r.ruler_object_code)),
+            );
         }
         rulers
         })
@@ -231,14 +332,13 @@ fn build_dominant_themes(
         .map(|entry| {
             let sign = title_case_sign(&entry.sign_code);
             LlmDominantSign {
-                sign: sign.clone(),
-                strength: strength_label(entry.score).to_string(),
-                reasons: entry
-                    .reasons
-                    .iter()
-                    .take(profile.max_keywords_per_item)
-                    .map(|r| humanize_reason(r, object_names))
-                    .collect(),
+                name: sign.clone(),
+                importance: importance_label(entry.score).to_string(),
+                supporting_factors: dedupe_humanized_reasons(
+                    &entry.reasons,
+                    object_names,
+                    profile.max_keywords_per_item,
+                ),
                 keywords: sign_keywords_from_positions(payload, &entry.sign_code, profile.max_keywords_per_item),
                 score: profile.include_scores.then_some(entry.score),
             }
@@ -250,16 +350,19 @@ fn build_dominant_themes(
         .dominant_houses
         .iter()
         .take(profile.max_dominant_houses)
-        .map(|entry| LlmDominantHouse {
-            house: house_ref_from_payload(entry.house_number, &entry.theme_code, payload),
-            strength: strength_label(entry.score).to_string(),
-            reasons: entry
-                .reasons
-                .iter()
-                .take(profile.max_keywords_per_item)
-                .map(|r| humanize_reason(r, object_names))
-                .collect(),
-            score: profile.include_scores.then_some(entry.score),
+        .map(|entry| {
+            let house_ref = house_ref_from_payload(entry.house_number, &entry.theme_code, payload);
+            LlmDominantHouse {
+                number: house_ref.number,
+                theme: house_ref.theme,
+                importance: importance_label(entry.score).to_string(),
+                supporting_factors: dedupe_humanized_reasons(
+                    &entry.reasons,
+                    object_names,
+                    profile.max_keywords_per_item,
+                ),
+                score: profile.include_scores.then_some(entry.score),
+            }
         })
         .collect();
 
@@ -269,17 +372,16 @@ fn build_dominant_themes(
         .iter()
         .take(profile.max_dominant_objects)
         .map(|entry| LlmDominantObject {
-            object: object_names
+            name: object_names
                 .get(&entry.object_code)
                 .cloned()
                 .unwrap_or_else(|| title_case_sign(&entry.object_code)),
-            strength: strength_label(entry.score).to_string(),
-            reasons: entry
-                .reasons
-                .iter()
-                .take(profile.max_keywords_per_item)
-                .map(|r| humanize_reason(r, object_names))
-                .collect(),
+            importance: importance_label(entry.score).to_string(),
+            supporting_factors: dedupe_humanized_reasons(
+                &entry.reasons,
+                object_names,
+                profile.max_keywords_per_item,
+            ),
             score: profile.include_scores.then_some(entry.score),
         })
         .collect();
@@ -299,9 +401,7 @@ fn sign_keywords_from_positions(
     let mut out = Vec::new();
     for position in payload.positions.iter().filter(|p| p.sign_code == sign_code) {
         for kw in limited_keywords(position, limit) {
-            if !out.contains(&kw) {
-                out.push(kw);
-            }
+            push_unique(&mut out, kw);
             if out.len() >= limit {
                 return out;
             }
@@ -310,11 +410,7 @@ fn sign_keywords_from_positions(
     out
 }
 
-fn build_placements(
-    payload: &BasicPayload,
-    profile: &LlmProjectionProfile,
-    object_names: &HashMap<String, String>,
-) -> LlmPlacementsGroup {
+fn build_placements(payload: &BasicPayload, profile: &LlmProjectionProfile) -> LlmPlacementsGroup {
     let core_codes: HashSet<&str> = ["sun", "moon"].into_iter().collect();
     let angle_codes: HashSet<&str> = ["ascendant", "descendant", "mc", "ic"].into_iter().collect();
     let reading_codes: HashSet<String> = payload
@@ -324,7 +420,7 @@ fn build_placements(
         .filter_map(|key| key.strip_prefix("object_position:").map(str::to_string))
         .collect();
 
-    let mut primary = Vec::new();
+    let primary = Vec::new();
     let mut supporting = Vec::new();
     let mut background = Vec::new();
 
@@ -341,19 +437,16 @@ fn build_placements(
             .house_number
             .map(|n| house_ref_from_payload(n, house_theme_code(position), payload));
         item.keywords = limited_keywords(position, profile.max_keywords_per_item);
-        item.conditions = position_conditions(position, chart_sect(payload));
+        item.conditions = position_conditions(position, chart_sect(payload), profile);
         item.importance = Some(importance_for_object(&position.object_code, &reading_codes).to_string());
 
         if core_codes.contains(position.object_code.as_str()) {
-            primary.push(item);
-        } else if reading_codes.contains(&position.object_code) && supporting.len() < profile.max_supporting_placements {
-            supporting.push(item);
-        } else if background.len() < profile.max_supporting_placements {
-            background.push(item);
+            continue;
         } else if supporting.len() < profile.max_supporting_placements {
             supporting.push(item);
+        } else if background.len() < profile.max_background_placements {
+            background.push(item);
         }
-        let _ = object_names;
     }
 
     LlmPlacementsGroup {
@@ -364,7 +457,7 @@ fn build_placements(
             .collect(),
         background: background
             .into_iter()
-            .take(profile.max_supporting_placements)
+            .take(profile.max_background_placements)
             .collect(),
     }
 }
@@ -420,12 +513,12 @@ fn build_strengths(payload: &BasicPayload, profile: &LlmProjectionProfile) -> Ll
     });
     let essential_dignities = dignity_rows
         .into_iter()
-        .take(profile.max_dominant_objects.max(1))
+        .take(payload.dignities.len().max(1))
         .map(|d| LlmEssentialDignity {
             object: d.object_name.clone(),
             dignity: d.dignity_label.clone(),
             sign: d.sign_name.clone(),
-            effect: dignity_effect(&d.dignity_type).to_string(),
+            meaning: dignity_meaning(&d.dignity_type).to_string(),
             strength_score: profile.include_scores.then_some(d.strength_score),
         })
         .collect();
@@ -434,7 +527,7 @@ fn build_strengths(payload: &BasicPayload, profile: &LlmProjectionProfile) -> Ll
         payload
             .accidental_dignities
             .iter()
-            .map(|entry| accidental_to_llm(entry, profile))
+            .map(|entry| accidental_to_llm(entry, payload, profile))
             .collect()
     } else {
         Vec::new()
@@ -448,16 +541,25 @@ fn build_strengths(payload: &BasicPayload, profile: &LlmProjectionProfile) -> Ll
 
 fn accidental_to_llm(
     entry: &BasicAccidentalDignityEvaluation,
+    payload: &BasicPayload,
     profile: &LlmProjectionProfile,
 ) -> LlmAccidentalCondition {
     LlmAccidentalCondition {
         object: entry.object_name.clone(),
         overall: accidental_overall_label(&entry.expression_quality, &entry.overall_polarity),
-        conditions: entry
-            .conditions
-            .iter()
-            .map(|c| humanize_condition_code(&c.condition_code, None))
-            .collect(),
+        conditions: {
+            let mut out = Vec::new();
+            for condition in entry.conditions.iter() {
+                push_unique(
+                    &mut out,
+                    humanize_condition(&condition.condition_code, chart_sect(payload)),
+                );
+                if out.len() >= profile.max_accidental_conditions_per_object {
+                    break;
+                }
+            }
+            out
+        },
         overall_score: profile.include_scores.then_some(entry.overall_score),
     }
 }
@@ -472,31 +574,56 @@ fn build_relationship_network(
     }
 
     let ascendant_ruler = payload.rulership_context.ascendant_ruler.as_ref().map(|r| {
-        let modern = r
-            .ruler_sources
-            .iter()
-            .find(|s| s.astral_system_code == "modern")
-            .map(|s| title_case_sign(&s.object_code));
+        let mut traditional = None;
+        let mut modern = None;
+        for source in &r.ruler_sources {
+            if source.astral_system_code == "traditional" {
+                traditional = Some(
+                    object_names
+                        .get(&source.object_code)
+                        .cloned()
+                        .unwrap_or_else(|| title_case_sign(&source.object_code)),
+                );
+            }
+            if source.astral_system_code == "modern" {
+                modern = Some(
+                    object_names
+                        .get(&source.object_code)
+                        .cloned()
+                        .unwrap_or_else(|| title_case_sign(&source.object_code)),
+                );
+            }
+        }
+        if traditional.is_none() {
+            traditional = Some(
+                object_names
+                    .get(&r.ruler_object_code)
+                    .cloned()
+                    .unwrap_or_else(|| title_case_sign(&r.ruler_object_code)),
+            );
+        }
         LlmAscendantRulerNetwork {
             ascendant_sign: title_case_sign(&r.sign_code),
-            main_ruler: title_case_sign(&r.ruler_object_code),
+            traditional_ruler: traditional,
             modern_ruler: modern,
-            ruler_placement: ruler_placement_text(payload, &r.ruler_object_code),
-            meaning: r.interpretive_hint.clone(),
+            main_ruler_placement: ruler_placement_text(payload, &r.ruler_object_code),
         }
     });
 
     let midheaven_ruler = payload.rulership_context.mc_ruler.as_ref().map(|r| LlmMcRulerNetwork {
         midheaven_sign: title_case_sign(&r.sign_code),
-        ruler: title_case_sign(&r.ruler_object_code),
+        ruler: object_names
+            .get(&r.ruler_object_code)
+            .cloned()
+            .unwrap_or_else(|| title_case_sign(&r.ruler_object_code)),
         ruler_placement: ruler_placement_text(payload, &r.ruler_object_code),
     });
 
-    let dominant_dispositor = payload
+    let final_dispositors = payload
         .rulership_context
         .final_dispositors
-        .first()
-        .map(|d| LlmDominantDispositor {
+        .iter()
+        .map(|d| LlmFinalDispositor {
             object: object_names
                 .get(&d.object_code)
                 .cloned()
@@ -511,14 +638,15 @@ fn build_relationship_network(
                         .unwrap_or_else(|| title_case_sign(code))
                 })
                 .collect(),
-        });
+        })
+        .collect();
 
     let mutual_receptions = payload
         .rulership_context
         .mutual_receptions
         .iter()
-        .map(|m| LlmMutualReception {
-            objects: m
+        .map(|m| {
+            let objects: Vec<String> = m
                 .object_codes
                 .iter()
                 .map(|code| {
@@ -527,14 +655,28 @@ fn build_relationship_network(
                         .cloned()
                         .unwrap_or_else(|| title_case_sign(code))
                 })
-                .collect(),
+                .collect();
+            let source_objects = m
+                .source_objects
+                .iter()
+                .map(|code| {
+                    object_names
+                        .get(code)
+                        .cloned()
+                        .unwrap_or_else(|| title_case_sign(code))
+                })
+                .collect();
+            LlmMutualReception {
+                objects,
+                source_objects,
+            }
         })
         .collect();
 
     LlmRelationshipNetwork {
         ascendant_ruler,
         midheaven_ruler,
-        dominant_dispositor,
+        final_dispositors,
         mutual_receptions,
     }
 }
@@ -551,82 +693,17 @@ fn ruler_placement_text(payload: &BasicPayload, ruler_code: &str) -> String {
     )
 }
 
-fn build_dynamics(payload: &BasicPayload, profile: &LlmProjectionProfile) -> LlmDynamics {
-    let lunar_phase = payload.lunar_phase_context.as_ref().map(|phase| {
-        LlmLunarPhase {
-            phase: phase.phase_label.clone(),
-            cycle: title_case_sign(&phase.cycle_family),
-            sun_moon_angle_degrees: phase.sun_moon_angle_deg,
-            keywords: phase
-                .semantic_tags
-                .iter()
-                .take(profile.max_keywords_per_item)
-                .map(|t| t.replace('_', " "))
-                .collect(),
-        }
-    });
-
-    let mut aspect_signals: Vec<&BasicSignal> = payload
-        .signals
-        .iter()
-        .filter(|s| s.signal_key.starts_with("aspect:"))
-        .collect();
-    aspect_signals.sort_by(|a, b| {
-        b.priority_score
-            .partial_cmp(&a.priority_score)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
-
-    let major_aspects = aspect_signals
-        .into_iter()
-        .take(profile.max_aspects)
-        .filter_map(|signal| aspect_signal_to_llm(signal, profile.max_keywords_per_item))
-        .collect();
-
-    LlmDynamics {
-        lunar_phase,
-        major_aspects,
-    }
-}
-
-fn aspect_signal_to_llm(signal: &BasicSignal, keyword_limit: usize) -> Option<LlmMajorAspect> {
-    let ctx = signal.aspect_context.as_ref()?;
-    let orb = ctx.get("orb_deg")?.as_f64()?;
-    let phase = ctx
-        .get("phase_state")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown");
-    let quality = ctx
-        .get("dynamic_quality")
-        .and_then(|v| v.as_str())
-        .map(title_case_sign)
-        .unwrap_or_else(|| "Dynamic".to_string());
-    let keywords = signal
-        .semantic_tags
-        .iter()
-        .take(keyword_limit)
-        .map(|t| t.replace('_', " "))
-        .collect();
-
-    Some(LlmMajorAspect {
-        aspect: signal.title.clone(),
-        quality,
-        orb_degrees: orb,
-        phase: title_case_sign(phase),
-        keywords,
-    })
-}
-
 fn build_house_axes(
     payload: &BasicPayload,
     profile: &LlmProjectionProfile,
     axis_refs: &[HouseAxisReference],
 ) -> Vec<LlmHouseAxis> {
+    let object_names = object_name_map(payload);
     payload
         .house_axis_emphasis
         .iter()
         .take(profile.max_house_axes)
-        .map(|axis| house_axis_to_llm(axis, axis_refs, payload))
+        .map(|axis| house_axis_to_llm(axis, axis_refs, payload, profile, &object_names))
         .collect()
 }
 
@@ -634,6 +711,8 @@ fn house_axis_to_llm(
     axis: &BasicHouseAxisEmphasis,
     axis_refs: &[HouseAxisReference],
     payload: &BasicPayload,
+    profile: &LlmProjectionProfile,
+    object_names: &HashMap<String, String>,
 ) -> LlmHouseAxis {
     let axis_title = house_axis_label(&axis.axis_code, axis_refs);
     let houses: Vec<LlmHouseRef> = axis
@@ -642,45 +721,113 @@ fn house_axis_to_llm(
         .map(|score| house_ref_from_payload(score.house_number, &score.theme_code, payload))
         .collect();
 
+    let supporting_factors =
+        dedupe_humanized_reasons(&axis.reasons, object_names, profile.max_keywords_per_item);
+
+    let theme_in_parens: Vec<(String, String)> = axis
+        .house_scores
+        .iter()
+        .map(|score| {
+            let label = house_ref_from_payload(score.house_number, &score.theme_code, payload).theme;
+            (score.theme_code.clone(), label)
+        })
+        .collect();
+    let summary = humanize_axis_summary(&axis.interpretive_hint, &theme_in_parens);
+
     LlmHouseAxis {
         axis: axis_title,
         houses,
         balance: axis_balance_label(&axis.polarity_balance, axis.primary_house, axis.secondary_house),
         importance: axis_importance(axis.axis_score).to_string(),
-        summary: axis.interpretive_hint.clone(),
+        summary,
+        supporting_factors,
     }
 }
 
-fn build_keywords(payload: &BasicPayload, profile: &LlmProjectionProfile) -> LlmKeywords {
+fn build_keywords(
+    payload: &BasicPayload,
+    profile: &LlmProjectionProfile,
+    dynamics: &LlmDynamics,
+) -> LlmKeywords {
     let mut main = Vec::new();
     let mut by_area: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    let allow_technical = profile.level_code == "expert";
 
     for position in &payload.positions {
         if angle_codes().contains(position.object_code.as_str()) {
             continue;
         }
-        let area = position
-            .house_context
-            .as_ref()
-            .and_then(|ctx| ctx.get("theme_code"))
-            .and_then(|v| v.as_str())
-            .unwrap_or("general")
-            .to_string();
-        let kws = limited_keywords(position, profile.max_keywords_per_item);
+        let area = readable_area_key(position);
+        let kws: Vec<String> = limited_keywords(position, profile.max_keywords_per_item)
+            .into_iter()
+            .filter(|kw| allow_technical || !is_placement_technical_keyword(kw))
+            .collect();
         for kw in &kws {
-            if main.len() < profile.max_keywords_per_item * 2 && !main.contains(kw) {
-                main.push(kw.clone());
+            if main.len() < profile.max_keywords_per_item * 2 {
+                push_unique(&mut main, kw.clone());
             }
         }
         let area_entry = by_area.entry(area).or_default();
         for kw in kws {
-            if area_entry.len() < profile.max_keywords_per_item && !area_entry.contains(&kw) {
-                area_entry.push(kw);
+            if area_entry.len() < profile.max_keywords_per_item {
+                push_unique(area_entry, kw);
             }
         }
     }
 
-    LlmKeywords { main, by_area }
+    if let Some(sign) = payload.chart_emphasis.dominant_signs.first() {
+        push_unique(&mut main, title_case_sign(&sign.sign_code));
+    }
+    if let Some(house) = payload.chart_emphasis.dominant_houses.first() {
+        let theme = house_ref_from_payload(house.house_number, &house.theme_code, payload);
+        push_unique(&mut main, theme.theme.to_lowercase());
+    }
+
+    let mut dynamics_kws = Vec::new();
+    for aspect in &dynamics.major_aspects {
+        push_unique(&mut dynamics_kws, aspect.aspect.clone());
+        push_unique(&mut dynamics_kws, aspect.quality.to_lowercase());
+        for kw in &aspect.keywords {
+            push_unique(&mut dynamics_kws, kw.clone());
+        }
+    }
+    if !dynamics_kws.is_empty() {
+        by_area.insert(
+            "dynamics".to_string(),
+            limit_keywords(&dynamics_kws, profile.max_keywords_per_item),
+        );
+    }
+
+    LlmKeywords {
+        main: limit_keywords(&main, profile.max_keywords_per_item * 2),
+        by_area,
+    }
+}
+
+fn readable_area_key(position: &BasicObjectPosition) -> String {
+    position
+        .house_context
+        .as_ref()
+        .and_then(|ctx| ctx.get("theme_code"))
+        .and_then(|v| v.as_str())
+        .map(|code| match code {
+            "identity" => "identity",
+            "resources" => "resources",
+            "communication" => "communication",
+            "home" | "roots" => "roots",
+            "partnership" => "partnership",
+            other => other,
+        })
+        .unwrap_or("general")
+        .to_string()
+}
+
+fn is_placement_technical_keyword(kw: &str) -> bool {
+    let lower = kw.to_ascii_lowercase();
+    lower.contains("cadent")
+        || lower.contains("succedent")
+        || lower.contains("sect")
+        || lower == "angular"
 }
 
 fn angle_codes() -> HashSet<&'static str> {
@@ -728,7 +875,7 @@ fn house_theme_code(position: &BasicObjectPosition) -> &str {
 }
 
 fn limited_keywords(position: &BasicObjectPosition, limit: usize) -> Vec<String> {
-    position
+    let raw: Vec<String> = position
         .sign_context
         .as_ref()
         .and_then(|ctx| ctx.get("keywords"))
@@ -736,13 +883,18 @@ fn limited_keywords(position: &BasicObjectPosition, limit: usize) -> Vec<String>
         .map(|arr| {
             arr.iter()
                 .filter_map(|v| v.as_str().map(str::to_string))
-                .take(limit)
                 .collect()
         })
-        .unwrap_or_default()
+        .unwrap_or_default();
+    limit_keywords(&raw, limit)
 }
 
-fn position_conditions(position: &BasicObjectPosition, chart_sect: Option<&str>) -> Vec<String> {
+fn position_conditions(
+    position: &BasicObjectPosition,
+    chart_sect: Option<&str>,
+    profile: &LlmProjectionProfile,
+) -> Vec<String> {
+    let motion = motion_label(position);
     let mut out = Vec::new();
     if let Some(modality) = position.house_modality.as_ref() {
         if let Some(label) = modality.get("label").and_then(|v| v.as_str()) {
@@ -755,22 +907,38 @@ fn position_conditions(position: &BasicObjectPosition, chart_sect: Option<&str>)
         .and_then(|v| v.as_str())
     {
         let label = if horizon.contains('_') {
-            humanize_condition_code(horizon, chart_sect)
+            humanize_condition(horizon, chart_sect)
         } else {
             title_case_sign(horizon)
         };
-        push_unique(&mut out, label);
-    }
-    if let Some(motion) = position.motion_context.as_ref() {
-        if let Some(label) = motion.get("label").and_then(|v| v.as_str()) {
-            push_unique(&mut out, label.to_string());
+        if !is_unremarkable_motion_condition(&label, motion.as_deref()) {
+            push_unique(&mut out, label);
         }
     }
     for summary in &position.accidental_dignity_context {
-        push_unique(
-            &mut out,
-            humanize_condition_code(&summary.condition_code, chart_sect),
-        );
+        let label = humanize_condition(&summary.condition_code, chart_sect);
+        if !is_unremarkable_motion_condition(&label, motion.as_deref()) {
+            push_unique(&mut out, label);
+        }
+        if out.len() >= profile.max_accidental_conditions_per_object {
+            break;
+        }
+    }
+    out
+}
+
+fn dedupe_humanized_reasons(
+    reasons: &[String],
+    object_names: &HashMap<String, String>,
+    limit: usize,
+) -> Vec<String> {
+    let mut out = Vec::new();
+    for reason in reasons {
+        let human = humanize_reason(reason, object_names);
+        push_unique(&mut out, human);
+        if out.len() >= limit {
+            break;
+        }
     }
     out
 }
@@ -781,5 +949,5 @@ fn motion_label(position: &BasicObjectPosition) -> Option<String> {
         .as_ref()
         .and_then(|ctx| ctx.get("label"))
         .and_then(|v| v.as_str())
-        .map(str::to_string)
+        .map(humanize_motion_label)
 }
