@@ -89,7 +89,6 @@ pub(super) fn add_position_cluster_signals(
                 "semantic_tags": semantic_tags,
                 "source_weight": source_weight,
                 "aggregation_group": aggregation_group,
-                "writing_guidance": "Use this cluster before individual placements and merge repeated wording from its source signals.",
                 "evidence": {
                     "fact_type": "position_cluster",
                     "cluster_type": "sign_house",
@@ -197,18 +196,6 @@ fn annotate_cluster_source(
             "cluster_signal_key": cluster_key
         }),
     );
-
-    if editorial_state == "kept" {
-        payload.insert(
-            "writing_guidance".to_string(),
-            json!("Keep this core placement, but draft it in relation to the active cluster to avoid repeating the same sign and house wording."),
-        );
-    } else {
-        payload.insert(
-            "writing_guidance".to_string(),
-            json!("Do not draft this as a standalone Basic point; it is represented by the active cluster signal."),
-        );
-    }
 
     !already_current
 }

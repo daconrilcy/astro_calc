@@ -10,6 +10,14 @@ pub(super) fn payload_value(
         .and_then(|payload| payload.get(key).cloned())
 }
 
+pub(super) fn payload_aspect_context(signal: &InterpretationSignalRow) -> Option<serde_json::Value> {
+    let mut context = payload_value(signal, "aspect_context")?;
+    if let Some(object) = context.as_object_mut() {
+        object.remove("writing_guidance");
+    }
+    Some(context)
+}
+
 pub(super) fn payload_string(signal: &InterpretationSignalRow, key: &str) -> Option<String> {
     signal
         .payload_json

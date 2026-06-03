@@ -5,29 +5,35 @@ Ce document decrit l'implementation actuelle du payload Basic dans le binaire Ru
 
 ## Objectif
 
+Etat courant au 2026-06-03 : le moteur Rust reste dans le perimetre du calcul
+astrologique et des cles d'interpretation. Le payload Basic expose les faits
+calcules, les contextes astrologiques, les dignites, les angles, les dominantes,
+le contexte de rulership, les signaux actifs et `reading_plan`.
+
+Les instructions destinees a un LLM sont hors perimetre et ne sont plus produites
+dans le JSON de sortie. Cela inclut `llm_handoff_contract`, `drafting_plan`,
+`writing_contract`, les champs publics `writing_guidance` et les
+`aspect_context.writing_guidance`. Les schemas, goldens, scripts de verification
+et validations runtime ont ete alignes sur ce contrat allege.
+
+Les anciennes sections qui mentionnent `drafting_plan`, `llm_handoff_contract`
+ou `writing_guidance` doivent etre lues comme historique de conception remplace
+par cette mise a jour. La couche qui gere le LLM est desormais responsable de la
+langue cible, du ton, du format de sortie, des consignes de redaction et des
+regles d'evitement.
+
 L'etape 1A a transforme le payload technique initial en payload Basic exploitable
-par une future couche de generation texte.
+par une couche applicative separee.
 
-L'etape 1B enrichit maintenant ce payload avec des signaux semantiques Basic :
-themes editoriaux, tags, indications de redaction, poids de source et premiers
-signaux agreges. Le runtime ne produit toujours pas une interpretation finale,
-mais il fournit une base plus directement exploitable pour une couche de
-redaction.
+L'etape 1B enrichit le payload avec des signaux semantiques Basic : themes, tags,
+poids de source et premiers signaux agreges. Le runtime ne produit pas une
+interpretation finale.
 
-L'etape 1C ajoute une deduplication editoriale et un plan de lecture Basic. Quand
+L'etape 1C ajoute une deduplication de signaux et un plan de lecture Basic. Quand
 un cluster actif represente deja plusieurs placements, ses sources secondaires
 sont persistees en `merged` au lieu de remonter comme signaux actifs autonomes.
-Le payload final expose aussi `reading_plan`, une sequence de slots qui indique
-dans quel ordre exploiter les signaux actifs pour la future redaction.
-
-L'etape 1D ajoute un contrat de redaction Basic par slot. Le runtime ne produit
-pas encore un texte final, mais il transforme chaque item de `reading_plan` en
-section attendue via `drafting_plan` : titre editorial, sources, objectif de
-redaction, plafond de mots et consignes d'evitement.
-
-L'etape 1E formalise le contrat canonique de handoff LLM. Le moteur Rust produit
-un payload anglophone stable, deterministe et auditable ; il ne traduit pas, ne
-choisit pas la formulation finale et ne depend pas d'une langue cible utilisateur.
+Le payload final expose aussi `reading_plan`, une sequence de slots qui regroupe
+les signaux actifs sans imposer de consigne de redaction.
 
 L'etape 2A enrichit les placements sans transformer le payload en dump de faits
 runtime.

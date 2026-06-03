@@ -20,17 +20,12 @@ function Contract-Projection($payload) {
         product_code = $payload.product_code
         reference_version_id = $payload.reference_version_id
         birth_datetime_utc = $payload.birth_datetime_utc
-        contract_version = $payload.llm_handoff_contract.contract_version
-        payload_language_code = $payload.llm_handoff_contract.payload_language_code
-        target_language_policy = $payload.llm_handoff_contract.target_language_policy
-        must_use = $payload.llm_handoff_contract.must_use
         angles = $payload.angles
         dignities = $payload.dignities
         chart_emphasis = $payload.chart_emphasis
         rulership_context = $payload.rulership_context
         signal_keys = @($payload.signals | ForEach-Object { $_.signal_key })
         reading_plan = $payload.reading_plan
-        drafting_plan = $payload.drafting_plan
     }
 }
 

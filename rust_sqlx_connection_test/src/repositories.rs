@@ -435,8 +435,6 @@ impl RuntimeRepository {
                        intensity_modifier.is_intensity_modifier,
                        secondary_effect.is_intensity_modifier
                    ) AS valence_is_intensity_modifier,
-                   COALESCE(primary_valence.writing_guidance, intensity_modifier.writing_guidance)
-                       AS valence_writing_guidance,
                    a.calculation_notes_json
             FROM astral_calculated_aspects a
             JOIN astral_chart_objects source ON source.id = a.source_chart_object_id
@@ -453,8 +451,7 @@ impl RuntimeRepository {
                 SELECT valence.name,
                        valence.interpretive_family,
                        valence.is_tonal_valence,
-                       valence.is_intensity_modifier,
-                       valence.writing_guidance
+                       valence.is_intensity_modifier
                 FROM astral_aspect_interpretive_effects effect
                 JOIN astral_interpretive_valence valence
                   ON valence.id = effect.interpretive_valence_id
@@ -469,8 +466,7 @@ impl RuntimeRepository {
                 SELECT valence.name,
                        valence.interpretive_family,
                        valence.is_tonal_valence,
-                       valence.is_intensity_modifier,
-                       valence.writing_guidance
+                       valence.is_intensity_modifier
                 FROM astral_aspect_interpretive_effects effect
                 JOIN astral_interpretive_valence valence
                   ON valence.id = effect.interpretive_valence_id
@@ -547,8 +543,6 @@ impl RuntimeRepository {
                        intensity_modifier.is_intensity_modifier,
                        secondary_effect.is_intensity_modifier
                    ) AS valence_is_intensity_modifier,
-                   COALESCE(primary_valence.writing_guidance, intensity_modifier.writing_guidance)
-                       AS valence_writing_guidance,
                    a.calculation_notes_json
             FROM astral_calculated_aspects a
             JOIN astral_chart_objects source ON source.id = a.source_chart_object_id
@@ -565,8 +559,7 @@ impl RuntimeRepository {
                 SELECT valence.name,
                        valence.interpretive_family,
                        valence.is_tonal_valence,
-                       valence.is_intensity_modifier,
-                       valence.writing_guidance
+                       valence.is_intensity_modifier
                 FROM astral_aspect_interpretive_effects effect
                 JOIN astral_interpretive_valence valence
                   ON valence.id = effect.interpretive_valence_id
@@ -581,8 +574,7 @@ impl RuntimeRepository {
                 SELECT valence.name,
                        valence.interpretive_family,
                        valence.is_tonal_valence,
-                       valence.is_intensity_modifier,
-                       valence.writing_guidance
+                       valence.is_intensity_modifier
                 FROM astral_aspect_interpretive_effects effect
                 JOIN astral_interpretive_valence valence
                   ON valence.id = effect.interpretive_valence_id
@@ -1104,7 +1096,6 @@ impl From<PersistedAspectFact> for AspectFact {
             valence_family: row.valence_family,
             valence_is_tonal: row.valence_is_tonal,
             valence_is_intensity_modifier: row.valence_is_intensity_modifier,
-            valence_writing_guidance: row.valence_writing_guidance,
             calculation_notes_json: row.calculation_notes_json,
         }
     }

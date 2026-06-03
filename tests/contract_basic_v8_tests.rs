@@ -159,16 +159,15 @@ fn external_payload_matches_json_schema_v8_when_requested() {
 }
 
 #[test]
-fn schema_rejects_extra_must_use_item() {
+fn schema_rejects_llm_handoff_contract_property() {
     let mut payload = load_golden_payload();
-    payload["llm_handoff_contract"]["must_use"]
-        .as_array_mut()
-        .expect("must_use should be an array")
-        .push(Value::String("extra_block".to_string()));
+    payload["llm_handoff_contract"] = serde_json::json!({
+        "contract_version": "natal_structured_v10"
+    });
 
     assert!(
         !validate_with_schema(&payload).is_empty(),
-        "schema should reject additional must_use items"
+        "schema should reject llm_handoff_contract"
     );
 }
 
@@ -313,9 +312,9 @@ fn golden_payload_is_accepted_by_runtime_reuse_validation() {
 }
 
 #[test]
-fn runtime_rejects_v7_contract_version() {
+fn runtime_rejects_v7_payload_contract_version() {
     let mut payload = load_golden_payload();
-    payload["llm_handoff_contract"]["contract_version"] =
+    payload["chart_context"]["payload_contract"]["contract_version"] =
         Value::String("basic_natal_structured_v7".to_string());
 
     let parsed: BasicPayload =
@@ -325,35 +324,17 @@ fn runtime_rejects_v7_contract_version() {
 }
 
 #[test]
-fn v10_handoff_contract_is_strict() {
+fn v10_payload_omits_llm_and_drafting_instructions() {
     let payload = load_golden_payload();
-    let contract = &payload["llm_handoff_contract"];
 
-    assert_eq!(contract["contract_version"], "natal_structured_v10");
-    assert_eq!(contract["payload_language_code"], "en");
-    assert_eq!(
-        contract["target_language_policy"],
-        "provided_by_llm_service"
-    );
-    assert_eq!(contract["audience_level"], "beginner");
-    assert_eq!(contract["output_format"], "structured_sections");
-
-    let must_use = array(contract, "must_use");
-    for expected in [
-        "chart_context",
-        "chart_emphasis",
-        "rulership_context",
-        "dignities",
-        "angles",
-        "signals",
-        "reading_plan",
-        "drafting_plan",
-    ] {
-        assert!(
-            must_use.iter().any(|value| value == expected),
-            "must_use should contain {expected}"
-        );
-    }
+    assert!(payload.get("llm_handoff_contract").is_none());
+    assert!(payload.get("drafting_plan").is_none());
+    assert!(payload["chart_context"]["payload_contract"]
+        .get("writing_contract")
+        .is_none());
+    assert!(array(&payload, "signals")
+        .iter()
+        .all(|signal| signal.get("writing_guidance").is_none()));
 }
 
 #[test]
@@ -420,10 +401,7 @@ fn v10_rulership_routes_mc_and_uses_consistent_modern_scorpio_ruler() {
             source["astral_system_code"] == "modern" && source["object_code"] == "pluto"
         }));
 
-    let background = find_slot(&payload, "drafting_plan", "background_factors");
-    assert!(array(&background["context_refs"], "rulership_context")
-        .iter()
-        .any(|value| value == "mc_ruler"));
+    assert!(rulership["mc_ruler"].is_object());
 }
 
 #[test]
@@ -593,32 +571,7 @@ fn preserves_non_structural_dynamic_aspect() {
 }
 
 #[test]
-fn drafting_plan_is_aligned_with_reading_plan() {
-    let payload = load_golden_payload();
-    let reading = array(&payload, "reading_plan");
-    let drafting = array(&payload, "drafting_plan");
-
-    assert_eq!(reading.len(), drafting.len());
-
-    for (reading_item, drafting_item) in reading.iter().zip(drafting.iter()) {
-        assert_eq!(reading_item["slot"], drafting_item["slot"]);
-        assert_eq!(
-            reading_item["source_signal_keys"],
-            drafting_item["source_signal_keys"]
-        );
-        assert_eq!(
-            reading_item["primary_signal_keys"],
-            drafting_item["primary_signal_keys"]
-        );
-        assert_eq!(
-            reading_item["secondary_slot_candidates"],
-            drafting_item["secondary_slot_candidates"]
-        );
-    }
-}
-
-#[test]
-fn no_empty_reading_or_drafting_slots() {
+fn no_empty_reading_slots() {
     let payload = load_golden_payload();
 
     for item in array(&payload, "reading_plan") {
@@ -633,14 +586,6 @@ fn no_empty_reading_or_drafting_slots() {
             string(item, "slot")
         );
     }
-
-    for item in array(&payload, "drafting_plan") {
-        assert!(
-            !array(item, "source_signal_keys").is_empty(),
-            "drafting_plan slot has no source_signal_keys: {}",
-            string(item, "slot")
-        );
-    }
 }
 
 #[test]
@@ -651,14 +596,12 @@ fn every_plan_source_exists_in_signals() {
         .map(|signal| string(signal, "signal_key"))
         .collect();
 
-    for plan_name in ["reading_plan", "drafting_plan"] {
-        for item in array(&payload, plan_name) {
-            for key in source_keys(item) {
-                assert!(
-                    signal_keys.contains(key),
-                    "{plan_name} references missing signal {key}"
-                );
-            }
+    for item in array(&payload, "reading_plan") {
+        for key in source_keys(item) {
+            assert!(
+                signal_keys.contains(key),
+                "reading_plan references missing signal {key}"
+            );
         }
     }
 }
@@ -680,43 +623,5 @@ fn primary_signal_appears_in_only_one_reading_slot() {
                 panic!("primary signal {key} appears in both {previous_slot} and {slot}");
             }
         }
-    }
-}
-
-#[test]
-fn emphasis_refs_are_only_on_dominant_cluster_or_fallback_core_identity() {
-    let payload = load_golden_payload();
-    let has_dominant_cluster = array(&payload, "drafting_plan")
-        .iter()
-        .any(|item| item["slot"] == "dominant_cluster");
-
-    for item in array(&payload, "drafting_plan") {
-        let slot = string(item, "slot");
-        let refs = &item["emphasis_refs"];
-        let has_refs = !array(refs, "dominant_signs").is_empty()
-            || !array(refs, "dominant_houses").is_empty()
-            || !array(refs, "dominant_objects").is_empty();
-
-        if has_refs && has_dominant_cluster {
-            assert_eq!(slot, "dominant_cluster");
-        } else if has_refs {
-            assert_eq!(slot, "core_identity");
-        }
-    }
-}
-
-#[test]
-fn every_drafting_item_forbids_chart_emphasis_section() {
-    let payload = load_golden_payload();
-
-    for item in array(&payload, "drafting_plan") {
-        let avoid = array(item, "avoid");
-        assert!(
-            avoid.iter().any(
-                |value| value.as_str() == Some("turn chart_emphasis into a standalone section")
-            ),
-            "drafting_plan item must forbid chart_emphasis standalone section: {}",
-            string(item, "slot")
-        );
     }
 }

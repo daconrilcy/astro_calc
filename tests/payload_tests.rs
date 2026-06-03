@@ -275,7 +275,6 @@ fn basic_payload_exposes_semantic_signal_fields() {
             "semantic_tags": ["placement", "gemini", "beliefs"],
             "source_weight": 1.0,
             "aggregation_group": "gemini:house_9",
-            "writing_guidance": "guidance",
             "evidence": {"fact_type": "object_position"}
         })),
     };
@@ -294,7 +293,6 @@ fn basic_payload_exposes_semantic_signal_fields() {
         basic_signal.aggregation_group.as_deref(),
         Some("gemini:house_9")
     );
-    assert_eq!(basic_signal.writing_guidance.as_deref(), Some("guidance"));
     assert_eq!(
         basic_signal
             .evidence
@@ -309,50 +307,10 @@ fn basic_payload_exposes_semantic_signal_fields() {
         payload.reading_plan[0].source_signal_keys,
         vec!["object_position:sun"]
     );
-    assert_eq!(payload.drafting_plan.len(), 1);
-    assert_eq!(payload.drafting_plan[0].slot, "core_identity");
-    assert_eq!(
-        payload.drafting_plan[0].source_signal_keys,
-        payload.reading_plan[0].source_signal_keys
-    );
-    assert_eq!(payload.drafting_plan[0].max_words, 110);
-    assert_eq!(
-        payload.drafting_plan[0].emphasis_refs.dominant_signs,
-        vec!["gemini"]
-    );
-    assert_eq!(
-        payload.drafting_plan[0].emphasis_refs.dominant_houses,
-        vec![9]
-    );
-    assert_eq!(
-        payload.drafting_plan[0].emphasis_refs.dominant_objects,
-        vec!["sun"]
-    );
-    assert_eq!(
-        payload
-            .llm_handoff_contract
-            .as_ref()
-            .expect("llm handoff contract")
-            .contract_version,
-        "natal_structured_v10"
-    );
-    let contract = payload
-        .llm_handoff_contract
-        .as_ref()
-        .expect("llm handoff contract");
-    assert!(contract.must_use.contains(&"chart_emphasis".to_string()));
-    assert!(contract.must_not.contains(
-        &"treat chart_emphasis as a standalone section instead of weighting context".to_string()
-    ));
-    assert!(contract.must_not.contains(
-        &"treat chart_context as a standalone section instead of contextual weighting".to_string()
-    ));
-    assert!(contract.must_use.contains(&"dignities".to_string()));
-    assert!(contract.must_use.contains(&"angles".to_string()));
-    assert!(contract.must_use.contains(&"chart_context".to_string()));
-    assert_eq!(contract.payload_language_code, "en");
-    assert_eq!(contract.target_language_policy, "provided_by_llm_service");
-    assert!(contract.must_use.contains(&"signals".to_string()));
+    let payload_json = serde_json::to_value(&payload).expect("payload should serialize");
+    assert!(payload_json.get("llm_handoff_contract").is_none());
+    assert!(payload_json.get("drafting_plan").is_none());
+    assert!(payload_json["signals"][0].get("writing_guidance").is_none());
     assert_eq!(
         payload.positions[0]
             .sign_context
@@ -532,7 +490,6 @@ fn basic_payload_builds_reading_plan_with_cluster_sources() {
                 "semantic_tags": ["cluster", "capricorn", "house_2", "resources", "structure", "responsibility"],
                 "source_weight": 2.0,
                 "aggregation_group": "capricorn_house_2_cluster",
-                "writing_guidance": "guidance",
                 "evidence": {
                     "fact_type": "position_cluster",
                     "sign_name": "Capricorn",
@@ -557,7 +514,6 @@ fn basic_payload_builds_reading_plan_with_cluster_sources() {
                 "semantic_tags": ["placement", "sun"],
                 "source_weight": 1.0,
                 "aggregation_group": "capricorn:house_2",
-                "writing_guidance": "guidance",
                 "evidence": {"fact_type": "object_position", "object_code": "sun"}
             })),
         },
@@ -574,7 +530,6 @@ fn basic_payload_builds_reading_plan_with_cluster_sources() {
                 "semantic_tags": ["aspect", "conjunction"],
                 "source_weight": 1.35,
                 "aggregation_group": "aspect:conjunction",
-                "writing_guidance": "guidance",
                 "evidence": {"fact_type": "aspect"}
             })),
         },
@@ -613,47 +568,8 @@ fn basic_payload_builds_reading_plan_with_cluster_sources() {
         .iter()
         .any(|item| item.slot == "main_tension_or_support"));
 
-    let cluster_drafting = payload
-        .drafting_plan
-        .iter()
-        .find(|item| item.slot == "dominant_cluster")
-        .expect("expected dominant cluster drafting item");
-    assert_eq!(
-        cluster_drafting.source_signal_keys,
-        cluster_plan.source_signal_keys
-    );
-    assert_eq!(
-        cluster_drafting.primary_signal_keys,
-        cluster_plan.primary_signal_keys
-    );
-    assert_eq!(
-        cluster_drafting.secondary_slot_candidates,
-        cluster_plan.secondary_slot_candidates
-    );
-    assert_eq!(
-        cluster_drafting.section_title,
-        "A Capricorn dominant theme around Resources"
-    );
-    assert_eq!(
-        cluster_drafting.emphasis_refs.dominant_signs,
-        vec!["capricorn"]
-    );
-    assert_eq!(cluster_drafting.emphasis_refs.dominant_houses, vec![2]);
-    assert!(cluster_drafting
-        .emphasis_refs
-        .dominant_objects
-        .contains(&"sun".to_string()));
-    let core_drafting = payload
-        .drafting_plan
-        .iter()
-        .find(|item| item.slot == "core_identity")
-        .expect("expected core identity drafting item");
-    assert!(core_drafting.emphasis_refs.dominant_signs.is_empty());
-    assert!(core_drafting.emphasis_refs.dominant_houses.is_empty());
-    assert!(core_drafting.emphasis_refs.dominant_objects.is_empty());
-    assert!(cluster_drafting
-        .avoid
-        .contains(&"repeat each placement one by one".to_string()));
+    let payload_json = serde_json::to_value(&payload).expect("payload should serialize");
+    assert!(payload_json.get("drafting_plan").is_none());
 }
 
 #[test]
@@ -672,7 +588,6 @@ fn basic_payload_exposes_chart_emphasis_summary() {
                 "semantic_tags": ["cluster", "capricorn", "house_2", "resources"],
                 "source_weight": 2.35,
                 "aggregation_group": "capricorn_house_2_cluster",
-                "writing_guidance": "guidance",
                 "evidence": {
                     "fact_type": "position_cluster",
                     "cluster_type": "sign_house",
@@ -828,7 +743,7 @@ fn chart_emphasis_omits_placement_only_objects_when_stronger_evidence_exists() {
 }
 
 #[test]
-fn drafting_emphasis_refs_scope_objects_to_the_receiving_slot() {
+fn chart_emphasis_keeps_cluster_scope_distinct_from_other_objects() {
     let signals = vec![
         InterpretationSignalRow {
             id: 1,
@@ -843,7 +758,6 @@ fn drafting_emphasis_refs_scope_objects_to_the_receiving_slot() {
                 "semantic_tags": ["cluster", "gemini", "house_9"],
                 "source_weight": 2.35,
                 "aggregation_group": "gemini_house_9_cluster",
-                "writing_guidance": "guidance",
                 "evidence": {
                     "fact_type": "position_cluster",
                     "cluster_type": "sign_house",
@@ -903,21 +817,15 @@ fn drafting_emphasis_refs_scope_objects_to_the_receiving_slot() {
     ];
 
     let payload = build_basic_payload(42, &input(), &positions, &signals);
-    let cluster_drafting = payload
-        .drafting_plan
-        .iter()
-        .find(|item| item.slot == "dominant_cluster")
-        .expect("expected dominant cluster drafting item");
-
     assert!(payload
         .chart_emphasis
         .dominant_objects
         .iter()
         .any(|entry| entry.object_code == "mars"));
-    assert!(!cluster_drafting
-        .emphasis_refs
-        .dominant_objects
-        .contains(&"mars".to_string()));
+    assert!(payload
+        .reading_plan
+        .iter()
+        .any(|item| item.slot == "dominant_cluster"));
 }
 
 #[test]
@@ -965,7 +873,6 @@ fn basic_payload_exposes_structured_dignities() {
             "semantic_tags": ["dignity", "saturn", "capricorn", "domicile"],
             "source_weight": 0.75,
             "aggregation_group": "dignity:saturn",
-            "writing_guidance": "guidance",
             "evidence": {
                 "fact_type": "essential_dignity",
                 "chart_object": "saturn",
@@ -1042,7 +949,6 @@ fn basic_payload_exposes_rulership_context_from_reference_rules() {
                 "semantic_tags": ["angle", "mc", "leo"],
                 "source_weight": 0.8,
                 "aggregation_group": "angle:mc:leo",
-                "writing_guidance": "guidance",
                 "evidence": {
                     "fact_type": "chart_angle",
                     "angle_code": "mc",
@@ -1104,20 +1010,14 @@ fn basic_payload_exposes_rulership_context_from_reference_rules() {
         .dispositor_links
         .iter()
         .any(|link| matches!(link.object_code.as_str(), "ascendant" | "mc")));
-    assert!(payload.drafting_plan.iter().any(|item| {
-        item.slot == "core_identity"
-            && item
-                .context_refs
-                .rulership_context
-                .contains(&"ascendant_ruler".to_string())
-    }));
-    assert!(payload.drafting_plan.iter().any(|item| {
-        item.slot == "background_factors"
-            && item
-                .context_refs
-                .rulership_context
-                .contains(&"mc_ruler".to_string())
-    }));
+    assert!(payload
+        .reading_plan
+        .iter()
+        .any(|item| item.slot == "core_identity"));
+    assert!(payload
+        .reading_plan
+        .iter()
+        .any(|item| item.slot == "background_factors"));
 }
 
 #[test]
@@ -1136,7 +1036,6 @@ fn reading_plan_uses_active_dignity_signals() {
                 "semantic_tags": ["cluster", "capricorn", "house_2"],
                 "source_weight": 2.0,
                 "aggregation_group": "capricorn_house_2_cluster",
-                "writing_guidance": "guidance",
                 "evidence": {
                     "fact_type": "position_cluster",
                     "sign_name": "Capricorn",
@@ -1159,7 +1058,6 @@ fn reading_plan_uses_active_dignity_signals() {
                 "semantic_tags": ["placement", "sun"],
                 "source_weight": 1.0,
                 "aggregation_group": "capricorn:house_2",
-                "writing_guidance": "guidance",
                 "evidence": {"fact_type": "object_position", "object_code": "sun"}
             })),
         },
@@ -1177,7 +1075,6 @@ fn reading_plan_uses_active_dignity_signals() {
                 "semantic_tags": ["placement", "jupiter"],
                 "source_weight": 0.75,
                 "aggregation_group": "cancer:house_8",
-                "writing_guidance": "guidance",
                 "evidence": {"fact_type": "object_position", "object_code": "jupiter"}
             })),
         },
@@ -1214,15 +1111,7 @@ fn reading_plan_uses_active_dignity_signals() {
         .source_signal_keys
         .contains(&"dignity:jupiter:exaltation:cancer".to_string()));
 
-    let background_drafting = payload
-        .drafting_plan
-        .iter()
-        .find(|item| item.slot == "background_factors")
-        .expect("expected background drafting plan");
-    assert_eq!(
-        background_drafting.secondary_slot_candidates,
-        background_plan.secondary_slot_candidates
-    );
+    assert!(!background_plan.secondary_slot_candidates.is_empty());
 }
 
 #[test]
@@ -1241,7 +1130,6 @@ fn reading_plan_drops_slots_that_only_have_secondary_candidates() {
                 "semantic_tags": ["cluster", "capricorn", "house_2"],
                 "source_weight": 2.0,
                 "aggregation_group": "capricorn_house_2_cluster",
-                "writing_guidance": "guidance",
                 "evidence": {
                     "fact_type": "position_cluster",
                     "sign_name": "Capricorn",
@@ -1264,10 +1152,8 @@ fn reading_plan_drops_slots_that_only_have_secondary_candidates() {
         .reading_plan
         .iter()
         .any(|item| item.slot == "background_factors"));
-    assert!(!payload
-        .drafting_plan
-        .iter()
-        .any(|item| item.slot == "background_factors"));
+    let payload_json = serde_json::to_value(&payload).expect("payload should serialize");
+    assert!(payload_json.get("drafting_plan").is_none());
 }
 
 #[test]
@@ -1365,14 +1251,12 @@ fn structural_axis_aspects_are_excluded_from_payload_planning_and_emphasis() {
         "semantic_tags": ["aspect", "opposition", "axis"],
         "source_weight": 2.0,
         "aggregation_group": "aspect:opposition",
-        "writing_guidance": "Use as background axis context, not as a main tension aspect.",
         "aspect_context": {
             "aspect_family": "major",
             "primary_valence": "polarizing",
             "dynamic_quality": "tension",
             "phase_state": "exact",
             "is_structural_axis": true,
-            "writing_guidance": "guidance"
         },
         "evidence": {
             "fact_type": "aspect",
@@ -1511,7 +1395,6 @@ fn aspect_signal(
             "semantic_tags": ["aspect", aspect_code],
             "source_weight": 1.0,
             "aggregation_group": format!("aspect:{aspect_code}"),
-            "writing_guidance": "guidance",
             "aspect_context": {
                 "aspect_family": "major",
                 "primary_valence": primary_valence_for_test(aspect_code),
@@ -1519,7 +1402,6 @@ fn aspect_signal(
                 "secondary_effect": null,
                 "dynamic_quality": dynamic_quality_for_test(aspect_code),
                 "phase_state": "applying",
-                "writing_guidance": "guidance"
             },
             "evidence": {
                 "fact_type": "aspect",
@@ -1571,7 +1453,6 @@ fn dignity_signal_row(id: i32, signal_key: &str, object_code: &str) -> Interpret
             "semantic_tags": ["dignity", object_code],
             "source_weight": 0.75,
             "aggregation_group": format!("dignity:{object_code}"),
-            "writing_guidance": "guidance",
             "evidence": {
                 "fact_type": "essential_dignity",
                 "chart_object": object_code
@@ -1594,7 +1475,6 @@ fn placement_signal_row(id: i32, signal_key: &str, object_code: &str) -> Interpr
             "semantic_tags": ["placement", object_code],
             "source_weight": 0.75,
             "aggregation_group": object_code,
-            "writing_guidance": "guidance",
             "evidence": {
                 "fact_type": "object_position",
                 "object_code": object_code

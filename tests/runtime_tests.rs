@@ -4,10 +4,9 @@ use serde_json::json;
 use rust_sqlx_connection_test::domain::{
     BasicAngleFact, BasicCalculationReliability, BasicChartContext, BasicChartEmphasis,
     BasicDignity, BasicDominantHouse, BasicDominantObject, BasicDominantSign,
-    BasicDraftingPlanItem, BasicEmphasisRefs, BasicHemisphereEmphasis, BasicLlmHandoffContract,
-    BasicObjectPosition, BasicPayload, BasicPayloadContract, BasicReadingPlanItem,
-    BasicRulerContext, BasicRulerSource, BasicRulershipContext, BasicSecondarySlotCandidate,
-    BasicSectContext, BasicSignal, CalculationReferenceData,
+    BasicHemisphereEmphasis, BasicObjectPosition, BasicPayload, BasicPayloadContract,
+    BasicReadingPlanItem, BasicRulerContext, BasicRulerSource, BasicRulershipContext,
+    BasicSecondarySlotCandidate, BasicSectContext, BasicSignal, CalculationReferenceData,
 };
 use rust_sqlx_connection_test::models::{
     AnglePointReference, ChartObject, HouseReference, SignReference,
@@ -25,35 +24,6 @@ fn current_payload() -> BasicPayload {
             reference_version_id: 1,
             subject_label: None,
             birth_datetime_utc: Utc.with_ymd_and_hms(2024, 6, 15, 12, 0, 0).unwrap(),
-            llm_handoff_contract: Some(BasicLlmHandoffContract {
-                contract_version: "natal_structured_v10".to_string(),
-                payload_language_code: "en".to_string(),
-                target_language_policy: "provided_by_llm_service".to_string(),
-                audience_level: "beginner".to_string(),
-                tone: "clear, warm, non fatalistic".to_string(),
-                must_use: vec![
-                    "chart_context".to_string(),
-                    "chart_emphasis".to_string(),
-                    "rulership_context".to_string(),
-                    "dignities".to_string(),
-                    "angles".to_string(),
-                    "signals".to_string(),
-                    "reading_plan".to_string(),
-                    "drafting_plan".to_string(),
-                ],
-                must_not: vec![
-                    "invent facts not present in source signals".to_string(),
-                    "mention technical IDs".to_string(),
-                    "list placements mechanically".to_string(),
-                    "translate technical keys such as signal_key, theme_code, semantic_tags, slot, or aggregation_group".to_string(),
-                    "expose raw evidence unless explicitly requested".to_string(),
-                    "treat chart_emphasis as a standalone section instead of weighting context".to_string(),
-                    "treat chart_context as a standalone section instead of contextual weighting".to_string(),
-                    "treat rulership_context as a standalone section instead of contextual weighting".to_string(),
-                    "make deterministic or fatalistic predictions".to_string(),
-                ],
-                output_format: "structured_sections".to_string(),
-            }),
             chart_context: BasicChartContext {
                 chart_type: "natal".to_string(),
                 zodiacal_reference_system_id: 1,
@@ -65,7 +35,6 @@ fn current_payload() -> BasicPayload {
                     calculation_scope: "full_natal".to_string(),
                     interpretation_scope: "structured_interpretation".to_string(),
                     projection_depth: "rich".to_string(),
-                    writing_contract: "provided_by_llm_service".to_string(),
                 },
                 calculation_reliability: BasicCalculationReliability {
                     birth_time_precision_required: true,
@@ -186,7 +155,6 @@ fn current_payload() -> BasicPayload {
                     semantic_tags: vec!["placement".to_string()],
                     source_weight: Some(1.0),
                     aggregation_group: Some("gemini:house_9".to_string()),
-                    writing_guidance: Some("guidance".to_string()),
                     aspect_context: None,
                     evidence: Some(json!({
                         "fact_type": "object_position",
@@ -222,7 +190,6 @@ fn current_payload() -> BasicPayload {
                     semantic_tags: vec!["angle".to_string(), "ascendant".to_string()],
                     source_weight: Some(1.0),
                     aggregation_group: Some("angle:ascendant:gemini".to_string()),
-                    writing_guidance: Some("guidance".to_string()),
                     aspect_context: None,
                     evidence: Some(json!({
                         "fact_type": "chart_angle",
@@ -239,30 +206,6 @@ fn current_payload() -> BasicPayload {
                 source_signal_keys: vec!["object_position:sun".to_string()],
                 primary_signal_keys: vec!["object_position:sun".to_string()],
                 secondary_slot_candidates: Vec::new(),
-            }],
-            drafting_plan: vec![BasicDraftingPlanItem {
-                slot: "core_identity".to_string(),
-                section_title: "Core chart markers".to_string(),
-                source_signal_keys: vec!["object_position:sun".to_string()],
-                primary_signal_keys: vec!["object_position:sun".to_string()],
-                secondary_slot_candidates: Vec::new(),
-                emphasis_refs: BasicEmphasisRefs {
-                    dominant_signs: vec!["gemini".to_string()],
-                    dominant_houses: vec![9],
-                    dominant_objects: vec!["sun".to_string()],
-                },
-                context_refs: rust_sqlx_connection_test::domain::BasicContextRefs {
-                    chart_context: vec!["sect".to_string(), "hemisphere_emphasis".to_string()],
-                    rulership_context: vec!["ascendant_ruler".to_string()],
-                },
-                writing_objective: "Explain the central markers.".to_string(),
-                max_words: 110,
-                avoid: vec![
-                    "use technical IDs".to_string(),
-                    "turn chart_emphasis into a standalone section".to_string(),
-                    "turn chart_context into a standalone section".to_string(),
-                    "turn rulership_context into a standalone section".to_string(),
-                ],
             }],
         }
 }
@@ -305,18 +248,6 @@ fn angle_fact(
     }
 }
 
-#[test]
-fn current_payload_requires_canonical_llm_handoff_contract() {
-    let mut payload = current_payload();
-    payload
-        .llm_handoff_contract
-        .as_mut()
-        .expect("llm handoff contract")
-        .payload_language_code = "fr".to_string();
-
-    assert!(!is_current_basic_payload(&payload));
-}
-
 fn test_ruler_context(
     context_key: &str,
     source_kind: &str,
@@ -348,14 +279,6 @@ fn test_ruler_context(
         }],
         interpretive_hint: "Reference-derived ruler context.".to_string(),
     }
-}
-
-#[test]
-fn current_payload_requires_llm_handoff_contract() {
-    let mut payload = current_payload();
-    payload.llm_handoff_contract = None;
-
-    assert!(!is_current_basic_payload(&payload));
 }
 
 #[test]
@@ -505,9 +428,6 @@ fn current_payload_rejects_aspect_context_without_reference_effect() {
         ],
         source_weight: Some(1.75),
         aggregation_group: Some("aspect:conjunction".to_string()),
-        writing_guidance: Some(
-            "Use the aspect as a relationship between two chart factors.".to_string(),
-        ),
         aspect_context: Some(json!({
             "aspect_family": "major",
             "primary_valence": null,
@@ -515,7 +435,9 @@ fn current_payload_rejects_aspect_context_without_reference_effect() {
             "secondary_effect": null,
             "dynamic_quality": "contextual",
             "phase_state": "separating",
-            "writing_guidance": "Use the aspect as a relationship between two chart factors."
+            "valence_family": "neutral",
+            "is_tonal_valence": false,
+            "is_intensity_modifier": false
         })),
         evidence: Some(json!({
             "fact_type": "aspect",
@@ -539,8 +461,7 @@ fn current_payload_rejects_aspect_context_without_reference_effect() {
         "phase_state": "separating",
         "valence_family": "intensity",
         "is_tonal_valence": false,
-        "is_intensity_modifier": true,
-        "writing_guidance": "Treat amplifying as an intensity modifier."
+        "is_intensity_modifier": true
     }));
 
     assert!(!is_current_basic_payload(&payload));
@@ -578,7 +499,6 @@ fn current_payload_rejects_legacy_unflagged_structural_axis_aspect() {
         ],
         source_weight: Some(2.0),
         aggregation_group: Some("aspect:opposition".to_string()),
-        writing_guidance: Some("Present as a polarity to balance.".to_string()),
         aspect_context: Some(json!({
             "aspect_family": "major",
             "primary_valence": "polarizing",
@@ -588,8 +508,7 @@ fn current_payload_rejects_legacy_unflagged_structural_axis_aspect() {
             "phase_state": "exact",
             "valence_family": "tonal",
             "is_tonal_valence": true,
-            "is_intensity_modifier": false,
-            "writing_guidance": "Present as a polarity to balance."
+            "is_intensity_modifier": false
         })),
         evidence: Some(json!({
             "fact_type": "aspect",
@@ -695,7 +614,6 @@ fn current_payload_rejects_angle_to_angle_aspect() {
         ],
         source_weight: Some(2.0),
         aggregation_group: Some("aspect:square".to_string()),
-        writing_guidance: Some("Present as friction to work with.".to_string()),
         aspect_context: Some(json!({
             "aspect_family": "major",
             "primary_valence": "challenging",
@@ -705,8 +623,7 @@ fn current_payload_rejects_angle_to_angle_aspect() {
             "phase_state": "exact",
             "valence_family": "tonal",
             "is_tonal_valence": true,
-            "is_intensity_modifier": false,
-            "writing_guidance": "Present as friction to work with."
+            "is_intensity_modifier": false
         })),
         evidence: Some(json!({
             "fact_type": "aspect",
@@ -885,7 +802,6 @@ fn current_payload_rejects_dignity_signal_without_structured_dignity() {
         semantic_tags: vec!["dignity".to_string(), "saturn".to_string()],
         source_weight: Some(0.75),
         aggregation_group: Some("dignity:saturn".to_string()),
-        writing_guidance: Some("guidance".to_string()),
         aspect_context: None,
         evidence: Some(json!({
             "fact_type": "essential_dignity",
@@ -927,7 +843,6 @@ fn current_payload_rejects_dignity_signal_mismatched_with_structured_dignity() {
         semantic_tags: vec!["dignity".to_string(), "saturn".to_string()],
         source_weight: Some(0.75),
         aggregation_group: Some("dignity:saturn".to_string()),
-        writing_guidance: Some("guidance".to_string()),
         aspect_context: None,
         evidence: Some(json!({
             "fact_type": "essential_dignity",
@@ -961,35 +876,6 @@ fn current_payload_requires_reading_plan() {
 }
 
 #[test]
-fn current_payload_requires_drafting_plan() {
-    let mut payload = current_payload();
-    payload.drafting_plan.clear();
-
-    assert!(!is_current_basic_payload(&payload));
-}
-
-#[test]
-fn current_payload_rejects_misaligned_emphasis_refs() {
-    let mut payload = current_payload();
-    payload.drafting_plan[0]
-        .emphasis_refs
-        .dominant_signs
-        .clear();
-
-    assert!(!is_current_basic_payload(&payload));
-}
-
-#[test]
-fn current_payload_rejects_drafting_plan_without_chart_emphasis_guardrail() {
-    let mut payload = current_payload();
-    payload.drafting_plan[0]
-        .avoid
-        .retain(|rule| rule != "turn chart_emphasis into a standalone section");
-
-    assert!(!is_current_basic_payload(&payload));
-}
-
-#[test]
 fn current_payload_rejects_reading_plan_with_missing_signal_key() {
     let mut payload = current_payload();
     payload.reading_plan[0]
@@ -1009,29 +895,6 @@ fn current_payload_rejects_repeated_primary_source_signal() {
         primary_signal_keys: vec!["object_position:sun".to_string()],
         secondary_slot_candidates: Vec::new(),
     });
-    payload.drafting_plan.push(BasicDraftingPlanItem {
-        slot: "dominant_cluster".to_string(),
-        section_title: "Dominant cluster".to_string(),
-        source_signal_keys: vec!["object_position:sun".to_string()],
-        primary_signal_keys: vec!["object_position:sun".to_string()],
-        secondary_slot_candidates: Vec::new(),
-        emphasis_refs: BasicEmphasisRefs::default(),
-        context_refs: rust_sqlx_connection_test::domain::BasicContextRefs {
-            chart_context: vec!["sect".to_string(), "hemisphere_emphasis".to_string()],
-            rulership_context: vec![
-                "dominant_sign_rulers".to_string(),
-                "dominant_house_rulers".to_string(),
-            ],
-        },
-        writing_objective: "Explain the repeated primary signal.".to_string(),
-        max_words: 120,
-        avoid: vec![
-            "repeat".to_string(),
-            "turn chart_emphasis into a standalone section".to_string(),
-            "turn chart_context into a standalone section".to_string(),
-            "turn rulership_context into a standalone section".to_string(),
-        ],
-    });
 
     assert!(!is_current_basic_payload(&payload));
 }
@@ -1050,7 +913,6 @@ fn current_payload_rejects_secondary_candidate_without_primary_source() {
         semantic_tags: vec!["placement".to_string()],
         source_weight: Some(0.75),
         aggregation_group: Some("pisces:house_4".to_string()),
-        writing_guidance: Some("guidance".to_string()),
         aspect_context: None,
         evidence: Some(json!({
             "fact_type": "object_position",
@@ -1076,9 +938,6 @@ fn current_payload_rejects_secondary_candidate_without_primary_source() {
     };
     payload.reading_plan[0]
         .secondary_slot_candidates
-        .push(candidate.clone());
-    payload.drafting_plan[0]
-        .secondary_slot_candidates
         .push(candidate);
 
     assert!(!is_current_basic_payload(&payload));
@@ -1102,7 +961,6 @@ fn current_payload_rejects_duplicate_reading_plan_slots() {
 fn current_payload_rejects_unknown_reading_plan_slot() {
     let mut payload = current_payload();
     payload.reading_plan[0].slot = "custom_slot".to_string();
-    payload.drafting_plan[0].slot = "custom_slot".to_string();
 
     assert!(!is_current_basic_payload(&payload));
 }
@@ -1121,7 +979,6 @@ fn current_payload_rejects_out_of_order_reading_plan_slots() {
         semantic_tags: vec!["placement".to_string()],
         source_weight: Some(0.75),
         aggregation_group: Some("gemini:house_9".to_string()),
-        writing_guidance: Some("guidance".to_string()),
         aspect_context: None,
         evidence: Some(json!({"fact_type": "object_position"})),
     });
@@ -1135,36 +992,6 @@ fn current_payload_rejects_out_of_order_reading_plan_slots() {
             secondary_slot_candidates: Vec::new(),
         },
     );
-    payload.drafting_plan.insert(
-        0,
-        BasicDraftingPlanItem {
-            slot: "expression_style".to_string(),
-            section_title: "Expression and action style".to_string(),
-            source_signal_keys: vec!["object_position:mercury".to_string()],
-            primary_signal_keys: vec!["object_position:mercury".to_string()],
-            secondary_slot_candidates: Vec::new(),
-            emphasis_refs: BasicEmphasisRefs::default(),
-            context_refs: rust_sqlx_connection_test::domain::BasicContextRefs::default(),
-            writing_objective: "Show how the person thinks and acts.".to_string(),
-            max_words: 110,
-            avoid: vec![
-                "use technical IDs".to_string(),
-                "turn chart_emphasis into a standalone section".to_string(),
-                "turn chart_context into a standalone section".to_string(),
-            ],
-        },
-    );
-
-    assert!(!is_current_basic_payload(&payload));
-}
-
-#[test]
-fn current_payload_rejects_drafting_plan_with_missing_signal_key() {
-    let mut payload = current_payload();
-    payload.drafting_plan[0]
-        .source_signal_keys
-        .push("object_position:moon".to_string());
-
     assert!(!is_current_basic_payload(&payload));
 }
 

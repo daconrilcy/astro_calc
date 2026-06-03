@@ -202,24 +202,6 @@ fn angle_horizon_position(position: &ObjectPositionFact) -> Option<&'static str>
     }
 }
 
-pub(super) fn position_writing_guidance(
-    position: &ObjectPositionFact,
-    dignities: &[EssentialDignityFact],
-) -> String {
-    match (!dignities.is_empty(), is_retrograde_position(position)) {
-        (true, true) => format!(
-            "Use this as a concise placement cue; include {} and retrograde motion as modifiers, not separate verdicts.",
-            dignity_type_list(dignities)
-        ),
-        (true, false) => format!(
-            "Use this as a concise placement cue and include {} as a modifier, not a separate verdict.",
-            dignity_type_list(dignities)
-        ),
-        (false, true) => "Use this as a concise placement cue; treat retrograde motion as an inward, revising, or reflective modifier before drafting final text.".to_string(),
-        (false, false) => "Use this as a concise placement cue; combine it with nearby cluster or aspect signals before drafting final text.".to_string(),
-    }
-}
-
 pub(super) fn retrograde_summary(position: &ObjectPositionFact) -> String {
     if is_retrograde_position(position) {
         " Its retrograde motion adds a reflective or revising layer to the placement.".to_string()
@@ -258,18 +240,4 @@ fn dignity_effect_phrase_for_position(dignities: &[EssentialDignityFact]) -> Str
         .map(dignity_effect_phrase)
         .collect::<Vec<_>>();
     phrases.join(" and ")
-}
-
-fn dignity_type_list(dignities: &[EssentialDignityFact]) -> String {
-    let dignity_types = dignities
-        .iter()
-        .map(|dignity| dignity.dignity_type.as_str())
-        .collect::<Vec<_>>();
-
-    match dignity_types.as_slice() {
-        [] => "the dignity context".to_string(),
-        [one] => format!("the {one} context"),
-        [first, second] => format!("the {first} and {second} contexts"),
-        _ => format!("the {} contexts", dignity_types.join(", ")),
-    }
 }

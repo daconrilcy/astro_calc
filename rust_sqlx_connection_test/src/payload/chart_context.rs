@@ -34,7 +34,6 @@ pub(super) fn build_chart_context(
             calculation_scope: "full_natal".to_string(),
             interpretation_scope: "structured_interpretation".to_string(),
             projection_depth: "rich".to_string(),
-            writing_contract: "provided_by_llm_service".to_string(),
         },
         calculation_reliability: BasicCalculationReliability {
             birth_time_precision_required: true,

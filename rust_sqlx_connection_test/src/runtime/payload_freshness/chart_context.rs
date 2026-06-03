@@ -22,7 +22,6 @@ fn has_chart_context(payload: &BasicPayload) -> bool {
         && context.payload_contract.calculation_scope == "full_natal"
         && context.payload_contract.interpretation_scope == "structured_interpretation"
         && context.payload_contract.projection_depth == "rich"
-        && context.payload_contract.writing_contract == "provided_by_llm_service"
         && context
             .calculation_reliability
             .birth_time_precision_required

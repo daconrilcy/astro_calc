@@ -109,7 +109,6 @@ pub struct AspectFact {
     pub valence_family: Option<String>,
     pub valence_is_tonal: Option<bool>,
     pub valence_is_intensity_modifier: Option<bool>,
-    pub valence_writing_guidance: Option<String>,
     pub calculation_notes_json: Option<Value>,
 }
 
@@ -141,8 +140,6 @@ pub struct BasicPayload {
     pub subject_label: Option<String>,
     pub birth_datetime_utc: DateTime<Utc>,
     #[serde(default)]
-    pub llm_handoff_contract: Option<BasicLlmHandoffContract>,
-    #[serde(default)]
     pub chart_context: BasicChartContext,
     pub positions: Vec<BasicObjectPosition>,
     #[serde(default)]
@@ -156,8 +153,6 @@ pub struct BasicPayload {
     pub signals: Vec<BasicSignal>,
     #[serde(default)]
     pub reading_plan: Vec<BasicReadingPlanItem>,
-    #[serde(default)]
-    pub drafting_plan: Vec<BasicDraftingPlanItem>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -179,7 +174,6 @@ pub struct BasicPayloadContract {
     pub calculation_scope: String,
     pub interpretation_scope: String,
     pub projection_depth: String,
-    pub writing_contract: String,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -355,20 +349,6 @@ pub struct BasicMutualReception {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BasicLlmHandoffContract {
-    pub contract_version: String,
-    pub payload_language_code: String,
-    pub target_language_policy: String,
-    pub audience_level: String,
-    pub tone: String,
-    #[serde(default)]
-    pub must_use: Vec<String>,
-    #[serde(default)]
-    pub must_not: Vec<String>,
-    pub output_format: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BasicObjectPosition {
     pub object_code: String,
     pub object_name: String,
@@ -411,7 +391,6 @@ pub struct BasicSignal {
     pub semantic_tags: Vec<String>,
     pub source_weight: Option<f64>,
     pub aggregation_group: Option<String>,
-    pub writing_guidance: Option<String>,
     #[serde(default)]
     pub aspect_context: Option<Value>,
     pub evidence: Option<Value>,
@@ -434,42 +413,4 @@ pub struct BasicSecondarySlotCandidate {
     pub signal_key: String,
     pub primary_slot: String,
     pub candidate_slot: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BasicDraftingPlanItem {
-    pub slot: String,
-    pub section_title: String,
-    #[serde(default)]
-    pub source_signal_keys: Vec<String>,
-    #[serde(default)]
-    pub primary_signal_keys: Vec<String>,
-    #[serde(default)]
-    pub secondary_slot_candidates: Vec<BasicSecondarySlotCandidate>,
-    #[serde(default)]
-    pub emphasis_refs: BasicEmphasisRefs,
-    #[serde(default)]
-    pub context_refs: BasicContextRefs,
-    pub writing_objective: String,
-    pub max_words: u16,
-    #[serde(default)]
-    pub avoid: Vec<String>,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BasicEmphasisRefs {
-    #[serde(default)]
-    pub dominant_signs: Vec<String>,
-    #[serde(default)]
-    pub dominant_houses: Vec<i32>,
-    #[serde(default)]
-    pub dominant_objects: Vec<String>,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BasicContextRefs {
-    #[serde(default)]
-    pub chart_context: Vec<String>,
-    #[serde(default)]
-    pub rulership_context: Vec<String>,
 }

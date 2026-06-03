@@ -48,7 +48,6 @@ pub(super) fn angle_signal(
             "semantic_tags": semantic_tags,
             "source_weight": round4(object_source_weight(position)),
             "aggregation_group": format!("angle:{}:{}", position.object_code, position.sign_code),
-            "writing_guidance": angle_writing_guidance(position),
             "angle_context": angle_context,
             "evidence": {
                 "fact_type": "chart_angle",
@@ -126,16 +125,6 @@ fn angle_interpretive_hint(position: &ObjectPositionFact) -> String {
             position.sign_name
         ),
         _ => format!("Use this angle as a chart orientation marker in {}.", position.sign_name),
-    }
-}
-
-fn angle_writing_guidance(position: &ObjectPositionFact) -> String {
-    match position.object_code.as_str() {
-        "ascendant" => "Integrate this with Sun and Moon as a core identity marker, not as a physical description only.".to_string(),
-        "mc" => "Use this proportionately as public direction or visibility context; keep it secondary to Sun, Moon, and Ascendant in Basic.".to_string(),
-        "descendant" => "Use this as relationship orientation only when it supports a larger Basic theme.".to_string(),
-        "ic" => "Use this as roots and private-foundation context only when it supports a larger Basic theme.".to_string(),
-        _ => "Use this angle as concise orientation context.".to_string(),
     }
 }
 

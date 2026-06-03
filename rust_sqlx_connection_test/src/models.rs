@@ -175,6 +175,5 @@ pub(crate) struct PersistedAspectFact {
     pub(crate) valence_family: Option<String>,
     pub(crate) valence_is_tonal: Option<bool>,
     pub(crate) valence_is_intensity_modifier: Option<bool>,
-    pub(crate) valence_writing_guidance: Option<String>,
     pub(crate) calculation_notes_json: Option<Value>,
 }

@@ -10,7 +10,7 @@ use crate::domain::{CalculatedChartFacts, InterpretationSignalDraft};
 use super::constants::{SUPPRESSION_ACTIVE, THEME_FUNCTIONAL_CHALLENGE, THEME_FUNCTIONAL_STRENGTH};
 use super::dignity_helpers::{
     dignity_evidence, dignity_interpretive_hint, dignity_priority, dignity_semantic_tags,
-    dignity_summary, dignity_title, dignity_writing_guidance,
+    dignity_summary, dignity_title,
 };
 use super::utils::round4;
 
@@ -54,7 +54,6 @@ pub(super) fn add_dignity_signals(
                         + dignity_source_weight_delta(&dignity)
                 ),
                 "aggregation_group": format!("dignity:{}", dignity.object_code),
-                "writing_guidance": dignity_writing_guidance(&dignity),
                 "evidence": dignity_evidence(&dignity)
             })),
         });

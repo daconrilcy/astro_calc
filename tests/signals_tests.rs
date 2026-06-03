@@ -268,7 +268,6 @@ fn aspect(
         valence_is_intensity_modifier: primary_valence_for_test(aspect_code)
             .map(|_| false)
             .or_else(|| intensity_modifier_for_test(aspect_code).map(|_| true)),
-        valence_writing_guidance: valence_guidance_for_test(aspect_code).map(ToString::to_string),
         calculation_notes_json: None,
     }
 }
@@ -288,16 +287,6 @@ fn intensity_modifier_for_test(aspect_code: &str) -> Option<&'static str> {
         "conjunction" => Some("amplifying"),
         _ => None,
     }
-}
-
-fn valence_guidance_for_test(aspect_code: &str) -> Option<&'static str> {
-    match aspect_code {
-            "sextile" => Some("Present as a resource, support or facilitation that the native can mobilize."),
-            "square" => Some("Present as active tension or constructive challenge, not as a purely negative outcome."),
-            "trine" => Some("Present as ease, compatibility or natural cooperation without implying that no effort is ever needed."),
-            "opposition" => Some("Present as a polarity to balance, integrate or negotiate, especially across axes or oppositions."),
-            _ => None,
-        }
 }
 
 trait AspectFactTestExt {
@@ -490,7 +479,7 @@ fn placement_signal_includes_contextual_evidence_and_tags() {
 }
 
 #[test]
-fn retrograde_placements_get_specific_writing_context() {
+fn retrograde_placements_get_specific_interpretive_context() {
     let facts = CalculatedChartFacts {
         positions: vec![retrograde_mercury_position()],
         house_cusps: Vec::new(),
@@ -514,11 +503,7 @@ fn retrograde_placements_get_specific_writing_context() {
         .and_then(|value| value.as_str())
         .expect("hint")
         .contains("internal processing"));
-    assert!(payload
-        .get("writing_guidance")
-        .and_then(|value| value.as_str())
-        .expect("guidance")
-        .contains("retrograde motion"));
+    assert!(payload.get("writing_guidance").is_none());
 }
 
 #[test]
@@ -900,10 +885,6 @@ fn aspect_hint_uses_interpretive_quality() {
                 valence_family: Some("tonal".to_string()),
                 valence_is_tonal: Some(true),
                 valence_is_intensity_modifier: Some(false),
-                valence_writing_guidance: Some(
-                    "Present as a polarity to balance, integrate or negotiate, especially across axes or oppositions."
-                        .to_string(),
-                ),
                 calculation_notes_json: None,
             }],
         };
@@ -1030,11 +1011,14 @@ fn aspect_signals_include_interpretive_context_and_valence_tags() {
             .and_then(|value| value.as_bool()),
         Some(true)
     );
-    assert!(conjunction
-        .get("writing_guidance")
-        .and_then(|value| value.as_str())
-        .expect("writing guidance")
-        .contains("not as a supportive or challenging valence"));
+    assert!(conjunction.get("writing_guidance").is_none());
+    assert_eq!(
+        conjunction
+            .get("aspect_context")
+            .and_then(|context| context.get("is_tonal_valence"))
+            .and_then(|value| value.as_bool()),
+        Some(false)
+    );
 }
 
 fn aspect_payload<'a>(

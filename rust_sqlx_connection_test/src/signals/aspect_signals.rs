@@ -39,10 +39,7 @@ pub(super) fn aspect_context(aspect: &AspectFact) -> serde_json::Value {
         "phase_state": aspect.phase_state,
         "valence_family": aspect.valence_family,
         "is_tonal_valence": aspect.valence_is_tonal,
-        "is_intensity_modifier": aspect.valence_is_intensity_modifier,
-        "writing_guidance": aspect.valence_writing_guidance
-            .as_deref()
-            .unwrap_or_else(|| aspect_default_writing_guidance(aspect))
+        "is_intensity_modifier": aspect.valence_is_intensity_modifier
     })
 }
 
@@ -60,23 +57,6 @@ fn aspect_dynamic_quality(aspect: &AspectFact) -> &'static str {
         Some(_) => "contextual",
         None if aspect.intensity_modifier.is_some() => "intensification",
         None => "contextual",
-    }
-}
-
-pub(super) fn aspect_writing_guidance(aspect: &AspectFact) -> String {
-    let base = aspect
-        .valence_writing_guidance
-        .as_deref()
-        .unwrap_or_else(|| aspect_default_writing_guidance(aspect));
-
-    match aspect.intensity_modifier.as_deref() {
-        Some(modifier) if aspect.primary_valence.is_none() => format!(
-            "{base} Treat {modifier} as an intensity modifier, not as a supportive or challenging valence by itself."
-        ),
-        Some(modifier) => format!(
-            "{base} Use {modifier} only as an intensity modifier layered onto the primary valence."
-        ),
-        None => base.to_string(),
     }
 }
 
@@ -134,20 +114,3 @@ fn dynamic_quality_aspect_hint_phrase(aspect: &AspectFact) -> &'static str {
     }
 }
 
-fn aspect_default_writing_guidance(aspect: &AspectFact) -> &'static str {
-    match aspect_dynamic_quality(aspect) {
-        "flow" => {
-            "Describe ease or cooperation between the two chart factors without presenting it as an automatic benefit."
-        }
-        "tension" => {
-            "Describe the tension between the two chart factors without making it unstable or negative by default."
-        }
-        "adjustment" => {
-            "Describe this as an adjustment between the two chart factors, with practical recalibration rather than blame."
-        }
-        "intensification" => {
-            "Describe this as intensified contact between the two chart factors, and use the planets involved to qualify the tone."
-        }
-        _ => "Use the aspect as a relationship between two chart factors, not as a standalone verdict.",
-    }
-}

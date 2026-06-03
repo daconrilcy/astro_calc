@@ -4,33 +4,6 @@
   "reference_version_id": 1,
   "subject_label": "Test",
   "birth_datetime_utc": "1990-01-02T03:04:05Z",
-  "llm_handoff_contract": {
-    "contract_version": "natal_structured_v9",
-    "payload_language_code": "en",
-    "target_language_policy": "provided_by_llm_service",
-    "audience_level": "beginner",
-    "tone": "clear, warm, non fatalistic",
-    "must_use": [
-      "chart_context",
-      "chart_emphasis",
-      "dignities",
-      "angles",
-      "signals",
-      "reading_plan",
-      "drafting_plan"
-    ],
-    "must_not": [
-      "invent facts not present in source signals",
-      "mention technical IDs",
-      "list placements mechanically",
-      "translate technical keys such as signal_key, theme_code, semantic_tags, slot, or aggregation_group",
-      "expose raw evidence unless explicitly requested",
-      "treat chart_emphasis as a standalone section instead of weighting context",
-      "treat chart_context as a standalone section instead of contextual weighting",
-      "make deterministic or fatalistic predictions"
-    ],
-    "output_format": "structured_sections"
-  },
   "chart_context": {
     "chart_type": "natal",
     "zodiacal_reference_system_id": 1,
@@ -41,8 +14,7 @@
       "contract_version": "natal_structured_v9",
       "calculation_scope": "full_natal",
       "interpretation_scope": "structured_interpretation",
-      "projection_depth": "rich",
-      "writing_contract": "provided_by_llm_service"
+      "projection_depth": "rich"
     },
     "calculation_reliability": {
       "birth_time_precision_required": true,
@@ -1535,7 +1507,6 @@
       ],
       "source_weight": 1.0,
       "aggregation_group": "angle:ascendant:scorpio",
-      "writing_guidance": "Integrate this with Sun and Moon as a core identity marker, not as a physical description only.",
       "aspect_context": null,
       "evidence": {
         "angle_code": "ascendant",
@@ -1660,7 +1631,6 @@
       ],
       "source_weight": 1.0,
       "aggregation_group": "capricorn:house_2",
-      "writing_guidance": "Keep this core placement, but draft it in relation to the active cluster to avoid repeating the same sign and house wording.",
       "aspect_context": null,
       "evidence": {
         "chart_object_id": 1,
@@ -1787,7 +1757,6 @@
       ],
       "source_weight": 1.0,
       "aggregation_group": "pisces:house_4",
-      "writing_guidance": "Use this as a concise placement cue; combine it with nearby cluster or aspect signals before drafting final text.",
       "aspect_context": null,
       "evidence": {
         "chart_object_id": 2,
@@ -1907,7 +1876,6 @@
       ],
       "source_weight": 2.3,
       "aggregation_group": "capricorn_house_2_cluster",
-      "writing_guidance": "Use this cluster before individual placements and merge repeated wording from its source signals.",
       "aspect_context": null,
       "evidence": {
         "cluster_type": "sign_house",
@@ -1950,7 +1918,6 @@
       ],
       "source_weight": 0.75,
       "aggregation_group": "dignity:saturn",
-      "writing_guidance": "Use this to strengthen the object's placement signal without overstating ease or outcome.",
       "aspect_context": null,
       "evidence": {
         "chart_object": "saturn",
@@ -1994,7 +1961,6 @@
       ],
       "source_weight": 0.75,
       "aggregation_group": "sagittarius:house_1",
-      "writing_guidance": "Use this as a concise placement cue; combine it with nearby cluster or aspect signals before drafting final text.",
       "aspect_context": null,
       "evidence": {
         "chart_object_id": 5,
@@ -2113,7 +2079,6 @@
       ],
       "source_weight": 0.75,
       "aggregation_group": "dignity:jupiter",
-      "writing_guidance": "Use this to strengthen the object's placement signal without overstating ease or outcome.",
       "aspect_context": null,
       "evidence": {
         "chart_object": "jupiter",
@@ -2157,7 +2122,6 @@
       ],
       "source_weight": 0.75,
       "aggregation_group": "capricorn:house_3",
-      "writing_guidance": "Use this as a concise placement cue; treat retrograde motion as an inward, revising, or reflective modifier before drafting final text.",
       "aspect_context": null,
       "evidence": {
         "chart_object_id": 3,
@@ -2284,7 +2248,6 @@
       ],
       "source_weight": 0.75,
       "aggregation_group": "aquarius:house_3",
-      "writing_guidance": "Use this as a concise placement cue; treat retrograde motion as an inward, revising, or reflective modifier before drafting final text.",
       "aspect_context": null,
       "evidence": {
         "chart_object_id": 4,
@@ -2409,7 +2372,6 @@
       ],
       "source_weight": 0.8,
       "aggregation_group": "angle:mc:leo",
-      "writing_guidance": "Use this proportionately as public direction or visibility context; keep it secondary to Sun, Moon, and Ascendant in Basic.",
       "aspect_context": null,
       "evidence": {
         "angle_code": "mc",
@@ -2538,7 +2500,6 @@
       ],
       "source_weight": 0.75,
       "aggregation_group": "cancer:house_8",
-      "writing_guidance": "Use this as a concise placement cue; include the exaltation context and retrograde motion as modifiers, not separate verdicts.",
       "aspect_context": null,
       "evidence": {
         "chart_object_id": 6,
@@ -2685,7 +2646,6 @@
       ],
       "source_weight": 0.95,
       "aggregation_group": "aspect:opposition",
-      "writing_guidance": "Present as a polarity to balance, integrate or negotiate, especially across axes or oppositions.",
       "aspect_context": {
         "aspect_family": "major",
         "dynamic_quality": "tension",
@@ -2695,8 +2655,7 @@
         "phase_state": "separating",
         "primary_valence": "polarizing",
         "secondary_effect": null,
-        "valence_family": "tonal",
-        "writing_guidance": "Present as a polarity to balance, integrate or negotiate, especially across axes or oppositions."
+        "valence_family": "tonal"
       },
       "evidence": {
         "aspect_code": "opposition",
@@ -2805,190 +2764,6 @@
           "primary_slot": "dominant_cluster",
           "candidate_slot": "background_factors"
         }
-      ]
-    }
-  ],
-  "drafting_plan": [
-    {
-      "slot": "core_identity",
-      "section_title": "Core chart markers",
-      "source_signal_keys": [
-        "object_position:sun",
-        "object_position:moon",
-        "angle:ascendant:sign:scorpio"
-      ],
-      "primary_signal_keys": [
-        "object_position:sun",
-        "object_position:moon",
-        "angle:ascendant:sign:scorpio"
-      ],
-      "secondary_slot_candidates": [],
-      "emphasis_refs": {
-        "dominant_signs": [],
-        "dominant_houses": [],
-        "dominant_objects": []
-      },
-      "context_refs": {
-        "chart_context": [
-          "sect",
-          "hemisphere_emphasis"
-        ]
-      },
-      "writing_objective": "Explain the central identity markers, emotional needs, and overall chart orientation in plain language, using chart_context and chart_emphasis only as weighting context without creating another section.",
-      "max_words": 110,
-      "avoid": [
-        "use technical IDs",
-        "make fatalistic predictions",
-        "add information that is absent from the source signals",
-        "turn chart_emphasis into a standalone section",
-        "turn chart_context into a standalone section"
-      ]
-    },
-    {
-      "slot": "dominant_cluster",
-      "section_title": "A Capricorn dominant theme around Resources",
-      "source_signal_keys": [
-        "cluster:capricorn:house_2",
-        "dignity:saturn:domicile:capricorn"
-      ],
-      "primary_signal_keys": [
-        "cluster:capricorn:house_2",
-        "dignity:saturn:domicile:capricorn"
-      ],
-      "secondary_slot_candidates": [
-        {
-          "signal_key": "object_position:sun",
-          "primary_slot": "core_identity",
-          "candidate_slot": "dominant_cluster"
-        }
-      ],
-      "emphasis_refs": {
-        "dominant_signs": [
-          "capricorn"
-        ],
-        "dominant_houses": [
-          2
-        ],
-        "dominant_objects": [
-          "saturn",
-          "sun"
-        ]
-      },
-      "context_refs": {
-        "chart_context": [
-          "sect",
-          "hemisphere_emphasis"
-        ]
-      },
-      "writing_objective": "Explain in plain language that the chart emphasizes Capricorn, Resources, and structure, responsibility, security, value, grouping the cluster evidence and Saturn dignity context instead of enumerating placements. Use emphasis_refs only as weighting context, not as a separate section.",
-      "max_words": 120,
-      "avoid": [
-        "repeat each placement one by one",
-        "use technical IDs",
-        "make fatalistic predictions",
-        "add information that is absent from the source signals",
-        "turn chart_emphasis into a standalone section",
-        "turn chart_context into a standalone section"
-      ]
-    },
-    {
-      "slot": "main_tension_or_support",
-      "section_title": "Main dynamics",
-      "source_signal_keys": [
-        "aspect:jupiter:uranus:opposition"
-      ],
-      "primary_signal_keys": [
-        "aspect:jupiter:uranus:opposition"
-      ],
-      "secondary_slot_candidates": [],
-      "emphasis_refs": {
-        "dominant_signs": [],
-        "dominant_houses": [],
-        "dominant_objects": []
-      },
-      "context_refs": {
-        "chart_context": []
-      },
-      "writing_objective": "Explain the main relationships between chart factors, distinguishing supportive and challenging dynamics without turning aspects into verdicts.",
-      "max_words": 110,
-      "avoid": [
-        "present an aspect as an isolated verdict",
-        "use technical IDs",
-        "make fatalistic predictions",
-        "add information that is absent from the source signals",
-        "turn chart_emphasis into a standalone section",
-        "turn chart_context into a standalone section"
-      ]
-    },
-    {
-      "slot": "expression_style",
-      "section_title": "Expression and action style",
-      "source_signal_keys": [
-        "object_position:mercury",
-        "object_position:venus",
-        "object_position:mars"
-      ],
-      "primary_signal_keys": [
-        "object_position:mercury",
-        "object_position:venus",
-        "object_position:mars"
-      ],
-      "secondary_slot_candidates": [],
-      "emphasis_refs": {
-        "dominant_signs": [],
-        "dominant_houses": [],
-        "dominant_objects": []
-      },
-      "context_refs": {
-        "chart_context": []
-      },
-      "writing_objective": "Show how the person thinks, communicates, desires, chooses, and acts day to day without listing each placement separately.",
-      "max_words": 110,
-      "avoid": [
-        "use technical IDs",
-        "make fatalistic predictions",
-        "add information that is absent from the source signals",
-        "turn chart_emphasis into a standalone section",
-        "turn chart_context into a standalone section"
-      ]
-    },
-    {
-      "slot": "background_factors",
-      "section_title": "Background factors",
-      "source_signal_keys": [
-        "angle:mc:sign:leo",
-        "object_position:jupiter",
-        "dignity:jupiter:exaltation:cancer"
-      ],
-      "primary_signal_keys": [
-        "angle:mc:sign:leo",
-        "object_position:jupiter",
-        "dignity:jupiter:exaltation:cancer"
-      ],
-      "secondary_slot_candidates": [
-        {
-          "signal_key": "dignity:saturn:domicile:capricorn",
-          "primary_slot": "dominant_cluster",
-          "candidate_slot": "background_factors"
-        }
-      ],
-      "emphasis_refs": {
-        "dominant_signs": [],
-        "dominant_houses": [],
-        "dominant_objects": []
-      },
-      "context_refs": {
-        "chart_context": []
-      },
-      "writing_objective": "Place the more collective or less central factors in the background with brief, proportionate wording.",
-      "max_words": 80,
-      "avoid": [
-        "give too much weight to background factors",
-        "use technical IDs",
-        "make fatalistic predictions",
-        "add information that is absent from the source signals",
-        "turn chart_emphasis into a standalone section",
-        "turn chart_context into a standalone section"
       ]
     }
   ]

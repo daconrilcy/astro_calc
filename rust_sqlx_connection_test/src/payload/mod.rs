@@ -1,8 +1,6 @@
 mod angles;
 mod chart_context;
-mod contract;
 mod dignities;
-mod drafting_plan;
 mod emphasis;
 mod json;
 mod reading_plan;
@@ -18,14 +16,14 @@ use angles::{
 };
 use chart_context::{build_chart_context, visibility_context};
 use dignities::{build_payload_dignities, position_dignity_context};
-use drafting_plan::build_drafting_plan;
 use emphasis::build_chart_emphasis;
-use json::{payload_f64, payload_string, payload_string_array, payload_value, position_context};
+use json::{
+    payload_aspect_context, payload_f64, payload_string, payload_string_array, payload_value,
+    position_context,
+};
 use reading_plan::build_reading_plan;
 use rulership::build_rulership_context;
 use signal_filters::{is_angle_to_angle_aspect_signal, is_structural_axis_signal_for_pairs};
-
-pub use contract::basic_llm_handoff_contract;
 
 pub fn build_basic_payload(
     chart_calculation_id: i32,
@@ -58,8 +56,7 @@ pub fn build_basic_payload_with_rulership(
             semantic_tags: payload_string_array(signal, "semantic_tags"),
             source_weight: payload_f64(signal, "source_weight"),
             aggregation_group: payload_string(signal, "aggregation_group"),
-            writing_guidance: payload_string(signal, "writing_guidance"),
-            aspect_context: payload_value(signal, "aspect_context"),
+            aspect_context: payload_aspect_context(signal),
             evidence: payload_value(signal, "evidence"),
         })
         .collect();
@@ -76,7 +73,6 @@ pub fn build_basic_payload_with_rulership(
         build_rulership_context(positions, &chart_emphasis, domicile_rulers, &basic_signals);
     let chart_context = build_chart_context(input, positions);
     let reading_plan = build_reading_plan(&basic_signals);
-    let drafting_plan = build_drafting_plan(&reading_plan, &basic_signals, &chart_emphasis);
 
     BasicPayload {
         product_code: input.product_code().to_string(),
@@ -84,7 +80,6 @@ pub fn build_basic_payload_with_rulership(
         reference_version_id: input.reference_version_id,
         subject_label: input.subject_label.clone(),
         birth_datetime_utc: input.birth_datetime_utc,
-        llm_handoff_contract: Some(basic_llm_handoff_contract()),
         chart_context,
         positions: positions
             .iter()
@@ -114,6 +109,5 @@ pub fn build_basic_payload_with_rulership(
         rulership_context,
         signals: basic_signals,
         reading_plan,
-        drafting_plan,
     }
 }

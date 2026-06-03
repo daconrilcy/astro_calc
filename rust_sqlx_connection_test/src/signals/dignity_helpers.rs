@@ -59,16 +59,6 @@ pub(super) fn dignity_interpretive_hint(dignity: &EssentialDignityFact) -> Strin
     )
 }
 
-pub(super) fn dignity_writing_guidance(dignity: &EssentialDignityFact) -> String {
-    if dignity.polarity == "dignity" {
-        "Use this to strengthen the object's placement signal without overstating ease or outcome."
-            .to_string()
-    } else {
-        "Use this as a contextual constraint on the object's placement signal without fatalistic wording."
-            .to_string()
-    }
-}
-
 pub(super) fn dignity_effect_phrase(dignity: &EssentialDignityFact) -> &'static str {
     match dignity.dignity_type.as_str() {
         "domicile" => "functional strength, coherence, and self-command",

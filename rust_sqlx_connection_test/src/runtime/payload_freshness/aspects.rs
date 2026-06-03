@@ -57,7 +57,6 @@ pub(super) fn has_current_aspect_context(signal: &BasicSignal) -> bool {
         && json::has_text_value(context.get("valence_family"))
         && json::has_bool_value(context.get("is_tonal_valence"))
         && json::has_bool_value(context.get("is_intensity_modifier"))
-        && json::has_text_value(context.get("writing_guidance"))
 }
 
 fn has_any_aspect_effect(context: &serde_json::Value) -> bool {

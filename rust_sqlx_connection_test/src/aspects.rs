@@ -56,7 +56,6 @@ pub fn detect_aspects(
                     valence_family: None,
                     valence_is_tonal: None,
                     valence_is_intensity_modifier: None,
-                    valence_writing_guidance: None,
                     calculation_notes_json: Some(json!({
                         "aspect_code": aspect.code,
                         "aspect_name": aspect.name,

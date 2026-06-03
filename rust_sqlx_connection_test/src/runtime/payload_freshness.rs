@@ -1,7 +1,6 @@
 mod angles;
 mod aspects;
 mod chart_context;
-mod contract;
 mod dignities;
 mod emphasis;
 mod json;
@@ -18,14 +17,12 @@ pub fn is_current_basic_payload(payload: &BasicPayload) -> bool {
 
     !payload.signals.is_empty()
         && payload.signals.len() <= 12
-        && contract::has_current_llm_handoff_contract(payload)
         && chart_context::has_current_chart_context(payload)
         && angles::has_current_angles(payload)
         && dignities::has_current_dignities(payload)
         && emphasis::has_current_chart_emphasis(payload)
         && rulership::has_current_rulership_context(&payload.rulership_context)
         && plan::has_current_reading_plan(payload)
-        && plan::has_current_drafting_plan(payload)
         && payload
             .positions
             .iter()
@@ -50,7 +47,6 @@ fn signal_is_current(
             .iter()
             .all(|tag| !tag.trim().is_empty())
         && text::has_text(&signal.aggregation_group)
-        && text::has_text(&signal.writing_guidance)
         && text::has_current_aspect_hint(&signal.interpretive_hint)
         && placements::has_current_placement_context(signal)
         && angles::has_current_angle_evidence(payload, signal)

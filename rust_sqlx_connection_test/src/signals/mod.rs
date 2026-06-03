@@ -15,9 +15,7 @@ mod tags;
 mod utils;
 
 use angles::{angle_signal, is_angle_position};
-use aspect_signals::{
-    aspect_context, aspect_interpretive_hint, aspect_semantic_tags, aspect_writing_guidance,
-};
+use aspect_signals::{aspect_context, aspect_interpretive_hint, aspect_semantic_tags};
 use clusters::{add_position_cluster_signals, apply_cluster_source_deduplication};
 pub use constants::BASIC_MAX_ACTIVE_SIGNALS;
 use constants::{
@@ -33,7 +31,7 @@ use limits::{
 use positions::{
     dignity_summary_for_position, object_source_weight, placement_context,
     position_aggregation_group, position_interpretive_hint, position_priority,
-    position_semantic_tags, position_theme_code, position_writing_guidance, retrograde_summary,
+    position_semantic_tags, position_theme_code, retrograde_summary,
 };
 use relations::{
     angle_object_codes_from_positions, angle_point_object_codes_from_positions,
@@ -112,7 +110,6 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
                 "semantic_tags": semantic_tags,
                 "source_weight": source_weight,
                 "aggregation_group": aggregation_group,
-                "writing_guidance": position_writing_guidance(position, &dignities),
                 "evidence": {
                     "fact_type": "object_position",
                     "chart_object_id": position.chart_object_id,
@@ -188,7 +185,6 @@ pub fn aggregate_basic_signals(facts: &CalculatedChartFacts) -> Vec<Interpretati
                             .unwrap_or(0.0)
                 ),
                 "aggregation_group": format!("aspect:{}", aspect.aspect_code),
-                "writing_guidance": aspect_writing_guidance(aspect),
                 "aspect_context": aspect_context,
                 "evidence": {
                     "fact_type": "aspect",
