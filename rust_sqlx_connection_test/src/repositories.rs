@@ -7,8 +7,8 @@ use crate::domain::{
 };
 use crate::models::{
     AnglePointReference, AspectDefinition, ChartCalculationRow, ChartObject,
-    DomicileRulerReference, HorizonPositionReference, HouseReference, HouseSystem,
-    InterpretationSignalRow, MotionStateReference, PersistedAspectFact,
+    DomicileRulerReference, HorizonPositionReference, HouseAxisReferenceRow, HouseReference,
+    HouseSystem, InterpretationSignalRow, MotionStateReference, PersistedAspectFact,
     PersistedObjectPositionFact, SignReference,
 };
 use crate::runtime::RuntimeError;
@@ -211,6 +211,36 @@ impl RuntimeRepository {
         .bind(reference_version_id)
         .fetch_all(&self.pool)
         .await?)
+    }
+
+    pub async fn house_axis_references(
+        &self,
+    ) -> Result<Vec<crate::domain::HouseAxisReference>, RuntimeError> {
+        Ok(sqlx::query_as::<_, HouseAxisReferenceRow>(
+            r#"
+            SELECT axis.key AS axis_code,
+                   house_a.number AS house_a_number,
+                   house_b.number AS house_b_number,
+                   house_a.theme_code AS theme_a_code,
+                   house_b.theme_code AS theme_b_code,
+                   axis.title AS label,
+                   axis.summary AS description
+            FROM astral_house_axis_definitions axis
+            JOIN astral_house_axis_members member_a
+              ON member_a.axis_id = axis.id
+            JOIN astral_houses house_a
+              ON house_a.id = member_a.house_id
+            JOIN astral_houses house_b
+              ON house_b.id = member_a.opposite_house_id
+            WHERE house_a.number < house_b.number
+            ORDER BY house_a.number
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(Into::into)
+        .collect())
     }
 
     pub async fn house_system(&self, id: i32) -> Result<HouseSystem, RuntimeError> {
@@ -1068,6 +1098,20 @@ impl From<PersistedObjectPositionFact> for ObjectPositionFact {
             altitude_deg: row.altitude_deg,
             is_visible: row.is_visible,
             facts_json: row.facts_json,
+        }
+    }
+}
+
+impl From<HouseAxisReferenceRow> for crate::domain::HouseAxisReference {
+    fn from(row: HouseAxisReferenceRow) -> Self {
+        Self {
+            axis_code: row.axis_code,
+            house_a_number: row.house_a_number,
+            house_b_number: row.house_b_number,
+            theme_a_code: row.theme_a_code,
+            theme_b_code: row.theme_b_code,
+            label: row.label,
+            description: row.description,
         }
     }
 }

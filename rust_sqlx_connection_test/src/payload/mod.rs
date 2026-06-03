@@ -2,13 +2,15 @@ mod angles;
 mod chart_context;
 mod dignities;
 mod emphasis;
+mod house_axes;
 mod json;
 mod reading_plan;
 mod rulership;
 mod signal_filters;
 
 use crate::domain::{
-    BasicObjectPosition, BasicPayload, BasicSignal, NatalChartInput, ObjectPositionFact,
+    BasicObjectPosition, BasicPayload, BasicSignal, HouseAxisReference, NatalChartInput,
+    ObjectPositionFact,
 };
 use crate::models::InterpretationSignalRow;
 use angles::{
@@ -41,6 +43,24 @@ pub fn build_basic_payload_with_rulership(
     signals: &[InterpretationSignalRow],
     domicile_rulers: &[crate::domain::DomicileRulerReference],
 ) -> BasicPayload {
+    build_basic_payload_with_references(
+        chart_calculation_id,
+        input,
+        positions,
+        signals,
+        domicile_rulers,
+        &[],
+    )
+}
+
+pub fn build_basic_payload_with_references(
+    chart_calculation_id: i32,
+    input: &NatalChartInput,
+    positions: &[ObjectPositionFact],
+    signals: &[InterpretationSignalRow],
+    domicile_rulers: &[crate::domain::DomicileRulerReference],
+    house_axes: &[HouseAxisReference],
+) -> BasicPayload {
     let structural_axis_pairs = structural_axis_pairs_from_positions(positions);
     let angle_object_codes = angle_object_codes_from_positions(positions);
     let mut basic_signals: Vec<BasicSignal> = signals
@@ -71,6 +91,15 @@ pub fn build_basic_payload_with_rulership(
     let chart_emphasis = build_chart_emphasis(positions, &dignities, &basic_signals);
     let rulership_context =
         build_rulership_context(positions, &chart_emphasis, domicile_rulers, &basic_signals);
+    let house_axis_emphasis = house_axes::build_house_axis_emphasis(
+        house_axes,
+        positions,
+        &angles,
+        &dignities,
+        &chart_emphasis,
+        &rulership_context,
+        &basic_signals,
+    );
     let chart_context = build_chart_context(input, positions);
     let reading_plan = build_reading_plan(&basic_signals);
 
@@ -107,6 +136,7 @@ pub fn build_basic_payload_with_rulership(
         dignities,
         chart_emphasis,
         rulership_context,
+        house_axis_emphasis,
         signals: basic_signals,
         reading_plan,
     }

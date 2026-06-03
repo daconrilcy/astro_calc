@@ -1374,6 +1374,355 @@ fn angle_to_angle_aspects_are_excluded_from_payload() {
     );
 }
 
+#[allow(clippy::too_many_arguments)]
+fn object_in_house(
+    id: i32,
+    object_code: &str,
+    object_name: &str,
+    sign_code: &str,
+    sign_name: &str,
+    house_number: i32,
+    theme_code: &str,
+    is_luminary: bool,
+) -> ObjectPositionFact {
+    with_signal_scoring(ObjectPositionFact {
+        chart_object_id: id,
+        object_code: object_code.to_string(),
+        object_name: object_name.to_string(),
+        zodiacal_reference_system_id: 1,
+        coordinate_reference_system_id: 1,
+        sign_id: house_number,
+        sign_code: sign_code.to_string(),
+        sign_name: sign_name.to_string(),
+        house_id: Some(house_number),
+        house_number: Some(house_number),
+        house_name: Some(format!("House {house_number}")),
+        motion_state_id: Some(1),
+        horizon_position_id: None,
+        longitude_deg: (house_number * 20) as f64,
+        latitude_deg: None,
+        apparent_speed_deg_per_day: Some(1.0),
+        altitude_deg: None,
+        is_visible: None,
+        facts_json: Some(json!({
+            "sign_context": {
+                "element": "water",
+                "modality": "fixed",
+                "polarity": "yin"
+            },
+            "house_context": {"theme_code": theme_code},
+            "house_modality": {"code": "angular"},
+            "object_context": {
+                "role": if is_luminary { "luminary" } else { "planet" },
+                "is_luminary": is_luminary
+            },
+            "motion_context": {"motion_state": "direct"}
+        })),
+    })
+}
+
+fn canonical_house_axes() -> Vec<HouseAxisReference> {
+    vec![
+        house_axis(
+            "self_relationship",
+            1,
+            7,
+            "identity",
+            "relationships",
+            "Self and Relationship",
+        ),
+        house_axis(
+            "resources_sharing",
+            2,
+            8,
+            "resources",
+            "shared_resources",
+            "Resources and Sharing",
+        ),
+        house_axis(
+            "local_distant",
+            3,
+            9,
+            "communication",
+            "beliefs",
+            "Local and Distant",
+        ),
+        house_axis(
+            "private_public",
+            4,
+            10,
+            "roots",
+            "career",
+            "Private and Public",
+        ),
+        house_axis(
+            "creation_collective",
+            5,
+            11,
+            "creativity",
+            "community",
+            "Creation and Collective",
+        ),
+        house_axis(
+            "control_surrender",
+            6,
+            12,
+            "work_health",
+            "inner_world",
+            "Control and Surrender",
+        ),
+    ]
+}
+
+fn house_axis(
+    axis_code: &str,
+    house_a_number: i32,
+    house_b_number: i32,
+    theme_a_code: &str,
+    theme_b_code: &str,
+    label: &str,
+) -> HouseAxisReference {
+    HouseAxisReference {
+        axis_code: axis_code.to_string(),
+        house_a_number,
+        house_b_number,
+        theme_a_code: theme_a_code.to_string(),
+        theme_b_code: theme_b_code.to_string(),
+        label: label.to_string(),
+        description: format!("{label} description"),
+    }
+}
+
+fn cluster_house_2_signal() -> InterpretationSignalRow {
+    InterpretationSignalRow {
+        id: 1,
+        signal_key: "cluster:capricorn:house_2".to_string(),
+        theme_code: Some("resources".to_string()),
+        title: "Strong concentration in Capricorn, house 2".to_string(),
+        summary: Some("summary".to_string()),
+        priority_score: 99.0,
+        confidence_score: Some(0.9),
+        payload_json: Some(json!({
+            "interpretive_hint": "hint",
+            "semantic_tags": ["cluster", "capricorn", "house_2", "resources"],
+            "source_weight": 2.0,
+            "aggregation_group": "capricorn_house_2_cluster",
+            "evidence": {
+                "fact_type": "position_cluster",
+                "cluster_type": "sign_house",
+                "sign_code": "capricorn",
+                "house_number": 2,
+                "house_theme_code": "resources",
+                "source_signals": ["object_position:sun", "object_position:saturn"],
+                "source_objects": ["sun", "saturn"]
+            }
+        })),
+    }
+}
+
+#[test]
+fn v11_contains_house_axis_emphasis_from_reference_axes() {
+    let positions = vec![
+        angle_position(
+            11,
+            "ascendant",
+            "Ascendant",
+            "asc",
+            "dsc",
+            "horizontal",
+            215.0,
+        ),
+        object_in_house(
+            5, "mars", "Mars", "scorpio", "Scorpio", 1, "identity", false,
+        ),
+        object_in_house(
+            10, "pluto", "Pluto", "scorpio", "Scorpio", 1, "identity", false,
+        ),
+        object_in_house(
+            1,
+            "sun",
+            "Sun",
+            "capricorn",
+            "Capricorn",
+            2,
+            "resources",
+            true,
+        ),
+        object_in_house(
+            7,
+            "saturn",
+            "Saturn",
+            "capricorn",
+            "Capricorn",
+            2,
+            "resources",
+            false,
+        ),
+        object_in_house(
+            6,
+            "jupiter",
+            "Jupiter",
+            "cancer",
+            "Cancer",
+            8,
+            "shared_resources",
+            false,
+        ),
+    ];
+    let signals = vec![
+        cluster_house_2_signal(),
+        placement_signal_row(2, "object_position:mars", "mars"),
+        InterpretationSignalRow {
+            id: 3,
+            signal_key: "angle:ascendant:sign:scorpio".to_string(),
+            theme_code: Some("identity".to_string()),
+            title: "Ascendant in Scorpio".to_string(),
+            summary: Some("summary".to_string()),
+            priority_score: 99.0,
+            confidence_score: Some(0.95),
+            payload_json: Some(json!({
+                "interpretive_hint": "hint",
+                "semantic_tags": ["angle", "ascendant"],
+                "source_weight": 1.0,
+                "aggregation_group": "angle:ascendant:scorpio",
+                "evidence": {"fact_type": "chart_angle", "angle_code": "ascendant"}
+            })),
+        },
+        dignity_signal_row(4, "dignity:saturn:domicile:capricorn", "saturn"),
+        placement_signal_row(5, "object_position:jupiter", "jupiter"),
+        dignity_signal_row(6, "dignity:jupiter:exaltation:cancer", "jupiter"),
+    ];
+
+    let payload = build_basic_payload_with_references(
+        42,
+        &input(),
+        &positions,
+        &signals,
+        &[],
+        &canonical_house_axes(),
+    );
+
+    assert!(!payload.house_axis_emphasis.is_empty());
+    assert!(payload.house_axis_emphasis.len() <= 3);
+    assert!(payload
+        .house_axis_emphasis
+        .windows(2)
+        .all(|pair| pair[0].axis_score >= pair[1].axis_score));
+}
+
+#[test]
+fn resources_and_identity_axes_are_detected_with_existing_signal_sources() {
+    let positions = vec![
+        angle_position(
+            11,
+            "ascendant",
+            "Ascendant",
+            "asc",
+            "dsc",
+            "horizontal",
+            215.0,
+        ),
+        object_in_house(
+            5, "mars", "Mars", "scorpio", "Scorpio", 1, "identity", false,
+        ),
+        object_in_house(
+            10, "pluto", "Pluto", "scorpio", "Scorpio", 1, "identity", false,
+        ),
+        object_in_house(
+            1,
+            "sun",
+            "Sun",
+            "capricorn",
+            "Capricorn",
+            2,
+            "resources",
+            true,
+        ),
+        object_in_house(
+            7,
+            "saturn",
+            "Saturn",
+            "capricorn",
+            "Capricorn",
+            2,
+            "resources",
+            false,
+        ),
+        object_in_house(
+            6,
+            "jupiter",
+            "Jupiter",
+            "cancer",
+            "Cancer",
+            8,
+            "shared_resources",
+            false,
+        ),
+    ];
+    let signals = vec![
+        cluster_house_2_signal(),
+        placement_signal_row(2, "object_position:mars", "mars"),
+        InterpretationSignalRow {
+            id: 3,
+            signal_key: "angle:ascendant:sign:scorpio".to_string(),
+            theme_code: Some("identity".to_string()),
+            title: "Ascendant in Scorpio".to_string(),
+            summary: Some("summary".to_string()),
+            priority_score: 99.0,
+            confidence_score: Some(0.95),
+            payload_json: Some(json!({
+                "interpretive_hint": "hint",
+                "semantic_tags": ["angle", "ascendant"],
+                "source_weight": 1.0,
+                "aggregation_group": "angle:ascendant:scorpio",
+                "evidence": {"fact_type": "chart_angle", "angle_code": "ascendant"}
+            })),
+        },
+        dignity_signal_row(4, "dignity:saturn:domicile:capricorn", "saturn"),
+        placement_signal_row(5, "object_position:jupiter", "jupiter"),
+        dignity_signal_row(6, "dignity:jupiter:exaltation:cancer", "jupiter"),
+    ];
+
+    let payload = build_basic_payload_with_references(
+        42,
+        &input(),
+        &positions,
+        &signals,
+        &[],
+        &canonical_house_axes(),
+    );
+    let resources = payload
+        .house_axis_emphasis
+        .iter()
+        .find(|axis| axis.axis_code == "resources_sharing")
+        .expect("resources axis");
+    let identity = payload
+        .house_axis_emphasis
+        .iter()
+        .find(|axis| axis.axis_code == "self_relationship")
+        .expect("identity axis");
+    let signal_keys: std::collections::HashSet<_> = payload
+        .signals
+        .iter()
+        .map(|signal| signal.signal_key.as_str())
+        .collect();
+
+    assert_eq!(resources.primary_house, 2);
+    assert_eq!(identity.primary_house, 1);
+    assert!(resources
+        .source_signal_keys
+        .contains(&"cluster:capricorn:house_2".to_string()));
+    assert!(identity
+        .source_signal_keys
+        .contains(&"angle:ascendant:sign:scorpio".to_string()));
+    for axis in &payload.house_axis_emphasis {
+        assert_eq!(axis.houses[0] + 6, axis.houses[1]);
+        for source in &axis.source_signal_keys {
+            assert!(signal_keys.contains(source.as_str()));
+        }
+    }
+}
+
 fn aspect_signal(
     id: i32,
     signal_key: &str,

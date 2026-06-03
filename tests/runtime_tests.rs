@@ -4,9 +4,10 @@ use serde_json::json;
 use rust_sqlx_connection_test::domain::{
     BasicAngleFact, BasicCalculationReliability, BasicChartContext, BasicChartEmphasis,
     BasicDignity, BasicDominantHouse, BasicDominantObject, BasicDominantSign,
-    BasicHemisphereEmphasis, BasicObjectPosition, BasicPayload, BasicPayloadContract,
-    BasicReadingPlanItem, BasicRulerContext, BasicRulerSource, BasicRulershipContext,
-    BasicSecondarySlotCandidate, BasicSectContext, BasicSignal, CalculationReferenceData,
+    BasicHemisphereEmphasis, BasicHouseAxisEmphasis, BasicHouseAxisScore, BasicObjectPosition,
+    BasicPayload, BasicPayloadContract, BasicReadingPlanItem, BasicRulerContext, BasicRulerSource,
+    BasicRulershipContext, BasicSecondarySlotCandidate, BasicSectContext, BasicSignal,
+    CalculationReferenceData, HouseAxisReference,
 };
 use rust_sqlx_connection_test::models::{
     AnglePointReference, ChartObject, DomicileRulerReference, HouseReference, SignReference,
@@ -14,7 +15,7 @@ use rust_sqlx_connection_test::models::{
 use rust_sqlx_connection_test::repositories::parse_existing_basic_payload_value;
 use rust_sqlx_connection_test::runtime::{
     has_current_rulership_references, is_current_basic_payload, validate_calculation_references,
-    validate_chart_object_signal_profiles,
+    validate_chart_object_signal_profiles, validate_house_axis_references,
 };
 
 fn current_payload() -> BasicPayload {
@@ -31,7 +32,7 @@ fn current_payload() -> BasicPayload {
             house_system_id: 1,
             reference_version_id: 1,
             payload_contract: BasicPayloadContract {
-                contract_version: "natal_structured_v10".to_string(),
+                contract_version: "natal_structured_v11".to_string(),
                 calculation_scope: "full_natal".to_string(),
                 interpretation_scope: "structured_interpretation".to_string(),
                 projection_depth: "rich".to_string(),
@@ -157,6 +158,43 @@ fn current_payload() -> BasicPayload {
             )),
             ..BasicRulershipContext::default()
         },
+        house_axis_emphasis: vec![BasicHouseAxisEmphasis {
+            axis_code: "local_distant".to_string(),
+            houses: vec![3, 9],
+            theme_codes: vec!["communication".to_string(), "beliefs".to_string()],
+            house_scores: vec![
+                BasicHouseAxisScore {
+                    house_number: 3,
+                    theme_code: "communication".to_string(),
+                    score: 0.1,
+                    reasons: vec!["communication_theme".to_string()],
+                },
+                BasicHouseAxisScore {
+                    house_number: 9,
+                    theme_code: "beliefs".to_string(),
+                    score: 0.45,
+                    reasons: vec![
+                        "dominant_house".to_string(),
+                        "sun_in_house".to_string(),
+                        "beliefs_theme".to_string(),
+                    ],
+                },
+            ],
+            primary_house: 9,
+            secondary_house: 3,
+            axis_score: 0.485,
+            polarity_balance: "secondary_house_dominant".to_string(),
+            source_signal_keys: vec!["object_position:sun".to_string()],
+            source_context_keys: Vec::new(),
+            reasons: vec![
+                "dominant_house".to_string(),
+                "sun_in_house".to_string(),
+                "beliefs_theme".to_string(),
+            ],
+            interpretive_hint:
+                "Local and Distant is activated through house 9 (beliefs), with one side carrying most of the emphasis."
+                    .to_string(),
+        }],
         signals: vec![
             BasicSignal {
                 signal_key: "object_position:sun".to_string(),
@@ -1116,6 +1154,29 @@ fn chart_object_validation_requires_angle_priority_for_angles() {
     assert!(validate_chart_object_signal_profiles(&objects).is_err());
 }
 
+#[test]
+fn house_axis_reference_validation_requires_six_canonical_axes() {
+    let mut axes = house_axis_references();
+    axes.pop();
+
+    assert!(validate_house_axis_references(&axes).is_err());
+}
+
+#[test]
+fn house_axis_reference_validation_rejects_mismatched_theme_codes() {
+    let mut axes = house_axis_references();
+    axes[0].theme_a_code = "resources".to_string();
+
+    assert!(validate_house_axis_references(&axes).is_err());
+}
+
+#[test]
+fn house_axis_reference_validation_accepts_canonical_axes() {
+    let axes = house_axis_references();
+
+    assert!(validate_house_axis_references(&axes).is_ok());
+}
+
 fn chart_objects() -> Vec<ChartObject> {
     vec![
         ChartObject {
@@ -1149,6 +1210,78 @@ fn chart_objects() -> Vec<ChartObject> {
             source_weight: Some(1.0),
         },
     ]
+}
+
+fn house_axis_references() -> Vec<HouseAxisReference> {
+    vec![
+        house_axis_reference(
+            "self_relationship",
+            1,
+            7,
+            "identity",
+            "relationships",
+            "Self and Relationship",
+        ),
+        house_axis_reference(
+            "resources_sharing",
+            2,
+            8,
+            "resources",
+            "shared_resources",
+            "Resources and Sharing",
+        ),
+        house_axis_reference(
+            "local_distant",
+            3,
+            9,
+            "communication",
+            "beliefs",
+            "Local and Distant",
+        ),
+        house_axis_reference(
+            "private_public",
+            4,
+            10,
+            "roots",
+            "career",
+            "Private and Public",
+        ),
+        house_axis_reference(
+            "creation_collective",
+            5,
+            11,
+            "creativity",
+            "community",
+            "Creation and Collective",
+        ),
+        house_axis_reference(
+            "control_surrender",
+            6,
+            12,
+            "work_health",
+            "inner_world",
+            "Control and Surrender",
+        ),
+    ]
+}
+
+fn house_axis_reference(
+    axis_code: &str,
+    house_a_number: i32,
+    house_b_number: i32,
+    theme_a_code: &str,
+    theme_b_code: &str,
+    label: &str,
+) -> HouseAxisReference {
+    HouseAxisReference {
+        axis_code: axis_code.to_string(),
+        house_a_number,
+        house_b_number,
+        theme_a_code: theme_a_code.to_string(),
+        theme_b_code: theme_b_code.to_string(),
+        label: label.to_string(),
+        description: format!("{label} description"),
+    }
 }
 
 fn reference_data() -> CalculationReferenceData {

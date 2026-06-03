@@ -3,6 +3,7 @@ mod aspects;
 mod chart_context;
 mod dignities;
 mod emphasis;
+mod house_axes;
 mod json;
 mod placements;
 mod plan;
@@ -23,6 +24,7 @@ pub fn is_current_basic_payload(payload: &BasicPayload) -> bool {
         && dignities::has_current_dignities(payload)
         && emphasis::has_current_chart_emphasis(payload)
         && rulership::has_current_rulership_context(&payload.rulership_context)
+        && house_axes::has_current_house_axis_emphasis(payload)
         && plan::has_current_reading_plan(payload)
         && payload
             .positions

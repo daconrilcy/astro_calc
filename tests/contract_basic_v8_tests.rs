@@ -7,9 +7,11 @@ use serde_json::Value;
 use rust_sqlx_connection_test::domain::BasicPayload;
 use rust_sqlx_connection_test::runtime::is_current_basic_payload;
 
-const GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v10_paris_1990.json";
-const SCHEMA_PATH: &str = "schemas/natal_structured_v10.schema.json";
-const PAYLOAD_UNDER_TEST_ENV: &str = "NATAL_V10_SCHEMA_PAYLOAD_PATH";
+const GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v11_paris_1990.json";
+const SCHEMA_PATH: &str = "schemas/natal_structured_v11.schema.json";
+const PAYLOAD_UNDER_TEST_ENV: &str = "NATAL_V11_SCHEMA_PAYLOAD_PATH";
+const V10_GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v10_paris_1990.json";
+const V10_SCHEMA_PATH: &str = "schemas/natal_structured_v10.schema.json";
 const V8_GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/basic_payload_v8_paris_1990.json";
 const V8_SCHEMA_PATH: &str = "schemas/basic_natal_structured_v8.schema.json";
 const V8_PAYLOAD_UNDER_TEST_ENV: &str = "BASIC_V8_SCHEMA_PAYLOAD_PATH";
@@ -76,6 +78,13 @@ fn find_slot<'a>(payload: &'a Value, plan_name: &str, slot: &str) -> &'a Value {
         .unwrap_or_else(|| panic!("missing {plan_name} slot {slot}"))
 }
 
+fn find_axis<'a>(payload: &'a Value, axis_code: &str) -> &'a Value {
+    array(payload, "house_axis_emphasis")
+        .iter()
+        .find(|axis| axis["axis_code"] == axis_code)
+        .unwrap_or_else(|| panic!("missing house axis {axis_code}"))
+}
+
 fn source_keys(item: &Value) -> Vec<&str> {
     array(item, "source_signal_keys")
         .iter()
@@ -104,13 +113,27 @@ fn assert_source_prefix(item: &Value, prefix: &str) {
 }
 
 #[test]
-fn golden_payload_matches_json_schema_v10() {
+fn golden_payload_matches_json_schema_v11() {
     let payload_json = load_golden_payload();
     let validation_errors = validate_with_schema(&payload_json);
 
     assert!(
         validation_errors.is_empty(),
-        "golden payload does not match natal_structured_v10 schema:\n{}",
+        "golden payload does not match natal_structured_v11 schema:\n{}",
+        validation_errors.join("\n")
+    );
+}
+
+#[test]
+fn historical_v10_golden_payload_matches_json_schema_v10() {
+    let raw = fs::read_to_string(V10_GOLDEN_PAYLOAD_PATH).expect("v10 golden payload should exist");
+    let payload_json: Value =
+        serde_json::from_str(&raw).expect("v10 golden payload should be JSON");
+    let validation_errors = validate_with_schema_at(&payload_json, V10_SCHEMA_PATH);
+
+    assert!(
+        validation_errors.is_empty(),
+        "historical v10 golden payload does not match natal_structured_v10 schema:\n{}",
         validation_errors.join("\n")
     );
 }
@@ -129,7 +152,7 @@ fn historical_v8_golden_payload_matches_json_schema_v8() {
 }
 
 #[test]
-fn external_payload_matches_json_schema_v10_when_requested() {
+fn external_payload_matches_json_schema_v11_when_requested() {
     let Ok(path) = std::env::var(PAYLOAD_UNDER_TEST_ENV) else {
         return;
     };
@@ -138,7 +161,7 @@ fn external_payload_matches_json_schema_v10_when_requested() {
 
     assert!(
         validation_errors.is_empty(),
-        "external payload does not match natal_structured_v10 schema:\n{}",
+        "external payload does not match natal_structured_v11 schema:\n{}",
         validation_errors.join("\n")
     );
 }
@@ -162,7 +185,7 @@ fn external_payload_matches_json_schema_v8_when_requested() {
 fn schema_rejects_llm_handoff_contract_property() {
     let mut payload = load_golden_payload();
     payload["llm_handoff_contract"] = serde_json::json!({
-        "contract_version": "natal_structured_v10"
+        "contract_version": "natal_structured_v11"
     });
 
     assert!(
@@ -281,6 +304,28 @@ fn schema_rejects_unknown_signal_key_family() {
 }
 
 #[test]
+fn schema_rejects_invalid_axis_house_pair() {
+    let mut payload = load_golden_payload();
+    payload["house_axis_emphasis"][0]["houses"] = serde_json::json!([2, 7]);
+
+    assert!(
+        !validate_with_schema(&payload).is_empty(),
+        "schema should reject a non-canonical house pair for an axis"
+    );
+}
+
+#[test]
+fn schema_rejects_axis_score_out_of_range() {
+    let mut payload = load_golden_payload();
+    payload["house_axis_emphasis"][0]["axis_score"] = serde_json::json!(1.1);
+
+    assert!(
+        !validate_with_schema(&payload).is_empty(),
+        "schema should reject axis_score greater than 1"
+    );
+}
+
+#[test]
 fn schema_rejects_extra_aspect_context_property() {
     let mut payload = load_golden_payload();
     let aspect = payload["signals"]
@@ -312,10 +357,10 @@ fn golden_payload_is_accepted_by_runtime_reuse_validation() {
 }
 
 #[test]
-fn runtime_rejects_v7_payload_contract_version() {
+fn runtime_rejects_v10_payload_contract_version() {
     let mut payload = load_golden_payload();
     payload["chart_context"]["payload_contract"]["contract_version"] =
-        Value::String("basic_natal_structured_v7".to_string());
+        Value::String("natal_structured_v10".to_string());
 
     let parsed: BasicPayload =
         serde_json::from_value(payload).expect("modified payload should deserialize");
@@ -324,7 +369,75 @@ fn runtime_rejects_v7_payload_contract_version() {
 }
 
 #[test]
-fn v10_payload_omits_llm_and_drafting_instructions() {
+fn runtime_rejects_v10_without_house_axis_emphasis() {
+    let raw = fs::read_to_string(V10_GOLDEN_PAYLOAD_PATH).expect("v10 golden payload should exist");
+    let payload: BasicPayload =
+        serde_json::from_str(&raw).expect("v10 golden payload should deserialize");
+
+    assert!(!is_current_basic_payload(&payload));
+}
+
+#[test]
+fn runtime_rejects_axis_source_signal_key_that_does_not_exist() {
+    let mut payload = load_golden_payload();
+    payload["house_axis_emphasis"][0]["source_signal_keys"]
+        .as_array_mut()
+        .expect("source_signal_keys should be an array")
+        .push(Value::String("object_position:not_active".to_string()));
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
+#[test]
+fn runtime_rejects_axis_theme_codes_that_do_not_match_canonical_axis() {
+    let mut payload = load_golden_payload();
+    payload["house_axis_emphasis"][0]["theme_codes"] =
+        serde_json::json!(["identity", "relationships"]);
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
+#[test]
+fn runtime_rejects_axis_primary_house_inconsistent_with_house_scores() {
+    let mut payload = load_golden_payload();
+    payload["house_axis_emphasis"][0]["primary_house"] = serde_json::json!(8);
+    payload["house_axis_emphasis"][0]["secondary_house"] = serde_json::json!(2);
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
+#[test]
+fn runtime_rejects_axis_score_inconsistent_with_house_scores() {
+    let mut payload = load_golden_payload();
+    payload["house_axis_emphasis"][0]["axis_score"] = serde_json::json!(0.5);
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
+#[test]
+fn runtime_rejects_duplicate_axis_source_signal_keys() {
+    let mut payload = load_golden_payload();
+    let duplicate = payload["house_axis_emphasis"][0]["source_signal_keys"][0].clone();
+    payload["house_axis_emphasis"][0]["source_signal_keys"]
+        .as_array_mut()
+        .expect("source_signal_keys should be an array")
+        .push(duplicate);
+    let parsed: BasicPayload =
+        serde_json::from_value(payload).expect("modified payload should deserialize");
+
+    assert!(!is_current_basic_payload(&parsed));
+}
+
+#[test]
+fn v11_payload_omits_llm_and_drafting_instructions() {
     let payload = load_golden_payload();
 
     assert!(payload.get("llm_handoff_contract").is_none());
@@ -338,7 +451,91 @@ fn v10_payload_omits_llm_and_drafting_instructions() {
 }
 
 #[test]
-fn v10_contains_four_canonical_angles() {
+fn v11_contains_house_axis_emphasis() {
+    let payload = load_golden_payload();
+    let axes = array(&payload, "house_axis_emphasis");
+
+    assert!(!axes.is_empty());
+    assert!(axes.len() <= 3);
+}
+
+#[test]
+fn resources_sharing_axis_is_detected() {
+    let payload = load_golden_payload();
+    let axis = find_axis(&payload, "resources_sharing");
+
+    assert_eq!(axis["houses"], serde_json::json!([2, 8]));
+    assert_eq!(axis["primary_house"], 2);
+    assert!(array(axis, "source_signal_keys")
+        .iter()
+        .any(|value| value == "cluster:capricorn:house_2"));
+}
+
+#[test]
+fn self_relationship_axis_is_detected() {
+    let payload = load_golden_payload();
+    let axis = find_axis(&payload, "self_relationship");
+
+    assert_eq!(axis["houses"], serde_json::json!([1, 7]));
+    assert_eq!(axis["primary_house"], 1);
+    assert!(array(axis, "source_signal_keys")
+        .iter()
+        .any(|value| value == "angle:ascendant:sign:scorpio"));
+}
+
+#[test]
+fn axis_source_signal_keys_exist() {
+    let payload = load_golden_payload();
+    let signal_keys: HashSet<&str> = array(&payload, "signals")
+        .iter()
+        .map(|signal| string(signal, "signal_key"))
+        .collect();
+
+    for axis in array(&payload, "house_axis_emphasis") {
+        for key in source_keys(axis) {
+            assert!(
+                signal_keys.contains(key),
+                "house axis references missing signal {key}"
+            );
+        }
+    }
+}
+
+#[test]
+fn axis_scores_are_sorted_desc() {
+    let payload = load_golden_payload();
+    let mut previous = f64::INFINITY;
+
+    for axis in array(&payload, "house_axis_emphasis") {
+        let score = axis["axis_score"]
+            .as_f64()
+            .expect("axis_score should be a number");
+        assert!(score <= previous);
+        previous = score;
+    }
+}
+
+#[test]
+fn axis_count_is_limited_to_three() {
+    let payload = load_golden_payload();
+
+    assert!(array(&payload, "house_axis_emphasis").len() <= 3);
+}
+
+#[test]
+fn axis_houses_are_opposites() {
+    let payload = load_golden_payload();
+
+    for axis in array(&payload, "house_axis_emphasis") {
+        let houses = array(axis, "houses");
+        let first = houses[0].as_i64().expect("house should be an integer");
+        let second = houses[1].as_i64().expect("house should be an integer");
+        assert_eq!(first + 6, second);
+    }
+}
+
+#[test]
+fn v11_contains_four_canonical_angles() {
     let payload = load_golden_payload();
     let angles = array(&payload, "angles");
 
@@ -358,7 +555,7 @@ fn v10_contains_four_canonical_angles() {
 }
 
 #[test]
-fn v10_rulership_sources_map_doctrines_to_ruler_objects() {
+fn v11_rulership_sources_map_doctrines_to_ruler_objects() {
     let payload = load_golden_payload();
     let rulership = &payload["rulership_context"];
 
@@ -383,7 +580,7 @@ fn v10_rulership_sources_map_doctrines_to_ruler_objects() {
 }
 
 #[test]
-fn v10_rulership_routes_mc_and_uses_consistent_modern_scorpio_ruler() {
+fn v11_rulership_routes_mc_and_uses_consistent_modern_scorpio_ruler() {
     let payload = load_golden_payload();
     let rulership = &payload["rulership_context"];
     let ascendant_ruler = &rulership["ascendant_ruler"];
@@ -405,7 +602,7 @@ fn v10_rulership_routes_mc_and_uses_consistent_modern_scorpio_ruler() {
 }
 
 #[test]
-fn v10_rulership_uses_current_modern_outer_planet_rulers() {
+fn v11_rulership_uses_current_modern_outer_planet_rulers() {
     let payload = load_golden_payload();
     let rulership = &payload["rulership_context"];
     let ascendant_ruler = &rulership["ascendant_ruler"];
@@ -428,7 +625,7 @@ fn v10_rulership_uses_current_modern_outer_planet_rulers() {
 }
 
 #[test]
-fn v10_rulership_splits_final_dispositors_from_mutual_receptions() {
+fn v11_rulership_splits_final_dispositors_from_mutual_receptions() {
     let payload = load_golden_payload();
     let rulership = &payload["rulership_context"];
 

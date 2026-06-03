@@ -56,6 +56,17 @@ pub struct CalculationReferenceData {
 }
 
 #[derive(Debug, Clone)]
+pub struct HouseAxisReference {
+    pub axis_code: String,
+    pub house_a_number: i32,
+    pub house_b_number: i32,
+    pub theme_a_code: String,
+    pub theme_b_code: String,
+    pub label: String,
+    pub description: String,
+}
+
+#[derive(Debug, Clone)]
 pub struct ObjectPositionFact {
     pub chart_object_id: i32,
     pub object_code: String,
@@ -150,6 +161,8 @@ pub struct BasicPayload {
     pub chart_emphasis: BasicChartEmphasis,
     #[serde(default)]
     pub rulership_context: BasicRulershipContext,
+    #[serde(default)]
+    pub house_axis_emphasis: Vec<BasicHouseAxisEmphasis>,
     pub signals: Vec<BasicSignal>,
     #[serde(default)]
     pub reading_plan: Vec<BasicReadingPlanItem>,
@@ -346,6 +359,37 @@ pub struct BasicMutualReception {
     pub object_codes: Vec<String>,
     #[serde(default)]
     pub source_objects: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BasicHouseAxisEmphasis {
+    pub axis_code: String,
+    #[serde(default)]
+    pub houses: Vec<i32>,
+    #[serde(default)]
+    pub theme_codes: Vec<String>,
+    #[serde(default)]
+    pub house_scores: Vec<BasicHouseAxisScore>,
+    pub primary_house: i32,
+    pub secondary_house: i32,
+    pub axis_score: f64,
+    pub polarity_balance: String,
+    #[serde(default)]
+    pub source_signal_keys: Vec<String>,
+    #[serde(default)]
+    pub source_context_keys: Vec<String>,
+    #[serde(default)]
+    pub reasons: Vec<String>,
+    pub interpretive_hint: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BasicHouseAxisScore {
+    pub house_number: i32,
+    pub theme_code: String,
+    pub score: f64,
+    #[serde(default)]
+    pub reasons: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

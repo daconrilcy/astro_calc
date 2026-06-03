@@ -109,6 +109,17 @@ pub struct DomicileRulerReference {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+pub struct HouseAxisReferenceRow {
+    pub axis_code: String,
+    pub house_a_number: i32,
+    pub house_b_number: i32,
+    pub theme_a_code: String,
+    pub theme_b_code: String,
+    pub label: String,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct InterpretationSignalRow {
     pub id: i32,
     pub signal_key: String,

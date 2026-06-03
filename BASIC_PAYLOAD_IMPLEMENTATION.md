@@ -1649,3 +1649,60 @@ Ce decoupage reste strictement structurel: aucune nouvelle donnee canonique n'a
 ete ajoutee en dur, les chemins publics existants restent disponibles, et les
 tests runtime valident le comportement conserve. Les helpers internes restent
 prives au fichier ou `pub(super)` quand ils sont partages entre sous-modules.
+
+## 3C - House axis emphasis
+
+Le contrat courant passe a `natal_structured_v11` avec un nouveau bloc top-level
+`house_axis_emphasis`. Ce bloc reste dans le perimetre moteur: il synthetise les
+axes de maisons significatifs sans creer de slot `reading_plan`, sans signal
+`house_axis:*`, et sans instruction de redaction LLM.
+
+Les axes utilises viennent des tables canoniques existantes:
+
+- `astral_house_axis_definitions`;
+- `astral_house_axis_members`;
+- `astral_houses` pour les numeros de maisons et `theme_code`.
+
+Le repository expose `house_axis_references`, puis le runtime les injecte dans
+`build_basic_payload_with_references`. Le builder `payload/house_axes.rs` croise
+les references d'axes avec les positions, angles, dignites, `chart_emphasis`,
+signaux actifs et `rulership_context`.
+
+Chaque item expose:
+
+- `axis_code`, `houses`, `theme_codes`;
+- `house_scores` pour l'audit par maison;
+- `primary_house`, `secondary_house`, `axis_score`, `polarity_balance`;
+- `source_signal_keys`, filtres sur les signaux actifs existants;
+- `source_context_keys`, `reasons`, `interpretive_hint`.
+
+Les scores sont bornes entre 0 et 1. Le score d'axe combine la maison la plus
+forte et une part secondaire de la maison opposee. Le payload conserve au plus
+trois axes, tries par `axis_score` descendant, et ne remonte pas d'axe
+`weak_axis`.
+
+La validation runtime refuse les payloads v10 comme obsoletes et verifie:
+
+- `chart_context.payload_contract.contract_version = "natal_structured_v11"`;
+- presence et taille de `house_axis_emphasis`;
+- correspondance stricte entre `axis_code`, paires de maisons et `theme_codes`
+  canoniques;
+- scores bornes;
+- coherence calculee de `axis_score`, `primary_house`, `secondary_house` et
+  `polarity_balance` avec `house_scores`;
+- `source_signal_keys` existants dans `signals`;
+- absence de doublons dans les sources d'axe;
+- tri descendant et absence d'axe faible.
+
+Les references d'axes chargees depuis la base sont validees avant construction
+du payload: le runtime attend exactement les six axes canoniques du contrat v11,
+avec leurs maisons opposees et leurs themes de maisons correspondants. Une base
+incomplete ou incoherente echoue donc avant persistance d'un payload v11.
+
+Les artefacts ajoutes sont:
+
+- `rust_sqlx_connection_test/schemas/natal_structured_v11.schema.json`;
+- `tests/golden/natal_payload_v11_paris_1990.json`;
+- `scripts/verify_natal_v11_golden.ps1`;
+- tests de non-regression dans `tests/payload_tests.rs`,
+  `tests/runtime_tests.rs` et `tests/contract_basic_v8_tests.rs`.

@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::domain::CalculationReferenceData;
+use crate::domain::{CalculationReferenceData, HouseAxisReference};
 use crate::models::ChartObject;
 
 use super::RuntimeError;
@@ -152,4 +152,62 @@ pub fn validate_chart_object_signal_profiles(
     }
 
     Ok(())
+}
+
+pub fn validate_house_axis_references(
+    references: &[HouseAxisReference],
+) -> Result<(), RuntimeError> {
+    if references.len() != 6 {
+        return Err(RuntimeError::Ephemeris(format!(
+            "expected 6 house axis references, found {}",
+            references.len()
+        )));
+    }
+
+    let mut seen_axis_codes = HashSet::new();
+    let mut seen_house_pairs = HashSet::new();
+    for reference in references {
+        let Some((expected_houses, expected_themes)) =
+            canonical_house_axis(reference.axis_code.as_str())
+        else {
+            return Err(RuntimeError::Ephemeris(format!(
+                "unknown house axis reference {}",
+                reference.axis_code
+            )));
+        };
+
+        let house_pair = (reference.house_a_number, reference.house_b_number);
+        if !seen_axis_codes.insert(reference.axis_code.as_str())
+            || !seen_house_pairs.insert(house_pair)
+            || house_pair != expected_houses
+            || (
+                reference.theme_a_code.as_str(),
+                reference.theme_b_code.as_str(),
+            ) != expected_themes
+            || reference.label.trim().is_empty()
+            || reference.description.trim().is_empty()
+        {
+            return Err(RuntimeError::Ephemeris(format!(
+                "invalid house axis reference {}",
+                reference.axis_code
+            )));
+        }
+    }
+
+    Ok(())
+}
+
+type HouseAxisPair = (i32, i32);
+type HouseAxisThemes = (&'static str, &'static str);
+
+fn canonical_house_axis(axis_code: &str) -> Option<(HouseAxisPair, HouseAxisThemes)> {
+    match axis_code {
+        "self_relationship" => Some(((1, 7), ("identity", "relationships"))),
+        "resources_sharing" => Some(((2, 8), ("resources", "shared_resources"))),
+        "local_distant" => Some(((3, 9), ("communication", "beliefs"))),
+        "private_public" => Some(((4, 10), ("roots", "career"))),
+        "creation_collective" => Some(((5, 11), ("creativity", "community"))),
+        "control_surrender" => Some(((6, 12), ("work_health", "inner_world"))),
+        _ => None,
+    }
 }
