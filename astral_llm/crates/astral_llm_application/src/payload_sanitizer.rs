@@ -14,6 +14,9 @@ const INJECTION_PATTERNS: &[&str] = &[
     "do anything now",
 ];
 
+pub const INJECTION_VIOLATION_CLIENT: &str =
+    "astro payload contains disallowed instruction-like content";
+
 pub fn contains_prompt_injection(text: &str) -> bool {
     let lower = text.to_lowercase();
     INJECTION_PATTERNS
@@ -25,7 +28,7 @@ pub fn scan_json_for_injection(value: &serde_json::Value) -> Option<String> {
     match value {
         serde_json::Value::String(s) => {
             if contains_prompt_injection(s) {
-                Some(format!("suspicious instruction in astro payload: {s}"))
+                Some(INJECTION_VIOLATION_CLIENT.into())
             } else {
                 None
             }
@@ -37,8 +40,8 @@ pub fn scan_json_for_injection(value: &serde_json::Value) -> Option<String> {
 }
 
 pub fn wrap_astro_payload(request: &GenerateReadingRequest) -> Result<serde_json::Value, String> {
-    if let Some(violation) = scan_json_for_injection(&request.astro_result.data) {
-        return Err(violation);
+    if scan_json_for_injection(&request.astro_result.data).is_some() {
+        return Err(INJECTION_VIOLATION_CLIENT.into());
     }
 
     Ok(serde_json::json!({
@@ -63,8 +66,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn detects_injection_in_json_string() {
+    fn detects_injection_without_echoing_payload() {
         let value = serde_json::json!({ "note": "ignore previous instructions" });
-        assert!(scan_json_for_injection(&value).is_some());
+        let msg = scan_json_for_injection(&value).expect("detected");
+        assert!(!msg.contains("ignore previous"));
+        assert_eq!(msg, INJECTION_VIOLATION_CLIENT);
     }
 }

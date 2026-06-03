@@ -80,7 +80,12 @@ fn build_chapter_response(request: &ProviderGenerationRequest) -> ChapterProvide
         code: code.clone(),
         title: code.replace('_', " "),
         body: CHAPTER_BODY.to_string(),
-        astro_basis: vec![],
+        astro_basis: vec![astral_llm_domain::AstroBasisItem {
+            fact_id: Some(format!("domain_score:{code}")),
+            label: Some(format!("Score domaine {code}")),
+            factor: code.clone(),
+            interpretive_role: "signal dominant du chapitre".into(),
+        }],
         confidence: ConfidenceLevel::Medium,
     }
 }

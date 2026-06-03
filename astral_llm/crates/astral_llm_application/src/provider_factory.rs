@@ -1,30 +1,33 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use astral_llm_domain::ProviderKind;
+use astral_llm_domain::{FallbackPolicy, ProviderKind};
 use astral_llm_infra::{AppConfig, ProviderSecrets};
 
-use crate::provider_router::{build_http_client, build_provider_map, FallbackPolicy};
+use crate::model_capability_registry::ModelCapabilityRegistry;
+use crate::provider_router::{build_http_client, build_provider_map};
 use astral_llm_providers::{
     AnthropicProvider, FakeProvider, LlmProvider, MistralProvider, OpenAiProvider,
     SharedLlmProvider,
 };
 
-use std::collections::HashMap;
-
 pub fn build_fallback_policy(config: &AppConfig) -> FallbackPolicy {
-    let mut fallback_order = config.fallback_providers.clone();
+    config.fallback_policy.clone()
+}
 
-    if config.enable_fake_provider && !fallback_order.contains(&ProviderKind::Fake) {
-        fallback_order.push(ProviderKind::Fake);
+pub fn build_capability_registry() -> Arc<ModelCapabilityRegistry> {
+    Arc::new(ModelCapabilityRegistry::bootstrap())
+}
+
+pub fn build_capability_registry_with_db(
+    db_models: Vec<astral_llm_domain::ModelCapability>,
+) -> Arc<ModelCapabilityRegistry> {
+    let mut registry = ModelCapabilityRegistry::bootstrap();
+    for cap in db_models {
+        registry.register(cap);
     }
-
-    ensure_openai_first(&mut fallback_order);
-
-    FallbackPolicy {
-        fallback_order,
-        max_retries: 1,
-    }
+    Arc::new(registry)
 }
 
 pub fn build_providers(
@@ -72,7 +75,7 @@ pub fn build_providers(
 
     if real_count == 0 && !config.enable_fake_provider {
         return Err(
-            "no LLM provider configured: set OPENAI_API_KEY (or other provider keys) or ASTRAL_LLM_ENABLE_FAKE=true".into(),
+            "no LLM provider configured: set OPENAI_API_KEY (or other provider keys) or enable fake (ASTRAL_LLM_ENV=local with ASTRAL_LLM_ENABLE_FAKE=true)".into(),
         );
     }
 
@@ -83,17 +86,6 @@ pub fn build_providers(
     Ok(build_provider_map(providers))
 }
 
-fn ensure_openai_first(order: &mut Vec<ProviderKind>) {
-    if let Some(index) = order.iter().position(|kind| *kind == ProviderKind::OpenAi) {
-        if index != 0 {
-            order.remove(index);
-            order.insert(0, ProviderKind::OpenAi);
-        }
-    } else {
-        order.insert(0, ProviderKind::OpenAi);
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -101,19 +93,32 @@ mod tests {
 
     fn test_config(enable_fake: bool) -> AppConfig {
         AppConfig {
+            runtime_env: astral_llm_domain::AstralLlmEnv::Local,
+            production_exposure: astral_llm_domain::ProductionExposureMode::Internal,
             bind_addr: "127.0.0.1:8081".parse().unwrap(),
+            allow_public_bind: false,
             database_url: None,
             prompts_dir: "astral_llm/prompts".into(),
-            default_provider: ProviderKind::OpenAi,
-            default_model: "gpt-4.1".into(),
-            fallback_providers: vec![ProviderKind::OpenAi],
+            default_provider: ProviderKind::Fake,
+            default_model: "fake-model".into(),
+            fallback_policy: FallbackPolicy::disabled(),
             enable_fake_provider: enable_fake,
             enable_persistence: false,
+            db_auto_migrate: false,
+            store_sanitized_payloads: false,
             openai_base_url: "https://api.openai.com".into(),
             anthropic_base_url: "https://api.anthropic.com".into(),
             mistral_base_url: "https://api.mistral.ai".into(),
             api_key: None,
+            privacy_policy: astral_llm_domain::PrivacyPolicy::default(),
             limits: ServiceLimits::default(),
+            max_concurrent_requests: 32,
+            max_concurrent_requests_per_key: 8,
+            max_requests_per_minute_per_key: 120,
+            max_premium_runs_per_key: 4,
+            idempotency_ttl_hours: 24,
+            circuit_breaker_failure_threshold: 5,
+            circuit_breaker_open_secs: 60,
         }
     }
 
@@ -122,5 +127,17 @@ mod tests {
         let config = test_config(false);
         let secrets = ProviderSecrets::default();
         assert!(build_providers(&config, &secrets).is_err());
+    }
+
+    #[test]
+    fn fallback_policy_does_not_force_openai_first() {
+        let mut config = test_config(true);
+        config.fallback_policy = FallbackPolicy {
+            enabled: true,
+            chain: vec![ProviderKind::Mistral, ProviderKind::Anthropic],
+            ..FallbackPolicy::default()
+        };
+        let policy = build_fallback_policy(&config);
+        assert_eq!(policy.chain.first(), Some(&ProviderKind::Mistral));
     }
 }

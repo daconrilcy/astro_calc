@@ -1,0 +1,57 @@
+{
+    "request_id": "e2e-premium-001",
+    "idempotency_key": null,
+    "product_context": {
+      "product_code": "natal_premium",
+      "user_language": "fr",
+      "audience_level": "beginner"
+    },
+    "astro_result": {
+      "contract_version": "natal_structured_v13",
+      "chart_type": "natal",
+      "data": {
+        "domain_scores": {
+          "identity": 0.85,
+          "emotional_life": 0.78,
+          "relationships": 0.72,
+          "career": 0.55,
+          "growth_path": 0.6
+        }
+      }
+    },
+    "astrologer_profile": {
+      "profile_id": null,
+      "name": null,
+      "tone": "warm",
+      "jargon_level": "beginner",
+      "wording_style": "clear",
+      "preferred_domains": [
+        "identity",
+        "emotional_life",
+        "relationships",
+        "career",
+        "growth_path"
+      ],
+      "forbidden_wording": [],
+      "custom_instructions": null
+    },
+    "engine": {
+      "provider": "open_ai",
+      "model": "gpt-4.1",
+      "temperature": 0.5,
+      "max_output_tokens": 1200,
+      "domain_count": 5,
+      "allow_fallback": false,
+      "timeout_ms": 120000
+    },
+    "response_contract": {
+      "output_schema_version": "natal_reading_v1",
+      "generation_mode": "chapter_orchestrated",
+      "format": "structured_json",
+      "chapters": [],
+      "global_max_tokens": null,
+      "include_astro_sources": true,
+      "include_legal_disclaimer": true
+    },
+    "safety_policy": null
+  }

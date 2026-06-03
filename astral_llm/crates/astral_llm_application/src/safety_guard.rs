@@ -106,6 +106,67 @@ impl SafetyGuard {
             Err(violations)
         }
     }
+
+    pub fn validate_chapter_text(
+        body: &str,
+        policy: &SafetyPolicy,
+        forbidden_wording: &[String],
+        catalog: &SharedCanonicalCatalog,
+    ) -> Result<(), Vec<String>> {
+        let mut violations = Vec::new();
+
+        if policy.forbid_medical_advice
+            && matches_patterns(body, &catalog.patterns_for_type("medical"))
+        {
+            violations.push("medical advice detected".into());
+        }
+        if policy.forbid_legal_advice && matches_patterns(body, &catalog.patterns_for_type("legal"))
+        {
+            violations.push("legal advice detected".into());
+        }
+        if policy.forbid_financial_advice
+            && matches_patterns(body, &catalog.patterns_for_type("financial"))
+        {
+            violations.push("financial advice detected".into());
+        }
+        if policy.forbid_death_prediction
+            && matches_patterns(body, &catalog.patterns_for_type("death"))
+        {
+            violations.push("death prediction detected".into());
+        }
+        if policy.forbid_pregnancy_prediction
+            && matches_patterns(body, &catalog.patterns_for_type("pregnancy"))
+        {
+            violations.push("pregnancy prediction detected".into());
+        }
+        if policy.forbid_deterministic_claims
+            && matches_patterns(body, &catalog.patterns_for_type("deterministic"))
+        {
+            violations.push("deterministic claim detected".into());
+        }
+        if policy.require_symbolic_framing
+            && !matches_patterns(body, &catalog.patterns_for_type("symbolic"))
+        {
+            violations.push("missing symbolic/interpretive framing".into());
+        }
+
+        for topic in &policy.custom_forbidden_topics {
+            if body.to_lowercase().contains(&topic.to_lowercase()) {
+                violations.push(format!("forbidden topic detected: {topic}"));
+            }
+        }
+        for word in forbidden_wording {
+            if body.to_lowercase().contains(&word.to_lowercase()) {
+                violations.push(format!("forbidden wording detected: {word}"));
+            }
+        }
+
+        if violations.is_empty() {
+            Ok(())
+        } else {
+            Err(violations)
+        }
+    }
 }
 
 fn collect_text(reading: &NatalReadingResponse) -> String {

@@ -60,6 +60,10 @@ pub struct ReadingChapter {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AstroBasisItem {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fact_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
     pub factor: String,
     pub interpretive_role: String,
 }
@@ -89,9 +93,42 @@ pub struct QualityMetadata {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SafetyErrorBody {
+    pub code: String,
+    pub category: String,
+    pub message: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rule_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct SafetyRejectedResponse {
     pub run_id: String,
+    pub status: String,
+    pub error: SafetyErrorBody,
     pub violations: Vec<String>,
+}
+
+impl SafetyRejectedResponse {
+    pub fn new(
+        run_id: impl Into<String>,
+        category: impl Into<String>,
+        message: impl Into<String>,
+        rule_id: Option<String>,
+        violations: Vec<String>,
+    ) -> Self {
+        Self {
+            run_id: run_id.into(),
+            status: "safety_rejected".into(),
+            error: SafetyErrorBody {
+                code: "SAFETY_POLICY_VIOLATION".into(),
+                category: category.into(),
+                message: message.into(),
+                rule_id,
+            },
+            violations,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

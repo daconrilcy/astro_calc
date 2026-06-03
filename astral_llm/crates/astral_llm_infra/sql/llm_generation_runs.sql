@@ -29,6 +29,20 @@ CREATE INDEX IF NOT EXISTS idx_llm_generation_runs_product_code
 
 CREATE TABLE IF NOT EXISTS llm_generation_payloads (
     run_id UUID PRIMARY KEY REFERENCES llm_generation_runs(id) ON DELETE CASCADE,
-    sanitized_input_json JSONB,
-    sanitized_output_json JSONB
+    sanitized_request_json JSONB,
+    sanitized_response_json JSONB,
+    prompt_hash TEXT,
+    astro_facts_hash TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE llm_generation_payloads
+    ADD COLUMN IF NOT EXISTS sanitized_request_json JSONB;
+ALTER TABLE llm_generation_payloads
+    ADD COLUMN IF NOT EXISTS sanitized_response_json JSONB;
+ALTER TABLE llm_generation_payloads
+    ADD COLUMN IF NOT EXISTS prompt_hash TEXT;
+ALTER TABLE llm_generation_payloads
+    ADD COLUMN IF NOT EXISTS astro_facts_hash TEXT;
+ALTER TABLE llm_generation_payloads
+    ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();

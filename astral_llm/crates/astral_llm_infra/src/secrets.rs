@@ -31,6 +31,10 @@ impl ProviderSecrets {
     pub fn has_mistral(&self) -> bool {
         secret_is_set(self.mistral_api_key.as_ref())
     }
+
+    pub fn has_any_real_provider(&self) -> bool {
+        self.has_openai() || self.has_anthropic() || self.has_mistral()
+    }
 }
 
 fn secret_from_env(key: &str) -> Option<SecretString> {

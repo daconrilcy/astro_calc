@@ -3,7 +3,7 @@ use astral_llm_domain::{
 };
 use astral_llm_infra::SharedCanonicalCatalog;
 
-use crate::payload_sanitizer::{scan_json_for_injection, wrap_astro_payload};
+use crate::payload_sanitizer::scan_json_for_injection;
 
 pub struct RequestValidator;
 
@@ -107,11 +107,6 @@ impl RequestValidator {
             ));
         }
 
-        // Verifie que le payload peut etre encapsule sans injection
-        wrap_astro_payload(request).map_err(|e| {
-            GenerationError::new(GenerationErrorCode::InvalidInput, e)
-        })?;
-
         Ok(())
     }
 
@@ -151,6 +146,7 @@ mod tests {
     fn sample_request() -> GenerateReadingRequest {
         GenerateReadingRequest {
             request_id: None,
+            idempotency_key: None,
             product_context: ProductContext {
                 product_code: "natal_basic".into(),
                 user_language: "fr".into(),

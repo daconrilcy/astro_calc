@@ -1,25 +1,43 @@
 //! Contrats metier du gateway LLM astrologique.
 
 pub mod astrologer_profile;
+pub mod astro_fact;
+pub mod chapter_orchestration;
+pub mod contract_versions;
 pub mod domain_selection;
 pub mod engine_defaults;
 pub mod engine_params;
 pub mod errors;
+pub mod fallback_policy;
 pub mod generation_request;
 pub mod generation_response;
+pub mod model_capability;
 pub mod output_contract;
+pub mod privacy_policy;
+pub mod production_exposure;
+pub mod product_generation_policy;
 pub mod provider;
+pub mod runtime_env;
 pub mod safety_policy;
 pub mod service_limits;
 
 pub use astrologer_profile::*;
+pub use astro_fact::*;
+pub use chapter_orchestration::*;
+pub use contract_versions::*;
 pub use engine_defaults::EngineDefaults;
 pub use domain_selection::*;
 pub use engine_params::*;
 pub use errors::*;
+pub use fallback_policy::*;
 pub use generation_request::*;
 pub use generation_response::*;
+pub use model_capability::*;
 pub use output_contract::*;
+pub use privacy_policy::*;
+pub use production_exposure::*;
+pub use product_generation_policy::*;
 pub use provider::*;
+pub use runtime_env::*;
 pub use safety_policy::*;
 pub use service_limits::ServiceLimits;

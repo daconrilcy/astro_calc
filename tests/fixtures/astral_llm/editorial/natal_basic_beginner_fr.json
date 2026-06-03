@@ -1,0 +1,43 @@
+{
+  "fixture_id": "natal_basic_beginner_fr",
+  "product_code": "natal_basic",
+  "audience_level": "beginner",
+  "user_language": "fr",
+  "generation_mode": "single_pass",
+  "reading": {
+    "schema_version": "natal_reading_v1",
+    "language": "fr",
+    "reading_type": "natal_basic",
+    "summary": {
+      "title": "Portrait symbolique accessible",
+      "short_text": "Une lecture qui met en lumiere les tendances principales sans jargon technique."
+    },
+    "chapters": [
+      {
+        "code": "identity",
+        "title": "Identite",
+        "body": "Votre theme suggere une personnalite reflechie, orientee vers la comprehension symbolique des experiences. Vous avancez avec prudence lorsque le sens n'est pas clair, tout en montrant une capacite d'adaptation lorsque vous sentez une direction authentique. Cette configuration invite a accueillir les phases de questionnement comme des espaces creatifs, plutot que comme des blocages. Elle favorise une lucidite emotionnelle progressive, utile pour comprendre vos motivations profondes.",
+        "astro_basis": [
+          {
+            "fact_id": "domain_score:identity",
+            "factor": "identity",
+            "interpretive_role": "signal dominant"
+          }
+        ],
+        "confidence": "medium"
+      }
+    ],
+    "legal": {
+      "disclaimer": "Lecture symbolique a visée contemplative, sans valeur predictive."
+    },
+    "quality": {
+      "used_provider": "fake",
+      "used_model": "fake-model",
+      "generation_mode": "single_pass",
+      "prompt_family": "natal_basic",
+      "prompt_version": "v1",
+      "astro_contract_version": "natal_structured_v13",
+      "fallback_used": false
+    }
+  }
+}

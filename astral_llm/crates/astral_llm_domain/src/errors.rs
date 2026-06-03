@@ -17,6 +17,9 @@ pub enum GenerationErrorCode {
     PostSafetyValidationFailed,
     FallbackFailed,
     PersistenceFailed,
+    ProductPolicyViolation,
+    PolicyViolation,
+    ReadingQualityFailed,
 }
 
 impl GenerationErrorCode {
@@ -34,6 +37,9 @@ impl GenerationErrorCode {
             Self::PostSafetyValidationFailed => "POST_SAFETY_VALIDATION_FAILED",
             Self::FallbackFailed => "FALLBACK_FAILED",
             Self::PersistenceFailed => "PERSISTENCE_FAILED",
+            Self::ProductPolicyViolation => "PRODUCT_POLICY_VIOLATION",
+            Self::PolicyViolation => "POLICY_VIOLATION",
+            Self::ReadingQualityFailed => "READING_QUALITY_FAILED",
         }
     }
 }

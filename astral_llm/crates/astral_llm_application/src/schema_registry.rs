@@ -92,7 +92,6 @@ fn strip_schema_for_provider(schema: &serde_json::Value) -> serde_json::Value {
     let mut out = schema.clone();
     if let Some(obj) = out.as_object_mut() {
         obj.remove("$schema");
-        obj.remove("definitions");
     }
     out
 }

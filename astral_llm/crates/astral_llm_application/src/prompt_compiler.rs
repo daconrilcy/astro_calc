@@ -1,9 +1,10 @@
 use std::path::{Path, PathBuf};
 
-use astral_llm_domain::{GenerateReadingRequest, SafetyPolicy};
+use astral_llm_domain::{GenerateReadingRequest, NormalizedAstroFacts, SafetyPolicy};
 use astral_llm_infra::SharedCanonicalCatalog;
 
-use crate::payload_sanitizer::{sanitize_custom_instructions, wrap_astro_payload};
+use crate::astro_payload_normalizer::AstroPayloadNormalizer;
+use crate::payload_sanitizer::sanitize_custom_instructions;
 
 #[derive(Debug, Clone)]
 pub struct PromptBundle {
@@ -20,6 +21,7 @@ pub struct PromptBundle {
 pub struct PromptCompilationInput<'a> {
     pub request: &'a GenerateReadingRequest,
     pub safety_policy: &'a SafetyPolicy,
+    pub astro_facts: &'a NormalizedAstroFacts,
     pub selected_domains: &'a [String],
     pub chapter_code: Option<&'a str>,
     pub catalog: &'a SharedCanonicalCatalog,
@@ -55,7 +57,7 @@ impl PromptCompiler {
             .map(|c| format!("Focus chapter code: {c}"))
             .unwrap_or_default();
 
-        let data_payload = wrap_astro_payload(input.request)?;
+        let data_payload = AstroPayloadNormalizer::to_prompt_data_block(input.astro_facts);
 
         Ok(PromptBundle {
             system_instructions: format!(

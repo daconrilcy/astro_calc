@@ -22,6 +22,15 @@ pub enum GenerationMode {
     ChapterOrchestrated,
 }
 
+impl GenerationMode {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::SinglePass => "single_pass",
+            Self::ChapterOrchestrated => "chapter_orchestrated",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum OutputFormat {

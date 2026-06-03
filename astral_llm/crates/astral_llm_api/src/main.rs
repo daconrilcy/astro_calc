@@ -1,26 +1,29 @@
-mod auth;
-mod routes;
-mod state;
-
 use std::sync::Arc;
 
+use astral_llm_api::{
+    auth::require_api_key,
+    rate_limit::{api_key_rate_limit, concurrency_limit, new_api_key_limiter, new_semaphore},
+    routes,
+    state::AppState,
+};
+
 use astral_llm_application::{
-    build_fallback_policy, build_providers, GenerateReadingUseCase, PromptCompiler,
-    ProviderRouter, ResponseValidator, SchemaRegistry,
+    build_capability_registry_with_db, build_fallback_policy, build_providers,
+    GenerateReadingUseCase, PromptCompiler, ProviderCircuitBreaker, ProviderRouter,
+    ResponseValidator, SchemaRegistry,
 };
 use astral_llm_infra::{
-    bootstrap_domains, init_tracing, load_canonical_catalog, AppConfig, CanonicalCatalog,
-    ProviderSecrets, RunPersistence, SharedCanonicalCatalog,
+    bootstrap_domains, bootstrap_product_policies, bootstrap_safety_patterns,
+    enrich_catalog_from_bootstrap, init_tracing, load_canonical_catalog,
+    load_model_capabilities, AppConfig, CanonicalCatalog, ConfigValidator, ProviderSecrets,
+    RunPersistence, SharedCanonicalCatalog,
 };
+use axum::http::StatusCode;
 use axum::middleware;
 use sqlx::postgres::PgPoolOptions;
-use tokio::net::TcpListener;
-use axum::http::StatusCode;
-use tower_http::{limit::RequestBodyLimitLayer, timeout::TimeoutLayer, trace::TraceLayer};
 use std::time::Duration;
-
-use crate::auth::require_api_key;
-use crate::state::AppState;
+use tokio::net::TcpListener;
+use tower_http::{limit::RequestBodyLimitLayer, timeout::TimeoutLayer, trace::TraceLayer};
 
 #[tokio::main]
 async fn main() {
@@ -28,22 +31,27 @@ async fn main() {
     let config = AppConfig::from_env();
     let bind_addr = config.bind_addr;
     let secrets = ProviderSecrets::from_env();
+
+    if let Err(err) = ConfigValidator::validate(&config, &secrets) {
+        panic!("invalid astral_llm configuration: {err}");
+    }
+
     let engine_defaults = config.engine_defaults();
     let limits = config.limits.clone();
+    let privacy_policy = config.privacy_policy.clone();
 
     let provider_map = build_providers(&config, &secrets).expect("LLM provider bootstrap failed");
-    let router = ProviderRouter::new(provider_map, build_fallback_policy(&config));
 
-    let schema_registry = Arc::new(SchemaRegistry::new());
-    let compiler = PromptCompiler::new(&config.prompts_dir);
-    let validator = ResponseValidator::new(schema_registry.clone());
-
-    let catalog: SharedCanonicalCatalog = Arc::new(CanonicalCatalog {
+    let mut bootstrap_catalog = CanonicalCatalog {
         astrological_domains: bootstrap_domains(),
+        safety_patterns: bootstrap_safety_patterns(),
+        product_generation_policies: bootstrap_product_policies(),
         ..Default::default()
-    });
+    };
+    enrich_catalog_from_bootstrap(&mut bootstrap_catalog);
+    let mut catalog: SharedCanonicalCatalog = Arc::new(bootstrap_catalog);
 
-    let mut catalog = catalog;
+    let mut db_models = Vec::new();
     let persistence = if config.enable_persistence {
         if let Some(database_url) = &config.database_url {
             let pool = PgPoolOptions::new()
@@ -52,8 +60,19 @@ async fn main() {
                 .await
                 .expect("database connection");
             let persistence = RunPersistence::new(pool.clone());
-            persistence.ensure_schema().await.expect("schema");
-            catalog = Arc::new(load_canonical_catalog(&pool).await);
+            if config.db_auto_migrate {
+                persistence.ensure_schema().await.expect("schema");
+            } else {
+                tracing::info!("db auto-migrate disabled; verifying schema");
+                persistence
+                    .verify_schema()
+                    .await
+                    .expect("expected PostgreSQL schema missing; apply SQL migrations before boot");
+            }
+            let mut loaded = load_canonical_catalog(&pool).await;
+            enrich_catalog_from_bootstrap(&mut loaded);
+            catalog = Arc::new(loaded);
+            db_models = load_model_capabilities(&pool).await;
             Some(Arc::new(persistence))
         } else {
             tracing::warn!("persistence enabled but DATABASE_URL missing");
@@ -63,6 +82,29 @@ async fn main() {
         None
     };
 
+    let capability_registry = if db_models.is_empty() {
+        astral_llm_application::build_capability_registry()
+    } else {
+        build_capability_registry_with_db(db_models)
+    };
+
+    let circuit_breaker = Arc::new(ProviderCircuitBreaker::new(
+        config.circuit_breaker_failure_threshold,
+        config.circuit_breaker_open_secs,
+    ));
+
+    let router = ProviderRouter::new(
+        provider_map,
+        build_fallback_policy(&config),
+        capability_registry,
+        privacy_policy,
+        circuit_breaker,
+    );
+
+    let schema_registry = Arc::new(SchemaRegistry::new());
+    let compiler = PromptCompiler::new(&config.prompts_dir);
+    let validator = ResponseValidator::new(schema_registry.clone());
+
     let use_case = Arc::new(GenerateReadingUseCase::new(
         router,
         compiler,
@@ -70,32 +112,42 @@ async fn main() {
         engine_defaults,
         limits.clone(),
         catalog.clone(),
+        config.privacy_policy.clone(),
     ));
 
     tracing::info!(
+        env = config.runtime_env.as_str(),
         default_provider = config.default_provider.as_str(),
         default_model = %config.default_model,
+        fake = config.enable_fake_provider,
         auth = config.requires_auth(),
+        persistence = persistence.is_some(),
         "astral_llm_api ready"
     );
 
     let state = AppState {
         use_case,
         schema_registry,
-        config,
+        config: config.clone(),
         persistence,
+        concurrency_limit: new_semaphore(config.max_concurrent_requests),
+        api_key_limiter: new_api_key_limiter(&config),
     };
 
     let timeout = Duration::from_millis(state.config.limits.default_request_timeout_ms + 5_000);
     let body_limit = RequestBodyLimitLayer::new(state.config.limits.max_body_bytes);
 
+    // Tower : derniere couche ajoutee = premiere sur la requete entrante.
+    // Ordre voulu : trace -> auth -> rate limit par cle -> semaphore global -> handler.
     let app = routes::router(state.clone())
         .layer(body_limit)
         .layer(TimeoutLayer::with_status_code(
             StatusCode::GATEWAY_TIMEOUT,
             timeout,
         ))
-        .layer(middleware::from_fn_with_state(state, require_api_key))
+        .layer(middleware::from_fn_with_state(state.clone(), concurrency_limit))
+        .layer(middleware::from_fn_with_state(state.clone(), api_key_rate_limit))
+        .layer(middleware::from_fn_with_state(state.clone(), require_api_key))
         .layer(TraceLayer::new_for_http());
 
     let listener = TcpListener::bind(bind_addr)

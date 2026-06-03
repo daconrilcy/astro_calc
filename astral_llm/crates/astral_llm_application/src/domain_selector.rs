@@ -1,73 +1,19 @@
-use astral_llm_domain::{
-    domain_selection::{DomainSelection, DomainSelectionStrategy},
-    GenerateReadingRequest, ServiceLimits,
-};
+use astral_llm_domain::{GenerateReadingRequest, ProductGenerationPolicy, ServiceLimits};
 use astral_llm_infra::SharedCanonicalCatalog;
 
+use crate::domain_resolver::DomainResolver;
+
+/// Alias historique — delegue a `DomainResolver`.
 pub fn select_domains(
     request: &GenerateReadingRequest,
     catalog: &SharedCanonicalCatalog,
     limits: &ServiceLimits,
 ) -> Vec<String> {
-    let max_count = limits.max_domain_count as usize;
-    let count = request
-        .engine
-        .domain_count
-        .unwrap_or(3)
-        .max(1)
-        .min(limits.max_domain_count) as usize;
-    let preferred = &request.astrologer_profile.preferred_domains;
-
-    if !preferred.is_empty() {
-        return preferred.iter().take(count).cloned().collect();
-    }
-
-    let allowed = catalog.domains_or_fallback(&[]);
-    let selection = DomainSelection {
-        domain_count: count as u8,
-        allowed_domains: allowed,
-        selected_domains: None,
-        selection_strategy: DomainSelectionStrategy::TopWeightedAstroSignals,
-    };
-
-    select_from_astro_signals(request, &selection, max_count)
-}
-
-fn select_from_astro_signals(
-    request: &GenerateReadingRequest,
-    selection: &DomainSelection,
-    max_count: usize,
-) -> Vec<String> {
-    if let Some(explicit) = &selection.selected_domains {
-        return explicit.iter().take(max_count).cloned().collect();
-    }
-
-    if let Some(scores) = request.astro_result.data.get("domain_scores").and_then(|v| v.as_object())
-    {
-        let mut ranked: Vec<(String, f64)> = scores
-            .iter()
-            .filter_map(|(k, v)| v.as_f64().map(|score| (k.clone(), score)))
-            .collect();
-        ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-
-        let domains: Vec<String> = ranked
-            .into_iter()
-            .map(|(k, _)| k)
-            .filter(|d| selection.allowed_domains.contains(d))
-            .take(selection.domain_count as usize)
-            .collect();
-
-        if !domains.is_empty() {
-            return domains;
-        }
-    }
-
-    selection
-        .allowed_domains
-        .iter()
-        .take(selection.domain_count as usize)
+    let policy = catalog
+        .product_policy(&request.product_context.product_code)
         .cloned()
-        .collect()
+        .unwrap_or_else(ProductGenerationPolicy::bootstrap_basic);
+    DomainResolver::resolve(request, catalog, limits, &policy)
 }
 
 #[cfg(test)]
@@ -87,6 +33,7 @@ mod tests {
     fn base_request(data: serde_json::Value) -> GenerateReadingRequest {
         GenerateReadingRequest {
             request_id: None,
+            idempotency_key: None,
             product_context: ProductContext {
                 product_code: "natal_basic".into(),
                 user_language: "fr".into(),
@@ -134,6 +81,7 @@ mod tests {
     fn uses_domain_scores_when_present() {
         let catalog = Arc::new(CanonicalCatalog {
             astrological_domains: vec!["career".into(), "identity".into()],
+            product_generation_policies: vec![ProductGenerationPolicy::bootstrap_basic()],
             ..Default::default()
         });
         let request = base_request(serde_json::json!({

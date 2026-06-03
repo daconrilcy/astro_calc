@@ -1,0 +1,56 @@
+{
+  "fixture_id": "natal_premium_traditional_en",
+  "product_code": "natal_premium",
+  "audience_level": "expert",
+  "user_language": "en",
+  "generation_mode": "chapter_orchestrated",
+  "reading": {
+    "schema_version": "natal_reading_v1",
+    "language": "en",
+    "reading_type": "natal_premium",
+    "summary": {
+      "title": "Traditional symbolic reading",
+      "short_text": "A structured interpretation of temperament and life orientation."
+    },
+    "chapters": [
+      {
+        "code": "identity",
+        "title": "Identity",
+        "body": "Your chart suggests a temperament oriented toward meaning-making through traditional symbolic language. You may experience inner life as a sequence of phases, each inviting reflection rather than immediate certainty. This pattern offers depth of interpretation and may support a disciplined approach to personal ethics. The symbolism here invites you to hold ambition and humility in dialogue, without treating either pole as a final verdict.",
+        "astro_basis": [
+          {
+            "fact_id": "domain_score:identity",
+            "factor": "identity",
+            "interpretive_role": "temperamental anchor"
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "code": "vocation",
+        "title": "Vocation",
+        "body": "In vocational symbolism, the chart highlights a tendency to seek work that aligns with an inner sense of purpose. You may prefer roles that allow interpretive depth over rapid external validation. This configuration suggests gradual consolidation of skills, where mastery emerges through sustained attention. The reading invites you to treat professional transitions as cyclical renewals, not as irreversible judgments about worth.",
+        "astro_basis": [
+          {
+            "fact_id": "domain_score:vocation",
+            "factor": "vocation",
+            "interpretive_role": "vocational signal"
+          }
+        ],
+        "confidence": "medium"
+      }
+    ],
+    "legal": {
+      "disclaimer": "Symbolic reading for contemplative use only; not predictive."
+    },
+    "quality": {
+      "used_provider": "fake",
+      "used_model": "fake-model",
+      "generation_mode": "chapter_orchestrated",
+      "prompt_family": "natal_premium",
+      "prompt_version": "v1",
+      "astro_contract_version": "natal_structured_v13",
+      "fallback_used": false
+    }
+  }
+}

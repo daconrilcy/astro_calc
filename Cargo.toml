@@ -32,7 +32,8 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
 tower = "0.5"
 tower-http = { version = "0.6", features = ["trace", "timeout"] }
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "registry"] }
+tracing-appender = "0.2"
 uuid = { version = "1", features = ["v4", "serde"] }
 
 astral_llm_domain = { path = "astral_llm/crates/astral_llm_domain" }

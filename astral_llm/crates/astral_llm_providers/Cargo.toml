@@ -14,4 +14,9 @@ thiserror.workspace = true
 tokio.workspace = true
 
 [dev-dependencies]
+astral_llm_domain.workspace = true
+dotenvy.workspace = true
+reqwest.workspace = true
+secrecy.workspace = true
+serde_json.workspace = true
 tokio.workspace = true

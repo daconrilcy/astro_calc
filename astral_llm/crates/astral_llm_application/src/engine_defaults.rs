@@ -38,6 +38,27 @@ pub fn resolve_engine_params(
     }
 }
 
+pub fn drop_unsupported_reasoning(
+    engine: &mut ResolvedEngineParams,
+    registry: &crate::model_capability_registry::ModelCapabilityRegistry,
+) {
+    let Some(effort) = engine.reasoning_effort else {
+        return;
+    };
+    let Ok(cap) = registry.require(&engine.provider, &engine.model) else {
+        return;
+    };
+    if !cap.allows_reasoning(effort) {
+        tracing::info!(
+            provider = engine.provider.as_str(),
+            model = %engine.model,
+            ?effort,
+            "dropping unsupported reasoning_effort for model"
+        );
+        engine.reasoning_effort = None;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

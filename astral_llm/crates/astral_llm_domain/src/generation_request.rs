@@ -9,6 +9,8 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct GenerateReadingRequest {
     pub request_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub idempotency_key: Option<String>,
     pub product_context: ProductContext,
     pub astro_result: AstroCalculationPayload,
     pub astrologer_profile: AstrologerProfile,

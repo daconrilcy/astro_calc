@@ -1,0 +1,56 @@
+{
+  "fixture_id": "natal_premium_psychological_fr",
+  "product_code": "natal_premium",
+  "audience_level": "intermediate",
+  "user_language": "fr",
+  "generation_mode": "chapter_orchestrated",
+  "reading": {
+    "schema_version": "natal_reading_v1",
+    "language": "fr",
+    "reading_type": "natal_premium",
+    "summary": {
+      "title": "Lecture psychologique symbolique",
+      "short_text": "Une exploration des dynamiques interieures et des ressources relationnelles."
+    },
+    "chapters": [
+      {
+        "code": "identity",
+        "title": "Identite",
+        "body": "Votre theme psychologique suggere une sensibilite aux transitions interieures. Vous interpretez souvent les evenements comme des invitations a ajuster votre rapport au monde, plutot que comme des verdicts. Cette tendance peut offrir une grande souplesse affective, a condition de ne pas diluer vos limites personnelles. Le symbolisme de cette configuration invite a reconnaitre vos besoins de reconnaissance sans vous figer dans un role unique.",
+        "astro_basis": [
+          {
+            "fact_id": "domain_score:identity",
+            "factor": "identity",
+            "interpretive_role": "axe identitaire"
+          }
+        ],
+        "confidence": "medium"
+      },
+      {
+        "code": "relationships",
+        "title": "Relations",
+        "body": "Dans le registre relationnel, votre carte met en lumiere une recherche d'echanges authentiques. Vous pouvez ressentir le besoin de clarifier les attentes avant de vous investir pleinement. Cette dynamique suggere une progression par etapes, ou la confiance se construit par des gestes concrets et une ecoute mutuelle. L'interpretation symbolique invite a accueillir les frictions comme des signaux utiles, non comme des echecs definitifs.",
+        "astro_basis": [
+          {
+            "fact_id": "domain_score:relationships",
+            "factor": "relationships",
+            "interpretive_role": "dynamique relationnelle"
+          }
+        ],
+        "confidence": "medium"
+      }
+    ],
+    "legal": {
+      "disclaimer": "Lecture symbolique a visée contemplative, sans valeur predictive."
+    },
+    "quality": {
+      "used_provider": "fake",
+      "used_model": "fake-model",
+      "generation_mode": "chapter_orchestrated",
+      "prompt_family": "natal_premium",
+      "prompt_version": "v1",
+      "astro_contract_version": "natal_structured_v13",
+      "fallback_used": false
+    }
+  }
+}

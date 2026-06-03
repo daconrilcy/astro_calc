@@ -83,6 +83,7 @@ impl OpenAiProvider {
         let mut body = json!({
             "model": request.model,
             "input": input,
+            "store": false,
         });
 
         if let Some(temp) = request.temperature {
