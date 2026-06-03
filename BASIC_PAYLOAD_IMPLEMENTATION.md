@@ -163,6 +163,10 @@ accidentel, secte) sont disponibles avec un `lunar_phase_context` construit.
 Sans references accidentelles ou secte, le moteur reste en v12 sans bloc
 accidentel.
 
+L'etape 3G restructure **Limites connues** en decisions explicites
+(`assumed_v13`, `llm_boundary`, `future_story`, `deprecated`) pour cadrer le
+branchement LLM sans ambiguite sur les templates moteur.
+
 L'etape 3F aligne les orbes de detection des aspects majeurs sur le referentiel
 PostgreSQL : les cinq lignes `astral_aspects` de famille `major` portent
 `default_orb_deg`, lues par `aspect_definitions()` et validees avant tout calcul
@@ -638,8 +642,11 @@ Les champs ajoutes par l'etape 1B sont :
 - `theme_code` : theme editorial principal du signal. Pour les placements et
   angles, il vient de `astral_houses.theme_code` via `house_context`; pour les
   aspects, dignites ou autres familles, il vient de la famille de signal.
-- `interpretive_hint` : phrase courte orientee utilisateur. Pour les aspects,
-  elle inclut la qualite interpretative issue de `aspect_context`.
+- `summary` : phrase templatee de synthese moteur sur le signal ; aide
+  structuree, pas texte final utilisateur (voir `llm_boundary`, section Limites connues).
+- `interpretive_hint` : indice court derive du contexte (placement, aspect, dignite).
+  Aide moteur structuree, pas prose finale ; pour les aspects, integre la valence 2C
+  via `aspect_context`.
 - `semantic_tags` : tags stables utiles pour grouper, filtrer ou guider la
   redaction.
 - `source_weight` : poids relatif de la source astrologique. Il est fourni par
@@ -1128,6 +1135,11 @@ positions contiennent deux angles du meme `axis`. Le validateur runtime refuse
 aussi de reutiliser un payload persiste qui contient encore un tel signal.
 
 ## Plan de lecture moteur route basic
+
+`reading_plan` ordonne les signaux actifs par slots editoriaux (`core_identity`,
+`dominant_cluster`, `main_tension_or_support`, etc.). C'est un **plan de lecture
+moteur**, pas un plan redactionnel obligatoire pour le LLM (etiquette `llm_boundary`,
+section Limites connues).
 
 Le payload final contient maintenant `reading_plan` :
 
@@ -1653,31 +1665,93 @@ exemple :
 
 ## Limites connues
 
-- Les angles du payload route basic sont exposes, mais leurs interpretations restent limitees aux
-  faits structures et aux signaux `angle:*`.
-- Le contexte de maitrise 3B expose les liens structurels au LLM, mais ne cree
-  pas encore de signaux actifs `rulership:*`.
-- Les resumes restent des phrases templatees, pas une interpretation finale.
-- Les `interpretive_hint` restent aussi des templates, meme si les hints
-  d'aspect integrent maintenant la valence 2C.
-- Les clusters du payload route basic ne couvrent pour l'instant que les concentrations
-  `sign_house`.
-- Le moteur de dignites essentielles 2B reste un MVP : les regles majeures par
-  signe viennent de `astral_essential_dignity_rules` et
-  `astral_essential_dignity_score_weights` via `BasicPayloadCatalog`, mais les
-  dignites mineures (terme, triplicite, face) ne sont pas encore exposees.
-- Le moteur de dignites accidentelles 3E est un MVP base-references. Il couvre
-  15 conditions (maison, proximite angle, mouvement, horizon, secte) mais pas
-  combustion, cazimi, hayz complet ni paliers d'orb 3 degre / 6 degre ;
-  l'orb de proximite angle est lu depuis `chart_context.accidental_scoring`
-  (snapshot du catalogue accidentel).
-- Les aspects majeurs de detection (codes, angles, orbes, effectif) viennent de
-  PostgreSQL (`astral_aspects` + `astral_aspect_families.expected_aspect_count`),
-  plafond d'orbe `max_default_orb_deg` sur la famille `major`.
-- `astral_aspect_orb_rules` et les orbes par systeme dans
-  `astral_aspect_definitions` ne sont pas encore resolus au runtime.
-- Le programme consomme les libelles des referentiels tels quels. Il ne gere pas la traduction.
-- La redaction LLM doit rester une etape ulterieure.
+Cette section transforme les reserves historiques en **decisions produit et techniques
+explicites** avant branchement d'un service LLM. Le moteur v13 ne produit pas de
+redaction finale : il calcule, structure et oriente la lecture.
+
+Chaque entree porte une etiquette :
+
+| Etiquette | Sens |
+|-----------|------|
+| `assumed_v13` | Limite volontaire du contrat moteur v13 ; non bloquante avant LLM |
+| `llm_boundary` | Point que la couche LLM doit comprendre ; risque de mauvaise interpretation si ignore |
+| `future_story` | Extension prevue ; nom court pour le backlog |
+| `deprecated` | Ancienne formulation de limite devenue fausse, obsolete ou deplacee ailleurs |
+
+Voir aussi l'etape **3G** (fin de document) pour les criteres d'acceptation de cette passe.
+
+### `assumed_v13` — Perimetre moteur accepte
+
+- **Angles factuels** — Les quatre angles sont exposes en `angles[]` et via des
+  signaux `angle:*` (faits structurels, tags, poids). Il n'y a pas d'interpretation
+  narrative autonome des angles au-dela de ces signaux et de leur slot
+  `reading_plan` (`core_identity` pour l'Ascendant, MC en contexte secondaire).
+- **Pas de signaux `rulership:*`** — Le bloc `rulership_context` (3B) expose
+  maitres, chaines et receptions pour ponderation externe ; le moteur n'emet pas de
+  signaux actifs `rulership:*`.
+- **Pas de signaux `house_axis:*`** — `house_axis_emphasis` (3C) synthetise les
+  axes de maisons significatifs en top-level ; aucun signal actif
+  `house_axis:*` ni slot dedie dans `reading_plan`.
+- **Clusters `sign_house` uniquement** — Seuls les regroupements
+  `cluster:<sign_code>:house_<n>` (au moins trois objets, meme signe et maison)
+  sont agreges comme signaux actifs.
+- **Dignites essentielles majeures** — Signaux `dignity:*` limites a domicile,
+  exaltation, detriment et chute ; regles et poids depuis PostgreSQL via
+  `BasicPayloadCatalog`, sans terme, triplicite ni face (voir `future_story`).
+- **Dignites accidentelles MVP** — Couverture des 15 conditions canoniques
+  (maison, proximite angle, mouvement, horizon, secte) depuis
+  `astral_accidental_dignity_condition_definitions`. Combustion, cazimi, hayz
+  complet et paliers fins d'orbe de proximite angle (3° / 6°) sont exclus du
+  contrat v13. L'orb de proximite angle vient de
+  `chart_context.accidental_scoring` (snapshot catalogue accidentel).
+- **Pas de traduction** — Libelles des referentiels consommes tels quels (langue
+  des seeds / base). La langue cible et la localisation appartiennent au service
+  LLM (`target_language_code` en entree de couche externe).
+- **Pas de redaction LLM dans le moteur** — Aucun texte final utilisateur, aucun
+  `drafting_plan`, `writing_contract` ni `writing_guidance` dans le JSON de sortie
+  (voir objectif en tete de document).
+
+### `llm_boundary` — A respecter avant branchement LLM
+
+- **`summary` et `interpretive_hint`** — Phrases templatees et indices semantiques
+  produits par le moteur (`signals[]`, parfois reprises en evidence). Ce ne sont
+  **pas** des textes finaux affichables : matiere structuree pour la couche LLM,
+  qui ne doit pas les recopier tels quels.
+- **`reading_plan`** — Sequence de slots moteur (`slot`, titres, cles de signaux
+  primaires/secondaires). Plan de **lecture** des faits calcules, pas un plan
+  redactionnel obligatoire ni un sommaire d'article.
+- **`product_code = "basic"`** — Cle legacy de routage (tables produit, chemins
+  runtime, profils de scoring). Elle ne designe plus un payload « minimal » : la
+  profondeur reelle est portee par `chart_context.payload_contract`
+  (`calculation_scope`, `interpretation_scope`, `projection_depth`).
+- **`default_major_orb_deg`** — Toujours present sur le profil produit / catalogue
+  pour coherence, mais **n'alimente plus la geometrie** depuis 3F : orbes de
+  detection depuis `astral_aspects.default_orb_deg` (famille `major`). Ne pas
+  reutiliser ce champ pour recalculer ou valider des aspects cote LLM.
+- **Ordre de `signals[]`** — Non contractuel. L'ordre de lecture recommande vient
+  de `reading_plan` (slots et `primary_signal_keys`), pas de l'index du tableau
+  `signals`.
+
+### `future_story` — Backlog nomme
+
+| Story | Description |
+|-------|-------------|
+| `essential_minor_dignities` | Triplicite, terme, face ; signaux et evidence dedies |
+| `solar_conditions` | Combustion, cazimi, under beams |
+| `hayz_complete` | Hayz au-dela du MVP secte / horizon actuel |
+| `angle_proximity_orb_tiers` | Paliers fins d'orbe de proximite angle (ex. 3° / 6°) |
+| `aspect_orb_rules_runtime` | Resolution de `astral_aspect_orb_rules` et orbes par systeme dans `astral_aspect_definitions` au runtime |
+| `aspect_patterns` | Hubs, patterns, T-square, grand trine, structures aspectuelles avancees |
+| `cluster_enrichment` | Clusters au-dela de `sign_house` (themes, dignites, autres regroupements) |
+
+### `deprecated` — Reserves retirees
+
+- **« Les aspects majeurs viennent de PostgreSQL » comme limite** — Etat nominal
+  post-3F, documente en section 3F ; ce n'est plus une reserve mais le referentiel
+  de detection.
+- **« Les resumes / hints templatees » sans nuance** — Remplace par les entrees
+  `llm_boundary` ci-dessus : le moteur assume des templates, la couche LLM assume
+  la transformation en prose finale.
 
 ## Organisation du module payload
 
@@ -2367,6 +2441,40 @@ production et n'alimente pas `detect_aspects`.
    `scripts/verify_natal_v13_golden.ps1` passent.
 6. `cargo run --features swisseph-engine` ne echoue plus sur colonne ou orbe
    majeur manquant apres patch ou import.
+
+## 3G - Known limitations cleanup and LLM readiness boundary
+
+Passe documentaire et de cadrage (pas d'implementation moteur majeure). Objectif :
+rendre la section **Limites connues** impossible a mal interpreter avant de brancher
+un service LLM sur le payload `natal_structured_v13`.
+
+### Perimetre
+
+- reclassification de chaque reserve historique en `assumed_v13`, `llm_boundary`,
+  `future_story` ou `deprecated` ;
+- clarification explicite des champs `summary`, `interpretive_hint` et
+  `reading_plan` comme aides moteur, non comme sortie redactionnelle ;
+- rappel que `product_code = "basic"` est une cle legacy de routage ;
+- liste des futures stories avec identifiants courts (table `future_story`).
+
+### Hors perimetre 3G
+
+- implementation des stories du backlog (dignites mineures, combustion, patterns, etc.) ;
+- nouveau contrat JSON ou version `natal_structured_v14` ;
+- module LLM, traduction ou persistance de sorties redigees (deja hors moteur).
+
+### Criteres d'acceptation 3G
+
+1. Chaque limite connue est etiquetee `assumed_v13`, `llm_boundary`, `future_story`
+   ou `deprecated` ; aucune puce vague ne subsiste dans **Limites connues**.
+2. `summary`, `interpretive_hint` et `reading_plan` sont decrits comme aides
+   moteur dans **Limites connues**, **Champs semantiques 1B** et **Plan de lecture**.
+3. `product_code = "basic"` est explicitement legacy ; la profondeur est renvoyee
+   vers `chart_context.payload_contract` (deja en tete de document et en
+   `llm_boundary`).
+4. Les futures stories portent un nom court stable (table `future_story`).
+5. Rien dans **Limites connues** ne laisse croire que le moteur produit une
+   redaction finale ou des textes prets a l'affichage.
 
 ## 3D - Lunar phase context
 
