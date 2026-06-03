@@ -4,11 +4,11 @@ use std::fs;
 use jsonschema::JSONSchema;
 use serde_json::{json, Value};
 
-use rust_sqlx_connection_test::domain::{BasicPayload, RuntimeOptions};
-use rust_sqlx_connection_test::engine::{
+use astral_calculator::domain::{BasicPayload, RuntimeOptions};
+use astral_calculator::engine::{
     build_engine_response, ResolvedEngineRequest, RESPONSE_CONTRACT_VERSION,
 };
-use rust_sqlx_connection_test::llm_projection::{
+use astral_calculator::llm_projection::{
     build_llm_projection_natal_v1, is_active_major_aspect_signal, profile_from_level,
     LlmProjectionBuildContext,
 };
@@ -54,7 +54,7 @@ fn projection_context() -> LlmProjectionBuildContext<'static> {
 
 fn sample_resolved(level: &str, payload: &BasicPayload) -> ResolvedEngineRequest {
     ResolvedEngineRequest {
-        natal_input: rust_sqlx_connection_test::domain::NatalChartInput {
+        natal_input: astral_calculator::domain::NatalChartInput {
             subject_label: Some("Test".to_string()),
             birth_datetime_utc: payload.birth_datetime_utc,
             latitude_deg: 48.8566,

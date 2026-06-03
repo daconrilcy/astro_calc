@@ -5,7 +5,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$crateDir = Join-Path $repoRoot "rust_sqlx_connection_test"
+$crateDir = Join-Path $repoRoot "astral_calculator"
 $goldenPath = Join-Path $repoRoot "tests\golden\basic_payload_v8_paris_1990.json"
 $workDir = Join-Path $repoRoot "target\basic_v8_golden_diff"
 $payloadUnderTestPath = Join-Path $workDir "payload_under_test.json"

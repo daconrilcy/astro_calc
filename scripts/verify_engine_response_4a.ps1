@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$crateDir = Join-Path $repoRoot "rust_sqlx_connection_test"
+$crateDir = Join-Path $repoRoot "astral_calculator"
 $responseSchema = Join-Path $crateDir "schemas\astro_engine_response_v1.schema.json"
 $llmSchema = Join-Path $crateDir "schemas\llm_projection_natal_v1.schema.json"
 

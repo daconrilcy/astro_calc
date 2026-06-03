@@ -1,15 +1,16 @@
-# Rust SQLx connection test
+# astral_calculator
 
-Petit binaire Rust pour tester la connexion PostgreSQL du projet et lire la
-table `astral_signs`.
+Crate Rust du moteur de calcul astral : connexion PostgreSQL, runtime natal,
+payload `basic`, enveloppe engine 4A et projection LLM (construction cote
+calculateur).
 
 ## Execution
 
-Depuis la racine du depot :
+Depuis la racine du depot (workspace) :
 
 ```powershell
 docker compose up -d
-cargo run --manifest-path rust_sqlx_connection_test/Cargo.toml
+cargo run -p astral_calculator
 ```
 
 Le programme charge le fichier `.env` de la racine. Si `DATABASE_URL` n'est pas
@@ -24,7 +25,7 @@ Le moteur Swiss Ephemeris utilise le crate `swiss-eph` via la feature
 Smoke test sans fichiers `.se1`, en mode Moshier :
 
 ```powershell
-cargo run --manifest-path rust_sqlx_connection_test/Cargo.toml --features swisseph-engine --bin swe_smoke
+cargo run -p astral_calculator --features swisseph-engine --bin swe_smoke
 ```
 
 Execution du calcul natal avec les fichiers Swiss Ephemeris.
@@ -34,11 +35,11 @@ Le `.env` a la racine du depot doit contenir les variables `ASTRAL_*` en plus de
 
 ### Sortie par defaut (4A)
 
-`cargo run` appelle `calculate_natal_engine` et produit une enveloppe
-`astro_engine_response_v1` avec `audit_payload` (v13 brut) et `llm_payload`
-(projection LLM selon `ASTRAL_PROJECTION_LEVEL`, defaut `rich`).
+`cargo run -p astral_calculator` appelle `calculate_natal_engine` et produit une
+enveloppe `astro_engine_response_v1` avec `audit_payload` (v13 brut) et
+`llm_payload` (projection LLM selon `ASTRAL_PROJECTION_LEVEL`, defaut `rich`).
 
-Depuis `rust_sqlx_connection_test/` :
+Depuis `astral_calculator/` :
 
 ```powershell
 $env:ASTRAL_EPHEMERIS_PATH = "..\ephe\se-2026a"
@@ -67,7 +68,7 @@ $env:ASTRAL_BIRTH_TIMEZONE = "Europe/Paris"
 Pour les scripts golden v13 ou un export brut sans enveloppe :
 
 ```powershell
-cargo run --features swisseph-engine -- --audit-only --file
+cargo run -p astral_calculator --features swisseph-engine -- --audit-only --file
 ```
 
 Fichier genere : `output/basic_payload_YYYYMMDD_HHMMSS.json` (payload v13 direct).
@@ -79,3 +80,8 @@ Fichier genere : `output/basic_payload_YYYYMMDD_HHMMSS.json` (payload v13 direct
 Swiss Ephemeris est distribue en double licence AGPL ou licence professionnelle
 Swiss Ephemeris. Verifier la licence avant toute distribution ou mise en service
 publique.
+
+## Workspace
+
+Le depot est un workspace Cargo (`astral_calculator`, `astral_llm`). Tests
+d'integration : `cargo test -p astral_calculator` depuis la racine.

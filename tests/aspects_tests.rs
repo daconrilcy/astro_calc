@@ -4,10 +4,10 @@ use common::json_db::{
     major_aspect_definitions_from_json_db_seed, major_aspect_family_expected_count_from_json_db_seed,
     major_aspect_family_max_default_orb_deg_from_json_db_seed,
 };
-use rust_sqlx_connection_test::aspects::{canonical_aspect_orb_deg, detect_aspects};
-use rust_sqlx_connection_test::domain::ObjectPositionFact;
-use rust_sqlx_connection_test::models::AspectDefinition;
-use rust_sqlx_connection_test::runtime::validate_aspect_definitions;
+use astral_calculator::aspects::{canonical_aspect_orb_deg, detect_aspects};
+use astral_calculator::domain::ObjectPositionFact;
+use astral_calculator::models::AspectDefinition;
+use astral_calculator::runtime::validate_aspect_definitions;
 use serde_json::json;
 
 fn single_aspect_definition(code: &str, angle: f64, orb: f64) -> Vec<AspectDefinition> {
@@ -22,7 +22,7 @@ fn single_aspect_definition(code: &str, angle: f64, orb: f64) -> Vec<AspectDefin
     }]
 }
 
-fn validate_major_aspects(aspects: &[AspectDefinition]) -> Result<(), rust_sqlx_connection_test::runtime::RuntimeError> {
+fn validate_major_aspects(aspects: &[AspectDefinition]) -> Result<(), astral_calculator::runtime::RuntimeError> {
     validate_aspect_definitions(
         aspects,
         8.0,
@@ -31,7 +31,7 @@ fn validate_major_aspects(aspects: &[AspectDefinition]) -> Result<(), rust_sqlx_
     )
 }
 
-fn detect_between(longitude_left: f64, longitude_right: f64, aspects: &[AspectDefinition]) -> Vec<rust_sqlx_connection_test::domain::AspectFact> {
+fn detect_between(longitude_left: f64, longitude_right: f64, aspects: &[AspectDefinition]) -> Vec<astral_calculator::domain::AspectFact> {
     detect_aspects(
         &[
             position(1, longitude_left, 0.0),
@@ -42,7 +42,7 @@ fn detect_between(longitude_left: f64, longitude_right: f64, aspects: &[AspectDe
 }
 
 fn orb_limit_from_fact(
-    fact: &rust_sqlx_connection_test::domain::AspectFact,
+    fact: &astral_calculator::domain::AspectFact,
 ) -> Option<f64> {
     fact.calculation_notes_json
         .as_ref()

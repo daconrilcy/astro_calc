@@ -1,8 +1,8 @@
 [package]
-name = "rust_sqlx_connection_test"
+name = "astral_calculator"
 version = "0.1.0"
 edition = "2021"
-default-run = "rust_sqlx_connection_test"
+default-run = "astral_calculator"
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }

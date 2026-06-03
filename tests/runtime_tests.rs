@@ -1,7 +1,7 @@
 use chrono::{TimeZone, Utc};
 use serde_json::json;
 
-use rust_sqlx_connection_test::domain::{
+use astral_calculator::domain::{
     BasicAngleFact, BasicCalculationReliability, BasicChartContext, BasicChartEmphasis,
     BasicDignity, BasicDominantHouse, BasicDominantObject, BasicDominantSign,
     BasicAccidentalDignityCondition, BasicAccidentalDignityContextSummary,
@@ -18,12 +18,12 @@ use common::json_db::{
     major_aspect_definitions_from_json_db_seed, major_aspect_family_expected_count_from_json_db_seed,
     major_aspect_family_max_default_orb_deg_from_json_db_seed,
 };
-use rust_sqlx_connection_test::models::{
+use astral_calculator::models::{
     AnglePointReference, AspectDefinition, ChartObject, DomicileRulerReference, HouseReference,
     SignReference,
 };
-use rust_sqlx_connection_test::repositories::parse_existing_basic_payload_value;
-use rust_sqlx_connection_test::runtime::{
+use astral_calculator::repositories::parse_existing_basic_payload_value;
+use astral_calculator::runtime::{
     has_current_rulership_references, is_current_basic_payload, validate_aspect_definitions,
     RuntimeError,
     validate_calculation_references, validate_chart_object_signal_profiles,
@@ -69,19 +69,19 @@ fn current_payload() -> BasicPayload {
                 ),
             },
             accidental_scoring: Some({
-                let accidental = &rust_sqlx_connection_test::catalog::test_catalog().accidental_scoring;
-                rust_sqlx_connection_test::domain::BasicAccidentalScoringSnapshot {
+                let accidental = &astral_calculator::catalog::test_catalog().accidental_scoring;
+                astral_calculator::domain::BasicAccidentalScoringSnapshot {
                     overall_score_baseline: accidental.overall_score_baseline,
                     overall_score_min: accidental.overall_score_min,
                     overall_score_max: accidental.overall_score_max,
                     angle_proximity_max_orb_deg: accidental.angle_proximity_max_orb_deg,
-                    polarity_bands: rust_sqlx_connection_test::catalog::test_catalog()
+                    polarity_bands: astral_calculator::catalog::test_catalog()
                         .accidental_polarity_bands,
                 }
             }),
             product_scoring: {
-                let scoring = &rust_sqlx_connection_test::catalog::test_catalog().product_scoring;
-                Some(rust_sqlx_connection_test::domain::BasicProductScoringSnapshot {
+                let scoring = &astral_calculator::catalog::test_catalog().product_scoring;
+                Some(astral_calculator::domain::BasicProductScoringSnapshot {
                     sign_house_emphasis_min_score: scoring.sign_house_emphasis_min_score,
                     object_emphasis_min_score: scoring.object_emphasis_min_score,
                     max_dominant_signs: scoring.max_dominant_signs,
@@ -1498,7 +1498,7 @@ fn lunar_phase_reference_validation_accepts_canonical_phases() {
 fn accidental_dignity_reference_validation_accepts_canonical_conditions() {
     let conditions = accidental_dignity_condition_references();
 
-    let catalog = rust_sqlx_connection_test::catalog::test_catalog();
+    let catalog = astral_calculator::catalog::test_catalog();
     assert!(validate_accidental_dignity_condition_references(
         &conditions,
         &catalog.accidental_triggers
@@ -1955,24 +1955,24 @@ fn reference_data() -> CalculationReferenceData {
                 interpretation_weight: Some("high".to_string()),
             })
             .collect(),
-        motion_states: vec![rust_sqlx_connection_test::models::MotionStateReference {
+        motion_states: vec![astral_calculator::models::MotionStateReference {
             id: 1,
             code: "direct".to_string(),
             label: "Direct".to_string(),
             motion_family: "forward".to_string(),
         }],
         horizon_positions: vec![
-            rust_sqlx_connection_test::models::HorizonPositionReference {
+            astral_calculator::models::HorizonPositionReference {
                 id: 1,
                 code: "above_horizon".to_string(),
                 label: "Above horizon".to_string(),
             },
-            rust_sqlx_connection_test::models::HorizonPositionReference {
+            astral_calculator::models::HorizonPositionReference {
                 id: 2,
                 code: "below_horizon".to_string(),
                 label: "Below horizon".to_string(),
             },
-            rust_sqlx_connection_test::models::HorizonPositionReference {
+            astral_calculator::models::HorizonPositionReference {
                 id: 3,
                 code: "on_horizon".to_string(),
                 label: "On horizon".to_string(),

@@ -1,7 +1,19 @@
 ﻿# Implementation du payload moteur route basic
 
+## Workspace Cargo
+
+Le depot est un workspace (`Cargo.toml` racine) avec les crates :
+
+- `astral_calculator` : moteur de calcul, payloads, engine 4A, projection LLM
+  (construction JSON) ;
+- `astral_llm` : integration LLM (prompting, appels modele) — squelette, a
+  developper.
+
+Commandes depuis la racine : `cargo run -p astral_calculator`, `cargo test -p
+astral_calculator`. Tests d'integration dans `tests/` (racine depot).
+
 Ce document decrit l'implementation actuelle du payload moteur route par
-`product_code = "basic"` dans le binaire Rust `rust_sqlx_connection_test`.
+`product_code = "basic"` dans le binaire Rust `astral_calculator`.
 
 ## Objectif
 
@@ -255,32 +267,32 @@ lecture en Rust.
 
 ## Fichiers concernes
 
-- `rust_sqlx_connection_test/src/catalog.rs` : `BasicPayloadCatalog` (charge depuis
+- `astral_calculator/src/catalog.rs` : `BasicPayloadCatalog` (charge depuis
   PostgreSQL en production via `repositories::basic_payload_catalog`) ;
   `test_catalog()` fournit un profil minimal pour les tests unitaires hors DB.
-- `rust_sqlx_connection_test/src/domain.rs` : structures runtime et payload JSON.
-- `rust_sqlx_connection_test/src/facts.rs` : helpers de libelles signe/maison.
-- `rust_sqlx_connection_test/src/ephemeris.rs` : enrichissement des positions calculees.
-- `rust_sqlx_connection_test/src/aspects.rs` : detection geometrique des aspects
+- `astral_calculator/src/domain.rs` : structures runtime et payload JSON.
+- `astral_calculator/src/facts.rs` : helpers de libelles signe/maison.
+- `astral_calculator/src/ephemeris.rs` : enrichissement des positions calculees.
+- `astral_calculator/src/aspects.rs` : detection geometrique des aspects
   majeurs (`canonical_aspect_orb_deg`, `detect_aspects`) et calcul de l'orbe
   observe, de la phase et de la force brute.
-- `rust_sqlx_connection_test/src/dignities.rs` : detection MVP des dignites essentielles majeures.
-- `rust_sqlx_connection_test/src/payload/accidental_dignities.rs` : evaluation MVP
+- `astral_calculator/src/dignities.rs` : detection MVP des dignites essentielles majeures.
+- `astral_calculator/src/payload/accidental_dignities.rs` : evaluation MVP
   des dignites accidentelles et projection vers positions, signaux et dominantes.
-- `rust_sqlx_connection_test/src/payload/lunar_phase.rs` : construction de
+- `astral_calculator/src/payload/lunar_phase.rs` : construction de
   `lunar_phase_context` depuis les references lunaires.
-- `rust_sqlx_connection_test/src/signals/` : construction, filtrage et
+- `astral_calculator/src/signals/` : construction, filtrage et
   priorisation des signaux du payload route basic.
-- `rust_sqlx_connection_test/src/payload/` : assemblage du payload final et de
+- `astral_calculator/src/payload/` : assemblage du payload final et de
   ses blocs contractuels.
-- `rust_sqlx_connection_test/src/repositories.rs` : persistance, relecture des
+- `astral_calculator/src/repositories.rs` : persistance, relecture des
   positions et enrichissement SQL depuis les referentiels de signes, maisons,
   objets, angles et aspects.
-- `rust_sqlx_connection_test/src/runtime/` : orchestration runtime,
+- `astral_calculator/src/runtime/` : orchestration runtime,
   validation des references (`validate_aspect_definitions`,
   `major_aspect_family_reference` dans `repositories.rs`) et regeneration des
   anciens payloads.
-- `rust_sqlx_connection_test/src/runtime/service.rs` : `calculate_natal_basic`
+- `astral_calculator/src/runtime/service.rs` : `calculate_natal_basic`
   (chargement `aspect_definitions`, validation, puis calcul ephemeride).
 - `json_db/astral_accidental_dignity_condition_definitions.json` : definitions
   canoniques des 15 conditions accidentelles MVP.
@@ -289,7 +301,7 @@ lecture en Rust.
 - `json_db/astral_aspects.json` : referentiel des aspects (codes, angles, orbes).
 - `json_db/astral_aspect_families.json` : familles d'aspects,
   `expected_aspect_count` et `max_default_orb_deg`.
-- `rust_sqlx_connection_test/src/models.rs` : `AspectDefinition` (avec
+- `astral_calculator/src/models.rs` : `AspectDefinition` (avec
   `max_default_orb_deg` issu du JOIN famille) et `MajorAspectFamilyReference`.
 - `scripts/patch_astral_aspects_default_orb_deg.py` : colonne et orbes
   `astral_aspects.default_orb_deg`, coherence effectif / famille.
@@ -302,17 +314,17 @@ lecture en Rust.
   `json_db/astral_aspects.json` (`include_str!`) pour eviter la derive entre seed
   et tests.
 - `tests/runtime_tests.rs` : validation referentiel aspects (`validate_aspect_definitions_*`).
-- `rust_sqlx_connection_test/schemas/basic_natal_structured_v8.schema.json` :
+- `astral_calculator/schemas/basic_natal_structured_v8.schema.json` :
   schema JSON historique du contrat Basic v8.
-- `rust_sqlx_connection_test/schemas/natal_structured_v9.schema.json` :
+- `astral_calculator/schemas/natal_structured_v9.schema.json` :
   schema JSON historique du contrat v9.
-- `rust_sqlx_connection_test/schemas/natal_structured_v10.schema.json` :
+- `astral_calculator/schemas/natal_structured_v10.schema.json` :
   schema JSON historique du contrat `natal_structured_v10`.
-- `rust_sqlx_connection_test/schemas/natal_structured_v11.schema.json` :
+- `astral_calculator/schemas/natal_structured_v11.schema.json` :
   schema JSON historique du contrat `natal_structured_v11`.
-- `rust_sqlx_connection_test/schemas/natal_structured_v12.schema.json` :
+- `astral_calculator/schemas/natal_structured_v12.schema.json` :
   schema JSON historique du contrat `natal_structured_v12`.
-- `rust_sqlx_connection_test/schemas/natal_structured_v13.schema.json` :
+- `astral_calculator/schemas/natal_structured_v13.schema.json` :
   schema JSON du contrat courant `natal_structured_v13`.
 - `tests/golden/basic_payload_v8_paris_1990.json` : fixture golden historique
   du contrat Basic v8.
@@ -1271,7 +1283,7 @@ Depuis l'etape 3E, `natal_structured_v13` est le contrat
 courant verrouille par trois niveaux complementaires :
 
 - le JSON Schema
-  `rust_sqlx_connection_test/schemas/natal_structured_v13.schema.json`
+  `astral_calculator/schemas/natal_structured_v13.schema.json`
   valide la forme du contrat moteur, les blocs obligatoires, les quatre angles,
   les bornes de score, `chart_context`, `house_axis_emphasis`,
   `lunar_phase_context`, `accidental_dignities`,
@@ -1290,7 +1302,7 @@ Avant 3E, `natal_structured_v12` etait le contrat courant verrouille par trois
 niveaux complementaires :
 
 - le JSON Schema
-  `rust_sqlx_connection_test/schemas/natal_structured_v12.schema.json`
+  `astral_calculator/schemas/natal_structured_v12.schema.json`
   valide la forme du contrat moteur, les blocs obligatoires, les quatre angles,
   les bornes de score, `chart_context`, `house_axis_emphasis`,
   `lunar_phase_context` et les contraintes schema exprimables.
@@ -1532,7 +1544,7 @@ reecrit.
 ### Migration des tests a la racine
 
 Les tests Rust sont stockes dans le repertoire racine `tests/` et declares
-comme cibles de tests d'integration dans `rust_sqlx_connection_test/Cargo.toml`.
+comme cibles de tests d'integration dans `astral_calculator/Cargo.toml`.
 
 Les modules `src/*.rs` ne contiennent plus de bloc `#[cfg(test)]` ni
 `include!`. Les helpers controles par ces tests sont exposes explicitement
@@ -1549,7 +1561,7 @@ Fichiers de tests migres :
 - `tests/runtime_tests.rs`
 - `tests/signals_tests.rs`
 
-Depuis `rust_sqlx_connection_test` :
+Depuis `astral_calculator` :
 
 ```powershell
 cargo test
@@ -1755,9 +1767,9 @@ Voir aussi l'etape **3G** (fin de document) pour les criteres d'acceptation de c
 
 ## Organisation du module payload
 
-`rust_sqlx_connection_test/src/payload.rs` a ete remplace par le dossier
-`rust_sqlx_connection_test/src/payload/` afin de separer les responsabilites
-sans modifier le contrat public `rust_sqlx_connection_test::payload`.
+`astral_calculator/src/payload.rs` a ete remplace par le dossier
+`astral_calculator/src/payload/` afin de separer les responsabilites
+sans modifier le contrat public `astral_calculator::payload`.
 
 - `mod.rs` orchestre la construction du payload moteur route basic.
 - `angles.rs`, `chart_context.rs`, `dignities.rs`, `emphasis.rs`,
@@ -1850,7 +1862,7 @@ avec d'anciennes sources de maitrise est rejete et reconstruit.
 
 Artefacts ajoutes:
 
-- `rust_sqlx_connection_test/schemas/natal_structured_v10.schema.json`;
+- `astral_calculator/schemas/natal_structured_v10.schema.json`;
 - `tests/golden/natal_payload_v10_paris_1990.json`;
 - `scripts/verify_natal_v10_golden.ps1`.
 
@@ -1861,10 +1873,10 @@ au module quand elles ne font pas partie de l'API publique.
 
 ## Organisation du module signals
 
-`rust_sqlx_connection_test/src/signals.rs` a ete remplace par le dossier
-`rust_sqlx_connection_test/src/signals/` afin de separer l'agregation des
+`astral_calculator/src/signals.rs` a ete remplace par le dossier
+`astral_calculator/src/signals/` afin de separer l'agregation des
 signaux du payload route basic par responsabilite, sans modifier l'API publique
-`rust_sqlx_connection_test::signals`.
+`astral_calculator::signals`.
 
 - `mod.rs` conserve l'orchestration de `aggregate_basic_signals`.
 - `constants.rs` centralise les constantes partagees du module.
@@ -1887,7 +1899,7 @@ declare ses dependances explicitement. Les helpers purement locaux restent
 prives au fichier, et les helpers partages entre sous-modules utilisent
 `pub(super)` uniquement quand c'est necessaire.
 
-Le fichier racine `rust_sqlx_connection_test/src/aspects.rs` reste separe du
+Le fichier racine `astral_calculator/src/aspects.rs` reste separe du
 module `signals/aspect_signals.rs`: le premier detecte les faits d'aspects
 depuis les positions calculees, alors que le second transforme un `AspectFact`
 en contexte de signal du payload route basic. Les fusionner melangerait le calcul des faits et
@@ -1897,16 +1909,16 @@ Ce refactor reste strictement structurel: aucune nouvelle donnee canonique n'a
 ete ajoutee en dur et le comportement conserve est valide par:
 
 ```powershell
-cargo fmt --manifest-path rust_sqlx_connection_test/Cargo.toml
-cargo clippy --manifest-path rust_sqlx_connection_test/Cargo.toml --all-targets -- -D warnings
-cargo test --manifest-path rust_sqlx_connection_test/Cargo.toml
+cargo fmt --manifest-path astral_calculator/Cargo.toml
+cargo clippy --manifest-path astral_calculator/Cargo.toml --all-targets -- -D warnings
+cargo test --manifest-path astral_calculator/Cargo.toml
 ```
 
 ## Organisation du module runtime
 
-`rust_sqlx_connection_test/src/runtime.rs` a ete remplace par le dossier
-`rust_sqlx_connection_test/src/runtime/` afin de separer les responsabilites
-runtime sans modifier l'API publique `rust_sqlx_connection_test::runtime`.
+`astral_calculator/src/runtime.rs` a ete remplace par le dossier
+`astral_calculator/src/runtime/` afin de separer les responsabilites
+runtime sans modifier l'API publique `astral_calculator::runtime`.
 Le module reste une couche d'orchestration: il ne porte pas de donnees
 canoniques applicatives et ne contourne pas les referentiels lus depuis la base.
 
@@ -2023,7 +2035,7 @@ incomplete ou incoherente echoue donc avant persistance d'un payload v11.
 
 Artefacts historiques de l'etape 3C :
 
-- `rust_sqlx_connection_test/schemas/natal_structured_v11.schema.json`;
+- `astral_calculator/schemas/natal_structured_v11.schema.json`;
 - `tests/golden/natal_payload_v11_paris_1990.json`;
 - `scripts/verify_natal_v11_golden.ps1`;
 - tests de non-regression dans `tests/payload_tests.rs`,
@@ -2203,9 +2215,9 @@ Cas verifies dans `tests/contract_basic_v8_tests.rs` :
 
 ### Artefacts
 
-- `rust_sqlx_connection_test/src/payload/accidental_dignities.rs` ;
-- `rust_sqlx_connection_test/src/runtime/payload_freshness/accidental_dignities.rs` ;
-- `rust_sqlx_connection_test/schemas/natal_structured_v13.schema.json` ;
+- `astral_calculator/src/payload/accidental_dignities.rs` ;
+- `astral_calculator/src/runtime/payload_freshness/accidental_dignities.rs` ;
+- `astral_calculator/schemas/natal_structured_v13.schema.json` ;
 - `tests/golden/natal_payload_v13_paris_1990.json` ;
 - `scripts/verify_natal_v13_golden.ps1` ;
 - tests dans `tests/payload_tests.rs`, `tests/runtime_tests.rs`,
@@ -2412,12 +2424,12 @@ production et n'alimente pas `detect_aspects`.
 - `json_db/astral_aspect_families.json` ;
 - `scripts/patch_astral_aspect_families_expected_count.py` ;
 - `scripts/patch_astral_aspects_default_orb_deg.py` ;
-- `rust_sqlx_connection_test/src/aspects.rs` ;
-- `rust_sqlx_connection_test/src/runtime/references.rs` ;
-- `rust_sqlx_connection_test/src/runtime/mod.rs` ;
-- `rust_sqlx_connection_test/src/runtime/service.rs` ;
-- `rust_sqlx_connection_test/src/ephemeris.rs` ;
-- `rust_sqlx_connection_test/src/repositories.rs` ;
+- `astral_calculator/src/aspects.rs` ;
+- `astral_calculator/src/runtime/references.rs` ;
+- `astral_calculator/src/runtime/mod.rs` ;
+- `astral_calculator/src/runtime/service.rs` ;
+- `astral_calculator/src/ephemeris.rs` ;
+- `astral_calculator/src/repositories.rs` ;
 - `tests/common/json_db.rs` ;
 - `tests/aspects_tests.rs` ;
 - `tests/runtime_tests.rs` ;
@@ -2431,13 +2443,13 @@ niveau de projection influence le calcul brut.
 
 ### Contrats JSON
 
-- `rust_sqlx_connection_test/schemas/astro_engine_request_v1.schema.json` :
+- `astral_calculator/schemas/astro_engine_request_v1.schema.json` :
   entree moteur (`calculation.type`, `birth.date/time/timezone`, localisation,
   `projection.level`) ;
-- `rust_sqlx_connection_test/schemas/astro_engine_response_v1.schema.json` :
+- `astral_calculator/schemas/astro_engine_response_v1.schema.json` :
   enveloppe de sortie (`request_echo`, `calculation_result`, `audit_payload`,
   `llm_payload`) ;
-- `rust_sqlx_connection_test/schemas/llm_projection_natal_v1.schema.json` :
+- `astral_calculator/schemas/llm_projection_natal_v1.schema.json` :
   structure fixe de la projection LLM (cles stables ; la richesse varie par
   tableaux et limites, pas par schema).
 
@@ -2450,10 +2462,10 @@ niveau de projection influence le calcul brut.
 
 ### Code
 
-- `rust_sqlx_connection_test/src/engine/` : types requete/reponse, resolution
+- `astral_calculator/src/engine/` : types requete/reponse, resolution
   timezone (`chrono-tz`), mapping vers `NatalChartInput`, assemblage de
   `AstroEngineResponse` ;
-- `rust_sqlx_connection_test/src/llm_projection/` : mapper
+- `astral_calculator/src/llm_projection/` : mapper
   `natal_structured_v13` → `llm_projection_natal_v1` (voir section **4B** pour
   l'architecture `builder` / `dynamics` / `clean_text` et les regles de
   humanisation) ;
@@ -2478,7 +2490,7 @@ niveau de projection influence le calcul brut.
 Regeneration des goldens LLM :
 
 ```bash
-cd rust_sqlx_connection_test
+cd astral_calculator
 UPDATE_LLM_GOLDENS=1 cargo test --test engine_contract_tests write_llm_projection_goldens_when_env_set
 ```
 
@@ -2802,7 +2814,7 @@ Niveaux :
 Regeneration :
 
 ```powershell
-cd rust_sqlx_connection_test
+cd astral_calculator
 $env:UPDATE_LLM_GOLDENS = "1"
 $env:UPDATE_ENGINE_RESPONSE_GOLDEN = "1"
 cargo test --test engine_contract_tests write_
@@ -2811,7 +2823,7 @@ cargo test --test engine_contract_tests write_
 Validation locale :
 
 ```powershell
-cd rust_sqlx_connection_test
+cd astral_calculator
 cargo test --test engine_contract_tests
 cargo clippy --features swisseph-engine -- -D warnings
 ```
@@ -3001,9 +3013,9 @@ signaux actifs, et que les tags `lunar_phase` et `sun_moon_cycle` sont presents.
 
 Les artefacts ajoutes sont:
 
-- `rust_sqlx_connection_test/src/payload/lunar_phase.rs`;
-- `rust_sqlx_connection_test/src/runtime/payload_freshness/lunar_phase.rs`;
-- `rust_sqlx_connection_test/schemas/natal_structured_v12.schema.json`;
+- `astral_calculator/src/payload/lunar_phase.rs`;
+- `astral_calculator/src/runtime/payload_freshness/lunar_phase.rs`;
+- `astral_calculator/schemas/natal_structured_v12.schema.json`;
 - `tests/golden/natal_payload_v12_paris_1990.json`;
 - `scripts/verify_natal_v12_golden.ps1`;
 - tests de non-regression dans `tests/payload_tests.rs`,

@@ -1,4 +1,4 @@
-use rust_sqlx_connection_test::facts::{arc_contains, zodiac_slot_for_longitude};
+use astral_calculator::facts::{arc_contains, zodiac_slot_for_longitude};
 
 #[test]
 fn sign_handles_wraparound() {

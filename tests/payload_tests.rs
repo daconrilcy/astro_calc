@@ -1,8 +1,8 @@
 use chrono::{TimeZone, Utc};
 use serde_json::json;
 
-use rust_sqlx_connection_test::domain::*;
-use rust_sqlx_connection_test::payload::*;
+use astral_calculator::domain::*;
+use astral_calculator::payload::*;
 
 fn input() -> NatalChartInput {
     NatalChartInput {
@@ -1752,7 +1752,7 @@ fn v13_requires_sect_affinities_to_emit_accidental_block() {
         &canonical_lunar_phases(),
         &canonical_accidental_conditions(),
         &[],
-        &rust_sqlx_connection_test::catalog::test_catalog(),
+        &astral_calculator::catalog::test_catalog(),
     );
 
     assert_eq!(
@@ -1782,7 +1782,7 @@ fn v13_contains_accidental_dignities_from_reference_definitions() {
         &canonical_lunar_phases(),
         &canonical_accidental_conditions(),
         &canonical_sect_affinities(),
-        &rust_sqlx_connection_test::catalog::test_catalog(),
+        &astral_calculator::catalog::test_catalog(),
     );
 
     assert!(!payload.accidental_dignities.is_empty());
@@ -1821,7 +1821,7 @@ fn v13_contains_lunar_phase_context_from_reference_phases() {
         &canonical_lunar_phases(),
         &canonical_accidental_conditions(),
         &canonical_sect_affinities(),
-        &rust_sqlx_connection_test::catalog::test_catalog(),
+        &astral_calculator::catalog::test_catalog(),
     );
     let phase = payload
         .lunar_phase_context

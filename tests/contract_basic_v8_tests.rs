@@ -4,8 +4,8 @@ use std::fs;
 use jsonschema::JSONSchema;
 use serde_json::Value;
 
-use rust_sqlx_connection_test::domain::BasicPayload;
-use rust_sqlx_connection_test::runtime::is_current_basic_payload;
+use astral_calculator::domain::BasicPayload;
+use astral_calculator::runtime::is_current_basic_payload;
 
 const GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v13_paris_1990.json";
 const SCHEMA_PATH: &str = "schemas/natal_structured_v13.schema.json";

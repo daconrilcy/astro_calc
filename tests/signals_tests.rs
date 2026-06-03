@@ -1,5 +1,5 @@
-use rust_sqlx_connection_test::domain::*;
-use rust_sqlx_connection_test::signals::*;
+use astral_calculator::domain::*;
+use astral_calculator::signals::*;
 use serde_json::json;
 
 fn with_signal_scoring(mut position: ObjectPositionFact) -> ObjectPositionFact {
@@ -311,7 +311,7 @@ fn major_dignities_create_dedicated_signals_and_enrich_placements() {
         aspects: Vec::new(),
     };
 
-    let signals = aggregate_basic_signals(&facts, &rust_sqlx_connection_test::catalog::test_catalog());
+    let signals = aggregate_basic_signals(&facts, &astral_calculator::catalog::test_catalog());
     let saturn_dignity = signals
         .iter()
         .find(|signal| signal.signal_key == "dignity:saturn:domicile:capricorn")
@@ -372,7 +372,7 @@ fn double_dignity_positions_create_all_signals_and_evidence() {
         aspects: Vec::new(),
     };
 
-    let signals = aggregate_basic_signals(&facts, &rust_sqlx_connection_test::catalog::test_catalog());
+    let signals = aggregate_basic_signals(&facts, &astral_calculator::catalog::test_catalog());
     let placement = signals
         .iter()
         .find(|signal| signal.signal_key == "object_position:mercury")
@@ -409,7 +409,7 @@ fn basic_signals_include_semantic_position_cluster() {
         aspects: Vec::new(),
     };
 
-    let signals = aggregate_basic_signals(&facts, &rust_sqlx_connection_test::catalog::test_catalog());
+    let signals = aggregate_basic_signals(&facts, &astral_calculator::catalog::test_catalog());
     let cluster = signals
         .iter()
         .find(|signal| signal.signal_key == "cluster:capricorn:house_2")
@@ -448,7 +448,7 @@ fn placement_signal_includes_contextual_evidence_and_tags() {
         aspects: Vec::new(),
     };
 
-    let signals = aggregate_basic_signals(&facts, &rust_sqlx_connection_test::catalog::test_catalog());
+    let signals = aggregate_basic_signals(&facts, &astral_calculator::catalog::test_catalog());
     let signal = signals
         .iter()
         .find(|signal| signal.signal_key == "object_position:sun")
@@ -486,7 +486,7 @@ fn retrograde_placements_get_specific_interpretive_context() {
         aspects: Vec::new(),
     };
 
-    let signals = aggregate_basic_signals(&facts, &rust_sqlx_connection_test::catalog::test_catalog());
+    let signals = aggregate_basic_signals(&facts, &astral_calculator::catalog::test_catalog());
     let signal = signals
         .iter()
         .find(|signal| signal.signal_key == "object_position:mercury")
@@ -518,7 +518,7 @@ fn basic_cluster_merges_secondary_source_signals() {
         aspects: Vec::new(),
     };
 
-    let signals = aggregate_basic_signals(&facts, &rust_sqlx_connection_test::catalog::test_catalog());
+    let signals = aggregate_basic_signals(&facts, &astral_calculator::catalog::test_catalog());
     let sun = signals
         .iter()
         .find(|signal| signal.signal_key == "object_position:sun")
@@ -578,7 +578,7 @@ fn basic_cluster_dedup_refills_without_reactivating_weak_aspects() {
         ],
     };
 
-    let signals = aggregate_basic_signals(&facts, &rust_sqlx_connection_test::catalog::test_catalog());
+    let signals = aggregate_basic_signals(&facts, &astral_calculator::catalog::test_catalog());
     let active_count = signals
         .iter()
         .filter(|signal| signal.suppression_state == "active")
@@ -643,7 +643,7 @@ fn basic_filter_preserves_one_strong_tension_aspect() {
         ],
     };
 
-    let signals = aggregate_basic_signals(&facts, &rust_sqlx_connection_test::catalog::test_catalog());
+    let signals = aggregate_basic_signals(&facts, &astral_calculator::catalog::test_catalog());
     let active_count = signals
         .iter()
         .filter(|signal| signal.suppression_state == "active")
@@ -723,7 +723,7 @@ fn structural_axis_does_not_block_non_structural_tension_preservation() {
         ],
     };
 
-    let signals = aggregate_basic_signals(&facts, &rust_sqlx_connection_test::catalog::test_catalog());
+    let signals = aggregate_basic_signals(&facts, &astral_calculator::catalog::test_catalog());
     let structural_axis = signals
         .iter()
         .find(|signal| signal.signal_key == "aspect:ascendant:descendant:opposition");
@@ -752,7 +752,7 @@ fn angle_signal_evidence_exposes_opposite_angle_object_code() {
         aspects: Vec::new(),
     };
 
-    let signals = aggregate_basic_signals(&facts, &rust_sqlx_connection_test::catalog::test_catalog());
+    let signals = aggregate_basic_signals(&facts, &astral_calculator::catalog::test_catalog());
     let ascendant = signals
         .iter()
         .find(|signal| signal.signal_key == "angle:ascendant:sign:aries")
@@ -807,7 +807,7 @@ fn angle_signal_uses_angle_context_even_without_angle_point_id() {
         aspects: Vec::new(),
     };
 
-    let signals = aggregate_basic_signals(&facts, &rust_sqlx_connection_test::catalog::test_catalog());
+    let signals = aggregate_basic_signals(&facts, &astral_calculator::catalog::test_catalog());
 
     assert!(signals
         .iter()
@@ -841,7 +841,7 @@ fn structural_axis_aspects_do_not_create_basic_aspect_signals() {
         ],
     };
 
-    let signals = aggregate_basic_signals(&facts, &rust_sqlx_connection_test::catalog::test_catalog());
+    let signals = aggregate_basic_signals(&facts, &astral_calculator::catalog::test_catalog());
 
     assert!(!signals
         .iter()
@@ -889,7 +889,7 @@ fn aspect_hint_uses_interpretive_quality() {
         }],
     };
 
-    let signals = aggregate_basic_signals(&facts, &rust_sqlx_connection_test::catalog::test_catalog());
+    let signals = aggregate_basic_signals(&facts, &astral_calculator::catalog::test_catalog());
     let payload = signals[0].payload_json.as_ref().expect("aspect payload");
 
     assert_eq!(
@@ -928,7 +928,7 @@ fn aspect_signals_include_interpretive_context_and_valence_tags() {
         ],
     };
 
-    let signals = aggregate_basic_signals(&facts, &rust_sqlx_connection_test::catalog::test_catalog());
+    let signals = aggregate_basic_signals(&facts, &astral_calculator::catalog::test_catalog());
     let sextile = aspect_payload(&signals, "aspect:venus:jupiter:sextile");
     let amplified_trine = aspect_payload(&signals, "aspect:venus:pluto:trine");
     let square = aspect_payload(&signals, "aspect:moon:mars:square");

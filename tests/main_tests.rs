@@ -1,6 +1,6 @@
 use chrono::{TimeZone, Utc};
 
-use rust_sqlx_connection_test::cli::{
+use astral_calculator::cli::{
     cli_options_from_args, output_mode_from_args, output_contract_from_env, root_output_dir,
     timestamped_output_filename, OutputContract, OutputMode,
 };

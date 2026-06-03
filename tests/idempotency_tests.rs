@@ -1,7 +1,7 @@
 use chrono::TimeZone;
 
-use rust_sqlx_connection_test::domain::{NatalChartInput, RuntimeOptions};
-use rust_sqlx_connection_test::idempotency::{advisory_lock_key, idempotency_key, input_hash};
+use astral_calculator::domain::{NatalChartInput, RuntimeOptions};
+use astral_calculator::idempotency::{advisory_lock_key, idempotency_key, input_hash};
 
 fn input() -> NatalChartInput {
     NatalChartInput {
@@ -27,14 +27,14 @@ fn client_idempotency_key_changes_hash() {
     let mut without_key = input();
     without_key.client_idempotency_key = None;
 
-    let key_a = rust_sqlx_connection_test::idempotency::idempotency_key(
+    let key_a = astral_calculator::idempotency::idempotency_key(
         &with_key,
-        &rust_sqlx_connection_test::domain::RuntimeOptions::default(),
+        &astral_calculator::domain::RuntimeOptions::default(),
     )
     .expect("key");
-    let key_b = rust_sqlx_connection_test::idempotency::idempotency_key(
+    let key_b = astral_calculator::idempotency::idempotency_key(
         &without_key,
-        &rust_sqlx_connection_test::domain::RuntimeOptions::default(),
+        &astral_calculator::domain::RuntimeOptions::default(),
     )
     .expect("key");
     assert_ne!(key_a, key_b);

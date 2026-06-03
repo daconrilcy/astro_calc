@@ -1,4 +1,4 @@
-use rust_sqlx_connection_test::models::AspectDefinition;
+use astral_calculator::models::AspectDefinition;
 use serde_json::Value;
 
 const ASTRAL_ASPECTS_JSON: &str = include_str!("../../json_db/astral_aspects.json");

@@ -1,6 +1,6 @@
-use rust_sqlx_connection_test::catalog::test_catalog;
-use rust_sqlx_connection_test::dignities::*;
-use rust_sqlx_connection_test::domain::ObjectPositionFact;
+use astral_calculator::catalog::test_catalog;
+use astral_calculator::dignities::*;
+use astral_calculator::domain::ObjectPositionFact;
 
 fn position(object_code: &str, sign_code: &str) -> ObjectPositionFact {
     ObjectPositionFact {
