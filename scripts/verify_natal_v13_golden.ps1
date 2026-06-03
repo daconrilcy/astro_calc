@@ -27,7 +27,10 @@ function Contract-Projection($payload) {
         house_axis_emphasis = $payload.house_axis_emphasis
         lunar_phase_context = $payload.lunar_phase_context
         accidental_dignities = $payload.accidental_dignities
-        signal_keys = @($payload.signals | ForEach-Object { $_.signal_key })
+        # Ordre des signaux actifs non contractuel ; tri pour diff stable.
+        signal_keys = @(
+            $payload.signals | ForEach-Object { $_.signal_key } | Sort-Object
+        )
         reading_plan = $payload.reading_plan
     }
 }

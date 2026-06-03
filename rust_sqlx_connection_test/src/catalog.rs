@@ -148,9 +148,9 @@ impl BasicPayloadCatalog {
         overall_polarity_for_score_with_bands(score, &self.accidental_polarity_bands)
     }
 
-    pub fn valid_accidental_condition_codes<'a>(
-        definitions: &'a [AccidentalDignityConditionReference],
-    ) -> Vec<&'a str> {
+    pub fn valid_accidental_condition_codes(
+        definitions: &[AccidentalDignityConditionReference],
+    ) -> Vec<&str> {
         definitions
             .iter()
             .map(|definition| definition.condition_code.as_str())

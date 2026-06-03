@@ -13,6 +13,7 @@ use crate::domain::{
 use crate::models::{
     AccidentalConditionTriggerRow, AccidentalPolarityBandRow, AccidentalScoringParamsRow,
     AnglePointReference, AspectDefinition, BasicProductScoringProfileRow, ChartCalculationRow,
+    MajorAspectFamilyReference,
     ChartObject, DomicileRulerReference, EssentialDignityRuleReferenceRow,
     HorizonPositionReference, HouseAxisReferenceRow, HouseReference,
     AccidentalDignityConditionReferenceRow, HouseSystem, InterpretationSignalRow,
@@ -74,14 +75,55 @@ impl RuntimeRepository {
     pub async fn aspect_definitions(&self) -> Result<Vec<AspectDefinition>, RuntimeError> {
         Ok(sqlx::query_as::<_, AspectDefinition>(
             r#"
-            SELECT id, code, name, angle::float8 AS angle, default_orb_deg::float8 AS default_orb_deg
-            FROM astral_aspects
-            WHERE family = 'major'
-            ORDER BY id
+            SELECT a.id,
+                   a.code,
+                   a.name,
+                   a.angle::float8 AS angle,
+                   a.family,
+                   a.default_orb_deg::float8 AS default_orb_deg,
+                   f.max_default_orb_deg::float8 AS max_default_orb_deg
+            FROM astral_aspects a
+            INNER JOIN astral_aspect_families f ON f.name = a.family
+            WHERE a.family = 'major'
+            ORDER BY a.id
             "#,
         )
         .fetch_all(&self.pool)
         .await?)
+    }
+
+    pub async fn major_aspect_family_reference(
+        &self,
+    ) -> Result<MajorAspectFamilyReference, RuntimeError> {
+        let row = sqlx::query_as::<_, MajorAspectFamilyReference>(
+            r#"
+            SELECT expected_aspect_count, max_default_orb_deg::float8 AS max_default_orb_deg
+            FROM astral_aspect_families
+            WHERE name = 'major'
+            "#,
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let Some(row) = row else {
+            return Err(RuntimeError::Ephemeris(
+                "missing major aspect family reference (astral_aspect_families.name = 'major')"
+                    .to_string(),
+            ));
+        };
+        if row.expected_aspect_count <= 0 {
+            return Err(RuntimeError::Ephemeris(format!(
+                "invalid expected_aspect_count for major aspect family: {}",
+                row.expected_aspect_count
+            )));
+        }
+        if !row.max_default_orb_deg.is_finite() || row.max_default_orb_deg <= 0.0 {
+            return Err(RuntimeError::Ephemeris(format!(
+                "invalid max_default_orb_deg for major aspect family: {}",
+                row.max_default_orb_deg
+            )));
+        }
+        Ok(row)
     }
 
     pub async fn sign_references(&self) -> Result<Vec<SignReference>, RuntimeError> {

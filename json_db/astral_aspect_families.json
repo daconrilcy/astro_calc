@@ -1,17 +1,25 @@
 {
   "name": "astral_aspect_families",
   "structure": {
-    "name": "string"
+    "name": "string",
+    "expected_aspect_count": "integer|null",
+    "max_default_orb_deg": "number|null"
   },
   "data": [
     {
-      "name": "major"
+      "name": "major",
+      "expected_aspect_count": 5,
+      "max_default_orb_deg": 15.0
     },
     {
-      "name": "minor"
+      "name": "minor",
+      "expected_aspect_count": null,
+      "max_default_orb_deg": null
     },
     {
-      "name": "advanced"
+      "name": "advanced",
+      "expected_aspect_count": null,
+      "max_default_orb_deg": null
     }
   ]
 }

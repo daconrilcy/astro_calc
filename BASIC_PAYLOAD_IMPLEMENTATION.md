@@ -8,8 +8,8 @@ Ce document decrit l'implementation actuelle du payload moteur route par
 Etat courant au 2026-06-03 : le moteur Rust reste dans le perimetre du calcul
 astrologique et des cles d'interpretation. Le payload route basic expose les
 faits calcules, les contextes astrologiques, les dignites essentielles et
-accidentelles (MVP), les angles, les dominantes, le contexte de rulership, les
-signaux actifs et `reading_plan`.
+accidentelles (MVP), les orbes d'aspects majeurs canoniques (3F), les angles,
+les dominantes, le contexte de rulership, les signaux actifs et `reading_plan`.
 
 Les instructions destinees a un LLM sont hors perimetre et ne sont plus produites
 dans le JSON de sortie. Cela inclut `llm_handoff_contract`, `drafting_plan`,
@@ -163,6 +163,25 @@ accidentel, secte) sont disponibles avec un `lunar_phase_context` construit.
 Sans references accidentelles ou secte, le moteur reste en v12 sans bloc
 accidentel.
 
+L'etape 3F aligne les orbes de detection des aspects majeurs sur le referentiel
+PostgreSQL : les cinq lignes `astral_aspects` de famille `major` portent
+`default_orb_deg`, lues par `aspect_definitions()` et validees avant tout calcul
+ephemeride (`validate_aspect_definitions` dans `runtime/references.rs`).
+Contrairement a 3D (v12) ou 3E (v13), **3F ne cree pas de nouveau contrat JSON** :
+`natal_structured_v13` reste le contrat courant. La detection geometrique
+n'utilise plus `default_major_orb_deg` du profil produit ; ce champ reste charge
+via `basic_payload_catalog` et n'est valide qu'en sanity check (positif, fini,
+`<= astral_aspect_families.max_default_orb_deg` pour `major`), sans etre passe a
+`EphemerisEngine::calculate_natal`. Seul
+`aspect_min_strength` filtre ensuite les signaux `aspect:*` actifs.
+Les **codes**, **angles** et **orbes** des aspects majeurs viennent de
+`astral_aspects` (famille `major`). Le **nombre** attendu de majeurs est porte
+par `astral_aspect_families.expected_aspect_count` (5 pour `major` dans le seed).
+Le runtime ne duplique plus de liste de codes/angles en Rust : il valide
+l'integrite des lignes chargees et compare leur effectif au referentiel famille.
+Plafond d'orbe par famille `astral_aspect_families.max_default_orb_deg` (15° pour
+`major` dans le seed) en validation et dans `canonical_aspect_orb_deg`.
+
 `product_code = "basic"` reste volontairement conserve comme cle de routage
 legacy pour les tables et les chemins runtime existants. Il ne decrit plus un
 contrat produit minimal du moteur : le payload courant est un payload
@@ -200,13 +219,19 @@ Le payload route basic depend directement du schema PostgreSQL materialise depui
 - la table `astral_lunar_phase_definitions`, source canonique des huit phases
   Soleil-Lune ;
 - `astral_basic_product_scoring_profiles` : seuils d'emphase, limite de signaux
-  actifs, orbe majeur par defaut, parametres d'axes de maisons ;
+  actifs, `aspect_min_strength`, parametres d'axes de maisons (le champ
+  `default_major_orb_deg` reste en base mais n'alimente plus la detection
+  geometrique depuis 3F) ;
+- `astral_aspects` : referentiel des aspects (`code`, `name`, `angle`, `family`,
+  `default_orb_deg`) ; seuls les `family = 'major'` alimentent la detection ;
+- `astral_aspect_families` : `expected_aspect_count` (5 pour `major`) et
+  `max_default_orb_deg` (15° pour `major`) ;
 - `astral_accidental_condition_triggers` : declencheurs MVP (modalite, mouvement,
   horizon, proximite angle, secte) ;
 - `astral_accidental_scoring_params` et `astral_accidental_overall_polarity_bands` :
   baseline, orbe angle, paliers `overall_polarity` / `expression_quality` ;
-- colonne `astral_aspects.default_orb_deg` et profil
-  `astral_essential_dignity_score_weights` (deltas de priorite/poids signaux).
+- profil `astral_essential_dignity_score_weights` (deltas de priorite/poids
+  signaux par type de dignite essentielle).
 
 Le runtime charge ces references via `BasicPayloadCatalog` (`catalog.rs`) et
 projette dans `chart_context` les snapshots `accidental_scoring` (baseline,
@@ -215,19 +240,26 @@ validation de fraicheur (freshness) sans constantes en dur. Les payloads v13
 sans ces snapshots ou avec des bandes non contigues sur `[0, 1]` sont rejetes.
 
 Ces donnees ne doivent pas etre compensees par des valeurs applicatives en dur.
-Si le binaire echoue avec une erreur SQL de relation ou de colonne manquante,
-la correction attendue est de resynchroniser PostgreSQL avec les fichiers
-`json_db`, pas de contourner la lecture en Rust.
+Si le binaire echoue avec une erreur SQL de relation ou de colonne manquante
+(par exemple `column "default_orb_deg" does not exist` sur `astral_aspects`, ou
+`column "expected_aspect_count" / "max_default_orb_deg" does not exist` sur
+`astral_aspect_families`), la correction attendue est de resynchroniser PostgreSQL avec les fichiers
+`json_db` via `scripts/import_json_db_to_postgres.py` ou le patch cible
+`scripts/patch_astral_aspects_default_orb_deg.py` et
+`scripts/patch_astral_aspect_families_expected_count.py`, pas de contourner la
+lecture en Rust.
 
 ## Fichiers concernes
 
-- `rust_sqlx_connection_test/src/catalog.rs` : catalogue en memoire (profil produit,
-  regles essentielles, triggers et scoring accidentel).
+- `rust_sqlx_connection_test/src/catalog.rs` : `BasicPayloadCatalog` (charge depuis
+  PostgreSQL en production via `repositories::basic_payload_catalog`) ;
+  `test_catalog()` fournit un profil minimal pour les tests unitaires hors DB.
 - `rust_sqlx_connection_test/src/domain.rs` : structures runtime et payload JSON.
 - `rust_sqlx_connection_test/src/facts.rs` : helpers de libelles signe/maison.
 - `rust_sqlx_connection_test/src/ephemeris.rs` : enrichissement des positions calculees.
 - `rust_sqlx_connection_test/src/aspects.rs` : detection geometrique des aspects
-  et calcul de l'orbe, de la phase et de la force brute.
+  majeurs (`canonical_aspect_orb_deg`, `detect_aspects`) et calcul de l'orbe
+  observe, de la phase et de la force brute.
 - `rust_sqlx_connection_test/src/dignities.rs` : detection MVP des dignites essentielles majeures.
 - `rust_sqlx_connection_test/src/payload/accidental_dignities.rs` : evaluation MVP
   des dignites accidentelles et projection vers positions, signaux et dominantes.
@@ -241,11 +273,31 @@ la correction attendue est de resynchroniser PostgreSQL avec les fichiers
   positions et enrichissement SQL depuis les referentiels de signes, maisons,
   objets, angles et aspects.
 - `rust_sqlx_connection_test/src/runtime/` : orchestration runtime,
-  validation des references et regeneration des anciens payloads.
+  validation des references (`validate_aspect_definitions`,
+  `major_aspect_family_reference` dans `repositories.rs`) et regeneration des
+  anciens payloads.
+- `rust_sqlx_connection_test/src/runtime/service.rs` : `calculate_natal_basic`
+  (chargement `aspect_definitions`, validation, puis calcul ephemeride).
 - `json_db/astral_accidental_dignity_condition_definitions.json` : definitions
   canoniques des 15 conditions accidentelles MVP.
 - `json_db/astral_object_sect_affinities.json` : affinites de secte par objet.
 - `json_db/astral_lunar_phase_definitions.json` : definitions des phases lunaires.
+- `json_db/astral_aspects.json` : referentiel des aspects (codes, angles, orbes).
+- `json_db/astral_aspect_families.json` : familles d'aspects,
+  `expected_aspect_count` et `max_default_orb_deg`.
+- `rust_sqlx_connection_test/src/models.rs` : `AspectDefinition` (avec
+  `max_default_orb_deg` issu du JOIN famille) et `MajorAspectFamilyReference`.
+- `scripts/patch_astral_aspects_default_orb_deg.py` : colonne et orbes
+  `astral_aspects.default_orb_deg`, coherence effectif / famille.
+- `scripts/psql_docker.py` : execution SQL via `docker compose exec` (fallback `psql` local).
+- `scripts/patch_astral_aspect_families_expected_count.py` : colonnes
+  `expected_aspect_count` et `max_default_orb_deg` sur `astral_aspect_families`.
+- `tests/aspects_tests.rs` : non-regression geometrie, axes structurels et orbes
+  par aspect.
+- `tests/common/json_db.rs` : fixtures de test chargees depuis
+  `json_db/astral_aspects.json` (`include_str!`) pour eviter la derive entre seed
+  et tests.
+- `tests/runtime_tests.rs` : validation referentiel aspects (`validate_aspect_definitions_*`).
 - `rust_sqlx_connection_test/schemas/basic_natal_structured_v8.schema.json` :
   schema JSON historique du contrat Basic v8.
 - `rust_sqlx_connection_test/schemas/natal_structured_v9.schema.json` :
@@ -284,7 +336,8 @@ la correction attendue est de resynchroniser PostgreSQL avec les fichiers
 - `scripts/verify_natal_v12_golden.ps1` : verification CI/local historique de
   projection stable v12.
 - `scripts/verify_natal_v13_golden.ps1` : verification CI/local de projection
-  stable v13 apres regeneration du payload par le moteur.
+  stable v13 apres regeneration du payload par le moteur (`signal_keys` triees
+  avant diff).
 
 ## Contrat des positions
 
@@ -662,9 +715,16 @@ pures et lisent uniquement `object_context.signal_scoring` et
 
 Point de vigilance operationnel : une base deja creee avant l'ajout de ces
 referentiels peut contenir les anciennes tables mais manquer
-`astral_chart_object_signal_profiles`, `astral_interpretation_generated_outputs`
-ou `astral_house_modalities.priority_delta`. Dans ce cas, le programme ne doit
-pas demarrer avec des fallbacks. Il faut appliquer les ajouts issus de `json_db`
+`astral_chart_object_signal_profiles`, `astral_interpretation_generated_outputs`,
+`astral_house_modalities.priority_delta`, `astral_aspects.default_orb_deg`, ou
+les metadonnees `astral_aspect_families.expected_aspect_count` /
+`astral_aspect_families.max_default_orb_deg`.
+Dans ce cas, le programme ne doit pas demarrer avec des fallbacks. Il faut
+appliquer les ajouts issus de `json_db`, executer
+`scripts/patch_astral_aspect_families_expected_count.py` puis
+`scripts/patch_astral_aspects_default_orb_deg.py` (metadonnees famille + orbes
+par aspect + verification que le nombre de majeurs correspond a
+`expected_aspect_count` et que chaque orbe respecte `max_default_orb_deg`),
 ou relancer l'import PostgreSQL complet si la conservation des donnees runtime
 n'est pas requise.
 
@@ -1248,7 +1308,9 @@ Ephemeris. Le test unitaire ne reconstruit donc pas le theme depuis le moteur.
 Pour couvrir ce risque en CI ou en verification locale,
 `scripts/verify_natal_v13_golden.ps1` lance le moteur avec le scenario golden
 Paris / `1990-01-02T03:04:05Z`, puis compare une projection stable du payload
-genere au golden v13. Le script force les variables d'environnement du scenario
+genere au golden v13 (les `signal_keys` actives sont triees avant comparaison :
+l'ordre des 12 signaux n'est pas contractuel). Le script force les variables
+d'environnement du scenario
 golden et les restaure ensuite, afin d'eviter qu'un `ASTRAL_OUTPUT_MODE`,
 `ASTRAL_PRODUCT_CODE` ou identifiant de referentiel deja present ne modifie la
 verification. Il peut aussi comparer un fichier deja genere via :
@@ -1328,11 +1390,13 @@ ensuite re-upsertes avec leur etat courant. Cela evite qu'un ancien signal actif
 reste visible apres un changement de format de cle ou de filtrage.
 
 Pour les aspects, le calcul ephemeride persiste d'abord les faits geometriques
-dans `astral_calculated_aspects`. Avant de construire les signaux, le runtime
-relit ces aspects via les joins de `repositories.rs` afin d'ajouter la famille
-et les effets interpretatifs issus des referentiels. Ce meme chemin
-est utilise pour un calcul frais et pour la regeneration d'un payload existant
-juge obsolete.
+dans `astral_calculated_aspects` en appliquant les orbes canoniques
+`astral_aspects.default_orb_deg`, bornes par `astral_aspect_families.max_default_orb_deg`
+(validation `validate_aspect_definitions` + `major_aspect_family_reference` avant
+le calcul). Avant de construire les signaux, le runtime relit ces aspects via
+les joins de `repositories.rs` afin d'ajouter la famille et les effets
+interpretatifs issus des referentiels. Ce meme chemin est utilise pour un calcul
+frais et pour la regeneration d'un payload existant juge obsolete.
 
 Dans cette table, `language_id` designe la langue canonique du payload, pas la
 langue cible utilisateur. Pour le moteur Rust, le runtime ecrit toujours la
@@ -1479,6 +1543,23 @@ Depuis `rust_sqlx_connection_test` :
 cargo test
 cargo test --features swisseph-engine
 cargo clippy --features swisseph-engine -- -D warnings
+.\scripts\verify_natal_v13_golden.ps1
+```
+
+Le golden v13 compare une projection stable (dont `signal_keys` triees) ; il ne
+substitue pas aux tests d'orbe dans `tests/aspects_tests.rs` (voir section 3F).
+
+Avant un run contre PostgreSQL, verifier que le schema est aligne avec `json_db`
+(au minimum `astral_aspect_families.expected_aspect_count`,
+`astral_aspects.default_orb_deg` pour 3F, tables de scoring et catalogue pour
+v13). En cas d'erreur SQL sur une colonne manquante :
+
+```powershell
+docker compose up -d
+python scripts/patch_astral_aspect_families_expected_count.py
+python scripts/patch_astral_aspects_default_orb_deg.py
+# ou import complet :
+python scripts/import_json_db_to_postgres.py
 ```
 
 Run complet avec les valeurs d'exemple :
@@ -1581,13 +1662,20 @@ exemple :
   d'aspect integrent maintenant la valence 2C.
 - Les clusters du payload route basic ne couvrent pour l'instant que les concentrations
   `sign_house`.
-- Le moteur de dignites essentielles 2B est un MVP code-side. Il couvre les
-  dignites majeures par signe, pas encore les dignites mineures (terme,
-  triplicite, face).
+- Le moteur de dignites essentielles 2B reste un MVP : les regles majeures par
+  signe viennent de `astral_essential_dignity_rules` et
+  `astral_essential_dignity_score_weights` via `BasicPayloadCatalog`, mais les
+  dignites mineures (terme, triplicite, face) ne sont pas encore exposees.
 - Le moteur de dignites accidentelles 3E est un MVP base-references. Il couvre
   15 conditions (maison, proximite angle, mouvement, horizon, secte) mais pas
   combustion, cazimi, hayz complet ni paliers d'orb 3 degre / 6 degre ;
-  l'orb de proximite angle est fixe a 10 degre cote moteur.
+  l'orb de proximite angle est lu depuis `chart_context.accidental_scoring`
+  (snapshot du catalogue accidentel).
+- Les aspects majeurs de detection (codes, angles, orbes, effectif) viennent de
+  PostgreSQL (`astral_aspects` + `astral_aspect_families.expected_aspect_count`),
+  plafond d'orbe `max_default_orb_deg` sur la famille `major`.
+- `astral_aspect_orb_rules` et les orbes par systeme dans
+  `astral_aspect_definitions` ne sont pas encore resolus au runtime.
 - Le programme consomme les libelles des referentiels tels quels. Il ne gere pas la traduction.
 - La redaction LLM doit rester une etape ulterieure.
 
@@ -1783,6 +1871,10 @@ canoniques applicatives et ne contourne pas les referentiels lus depuis la base.
   `evidence.placement_context`.
 - `payload_freshness/plan.rs` verifie `reading_plan` et la coherence de ses
   sources.
+- `runtime/references.rs` valide les definitions d'aspects majeurs avant calcul
+  (`validate_aspect_definitions`, plafond `max_default_orb_deg` depuis la base).
+  La fraicheur des payloads reutilises ne revalide pas les orbes des faits deja
+  persistes dans `astral_calculated_aspects` (hors perimetre 3F).
 - `payload_freshness/json.rs` et `payload_freshness/text.rs` regroupent les
   helpers transverses limites a la validation de reutilisation.
 
@@ -1863,8 +1955,8 @@ Artefacts historiques de l'etape 3C :
 - tests de non-regression dans `tests/payload_tests.rs`,
   `tests/runtime_tests.rs` et `tests/contract_basic_v8_tests.rs`.
 
-Le contrat courant et ses artefacts de verification sont documentes dans la
-section 3E et dans `Fichiers concernes`.
+Le contrat courant et ses artefacts de verification sont documentes dans les
+sections 3E et 3F et dans `Fichiers concernes`.
 
 ## 3E - Accidental dignity MVP
 
@@ -2044,6 +2136,237 @@ Cas verifies dans `tests/contract_basic_v8_tests.rs` :
 - `scripts/verify_natal_v13_golden.ps1` ;
 - tests dans `tests/payload_tests.rs`, `tests/runtime_tests.rs`,
   `tests/contract_basic_v8_tests.rs`.
+
+## 3F - Orbes d'aspects canoniques
+
+L'etape 3F ne change pas le contrat JSON (`natal_structured_v13` reste courant).
+Elle verrouille la source des orbes de **detection** des aspects majeurs sur la
+base de donnees, conformement a la regle « canonique = PostgreSQL ». Elle ne
+modifie ni `aspect_context` (2C), ni le filtrage des signaux actifs au-dela de
+ce qui existait deja via `aspect_min_strength` du profil produit.
+
+### Perimetre moteur
+
+- catalogue des aspects majeurs entierement en base (`astral_aspects` +
+  `astral_aspect_families`) : codes, angles, orbes, effectif attendu, plafond
+  d'orbe par famille ;
+- orbes de detection par aspect depuis `astral_aspects.default_orb_deg` ;
+- validation stricte du referentiel majeur avant calcul ephemeride ;
+- aucune constante Rust de liste de codes/angles ni de plafond d'orbe (`15` vit
+  dans `json_db/astral_aspect_families.json`) ;
+- pas de repli `default_major_orb_deg` du profil dans `detect_aspects` ;
+- pas de nouveau bloc top-level, pas de signal `aspect:*` supplementaire, pas de
+  changement de `reading_plan`.
+
+### Referentiel
+
+Sources canoniques :
+
+| Table / seed | Role |
+|--------------|------|
+| `astral_aspect_families` / `json_db/astral_aspect_families.json` | Metadonnees par famille (`expected_aspect_count`, `max_default_orb_deg`) |
+| `astral_aspects` / `json_db/astral_aspects.json` | Definition de chaque aspect (`code`, `angle`, `family`, `default_orb_deg`) |
+
+Metadonnees famille `major` (seed actuel) :
+
+| Champ | Valeur seed |
+|-------|-------------|
+| `expected_aspect_count` | 5 |
+| `max_default_orb_deg` | 15.0 |
+
+Lignes `astral_aspects` avec `family = 'major'` (seed actuel) :
+
+| `code` | `angle` | `default_orb_deg` (seed) |
+|--------|---------|--------------------------|
+| `conjunction` | 0 | 8.0 |
+| `sextile` | 60 | 6.0 |
+| `square` | 90 | 6.0 |
+| `trine` | 120 | 6.0 |
+| `opposition` | 180 | 8.0 |
+
+Les aspects `family != 'major'` ne sont pas lus par `aspect_definitions()` et
+restent hors detection MVP.
+
+Distinction importante :
+
+- **orbe de detection** : `astral_aspects.default_orb_deg` (3F) ;
+- **seuil signal actif** : `astral_basic_product_scoring_profiles.aspect_min_strength`
+  (deja migre dans le catalogue produit) ;
+- **`default_major_orb_deg`** : toujours present sur le profil `basic` / v13 pour
+  coherence du catalogue, mais n'est plus passe a `EphemerisEngine::calculate_natal`
+  ni utilise par `detect_aspects`.
+
+Les orbes observes (`AspectFact.orb_deg`, `calculation_notes_json.orb_limit_deg`)
+restent des faits runtime calcules a partir des longitudes ; ils ne sont pas
+persistes comme referentiel dans `astral_aspect_orb_rules`.
+
+### Runtime
+
+Point d'entree : `ChartCalculationRuntimeService::calculate_natal_basic` dans
+`runtime/service.rs`.
+
+Chaine liee aux orbes (apres validation des profils de signaux des objets actifs) :
+
+1. `major_aspect_family_reference()` — lit `expected_aspect_count` et
+   `max_default_orb_deg` pour `name = 'major'` ;
+2. `aspect_definitions()` — `SELECT` sur `astral_aspects` avec `INNER JOIN astral_aspect_families`
+   (`family = 'major'`), exposant aussi `max_default_orb_deg` sur chaque ligne ;
+3. `basic_payload_catalog(product_code, "natal_structured_v13", reference_version_id)` ;
+4. `validate_aspect_definitions(&aspects, product_orb, expected_count, max_orb)` :
+   - effectif des lignes chargees = `expected_aspect_count` ;
+   - chaque ligne a `family = 'major'`, `max_default_orb_deg` coherent avec la
+     famille, `id`/`code` uniques, `name` non vide ;
+   - `angle` fini dans `[0, 180]` (depuis `astral_aspects`) ;
+   - `default_orb_deg` present, fini, dans `(0, max_default_orb_deg]` ;
+   - `default_major_orb_deg` du profil : sanity check uniquement (`<= max_orb`).
+5. `EphemerisEngine::calculate_natal(..., &aspect_definitions, ...)` — dans
+   `ephemeris.rs`, `detect_aspects(&positions, aspects)` lit chaque orbe via
+   `canonical_aspect_orb_deg` et propage `aspect.family` dans `AspectFact.aspect_family` ;
+6. persistance des faits dans `astral_calculated_aspects` (`orb_deg` observe,
+   `calculation_notes_json.orb_limit_deg` = orbe canonique applique) ;
+7. relecture SQL + enrichissement interpretatif (2C) avant signaux `aspect:*`.
+
+Reutilisation d'un calcul `completed` : les aspects geometriques deja persistes
+ne sont pas recalcules ; seuls les payloads juges obsoletes repassent par le moteur
+complet.
+
+Fonctions et modules :
+
+| Role | Fichier |
+|------|---------|
+| Famille majeurs | `repositories.rs` — `major_aspect_family_reference()` |
+| Lecture referentiel | `repositories.rs` — `aspect_definitions()` (JOIN famille) |
+| Validation | `runtime/references.rs` — `validate_aspect_definitions` |
+| Detection | `aspects.rs` — `canonical_aspect_orb_deg`, `detect_aspects` |
+| Calcul natal | `ephemeris.rs` — `SwissEphemerisEngine::calculate_natal` (sans `default_major_orb_deg`) |
+| Orchestration | `runtime/service.rs` — `calculate_natal_basic` |
+
+Erreurs typiques :
+
+- SQL `column "default_orb_deg" does not exist` → schema PostgreSQL non aligne ;
+- `expected N major aspect definitions from astral_aspect_families, found M` →
+  effectif `astral_aspects` (famille major) different de
+  `astral_aspect_families.expected_aspect_count` ;
+- `missing major aspect family reference` / `missing expected_aspect_count` /
+  `invalid max_default_orb_deg for major aspect family` → metadonnees famille
+  absentes ou invalides ;
+- `inconsistent max_default_orb_deg for major aspect ...` → JOIN incoherent entre
+  aspect et famille ;
+- `missing default_orb_deg for major aspect ...` / `invalid default_orb_deg ...` ;
+- `invalid angle for major aspect ...` → angle hors `[0, 180]` ou non fini ;
+- `invalid product default_major_orb_deg (sanity check only; ...)` → profil
+  `astral_basic_product_scoring_profiles` incoherent, independant des orbes par aspect.
+
+Synchronisation PostgreSQL :
+
+```powershell
+docker compose up -d
+python scripts/patch_astral_aspect_families_expected_count.py
+python scripts/patch_astral_aspects_default_orb_deg.py
+# ou, si plusieurs tables/colonnes manquent :
+python scripts/import_json_db_to_postgres.py
+```
+
+Les scripts de patch utilisent `docker compose exec postgres psql` lorsque `psql`
+n'est pas installe sur l'hote (cas habituel avec Postgres dans Docker). Un `psql`
+local reste utilise s'il est dans le `PATH` et que `DATABASE_URL` est defini.
+
+Le script `patch_astral_aspect_families_expected_count.py` assure
+`expected_aspect_count` et `max_default_orb_deg` (major : 5 et 15°).
+`patch_astral_aspects_default_orb_deg.py` assure `default_orb_deg` sur chaque
+aspect, verifie l'effectif des majeurs contre `expected_aspect_count`, et refuse
+tout `default_orb_deg` strictement superieur au `max_default_orb_deg` de la
+famille `major`. L'import complet recree les tables `json_db` (DROP + INSERT).
+
+### Hors perimetre 3F
+
+- resolution prioritaire de `astral_aspect_orb_rules` (paires, luminaires, angles,
+  contexte `natal`) ;
+- aspects mineurs et avances ;
+- modification du contrat v13, des familles de signaux ou de `aspect_context` ;
+- revalidation des orbes sur payloads reutilises deja `completed` (les faits
+  `astral_calculated_aspects` restent ceux du calcul initial).
+
+### Tests
+
+Le golden `tests/golden/natal_payload_v13_paris_1990.json` et
+`scripts/verify_natal_v13_golden.ps1` ne suffisent pas a verrouiller les cinq
+orbes : le budget `max_active_signals` (12) ne laisse en pratique qu'un petit
+nombre de signaux `aspect:*` actifs sur Paris (souvent un seul, par ex. opposition
+avec `orb_limit_deg = 8.0` dans les notes de calcul). La projection golden trie
+les `signal_keys` avant diff (ordre non contractuel).
+
+Couverture dediee 3F :
+
+**`tests/common/json_db.rs`** — charge `json_db/astral_aspects.json` et
+`json_db/astral_aspect_families.json` via `include_str!` (pas de derive entre
+fixtures et seed).
+
+**`tests/aspects_tests.rs`** :
+
+- `json_db_seed_major_aspects_match_runtime_validation` — le seed JSON passe
+  `validate_aspect_definitions` (effectif + `max_default_orb_deg` famille) ;
+- `canonical_major_aspect_orbs_match_json_db_seed` — seuil inclus / exclu et
+  `orb_limit_deg` pour chaque majeur du seed ;
+- `detect_aspects_applies_each_canonical_orb_with_full_major_set` ;
+- `detect_aspects_uses_per_aspect_orb_not_product_fallback` ;
+- `canonical_aspect_orb_deg_rejects_orb_above_family_max` ;
+- `aspect_phase_uses_relative_speed` ;
+- `structural_angle_axes_are_not_detected_as_aspects`.
+
+**`tests/runtime_tests.rs`** :
+
+- `validate_aspect_definitions_accepts_canonical_major_orbs` ;
+- `validate_aspect_definitions_rejects_missing_orb` ;
+- `validate_aspect_definitions_rejects_zero_orb` ;
+- `validate_aspect_definitions_rejects_excessive_orb` ;
+- `validate_aspect_definitions_rejects_non_finite_orb` ;
+- `validate_aspect_definitions_rejects_duplicate_aspect_id` ;
+- `validate_aspect_definitions_rejects_incomplete_major_set` ;
+- `validate_aspect_definitions_rejects_extra_major_aspect_count` ;
+- `validate_aspect_definitions_rejects_invalid_major_aspect_angle` ;
+- `validate_aspect_definitions_rejects_inconsistent_family_max_orb` ;
+- `validate_aspect_definitions_rejects_invalid_product_fallback`.
+
+**Catalogue de tests** : `catalog::test_catalog()` expose encore
+`default_major_orb_deg: 8.0` pour les builders sans DB ; ce n'est pas le chemin
+production et n'alimente pas `detect_aspects`.
+
+### Artefacts
+
+- `json_db/astral_aspects.json` ;
+- `json_db/astral_aspect_families.json` ;
+- `scripts/patch_astral_aspect_families_expected_count.py` ;
+- `scripts/patch_astral_aspects_default_orb_deg.py` ;
+- `rust_sqlx_connection_test/src/aspects.rs` ;
+- `rust_sqlx_connection_test/src/runtime/references.rs` ;
+- `rust_sqlx_connection_test/src/runtime/mod.rs` ;
+- `rust_sqlx_connection_test/src/runtime/service.rs` ;
+- `rust_sqlx_connection_test/src/ephemeris.rs` ;
+- `rust_sqlx_connection_test/src/repositories.rs` ;
+- `tests/common/json_db.rs` ;
+- `tests/aspects_tests.rs` ;
+- `tests/runtime_tests.rs` ;
+- `scripts/verify_natal_v13_golden.ps1` (projection stable, complementaire).
+
+### Criteres d'acceptation 3F
+
+1. PostgreSQL : pour `major`, `expected_aspect_count = 5` et
+   `max_default_orb_deg = 15` ; autant de lignes `astral_aspects` avec
+   `family = 'major'`, chacune avec `default_orb_deg` dans `(0, 15]` et `angle`
+   dans `[0, 180]`.
+2. `validate_aspect_definitions` refuse tout ecart (effectif vs famille, coherence
+   du `max_default_orb_deg` sur chaque ligne, integrite des lignes, orbe,
+   doublon d'`id`, profil produit invalide en sanity check).
+3. `detect_aspects` / `canonical_aspect_orb_deg` utilisent `default_orb_deg` et
+   le plafond `max_default_orb_deg` porte par chaque definition (JOIN famille),
+   sans repli `default_major_orb_deg`.
+4. `EphemerisEngine::calculate_natal` n'a pas de parametre `default_major_orb_deg`.
+5. `cargo test`, `cargo test --features swisseph-engine`,
+   `cargo clippy --features swisseph-engine -- -D warnings`, et
+   `scripts/verify_natal_v13_golden.ps1` passent.
+6. `cargo run --features swisseph-engine` ne echoue plus sur colonne ou orbe
+   majeur manquant apres patch ou import.
 
 ## 3D - Lunar phase context
 

@@ -16,6 +16,7 @@ struct HouseScoreDraft {
     source_context_keys: Vec<String>,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn build_house_axis_emphasis(
     references: &[HouseAxisReference],
     positions: &[ObjectPositionFact],

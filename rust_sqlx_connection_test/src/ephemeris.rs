@@ -14,7 +14,6 @@ pub trait EphemerisEngine {
         aspects: &[AspectDefinition],
         house_system: &HouseSystem,
         references: &CalculationReferenceData,
-        default_major_orb_deg: f64,
     ) -> Result<CalculatedChartFacts, RuntimeError>;
 }
 
@@ -44,7 +43,6 @@ impl EphemerisEngine for SwissEphemerisEngine {
         aspects: &[AspectDefinition],
         house_system: &HouseSystem,
         references: &CalculationReferenceData,
-        default_major_orb_deg: f64,
     ) -> Result<CalculatedChartFacts, RuntimeError> {
         use crate::aspects::detect_aspects;
         use crate::domain::{HouseCuspFact, ObjectPositionFact};
@@ -197,7 +195,7 @@ impl EphemerisEngine for SwissEphemerisEngine {
             });
         }
 
-        let aspects = detect_aspects(&positions, aspects, default_major_orb_deg);
+        let aspects = detect_aspects(&positions, aspects);
 
         Ok(CalculatedChartFacts {
             positions,
@@ -214,7 +212,6 @@ impl EphemerisEngine for SwissEphemerisEngine {
         _aspects: &[AspectDefinition],
         _house_system: &HouseSystem,
         _references: &CalculationReferenceData,
-        _default_major_orb_deg: f64,
     ) -> Result<CalculatedChartFacts, RuntimeError> {
         Err(RuntimeError::Ephemeris(
             format!(

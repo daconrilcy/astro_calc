@@ -6,7 +6,7 @@ use crate::domain::{
     AccidentalScoringParams, CalculationReferenceData, HouseAxisReference, HouseReference,
     LunarPhaseReference, ObjectSectAffinityReference,
 };
-use crate::models::ChartObject;
+use crate::models::{AspectDefinition, ChartObject};
 
 use super::RuntimeError;
 
@@ -123,6 +123,84 @@ pub fn validate_calculation_references(
     }
 
     Ok(())
+}
+
+pub fn validate_aspect_definitions(
+    aspects: &[AspectDefinition],
+    product_default_major_orb_deg: f64,
+    expected_major_aspect_count: usize,
+    max_default_orb_deg: f64,
+) -> Result<(), RuntimeError> {
+    if aspects.len() != expected_major_aspect_count {
+        return Err(RuntimeError::Ephemeris(format!(
+            "expected {expected_major_aspect_count} major aspect definitions from astral_aspect_families, found {}",
+            aspects.len()
+        )));
+    }
+    if !max_default_orb_deg.is_finite() || max_default_orb_deg <= 0.0 {
+        return Err(RuntimeError::Ephemeris(format!(
+            "invalid max_default_orb_deg for major aspect family: {max_default_orb_deg}"
+        )));
+    }
+    if product_default_major_orb_deg <= 0.0 || product_default_major_orb_deg > max_default_orb_deg
+    {
+        return Err(RuntimeError::Ephemeris(
+            "invalid product default_major_orb_deg (sanity check only; detection uses astral_aspects.default_orb_deg)".to_string(),
+        ));
+    }
+
+    let mut seen_codes = HashSet::new();
+    let mut seen_ids = HashSet::new();
+    for aspect in aspects {
+        if aspect.family != "major" {
+            return Err(RuntimeError::Ephemeris(format!(
+                "aspect_definitions must only load family = 'major', found {}",
+                aspect.family
+            )));
+        }
+        if !seen_ids.insert(aspect.id)
+            || !seen_codes.insert(aspect.code.as_str())
+            || aspect.code.trim().is_empty()
+            || aspect.name.trim().is_empty()
+        {
+            return Err(RuntimeError::Ephemeris(format!(
+                "invalid major aspect definition {}",
+                aspect.code
+            )));
+        }
+
+        if !major_aspect_angle_is_valid(aspect.angle) {
+            return Err(RuntimeError::Ephemeris(format!(
+                "invalid angle for major aspect {}",
+                aspect.code
+            )));
+        }
+
+        let Some(orb) = aspect.default_orb_deg else {
+            return Err(RuntimeError::Ephemeris(format!(
+                "missing default_orb_deg for major aspect {}",
+                aspect.code
+            )));
+        };
+        if (aspect.max_default_orb_deg - max_default_orb_deg).abs() > 0.0001 {
+            return Err(RuntimeError::Ephemeris(format!(
+                "inconsistent max_default_orb_deg for major aspect {}",
+                aspect.code
+            )));
+        }
+        if !orb.is_finite() || orb <= 0.0 || orb > max_default_orb_deg {
+            return Err(RuntimeError::Ephemeris(format!(
+                "invalid default_orb_deg for major aspect {}",
+                aspect.code
+            )));
+        }
+    }
+
+    Ok(())
+}
+
+fn major_aspect_angle_is_valid(angle: f64) -> bool {
+    angle.is_finite() && (0.0..=180.0).contains(&angle)
 }
 
 pub fn validate_chart_object_signal_profiles(

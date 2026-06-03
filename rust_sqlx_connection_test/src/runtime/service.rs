@@ -18,9 +18,9 @@ use super::payload_freshness::{has_current_rulership_references, is_current_basi
 use super::references::{
     validate_accidental_condition_triggers, validate_accidental_dignity_condition_references,
     validate_accidental_polarity_bands, validate_accidental_scoring_params,
-    validate_calculation_references, validate_chart_object_signal_profiles,
-    validate_house_axis_references, validate_lunar_phase_references,
-    validate_object_sect_affinity_references,
+    validate_aspect_definitions, validate_calculation_references,
+    validate_chart_object_signal_profiles, validate_house_axis_references,
+    validate_lunar_phase_references, validate_object_sect_affinity_references,
 };
 
 pub struct ChartCalculationRuntimeService<E> {
@@ -57,6 +57,21 @@ where
             .await?;
         validate_chart_object_signal_profiles(&chart_objects)?;
         let aspect_definitions = self.repository.aspect_definitions().await?;
+        let major_aspect_family = self.repository.major_aspect_family_reference().await?;
+        let catalog = self
+            .repository
+            .basic_payload_catalog(
+                &product_code,
+                "natal_structured_v13",
+                input.reference_version_id,
+            )
+            .await?;
+        validate_aspect_definitions(
+            &aspect_definitions,
+            catalog.product_scoring.default_major_orb_deg,
+            major_aspect_family.expected_aspect_count as usize,
+            major_aspect_family.max_default_orb_deg,
+        )?;
         let house_system = self.repository.house_system(input.house_system_id).await?;
         let references = CalculationReferenceData {
             signs: self.repository.sign_references().await?,
@@ -74,14 +89,6 @@ where
         validate_house_axis_references(&house_axes, &references.houses)?;
         let lunar_phases = self.repository.lunar_phase_references().await?;
         validate_lunar_phase_references(&lunar_phases)?;
-        let catalog = self
-            .repository
-            .basic_payload_catalog(
-                &product_code,
-                "natal_structured_v13",
-                input.reference_version_id,
-            )
-            .await?;
         let accidental_conditions = self
             .repository
             .accidental_dignity_condition_references()
@@ -190,7 +197,6 @@ where
             &aspect_definitions,
             &house_system,
             &references,
-            catalog.product_scoring.default_major_orb_deg,
         ) {
             Ok(value) => value,
             Err(error) => {

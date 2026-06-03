@@ -12,15 +12,23 @@ use rust_sqlx_connection_test::domain::{
     BasicSectContext, BasicSignal, CalculationReferenceData, HouseAxisReference,
     AccidentalDignityConditionReference, LunarPhaseReference, ObjectSectAffinityReference,
 };
+mod common;
+
+use common::json_db::{
+    major_aspect_definitions_from_json_db_seed, major_aspect_family_expected_count_from_json_db_seed,
+    major_aspect_family_max_default_orb_deg_from_json_db_seed,
+};
 use rust_sqlx_connection_test::models::{
-    AnglePointReference, ChartObject, DomicileRulerReference, HouseReference, SignReference,
+    AnglePointReference, AspectDefinition, ChartObject, DomicileRulerReference, HouseReference,
+    SignReference,
 };
 use rust_sqlx_connection_test::repositories::parse_existing_basic_payload_value;
 use rust_sqlx_connection_test::runtime::{
-    has_current_rulership_references, is_current_basic_payload, validate_calculation_references,
-    validate_chart_object_signal_profiles, validate_house_axis_references,
-    validate_accidental_dignity_condition_references, validate_lunar_phase_references,
-    validate_object_sect_affinity_references,
+    has_current_rulership_references, is_current_basic_payload, validate_aspect_definitions,
+    RuntimeError,
+    validate_calculation_references, validate_chart_object_signal_profiles,
+    validate_house_axis_references, validate_accidental_dignity_condition_references,
+    validate_lunar_phase_references, validate_object_sect_affinity_references,
 };
 
 fn current_payload() -> BasicPayload {
@@ -1503,6 +1511,113 @@ fn object_sect_affinity_reference_validation_accepts_canonical_rows() {
     let affinities = object_sect_affinity_references();
 
     assert!(validate_object_sect_affinity_references(&affinities).is_ok());
+}
+
+fn canonical_major_aspect_definitions() -> Vec<AspectDefinition> {
+    major_aspect_definitions_from_json_db_seed()
+}
+
+fn expected_major_aspect_count() -> usize {
+    major_aspect_family_expected_count_from_json_db_seed()
+}
+
+fn max_major_aspect_orb_deg() -> f64 {
+    major_aspect_family_max_default_orb_deg_from_json_db_seed()
+}
+
+fn validate_major_aspects(aspects: &[AspectDefinition]) -> Result<(), RuntimeError> {
+    validate_aspect_definitions(
+        aspects,
+        8.0,
+        expected_major_aspect_count(),
+        max_major_aspect_orb_deg(),
+    )
+}
+
+#[test]
+fn validate_aspect_definitions_rejects_missing_orb() {
+    let mut aspects = canonical_major_aspect_definitions();
+    aspects[0].default_orb_deg = None;
+    assert!(validate_major_aspects(&aspects).is_err());
+}
+
+#[test]
+fn validate_aspect_definitions_rejects_zero_orb() {
+    let mut aspects = canonical_major_aspect_definitions();
+    aspects[2].default_orb_deg = Some(0.0);
+    assert!(validate_major_aspects(&aspects).is_err());
+}
+
+#[test]
+fn validate_aspect_definitions_rejects_incomplete_major_set() {
+    let aspects = vec![canonical_major_aspect_definitions()[0].clone()];
+    assert!(validate_major_aspects(&aspects).is_err());
+}
+
+#[test]
+fn validate_aspect_definitions_rejects_extra_major_aspect_count() {
+    let mut aspects = canonical_major_aspect_definitions();
+    aspects.push(AspectDefinition {
+        id: 99,
+        code: "quincunx".to_string(),
+        name: "Quincunx".to_string(),
+        angle: 150.0,
+        family: "major".to_string(),
+        default_orb_deg: Some(2.0),
+        max_default_orb_deg: max_major_aspect_orb_deg(),
+    });
+    assert!(validate_major_aspects(&aspects).is_err());
+}
+
+#[test]
+fn validate_aspect_definitions_rejects_invalid_major_aspect_angle() {
+    let mut aspects = canonical_major_aspect_definitions();
+    aspects[1].angle = 181.0;
+    assert!(validate_major_aspects(&aspects).is_err());
+}
+
+#[test]
+fn validate_aspect_definitions_rejects_invalid_product_fallback() {
+    assert!(validate_aspect_definitions(
+        &canonical_major_aspect_definitions(),
+        0.0,
+        expected_major_aspect_count(),
+        max_major_aspect_orb_deg(),
+    )
+    .is_err());
+}
+
+#[test]
+fn validate_aspect_definitions_rejects_excessive_orb() {
+    let mut aspects = canonical_major_aspect_definitions();
+    aspects[0].default_orb_deg = Some(max_major_aspect_orb_deg() + 1.0);
+    assert!(validate_major_aspects(&aspects).is_err());
+}
+
+#[test]
+fn validate_aspect_definitions_rejects_inconsistent_family_max_orb() {
+    let mut aspects = canonical_major_aspect_definitions();
+    aspects[0].max_default_orb_deg = max_major_aspect_orb_deg() + 1.0;
+    assert!(validate_major_aspects(&aspects).is_err());
+}
+
+#[test]
+fn validate_aspect_definitions_rejects_non_finite_orb() {
+    let mut aspects = canonical_major_aspect_definitions();
+    aspects[1].default_orb_deg = Some(f64::NAN);
+    assert!(validate_major_aspects(&aspects).is_err());
+}
+
+#[test]
+fn validate_aspect_definitions_rejects_duplicate_aspect_id() {
+    let mut aspects = canonical_major_aspect_definitions();
+    aspects[4].id = aspects[0].id;
+    assert!(validate_major_aspects(&aspects).is_err());
+}
+
+#[test]
+fn validate_aspect_definitions_accepts_canonical_major_orbs() {
+    assert!(validate_major_aspects(&canonical_major_aspect_definitions()).is_ok());
 }
 
 fn chart_objects() -> Vec<ChartObject> {

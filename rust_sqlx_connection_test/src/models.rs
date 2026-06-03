@@ -24,7 +24,15 @@ pub struct AspectDefinition {
     pub code: String,
     pub name: String,
     pub angle: f64,
+    pub family: String,
     pub default_orb_deg: Option<f64>,
+    pub max_default_orb_deg: f64,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct MajorAspectFamilyReference {
+    pub expected_aspect_count: i32,
+    pub max_default_orb_deg: f64,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]

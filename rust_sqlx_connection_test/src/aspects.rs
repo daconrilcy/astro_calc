@@ -3,16 +3,18 @@ use serde_json::json;
 use crate::domain::{AspectFact, ObjectPositionFact};
 use crate::facts::normalize_degrees;
 use crate::models::AspectDefinition;
+pub fn canonical_aspect_orb_deg(aspect: &AspectDefinition) -> Option<f64> {
+    let max = aspect.max_default_orb_deg;
+    aspect
+        .default_orb_deg
+        .filter(|orb| orb.is_finite() && *orb > 0.0 && max.is_finite() && max > 0.0 && *orb <= max)
+}
 
 pub fn detect_aspects(
     positions: &[ObjectPositionFact],
     aspect_definitions: &[AspectDefinition],
-    default_major_orb_deg: f64,
 ) -> Vec<AspectFact> {
-    let major_aspects: Vec<&AspectDefinition> = aspect_definitions
-        .iter()
-        .filter(|aspect| aspect.angle <= 180.0)
-        .collect();
+    let aspect_defs: Vec<&AspectDefinition> = aspect_definitions.iter().collect();
     let mut facts = Vec::new();
 
     for left_index in 0..positions.len() {
@@ -21,14 +23,14 @@ pub fn detect_aspects(
             let right = &positions[right_index];
             let separation = shortest_distance(left.longitude_deg, right.longitude_deg);
 
-            for aspect in &major_aspects {
+            for aspect in &aspect_defs {
                 if is_structural_axis_aspect(left, right, aspect) {
                     continue;
                 }
 
-                let orb_limit = aspect
-                    .default_orb_deg
-                    .unwrap_or(default_major_orb_deg);
+                let Some(orb_limit) = canonical_aspect_orb_deg(aspect) else {
+                    continue;
+                };
                 let orb = (separation - aspect.angle).abs();
                 if orb > orb_limit {
                     continue;
@@ -46,7 +48,7 @@ pub fn detect_aspects(
                     aspect_id: aspect.id,
                     aspect_code: aspect.code.clone(),
                     aspect_name: aspect.name.clone(),
-                    aspect_family: "major".to_string(),
+                    aspect_family: aspect.family.clone(),
                     orb_deg: round4(orb),
                     phase_state: phase_state(orb, is_applying).to_string(),
                     is_applying,
