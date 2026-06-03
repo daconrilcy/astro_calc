@@ -1,6 +1,1 @@
-[package]
-name = "astral_llm"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
+# Workspace virtuel astral_llm — les crates membres sont declares dans le Cargo.toml racine.

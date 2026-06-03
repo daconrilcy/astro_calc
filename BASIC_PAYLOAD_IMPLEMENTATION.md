@@ -6,11 +6,13 @@ Le depot est un workspace (`Cargo.toml` racine) avec les crates :
 
 - `astral_calculator` : moteur de calcul, payloads, engine 4A, projection LLM
   (construction JSON) ;
-- `astral_llm` : integration LLM (prompting, appels modele) — squelette, a
-  developper.
+- `astral_llm` : gateway LLM astrologique (service HTTP independant du moteur).
+  Crates : `astral_llm_domain`, `astral_llm_application`, `astral_llm_providers`,
+  `astral_llm_infra`, `astral_llm_api`. Voir `Astral_llm_implementation.md`.
 
 Commandes depuis la racine : `cargo run -p astral_calculator`, `cargo test -p
-astral_calculator`. Tests d'integration dans `tests/` (racine depot).
+astral_calculator`, `cargo run -p astral_llm_api`, `cargo test -p astral_llm_api
+--test astral_llm_tests`. Tests d'integration dans `tests/` (racine depot).
 
 Ce document decrit l'implementation actuelle du payload moteur route par
 `product_code = "basic"` dans le binaire Rust `astral_calculator`.
@@ -3020,3 +3022,36 @@ Les artefacts ajoutes sont:
 - `scripts/verify_natal_v12_golden.ps1`;
 - tests de non-regression dans `tests/payload_tests.rs`,
   `tests/runtime_tests.rs` et `tests/contract_basic_v8_tests.rs`.
+
+## astral_llm — Gateway LLM (2026-06-03)
+
+Service hexagonal Rust expose via Axum, independant du moteur `astral_calculator`.
+
+### Entites
+
+| Entite | Role |
+|---|---|
+| `GenerateReadingRequest` | Contrat d'entree versionne (astro_result, profil, engine, contract) |
+| `NatalReadingResponse` | Contrat de sortie `natal_reading_v1` (summary, chapters, legal, quality) |
+| `SafetyPolicy` | Regles obligatoires + merge product/override |
+| `ProviderCapabilities` | Abstraction par capacites (JSON strict, reasoning, streaming…) |
+| `llm_generation_runs` | Audit PostgreSQL (hashes, latence, provider, status) |
+
+### Tables PostgreSQL
+
+- `llm_generation_runs` — metadonnees d'execution
+- `llm_generation_payloads` — payloads sanitises (FK run_id)
+
+Script : `astral_llm/crates/astral_llm_infra/sql/llm_generation_runs.sql`
+
+### Prompts versionnes
+
+- `astral_llm/prompts/natal_basic/v1/` (system, task, format, safety)
+- `astral_llm/prompts/natal_premium/v1/`
+
+### Tests
+
+- `tests/astral_llm_tests.rs` — integration FakeProvider (single_pass, chapter_orchestrated, safety)
+- Tests unitaires dans les crates application et providers
+
+Documentation detaillee : `Astral_llm_implementation.md`.

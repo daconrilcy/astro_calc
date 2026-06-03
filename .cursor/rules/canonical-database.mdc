@@ -23,4 +23,6 @@ Les elements canoniques (codes, libelles, seuils, mappings, definitions metier) 
 
 - Le code charge et interprete ; il ne definit pas le referentiel.
 - Les migrations ou scripts d'initialisation de donnees portent la creation de tables et l'insertion des lignes canoniques.
-- Documenter toute nouvelle entite ou jeu de donnees dans `BASIC_PAYLOAD_IMPLEMENTATION.md`.
+- Documenter toute nouvelle entite ou jeu de donnees dans `BASIC_PAYLOAD_IMPLEMENTATION.md` pour astral_calculator et dans `Astral_llm_implementation.md` pour astral_llm.
+- Respecter sans exception les règles YAGNI, SOLID, KISS et DRY
+- Faire un code modulaire - Pas de fichier de plus de 500 lignes

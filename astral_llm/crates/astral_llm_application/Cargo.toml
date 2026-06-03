@@ -1,0 +1,21 @@
+[package]
+name = "astral_llm_application"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+astral_llm_domain.workspace = true
+astral_llm_providers.workspace = true
+jsonschema.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+astral_llm_infra.workspace = true
+reqwest.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+tokio.workspace = true
