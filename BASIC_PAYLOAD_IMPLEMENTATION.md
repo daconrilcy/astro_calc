@@ -120,7 +120,8 @@ ne disparaisse pas artificiellement.
 L'etape 3A ajoute le premier enrichissement global avant synthese externe avec
 `chart_context` et `positions[].visibility_context`. Le payload expose
 desormais le cadre technique du theme natal, un contrat de projection
-`natal_structured_v11`, les contraintes de fiabilite, la secte deduite du Soleil
+(evolue jusqu'au contrat courant `natal_structured_v12`), les contraintes de
+fiabilite, la secte deduite du Soleil
 et une synthese d'hemisphere. Chaque position porte aussi sa position
 d'horizon (`above_horizon`, `below_horizon` ou `on_horizon`), l'ID canonique
 issu de `astral_horizon_positions`, une source d'audit et le flag de visibilite
@@ -208,17 +209,21 @@ la correction attendue est de resynchroniser PostgreSQL avec les fichiers
 - `rust_sqlx_connection_test/schemas/natal_structured_v10.schema.json` :
   schema JSON historique du contrat `natal_structured_v10`.
 - `rust_sqlx_connection_test/schemas/natal_structured_v11.schema.json` :
-  schema JSON du contrat courant `natal_structured_v11`.
+  schema JSON historique du contrat `natal_structured_v11`.
+- `rust_sqlx_connection_test/schemas/natal_structured_v12.schema.json` :
+  schema JSON du contrat courant `natal_structured_v12`.
 - `tests/golden/basic_payload_v8_paris_1990.json` : fixture golden historique
   du contrat Basic v8.
 - `tests/golden/natal_payload_v9_paris_1990.json` : fixture golden du contrat
   historique v9.
 - `tests/golden/natal_payload_v10_paris_1990.json` : fixture golden historique
   du contrat v10.
-- `tests/golden/natal_payload_v11_paris_1990.json` : fixture golden du contrat
-  courant v11.
+- `tests/golden/natal_payload_v11_paris_1990.json` : fixture golden historique
+  du contrat v11.
+- `tests/golden/natal_payload_v12_paris_1990.json` : fixture golden du contrat
+  courant v12.
 - `tests/contract_basic_v8_tests.rs` : validation schema, golden et invariants
-  metier non negociables pour le contrat courant.
+  metier non negociables pour le contrat courant v12.
 - `scripts/verify_basic_v8_golden.ps1` : verification CI/local de projection
   stable historique v8. Ce script ne regenere plus le payload courant ; il
   valide le golden v8 conserve, ou un fichier v8 fourni explicitement.
@@ -226,8 +231,10 @@ la correction attendue est de resynchroniser PostgreSQL avec les fichiers
   stable historique v9 apres regeneration du payload par le moteur.
 - `scripts/verify_natal_v10_golden.ps1` : verification CI/local historique de
   projection stable v10 apres regeneration du payload par le moteur.
-- `scripts/verify_natal_v11_golden.ps1` : verification CI/local de projection
-  stable v11 apres regeneration du payload par le moteur.
+- `scripts/verify_natal_v11_golden.ps1` : verification CI/local historique de
+  projection stable v11 apres regeneration du payload par le moteur.
+- `scripts/verify_natal_v12_golden.ps1` : verification CI/local de projection
+  stable v12 apres regeneration du payload par le moteur.
 
 ## Contrat des positions
 
@@ -1217,7 +1224,17 @@ La validation de reutilisation des payloads existants force maintenant aussi :
 - des slots connus uniquement ;
 - l'ordre canonique des slots du payload route basic ;
 - un `reading_plan` non vide, sans slot vide, dont les sources primaires
-  referencent des signaux existants et uniques.
+  referencent des signaux existants et uniques ;
+- `lunar_phase_context` present avec `phase_code`, `phase_family`,
+  `sun_moon_angle_deg`, `distance_to_exact_phase_deg` et
+  `phase_progress_ratio` ;
+- l'angle Soleil-Lune recalcule depuis les longitudes du Soleil et de la Lune
+  avec une tolerance de 0.01 degre ;
+- l'angle tombe dans l'intervalle canonique du `phase_code` declare ;
+- `related_signal_keys` limite aux signaux actifs `object_position:sun` et
+  `object_position:moon` quand ces signaux existent ;
+- les tags `lunar_phase` et `sun_moon_cycle` presents dans
+  `lunar_phase_context.semantic_tags`.
 
 ## Persistance
 
@@ -1330,6 +1347,11 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
   Soleil, les comptes d'hemisphere, `hemisphere_emphasis.count_scope =
   "mobile_chart_objects_only"` et les positions enrichies par altitude /
   horizon ;
+- `chart_context.payload_contract.contract_version = "natal_structured_v12"` ;
+- `lunar_phase_context` present, angle Soleil-Lune recalcule avec tolerance
+  0.01 degre, `phase_code` coherent avec l'intervalle canonique,
+  `related_signal_keys` limites aux signaux actifs Soleil/Lune, et tags
+  `lunar_phase` et `sun_moon_cycle` dans `semantic_tags` ;
 - `primary_signal_keys` aligne avec `source_signal_keys`, et
   `secondary_slot_candidates` coherents avec les slots conserves du
   `reading_plan` ;
@@ -1394,7 +1416,7 @@ Le run attendu doit afficher le payload moteur courant route par
 
 - `product_code = "basic"` ;
 - un `chart_context` top-level avec le type de theme, les IDs de referentiels,
-  le contrat de projection `natal_structured_v11`, la secte et la synthese
+  le contrat de projection `natal_structured_v12`, la secte et la synthese
   d'hemisphere, dont `hemisphere_emphasis.count_scope =
   "mobile_chart_objects_only"` ;
 - des positions avec `sign_code`, `sign_name`, `house_number`, `house_name`,
@@ -1423,6 +1445,8 @@ Le run attendu doit afficher le payload moteur courant route par
 - un `house_axis_emphasis` top-level avec au plus trois axes de maisons
   significatifs, audites par `house_scores`, `source_signal_keys`,
   `source_context_keys` et `reasons` ;
+- un `lunar_phase_context` top-level avec phase, angle Soleil-Lune, progression
+  et tags `lunar_phase` / `sun_moon_cycle` ;
 - au plus 12 signaux ;
 - un `reading_plan` non vide ;
 - un `reading_plan` sans slot vide et sans opposition structurelle d'angle dans
@@ -1668,8 +1692,9 @@ prives au fichier ou `pub(super)` quand ils sont partages entre sous-modules.
 
 ## 3C - House axis emphasis
 
-Le contrat courant passe a `natal_structured_v11` avec un nouveau bloc top-level
-`house_axis_emphasis`. Ce bloc reste dans le perimetre moteur: il synthetise les
+L'etape 3C a porte le contrat a `natal_structured_v11` avec un nouveau bloc
+top-level `house_axis_emphasis` (supersede par `natal_structured_v12` depuis
+l'etape 3D). Ce bloc reste dans le perimetre moteur: il synthetise les
 axes de maisons significatifs sans creer de slot `reading_plan`, sans signal
 `house_axis:*`, et sans instruction de redaction LLM.
 
@@ -1729,13 +1754,16 @@ du payload: le runtime attend exactement les six axes canoniques du contrat v11,
 avec leurs maisons opposees et leurs themes de maisons correspondants. Une base
 incomplete ou incoherente echoue donc avant persistance d'un payload v11.
 
-Les artefacts ajoutes sont:
+Artefacts historiques de l'etape 3C :
 
 - `rust_sqlx_connection_test/schemas/natal_structured_v11.schema.json`;
 - `tests/golden/natal_payload_v11_paris_1990.json`;
 - `scripts/verify_natal_v11_golden.ps1`;
 - tests de non-regression dans `tests/payload_tests.rs`,
   `tests/runtime_tests.rs` et `tests/contract_basic_v8_tests.rs`.
+
+Le contrat courant et ses artefacts de verification sont documentes dans la
+section 3D et dans `Fichiers concernes`.
 
 ## 3D - Lunar phase context
 
