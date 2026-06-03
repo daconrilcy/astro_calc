@@ -1,14 +1,14 @@
-﻿# Implementation du payload Basic runtime
+﻿# Implementation du payload moteur route basic
 
-Ce document decrit l'implementation actuelle du payload Basic dans le binaire Rust
-`rust_sqlx_connection_test`.
+Ce document decrit l'implementation actuelle du payload moteur route par
+`product_code = "basic"` dans le binaire Rust `rust_sqlx_connection_test`.
 
 ## Objectif
 
 Etat courant au 2026-06-03 : le moteur Rust reste dans le perimetre du calcul
-astrologique et des cles d'interpretation. Le payload Basic expose les faits
-calcules, les contextes astrologiques, les dignites, les angles, les dominantes,
-le contexte de rulership, les signaux actifs et `reading_plan`.
+astrologique et des cles d'interpretation. Le payload route basic expose les
+faits calcules, les contextes astrologiques, les dignites, les angles, les
+dominantes, le contexte de rulership, les signaux actifs et `reading_plan`.
 
 Les instructions destinees a un LLM sont hors perimetre et ne sont plus produites
 dans le JSON de sortie. Cela inclut `llm_handoff_contract`, `drafting_plan`,
@@ -22,8 +22,8 @@ par cette mise a jour. La couche qui gere le LLM est desormais responsable de la
 langue cible, du ton, du format de sortie, des consignes de redaction et des
 regles d'evitement.
 
-L'etape 1A a transforme le payload technique initial en payload Basic exploitable
-par une couche applicative separee.
+L'etape 1A a transforme le payload technique initial en payload moteur
+exploitable par une couche applicative separee.
 
 L'etape 1B enrichit le payload avec des signaux semantiques Basic : themes, tags,
 poids de source et premiers signaux agreges. Le runtime ne produit pas une
@@ -47,8 +47,8 @@ liste top-level `dignities`, les positions concernees portent un
 `dignity_context`, les placements actifs sont enrichis par leurs dignites et des
 signaux `dignity:*` sont produits uniquement pour les dignites majeures
 significatives. Les etats retrogrades gardent leur role de contexte de
-placement, mais leur resume et leur `writing_guidance` sont maintenant plus
-precis.
+placement, mais les consignes redactionnelles publiques ont ete retirees du
+payload moteur courant.
 
 L'etape 2C ajoute une couche interpretative controlee aux aspects. Les signaux
 `aspect:*` ne portent plus seulement la geometrie, l'orbe, la phase et la force :
@@ -57,16 +57,17 @@ ils exposent aussi `aspect_context`, construit depuis `astral_aspect_profiles`,
 couche separe la valence principale (`primary_valence`) des modificateurs
 d'intensite (`intensity_modifier`) comme `amplifying`, ajoute une qualite
 dynamique (`flow`, `tension`, `intensification`, etc.) et enrichit les tags et
-la guidance redactionnelle.
+les indices interpretatifs non prescriptifs.
 
 L'etape 2D ajoute une synthese top-level `chart_emphasis` qui classe les
 dominantes de signe, de maison et d'objet a partir des placements, clusters,
 dignites et aspects forts deja calcules. Elle fournit une hierarchie quantifiee
-et auditable avant tout appel LLM.
+et auditable avant toute synthese externe.
 
-L'etape 2D.1 projette cette synthese dans `drafting_plan` via des
-`emphasis_refs` legeres. Ces references indiquent quel slot doit utiliser les
-dominantes comme contexte de ponderation, sans creer de section supplementaire.
+L'etape 2D.1 projetait historiquement cette synthese dans un plan de redaction.
+Dans le payload moteur courant, les dominantes restent disponibles dans
+`chart_emphasis` et peuvent etre referencees par une couche LLM externe, sans
+champ de consigne redactionnelle produit par le runtime Rust.
 
 L'etape 2C.1 enrichit ensuite `interpretive_hint` des aspects avec cette meme
 couche interpretative. Le hint reste court et template, mais il ne dit plus
@@ -104,10 +105,10 @@ vers les codes objets longs dans `angles[].opposite_angle_code`, et les anciens
 signaux d'axe non marques sont rejetes a partir des paires d'angles qui
 partagent le meme `axis`. Le builder supprime aussi les slots de lecture qui
 n'ont plus aucune source primaire apres deduplication, afin de ne pas produire
-de section LLM vide.
+de section vide.
 
 L'etape 2E.3 preserve les vrais aspects dynamiques apres l'exclusion des axes
-structurels. Les aspects angle-angle restent exclus du payload Basic comme
+structurels. Les aspects angle-angle restent exclus du payload route basic comme
 dynamiques representatives, qu'ils soient l'axe Ascendant-Descendant, l'axe
 MC-IC, ou un autre aspect entre deux angles. Les aspects forts planete-planete
 et planete-angle restent en revanche eligibles. Le filtrage preserve d'abord une
@@ -116,7 +117,7 @@ disponible mais qu'un aspect fort planete-planete ou planete-angle existe, il
 preserve le meilleur aspect fort disponible afin que `main_tension_or_support`
 ne disparaisse pas artificiellement.
 
-L'etape 3A ajoute le premier enrichissement global avant LLM avec
+L'etape 3A ajoute le premier enrichissement global avant synthese externe avec
 `chart_context` et `positions[].visibility_context`. Le payload expose
 desormais le cadre technique du theme natal, un contrat de projection
 `natal_structured_v10`, les contraintes de fiabilite, la secte deduite du Soleil
@@ -137,24 +138,22 @@ alors un nouveau calcul ephemeride complet au lieu de reconstruire un payload
 enrichi depuis des faits obsoletes.
 
 L'etape 3A.2 stabilise officiellement le contrat courant en
-`natal_structured_v9`. Le `llm_handoff_contract.contract_version` ne melange
-plus v8 et v9, le schema et le golden v9 sont dedies, et les artefacts v8
-restent presents pour historique. `chart_context.hemisphere_emphasis` declare
-maintenant explicitement `count_scope = "mobile_chart_objects_only"`. Le
-`visibility_context` des signaux de placement est recopie dans
-`signals[].evidence.placement_context`, afin que le LLM n'ait plus a recroiser
-les signaux avec `positions`. Les angles gardent un contexte d'horizon, mais
-leur `is_visible` est `null` car un angle n'est pas visible comme un corps
-astronomique. Enfin, `drafting_plan` expose `context_refs.chart_context` et
-interdit de transformer `chart_context` en section autonome : la secte et
-l'accent d'hemisphere servent uniquement de contexte de ponderation.
+`natal_structured_v9`. Le schema et le golden v9 sont dedies, et les artefacts
+v8 restent presents pour historique. `chart_context.hemisphere_emphasis`
+declare maintenant explicitement `count_scope = "mobile_chart_objects_only"`.
+Le `visibility_context` des signaux de placement est recopie dans
+`signals[].evidence.placement_context`, afin que la couche applicative n'ait
+plus a recroiser les signaux avec `positions`. Les angles gardent un contexte
+d'horizon, mais leur `is_visible` est `null` car un angle n'est pas visible
+comme un corps astronomique. La secte et l'accent d'hemisphere servent
+uniquement de contexte de ponderation, pas de section autonome.
 
 `product_code = "basic"` reste volontairement conserve comme cle de routage
-legacy pour les tables et les chemins runtime existants. Il ne decrit plus la
-profondeur fonctionnelle du contrat courant : celle-ci est portee par
-`llm_handoff_contract.contract_version = "natal_structured_v10"` et par
-`chart_context.payload_contract`, notamment `calculation_scope`,
-`interpretation_scope` et `projection_depth`.
+legacy pour les tables et les chemins runtime existants. Il ne decrit plus un
+contrat produit minimal du moteur : le payload courant est un payload
+moteur riche, route par `product_code = "basic"`, dont la profondeur
+fonctionnelle est portee par `chart_context.payload_contract`, notamment
+`calculation_scope`, `interpretation_scope` et `projection_depth`.
 
 Le runtime conserve la chaine existante :
 
@@ -170,7 +169,7 @@ editorialement.
 
 ## Etat de schema runtime
 
-Le payload Basic depend directement du schema PostgreSQL materialise depuis
+Le payload route basic depend directement du schema PostgreSQL materialise depuis
 `json_db`. Apres les refactos de scoring, le runtime attend notamment :
 
 - la table `astral_chart_object_signal_profiles`, source canonique des bases de
@@ -194,7 +193,7 @@ la correction attendue est de resynchroniser PostgreSQL avec les fichiers
   et calcul de l'orbe, de la phase et de la force brute.
 - `rust_sqlx_connection_test/src/dignities.rs` : detection MVP des dignites essentielles majeures.
 - `rust_sqlx_connection_test/src/signals/` : construction, filtrage et
-  priorisation des signaux Basic.
+  priorisation des signaux du payload route basic.
 - `rust_sqlx_connection_test/src/payload/` : assemblage du payload final et de
   ses blocs contractuels.
 - `rust_sqlx_connection_test/src/repositories.rs` : persistance, relecture des
@@ -376,7 +375,7 @@ attendus par `astral_angle_points`. Si ce n'est pas le cas, il cree un nouvel
 
 ## Contrat des signaux
 
-Les signaux actifs du payload Basic sont limites a 12.
+Les signaux actifs du payload route basic sont limites a 12.
 
 Un signal de position contient un titre lisible, des champs semantiques et les
 preuves techniques dans `evidence` :
@@ -403,7 +402,6 @@ preuves techniques dans `evidence` :
   ],
   "source_weight": 1.0,
   "aggregation_group": "gemini:house_9",
-  "writing_guidance": "Use this as a concise placement cue; combine it with nearby cluster or aspect signals before drafting final text.",
   "aspect_context": null,
   "evidence": {
     "fact_type": "object_position",
@@ -478,7 +476,6 @@ texte utilisateur :
   ],
   "source_weight": 1.75,
   "aggregation_group": "aspect:conjunction",
-  "writing_guidance": "Indicate that the factor intensifies what is already present, and combine it with another tonal valence when possible. Treat amplifying as an intensity modifier, not as a supportive or challenging valence by itself.",
   "aspect_context": {
     "aspect_family": "major",
     "primary_valence": null,
@@ -488,8 +485,7 @@ texte utilisateur :
     "phase_state": "separating",
     "valence_family": "intensity",
     "is_tonal_valence": false,
-    "is_intensity_modifier": true,
-    "writing_guidance": "Indicate that the factor intensifies what is already present, and combine it with another tonal valence when possible."
+    "is_intensity_modifier": true
   },
   "evidence": {
     "fact_type": "aspect",
@@ -534,7 +530,6 @@ Les champs ajoutes par l'etape 1B sont :
   `astral_chart_object_signal_profiles.source_weight` via
   `object_context.signal_scoring`.
 - `aggregation_group` : cle de regroupement editoriale.
-- `writing_guidance` : consigne courte pour la future couche de redaction.
 
 Ces champs sont stockes dans `astral_interpretation_signals.payload_json`, puis
 remontes dans le payload final par `payload.rs`.
@@ -548,7 +543,7 @@ placements, dignites et clusters, il est serialise a `null`.
 Les champs ajoutes par l'etape 2A sont volontairement limites aux preuves utiles
 pour le calcul et la redaction. Ils ne recopient pas les faits runtime bruts,
 mais ils peuvent embarquer un referentiel semantique complet quand ce
-referentiel est directement exploitable par le LLM.
+referentiel est directement exploitable par une couche applicative externe.
 
 - `sign_context` : element, modalite zodiacale, polarite et liste complete des
   mots-cles principaux du signe depuis `astral_sign_keywords.keywords_json`.
@@ -569,9 +564,9 @@ ne pas creer un bloc redactionnel autonome.
 
 La liste `sign_context.keywords` reste volontairement non tronquee. Elle
 represente le vocabulaire semantique disponible pour le signe, pas une liste de
-points a rediger un par un. Le contrat LLM continue donc d'interdire de lister
-les placements ou d'exposer les preuves brutes ; ces mots-cles servent a guider
-le choix lexical, a eviter l'invention et a permettre une synthese plus riche.
+points a rediger un par un. Ces mots-cles servent a guider la synthese externe,
+a eviter l'invention et a permettre une lecture plus riche sans exposer les
+preuves brutes comme une section autonome.
 
 Les tags semantiques des placements integrent aussi les codes utiles comme
 `air`, `mutable`, `yang`, `cadent`, `luminary` ou `direct`. La priorite d'un
@@ -667,7 +662,6 @@ Exemple de signal de dignite :
   ],
   "source_weight": 0.75,
   "aggregation_group": "dignity:saturn",
-  "writing_guidance": "Use this to strengthen the object's placement signal without overstating ease or outcome.",
   "aspect_context": null,
   "evidence": {
     "fact_type": "essential_dignity",
@@ -687,7 +681,7 @@ Les dignites modifient les placements de facon moderee :
   plusieurs dignites s'appliquent ;
 - le `source_weight` d'un placement recoit un delta borne a `+0.2` ;
 - les signaux `dignity:*` ont leur propre `priority_score`, mais restent soumis
-  au filtrage Basic de 12 signaux actifs ;
+  au filtrage du payload route basic de 12 signaux actifs ;
 - les dignites actives liees a un objet selectionne dans `reading_plan` sont
   ajoutees aux sources du slot, y compris quand le placement de l'objet a ete
   fusionne dans un cluster ;
@@ -695,7 +689,7 @@ Les dignites modifient les placements de facon moderee :
   `background_factors`, les dignites associees ne consomment pas le quota
   d'objets. Elles accompagnent l'objet selectionne au lieu de remplacer un autre
   placement attendu ;
-- un meme signal n'est redige qu'une fois par defaut. S'il est candidat a un
+- un meme signal n'est assigne qu'une fois par defaut. S'il est candidat a un
   second slot sans role distinct, il reste dans son slot primaire et remonte
   seulement dans `secondary_slot_candidates` pour audit.
 
@@ -729,10 +723,6 @@ Les champs ajoutes par l'etape 2C sont :
   `astral_interpretive_valence` pour l'effet effectivement expose. Quand un
   aspect n'a pas de valence principale mais a un modificateur, comme la
   conjonction avec `amplifying`, ces champs decrivent le modificateur.
-- `aspect_context.writing_guidance` : guidance de la valence ou du modificateur
-  depuis `astral_interpretive_valence`, completee par le runtime quand il faut
-  rappeler qu'un modificateur d'intensite ne doit pas etre lu comme une valence
-  favorable ou difficile.
 - `signals[].interpretive_hint` pour les aspects : phrase courte derivee de
   `primary_valence`, `intensity_modifier` ou `dynamic_quality`, sans exposer les
   cles techniques au lecteur final. Quand une valence principale et un
@@ -772,9 +762,9 @@ Un sextile ou trigone ajoute typiquement `flow` et une valence comme
 
 ### Synthese de dominance 2D
 
-Le payload expose maintenant `chart_emphasis`, calcule cote code avant tout appel
-LLM. Cette couche resume la hierarchie globale du theme sans demander au LLM de
-deduire seul les dominantes depuis les signaux bruts :
+Le payload expose maintenant `chart_emphasis`, calcule cote code avant toute
+synthese externe. Cette couche resume la hierarchie globale du theme pour eviter
+de deduire les dominantes depuis les signaux bruts :
 
 ```json
 {
@@ -900,26 +890,13 @@ Exemple reel genere avec les valeurs de verification Paris / 2024-06-15 :
 }
 ```
 
-L'etape 2D.1 ajoute ensuite des references legeres dans le plan de redaction :
+L'etape 2D.1 est historique dans le payload moteur courant : les dominantes ne
+sont plus projetees dans un plan de redaction. `chart_emphasis` reste un bloc
+top-level de ponderation et d'audit. Une couche LLM externe peut l'utiliser
+comme contexte, mais le runtime Rust ne produit pas de references de section ni
+de consignes de redaction associees.
 
-```json
-{
-  "slot": "dominant_cluster",
-  "emphasis_refs": {
-    "dominant_signs": ["gemini"],
-    "dominant_houses": [9],
-    "dominant_objects": ["mercury", "sun", "jupiter"]
-  }
-}
-```
-
-Ces references sont attachees au slot `dominant_cluster` quand il existe. Sinon,
-elles sont attachees au slot `core_identity` en fallback. Les autres slots
-gardent des `emphasis_refs` vides. Le LLM doit les lire comme un contexte de
-poids relatif pour les sections existantes, jamais comme une invitation a creer
-une section autonome `chart_emphasis`.
-
-## Signaux agreges Basic
+## Signaux agreges du payload route basic
 
 L'etape 1B ajoute un premier type de signal agrege :
 
@@ -944,7 +921,6 @@ L'etape 1B ajoute un premier type de signal agrege :
   ],
   "source_weight": 2.3,
   "aggregation_group": "capricorn_house_2_cluster",
-  "writing_guidance": "Use this cluster before individual placements and merge repeated wording from its source signals.",
   "aspect_context": null,
   "evidence": {
     "fact_type": "position_cluster",
@@ -970,10 +946,11 @@ L'etape 1B ajoute un premier type de signal agrege :
 ```
 
 Un cluster `sign_house` est produit quand au moins trois objets sont places dans
-le meme couple `(sign_code, house_number)`. Il entre dans le meme filtrage Basic
-que les autres signaux et compte donc dans la limite des 12 signaux actifs.
+le meme couple `(sign_code, house_number)`. Il entre dans le meme filtrage du
+payload route basic que les autres signaux et compte donc dans la limite des 12
+signaux actifs.
 
-## Filtrage Basic
+## Filtrage du payload route basic
 
 Le filtrage est applique dans `signals.rs` :
 
@@ -981,13 +958,14 @@ Le filtrage est applique dans `signals.rs` :
 - les aspects dont `strength_score < 0.4` passent en `suppressed` ;
 - les aspects angle-angle passent aussi en `suppressed` des l'agregation, sauf
   les axes structurels Ascendant-Descendant et MC-IC qui ne creent pas de signal
-  Basic du tout ;
+  actif du tout ;
 - les signaux `dignity:*` sont ajoutes avant le tri final quand la dignite est
   majeure et suffisamment significative ;
 - les clusters semantiques sont ajoutes avant le tri final ;
 - les sources secondaires d'un cluster retenu actif passent en `merged`, sauf
   Soleil, Lune, Ascendant et MC qui restent actifs comme marqueurs centraux ;
-- quand des fusions liberent des places dans les 12 signaux Basic, le runtime
+- quand des fusions liberent des places dans les 12 signaux du payload route
+  basic, le runtime
   remonte les prochains signaux eligibles sans reactiver les aspects faibles ;
 - si aucun aspect de tension fort n'est actif apres le filtrage initial alors
   qu'un carre ou une opposition atteint `strength_score >= 0.75`, le runtime
@@ -999,7 +977,7 @@ Le filtrage est applique dans `signals.rs` :
 - si aucun aspect fort planete-planete ou planete-angle n'est actif apres cette
   premiere preservation, mais qu'un tel aspect atteint `strength_score >= 0.75`,
   le runtime preserve le meilleur aspect fort disponible afin de garder une
-  dynamique redactionnelle exploitable ;
+  dynamique de lecture exploitable ;
 - seuls les signaux actifs relus depuis la DB restent eligibles au payload ;
 - `payload.rs` filtre encore les anciens aspects d'axe structurel non marques et
   les anciens aspects angle-angle actifs quand les positions d'angle definissent
@@ -1007,7 +985,7 @@ Le filtrage est applique dans `signals.rs` :
 
 Les signaux supprimes restent persistables dans `astral_interpretation_signals`
 avec `suppression_state = 'suppressed'`, mais ne remontent pas dans le payload
-Basic final.
+route basic final.
 
 Les signaux `merged` sont egalement persistables dans
 `astral_interpretation_signals`, mais ils ne remontent pas dans le payload final
@@ -1026,7 +1004,7 @@ Si un ancien signal d'axe structurel est encore actif, par exemple
 positions contiennent deux angles du meme `axis`. Le validateur runtime refuse
 aussi de reutiliser un payload persiste qui contient encore un tel signal.
 
-## Plan de lecture Basic
+## Plan de lecture moteur route basic
 
 Le payload final contient maintenant `reading_plan` :
 
@@ -1084,8 +1062,15 @@ Le payload final contient maintenant `reading_plan` :
 }
 ```
 
-Le plan est construit dans `payload.rs` a partir des signaux actifs, avec les
-slots suivants quand les sources correspondantes existent :
+Le plan est construit dans `payload.rs` a partir des signaux actifs. Il reste
+dans le moteur, mais il n'est pas une consigne LLM : c'est seulement une
+structure de regroupement et de priorisation des signaux. Il indique quels
+signaux sont centraux, quels signaux sont secondaires et quels regroupements
+servent l'audit du payload. La couche LLM externe peut s'en servir comme entree,
+mais elle porte seule les objectifs de redaction, la langue cible, le ton et les
+regles d'evitement.
+
+Les slots suivants sont produits quand les sources correspondantes existent :
 
 - `core_identity` : Soleil, Lune, Ascendant ;
 - `dominant_cluster` : premier cluster actif, sources candidates associees et
@@ -1101,7 +1086,7 @@ slots suivants quand les sources correspondantes existent :
 
 Chaque item expose `source_signal_keys` et `primary_signal_keys`. Aujourd'hui,
 ces deux listes sont identiques apres resolution editoriale ; `primary_signal_keys`
-rend explicite que ces signaux doivent etre rediges dans ce slot. Quand un
+rend explicite que ces signaux sont les sources principales du slot. Quand un
 signal etait candidat a un slot ulterieur mais a deja ete assigne, le slot
 ulterieur ne le repete pas dans `source_signal_keys` et expose plutot :
 
@@ -1117,12 +1102,8 @@ ulterieur ne le repete pas dans `source_signal_keys` et expose plutot :
 }
 ```
 
-`drafting_plan` reprend exactement `source_signal_keys`, `primary_signal_keys`
-et `secondary_slot_candidates` du `reading_plan`.
-
 Apres cette deduplication editoriale, un slot qui n'a plus aucune source
-primaire est supprime du `reading_plan`. Le `drafting_plan` etant derive du
-`reading_plan`, il ne contient donc pas de section sans `source_signal_keys`.
+primaire est supprime du `reading_plan`.
 Un signal qui n'etait plus qu'un candidat secondaire reste auditable uniquement
 si le slot candidat est conserve par au moins une autre source primaire ; un
 candidat secondaire seul ne suffit pas a conserver une section vide.
@@ -1137,9 +1118,9 @@ qu'un aspect actif porte `dynamic_quality = "flow"` ou une valence comme
 `supportive` ou `harmonious`, un appui est reintegre. Le slot reste limite a
 trois aspects.
 
-Cette logique s'applique aussi quand le filtrage Basic a du liberer une place
-dans les 12 signaux actifs : un signal actif non essentiel peut etre remplace par
-la meilleure tension forte disponible selon le garde-fou geometrique
+Cette logique s'applique aussi quand le filtrage du payload route basic a du
+liberer une place dans les 12 signaux actifs : un signal actif non essentiel
+peut etre remplace par la meilleure tension forte disponible selon le garde-fou geometrique
 carre/opposition, hors axes structurels d'angles et hors aspects angle-angle.
 Les clusters et les marqueurs centraux ou expressifs restent proteges ; un signal
 de dignite autonome peut en revanche ceder sa place si le budget est sature et
@@ -1156,10 +1137,9 @@ courant verrouille par trois niveaux complementaires :
 
 - le JSON Schema
   `rust_sqlx_connection_test/schemas/natal_structured_v10.schema.json`
-  valide la forme du contrat, les constantes LLM, les blocs obligatoires, les
-  quatre angles, les bornes de score, `chart_context`, `context_refs` et les
-  contraintes schema exprimables. Il refuse aussi les extensions silencieuses de
-  `must_use`, les champs semantiques de signal obligatoires a `null`, les
+  valide la forme du contrat moteur, les blocs obligatoires, les quatre angles,
+  les bornes de score, `chart_context` et les contraintes schema exprimables.
+  Il refuse aussi les champs semantiques de signal obligatoires a `null`, les
   contextes de position obligatoires a `null`, les proprietes parasites dans
   `aspect_context`, et les `visibility_context` mobiles sans altitude calculee
   ou sans flag `is_visible` booleen ;
@@ -1167,9 +1147,8 @@ courant verrouille par trois niveaux complementaires :
   payload complet de reference pour le scenario Paris 1990 ;
 - `tests/contract_basic_v8_tests.rs` valide les invariants metier du contrat
   courant v10 et conserve aussi une validation schema du golden historique v8 :
-  sources de plan existantes, alignement `reading_plan` / `drafting_plan`,
-  absence d'aspect angle-angle actif, conservation de
-  `aspect:jupiter:uranus:opposition`, unicite des signaux primaires et
+  sources de plan existantes, absence d'aspect angle-angle actif, conservation
+  de `aspect:jupiter:uranus:opposition`, unicite des signaux primaires et
   garde-fous contre des sections autonomes `chart_emphasis` / `chart_context`.
 
 La review adversariale de cette stabilisation a ajoute des tests negatifs et a
@@ -1201,130 +1180,32 @@ desormais `natal_structured_v10`.
 Le script `scripts/verify_natal_v9_golden.ps1` reste disponible pour le golden
 historique v9.
 
-## Contrat canonique de handoff LLM
+## Annexe historique - handoff LLM retire
 
-Le payload final contient aussi `llm_handoff_contract` et `drafting_plan`.
-`llm_handoff_contract` pose les contraintes globales que le futur service LLM
-doit respecter :
+Les anciennes versions du document decrivaient une section nommee "Contrat
+canonique de handoff LLM" et des blocs redactionnels destines a piloter une
+generation de texte. Ces blocs ne font plus partie du payload moteur courant.
+Ils sont conserves uniquement comme historique de conception et ne doivent pas
+etre utilises pour valider, regenerer ou consommer un payload courant.
 
-```json
-{
-  "llm_handoff_contract": {
-    "contract_version": "natal_structured_v10",
-    "payload_language_code": "en",
-    "target_language_policy": "provided_by_llm_service",
-    "audience_level": "beginner",
-    "tone": "clear, warm, non fatalistic",
-    "must_use": [
-      "chart_context",
-      "chart_emphasis",
-      "rulership_context",
-      "dignities",
-      "angles",
-      "signals",
-      "reading_plan",
-      "drafting_plan"
-    ],
-    "must_not": [
-      "invent facts not present in source signals",
-      "mention technical IDs",
-      "list placements mechanically",
-      "translate technical keys such as signal_key, theme_code, semantic_tags, slot, or aggregation_group",
-      "expose raw evidence unless explicitly requested",
-      "treat chart_emphasis as a standalone section instead of weighting context",
-      "treat chart_context as a standalone section instead of contextual weighting",
-      "treat rulership_context as a standalone section instead of contextual weighting",
-      "make deterministic or fatalistic predictions"
-    ],
-    "output_format": "structured_sections"
-  }
-}
-```
-
-`drafting_plan` est derive du
-`reading_plan` et conserve les memes slots et les memes sources, mais les rend
-directement exploitables par une future couche de generation controlee.
-
-Les champs redactionnels generes par `drafting_plan` sont en anglais. Cette
-contrainte couvre `section_title`, `writing_objective` et `avoid`, afin que le
-payload Basic reste coherent avec les libelles de referentiel exposes par le
-runtime. Le moteur peut exprimer des contraintes comme `plain language`,
-`beginner` ou `non fatalistic`, mais il ne doit jamais demander de rediger dans
-une langue cible finale.
-
-```json
-{
-  "drafting_plan": [
-    {
-      "slot": "dominant_cluster",
-      "section_title": "A Capricorn dominant theme around Resources",
-      "source_signal_keys": [
-        "cluster:capricorn:house_2",
-        "dignity:saturn:domicile:capricorn"
-      ],
-      "primary_signal_keys": [
-        "cluster:capricorn:house_2",
-        "dignity:saturn:domicile:capricorn"
-      ],
-      "secondary_slot_candidates": [
-        {
-          "signal_key": "object_position:sun",
-          "primary_slot": "core_identity",
-          "candidate_slot": "dominant_cluster"
-        }
-      ],
-      "emphasis_refs": {
-        "dominant_signs": ["capricorn"],
-        "dominant_houses": [2],
-        "dominant_objects": ["saturn"]
-      },
-      "context_refs": {
-        "chart_context": ["sect", "hemisphere_emphasis"],
-        "rulership_context": ["dominant_sign_rulers", "dominant_house_rulers"]
-      },
-      "writing_objective": "Explain in plain language that the chart emphasizes Capricorn, Resources, and structure, responsibility, security, grouping the cluster evidence and Saturn dignity context instead of enumerating placements.",
-      "max_words": 120,
-      "avoid": [
-        "repeat each placement one by one",
-        "use technical IDs",
-        "make fatalistic predictions",
-        "add information that is absent from the source signals",
-        "turn chart_emphasis into a standalone section",
-        "turn chart_context into a standalone section",
-        "turn rulership_context into a standalone section"
-      ]
-    }
-  ]
-}
-```
-
-Les slots ont des objectifs specialises :
-
-- `core_identity` : presenter les marqueurs centraux ;
-- `dominant_cluster` : expliquer la dominante sans enumerer chaque placement ;
-- `main_tension_or_support` : decrire les dynamiques principales en distinguant
-  appuis et tensions a partir de la valence interpretative des aspects ;
-- `expression_style` : synthetiser pensee, communication, desir et action ;
-- `background_factors` : garder les facteurs de fond proportionnes.
-
-Cette couche est volontairement contractuelle : elle donne au futur LLM une
-liste de sections a rediger, mais elle ne lui demande pas encore de produire un
-theme complet libre. Le service LLM recevra ce payload canonique avec un champ
-separe comme `target_language_code = "fr"` et produira la sortie localisee dans
-un module distinct.
+Le moteur Rust produit un payload astrologique canonique en anglais technique :
+faits calcules, contextes, dominantes, rulership, signaux et `reading_plan`.
+La couche LLM externe construit son propre contrat de prompt a partir de ces
+donnees. Elle decide de la langue cible, du format de sortie, des objectifs de
+redaction, du ton et des garde-fous textuels. Aucune section LLM, aucun plan de
+redaction et aucune consigne de style ne sont attendus dans le JSON moteur.
 
 La validation de reutilisation des payloads existants force maintenant aussi :
 
-- un `llm_handoff_contract` canonique exact pour Basic ;
 - pour chaque signal `aspect:*`, un `aspect_context` avec famille, valence
   primaire eventuelle, modificateur d'intensite eventuel, qualite dynamique,
-  phase, `valence_family`, flags tonal/intensite et guidance redactionnelle ;
+  phase, `valence_family` et flags tonal/intensite ;
 - pour chaque signal `aspect:*`, au moins un effet interpretatif non vide parmi
   `primary_valence`, `intensity_modifier` ou `secondary_effect` ;
 - des slots connus uniquement ;
-- l'ordre canonique des slots Basic ;
-- un `drafting_plan` strictement aligne sur les sources du `reading_plan` ;
-- l'absence de lettres non ASCII dans les consignes redactionnelles 1D.
+- l'ordre canonique des slots du payload route basic ;
+- un `reading_plan` non vide, sans slot vide, dont les sources primaires
+  referencent des signaux existants et uniques.
 
 ## Persistance
 
@@ -1346,8 +1227,8 @@ reste visible apres un changement de format de cle ou de filtrage.
 
 Pour les aspects, le calcul ephemeride persiste d'abord les faits geometriques
 dans `astral_calculated_aspects`. Avant de construire les signaux, le runtime
-relit ces aspects via les joins de `repositories.rs` afin d'ajouter la famille,
-les effets interpretatifs et la guidance issus des referentiels. Ce meme chemin
+relit ces aspects via les joins de `repositories.rs` afin d'ajouter la famille
+et les effets interpretatifs issus des referentiels. Ce meme chemin
 est utilise pour un calcul frais et pour la regeneration d'un payload existant
 juge obsolete.
 
@@ -1379,8 +1260,6 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
 
 - 12 signaux maximum ;
 - au moins un signal ;
-- `llm_handoff_contract` present et conforme au contrat canonique
-  `natal_structured_v10` ;
 - `dignities` structurees presentes et coherentes avec les signaux
   `dignity:*` actifs ;
 - `angles` top-level present avec exactement les quatre faits canoniques
@@ -1407,8 +1286,8 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
   rester `null` ;
 - signaux avec `evidence` objet non nul ;
 - signaux avec `theme_code`, `summary`, `confidence_score`,
-  `interpretive_hint`, `semantic_tags`, `source_weight`, `aggregation_group` et
-  `writing_guidance` non nuls et non vides quand le type est textuel ;
+  `interpretive_hint`, `semantic_tags`, `source_weight` et
+  `aggregation_group` non nuls et non vides quand le type est textuel ;
 - aucun signal actif `aspect:*` entre deux angles ; les anciens payloads qui
   contiennent un aspect angle-angle actif sont regeneres ;
 - signaux `angle:*` avec `evidence.fact_type = "chart_angle"` et
@@ -1417,7 +1296,7 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
   `angles[].opposite_angle_code` ;
 - signaux `aspect:*` avec `aspect_context` complet, au moins un effet
   interpretatif non vide, `dynamic_quality`, `phase_state`, `valence_family`,
-  `is_tonal_valence`, `is_intensity_modifier` et `writing_guidance` ;
+  `is_tonal_valence` et `is_intensity_modifier` ;
 - absence de signal `aspect:*` qui represente une opposition structurelle entre
   deux angles du meme `axis`, meme si l'ancien signal n'est pas marque
   `is_structural_axis` ;
@@ -1435,36 +1314,17 @@ payload existant. Il ne le reutilise que si le contrat enrichi est present :
 - `reading_plan` present, non vide, compose de slots uniques, ordonnes, sans
   section vide, et de sources primaires qui existent dans les signaux du
   payload ;
-- `drafting_plan` present, non vide, aligne sur les slots et sources du
-  `reading_plan`, sans section vide, avec `section_title`,
-  `writing_objective`, `max_words` et `avoid` renseignes ;
-- `drafting_plan[].emphasis_refs` aligne sur `chart_emphasis`, renseigne sur
-  `dominant_cluster` quand ce slot existe, sinon sur `core_identity`, et vide
-  sur les autres slots ;
 - `chart_context` coherent avec la secte solaire, la source de visibilite du
   Soleil, les comptes d'hemisphere, `hemisphere_emphasis.count_scope =
   "mobile_chart_objects_only"` et les positions enrichies par altitude /
   horizon ;
-- chaque item de `drafting_plan` contient la regle d'evitement
-  `turn chart_emphasis into a standalone section` ;
-- chaque item de `drafting_plan` contient la regle d'evitement
-  `turn chart_context into a standalone section` ;
-- chaque item de `drafting_plan` contient la regle d'evitement
-  `turn rulership_context into a standalone section` ;
-- `drafting_plan[].context_refs.chart_context` vaut
-  `["sect", "hemisphere_emphasis"]` pour `core_identity` et
-  `dominant_cluster`, et reste vide pour les autres slots ;
-- `drafting_plan[].context_refs.rulership_context` reference
-  `ascendant_ruler` pour `core_identity`, `dominant_sign_rulers` et
-  `dominant_house_rulers` pour `dominant_cluster`, et `mc_ruler` pour
-  `background_factors` ;
 - `primary_signal_keys` aligne avec `source_signal_keys`, et
-  `secondary_slot_candidates` coherents entre `reading_plan` et `drafting_plan` ;
+  `secondary_slot_candidates` coherents avec les slots conserves du
+  `reading_plan` ;
 - chaque signal primaire apparait dans un seul slot de `reading_plan`; les
   candidats editoriaux supplementaires passent par `secondary_slot_candidates` ;
-- slots du `reading_plan` connus et dans l'ordre Basic canonique ;
-- champs redactionnels du `drafting_plan` en anglais canonique, sans lettres
-  non ASCII ;
+- slots du `reading_plan` connus et dans l'ordre canonique du payload route
+  basic ;
 - absence d'anciens templates connus comme `by a opposition`.
 
 Sinon, les signaux sont reconstruits depuis les positions persistantes et les
@@ -1517,12 +1377,10 @@ Pour ecrire un exemple inspectable dans `../output` :
 cargo run --features swisseph-engine -- --file
 ```
 
-Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
+Le run attendu doit afficher le payload moteur courant route par
+`product_code = "basic"`. Il doit contenir :
 
 - `product_code = "basic"` ;
-- `llm_handoff_contract.payload_language_code = "en"` ;
-- `llm_handoff_contract.target_language_policy = "provided_by_llm_service"` ;
-- `llm_handoff_contract.contract_version = "natal_structured_v10"` ;
 - un `chart_context` top-level avec le type de theme, les IDs de referentiels,
   le contrat de projection `natal_structured_v10`, la secte et la synthese
   d'hemisphere, dont `hemisphere_emphasis.count_scope =
@@ -1532,7 +1390,7 @@ Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
   `dignity_context` sous forme de tableau, vide quand aucune dignite n'est
   detectee ; `motion_context` est present pour les objets mobiles et peut etre
   `null` pour les angles ; `visibility_context` expose le contexte d'horizon
-  exploitable avant LLM, avec `altitude_deg` calcule pour les corps mobiles et
+  exploitable avant synthese externe, avec `altitude_deg` calcule pour les corps mobiles et
   `horizon_position_id` renseigne pour toutes les positions ; pour les corps
   mobiles, `source` doit etre `calculated_altitude`, tandis que les angles
   restent en `angle_context` avec `altitude_deg = null` et `is_visible = null` ;
@@ -1554,13 +1412,6 @@ Le run attendu doit afficher le payload canonique Basic. Il doit contenir :
 - un `reading_plan` non vide ;
 - un `reading_plan` sans slot vide et sans opposition structurelle d'angle dans
   `main_tension_or_support` ;
-- un `drafting_plan` non vide, sans slot vide, et aligne sur le `reading_plan` ;
-- des `emphasis_refs` dans `drafting_plan`, rattachees au slot
-  `dominant_cluster` si present, sinon a `core_identity`, et utilisees comme
-  contexte de ponderation ;
-- des `context_refs.chart_context` dans `drafting_plan` pour guider l'usage de
-  `sect` et `hemisphere_emphasis` comme ponderation contextuelle, pas comme
-  section autonome ;
 - des titres sans IDs techniques ;
 - des champs semantiques 1B sur chaque signal ;
 - un `aspect_context` sur chaque signal `aspect:*`, avec les modificateurs
@@ -1591,14 +1442,14 @@ exemple :
 
 ## Limites connues
 
-- Les angles Basic sont exposes, mais leurs interpretations restent limitees aux
+- Les angles du payload route basic sont exposes, mais leurs interpretations restent limitees aux
   faits structures et aux signaux `angle:*`.
 - Le contexte de maitrise 3B expose les liens structurels au LLM, mais ne cree
   pas encore de signaux actifs `rulership:*`.
 - Les resumes restent des phrases templatees, pas une interpretation finale.
-- Les `interpretive_hint` et `writing_guidance` restent aussi des templates,
-  meme si les hints d'aspect integrent maintenant la valence 2C.
-- Les clusters Basic ne couvrent pour l'instant que les concentrations
+- Les `interpretive_hint` restent aussi des templates, meme si les hints
+  d'aspect integrent maintenant la valence 2C.
+- Les clusters du payload route basic ne couvrent pour l'instant que les concentrations
   `sign_house`.
 - Le moteur de dignites 2B est un MVP code-side. Il couvre les dignites
   essentielles majeures par signe, pas encore les dignites mineures ni les
@@ -1612,21 +1463,22 @@ exemple :
 `rust_sqlx_connection_test/src/payload/` afin de separer les responsabilites
 sans modifier le contrat public `rust_sqlx_connection_test::payload`.
 
-- `mod.rs` orchestre la construction du `BasicPayload`.
+- `mod.rs` orchestre la construction du payload moteur route basic.
 - `angles.rs`, `chart_context.rs`, `dignities.rs`, `emphasis.rs`,
   `rulership.rs`,
-  `reading_plan.rs` et
-  `drafting_plan.rs` isolent les blocs metier du payload Basic.
+  `reading_plan.rs` isolent les blocs metier du payload.
 - `signal_filters.rs` centralise les predicats partages sur les signaux et
   aspects.
 - `json.rs` centralise les extractions defensives depuis les payloads JSON.
-- `contract.rs` conserve le contrat LLM courant `natal_structured_v10`.
+- `contract.rs` conserve les constantes du contrat moteur courant
+  `natal_structured_v10`.
 
 ## Etape 3B - Rulership / dispositors context
 
-Le contrat Basic natal est passe a `natal_structured_v10` pour ajouter le bloc
-top-level `rulership_context`. Ce bloc est contextuel: il aide le LLM a ponderer
-les sections existantes sans devenir une section autonome.
+Le payload natal route basic est passe a `natal_structured_v10` pour ajouter le
+bloc top-level `rulership_context`. Ce bloc est contextuel : il sert de signal
+structurel pour la couche applicative ou LLM externe sans devenir une section
+autonome du payload moteur.
 
 Le moteur lit les maitres de signes depuis la base via
 `astral_object_sign_dignities`, filtre les dignites de type `domicile`, puis
@@ -1647,11 +1499,10 @@ expose a la fois `ruler_object_codes` et `ruler_sources[].object_code`. Ainsi,
 chaque source doctrinale reste explicitement rattachee au maitre qu'elle
 fournit, au lieu d'exposer une liste de sources ambiguë.
 
-`drafting_plan.context_refs` reference maintenant `rulership_context` pour
-`core_identity`, `dominant_cluster` et `background_factors`: le maitre de
-l'Ascendant sert l'identite, les maitres de dominantes servent le cluster, et
-`mc_ruler` sert le slot de fond lorsque le MC y est traite. Les garde-fous
-`must_not` et `avoid` interdisent de transformer ce bloc en section autonome.
+`rulership_context` est consomme comme contexte de ponderation externe : le
+maitre de l'Ascendant peut servir l'identite, les maitres de dominantes peuvent
+servir le cluster, et `mc_ruler` peut servir le fond lorsque le MC y est traite.
+Ces decisions appartiennent a la couche LLM, pas au payload moteur.
 
 ### Etape 3B.1 - Coherence du referentiel et endpoints
 
@@ -1716,7 +1567,7 @@ au module quand elles ne font pas partie de l'API publique.
 
 `rust_sqlx_connection_test/src/signals.rs` a ete remplace par le dossier
 `rust_sqlx_connection_test/src/signals/` afin de separer l'agregation des
-signaux Basic par responsabilite, sans modifier l'API publique
+signaux du payload route basic par responsabilite, sans modifier l'API publique
 `rust_sqlx_connection_test::signals`.
 
 - `mod.rs` conserve l'orchestration de `aggregate_basic_signals`.
@@ -1725,7 +1576,7 @@ signaux Basic par responsabilite, sans modifier l'API publique
   `aspect_signals.rs` et `clusters.rs` isolent la construction des familles de
   signaux.
 - `limits.rs` regroupe les regles de suppression, preservation et remplissage
-  de la limite Basic.
+  de la limite du payload route basic.
 - `relations.rs`, `context.rs`, `tags.rs` et `utils.rs` gardent les helpers
   transverses limites au module.
 
@@ -1743,7 +1594,7 @@ prives au fichier, et les helpers partages entre sous-modules utilisent
 Le fichier racine `rust_sqlx_connection_test/src/aspects.rs` reste separe du
 module `signals/aspect_signals.rs`: le premier detecte les faits d'aspects
 depuis les positions calculees, alors que le second transforme un `AspectFact`
-en contexte de signal Basic. Les fusionner melangerait le calcul des faits et
+en contexte de signal du payload route basic. Les fusionner melangerait le calcul des faits et
 la preparation editoriale du payload.
 
 Ce refactor reste strictement structurel: aucune nouvelle donnee canonique n'a
@@ -1768,13 +1619,13 @@ canoniques applicatives et ne contourne pas les referentiels lus depuis la base.
   `is_current_basic_payload`, `validate_calculation_references` et
   `validate_chart_object_signal_profiles`.
 - `error.rs` isole `RuntimeError` et ses codes d'erreur stables.
-- `service.rs` orchestre le calcul natal Basic, l'idempotence, la persistance
+- `service.rs` orchestre le calcul natal route basic, l'idempotence, la persistance
   et la regeneration des payloads obsoletes.
 - `references.rs` regroupe les validations des references chargees depuis la
   base de donnees et des profils de scoring des objets.
 - `payload_freshness.rs` expose la facade `is_current_basic_payload` et compose
   les validations de reutilisation.
-- `payload_freshness/contract.rs` verifie le contrat LLM courant
+- `payload_freshness/contract.rs` verifie le contrat moteur courant
   `natal_structured_v10`.
 - `payload_freshness/angles.rs` verifie les quatre angles canoniques et leurs
   preuves.
@@ -1789,8 +1640,8 @@ canoniques applicatives et ne contourne pas les referentiels lus depuis la base.
 - `payload_freshness/placements.rs` verifie les contextes de positions et de
   signaux de placement, dont le `visibility_context` mobile recopie dans
   `evidence.placement_context`.
-- `payload_freshness/plan.rs` verifie `reading_plan`, `drafting_plan` et les
-  `emphasis_refs` / `context_refs`.
+- `payload_freshness/plan.rs` verifie `reading_plan` et la coherence de ses
+  sources.
 - `payload_freshness/json.rs` et `payload_freshness/text.rs` regroupent les
   helpers transverses limites a la validation de reutilisation.
 
