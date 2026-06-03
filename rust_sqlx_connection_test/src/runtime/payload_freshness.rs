@@ -10,6 +10,7 @@ mod rulership;
 mod text;
 
 use crate::domain::{BasicPayload, BasicSignal};
+use crate::models::DomicileRulerReference;
 
 pub fn is_current_basic_payload(payload: &BasicPayload) -> bool {
     let structural_axis_pairs = angles::structural_axis_pairs_from_payload(payload);
@@ -30,6 +31,13 @@ pub fn is_current_basic_payload(payload: &BasicPayload) -> bool {
         && payload.signals.iter().all(|signal| {
             signal_is_current(payload, signal, &structural_axis_pairs, &angle_object_codes)
         })
+}
+
+pub fn has_current_rulership_references(
+    payload: &BasicPayload,
+    domicile_rulers: &[DomicileRulerReference],
+) -> bool {
+    rulership::matches_domicile_ruler_references(&payload.rulership_context, domicile_rulers)
 }
 
 fn signal_is_current(

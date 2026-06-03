@@ -9,205 +9,219 @@ use rust_sqlx_connection_test::domain::{
     BasicSecondarySlotCandidate, BasicSectContext, BasicSignal, CalculationReferenceData,
 };
 use rust_sqlx_connection_test::models::{
-    AnglePointReference, ChartObject, HouseReference, SignReference,
+    AnglePointReference, ChartObject, DomicileRulerReference, HouseReference, SignReference,
 };
 use rust_sqlx_connection_test::repositories::parse_existing_basic_payload_value;
 use rust_sqlx_connection_test::runtime::{
-    is_current_basic_payload, validate_calculation_references,
+    has_current_rulership_references, is_current_basic_payload, validate_calculation_references,
     validate_chart_object_signal_profiles,
 };
 
 fn current_payload() -> BasicPayload {
     BasicPayload {
-            product_code: "basic".to_string(),
-            chart_calculation_id: 1,
+        product_code: "basic".to_string(),
+        chart_calculation_id: 1,
+        reference_version_id: 1,
+        subject_label: None,
+        birth_datetime_utc: Utc.with_ymd_and_hms(2024, 6, 15, 12, 0, 0).unwrap(),
+        chart_context: BasicChartContext {
+            chart_type: "natal".to_string(),
+            zodiacal_reference_system_id: 1,
+            coordinate_reference_system_id: 1,
+            house_system_id: 1,
             reference_version_id: 1,
-            subject_label: None,
-            birth_datetime_utc: Utc.with_ymd_and_hms(2024, 6, 15, 12, 0, 0).unwrap(),
-            chart_context: BasicChartContext {
-                chart_type: "natal".to_string(),
-                zodiacal_reference_system_id: 1,
-                coordinate_reference_system_id: 1,
-                house_system_id: 1,
-                reference_version_id: 1,
-                payload_contract: BasicPayloadContract {
-                    contract_version: "natal_structured_v10".to_string(),
-                    calculation_scope: "full_natal".to_string(),
-                    interpretation_scope: "structured_interpretation".to_string(),
-                    projection_depth: "rich".to_string(),
-                },
-                calculation_reliability: BasicCalculationReliability {
-                    birth_time_precision_required: true,
-                    house_system_sensitive: true,
-                },
-                sect: BasicSectContext {
-                    chart_sect: Some("day".to_string()),
-                    sun_horizon_position: Some("above_horizon".to_string()),
-                    source: Some("calculated_altitude".to_string()),
-                },
-                hemisphere_emphasis: BasicHemisphereEmphasis {
-                    count_scope: "mobile_chart_objects_only".to_string(),
-                    above_horizon_count: 1,
-                    below_horizon_count: 0,
-                    on_horizon_count: 0,
-                    interpretive_hint: Some(
-                        "The chart has a stronger visible or outward emphasis.".to_string(),
-                    ),
-                },
+            payload_contract: BasicPayloadContract {
+                contract_version: "natal_structured_v10".to_string(),
+                calculation_scope: "full_natal".to_string(),
+                interpretation_scope: "structured_interpretation".to_string(),
+                projection_depth: "rich".to_string(),
             },
-            positions: vec![BasicObjectPosition {
-                object_code: "sun".to_string(),
-                object_name: "Sun".to_string(),
-                longitude_deg: 84.0,
-                sign_id: 3,
+            calculation_reliability: BasicCalculationReliability {
+                birth_time_precision_required: true,
+                house_system_sensitive: true,
+            },
+            sect: BasicSectContext {
+                chart_sect: Some("day".to_string()),
+                sun_horizon_position: Some("above_horizon".to_string()),
+                source: Some("calculated_altitude".to_string()),
+            },
+            hemisphere_emphasis: BasicHemisphereEmphasis {
+                count_scope: "mobile_chart_objects_only".to_string(),
+                above_horizon_count: 1,
+                below_horizon_count: 0,
+                on_horizon_count: 0,
+                interpretive_hint: Some(
+                    "The chart has a stronger visible or outward emphasis.".to_string(),
+                ),
+            },
+        },
+        positions: vec![BasicObjectPosition {
+            object_code: "sun".to_string(),
+            object_name: "Sun".to_string(),
+            longitude_deg: 84.0,
+            sign_id: 3,
+            sign_code: "gemini".to_string(),
+            sign_name: "Gemini".to_string(),
+            house_id: Some(9),
+            house_number: Some(9),
+            house_name: Some("Beliefs".to_string()),
+            motion_state_id: Some(1),
+            sign_context: Some(json!({
+                "element": "air",
+                "modality": "mutable",
+                "polarity": "yang",
+                "keywords": ["communication"]
+            })),
+            house_context: Some(json!({
+                "theme_code": "beliefs"
+            })),
+            house_modality: Some(json!({
+                "code": "cadent",
+                "accidental_strength": "weak_or_background",
+                "interpretation_weight": "lower_for_external_manifestation"
+            })),
+            object_context: Some(json!({
+                "role": "luminary",
+                "nature": ["luminary"],
+                "is_luminary": true
+            })),
+            motion_context: Some(json!({
+                "motion_state": "direct",
+                "label": "Direct",
+                "motion_family": "forward"
+            })),
+            dignity_context: json!([]),
+            visibility_context: json!({
+                "horizon_position_id": 1,
+                "horizon_position": "above_horizon",
+                "altitude_deg": 12.5,
+                "is_visible": true,
+                "source": "calculated_altitude"
+            }),
+        }],
+        angles: vec![
+            angle_fact(
+                "ascendant",
+                "Ascendant",
+                "horizontal",
+                "descendant",
+                84.0,
+                1,
+            ),
+            angle_fact(
+                "descendant",
+                "Descendant",
+                "horizontal",
+                "ascendant",
+                264.0,
+                7,
+            ),
+            angle_fact("mc", "Midheaven", "vertical", "ic", 10.0, 10),
+            angle_fact("ic", "Imum Coeli", "vertical", "mc", 190.0, 4),
+        ],
+        dignities: Vec::new(),
+        chart_emphasis: BasicChartEmphasis {
+            dominant_signs: vec![BasicDominantSign {
                 sign_code: "gemini".to_string(),
-                sign_name: "Gemini".to_string(),
-                house_id: Some(9),
-                house_number: Some(9),
-                house_name: Some("Beliefs".to_string()),
-                motion_state_id: Some(1),
-                sign_context: Some(json!({
-                    "element": "air",
-                    "modality": "mutable",
-                    "polarity": "yang",
-                    "keywords": ["communication"]
-                })),
-                house_context: Some(json!({
-                    "theme_code": "beliefs"
-                })),
-                house_modality: Some(json!({
-                    "code": "cadent",
-                    "accidental_strength": "weak_or_background",
-                    "interpretation_weight": "lower_for_external_manifestation"
-                })),
-                object_context: Some(json!({
-                    "role": "luminary",
-                    "nature": ["luminary"],
-                    "is_luminary": true
-                })),
-                motion_context: Some(json!({
-                    "motion_state": "direct",
-                    "label": "Direct",
-                    "motion_family": "forward"
-                })),
-                dignity_context: json!([]),
-                visibility_context: json!({
-                    "horizon_position_id": 1,
-                    "horizon_position": "above_horizon",
-                    "altitude_deg": 12.5,
-                    "is_visible": true,
-                    "source": "calculated_altitude"
-                }),
+                score: 0.2174,
+                reasons: vec!["sun_in_sign".to_string()],
             }],
-            angles: vec![
-                angle_fact("ascendant", "Ascendant", "horizontal", "descendant", 84.0, 1),
-                angle_fact("descendant", "Descendant", "horizontal", "ascendant", 264.0, 7),
-                angle_fact("mc", "Midheaven", "vertical", "ic", 10.0, 10),
-                angle_fact("ic", "Imum Coeli", "vertical", "mc", 190.0, 4),
-            ],
-            dignities: Vec::new(),
-            chart_emphasis: BasicChartEmphasis {
-                dominant_signs: vec![BasicDominantSign {
-                    sign_code: "gemini".to_string(),
-                    score: 0.2174,
-                    reasons: vec!["sun_in_sign".to_string()],
-                }],
-                dominant_houses: vec![BasicDominantHouse {
-                    house_number: 9,
-                    theme_code: "beliefs".to_string(),
-                    score: 0.2174,
-                    reasons: vec!["sun_in_house".to_string()],
-                }],
-                dominant_objects: vec![BasicDominantObject {
-                    object_code: "sun".to_string(),
-                    score: 0.4167,
-                    reasons: vec!["placement".to_string()],
-                }],
-            },
-            rulership_context: BasicRulershipContext {
-                ascendant_ruler: Some(test_ruler_context(
-                    "angle:ascendant:ruler",
-                    "angle",
-                    "ascendant",
-                    "gemini",
-                    "mercury",
-                    "identity_ruler",
-                )),
-                mc_ruler: Some(test_ruler_context(
-                    "angle:mc:ruler",
-                    "angle",
-                    "mc",
-                    "gemini",
-                    "mercury",
-                    "public_direction_ruler",
-                )),
-                ..BasicRulershipContext::default()
-            },
-            signals: vec![
-                BasicSignal {
-                    signal_key: "object_position:sun".to_string(),
-                    theme_code: Some("beliefs".to_string()),
-                    title: "Sun in Gemini, house 9".to_string(),
-                    summary: Some("summary".to_string()),
-                    priority_score: 100.0,
-                    confidence_score: Some(0.95),
-                    interpretive_hint: Some("hint".to_string()),
-                    semantic_tags: vec!["placement".to_string()],
-                    source_weight: Some(1.0),
-                    aggregation_group: Some("gemini:house_9".to_string()),
-                    aspect_context: None,
-                    evidence: Some(json!({
-                        "fact_type": "object_position",
-                        "essential_dignities": [],
-                        "placement_context": {
-                            "sign_context": {
-                                "element": "air",
-                                "modality": "mutable",
-                                "polarity": "yang"
-                            },
-                            "house_context": {"theme_code": "beliefs"},
-                            "house_modality": {"code": "cadent"},
-                            "object_context": {"role": "luminary"},
-                            "motion_context": {"motion_state": "direct"}
-                            ,"visibility_context": {
-                                "horizon_position_id": 1,
-                                "horizon_position": "above_horizon",
-                                "altitude_deg": 12.5,
-                                "is_visible": true,
-                                "source": "calculated_altitude"
-                            }
+            dominant_houses: vec![BasicDominantHouse {
+                house_number: 9,
+                theme_code: "beliefs".to_string(),
+                score: 0.2174,
+                reasons: vec!["sun_in_house".to_string()],
+            }],
+            dominant_objects: vec![BasicDominantObject {
+                object_code: "sun".to_string(),
+                score: 0.4167,
+                reasons: vec!["placement".to_string()],
+            }],
+        },
+        rulership_context: BasicRulershipContext {
+            ascendant_ruler: Some(test_ruler_context(
+                "angle:ascendant:ruler",
+                "angle",
+                "ascendant",
+                "gemini",
+                "mercury",
+                "identity_ruler",
+            )),
+            mc_ruler: Some(test_ruler_context(
+                "angle:mc:ruler",
+                "angle",
+                "mc",
+                "gemini",
+                "mercury",
+                "public_direction_ruler",
+            )),
+            ..BasicRulershipContext::default()
+        },
+        signals: vec![
+            BasicSignal {
+                signal_key: "object_position:sun".to_string(),
+                theme_code: Some("beliefs".to_string()),
+                title: "Sun in Gemini, house 9".to_string(),
+                summary: Some("summary".to_string()),
+                priority_score: 100.0,
+                confidence_score: Some(0.95),
+                interpretive_hint: Some("hint".to_string()),
+                semantic_tags: vec!["placement".to_string()],
+                source_weight: Some(1.0),
+                aggregation_group: Some("gemini:house_9".to_string()),
+                aspect_context: None,
+                evidence: Some(json!({
+                    "fact_type": "object_position",
+                    "essential_dignities": [],
+                    "placement_context": {
+                        "sign_context": {
+                            "element": "air",
+                            "modality": "mutable",
+                            "polarity": "yang"
+                        },
+                        "house_context": {"theme_code": "beliefs"},
+                        "house_modality": {"code": "cadent"},
+                        "object_context": {"role": "luminary"},
+                        "motion_context": {"motion_state": "direct"}
+                        ,"visibility_context": {
+                            "horizon_position_id": 1,
+                            "horizon_position": "above_horizon",
+                            "altitude_deg": 12.5,
+                            "is_visible": true,
+                            "source": "calculated_altitude"
                         }
-                    })),
-                },
-                BasicSignal {
-                    signal_key: "angle:ascendant:sign:gemini".to_string(),
-                    theme_code: Some("identity".to_string()),
-                    title: "Ascendant in Gemini".to_string(),
-                    summary: Some("summary".to_string()),
-                    priority_score: 99.0,
-                    confidence_score: Some(0.95),
-                    interpretive_hint: Some("hint".to_string()),
-                    semantic_tags: vec!["angle".to_string(), "ascendant".to_string()],
-                    source_weight: Some(1.0),
-                    aggregation_group: Some("angle:ascendant:gemini".to_string()),
-                    aspect_context: None,
-                    evidence: Some(json!({
-                        "fact_type": "chart_angle",
-                        "angle_code": "ascendant",
-                        "opposite_angle_code": "dsc",
-                        "opposite_angle_object_code": "descendant",
-                        "sign_code": "gemini"
-                    })),
-                },
-            ],
-            reading_plan: vec![BasicReadingPlanItem {
-                slot: "core_identity".to_string(),
-                title: "Core identity markers".to_string(),
-                source_signal_keys: vec!["object_position:sun".to_string()],
-                primary_signal_keys: vec!["object_position:sun".to_string()],
-                secondary_slot_candidates: Vec::new(),
-            }],
-        }
+                    }
+                })),
+            },
+            BasicSignal {
+                signal_key: "angle:ascendant:sign:gemini".to_string(),
+                theme_code: Some("identity".to_string()),
+                title: "Ascendant in Gemini".to_string(),
+                summary: Some("summary".to_string()),
+                priority_score: 99.0,
+                confidence_score: Some(0.95),
+                interpretive_hint: Some("hint".to_string()),
+                semantic_tags: vec!["angle".to_string(), "ascendant".to_string()],
+                source_weight: Some(1.0),
+                aggregation_group: Some("angle:ascendant:gemini".to_string()),
+                aspect_context: None,
+                evidence: Some(json!({
+                    "fact_type": "chart_angle",
+                    "angle_code": "ascendant",
+                    "opposite_angle_code": "dsc",
+                    "opposite_angle_object_code": "descendant",
+                    "sign_code": "gemini"
+                })),
+            },
+        ],
+        reading_plan: vec![BasicReadingPlanItem {
+            slot: "core_identity".to_string(),
+            title: "Core identity markers".to_string(),
+            source_signal_keys: vec!["object_position:sun".to_string()],
+            primary_signal_keys: vec!["object_position:sun".to_string()],
+            secondary_slot_candidates: Vec::new(),
+        }],
+    }
 }
 
 #[test]
@@ -223,6 +237,31 @@ fn existing_payload_parser_treats_legacy_endpoint_shape_as_stale() {
     let parsed = parse_existing_basic_payload_value(payload).unwrap();
 
     assert!(parsed.is_none());
+}
+
+#[test]
+fn persisted_payload_reuse_rejects_stale_rulership_reference_sources() {
+    let payload = current_payload();
+    let current_rulers = vec![domicile_ruler_reference("gemini", "venus", 4)];
+
+    assert!(!has_current_rulership_references(&payload, &current_rulers));
+}
+
+#[test]
+fn persisted_payload_reuse_accepts_matching_rulership_reference_sources() {
+    let payload = current_payload();
+    let current_rulers = vec![domicile_ruler_reference("gemini", "mercury", 3)];
+
+    assert!(has_current_rulership_references(&payload, &current_rulers));
+}
+
+#[test]
+fn persisted_payload_reuse_rejects_stale_rulership_reference_weight() {
+    let payload = current_payload();
+    let mut current_rulers = vec![domicile_ruler_reference("gemini", "mercury", 3)];
+    current_rulers[0].weight = 0.5;
+
+    assert!(!has_current_rulership_references(&payload, &current_rulers));
 }
 
 fn angle_fact(
@@ -245,6 +284,27 @@ fn angle_fact(
         house_id: Some(house_number),
         house_number,
         house_name: Some(format!("House {house_number}")),
+    }
+}
+
+fn domicile_ruler_reference(
+    sign_code: &str,
+    object_code: &str,
+    chart_object_id: i32,
+) -> DomicileRulerReference {
+    DomicileRulerReference {
+        reference_version_id: Some(1),
+        astral_system_id: 1,
+        astral_system_code: "traditional".to_string(),
+        sign_id: 3,
+        sign_code: sign_code.to_string(),
+        sign_name: sign_code.to_string(),
+        chart_object_id,
+        object_code: object_code.to_string(),
+        object_name: object_code.to_string(),
+        dignity_type: "domicile".to_string(),
+        weight: 1.0,
+        is_primary: true,
     }
 }
 

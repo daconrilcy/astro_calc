@@ -1,6 +1,10 @@
 use std::collections::BTreeMap;
 
-use crate::domain::{BasicRulerContext, BasicRulershipChain, BasicRulershipContext};
+use crate::domain::{
+    BasicDispositorLink, BasicRulerContext, BasicRulerSource, BasicRulershipChain,
+    BasicRulershipContext,
+};
+use crate::models::DomicileRulerReference;
 
 pub(super) fn has_current_rulership_context(context: &BasicRulershipContext) -> bool {
     context
@@ -81,6 +85,97 @@ fn has_current_ruler_context(context: &BasicRulerContext) -> bool {
                 && source.dignity_type == "domicile"
                 && source.weight.is_finite()
         })
+}
+
+pub(super) fn matches_domicile_ruler_references(
+    context: &BasicRulershipContext,
+    domicile_rulers: &[DomicileRulerReference],
+) -> bool {
+    context
+        .ascendant_ruler
+        .as_ref()
+        .is_none_or(|ruler| ruler_context_matches_references(ruler, domicile_rulers))
+        && context
+            .mc_ruler
+            .as_ref()
+            .is_none_or(|ruler| ruler_context_matches_references(ruler, domicile_rulers))
+        && context
+            .dominant_house_rulers
+            .iter()
+            .all(|ruler| ruler_context_matches_references(ruler, domicile_rulers))
+        && context
+            .dominant_sign_rulers
+            .iter()
+            .all(|ruler| ruler_context_matches_references(ruler, domicile_rulers))
+        && context
+            .dispositor_links
+            .iter()
+            .all(|link| dispositor_link_matches_references(link, domicile_rulers))
+}
+
+fn ruler_context_matches_references(
+    context: &BasicRulerContext,
+    domicile_rulers: &[DomicileRulerReference],
+) -> bool {
+    source_signatures(&context.ruler_sources)
+        == reference_signatures(context.sign_code.as_str(), domicile_rulers)
+}
+
+fn dispositor_link_matches_references(
+    link: &BasicDispositorLink,
+    domicile_rulers: &[DomicileRulerReference],
+) -> bool {
+    source_signatures(&link.ruler_sources)
+        == reference_signatures(link.object_sign_code.as_str(), domicile_rulers)
+}
+
+fn source_signatures(sources: &[BasicRulerSource]) -> Vec<RulerSourceSignature> {
+    let mut signatures = sources
+        .iter()
+        .map(|source| RulerSourceSignature {
+            reference_version_id: source.reference_version_id,
+            astral_system_id: source.astral_system_id,
+            astral_system_code: source.astral_system_code.clone(),
+            dignity_type: source.dignity_type.clone(),
+            object_code: source.object_code.clone(),
+            weight_bits: source.weight.to_bits(),
+            is_primary: source.is_primary,
+        })
+        .collect::<Vec<_>>();
+    signatures.sort();
+    signatures
+}
+
+fn reference_signatures(
+    sign_code: &str,
+    domicile_rulers: &[DomicileRulerReference],
+) -> Vec<RulerSourceSignature> {
+    let mut signatures = domicile_rulers
+        .iter()
+        .filter(|ruler| ruler.sign_code == sign_code)
+        .map(|ruler| RulerSourceSignature {
+            reference_version_id: ruler.reference_version_id,
+            astral_system_id: ruler.astral_system_id,
+            astral_system_code: ruler.astral_system_code.clone(),
+            dignity_type: ruler.dignity_type.clone(),
+            object_code: ruler.object_code.clone(),
+            weight_bits: ruler.weight.to_bits(),
+            is_primary: ruler.is_primary,
+        })
+        .collect::<Vec<_>>();
+    signatures.sort();
+    signatures
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct RulerSourceSignature {
+    reference_version_id: Option<i32>,
+    astral_system_id: i32,
+    astral_system_code: String,
+    dignity_type: String,
+    object_code: String,
+    weight_bits: u64,
+    is_primary: bool,
 }
 
 fn final_dispositors_match_chains(context: &BasicRulershipContext) -> bool {

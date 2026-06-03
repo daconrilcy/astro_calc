@@ -1,8 +1,8 @@
 {
   "product_code": "basic",
-  "chart_calculation_id": 27,
+  "chart_calculation_id": 29,
   "reference_version_id": 1,
-  "subject_label": "Test",
+  "subject_label": null,
   "birth_datetime_utc": "1990-01-02T03:04:05Z",
   "chart_context": {
     "chart_type": "natal",
@@ -1502,22 +1502,22 @@
       ],
       "ruler_sources": [
         {
+          "object_code": "mars",
           "reference_version_id": 1,
           "astral_system_id": 1,
           "astral_system_code": "traditional",
           "dignity_type": "domicile",
           "weight": 1.0,
-          "is_primary": true,
-          "object_code": "mars"
+          "is_primary": true
         },
         {
+          "object_code": "pluto",
           "reference_version_id": 1,
           "astral_system_id": 2,
           "astral_system_code": "modern",
           "dignity_type": "domicile",
           "weight": 1.0,
-          "is_primary": true,
-          "object_code": "pluto"
+          "is_primary": true
         }
       ],
       "interpretive_hint": "The angle ascendant in scorpio is routed through Mars, placed in Sagittarius house 1."
@@ -1541,13 +1541,13 @@
       ],
       "ruler_sources": [
         {
+          "object_code": "sun",
           "reference_version_id": 1,
           "astral_system_id": 1,
           "astral_system_code": "traditional",
           "dignity_type": "domicile",
           "weight": 1.0,
-          "is_primary": true,
-          "object_code": "sun"
+          "is_primary": true
         }
       ],
       "interpretive_hint": "The angle mc in leo is routed through Sun, placed in Capricorn house 2."
@@ -1571,13 +1571,13 @@
         ],
         "ruler_sources": [
           {
+            "object_code": "saturn",
             "reference_version_id": 1,
             "astral_system_id": 1,
             "astral_system_code": "traditional",
             "dignity_type": "domicile",
             "weight": 1.0,
-            "is_primary": true,
-            "object_code": "saturn"
+            "is_primary": true
           }
         ],
         "interpretive_hint": "The dominant_house house_2 in capricorn is routed through Saturn, placed in Capricorn house 2."
@@ -1602,22 +1602,22 @@
         ],
         "ruler_sources": [
           {
+            "object_code": "mars",
             "reference_version_id": 1,
             "astral_system_id": 1,
             "astral_system_code": "traditional",
             "dignity_type": "domicile",
             "weight": 1.0,
-            "is_primary": true,
-            "object_code": "mars"
+            "is_primary": true
           },
           {
+            "object_code": "pluto",
             "reference_version_id": 1,
             "astral_system_id": 2,
             "astral_system_code": "modern",
             "dignity_type": "domicile",
             "weight": 1.0,
-            "is_primary": true,
-            "object_code": "pluto"
+            "is_primary": true
           }
         ],
         "interpretive_hint": "The dominant_house house_1 in scorpio is routed through Mars, placed in Sagittarius house 1."
@@ -1642,13 +1642,13 @@
         ],
         "ruler_sources": [
           {
+            "object_code": "saturn",
             "reference_version_id": 1,
             "astral_system_id": 1,
             "astral_system_code": "traditional",
             "dignity_type": "domicile",
             "weight": 1.0,
-            "is_primary": true,
-            "object_code": "saturn"
+            "is_primary": true
           }
         ],
         "interpretive_hint": "The dominant_sign capricorn in capricorn is routed through Saturn, placed in Capricorn house 2."
@@ -1662,13 +1662,13 @@
         "dispositor_signal_key": "dignity:saturn:domicile:capricorn",
         "ruler_sources": [
           {
+            "object_code": "saturn",
             "reference_version_id": 1,
             "astral_system_id": 1,
             "astral_system_code": "traditional",
             "dignity_type": "domicile",
             "weight": 1.0,
-            "is_primary": true,
-            "object_code": "saturn"
+            "is_primary": true
           }
         ],
         "interpretive_hint": "Sun in Capricorn is routed through Saturn by domicile rulership."
@@ -1680,22 +1680,22 @@
         "dispositor_signal_key": "object_position:jupiter",
         "ruler_sources": [
           {
+            "object_code": "jupiter",
             "reference_version_id": 1,
             "astral_system_id": 1,
             "astral_system_code": "traditional",
             "dignity_type": "domicile",
             "weight": 1.0,
-            "is_primary": true,
-            "object_code": "jupiter"
+            "is_primary": true
           },
           {
+            "object_code": "neptune",
             "reference_version_id": 1,
             "astral_system_id": 2,
             "astral_system_code": "modern",
             "dignity_type": "domicile",
             "weight": 1.0,
-            "is_primary": true,
-            "object_code": "neptune"
+            "is_primary": true
           }
         ],
         "interpretive_hint": "Moon in Pisces is routed through Jupiter by domicile rulership."
@@ -1707,13 +1707,13 @@
         "dispositor_signal_key": "dignity:saturn:domicile:capricorn",
         "ruler_sources": [
           {
+            "object_code": "saturn",
             "reference_version_id": 1,
             "astral_system_id": 1,
             "astral_system_code": "traditional",
             "dignity_type": "domicile",
             "weight": 1.0,
-            "is_primary": true,
-            "object_code": "saturn"
+            "is_primary": true
           }
         ],
         "interpretive_hint": "Mercury in Capricorn is routed through Saturn by domicile rulership."
@@ -1725,22 +1725,22 @@
         "dispositor_signal_key": "object_position:saturn",
         "ruler_sources": [
           {
+            "object_code": "saturn",
             "reference_version_id": 1,
             "astral_system_id": 1,
             "astral_system_code": "traditional",
             "dignity_type": "domicile",
             "weight": 1.0,
-            "is_primary": true,
-            "object_code": "saturn"
+            "is_primary": true
           },
           {
+            "object_code": "uranus",
             "reference_version_id": 1,
             "astral_system_id": 2,
             "astral_system_code": "modern",
             "dignity_type": "domicile",
             "weight": 1.0,
-            "is_primary": true,
-            "object_code": "uranus"
+            "is_primary": true
           }
         ],
         "interpretive_hint": "Venus in Aquarius is routed through Saturn by domicile rulership."
@@ -1752,13 +1752,13 @@
         "dispositor_signal_key": "object_position:jupiter",
         "ruler_sources": [
           {
+            "object_code": "jupiter",
             "reference_version_id": 1,
             "astral_system_id": 1,
             "astral_system_code": "traditional",
             "dignity_type": "domicile",
             "weight": 1.0,
-            "is_primary": true,
-            "object_code": "jupiter"
+            "is_primary": true
           }
         ],
         "interpretive_hint": "Mars in Sagittarius is routed through Jupiter by domicile rulership."
@@ -1770,13 +1770,13 @@
         "dispositor_signal_key": "object_position:moon",
         "ruler_sources": [
           {
+            "object_code": "moon",
             "reference_version_id": 1,
             "astral_system_id": 1,
             "astral_system_code": "traditional",
             "dignity_type": "domicile",
             "weight": 1.0,
-            "is_primary": true,
-            "object_code": "moon"
+            "is_primary": true
           }
         ],
         "interpretive_hint": "Jupiter in Cancer is routed through Moon by domicile rulership."
@@ -1788,13 +1788,13 @@
         "dispositor_signal_key": "dignity:saturn:domicile:capricorn",
         "ruler_sources": [
           {
+            "object_code": "saturn",
             "reference_version_id": 1,
             "astral_system_id": 1,
             "astral_system_code": "traditional",
             "dignity_type": "domicile",
             "weight": 1.0,
-            "is_primary": true,
-            "object_code": "saturn"
+            "is_primary": true
           }
         ],
         "interpretive_hint": "Saturn in Capricorn is routed through Saturn by domicile rulership."
@@ -1806,13 +1806,13 @@
         "dispositor_signal_key": "dignity:saturn:domicile:capricorn",
         "ruler_sources": [
           {
+            "object_code": "saturn",
             "reference_version_id": 1,
             "astral_system_id": 1,
             "astral_system_code": "traditional",
             "dignity_type": "domicile",
             "weight": 1.0,
-            "is_primary": true,
-            "object_code": "saturn"
+            "is_primary": true
           }
         ],
         "interpretive_hint": "Uranus in Capricorn is routed through Saturn by domicile rulership."
@@ -1824,13 +1824,13 @@
         "dispositor_signal_key": "dignity:saturn:domicile:capricorn",
         "ruler_sources": [
           {
+            "object_code": "saturn",
             "reference_version_id": 1,
             "astral_system_id": 1,
             "astral_system_code": "traditional",
             "dignity_type": "domicile",
             "weight": 1.0,
-            "is_primary": true,
-            "object_code": "saturn"
+            "is_primary": true
           }
         ],
         "interpretive_hint": "Neptune in Capricorn is routed through Saturn by domicile rulership."
@@ -1842,22 +1842,22 @@
         "dispositor_signal_key": "object_position:mars",
         "ruler_sources": [
           {
+            "object_code": "mars",
             "reference_version_id": 1,
             "astral_system_id": 1,
             "astral_system_code": "traditional",
             "dignity_type": "domicile",
             "weight": 1.0,
-            "is_primary": true,
-            "object_code": "mars"
+            "is_primary": true
           },
           {
+            "object_code": "pluto",
             "reference_version_id": 1,
             "astral_system_id": 2,
             "astral_system_code": "modern",
             "dignity_type": "domicile",
             "weight": 1.0,
-            "is_primary": true,
-            "object_code": "pluto"
+            "is_primary": true
           }
         ],
         "interpretive_hint": "Pluto in Scorpio is routed through Mars by domicile rulership."

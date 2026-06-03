@@ -1694,6 +1694,13 @@ qui melangeait final dispositor et reception mutuelle, il est considere comme
 obsolete et le runtime reconstruit un payload courant depuis les faits
 persistes au lieu d'echouer au demarrage.
 
+La reutilisation d'un payload persiste compare aussi les `ruler_sources`
+completes avec les domiciles relus depuis PostgreSQL pour la version de
+reference courante: systeme, type de dignite, objet, poids et flag primaire.
+Si la table `astral_object_sign_dignities` a ete resynchronisee apres une
+correction de referentiel, un payload structurellement valide mais construit
+avec d'anciennes sources de maitrise est rejete et reconstruit.
+
 Artefacts ajoutes:
 
 - `rust_sqlx_connection_test/schemas/natal_structured_v10.schema.json`;

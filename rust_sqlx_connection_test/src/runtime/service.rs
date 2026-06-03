@@ -14,7 +14,7 @@ use crate::repositories::RuntimeRepository;
 use crate::signals::aggregate_basic_signals;
 
 use super::error::RuntimeError;
-use super::payload_freshness::is_current_basic_payload;
+use super::payload_freshness::{has_current_rulership_references, is_current_basic_payload};
 use super::references::{validate_calculation_references, validate_chart_object_signal_profiles};
 
 pub struct ChartCalculationRuntimeService<E> {
@@ -76,7 +76,9 @@ where
                 .existing_basic_payload(completed_id, &product_code, Some(payload_language_id))
                 .await?
             {
-                if is_current_basic_payload(&payload) {
+                if is_current_basic_payload(&payload)
+                    && has_current_rulership_references(&payload, &domicile_rulers)
+                {
                     tx.commit().await?;
                     return Ok(payload);
                 }

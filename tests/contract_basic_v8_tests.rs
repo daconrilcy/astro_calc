@@ -405,6 +405,29 @@ fn v10_rulership_routes_mc_and_uses_consistent_modern_scorpio_ruler() {
 }
 
 #[test]
+fn v10_rulership_uses_current_modern_outer_planet_rulers() {
+    let payload = load_golden_payload();
+    let rulership = &payload["rulership_context"];
+    let ascendant_ruler = &rulership["ascendant_ruler"];
+
+    assert_eq!(ascendant_ruler["sign_code"], "scorpio");
+    assert!(array(ascendant_ruler, "ruler_object_codes")
+        .iter()
+        .any(|value| value == "mars"));
+    assert!(array(ascendant_ruler, "ruler_object_codes")
+        .iter()
+        .any(|value| value == "pluto"));
+    assert_modern_ruler_source(ascendant_ruler, "pluto");
+
+    assert_modern_ruler_source(find_dispositor_link(rulership, "pluto", "scorpio"), "pluto");
+    assert_modern_ruler_source(find_dispositor_link(rulership, "moon", "pisces"), "neptune");
+    assert_modern_ruler_source(
+        find_dispositor_link(rulership, "venus", "aquarius"),
+        "uranus",
+    );
+}
+
+#[test]
 fn v10_rulership_splits_final_dispositors_from_mutual_receptions() {
     let payload = load_golden_payload();
     let rulership = &payload["rulership_context"];
@@ -480,6 +503,29 @@ fn assert_ruler_sources_map_to_objects(context: &Value) {
             "ruler source object_code {object_code} should be listed in ruler_object_codes"
         );
     }
+}
+
+fn find_dispositor_link<'a>(
+    rulership: &'a Value,
+    object_code: &str,
+    object_sign_code: &str,
+) -> &'a Value {
+    array(rulership, "dispositor_links")
+        .iter()
+        .find(|link| {
+            link["object_code"] == object_code && link["object_sign_code"] == object_sign_code
+        })
+        .unwrap_or_else(|| panic!("missing dispositor link {object_code}/{object_sign_code}"))
+}
+
+fn assert_modern_ruler_source(context: &Value, expected_object_code: &str) {
+    assert!(
+        array(context, "ruler_sources").iter().any(|source| {
+            source["astral_system_code"] == "modern"
+                && source["object_code"] == expected_object_code
+        }),
+        "missing modern ruler source {expected_object_code}"
+    );
 }
 
 fn assert_angle_opposite(angles: &[Value], angle_code: &str, opposite_angle_code: &str) {

@@ -113,4 +113,3 @@ fn dynamic_quality_aspect_hint_phrase(aspect: &AspectFact) -> &'static str {
         _ => "a relationship",
     }
 }
-
