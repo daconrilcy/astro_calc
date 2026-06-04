@@ -11,6 +11,9 @@ pub struct EngineParams {
     /// Si absent ou vide : `llm_product_default_engine` pour le produit, sinon `ASTRAL_LLM_DEFAULT_MODEL`.
     #[serde(default)]
     pub model: Option<String>,
+    /// SummarySynthesizer uniquement ; sinon `economic_model` produit si `model` absent.
+    #[serde(default)]
+    pub summary_model: Option<String>,
     pub reasoning_effort: Option<ReasoningEffort>,
     pub temperature: Option<f32>,
     pub max_output_tokens: Option<u32>,

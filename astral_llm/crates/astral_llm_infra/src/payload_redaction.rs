@@ -85,6 +85,7 @@ mod tests {
                 allow_fallback: false,
                 timeout_ms: None,
                 allow_oracle_benchmark: false,
+                summary_model: None,
             },
             response_contract: astral_llm_domain::ResponseContract {
                 output_schema_version: "natal_reading_v1".into(),

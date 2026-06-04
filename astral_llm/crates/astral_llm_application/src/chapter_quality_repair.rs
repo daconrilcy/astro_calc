@@ -9,6 +9,7 @@ use astral_llm_domain::{
 use crate::engine_defaults::ResolvedEngineParams;
 use crate::execution_audit::ExecutionAudit;
 use crate::prompt_compiler::PromptBundle;
+use crate::reading_opening_diversity_validator::OpeningViolation;
 use crate::reading_quality_validator::{PremiumQualityThresholds, ReadingQualityValidator};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -24,7 +25,7 @@ pub enum ChapterRepairKind {
         orphan_object_codes: Vec<String>,
     },
     OpeningDiversity {
-        phrases: Vec<String>,
+        violations: Vec<OpeningViolation>,
     },
 }
 
@@ -290,12 +291,11 @@ pub fn append_repair_instructions(
                 chapter.code, missing_pack_fact_ids, orphan_object_codes
             ));
         }
-        ChapterRepairKind::OpeningDiversity { phrases } => {
+        ChapterRepairKind::OpeningDiversity { .. } => {
             bundle.task_instructions.push_str(&format!(
-                "\n\nREPAIR (opening diversity): Chapter '{}'. \
-                 Use a fresh chapter opening (first 5 words unique vs prior chapters) \
-                 and fresh paragraph openings (first 4 words). Conflicts: {:?}",
-                chapter.code, phrases
+                "\n\nREPAIR (opening diversity): Chapter '{}' — rewrite the full body; \
+                 follow the detailed banned-opening list below.",
+                chapter.code
             ));
         }
     }

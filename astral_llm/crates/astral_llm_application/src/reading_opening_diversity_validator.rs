@@ -8,12 +8,13 @@ use astral_llm_domain::{
 
 use crate::text_trigrams::{
     chapter_opening_phrase, detect_duplicate_openings, openings_to_avoid_from_prior,
-    STOCK_OPENINGS_FR,
+    paragraph_opening_phrases, source_chapter_from_duplicate_kind,
+    is_planet_in_sign_paragraph_opening, STOCK_OPENINGS_FR,
 };
 
 pub struct ReadingOpeningDiversityValidator;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OpeningViolation {
     pub chapter_code: String,
     pub phrase: String,
@@ -57,33 +58,66 @@ impl ReadingOpeningDiversityValidator {
         locale: &str,
         violations: &[OpeningViolation],
     ) {
-        let avoid = openings_to_avoid_from_prior(
-            &prior_chapters.iter().map(|c| c.body.as_str()).collect::<Vec<_>>(),
-            locale,
-            8,
-        );
+        let prior_bodies: Vec<&str> = prior_chapters.iter().map(|c| c.body.as_str()).collect();
+        let avoid = openings_to_avoid_from_prior(&prior_bodies, locale, 24);
+        let chapter_violations: Vec<_> = violations
+            .iter()
+            .filter(|v| v.chapter_code == chapter.code)
+            .collect();
+
         bundle.task_instructions.push_str(&format!(
-            "\n\nREPAIR (opening diversity): Chapter '{}'. \
-             Rewrite with a distinct chapter opening (first 5 words must differ from prior chapters) \
-             and distinct paragraph openings (first 4 words per paragraph). \
-             Do not reuse stock formulas.",
+            "\n\nREPAIR (opening diversity) — chapter '{}': rewrite the entire body. \
+             First 5 words of the chapter and first 4 words of EACH paragraph must be unique \
+             across the whole reading. Do not paraphrase a banned opening: change structure.",
             chapter.code
         ));
-        if !avoid.is_empty() {
-            bundle.task_instructions.push_str("\nBanned opening phrases from prior chapters:\n");
-            for p in &avoid {
+
+        let mut banned: Vec<String> = Vec::new();
+        let mut push_banned = |p: String| {
+            if p.split_whitespace().count() >= 3 && !banned.iter().any(|x| x == &p) {
+                banned.push(p);
+            }
+        };
+
+        for p in avoid {
+            push_banned(p);
+        }
+        for v in &chapter_violations {
+            push_banned(v.phrase.clone());
+            if let Some(source_code) = source_chapter_from_duplicate_kind(&v.kind) {
+                if let Some(src) = prior_chapters.iter().find(|c| c.code == source_code) {
+                    push_banned(chapter_opening_phrase(&src.body, locale));
+                    for para in paragraph_opening_phrases(&src.body) {
+                        push_banned(para);
+                    }
+                }
+            }
+        }
+
+        if !banned.is_empty() {
+            bundle.task_instructions.push_str(
+                "\nForbidden sentence openings (do not start the chapter or any paragraph with these):\n",
+            );
+            for p in &banned {
                 bundle.task_instructions.push_str(&format!("- \"{p}\"\n"));
             }
         }
-        for v in violations.iter().filter(|v| v.chapter_code == chapter.code) {
-            bundle.task_instructions.push_str(&format!(
-                "- Conflicting opening ({}) : \"{}\"\n",
-                v.kind, v.phrase
-            ));
+
+        let needs_astro_rule = chapter_violations
+            .iter()
+            .any(|v| is_planet_in_sign_paragraph_opening(&v.phrase))
+            || banned.iter().any(|p| is_planet_in_sign_paragraph_opening(p));
+        if needs_astro_rule {
+            bundle.task_instructions.push_str(
+                "\nPlacement citations: do NOT open any paragraph with « [planet] en [sign] en » \
+                 (e.g. Jupiter en Cancer en…, Saturne en Capricorne en…). \
+                 Start with house, aspect, life domain, or an interpretive verb; name the planet later in the sentence.\n",
+            );
         }
+
         if locale == "fr" {
             bundle.task_instructions.push_str(
-                "\nAvoid reusing these stock openings if already used earlier in the reading:\n",
+                "\nStock formulas already used elsewhere — do not reuse as openings:\n",
             );
             for s in STOCK_OPENINGS_FR {
                 bundle.task_instructions.push_str(&format!("- {s}\n"));

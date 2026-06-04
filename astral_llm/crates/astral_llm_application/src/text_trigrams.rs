@@ -86,6 +86,18 @@ pub fn is_generic_paragraph_opening(phrase: &str) -> bool {
         .any(|prefix| phrase.starts_with(prefix))
 }
 
+/// Amorce « planète en signe en » (ex. jupiter en cancer en) — collision frequente entre chapitres.
+pub fn is_planet_in_sign_paragraph_opening(phrase: &str) -> bool {
+    let words: Vec<&str> = phrase.split_whitespace().collect();
+    words.len() >= 4 && words[1] == "en" && words[3] == "en"
+}
+
+pub fn source_chapter_from_duplicate_kind(kind: &str) -> Option<&str> {
+    kind.strip_prefix("chapter_opening_duplicate_of:")
+        .or_else(|| kind.strip_prefix("paragraph_opening_duplicate_of:"))
+        .or_else(|| kind.strip_prefix("stock_opening_duplicate_of:"))
+}
+
 fn normalize_opening_words(text: &str) -> String {
     text.split_whitespace()
         .take(8)
@@ -226,6 +238,20 @@ pub fn phrases_to_avoid_from_prior(prior_bodies: &[&str], locale: &str, max: usi
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn planet_in_sign_opening_pattern() {
+        assert!(is_planet_in_sign_paragraph_opening("jupiter en cancer en"));
+        assert!(!is_planet_in_sign_paragraph_opening("par ailleurs la presence"));
+    }
+
+    #[test]
+    fn parses_duplicate_source_chapter() {
+        assert_eq!(
+            source_chapter_from_duplicate_kind("paragraph_opening_duplicate_of:career"),
+            Some("career")
+        );
+    }
 
     #[test]
     fn ignores_grammatical_trigrams() {

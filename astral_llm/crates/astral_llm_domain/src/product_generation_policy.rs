@@ -23,6 +23,8 @@ pub struct ProductGenerationPolicy {
     /// Moteur par defaut si `engine.provider` / `engine.model` absents (charge depuis `llm_product_default_engine`).
     pub default_provider: Option<ProviderKind>,
     pub default_model: Option<String>,
+    /// SummarySynthesizer si `engine.model` absent — voir `config/llm_product_models.conf`.
+    pub economic_model: Option<String>,
 }
 
 impl ProductGenerationPolicy {
@@ -49,6 +51,7 @@ impl ProductGenerationPolicy {
             min_interpretive_astro_basis_refs_per_chapter: 0,
             default_provider: None,
             default_model: None,
+            economic_model: None,
         }
     }
 
@@ -72,6 +75,7 @@ impl ProductGenerationPolicy {
             min_interpretive_astro_basis_refs_per_chapter: 1,
             default_provider: None,
             default_model: None,
+            economic_model: None,
         }
     }
 

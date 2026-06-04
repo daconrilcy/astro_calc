@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use astral_llm_domain::{
+    model_usage_tier::ModelRouteContext,
     provider::{ProviderKind, StructuredOutputMode},
     FallbackPolicy, FallbackReason, GenerationError, GenerationErrorCode, PrivacyPolicy,
 };
@@ -74,6 +75,7 @@ impl ProviderRouter {
         requested_model: &str,
         allow_fallback: bool,
         require_strict_schema: bool,
+        route_context: ModelRouteContext,
     ) -> Result<ProviderRouteResult, GenerationError> {
         if matches!(requested_provider, ProviderKind::Custom(_)) {
             return Err(GenerationError::new(
@@ -83,6 +85,7 @@ impl ProviderRouter {
         }
 
         self.capability_registry.validate_request_capabilities(
+            route_context,
             &requested_provider,
             requested_model,
             request.reasoning_effort,
@@ -342,6 +345,7 @@ mod tests {
                 "fake-model",
                 false,
                 false,
+                ModelRouteContext::PrimaryReading,
             )
             .await
             .expect("ok");

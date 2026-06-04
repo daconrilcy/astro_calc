@@ -154,12 +154,13 @@ impl ModelCapabilityRegistry {
 
     pub fn validate_request_capabilities(
         &self,
+        route_context: ModelRouteContext,
         provider: &ProviderKind,
         model: &str,
         reasoning_effort: Option<ReasoningEffort>,
         require_strict_schema: bool,
     ) -> Result<(), GenerationError> {
-        self.validate_engine_for_context(ModelRouteContext::PrimaryReading, provider, model, false)?;
+        self.validate_engine_for_context(route_context, provider, model, false)?;
         let cap = self.require(provider, model)?;
         if let Some(effort) = reasoning_effort {
             if !cap.allows_reasoning(effort) {
@@ -370,6 +371,7 @@ mod tests {
     fn rejects_reasoning_on_gpt4o_mini() {
         let registry = ModelCapabilityRegistry::bootstrap_dev_fallback();
         let err = registry.validate_request_capabilities(
+            ModelRouteContext::PrimaryReading,
             &ProviderKind::OpenAi,
             "gpt-4o-mini",
             Some(ReasoningEffort::High),
@@ -382,6 +384,7 @@ mod tests {
     fn rejects_reasoning_on_gpt41() {
         let registry = ModelCapabilityRegistry::bootstrap_dev_fallback();
         let err = registry.validate_request_capabilities(
+            ModelRouteContext::PrimaryReading,
             &ProviderKind::OpenAi,
             "gpt-4.1",
             Some(ReasoningEffort::Medium),

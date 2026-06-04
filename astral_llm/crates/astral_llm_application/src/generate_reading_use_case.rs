@@ -21,7 +21,7 @@ use crate::chapter_orchestrator::{new_run_id, ChapterOrchestrator};
 use crate::domain_resolver::DomainResolver;
 use crate::engine_defaults::{
     drop_unsupported_reasoning, drop_unsupported_temperature, resolve_engine_params,
-    resolve_service_engine_defaults, ResolvedEngineParams,
+    resolve_service_engine_defaults, resolve_subtask_engine, ResolvedEngineParams,
 };
 use crate::execution_audit::ExecutionAudit;
 use crate::reasoning_generation::{
@@ -143,11 +143,31 @@ impl GenerateReadingUseCase {
             ProductPolicyValidator::validate(request, &self.catalog, &engine.provider, &engine.model)?;
 
         self.router.capability_registry().validate_request_capabilities(
+            ModelRouteContext::PrimaryReading,
             &engine.provider,
             &engine.model,
             engine.reasoning_effort,
             true,
         )?;
+
+        if matches!(
+            request.response_contract.generation_mode,
+            GenerationMode::ChapterOrchestrated
+        ) {
+            let summary_engine = resolve_subtask_engine(
+                &engine,
+                &request.engine,
+                &self.catalog,
+                &request.product_context.product_code,
+            );
+            self.router.capability_registry().validate_request_capabilities(
+                ModelRouteContext::Subtask,
+                &summary_engine.provider,
+                &summary_engine.model,
+                engine.reasoning_effort,
+                true,
+            )?;
+        }
 
         if !self.privacy_policy.allow_external_provider
             && engine.provider != ProviderKind::Fake
@@ -343,6 +363,7 @@ impl GenerateReadingUseCase {
                 &engine.model,
                 engine.allow_fallback,
                 true,
+                ModelRouteContext::PrimaryReading,
             )
             .await?;
 

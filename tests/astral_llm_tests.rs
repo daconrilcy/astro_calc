@@ -63,6 +63,7 @@ fn sample_request(mode: GenerationMode) -> GenerateReadingRequest {
             allow_fallback: false,
             timeout_ms: Some(30_000),
             allow_oracle_benchmark: false,
+            summary_model: None,
         },
     )
 }
@@ -217,6 +218,7 @@ async fn configured_fallback_without_openai_first() {
             allow_fallback: true,
             timeout_ms: Some(30_000),
             allow_oracle_benchmark: false,
+            summary_model: None,
         },
     );
 

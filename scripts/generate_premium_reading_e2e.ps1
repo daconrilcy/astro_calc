@@ -5,6 +5,7 @@ param(
     [string]$BaseUrl = "",
     [string]$ApiKey = "",
     [string]$Model = "",
+    [string]$SummaryModel = "",
     [string]$Provider = "",
     [int]$TimeoutSec = 600
 )
@@ -76,6 +77,97 @@ function Convert-PremiumE2eResponse {
     }
 }
 
+function Get-PremiumE2eAuditHeaders {
+    param([string]$ApiKey)
+
+    $auditHeaders = @{}
+    if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
+        $auditHeaders["Authorization"] = "Bearer $ApiKey"
+    }
+    return $auditHeaders
+}
+
+function Write-PremiumRunStepSummary {
+    param(
+        [Parameter(Mandatory = $true)]
+        $Audit
+    )
+
+    Write-Host ""
+    Write-Host "=== Resume audit ($($Audit.run_id)) ==="
+    $requested = if ($Audit.model_requested) { $Audit.model_requested } else { "-" }
+    $used = if ($Audit.model_used) { $Audit.model_used } else { "-" }
+    $fallback = if ($Audit.fallback_used) { "oui" } else { "non" }
+    Write-Host ("Moteur run : {0} -> {1} (fallback {2}) | {3} ms | {4} in / {5} out" -f `
+        $requested, $used, $fallback, $Audit.latency_ms, $Audit.token_input, $Audit.token_output)
+
+    if (-not $Audit.steps -or $Audit.steps.Count -eq 0) {
+        Write-Host "Aucun step persiste (persistence desactivee ?)."
+        return
+    }
+
+    Write-Host ""
+    Write-Host ("{0,-16} {1,-14} {2,-10} {3,7} {4,7} {5,7}" -f "Step", "Modele", "Statut", "In", "Out", "ms")
+    Write-Host ("{0}" -f ("-" * 65))
+
+    $chapterIn = 0
+    $chapterOut = 0
+    $chapterMs = 0
+    $summaryIn = 0
+    $summaryOut = 0
+    $summaryMs = 0
+
+    foreach ($step in $Audit.steps) {
+        $code = if ($step.chapter_code) { $step.chapter_code } else { "-" }
+        $model = if ($step.model) { $step.model } else { "-" }
+        $status = if ($step.status) { $step.status } else { "-" }
+        $inTok = if ($null -ne $step.input_tokens) { [int]$step.input_tokens } else { 0 }
+        $outTok = if ($null -ne $step.output_tokens) { [int]$step.output_tokens } else { 0 }
+        $ms = if ($null -ne $step.latency_ms) { [int]$step.latency_ms } else { 0 }
+
+        Write-Host ("{0,-16} {1,-14} {2,-10} {3,7} {4,7} {5,7}" -f $code, $model, $status, $inTok, $outTok, $ms)
+
+        if ($code -eq "summary") {
+            $summaryIn += $inTok
+            $summaryOut += $outTok
+            $summaryMs += $ms
+        } else {
+            $chapterIn += $inTok
+            $chapterOut += $outTok
+            $chapterMs += $ms
+        }
+    }
+
+    Write-Host ("{0}" -f ("-" * 65))
+    Write-Host ("{0,-16} {1,-14} {2,-10} {3,7} {4,7} {5,7}" -f `
+        "TOTAL chapitres", "", "", $chapterIn, $chapterOut, $chapterMs)
+    if ($summaryIn -gt 0 -or $summaryOut -gt 0) {
+        Write-Host ("{0,-16} {1,-14} {2,-10} {3,7} {4,7} {5,7}" -f `
+            "TOTAL summary", "", "", $summaryIn, $summaryOut, $summaryMs)
+    }
+    Write-Host ""
+}
+
+function Show-PremiumRunAuditSummary {
+    param(
+        [string]$RunId,
+        [string]$BaseUrl,
+        [string]$ApiKey
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RunId)) {
+        return
+    }
+
+    $auditUri = "{0}/v1/runs/{1}" -f $BaseUrl.TrimEnd("/"), $RunId
+    try {
+        $audit = Invoke-RestMethod -Uri $auditUri -Headers (Get-PremiumE2eAuditHeaders -ApiKey $ApiKey)
+        Write-PremiumRunStepSummary -Audit $audit
+    } catch {
+        Write-Host "Resume audit indisponible ($auditUri) : $_"
+    }
+}
+
 Import-DotEnv (Join-Path $repoRoot ".env")
 
 if ([string]::IsNullOrWhiteSpace($IdempotencyKey)) {
@@ -140,28 +232,42 @@ if (-not $bodyObject.engine) {
     $bodyObject | Add-Member -NotePropertyName engine -NotePropertyValue $emptyEngine -Force
 }
 if (-not [string]::IsNullOrWhiteSpace($Provider)) {
-    $bodyObject.engine.provider = $Provider
+    $bodyObject.engine | Add-Member -NotePropertyName provider -NotePropertyValue $Provider -Force
 }
 if (-not [string]::IsNullOrWhiteSpace($Model)) {
-    $bodyObject.engine.model = $Model
+    $bodyObject.engine | Add-Member -NotePropertyName model -NotePropertyValue $Model -Force
+}
+if (-not [string]::IsNullOrWhiteSpace($SummaryModel)) {
+    $bodyObject.engine | Add-Member -NotePropertyName summary_model -NotePropertyValue $SummaryModel -Force
 }
 
 $body = $bodyObject | ConvertTo-Json -Depth 20 -Compress
 
-if ($bodyObject.engine.model) {
-    $engineModel = $bodyObject.engine.model
+$engineModelProp = $bodyObject.engine.PSObject.Properties["model"]
+if ($engineModelProp -and -not [string]::IsNullOrWhiteSpace([string]$engineModelProp.Value)) {
+    $engineModel = [string]$engineModelProp.Value
 } else {
-    $engineModel = "defaut produit ou service"
+    $engineModel = "defaut produit (chapitres)"
 }
-if ($bodyObject.engine.provider) {
-    $engineProvider = $bodyObject.engine.provider
+$summaryModelProp = $bodyObject.engine.PSObject.Properties["summary_model"]
+if ($summaryModelProp -and -not [string]::IsNullOrWhiteSpace([string]$summaryModelProp.Value)) {
+    $summaryModelLabel = [string]$summaryModelProp.Value
+} elseif (-not $engineModelProp -or [string]::IsNullOrWhiteSpace([string]$engineModelProp.Value)) {
+    $summaryModelLabel = "economic_model produit (ex. gpt-5-nano)"
+} else {
+    $summaryModelLabel = "meme que chapitres (-Model force les deux)"
+}
+$engineProviderProp = $bodyObject.engine.PSObject.Properties["provider"]
+if ($engineProviderProp -and -not [string]::IsNullOrWhiteSpace([string]$engineProviderProp.Value)) {
+    $engineProvider = [string]$engineProviderProp.Value
 } else {
     $engineProvider = "defaut service"
 }
 
 Write-Host "POST $uri"
 Write-Host "Request : $RequestPath"
-Write-Host "Engine  : $engineProvider / $engineModel"
+Write-Host "Modeles prod : config\llm_product_models.conf -> .\scripts\set_product_llm_models.ps1 -Show"
+Write-Host "Engine  : $engineProvider / $engineModel (summary: $summaryModelLabel)"
 Write-Host "Idempotency-Key : $IdempotencyKey"
 Write-Host "Output  : $OutputPath"
 
@@ -202,6 +308,9 @@ try {
     if ($raw.StatusCode -ge 200 -and $raw.StatusCode -lt 300) {
         $payloadText | Set-Content -LiteralPath $OutputPath -Encoding utf8
         Write-Host "Reponse enregistree dans $OutputPath"
+        if ($null -ne $response -and $null -ne $response.run_id) {
+            Show-PremiumRunAuditSummary -RunId $response.run_id -BaseUrl $BaseUrl -ApiKey $ApiKey
+        }
         exit 0
     }
 
@@ -219,8 +328,28 @@ try {
     }
 
     if ($errorCode -eq "READING_QUALITY_FAILED") {
-        Write-Host "Echec qualite editoriale. Voir logs API et audit run."
+        Write-Host "Echec qualite editoriale."
+        if ($null -ne $response.error.message) {
+            Write-Host "  Message : $($response.error.message)"
+        }
+        if ($null -ne $response.error.details -and $null -ne $response.error.details.violations) {
+            Write-Host "  Violations :"
+            foreach ($v in $response.error.details.violations) {
+                $ch = if ($v.chapter) { $v.chapter } else { "-" }
+                $kind = if ($v.kind) { $v.kind } else { "-" }
+                $phrase = if ($v.phrase) { $v.phrase } else { "" }
+                Write-Host "    - [$ch] $kind : `"$phrase`""
+            }
+        }
+        Write-Host "  Relancer ou mettre a jour astral_llm_api (repair opening : jusqu'a 8 tours, consignes renforcees)."
+        if ($null -ne $response.run_id) {
+            Show-PremiumRunAuditSummary -RunId $response.run_id -BaseUrl $BaseUrl -ApiKey $ApiKey
+        }
         exit 2
+    }
+
+    if ($null -ne $response -and $null -ne $response.run_id) {
+        Show-PremiumRunAuditSummary -RunId $response.run_id -BaseUrl $BaseUrl -ApiKey $ApiKey
     }
 
     exit 1

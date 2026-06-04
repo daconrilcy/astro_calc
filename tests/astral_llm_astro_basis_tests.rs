@@ -106,6 +106,7 @@ fn premium_request(data: serde_json::Value) -> GenerateReadingRequest {
             allow_fallback: false,
             timeout_ms: Some(30_000),
             allow_oracle_benchmark: false,
+            summary_model: None,
         },
         response_contract: ResponseContract {
             output_schema_version: "natal_reading_v1".into(),

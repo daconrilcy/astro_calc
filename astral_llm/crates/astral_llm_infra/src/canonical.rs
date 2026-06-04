@@ -115,6 +115,7 @@ pub async fn load_canonical_catalog(pool: &sqlx::PgPool) -> CanonicalCatalog {
                         },
                         default_provider: None,
                         default_model: None,
+                        economic_model: None,
                     }
                 },
             )
@@ -421,8 +422,9 @@ pub fn bootstrap_zodiac_sign_labels() -> HashMap<(String, String), String> {
 }
 
 async fn attach_product_default_engine(pool: &sqlx::PgPool, catalog: &mut CanonicalCatalog) {
-    let Ok(rows) = sqlx::query_as::<_, (String, String, String)>(
-        "SELECT product_code, default_provider, default_model FROM llm_product_default_engine WHERE is_active = true",
+    let Ok(rows) = sqlx::query_as::<_, (String, String, String, Option<String>)>(
+        "SELECT product_code, default_provider, default_model, economic_model \
+         FROM llm_product_default_engine WHERE is_active = true",
     )
     .fetch_all(pool)
     .await
@@ -430,7 +432,7 @@ async fn attach_product_default_engine(pool: &sqlx::PgPool, catalog: &mut Canoni
         return;
     };
 
-    for (product_code, provider, model) in rows {
+    for (product_code, provider, model, economic) in rows {
         let Some(provider_kind) = parse_catalog_provider(&provider) else {
             continue;
         };
@@ -443,6 +445,7 @@ async fn attach_product_default_engine(pool: &sqlx::PgPool, catalog: &mut Canoni
         };
         policy.default_provider = Some(provider_kind);
         policy.default_model = Some(model);
+        policy.economic_model = economic.filter(|m| !m.trim().is_empty());
     }
 }
 

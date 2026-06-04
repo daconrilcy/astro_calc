@@ -110,6 +110,24 @@ fn subtask_tier_allowed_for_summary_context() {
             false,
         )
         .is_err());
+    registry
+        .validate_request_capabilities(
+            ModelRouteContext::Subtask,
+            &ProviderKind::OpenAi,
+            "gpt-5.4-nano",
+            None,
+            true,
+        )
+        .expect("subtask route must accept nano for summary");
+    assert!(registry
+        .validate_request_capabilities(
+            ModelRouteContext::PrimaryReading,
+            &ProviderKind::OpenAi,
+            "gpt-5.4-nano",
+            None,
+            true,
+        )
+        .is_err());
 }
 
 #[test]

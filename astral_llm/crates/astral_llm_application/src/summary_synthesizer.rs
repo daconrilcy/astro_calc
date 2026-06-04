@@ -140,6 +140,7 @@ impl<'a> SummarySynthesizer<'a> {
                 &engine.model,
                 engine.allow_fallback,
                 true,
+                ModelRouteContext::Subtask,
             )
             .await?;
 

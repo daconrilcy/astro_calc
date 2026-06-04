@@ -24,7 +24,7 @@ impl ChapterWritingGuidance {
         let locale = AstroLabelHumanizer::locale_key(language);
         let prior_bodies: Vec<&str> = prior_chapters.iter().map(|c| c.body.as_str()).collect();
         let avoid_phrases = phrases_to_avoid_from_prior(&prior_bodies, locale, MAX_PRIOR_PHRASES);
-        let avoid_openings = openings_to_avoid_from_prior(&prior_bodies, locale, 8);
+        let avoid_openings = openings_to_avoid_from_prior(&prior_bodies, locale, 16);
 
         let mut block = format!(
             "\n\n--- CHAPTER WRITING STRUCTURE (chapter '{}') ---\n\

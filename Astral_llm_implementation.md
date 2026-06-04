@@ -43,7 +43,7 @@ Circuit breaker, ChapterOrchestrator
 
 ### Phase d'optimisation (suite logique, hors Evidence Planner)
 
-1. **OpenAI** : comparer cout / latence / qualite par modele (`gpt-4.1`, mini, etc.) sur le meme golden E2E.
+1. **OpenAI** : comparer cout / latence / qualite par modele sur le meme golden E2E ; changer les modeles via `config/llm_product_models.conf` + `set_product_llm_models.ps1`.
 2. **Mistral / Anthropic** : `cargo test -p astral_llm_providers --test provider_real_smoke -- --ignored` puis E2E Premium quand cles disponibles.
 3. **Referentiel evidence** : enrichir progressivement les slots (noeuds, phases lunaires, dignites mineures, patterns d'aspects) via tables canoniques — pas de constantes en code.
 4. **Style redactionnel** : allegement cible des consignes prompt / guidance pour une prose moins « structuree par contraintes », sans casser les garde-fous qualite.
@@ -403,6 +403,37 @@ L'override `safety_policy` ne peut que **renforcer** les regles obligatoires. Pa
 
 Reponse safety standardisee : `status`, `error.code`, `category`, `rule_id`, `violations`.
 
+## Modeles LLM par produit
+
+Configuration operationnelle (sans toucher au code Rust) :
+
+| Etape | Commande |
+|---|---|
+| 1. Editer | `config/llm_product_models.conf` — une ligne par produit : `product_code` `chapter_model` `summary_model` `[provider]` |
+| 2. Appliquer | `.\scripts\set_product_llm_models.ps1` |
+| 3. Redemarrer | `astral_llm_api` (catalogue recharge au boot) |
+| Verifier | `.\scripts\set_product_llm_models.ps1 -Show` |
+
+Exemple fichier :
+
+```text
+natal_premium	gpt-5.4-mini	gpt-5-nano	openai
+```
+
+Exemple CLI (sans modifier le fichier) :
+
+```powershell
+.\scripts\set_product_llm_models.ps1 -Product natal_premium -Chapters gpt-5.4-mini -Summary gpt-5-nano
+```
+
+Comportement runtime :
+
+- **Chapitres** : colonne SQL `default_model` (si `engine.model` absent de la requete).
+- **Summary** : colonne SQL `economic_model` (si `engine.model` absent).
+- **Test ponctuel** (sans changer la base) : `engine.model`, `engine.summary_model`, ou `generate_premium_reading_e2e.ps1 -Model` / `-SummaryModel`.
+
+Valeurs Premium actuelles (2026-06-04) : chapitres `gpt-5.4-mini`, summary `gpt-5-nano`.
+
 ### Referentiels canoniques (base)
 
 Tables (ou bootstrap si DB vide) :
@@ -423,7 +454,7 @@ Tables (ou bootstrap si DB vide) :
 - OpenAI Responses API (GPT-5) : `openai_adapter` agrege les blocs `output[].type=message`
 - Validation contexte : `PrimaryReading` (chapitres), `Subtask` (summary/repair), `OracleBenchmark` (oracle explicite)
 - `llm_product_allowed_models` — modeles autorises par `product_code` (ex. `natal_premium` + gpt-5.4-mini). Liste vide en politique = pas de filtre modele
-- `llm_product_default_engine` — moteur par defaut si `engine.model` absent (`natal_premium` → `gpt-5.4-mini`). Surcharge : champ JSON ou `generate_premium_reading_e2e.ps1 -Model`
+- `llm_product_default_engine` — `default_model` (chapitres), `economic_model` (summary) ; voir section **Modeles LLM par produit**
 - `llm_product_generation_policies`
 
 Les valeurs metier ne sont pas dupliquees en constantes Rust lorsqu'elles existent en base.
@@ -444,7 +475,7 @@ Les valeurs metier ne sont pas dupliquees en constantes Rust lorsqu'elles existe
 
 - **DomainResolver** : domaines avant LLM (scores astro, preferred, politique produit)
 - **ReadingPlanBuilder** : validation du plan chapitres
-- **ChapterOrchestrator** : un appel LLM par chapitre ; statuts `generated`, `repaired`, `failed`, etc. ; **retry automatique** si chapitre sous `min_words` (2 tentatives, `max_words` non bloquant) ; retry repetition (trigrammes, 3 tentatives) ; **anti-repetition en amont** : `chapter_structure.md`, `ChapterWritingGuidance` (4 paragraphes, phrases des chapitres precedents, amorces interdites) ; score trigrammes sans mots grammaticaux (`text_trigrams`) ; safety par chapitre
+- **ChapterOrchestrator** : un appel LLM par chapitre ; **summary** via `resolve_subtask_engine` (`economic_model` si la requete ne fixe pas `engine.model`) ; statuts `generated`, `repaired`, `failed`, etc. ; **retry automatique** si chapitre sous `min_words` (2 tentatives, `max_words` non bloquant) ; retry repetition (trigrammes, 3 tentatives) ; **anti-repetition en amont** : `chapter_structure.md`, `ChapterWritingGuidance` (4 paragraphes, phrases des chapitres precedents, amorces interdites) ; score trigrammes sans mots grammaticaux (`text_trigrams`) ; safety par chapitre
 - **ExecutionAudit** : steps dans `llm_generation_steps`
 - **Token budget** : plafonds par chapitre / global
 

@@ -30,7 +30,10 @@ use crate::chapter_quality_repair::{
     retry_chapter_on_min_words, ChapterRepairKind,
 };
 use crate::domain_resolver::DomainResolver;
-use crate::engine_defaults::ResolvedEngineParams;
+use crate::engine_defaults::{
+    drop_unsupported_reasoning, drop_unsupported_temperature, resolve_subtask_engine,
+    ResolvedEngineParams,
+};
 use crate::execution_audit::ExecutionAudit;
 use crate::product_policy_validator::ProductPolicyValidator;
 use crate::prompt_compiler::{PromptCompilationInput, PromptCompiler};
@@ -398,15 +401,24 @@ impl<'a> ChapterOrchestrator<'a> {
         }
 
         let summary_started = Instant::now();
+        let mut summary_engine = resolve_subtask_engine(
+            engine,
+            &request.engine,
+            self.catalog,
+            &request.product_context.product_code,
+        );
+        let registry = self.router.capability_registry();
+        drop_unsupported_reasoning(&mut summary_engine, registry);
+        drop_unsupported_temperature(&mut summary_engine, registry);
         let synthesizer =
             SummarySynthesizer::new(self.router, self.validator, self.catalog);
         let summary_result = synthesizer
-            .synthesize(request, &generated, engine, safety_policy, run_id)
+            .synthesize(request, &generated, &summary_engine, safety_policy, run_id)
             .await?;
         audit.record_chapter_step(
             "summary",
-            &used_provider,
-            &used_model,
+            summary_engine.provider.as_str(),
+            &summary_engine.model,
             ChapterGenerationStatus::Generated,
             summary_result.input_tokens,
             summary_result.output_tokens,
@@ -471,7 +483,7 @@ impl<'a> ChapterOrchestrator<'a> {
         generated: &mut Vec<ReadingChapter>,
         audit: &mut ExecutionAudit,
     ) -> Result<(), GenerationError> {
-        const MAX_ROUNDS: usize = 6;
+        const MAX_ROUNDS: usize = 8;
 
         for round in 0..MAX_ROUNDS {
             let violations = ReadingOpeningDiversityValidator::detect(generated, locale);
@@ -507,10 +519,10 @@ impl<'a> ChapterOrchestrator<'a> {
                 };
                 let prior: Vec<ReadingChapter> = generated[..idx].to_vec();
                 let pack = pack_for_chapter(chapter_packs, &target_code);
-                let phrases: Vec<String> = violations
+                let chapter_violations: Vec<_> = violations
                     .iter()
                     .filter(|v| v.chapter_code == target_code)
-                    .map(|v| v.phrase.clone())
+                    .cloned()
                     .collect();
                 let started = Instant::now();
                 match self
@@ -525,7 +537,9 @@ impl<'a> ChapterOrchestrator<'a> {
                         &prior,
                         run_id,
                         product_policy,
-                        Some(ChapterRepairKind::OpeningDiversity { phrases }),
+                        Some(ChapterRepairKind::OpeningDiversity {
+                            violations: chapter_violations,
+                        }),
                     )
                     .await
                 {
@@ -614,6 +628,15 @@ impl<'a> ChapterOrchestrator<'a> {
 
         if let Some(ref repair_kind) = repair {
             append_repair_instructions(&mut bundle, chapter, repair_kind.clone());
+            if let ChapterRepairKind::OpeningDiversity { violations } = repair_kind {
+                ReadingOpeningDiversityValidator::append_opening_repair_directives(
+                    &mut bundle,
+                    chapter,
+                    prior_chapters,
+                    &AstroLabelHumanizer::locale_key(&request.product_context.user_language),
+                    violations,
+                );
+            }
         }
 
         let messages = self.compiler.to_provider_messages(&bundle);
@@ -706,6 +729,7 @@ impl<'a> ChapterOrchestrator<'a> {
                 &engine.model,
                 engine.allow_fallback,
                 true,
+                route_context,
             )
             .await?;
 

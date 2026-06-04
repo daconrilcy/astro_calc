@@ -1,5 +1,5 @@
 use astral_llm_domain::{engine_params::EngineParams, EngineDefaults};
-use astral_llm_infra::CanonicalCatalog;
+use astral_llm_infra::{CanonicalCatalog, SharedCanonicalCatalog};
 
 #[derive(Debug, Clone)]
 pub struct ResolvedEngineParams {
@@ -84,6 +84,59 @@ pub fn drop_unsupported_reasoning(
         );
         engine.reasoning_effort = None;
     }
+}
+
+fn request_specified_primary_model(params: &EngineParams) -> bool {
+    params
+        .model
+        .as_ref()
+        .map(|m| !m.trim().is_empty())
+        .unwrap_or(false)
+}
+
+fn trimmed_model(model: &str) -> Option<String> {
+    let m = model.trim();
+    if m.is_empty() {
+        None
+    } else {
+        Some(m.to_string())
+    }
+}
+
+/// Moteur pour SummarySynthesizer (et tests E2E summary) : `engine.summary_model`, sinon
+/// `economic_model` produit si la requete n'a pas fixe `engine.model`, sinon le moteur chapitres.
+pub fn resolve_subtask_engine(
+    chapter_engine: &ResolvedEngineParams,
+    request_engine: &EngineParams,
+    catalog: &SharedCanonicalCatalog,
+    product_code: &str,
+) -> ResolvedEngineParams {
+    let mut out = chapter_engine.clone();
+
+    if let Some(model) = request_engine
+        .summary_model
+        .as_ref()
+        .and_then(|m| trimmed_model(m))
+    {
+        out.model = model;
+        return out;
+    }
+
+    if request_specified_primary_model(request_engine) {
+        return out;
+    }
+
+    if let Some(policy) = catalog.product_policy(product_code) {
+        if let Some(model) = policy
+            .economic_model
+            .as_ref()
+            .and_then(|m| trimmed_model(m))
+        {
+            out.model = model;
+        }
+    }
+
+    out
 }
 
 pub fn drop_unsupported_temperature(
@@ -180,5 +233,111 @@ mod tests {
         };
         let resolved = resolve_engine_params(&params, &merged, 60_000);
         assert_eq!(resolved.model, "gpt-5.5");
+    }
+
+    #[test]
+    fn subtask_uses_economic_model_when_primary_not_specified() {
+        let mut catalog = CanonicalCatalog::default();
+        catalog
+            .product_generation_policies
+            .push(ProductGenerationPolicy {
+                product_code: "natal_premium".into(),
+                default_model: Some("gpt-5.4-mini".into()),
+                economic_model: Some("gpt-5-mini".into()),
+                ..ProductGenerationPolicy::bootstrap_premium()
+            });
+        let catalog = std::sync::Arc::new(catalog);
+        let chapter = resolve_engine_params(
+            &EngineParams {
+                allow_fallback: true,
+                ..Default::default()
+            },
+            &EngineDefaults {
+                provider: ProviderKind::OpenAi,
+                model: "gpt-5.4-mini".into(),
+            },
+            60_000,
+        );
+        let summary = resolve_subtask_engine(
+            &chapter,
+            &EngineParams {
+                allow_fallback: true,
+                ..Default::default()
+            },
+            &catalog,
+            "natal_premium",
+        );
+        assert_eq!(summary.model, "gpt-5-mini");
+    }
+
+    #[test]
+    fn subtask_keeps_explicit_primary_model_for_benchmark() {
+        let mut catalog = CanonicalCatalog::default();
+        catalog
+            .product_generation_policies
+            .push(ProductGenerationPolicy {
+                product_code: "natal_premium".into(),
+                economic_model: Some("gpt-5-mini".into()),
+                ..ProductGenerationPolicy::bootstrap_premium()
+            });
+        let catalog = std::sync::Arc::new(catalog);
+        let chapter = resolve_engine_params(
+            &EngineParams {
+                model: Some("gpt-5.4".into()),
+                allow_fallback: true,
+                ..Default::default()
+            },
+            &EngineDefaults {
+                provider: ProviderKind::OpenAi,
+                model: "gpt-5.4-mini".into(),
+            },
+            60_000,
+        );
+        let summary = resolve_subtask_engine(
+            &chapter,
+            &EngineParams {
+                model: Some("gpt-5.4".into()),
+                allow_fallback: true,
+                ..Default::default()
+            },
+            &catalog,
+            "natal_premium",
+        );
+        assert_eq!(summary.model, "gpt-5.4");
+    }
+
+    #[test]
+    fn summary_model_overrides_economic_routing() {
+        let mut catalog = CanonicalCatalog::default();
+        catalog
+            .product_generation_policies
+            .push(ProductGenerationPolicy {
+                product_code: "natal_premium".into(),
+                economic_model: Some("gpt-5-mini".into()),
+                ..ProductGenerationPolicy::bootstrap_premium()
+            });
+        let catalog = std::sync::Arc::new(catalog);
+        let chapter = resolve_engine_params(
+            &EngineParams {
+                allow_fallback: true,
+                ..Default::default()
+            },
+            &EngineDefaults {
+                provider: ProviderKind::OpenAi,
+                model: "gpt-5.4-mini".into(),
+            },
+            60_000,
+        );
+        let summary = resolve_subtask_engine(
+            &chapter,
+            &EngineParams {
+                summary_model: Some("gpt-5-nano".into()),
+                allow_fallback: true,
+                ..Default::default()
+            },
+            &catalog,
+            "natal_premium",
+        );
+        assert_eq!(summary.model, "gpt-5-nano");
     }
 }

@@ -49,7 +49,8 @@ pub mod token_budget;
 
 pub use chapter_orchestrator::{new_run_id, ChapterOrchestrator};
 pub use engine_defaults::{
-    resolve_engine_params, resolve_service_engine_defaults, ResolvedEngineParams,
+    resolve_engine_params, resolve_service_engine_defaults, resolve_subtask_engine,
+    ResolvedEngineParams,
 };
 pub use domain_resolver::DomainResolver;
 pub use execution_audit::ExecutionAudit;

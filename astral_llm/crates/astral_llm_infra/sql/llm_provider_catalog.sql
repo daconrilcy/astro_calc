@@ -160,25 +160,59 @@ WHERE provider = 'openai'
     'gpt-5.1', 'gpt-5-mini', 'gpt-5-nano', 'gpt-4.1', 'gpt-4.1-mini'
   );
 
--- Moteur par defaut par produit (si engine.model absent de la requete).
+-- Moteur par produit (bootstrap). Pour changer les modeles au quotidien :
+--   1) config/llm_product_models.conf  2) .\scripts\set_product_llm_models.ps1  3) redemarrer astral_llm_api
 CREATE TABLE IF NOT EXISTS llm_product_default_engine (
     product_code TEXT PRIMARY KEY,
     default_provider TEXT NOT NULL,
     default_model TEXT NOT NULL,
+    economic_model TEXT,
+    high_quality_model TEXT,
+    oracle_model TEXT,
     is_active BOOLEAN NOT NULL DEFAULT true,
     notes TEXT,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-INSERT INTO llm_product_default_engine (product_code, default_provider, default_model, notes) VALUES
-    ('natal_premium', 'openai', 'gpt-5.4-mini', 'production Premium chapter_orchestrated'),
-    ('natal_basic', 'openai', 'gpt-5.4-mini', 'production Basic par defaut')
+ALTER TABLE llm_product_default_engine ADD COLUMN IF NOT EXISTS economic_model TEXT;
+ALTER TABLE llm_product_default_engine ADD COLUMN IF NOT EXISTS high_quality_model TEXT;
+ALTER TABLE llm_product_default_engine ADD COLUMN IF NOT EXISTS oracle_model TEXT;
+
+INSERT INTO llm_product_default_engine (
+    product_code, default_provider, default_model, economic_model, high_quality_model, oracle_model, notes
+) VALUES
+    (
+        'natal_premium', 'openai', 'gpt-5.4-mini', 'gpt-5-nano', 'gpt-5.4', 'gpt-5.5',
+        'chapitres=gpt-5.4-mini ; summary=gpt-5-nano (economic_model) ; fallback gpt-4.1'
+    ),
+    ('natal_basic', 'openai', 'gpt-5.4-mini', 'gpt-5-mini', NULL, NULL, 'production Basic par defaut')
 ON CONFLICT (product_code) DO UPDATE SET
     default_provider = EXCLUDED.default_provider,
     default_model = EXCLUDED.default_model,
+    economic_model = EXCLUDED.economic_model,
+    high_quality_model = EXCLUDED.high_quality_model,
+    oracle_model = EXCLUDED.oracle_model,
     notes = EXCLUDED.notes,
     is_active = EXCLUDED.is_active,
     updated_at = NOW();
+
+CREATE TABLE IF NOT EXISTS llm_product_fallback_models (
+    id SERIAL PRIMARY KEY,
+    product_code TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    model TEXT NOT NULL,
+    priority INTEGER NOT NULL DEFAULT 10,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    notes TEXT,
+    UNIQUE (product_code, provider, model)
+);
+
+INSERT INTO llm_product_fallback_models (product_code, provider, model, priority, notes) VALUES
+    ('natal_premium', 'openai', 'gpt-4.1', 10, 'baseline fallback Premium')
+ON CONFLICT (product_code, provider, model) DO UPDATE SET
+    priority = EXCLUDED.priority,
+    notes = EXCLUDED.notes,
+    is_active = EXCLUDED.is_active;
 
 CREATE TABLE IF NOT EXISTS llm_product_allowed_models (
     id SERIAL PRIMARY KEY,
@@ -193,7 +227,8 @@ CREATE TABLE IF NOT EXISTS llm_product_allowed_models (
 -- natal_premium : modeles autorises pour benchmark E2E Premium (provider = code catalogue openai)
 INSERT INTO llm_product_allowed_models (product_code, provider, model, notes) VALUES
     ('natal_premium', 'openai', 'gpt-4.1', 'baseline'),
-    ('natal_premium', 'openai', 'gpt-5-mini', 'economique'),
+    ('natal_premium', 'openai', 'gpt-5-mini', 'economique / summary'),
+    ('natal_premium', 'openai', 'gpt-5-nano', 'summary ultra-low-cost'),
     ('natal_premium', 'openai', 'gpt-5.4-mini', 'production probable'),
     ('natal_premium', 'openai', 'gpt-5.4', 'qualite/prix'),
     ('natal_premium', 'openai', 'gpt-5.5', 'qualite max raisonnable'),
@@ -216,9 +251,9 @@ INSERT INTO llm_generation_benchmark_usage_models (usage_code, provider, model, 
     ('basic_short_reading', 'openai', 'gpt-5-mini', 10, NULL),
     ('basic_short_reading', 'openai', 'gpt-5.4-mini', 20, NULL),
     ('basic_short_reading', 'openai', 'gpt-4.1-mini', 30, NULL),
-    ('summary_synthesizer', 'openai', 'gpt-5-mini', 10, NULL),
-    ('summary_synthesizer', 'openai', 'gpt-5.4-nano', 20, NULL),
-    ('summary_synthesizer', 'openai', 'gpt-5-nano', 30, NULL),
+    ('summary_synthesizer', 'openai', 'gpt-5-nano', 10, 'Premium summary prod'),
+    ('summary_synthesizer', 'openai', 'gpt-5-mini', 20, NULL),
+    ('summary_synthesizer', 'openai', 'gpt-5.4-nano', 30, NULL),
     ('repair_validation_reformulation', 'openai', 'gpt-5-nano', 10, NULL),
     ('repair_validation_reformulation', 'openai', 'gpt-5.4-nano', 20, NULL),
     ('repair_validation_reformulation', 'openai', 'gpt-5-mini', 30, NULL),
