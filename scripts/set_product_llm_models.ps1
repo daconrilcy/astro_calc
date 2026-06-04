@@ -11,7 +11,7 @@
     .\scripts\set_product_llm_models.ps1
 
 .EXAMPLE
-    .\scripts\set_product_llm_models.ps1 -Product natal_premium -Chapters gpt-5.4-mini -Summary gpt-5-nano
+    .\scripts\set_product_llm_models.ps1 -Product natal_prompter -Chapters gpt-5.4-mini -Summary gpt-5-nano
 #>
 param(
     [string]$ConfigPath = "",

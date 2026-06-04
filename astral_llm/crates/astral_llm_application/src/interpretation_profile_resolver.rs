@@ -1,5 +1,8 @@
 use astral_llm_domain::{
-    interpretation_profile::{InterpretationProfile, NATAL_PROMPTER_PRODUCT},
+    interpretation_profile::{
+        InterpretationProfile, LEGACY_PRODUCT_NATAL_BASIC, LEGACY_PRODUCT_NATAL_PREMIUM,
+        NATAL_PROMPTER_PRODUCT, PROFILE_NATAL_BASIC, PROFILE_NATAL_PREMIUM,
+    },
     GenerateReadingRequest, GenerationError, GenerationErrorCode, ProductGenerationPolicy,
 };
 use astral_llm_infra::SharedCanonicalCatalog;
@@ -26,7 +29,7 @@ impl InterpretationProfileResolver {
         request: &mut GenerateReadingRequest,
         catalog: &SharedCanonicalCatalog,
     ) -> Result<(), GenerationError> {
-        Self::migrate_legacy_product_codes(request);
+        Self::migrate_legacy_product_codes(request)?;
 
         if request.product_context.product_code != NATAL_PROMPTER_PRODUCT {
             return Ok(());
@@ -49,36 +52,71 @@ impl InterpretationProfileResolver {
         Ok(())
     }
 
-    fn migrate_legacy_product_codes(request: &mut GenerateReadingRequest) {
-        match request.product_context.product_code.as_str() {
-            "natal_premium" => {
-                request.product_context.product_code = NATAL_PROMPTER_PRODUCT.into();
-                if request
-                    .product_context
-                    .interpretation_profile_code
-                    .as_ref()
-                    .map(|s| s.trim().is_empty())
-                    .unwrap_or(true)
-                {
-                    request.product_context.interpretation_profile_code =
-                        Some("natal_premium".into());
-                }
-            }
-            "natal_basic" => {
-                request.product_context.product_code = NATAL_PROMPTER_PRODUCT.into();
-                if request
-                    .product_context
-                    .interpretation_profile_code
-                    .as_ref()
-                    .map(|s| s.trim().is_empty())
-                    .unwrap_or(true)
-                {
-                    request.product_context.interpretation_profile_code =
-                        Some("natal_basic".into());
-                }
-            }
-            _ => {}
+    /// Rate limit « premium » : profils avec evidence ou gate qualite bloquante (ex. `natal_premium`).
+    pub fn requires_premium_rate_limit(
+        request: &GenerateReadingRequest,
+        catalog: &SharedCanonicalCatalog,
+    ) -> bool {
+        Self::profile_for_request(request, catalog)
+            .map(|p| p.evidence_enabled() || p.blocking_quality_gate())
+            .unwrap_or(false)
+    }
+
+    fn profile_for_request<'a>(
+        request: &'a GenerateReadingRequest,
+        catalog: &'a SharedCanonicalCatalog,
+    ) -> Option<&'a InterpretationProfile> {
+        if request.product_context.product_code != NATAL_PROMPTER_PRODUCT {
+            return None;
         }
+        let code = request
+            .product_context
+            .interpretation_profile_code
+            .as_deref()?
+            .trim();
+        if code.is_empty() {
+            return None;
+        }
+        catalog.interpretation_profile(code)
+    }
+
+    fn migrate_legacy_product_codes(request: &mut GenerateReadingRequest) -> Result<(), GenerationError> {
+        let implied_profile = match request.product_context.product_code.as_str() {
+            LEGACY_PRODUCT_NATAL_PREMIUM => Some(PROFILE_NATAL_PREMIUM),
+            LEGACY_PRODUCT_NATAL_BASIC => Some(PROFILE_NATAL_BASIC),
+            _ => return Ok(()),
+        };
+
+        let legacy_code = request.product_context.product_code.clone();
+        if let Some(existing) = request
+            .product_context
+            .interpretation_profile_code
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+        {
+            if existing != implied_profile.unwrap() {
+                return Err(GenerationError::with_details(
+                    GenerationErrorCode::ProductPolicyViolation,
+                    "legacy product_code conflicts with interpretation_profile_code",
+                    serde_json::json!({
+                        "legacy_product_code": legacy_code,
+                        "interpretation_profile_code": existing,
+                        "expected_profile_code": implied_profile,
+                    }),
+                ));
+            }
+        }
+
+        tracing::warn!(
+            legacy_product_code = %legacy_code,
+            implied_profile_code = implied_profile,
+            "legacy product_code; use natal_prompter + interpretation_profile_code"
+        );
+        request.product_context.product_code = NATAL_PROMPTER_PRODUCT.into();
+        request.product_context.interpretation_profile_code =
+            Some(implied_profile.unwrap().into());
+        Ok(())
     }
 
     fn required_profile_code<'a>(
@@ -264,6 +302,41 @@ mod tests {
             request.response_contract.generation_mode,
             GenerationMode::ChapterOrchestrated
         );
+    }
+
+    #[test]
+    fn legacy_product_code_rejects_conflicting_profile() {
+        let catalog = catalog_with_profiles();
+        let mut request = base_request(LEGACY_PRODUCT_NATAL_BASIC, Some("natal_premium"), GenerationMode::SinglePass);
+        let err = InterpretationProfileResolver::normalize_request(&mut request, &catalog)
+            .expect_err("conflicting legacy profile");
+        assert_eq!(
+            err.detail().code,
+            GenerationErrorCode::ProductPolicyViolation
+        );
+    }
+
+    #[test]
+    fn legacy_premium_product_code_rejects_conflicting_light_profile() {
+        let catalog = catalog_with_profiles();
+        let mut request = base_request(LEGACY_PRODUCT_NATAL_PREMIUM, Some("natal_light"), GenerationMode::SinglePass);
+        let err = InterpretationProfileResolver::normalize_request(&mut request, &catalog)
+            .expect_err("premium legacy cannot force light profile");
+        assert_eq!(
+            err.detail().code,
+            GenerationErrorCode::ProductPolicyViolation
+        );
+    }
+
+    #[test]
+    fn premium_rate_limit_only_for_premium_profile() {
+        let catalog = catalog_with_profiles();
+        let premium = base_request(NATAL_PROMPTER_PRODUCT, Some("natal_premium"), GenerationMode::ChapterOrchestrated);
+        let basic = base_request(NATAL_PROMPTER_PRODUCT, Some("natal_basic"), GenerationMode::ChapterOrchestrated);
+        let light = base_request(NATAL_PROMPTER_PRODUCT, Some("natal_light"), GenerationMode::SinglePass);
+        assert!(InterpretationProfileResolver::requires_premium_rate_limit(&premium, &catalog));
+        assert!(!InterpretationProfileResolver::requires_premium_rate_limit(&basic, &catalog));
+        assert!(!InterpretationProfileResolver::requires_premium_rate_limit(&light, &catalog));
     }
 
     #[test]

@@ -1,4 +1,6 @@
-//! Regles de validation redactionnelle (fixtures et Premium).
+//! Regles de validation redactionnelle (fixtures et profils bloquants).
+
+use std::sync::Arc;
 
 use astral_llm_domain::{
     generation_request::{AudienceLevel, GenerateReadingRequest},
@@ -6,10 +8,19 @@ use astral_llm_domain::{
     output_contract::GenerationMode,
     GenerationError, GenerationErrorCode,
 };
+use astral_llm_infra::{bootstrap_interpretation_profiles, CanonicalCatalog};
 
+use crate::interpretation_profile_resolver::InterpretationProfileResolver;
 use crate::reading_quality_validator::{
     requires_blocking_quality_gate, ReadingQualityReport, ReadingQualityValidator,
 };
+
+fn editorial_catalog() -> Arc<CanonicalCatalog> {
+    Arc::new(CanonicalCatalog {
+        interpretation_profiles: bootstrap_interpretation_profiles(),
+        ..Default::default()
+    })
+}
 
 #[derive(Debug, Clone)]
 pub struct EditorialFixtureSpec {
@@ -42,6 +53,11 @@ impl EditorialValidator {
         request: &GenerateReadingRequest,
         reading: &NatalReadingResponse,
     ) -> Result<ReadingQualityReport, GenerationError> {
+        let catalog = editorial_catalog();
+        let mut request = request.clone();
+        InterpretationProfileResolver::normalize_request(&mut request, &catalog)?;
+        let interpretation = InterpretationProfileResolver::resolve(&request, &catalog)?;
+
         let mut violations = Vec::new();
 
         if reading.language != spec.user_language {
@@ -59,8 +75,25 @@ impl EditorialValidator {
             violations.push("forbidden medical/legal/financial advice detected".into());
         }
 
-        let quality = ReadingQualityValidator::assess(request, reading, None);
-        if !quality.is_acceptable() {
+        let interpretation_ref = interpretation.as_ref();
+        let quality = ReadingQualityValidator::assess(&request, reading, interpretation_ref);
+        let blocking = requires_blocking_quality_gate(&request, interpretation_ref);
+
+        if blocking && !quality.is_acceptable() {
+            return Err(GenerationError::with_details(
+                GenerationErrorCode::ReadingQualityFailed,
+                "reading quality below profile threshold",
+                serde_json::json!({
+                    "fixture_id": spec.fixture_id,
+                    "profile_code": request
+                        .product_context
+                        .interpretation_profile_code,
+                    "warnings": quality.warnings,
+                }),
+            ));
+        }
+
+        if !blocking && !quality.is_acceptable() {
             violations.extend(quality.warnings.clone());
         }
 
@@ -77,17 +110,6 @@ impl EditorialValidator {
                     "fixture_id": spec.fixture_id,
                     "violations": violations,
                     "quality_warnings": quality.warnings,
-                }),
-            ));
-        }
-
-        if requires_blocking_quality_gate(request, None) && !quality.is_acceptable() {
-            return Err(GenerationError::with_details(
-                GenerationErrorCode::ReadingQualityFailed,
-                "premium reading quality below threshold",
-                serde_json::json!({
-                    "fixture_id": spec.fixture_id,
-                    "warnings": quality.warnings,
                 }),
             ));
         }

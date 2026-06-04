@@ -8,6 +8,14 @@ use crate::provider::{ProviderKind, ReasoningEffort};
 
 pub const NATAL_PROMPTER_PRODUCT: &str = "natal_prompter";
 
+pub const PROFILE_NATAL_LIGHT: &str = "natal_light";
+pub const PROFILE_NATAL_BASIC: &str = "natal_basic";
+pub const PROFILE_NATAL_PREMIUM: &str = "natal_premium";
+
+/// Anciens `product_code` API acceptes temporairement par le shim de migration.
+pub const LEGACY_PRODUCT_NATAL_PREMIUM: &str = "natal_premium";
+pub const LEGACY_PRODUCT_NATAL_BASIC: &str = "natal_basic";
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct InterpretationProfileDocument {
     pub profile_code: String,

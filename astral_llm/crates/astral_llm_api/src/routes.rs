@@ -2,11 +2,12 @@ use std::time::Instant;
 
 use astral_llm_application::{resolve_engine_params, GenerationTraceContext};
 use astral_llm_domain::{
-    GenerateReadingRequest, GenerateReadingResponse, GenerationErrorCode,
-    GenerationRunContractVersions, GenerationMode,
+    GenerateReadingRequest, GenerateReadingResponse, GenerationError, GenerationErrorCode,
+    GenerationRunContractVersions,
 };
 use astral_llm_infra::{
-    error_code, hash_json, redact_request_for_storage, GenerationRunRecord,     IdempotencyClaim, RunStatus, SafetyStatus,
+    error_code, hash_json, redact_request_for_storage, GenerationRunRecord, IdempotencyClaim,
+    RunStatus, SafetyStatus,
 };
 use axum::{
     extract::State,
@@ -44,6 +45,10 @@ async fn generate_reading(
 ) -> Response {
     if request.idempotency_key.is_none() {
         request.idempotency_key = header_idempotency_key(&headers);
+    }
+
+    if let Err(err) = state.use_case.prepare_request(&mut request) {
+        return generation_error_response(err);
     }
 
     let idempotency_key = request.idempotency_key.clone();
@@ -118,8 +123,7 @@ async fn generate_reading(
         }
     }
 
-    let is_premium =
-        matches!(request.response_contract.generation_mode, GenerationMode::ChapterOrchestrated);
+    let is_premium = state.use_case.requires_premium_rate_limit(&request);
     let _premium_permit = if is_premium {
         let key_id = rate_limit_key_id_from_headers(&headers, &state);
         match try_acquire_premium_addon(&state, &key_id) {
@@ -391,6 +395,19 @@ async fn get_run_audit(
                 .into_response()
         }
     }
+}
+
+fn generation_error_response(err: GenerationError) -> Response {
+    let detail = err.detail();
+    let status = map_error_status(&detail.code);
+    let mut body = json!({
+        "error": detail.code.as_str(),
+        "message": detail.message,
+    });
+    if let Some(details) = &detail.details {
+        body["details"] = details.clone();
+    }
+    (status, Json(body)).into_response()
 }
 
 fn map_error_status(code: &GenerationErrorCode) -> StatusCode {

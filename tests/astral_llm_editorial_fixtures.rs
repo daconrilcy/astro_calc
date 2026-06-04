@@ -48,15 +48,11 @@ fn request_from_fixture(file: &EditorialFixtureFile) -> GenerateReadingRequest {
         idempotency_key: None,
         product_context: ProductContext {
             product_code: file.product_code.clone(),
-            interpretation_profile_code: file.interpretation_profile_code.clone().or_else(|| {
-                if file.product_code == "natal_prompter" {
-                    None
-                } else if file.product_code.contains("premium") {
-                    Some("natal_premium".into())
-                } else {
-                    Some("natal_basic".into())
-                }
-            }),
+            interpretation_profile_code: Some(
+                file.interpretation_profile_code
+                    .clone()
+                    .expect("fixture must set interpretation_profile_code"),
+            ),
             user_language: file.user_language.clone(),
             audience_level: parse_audience(&file.audience_level),
         },

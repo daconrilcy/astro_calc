@@ -45,18 +45,14 @@ impl Default for PremiumQualityThresholds {
 
 pub struct ReadingQualityValidator;
 
-/// Gate bloquante selon le profil d'interpretation (ou orchestration chapitre en fallback legacy).
+/// Gate bloquante selon le profil d'interpretation (`natal_prompter` requiert un profil resolu).
 pub fn requires_blocking_quality_gate(
-    request: &GenerateReadingRequest,
+    _request: &GenerateReadingRequest,
     interpretation: Option<&ResolvedInterpretationContext>,
 ) -> bool {
-    if let Some(ctx) = interpretation {
-        return ctx.profile.blocking_quality_gate();
-    }
-    matches!(
-        request.response_contract.generation_mode,
-        GenerationMode::ChapterOrchestrated
-    )
+    interpretation
+        .map(|ctx| ctx.profile.blocking_quality_gate())
+        .unwrap_or(false)
 }
 
 impl ReadingQualityValidator {
@@ -422,6 +418,12 @@ mod tests {
         assert!(
             ReadingQualityValidator::validate_for_product(&request, &reading, Some(&ctx)).is_ok()
         );
+    }
+
+    #[test]
+    fn chapter_orchestrated_without_profile_does_not_block() {
+        let request = premium_request();
+        assert!(!requires_blocking_quality_gate(&request, None));
     }
 
     #[test]

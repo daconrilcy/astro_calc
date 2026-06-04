@@ -74,6 +74,18 @@ impl GenerateReadingUseCase {
         }
     }
 
+    /// Normalise la requete (shim legacy + `generation_mode` depuis le profil) avant idempotence / rate limit.
+    pub fn prepare_request(
+        &self,
+        request: &mut GenerateReadingRequest,
+    ) -> Result<(), GenerationError> {
+        InterpretationProfileResolver::normalize_request(request, &self.catalog)
+    }
+
+    pub fn requires_premium_rate_limit(&self, request: &GenerateReadingRequest) -> bool {
+        InterpretationProfileResolver::requires_premium_rate_limit(request, &self.catalog)
+    }
+
     pub async fn execute(&self, request: GenerateReadingRequest) -> GenerateReadingResponse {
         self.execute_with_audit(request, new_run_id())
             .await
@@ -117,6 +129,7 @@ impl GenerateReadingUseCase {
         run_id: &str,
         audit: &mut ExecutionAudit,
     ) -> Result<astral_llm_domain::NatalReadingResponse, GenerationError> {
+        // Idempotent : l'API peut deja avoir appele prepare_request().
         InterpretationProfileResolver::normalize_request(&mut request, &self.catalog)?;
         RequestValidator::validate(&request, &self.limits, &self.catalog)?;
 
