@@ -274,11 +274,19 @@ mod tests {
         }
     }
 
+    fn premium_like_policy() -> ProductGenerationPolicy {
+        ProductGenerationPolicy {
+            min_astro_basis_refs_per_chapter: 1,
+            min_interpretive_astro_basis_refs_per_chapter: 1,
+            ..ProductGenerationPolicy::bootstrap_natal_prompter()
+        }
+    }
+
     #[test]
     fn premium_rejects_domain_score_only() {
         let facts = sample_facts();
         let chapter = chapter_with_basis(vec![("domain_score:identity", "domain_score")]);
-        let policy = ProductGenerationPolicy::bootstrap_premium();
+        let policy = premium_like_policy();
         assert!(AstroBasisValidator::validate_chapter(&chapter, &facts, &policy).is_err());
     }
 
@@ -289,7 +297,7 @@ mod tests {
             ("domain_score:identity", "domain_score"),
             ("placement:sun:capricorn:house:2", "core"),
         ]);
-        let policy = ProductGenerationPolicy::bootstrap_premium();
+        let policy = premium_like_policy();
         assert!(AstroBasisValidator::validate_chapter(&chapter, &facts, &policy).is_ok());
     }
 
@@ -297,7 +305,7 @@ mod tests {
     fn basic_allows_domain_score_only() {
         let facts = sample_facts();
         let chapter = chapter_with_basis(vec![("domain_score:identity", "domain_score")]);
-        let policy = ProductGenerationPolicy::bootstrap_basic();
+        let policy = ProductGenerationPolicy::bootstrap_natal_prompter();
         assert!(AstroBasisValidator::validate_chapter(&chapter, &facts, &policy).is_ok());
     }
 }

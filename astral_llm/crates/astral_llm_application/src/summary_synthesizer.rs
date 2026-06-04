@@ -32,6 +32,7 @@ const BANNED_SUMMARY_PATTERNS: &[&str] = &[
     "génération chapitre par chapitre",
     "lecture natal_premium",
     "lecture natal_basic",
+    "lecture natal_prompter",
     "chapter_orchestrated",
     "single_pass",
     "pipeline technique",
@@ -100,9 +101,18 @@ impl<'a> SummarySynthesizer<'a> {
             .map(|s| ProviderSchemaCompiler::compile(s, model_cap))
             .transpose()?;
 
-        let product_policy = ProductPolicyValidator::validate(
+        let product_policy = self
+            .catalog
+            .product_policy(&request.product_context.product_code)
+            .ok_or_else(|| {
+                GenerationError::new(
+                    GenerationErrorCode::ProductPolicyViolation,
+                    "no generation policy for product",
+                )
+            })?;
+        ProductPolicyValidator::validate_against_policy(
             request,
-            self.catalog,
+            product_policy,
             &engine.provider,
             &engine.model,
         )?;
@@ -296,7 +306,7 @@ mod tests {
     #[test]
     fn rejects_technical_placeholder_summary() {
         let summary = SummaryProviderResponse {
-            title: "Lecture natal_premium — synthese".into(),
+            title: "Lecture natal_prompter — synthese".into(),
             short_text: "Synthese produite par generation chapitre par chapitre.".into(),
         };
         assert!(validate_summary_content(&summary).is_err());

@@ -1,13 +1,14 @@
 {
   "fixture_id": "natal_premium_traditional_en",
-  "product_code": "natal_premium",
+  "product_code": "natal_prompter",
+  "interpretation_profile_code": "natal_premium",
   "audience_level": "expert",
   "user_language": "en",
   "generation_mode": "chapter_orchestrated",
   "reading": {
     "schema_version": "natal_reading_v1",
     "language": "en",
-    "reading_type": "natal_premium",
+    "reading_type": "natal_prompter",
     "summary": {
       "title": "Traditional symbolic reading",
       "short_text": "A structured interpretation of temperament and life orientation."
@@ -57,7 +58,7 @@
       "used_provider": "fake",
       "used_model": "fake-model",
       "generation_mode": "chapter_orchestrated",
-      "prompt_family": "natal_premium",
+      "prompt_family": "natal_prompter",
       "prompt_version": "v1",
       "astro_contract_version": "natal_structured_v13",
       "fallback_used": false

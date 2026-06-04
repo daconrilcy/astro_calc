@@ -17,7 +17,8 @@ pub mod telemetry;
 pub mod url_validator;
 
 pub use canonical::{
-    bootstrap_astro_object_labels, bootstrap_domains, bootstrap_product_policies,
+    bootstrap_astro_object_labels, bootstrap_domains, bootstrap_interpretation_profiles,
+    bootstrap_product_policies,
     bootstrap_safety_patterns, bootstrap_zodiac_sign_labels, enrich_catalog_from_bootstrap,
     load_canonical_catalog, service_limits_from_env, CanonicalCatalog, ProductPromptFamily,
     SafetyPattern, SharedCanonicalCatalog,

@@ -4,10 +4,23 @@ use astral_llm_domain::{
     GenerateReadingRequest, GenerationError, GenerationErrorCode,
 };
 
+use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
+
 pub struct ReadingPlanBuilder;
 
 impl ReadingPlanBuilder {
-    pub fn build(request: &GenerateReadingRequest, domains: &[String]) -> ReadingPlan {
+    pub fn build(
+        request: &GenerateReadingRequest,
+        domains: &[String],
+        interpretation: Option<&ResolvedInterpretationContext>,
+    ) -> ReadingPlan {
+        let (min_w, target_w, max_w) = interpretation
+            .map(|c| {
+                let t = &c.profile.document.chapter_word_targets;
+                (t.min, t.target, t.max)
+            })
+            .unwrap_or((80, 150, 300));
+
         let chapters: Vec<ReadingPlanChapter> = if !request.response_contract.chapters.is_empty() {
             request
                 .response_contract
@@ -21,9 +34,9 @@ impl ReadingPlanBuilder {
                 .map(|code| ReadingPlanChapter {
                     code: code.clone(),
                     title: humanize_domain(code),
-                    min_words: 80,
-                    target_words: 150,
-                    max_words: 300,
+                    min_words: min_w as u32,
+                    target_words: target_w as u32,
+                    max_words: max_w as u32,
                 })
                 .collect()
         };

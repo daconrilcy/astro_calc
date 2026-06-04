@@ -1,12 +1,14 @@
 use std::path::{Path, PathBuf};
 
 use astral_llm_domain::{
+    interpretation_profile::NATAL_PROMPTER_PRODUCT,
     interpretive_evidence::ChapterEvidencePack, GenerateReadingRequest, NormalizedAstroFacts,
     SafetyPolicy,
 };
 use astral_llm_infra::SharedCanonicalCatalog;
 
 use crate::astro_payload_normalizer::AstroPayloadNormalizer;
+use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
 use crate::payload_sanitizer::sanitize_custom_instructions;
 use crate::writing_language::WritingLanguageDirective;
 
@@ -30,6 +32,7 @@ pub struct PromptCompilationInput<'a> {
     pub chapter_code: Option<&'a str>,
     pub chapter_evidence_pack: Option<&'a ChapterEvidencePack>,
     pub catalog: &'a SharedCanonicalCatalog,
+    pub interpretation: Option<&'a ResolvedInterpretationContext>,
 }
 
 pub struct PromptCompiler {
@@ -52,6 +55,14 @@ impl PromptCompiler {
 
         let system = read_template(&base_dir.join("system.md"))?;
         let mut task = read_template(&base_dir.join("task.md"))?;
+        if let Some(ctx) = input.interpretation {
+            if let Some(fragment) = ctx.profile.document.task_fragment.as_ref() {
+                if !fragment.trim().is_empty() {
+                    task.push_str("\n\n");
+                    task.push_str(fragment.trim());
+                }
+            }
+        }
         if input.chapter_evidence_pack.is_some() {
             if let Ok(structure) = read_template(&base_dir.join("chapter_structure.md")) {
                 task.push_str("\n\n");
@@ -61,7 +72,11 @@ impl PromptCompiler {
         let format = read_template(&base_dir.join("format.md"))?;
         let safety = read_template(&base_dir.join("safety.md"))?;
 
-        let profile_block = build_profile_block(&input.request.astrologer_profile);
+        let profile_block = build_profile_block(
+            &input.request.astrologer_profile,
+            &input.request.product_context.user_language,
+            input.selected_domains,
+        );
         let domain_block = input.selected_domains.join(", ");
         let chapter_hint = input
             .chapter_code
@@ -140,10 +155,10 @@ fn resolve_prompt_profile(
         );
     }
 
-    if product_code.contains("premium") {
-        ("natal_premium".into(), "v1".into())
+    if product_code == NATAL_PROMPTER_PRODUCT {
+        ("natal_prompter".into(), "v1".into())
     } else {
-        ("natal_basic".into(), "v1".into())
+        ("natal_prompter".into(), "v1".into())
     }
 }
 
@@ -151,7 +166,11 @@ fn read_template(path: &Path) -> Result<String, String> {
     std::fs::read_to_string(path).map_err(|e| format!("missing template {}: {e}", path.display()))
 }
 
-fn build_profile_block(profile: &astral_llm_domain::AstrologerProfile) -> String {
+fn build_profile_block(
+    profile: &astral_llm_domain::AstrologerProfile,
+    output_language: &str,
+    preferred_domains: &[String],
+) -> String {
     let custom = profile
         .custom_instructions
         .as_ref()
@@ -159,12 +178,29 @@ fn build_profile_block(profile: &astral_llm_domain::AstrologerProfile) -> String
         .map(|text| format!("\nCustom style notes (non-authoritative): {text}"))
         .unwrap_or_default();
 
+    let domains = if profile.preferred_domains.is_empty() {
+        preferred_domains.join(", ")
+    } else {
+        profile.preferred_domains.join(", ")
+    };
+
+    let forbidden = if profile.forbidden_wording.is_empty() {
+        "none".to_string()
+    } else {
+        profile.forbidden_wording.join(", ")
+    };
+
     format!(
-        "Tone: {:?}, jargon: {:?}, style: {:?}, forbidden: {:?}{custom}",
+        "ASTROLOGER STYLE (runtime):\n\
+         Output language: {output_language}\n\
+         Tone: {:?}\n\
+         Jargon level: {:?}\n\
+         Wording style: {:?}\n\
+         Preferred domains: {domains}\n\
+         Forbidden wording: {forbidden}{custom}",
         profile.tone,
         profile.jargon_level,
         profile.wording_style,
-        profile.forbidden_wording
     )
 }
 

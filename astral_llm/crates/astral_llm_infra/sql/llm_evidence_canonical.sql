@@ -75,6 +75,7 @@ INSERT INTO llm_evidence_kind_definitions (kind_code, kind_family, label_fr, def
     ('other', 'other', 'Autre', 'interpretive_basis')
 ON CONFLICT (kind_code) DO NOTHING;
 
+-- product_code = interpretation_profile_code (ex. natal_premium) ; source de verite : llm_interpretation_profiles
 INSERT INTO llm_premium_evidence_policies (
     product_code, min_evidence_per_chapter, min_distinct_kind_families,
     min_non_placement_if_available, max_core_overlap_ratio, domain_score_counts_in_minimum,
@@ -82,11 +83,21 @@ INSERT INTO llm_premium_evidence_policies (
     max_supporting_semantic_chapters
 ) VALUES
     ('natal_premium', 4, 2, 1, 0.60, false, 3, 4, 2, 5, 3)
-ON CONFLICT (product_code) DO NOTHING;
+ON CONFLICT (product_code) DO UPDATE SET
+    min_evidence_per_chapter = EXCLUDED.min_evidence_per_chapter,
+    min_distinct_kind_families = EXCLUDED.min_distinct_kind_families,
+    min_non_placement_if_available = EXCLUDED.min_non_placement_if_available,
+    max_core_overlap_ratio = EXCLUDED.max_core_overlap_ratio,
+    domain_score_counts_in_minimum = EXCLUDED.domain_score_counts_in_minimum,
+    max_core_evidence = EXCLUDED.max_core_evidence,
+    max_supporting_evidence = EXCLUDED.max_supporting_evidence,
+    max_nuance_evidence = EXCLUDED.max_nuance_evidence,
+    max_avoid_repeating = EXCLUDED.max_avoid_repeating,
+    max_supporting_semantic_chapters = EXCLUDED.max_supporting_semantic_chapters,
+    is_active = true;
 
-UPDATE llm_premium_evidence_policies
-SET max_supporting_semantic_chapters = 3
-WHERE product_code = 'natal_premium' AND max_supporting_semantic_chapters IS DISTINCT FROM 3;
+UPDATE llm_premium_evidence_policies SET is_active = false
+WHERE product_code NOT IN ('natal_premium', 'natal_light', 'natal_basic');
 
 INSERT INTO llm_chapter_evidence_slots (chapter_code, slot_role, kind_code, object_code, house_number, priority, max_items, required_if_available) VALUES
     ('identity', 'core', 'angle', 'ascendant', 1, 10, 1, true),

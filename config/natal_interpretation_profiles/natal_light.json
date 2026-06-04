@@ -1,0 +1,34 @@
+{
+  "profile_code": "natal_light",
+  "product_code": "natal_prompter",
+  "schema_version": "v1",
+  "generation_mode": "single_pass",
+  "max_domains": 1,
+  "max_chapters": 1,
+  "max_output_tokens": 4000,
+  "max_reasoning_effort": "medium",
+  "default_domain_count": 1,
+  "chapter_models": {
+    "default_provider": "openai",
+    "default_model": "gpt-5.4-mini",
+    "summary_model": "gpt-5-nano"
+  },
+  "chapter_types": ["identity"],
+  "chapter_word_targets": {
+    "min": 60,
+    "target": 120,
+    "max": 200
+  },
+  "quality": {
+    "blocking_gate": false,
+    "min_words_per_chapter": 30,
+    "max_repeated_trigrams": 4,
+    "min_astro_basis_refs_per_chapter": 0,
+    "min_interpretive_astro_basis_refs_per_chapter": 0,
+    "require_disclaimer": true
+  },
+  "evidence": {
+    "enabled": false
+  },
+  "task_fragment": "Produisez une lecture natal concise en un seul passage. Restez accessible et symbolique."
+}

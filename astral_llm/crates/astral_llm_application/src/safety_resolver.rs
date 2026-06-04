@@ -15,9 +15,15 @@ impl SafetyResolver {
         }
     }
 
-    pub fn product_default_for(product_code: &str) -> SafetyPolicy {
+    pub fn product_default_for(
+        _product_code: &str,
+        interpretation: Option<&crate::interpretation_profile_resolver::ResolvedInterpretationContext>,
+    ) -> SafetyPolicy {
         let mut policy = SafetyPolicy::mandatory();
-        if product_code.contains("premium") {
+        if interpretation
+            .map(|ctx| ctx.profile.require_disclaimer())
+            .unwrap_or(false)
+        {
             policy.require_disclaimer = true;
         }
         policy
@@ -43,7 +49,7 @@ mod tests {
         };
 
         let effective = SafetyResolver::resolve(
-            &SafetyResolver::product_default_for("natal_basic"),
+            &SafetyResolver::product_default_for("natal_prompter", None),
             Some(&weakened),
         );
 
@@ -59,7 +65,7 @@ mod tests {
         };
 
         let effective = SafetyResolver::resolve(
-            &SafetyResolver::product_default_for("natal_basic"),
+            &SafetyResolver::product_default_for("natal_prompter", None),
             Some(&stronger),
         );
 

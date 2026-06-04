@@ -28,51 +28,24 @@ pub struct ProductGenerationPolicy {
 }
 
 impl ProductGenerationPolicy {
-    pub fn bootstrap_basic() -> Self {
+    /// Politique produit minimale ; les caps effectifs viennent du profil d'interpretation.
+    pub fn bootstrap_natal_prompter() -> Self {
         Self {
-            product_code: "natal_basic".into(),
-            allowed_providers: vec![
-                ProviderKind::Fake,
-                ProviderKind::OpenAi,
-                ProviderKind::Mistral,
-                ProviderKind::Anthropic,
-            ],
-            allowed_models: vec![
-                ProviderModelRef::new(ProviderKind::Fake, "fake-model"),
-                ProviderModelRef::new(ProviderKind::OpenAi, "gpt-4.1"),
-                ProviderModelRef::new(ProviderKind::OpenAi, "gpt-4o-mini"),
-            ],
-            max_domains: 6,
-            max_chapters: 6,
-            max_output_tokens: 8_000,
-            max_reasoning_effort: ReasoningEffort::Medium,
-            allow_chapter_orchestrated: false,
-            min_astro_basis_refs_per_chapter: 0,
-            min_interpretive_astro_basis_refs_per_chapter: 0,
-            default_provider: None,
-            default_model: None,
-            economic_model: None,
-        }
-    }
-
-    pub fn bootstrap_premium() -> Self {
-        Self {
-            product_code: "natal_premium".into(),
+            product_code: crate::interpretation_profile::NATAL_PROMPTER_PRODUCT.into(),
             allowed_providers: vec![
                 ProviderKind::Fake,
                 ProviderKind::OpenAi,
                 ProviderKind::Anthropic,
                 ProviderKind::Mistral,
             ],
-            // Liste vide hors DB : pas de filtre modele (referentiel llm_product_allowed_models en prod)
             allowed_models: vec![],
             max_domains: 12,
             max_chapters: 12,
             max_output_tokens: 16_000,
             max_reasoning_effort: ReasoningEffort::High,
             allow_chapter_orchestrated: true,
-            min_astro_basis_refs_per_chapter: 1,
-            min_interpretive_astro_basis_refs_per_chapter: 1,
+            min_astro_basis_refs_per_chapter: 0,
+            min_interpretive_astro_basis_refs_per_chapter: 0,
             default_provider: None,
             default_model: None,
             economic_model: None,
@@ -123,7 +96,7 @@ mod tests {
         let policy = ProductGenerationPolicy {
             allowed_providers: vec![],
             allowed_models: vec![],
-            ..ProductGenerationPolicy::bootstrap_basic()
+            ..ProductGenerationPolicy::bootstrap_natal_prompter()
         };
         assert!(policy.allows_provider(&ProviderKind::OpenAi));
     }

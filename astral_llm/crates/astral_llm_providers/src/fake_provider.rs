@@ -18,13 +18,6 @@ use astral_llm_domain::chapter_orchestration::READING_SUMMARY_STEP_CODE;
 
 pub struct FakeProvider;
 
-const CHAPTER_BODY: &str = "Votre theme suggere une personnalite reflechie, orientee vers la \
-    comprehension symbolique des experiences et des transitions interieures. Vous avancez avec \
-    prudence lorsque le sens n'est pas clair, tout en montrant une grande capacite d'adaptation \
-    lorsque vous sentez une direction authentique. Cette configuration invite a accueillir les \
-    phases de questionnement comme des espaces creatifs, plutot que comme des blocages. Elle \
-    favorise aussi une lucidite emotionnelle progressive, utile pour comprendre vos motivations \
-    profondes sans vous figer dans un role unique ni rigide.";
 
 const SUMMARY_SHORT_TEXT: &str = "Votre theme met en avant une dynamique d'affirmation personnelle, \
     une grande richesse emotionnelle et un chemin relationnel structurant. Cette configuration \
@@ -128,10 +121,50 @@ fn build_chapter_response(request: &ProviderGenerationRequest) -> ChapterProvide
     ChapterProviderResponse {
         code: code.clone(),
         title: code.replace('_', " "),
-        body: CHAPTER_BODY.to_string(),
+        body: chapter_body_for_code(&code),
         astro_basis: basis,
         confidence: ConfidenceLevel::Medium,
     }
+}
+
+const FAKE_CHAPTER_SUFFIX: &str = "Cette lecture symbolique reste une piste de reflexion, \
+    jamais une prescription rigide ni une promesse certaine.";
+
+fn chapter_body_for_code(code: &str) -> String {
+    let core = match code {
+        "identity" => "Votre identite se construit par strates successives, entre affirmations \
+            prudentes et questionnements feconds. Les signaux du theme invitent a reconnaitre une \
+            sensibilite aux transitions, plutot qu'une identite figee. Vous accueillez l'inconnu \
+            comme matiere de croissance, sans vous reduire a un seul role social. La symbolique \
+            astrologique eclaire des ressorts interieurs, des habitudes relationnelles et des \
+            choix de vie qui resonnent avec votre tempo personnel. Cette lecture reste une \
+            invitation a explorer, jamais une etiquette definitive ni une sentence absolue imposee."
+            .into(),
+        "relationships" => "Vos liens humains expriment une recherche d'authenticite et de \
+            reciprocite, parfois teintee de reserve. Le theme met en lumiere des besoins \
+            affectifs nuancees, une ecoute attentive et une capacite d'ajustement lorsque la \
+            confiance s'installe. Les dynamiques de couple ou d'amitie gagnent en clarte lorsque \
+            vous acceptez des rythmes differents, sans imposer une forme unique de proximite. \
+            Chaque relation devient alors un miroir evolutif, jamais un contrat fige."
+            .into(),
+        "emotional_life" => "Votre vie emotionnelle apparait comme un espace de nuances, entre \
+            intensite contenue et moments d'ouverture. Le theme suggere une intelligence \
+            affective en developpement, capable d'accueillir l'ambivalence sans la subir. Les \
+            cycles interieurs trouvent un sens lorsque vous les reliez a des experiences \
+            symboliques, plutot qu'a des jugements rigides sur vous-meme."
+            .into(),
+        "career" => "Votre trajectoire professionnelle se dessine avec pragmatisme et intuition, \
+            en equilibre entre structure et creativite. Le theme souligne une ambition mesuree, \
+            attentive aux contextes et aux alliances utiles. Vous progressez lorsque vos \
+            motivations profondes sont reconnues, sans sacrifier votre integrite ni votre rythme \
+            personnel de maturation."
+            .into(),
+        _ => format!(
+            "Le domaine {code} du theme offre une lecture symbolique accessible, orientee vers \
+             la comprehension des dynamiques observees sans posture deterministe."
+        ),
+    };
+    format!("{core} {FAKE_CHAPTER_SUFFIX}")
 }
 
 fn extract_fact_ids_from_messages(messages: &[crate::types::PromptMessage]) -> Vec<String> {
@@ -284,7 +317,7 @@ mod tests {
             metadata: GenerationMetadata {
                 run_id: "run-1".to_string(),
                 request_id: None,
-                product_code: "natal_basic".to_string(),
+                product_code: "natal_prompter".to_string(),
                 chapter_code: Some("career".into()),
             },
         };
@@ -313,7 +346,7 @@ mod tests {
             metadata: GenerationMetadata {
                 run_id: "run-1".to_string(),
                 request_id: None,
-                product_code: "natal_premium".to_string(),
+                product_code: "natal_prompter".to_string(),
                 chapter_code: Some(READING_SUMMARY_STEP_CODE.into()),
             },
         };

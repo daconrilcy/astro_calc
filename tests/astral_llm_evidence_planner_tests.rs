@@ -72,7 +72,8 @@ fn premium_request(payload: AstroCalculationPayload) -> GenerateReadingRequest {
         request_id: Some("test".into()),
         idempotency_key: None,
         product_context: ProductContext {
-            product_code: "natal_premium".into(),
+            product_code: "natal_prompter".into(),
+            interpretation_profile_code: Some("natal_premium".into()),
             user_language: "fr".into(),
             audience_level: AudienceLevel::Beginner,
         },
@@ -184,7 +185,7 @@ fn premium_rich_pool_plans_distinct_chapters() {
         "career".into(),
         "growth_path".into(),
     ];
-    let plan = ReadingPlanBuilder::build(&request, &domains);
+    let plan = ReadingPlanBuilder::build(&request, &domains, None);
     let packs = ChapterEvidencePlanner::plan_all(&pool, &plan, &catalog.evidence, &policy)
         .expect("plan");
     assert_eq!(packs.len(), 5);
@@ -218,6 +219,7 @@ fn later_chapters_exclude_prior_chapter_fact_ids_from_pack() {
             "career".into(),
             "growth_path".into(),
         ],
+        None,
     );
     let packs = ChapterEvidencePlanner::plan_all(&pool, &plan, &catalog.evidence, &policy)
         .expect("plan");
@@ -272,7 +274,7 @@ fn relationships_pack_prefers_descendant_ruler_not_mc() {
         "pool must expose descendant ruler from rulership_context"
     );
     let request = premium_request(payload);
-    let plan = ReadingPlanBuilder::build(&request, &["relationships".into()]);
+    let plan = ReadingPlanBuilder::build(&request, &["relationships".into()], None);
     let packs = ChapterEvidencePlanner::plan_all(
         &pool,
         &plan,
@@ -316,7 +318,7 @@ fn career_pack_prefers_mc_ruler_when_in_pool() {
         return;
     }
     let request = premium_request(payload);
-    let plan = ReadingPlanBuilder::build(&request, &["career".into()]);
+    let plan = ReadingPlanBuilder::build(&request, &["career".into()], None);
     let packs = ChapterEvidencePlanner::plan_all(
         &pool,
         &plan,
@@ -349,7 +351,7 @@ fn identity_pack_excludes_sun() {
     let pool =
         InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
     let request = premium_request(payload);
-    let plan = ReadingPlanBuilder::build(&request, &["identity".into()]);
+    let plan = ReadingPlanBuilder::build(&request, &["identity".into()], None);
     let packs = ChapterEvidencePlanner::plan_all(
         &pool,
         &plan,
@@ -378,6 +380,7 @@ fn emotional_excludes_aspect_already_in_identity_pack() {
     let plan = ReadingPlanBuilder::build(
         &request,
         &["identity".into(), "emotional_life".into()],
+        None,
     );
     let packs = ChapterEvidencePlanner::plan_all(
         &pool,
@@ -424,7 +427,7 @@ fn signal_sun_and_placement_sun_not_both_in_same_chapter_pack() {
         .map(|e| e.semantic_fact_key.clone())
         .expect("placement sun");
     let request = premium_request(payload);
-    let plan = ReadingPlanBuilder::build(&request, &["identity".into()]);
+    let plan = ReadingPlanBuilder::build(&request, &["identity".into()], None);
     let packs = ChapterEvidencePlanner::plan_all(
         &pool,
         &plan,
@@ -453,7 +456,7 @@ fn prompt_pack_labels_localized_for_fr() {
     let pool =
         InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
     let request = premium_request(rich_payload_from_golden());
-    let plan = ReadingPlanBuilder::build(&request, &["identity".into()]);
+    let plan = ReadingPlanBuilder::build(&request, &["identity".into()], None);
     let packs = ChapterEvidencePlanner::plan_all(
         &pool,
         &plan,
@@ -486,7 +489,7 @@ fn prompt_pack_humanizes_ruler_labels_in_french() {
     let pool =
         InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
     let request = premium_request(payload);
-    let plan = ReadingPlanBuilder::build(&request, &["career".into()]);
+    let plan = ReadingPlanBuilder::build(&request, &["career".into()], None);
     let packs = ChapterEvidencePlanner::plan_all(
         &pool,
         &plan,
@@ -542,6 +545,7 @@ fn sun_supporting_semantic_key_capped_at_three_chapters() {
             "career".into(),
             "growth_path".into(),
         ],
+        None,
     );
     let packs = ChapterEvidencePlanner::plan_all(&pool, &plan, &catalog.evidence, &policy)
         .expect("plan");
@@ -579,7 +583,7 @@ fn prompt_pack_smaller_than_global_facts_block() {
     let pool =
         InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
     let request = premium_request(rich_payload_from_golden());
-    let plan = ReadingPlanBuilder::build(&request, &["identity".into()]);
+    let plan = ReadingPlanBuilder::build(&request, &["identity".into()], None);
     let packs = ChapterEvidencePlanner::plan_all(
         &pool,
         &plan,

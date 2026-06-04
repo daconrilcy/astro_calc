@@ -54,7 +54,8 @@ pub fn assert_compiled_prompt_is_safe(prompts_root: &std::path::Path) -> Result<
         request_id: None,
         idempotency_key: None,
         product_context: ProductContext {
-            product_code: "natal_basic".into(),
+            product_code: "natal_prompter".into(),
+            interpretation_profile_code: Some("natal_light".into()),
             user_language: "fr".into(),
             audience_level: AudienceLevel::Beginner,
         },
@@ -106,6 +107,7 @@ pub fn assert_compiled_prompt_is_safe(prompts_root: &std::path::Path) -> Result<
             chapter_code: None,
             chapter_evidence_pack: None,
             catalog: &catalog,
+            interpretation: None,
         })
         .map_err(|e| format!("compile failed: {e}"))?;
 

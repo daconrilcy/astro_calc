@@ -16,10 +16,11 @@ use astral_llm_domain::{
     output_contract::{GenerationMode, OutputFormat, ResponseContract},
     provider::ProviderKind,
     AstroCalculationPayload, AstrologerProfile, EngineDefaults, FallbackPolicy, PrivacyPolicy,
-    ProductGenerationPolicy, ServiceLimits,
+    ServiceLimits,
 };
 use astral_llm_infra::{
-    bootstrap_astro_object_labels, bootstrap_domains, bootstrap_product_policies,
+    bootstrap_astro_object_labels, bootstrap_domains, bootstrap_interpretation_profiles,
+    bootstrap_product_policies,
     bootstrap_zodiac_sign_labels, CanonicalCatalog, SafetyPattern,
 };
 use astral_llm_providers::FakeProvider;
@@ -28,6 +29,7 @@ fn test_catalog() -> Arc<CanonicalCatalog> {
     Arc::new(CanonicalCatalog {
         astrological_domains: bootstrap_domains(),
         product_generation_policies: bootstrap_product_policies(),
+        interpretation_profiles: bootstrap_interpretation_profiles(),
         safety_patterns: vec![SafetyPattern {
             pattern_type: "symbolic".into(),
             locale: "fr".into(),
@@ -77,7 +79,8 @@ fn premium_request(data: serde_json::Value) -> GenerateReadingRequest {
         request_id: Some("astro-basis-test".into()),
         idempotency_key: None,
         product_context: ProductContext {
-            product_code: "natal_premium".into(),
+            product_code: "natal_prompter".into(),
+            interpretation_profile_code: Some("natal_premium".into()),
             user_language: "fr".into(),
             audience_level: AudienceLevel::Intermediate,
         },
@@ -171,7 +174,10 @@ fn premium_rejects_domain_score_only_chapter_basis() {
         safety_flags: vec![],
     };
 
-    let policy = ProductGenerationPolicy::bootstrap_premium();
+    let policy = bootstrap_interpretation_profiles()
+        .get("natal_premium")
+        .expect("natal_premium")
+        .to_product_generation_policy();
     assert!(AstroBasisValidator::validate_chapter(&chapter, &facts, &policy).is_err());
 }
 
@@ -205,7 +211,10 @@ fn premium_accepts_domain_score_plus_placement() {
         safety_flags: vec![],
     };
 
-    let policy = ProductGenerationPolicy::bootstrap_premium();
+    let policy = bootstrap_interpretation_profiles()
+        .get("natal_premium")
+        .expect("natal_premium")
+        .to_product_generation_policy();
     assert!(AstroBasisValidator::validate_chapter(&chapter, &facts, &policy).is_ok());
 }
 

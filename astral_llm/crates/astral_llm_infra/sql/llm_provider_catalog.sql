@@ -182,10 +182,9 @@ INSERT INTO llm_product_default_engine (
     product_code, default_provider, default_model, economic_model, high_quality_model, oracle_model, notes
 ) VALUES
     (
-        'natal_premium', 'openai', 'gpt-5.4-mini', 'gpt-5-nano', 'gpt-5.4', 'gpt-5.5',
-        'chapitres=gpt-5.4-mini ; summary=gpt-5-nano (economic_model) ; fallback gpt-4.1'
-    ),
-    ('natal_basic', 'openai', 'gpt-5.4-mini', 'gpt-5-mini', NULL, NULL, 'production Basic par defaut')
+        'natal_prompter', 'openai', 'gpt-5.4-mini', 'gpt-5-nano', 'gpt-5.4', 'gpt-5.5',
+        'moteur natal_prompter ; modeles par profil JSON ; override rapide via conf'
+    )
 ON CONFLICT (product_code) DO UPDATE SET
     default_provider = EXCLUDED.default_provider,
     default_model = EXCLUDED.default_model,
@@ -208,7 +207,7 @@ CREATE TABLE IF NOT EXISTS llm_product_fallback_models (
 );
 
 INSERT INTO llm_product_fallback_models (product_code, provider, model, priority, notes) VALUES
-    ('natal_premium', 'openai', 'gpt-4.1', 10, 'baseline fallback Premium')
+    ('natal_prompter', 'openai', 'gpt-4.1', 10, 'baseline fallback natal_prompter')
 ON CONFLICT (product_code, provider, model) DO UPDATE SET
     priority = EXCLUDED.priority,
     notes = EXCLUDED.notes,
@@ -224,22 +223,22 @@ CREATE TABLE IF NOT EXISTS llm_product_allowed_models (
     UNIQUE (product_code, provider, model)
 );
 
--- natal_premium : modeles autorises pour benchmark E2E Premium (provider = code catalogue openai)
+-- natal_prompter : modeles autorises (provider = code catalogue openai / fake)
 INSERT INTO llm_product_allowed_models (product_code, provider, model, notes) VALUES
-    ('natal_premium', 'openai', 'gpt-4.1', 'baseline'),
-    ('natal_premium', 'openai', 'gpt-5-mini', 'economique / summary'),
-    ('natal_premium', 'openai', 'gpt-5-nano', 'summary ultra-low-cost'),
-    ('natal_premium', 'openai', 'gpt-5.4-mini', 'production probable'),
-    ('natal_premium', 'openai', 'gpt-5.4', 'qualite/prix'),
-    ('natal_premium', 'openai', 'gpt-5.5', 'qualite max raisonnable'),
-    ('natal_premium', 'openai', 'gpt-5.5-pro', 'oracle benchmark explicite'),
-    ('natal_basic', 'openai', 'gpt-4.1', NULL),
-    ('natal_basic', 'openai', 'gpt-5-mini', NULL),
-    ('natal_basic', 'openai', 'gpt-5.4-mini', NULL),
-    ('natal_basic', 'fake', 'fake-model', NULL)
+    ('natal_prompter', 'openai', 'gpt-4.1', 'baseline'),
+    ('natal_prompter', 'openai', 'gpt-5-mini', 'economique / summary'),
+    ('natal_prompter', 'openai', 'gpt-5-nano', 'summary ultra-low-cost'),
+    ('natal_prompter', 'openai', 'gpt-5.4-mini', 'production probable'),
+    ('natal_prompter', 'openai', 'gpt-5.4', 'qualite/prix'),
+    ('natal_prompter', 'openai', 'gpt-5.5', 'qualite max raisonnable'),
+    ('natal_prompter', 'openai', 'gpt-5.5-pro', 'oracle benchmark explicite'),
+    ('natal_prompter', 'fake', 'fake-model', 'tests integration')
 ON CONFLICT (product_code, provider, model) DO UPDATE SET
     is_active = EXCLUDED.is_active,
     notes = EXCLUDED.notes;
+
+UPDATE llm_product_allowed_models SET is_active = false
+WHERE product_code IN ('natal_basic', 'natal_premium');
 
 INSERT INTO llm_generation_benchmark_usage_models (usage_code, provider, model, priority, notes) VALUES
     ('premium_chapter_orchestrated', 'openai', 'gpt-5.4-mini', 10, 'production Premium par defaut'),

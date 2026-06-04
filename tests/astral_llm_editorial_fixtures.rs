@@ -14,6 +14,8 @@ use astral_llm_domain::{
 struct EditorialFixtureFile {
     fixture_id: String,
     product_code: String,
+    #[serde(default)]
+    interpretation_profile_code: Option<String>,
     audience_level: String,
     user_language: String,
     generation_mode: String,
@@ -46,6 +48,15 @@ fn request_from_fixture(file: &EditorialFixtureFile) -> GenerateReadingRequest {
         idempotency_key: None,
         product_context: ProductContext {
             product_code: file.product_code.clone(),
+            interpretation_profile_code: file.interpretation_profile_code.clone().or_else(|| {
+                if file.product_code == "natal_prompter" {
+                    None
+                } else if file.product_code.contains("premium") {
+                    Some("natal_premium".into())
+                } else {
+                    Some("natal_basic".into())
+                }
+            }),
             user_language: file.user_language.clone(),
             audience_level: parse_audience(&file.audience_level),
         },
@@ -135,11 +146,14 @@ fn rejects_cold_fact_list_fixture() {
     let file = load_fixture("natal_basic_beginner_fr");
     let spec = EditorialFixtureSpec {
         fixture_id: "negative_cold_list".into(),
-        product_code: "natal_basic".into(),
+        product_code: "natal_prompter".into(),
         audience_level: AudienceLevel::Beginner,
         user_language: "fr".into(),
         generation_mode: GenerationMode::SinglePass,
     };
+    let mut file = file;
+    file.product_code = "natal_prompter".into();
+    file.interpretation_profile_code = Some("natal_light".into());
     let request = request_from_fixture(&file);
     let mut reading = file.reading;
     reading.chapters[0].body = "Soleil en Belier. Lune en Cancer. Mars carre Saturne.".into();

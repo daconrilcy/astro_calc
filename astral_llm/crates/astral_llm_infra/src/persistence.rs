@@ -105,6 +105,11 @@ impl RunPersistence {
         execute_sql_script(&self.pool, include_str!("../sql/llm_provider_catalog.sql")).await?;
         execute_sql_script(&self.pool, include_str!("../sql/llm_i18n_canonical.sql")).await?;
         execute_sql_script(&self.pool, include_str!("../sql/llm_audit_extensions.sql")).await?;
+        execute_sql_script(
+            &self.pool,
+            include_str!("../sql/llm_interpretation_profiles.sql"),
+        )
+        .await?;
         Ok(())
     }
 

@@ -16,7 +16,10 @@ use astral_llm_domain::{
     AstroCalculationPayload, AstrologerProfile, EngineDefaults, FallbackPolicy, PrivacyPolicy,
     ServiceLimits,
 };
-use astral_llm_infra::{bootstrap_domains, bootstrap_product_policies, CanonicalCatalog};
+use astral_llm_infra::{
+    bootstrap_domains, bootstrap_interpretation_profiles, bootstrap_product_policies,
+    CanonicalCatalog,
+};
 use astral_llm_providers::FakeProvider;
 
 const INJECTION_SAMPLES: &[&str] = &[
@@ -34,6 +37,7 @@ fn build_use_case() -> GenerateReadingUseCase {
     let catalog = Arc::new(CanonicalCatalog {
         astrological_domains: bootstrap_domains(),
         product_generation_policies: bootstrap_product_policies(),
+        interpretation_profiles: bootstrap_interpretation_profiles(),
         ..Default::default()
     });
     let router = ProviderRouter::new(
@@ -63,7 +67,8 @@ fn base_request() -> GenerateReadingRequest {
         request_id: None,
         idempotency_key: None,
         product_context: ProductContext {
-            product_code: "natal_basic".into(),
+            product_code: "natal_prompter".into(),
+            interpretation_profile_code: Some("natal_light".into()),
             user_language: "fr".into(),
             audience_level: AudienceLevel::Beginner,
         },

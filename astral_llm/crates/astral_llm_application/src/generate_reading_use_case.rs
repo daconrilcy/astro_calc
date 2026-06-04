@@ -27,7 +27,7 @@ use crate::execution_audit::ExecutionAudit;
 use crate::reasoning_generation::{
     apply_reasoning_output_reserve, effective_temperature, resolve_reasoning_effort,
 };
-use crate::product_policy_validator::ProductPolicyValidator;
+use crate::interpretation_profile_resolver::InterpretationProfileResolver;
 use crate::prompt_compiler::{PromptCompilationInput, PromptCompiler};
 use crate::prompt_trace;
 use crate::provider_router::ProviderRouter;
@@ -88,7 +88,7 @@ impl GenerateReadingUseCase {
         let mut audit = ExecutionAudit::new(&run_id);
         audit.idempotency_key = request.idempotency_key.clone();
 
-        let response = match self.execute_inner(&request, &run_id, &mut audit).await {
+        let response = match self.execute_inner(request, &run_id, &mut audit).await {
             Ok(reading) => GenerateReadingResponse::Success(StructuredReadingResponse {
                 run_id: run_id.clone(),
                 reading,
@@ -113,17 +113,15 @@ impl GenerateReadingUseCase {
 
     async fn execute_inner(
         &self,
-        request: &GenerateReadingRequest,
+        mut request: GenerateReadingRequest,
         run_id: &str,
         audit: &mut ExecutionAudit,
     ) -> Result<astral_llm_domain::NatalReadingResponse, GenerationError> {
-        RequestValidator::validate(request, &self.limits, &self.catalog)?;
+        InterpretationProfileResolver::normalize_request(&mut request, &self.catalog)?;
+        RequestValidator::validate(&request, &self.limits, &self.catalog)?;
 
-        let service_defaults = resolve_service_engine_defaults(
-            &self.engine_defaults,
-            &self.catalog,
-            &request.product_context.product_code,
-        );
+        let service_defaults =
+            resolve_service_engine_defaults(&self.engine_defaults, &self.catalog, &request);
         let mut engine = resolve_engine_params(
             &request.engine,
             &service_defaults,
@@ -139,8 +137,14 @@ impl GenerateReadingUseCase {
             engine.allow_oracle_benchmark,
         )?;
 
-        let product_policy =
-            ProductPolicyValidator::validate(request, &self.catalog, &engine.provider, &engine.model)?;
+        let validated = InterpretationProfileResolver::validate_product(
+            &request,
+            &self.catalog,
+            &engine.provider,
+            &engine.model,
+        )?;
+        let product_policy = &validated.policy;
+        let interpretation = validated.interpretation.as_ref();
 
         self.router.capability_registry().validate_request_capabilities(
             ModelRouteContext::PrimaryReading,
@@ -157,8 +161,7 @@ impl GenerateReadingUseCase {
             let summary_engine = resolve_subtask_engine(
                 &engine,
                 &request.engine,
-                &self.catalog,
-                &request.product_context.product_code,
+                Some(&validated.policy),
             );
             self.router.capability_registry().validate_request_capabilities(
                 ModelRouteContext::Subtask,
@@ -186,11 +189,11 @@ impl GenerateReadingUseCase {
         )?;
 
         let product_default =
-            SafetyResolver::product_default_for(&request.product_context.product_code);
+            SafetyResolver::product_default_for(&request.product_context.product_code, interpretation);
         let safety_policy =
             SafetyResolver::resolve(&product_default, request.safety_policy.as_ref());
 
-        SafetyGuard::validate_request(request, &safety_policy, &self.catalog).map_err(|violations| {
+        SafetyGuard::validate_request(&request, &safety_policy, &self.catalog).map_err(|violations| {
             GenerationError::with_details(
                 GenerationErrorCode::SafetyRejected,
                 "request failed safety validation",
@@ -224,11 +227,12 @@ impl GenerateReadingUseCase {
                 );
                 let result = orchestrator
                     .generate(
-                        request,
+                        &request,
                         &engine,
                         &safety_policy,
                         &astro_facts,
                         product_policy,
+                        interpretation,
                         run_id,
                         audit,
                     )
@@ -238,19 +242,21 @@ impl GenerateReadingUseCase {
             }
             GenerationMode::SinglePass => {
                 let domains = DomainResolver::resolve(
-                    request,
+                    &request,
                     &self.catalog,
                     &self.limits,
                     product_policy,
+                    interpretation,
                 );
                 audit.selected_domains = domains.clone();
                 self.generate_single_pass(
-                    request,
+                    &request,
                     &engine,
                     &safety_policy,
                     &astro_facts,
                     &domains,
                     product_policy,
+                    interpretation,
                     run_id,
                 )
                 .await?
@@ -278,7 +284,7 @@ impl GenerateReadingUseCase {
             )
         })?;
 
-        ReadingQualityValidator::validate_for_product(request, &reading)?;
+        ReadingQualityValidator::validate_for_product(&request, &reading, interpretation)?;
         Ok(reading)
     }
 
@@ -290,6 +296,9 @@ impl GenerateReadingUseCase {
         astro_facts: &astral_llm_domain::NormalizedAstroFacts,
         domains: &[String],
         product_policy: &astral_llm_domain::ProductGenerationPolicy,
+        interpretation: Option<
+            &crate::interpretation_profile_resolver::ResolvedInterpretationContext,
+        >,
         run_id: &str,
     ) -> Result<astral_llm_domain::NatalReadingResponse, GenerationError> {
         let bundle = self
@@ -302,6 +311,7 @@ impl GenerateReadingUseCase {
                 chapter_code: None,
                 chapter_evidence_pack: None,
                 catalog: &self.catalog,
+                interpretation,
             })
             .map_err(|e| GenerationError::new(GenerationErrorCode::InvalidInput, e))?;
 

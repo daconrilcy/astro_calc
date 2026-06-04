@@ -4,6 +4,209 @@ Service Rust independant du moteur de calcul (`astral_calculator`). Il transform
 astrologique deja calcule en lecture interpretative structuree, securisee et interchangeable entre
 fournisseurs LLM.
 
+## Guide debutant — installation, configuration et premier test
+
+Ce guide suppose Windows + PowerShell, le depot clone sous `C:\dev\astral_calculation`, et Docker pour PostgreSQL.
+
+### 1. Prerequis
+
+| Outil | Role |
+|---|---|
+| Rust (stable) | `cargo run -p astral_llm_api`, tests |
+| Docker Desktop | PostgreSQL local (`docker compose`) |
+| Cle OpenAI | Test reel Premium (`OPENAI_API_KEY`) |
+| Optionnel | `psql` en ligne de commande (sinon le script utilise `docker compose exec`) |
+
+### 2. Fichier `.env` a la racine
+
+```powershell
+Copy-Item .env.example .env
+# Editer .env : POSTGRES_PASSWORD, DATABASE_URL, OPENAI_API_KEY, ASTRAL_LLM_API_KEY
+```
+
+Variables **minimales** pour demarrer en local :
+
+```text
+DATABASE_URL=postgres://postgres:<mot-de-passe>@localhost:5432/astral
+ASTRAL_LLM_ENV=local
+ASTRAL_LLM_HOST=127.0.0.1
+ASTRAL_LLM_PORT=8081
+ASTRAL_LLM_API_KEY=<une-cle-secrete-pour-le-gateway>   # requis si l'API renvoie unauthorized
+ASTRAL_LLM_ENABLE_FAKE=true                              # tests sans OpenAI
+ASTRAL_LLM_ENABLE_PERSISTENCE=true                       # audit + idempotence
+ASTRAL_LLM_DB_AUTO_MIGRATE=true                          # cree les tables au boot de l'API
+OPENAI_API_KEY=sk-...                                    # test reel Premium
+ASTRAL_LLM_DEFAULT_PROVIDER=openai
+ASTRAL_LLM_DEFAULT_MODEL=gpt-5.4-mini
+ASTRAL_LLM_PROMPT_LOG_DIR=output/logs/prompts
+```
+
+> **Auth** : toutes les routes (y compris `/health`) exigent `Authorization: Bearer <ASTRAL_LLM_API_KEY>` ou `X-API-Key` si une cle gateway est definie dans `.env`.
+
+### 3. Demarrer PostgreSQL
+
+```powershell
+docker compose up -d postgres
+```
+
+Verifier que `DATABASE_URL` pointe vers cette instance.
+
+### 4. Enregistrer les profils d'interpretation en base
+
+Le produit API est **`natal_prompter`**. Le tier (light / basic / premium) est un **profil** charge depuis la base :
+
+| `interpretation_profile_code` | Mode | Usage |
+|---|---|---|
+| `natal_light` | `single_pass` | 1 domaine, rapide, sans evidence |
+| `natal_basic` | `chapter_orchestrated` | multi-chapitres, qualite non bloquante |
+| `natal_premium` | `chapter_orchestrated` | evidence + gate qualite bloquante |
+
+```powershell
+.\scripts\manage_natal_interpretation_profiles.ps1 -Submit -Path config\natal_interpretation_profiles\natal_light.json
+.\scripts\manage_natal_interpretation_profiles.ps1 -Submit -Path config\natal_interpretation_profiles\natal_basic.json
+.\scripts\manage_natal_interpretation_profiles.ps1 -Submit -Path config\natal_interpretation_profiles\natal_premium.json
+.\scripts\manage_natal_interpretation_profiles.ps1 -List
+```
+
+Le script cree la table `llm_interpretation_profiles` si elle n'existe pas encore.
+
+### 5. Modeles LLM (produit + profils)
+
+```powershell
+# Defauts produit en base (chapitres + summary)
+.\scripts\set_product_llm_models.ps1 -Show
+.\scripts\set_product_llm_models.ps1 -Product natal_prompter -Chapters gpt-5.4-mini -Summary gpt-5-nano
+```
+
+Les caps et modeles par tier viennent aussi de `chapter_models` dans chaque JSON sous `config/natal_interpretation_profiles/`.
+
+### 6. Lancer l'API
+
+```powershell
+cargo run -p astral_llm_api
+```
+
+Attendre le log `astral_llm_api listening` sur `127.0.0.1:8081` (ou le port `ASTRAL_LLM_PORT`).
+
+**Important** : apres modification des profils en base ou de `llm_product_models.conf`, **redemarrer** l'API pour recharger le catalogue.
+
+### 7. Test rapide sans OpenAI (FakeProvider)
+
+Prerequis : `ASTRAL_LLM_ENABLE_FAKE=true` **et** redemarrage de l'API apres changement.
+
+Requete type `natal_light` (deja preparee apres un premier run) :
+
+```powershell
+.\scripts\generate_premium_reading_e2e.ps1 `
+  -RequestPath output\request-fake-light.json `
+  -Provider fake -Model fake-model `
+  -OutputPath output\fake_reading_first.json
+```
+
+Reponse attendue : `status: success`, `used_provider: fake`, un chapitre `identity`, `generation_mode: single_pass`.
+
+Pour **creer** `output\request-fake-light.json` a partir du minimal :
+
+```powershell
+$req = Get-Content request-premium.json -Raw | ConvertFrom-Json
+$req.product_context.interpretation_profile_code = "natal_light"
+$req.response_contract.generation_mode = "single_pass"
+$req.engine = @{ provider = "fake"; model = "fake-model"; allow_fallback = $true; domain_count = 1 }
+$req.astrologer_profile.preferred_domains = @("identity")
+$req | ConvertTo-Json -Depth 20 | Set-Content output\request-fake-light.json -Encoding utf8
+```
+
+### 8. Test reel Premium (OpenAI)
+
+Prerequis : `OPENAI_API_KEY`, payload **riche** (pas seulement `domain_scores`).
+
+```powershell
+.\scripts\generate_premium_reading_e2e.ps1 `
+  -RequestPath request-premium-rich.json `
+  -OutputPath output\premium_reading_real.json `
+  -TimeoutSec 600
+```
+
+Reference validee (2026-06-04) : run `f79c04a7-d0ff-4d7a-b32e-42fd7fef7d80` — ~42 s, 5 chapitres `gpt-5.4-mini` + summary `gpt-5-nano`, sortie `output\premium_reading_real.json`.
+
+Consulter le resultat :
+
+```powershell
+Get-Content output\premium_reading_real.json | ConvertFrom-Json | Select-Object status, run_id
+.\scripts\show_generation_run.ps1 -RunId f79c04a7-d0ff-4d7a-b32e-42fd7fef7d80
+```
+
+Prompts envoyes au modele : `output\logs\prompts\<run_id>\`.
+
+### 9. Contrat HTTP minimal (`POST /v1/readings/generate`)
+
+Corps JSON (extrait) :
+
+```json
+{
+  "product_context": {
+    "product_code": "natal_prompter",
+    "interpretation_profile_code": "natal_premium",
+    "user_language": "fr",
+    "audience_level": "beginner"
+  },
+  "astro_result": {
+    "contract_version": "natal_structured_v13",
+    "chart_type": "natal",
+    "data": { }
+  },
+  "astrologer_profile": { "tone": "warm", "jargon_level": "beginner", "wording_style": "clear" },
+  "engine": { "allow_fallback": true },
+  "response_contract": {
+    "output_schema_version": "natal_reading_v1",
+    "generation_mode": "chapter_orchestrated",
+    "format": "structured_json",
+    "include_astro_sources": true,
+    "include_legal_disclaimer": true
+  }
+}
+```
+
+- `interpretation_profile_code` est **obligatoire** pour `natal_prompter`.
+- `generation_mode` peut etre corrige automatiquement pour correspondre au profil.
+- Anciens clients : `product_code: natal_premium` ou `natal_basic` sont migres vers `natal_prompter` + profil deduit.
+
+Appel PowerShell avec auth :
+
+```powershell
+$headers = @{
+  "Content-Type" = "application/json"
+  "Authorization" = "Bearer $env:ASTRAL_LLM_API_KEY"
+  "Idempotency-Key" = "demo-$(Get-Date -Format 'yyyyMMddHHmmss')"
+}
+$body = Get-Content request-premium-rich.json -Raw
+Invoke-RestMethod -Method POST -Uri "http://127.0.0.1:8081/v1/readings/generate" -Headers $headers -Body $body
+```
+
+### 10. Depannage frequents
+
+| Symptome | Cause probable | Action |
+|---|---|---|
+| `unauthorized` | `ASTRAL_LLM_API_KEY` manquant dans la requete | Header `Authorization: Bearer ...` |
+| `UNSUPPORTED_PROVIDER` + `fake` | `ASTRAL_LLM_ENABLE_FAKE=false` | Passer a `true`, redemarrer l'API |
+| `PREMIUM_EVIDENCE_DIVERSITY_FAILED` | Profil `natal_premium` + payload trop pauvre | Utiliser `request-premium-rich.json` ou profil `natal_light` |
+| `interpretation profile not found` | Profils non soumis en base | `manage_natal_interpretation_profiles.ps1 -Submit` |
+| `relation llm_interpretation_profiles does not exist` | Table absente | Relancer le script `-Submit` (cree le schema) ou demarrer l'API avec `DB_AUTO_MIGRATE=true` |
+| Aucun step dans l'audit script | Persistence desactivee ou run fake tres court | Normal en dev ; activer `ENABLE_PERSISTENCE` pour l'historique SQL |
+
+### 11. Fichiers utiles
+
+| Fichier / dossier | Role |
+|---|---|
+| `request-premium.json` | Payload astro minimal (tests negatifs Premium) |
+| `request-premium-rich.json` | Golden E2E Premium (payload complet) |
+| `config/natal_interpretation_profiles/*.json` | Source des profils (Submit en base) |
+| `astral_llm/prompts/natal_prompter/v1/` | Prompts communs versionnes |
+| `scripts/generate_premium_reading_e2e.ps1` | Client E2E local |
+| `scripts/manage_natal_interpretation_profiles.ps1` | CRUD profils en base |
+
+---
+
 ## Etat du projet
 
 | Label | Statut | Signification |
@@ -22,7 +225,10 @@ E2E OpenAI rich (6 steps generated)        : OK — scripts/generate_premium_rea
 Mistral / Anthropic                        : adapters presents, non certifies
 ```
 
-**Reference E2E produit (2026-06-04)** : run `0619a1e8-4069-4f89-b6ea-db14f32f38ea` — ~47 s, 6 steps `generated`, libelles maîtrise humanises, cap Soleil supporting (3 chapitres), prompts dans `output/logs/prompts/0619a1e8-.../`.
+**References E2E produit (2026-06-04)** :
+
+- Premium OpenAI : run `f79c04a7-d0ff-4d7a-b32e-42fd7fef7d80` — ~42 s, 5 chapitres + summary, `request-premium-rich.json`, sortie `output/premium_reading_real.json`.
+- Premium historique : run `0619a1e8-4069-4f89-b6ea-db14f32f38ea` — ~47 s, 6 steps `generated`, libelles maîtrise humanises.
 
 Le gel **V1-technical-freeze** ne doit plus faire l'objet d'une refonte architecture. La suite n'est plus une **correction** du planner, mais une **phase d'optimisation** (voir ci-dessous).
 
@@ -75,13 +281,16 @@ cargo test -p astral_llm_api --test astral_llm_load_tests -- --ignored  # idempo
 
 | Parametre | Valeur |
 |---|---|
-| Produit | `natal_premium` |
-| Mode | `chapter_orchestrated` |
+| Produit | `natal_prompter` |
+| Profil | `natal_premium` (`interpretation_profile_code`) |
+| Mode | `chapter_orchestrated` (derive du profil si absent) |
 | Provider | OpenAI d'abord, puis Mistral ou Anthropic |
 | Langue | `fr` |
 | Audience | `beginner` |
 
-Criteres de passage : JSON valide, `astro_basis` valide (≥1 fact interpretatif par chapitre Premium, pas de `domain_score` seul), synthese finale personnalisee (pas de placeholder pipeline), pas de conseil medical/juridique/financier, pas de fatalisme, pas de repetition excessive, pas de liste froide de faits, disclaimer present, qualite Premium non rejetee (`READING_QUALITY_FAILED`), steps persistes (chapitres + `summary`), idempotence rejoue la reponse, `GET /v1/providers` expose `circuit_breakers`. Gate Premium : `product_code=natal_premium` bloquant meme si `single_pass` est force par erreur.
+Criteres de passage : JSON valide, `astro_basis` valide (≥1 fact interpretatif par chapitre Premium, pas de `domain_score` seul), synthese finale personnalisee (pas de placeholder pipeline), pas de conseil medical/juridique/financier, pas de fatalisme, pas de repetition excessive, pas de liste froide de faits, disclaimer present, qualite Premium non rejetee (`READING_QUALITY_FAILED`), steps persistes (chapitres + `summary`), idempotence rejoue la reponse, `GET /v1/providers` expose `circuit_breakers`. Gate Premium : profil `natal_premium` (`blocking_gate`) bloquant meme si `single_pass` est envoye par erreur (normalise au boot requete).
+
+**API** : `product_code=natal_prompter` + `interpretation_profile_code` (`natal_light` | `natal_basic` | `natal_premium`). Shim legacy : `natal_premium` / `natal_basic` comme `product_code` sont migres automatiquement.
 
 Le payload astro Premium doit inclure des placements/aspects (via `planets`, `positions` ou `llm_projection_natal_v1`) — un jeu `domain_scores` seul est rejete.
 
@@ -115,8 +324,8 @@ Checks : lisibilite, non-repetition, cadrage interpretatif, jargon, fatalisme, c
 
 `ReadingQualityValidator::validate_for_product` + `requires_blocking_quality_gate()` :
 
-- **Basic** (`natal_basic` + `single_pass`) : warnings non bloquants (`tracing`)
-- **Premium** : gate bloquante si `chapter_orchestrated` **ou** `product_code=natal_premium` (meme en `single_pass` mal configure)
+- **Light / Basic** (profils `natal_light`, `natal_basic`) : warnings non bloquants (`tracing`)
+- **Premium** (profil `natal_premium`) : gate bloquante via `quality.blocking_gate` du profil (meme en `single_pass` mal configure, corrige par `normalize_request`)
 - Code erreur : `READING_QUALITY_FAILED`
 - Seuils : longueur chapitre (≥40 mots), cadrage interpretatif, repetition (trigrammes), `astro_basis`, determinisme, disclaimer
 - `EditorialValidator` : fatalisme, conseils interdits, jargon beginner (fixtures)
@@ -167,8 +376,9 @@ astral_llm/
     astral_llm_infra/        — config, secrets, persistence, referentiel, redaction
     astral_llm_api/          — serveur HTTP Axum (lib + binaire ; auth, rate limits, routes)
   prompts/
-    natal_basic/v1/          — system.md, task.md, format.md, safety.md
-    natal_premium/v1/
+    natal_prompter/v1/       — prompts communs (system, format, safety, task fragments par profil)
+  config/natal_interpretation_profiles/  — JSON canoniques (light, basic, premium)
+  scripts/manage_natal_interpretation_profiles.ps1  — Submit / List / Get / Delete en base
   crates/astral_llm_infra/sql/
     llm_generation_runs.sql  — runs, payloads, index
     llm_canonical.sql        — referentiels LLM (domains, safety, policies, models)
@@ -179,8 +389,9 @@ astral_llm/
 ### Chaine gateway complete (Premium chapter_orchestrated)
 
 ```txt
-RequestValidator
-  -> ProductPolicyValidator
+InterpretationProfileResolver::normalize_request (shim legacy + generation_mode)
+  -> RequestValidator
+  -> ProductPolicyValidator (politique effective = profil)
   -> ModelCapabilityRegistry
   -> AstroPayloadNormalizer
   -> InterpretiveEvidenceBuilder
@@ -202,7 +413,7 @@ RequestValidator
   -> SummarySynthesizer
   -> ResponseValidator (lecture complete + summary)
   -> SafetyGuard (post)
-  -> ReadingQualityValidator (bloquant Premium / natal_premium)
+  -> ReadingQualityValidator (bloquant si profil `blocking_gate`)
   -> Persistence / audit (evidence_metrics dans steps si Premium)
 ```
 
@@ -409,7 +620,7 @@ Configuration operationnelle (sans toucher au code Rust) :
 
 | Etape | Commande |
 |---|---|
-| 1. Editer | `config/llm_product_models.conf` — une ligne par produit : `product_code` `chapter_model` `summary_model` `[provider]` |
+| 1. Editer | `config/llm_product_models.conf` — une ligne `natal_prompter` ; modeles par tier dans `config/natal_interpretation_profiles/*.json` (`chapter_models`) |
 | 2. Appliquer | `.\scripts\set_product_llm_models.ps1` |
 | 3. Redemarrer | `astral_llm_api` (catalogue recharge au boot) |
 | Verifier | `.\scripts\set_product_llm_models.ps1 -Show` |
@@ -417,13 +628,14 @@ Configuration operationnelle (sans toucher au code Rust) :
 Exemple fichier :
 
 ```text
-natal_premium	gpt-5.4-mini	gpt-5-nano	openai
+natal_prompter	gpt-5.4-mini	gpt-5-nano	openai
 ```
 
 Exemple CLI (sans modifier le fichier) :
 
 ```powershell
-.\scripts\set_product_llm_models.ps1 -Product natal_premium -Chapters gpt-5.4-mini -Summary gpt-5-nano
+.\scripts\set_product_llm_models.ps1 -Product natal_prompter -Chapters gpt-5.4-mini -Summary gpt-5-nano
+.\scripts\manage_natal_interpretation_profiles.ps1 -Submit -Path config\natal_interpretation_profiles\natal_premium.json
 ```
 
 Comportement runtime :
@@ -453,7 +665,8 @@ Tables (ou bootstrap si DB vide) :
 - Modeles reasoning : `reasoning_output_reserve_min`, `reasoning_effort_subtask` / `_primary` / `_oracle` (litteraux API par modele, ex. gpt-5-mini subtask=`minimal`, gpt-5.4+ subtask=`none`) ; module `reasoning_generation`
 - OpenAI Responses API (GPT-5) : `openai_adapter` agrege les blocs `output[].type=message`
 - Validation contexte : `PrimaryReading` (chapitres), `Subtask` (summary/repair), `OracleBenchmark` (oracle explicite)
-- `llm_product_allowed_models` — modeles autorises par `product_code` (ex. `natal_premium` + gpt-5.4-mini). Liste vide en politique = pas de filtre modele
+- `llm_interpretation_profiles` — profils JSON (`profile_code`, caps, evidence, quality, `chapter_models`)
+- `llm_product_allowed_models` — modeles autorises par `product_code` (`natal_prompter`). Liste vide en politique = pas de filtre modele
 - `llm_product_default_engine` — `default_model` (chapitres), `economic_model` (summary) ; voir section **Modeles LLM par produit**
 - `llm_product_generation_policies`
 
@@ -479,10 +692,10 @@ Les valeurs metier ne sont pas dupliquees en constantes Rust lorsqu'elles existe
 - **ExecutionAudit** : steps dans `llm_generation_steps`
 - **Token budget** : plafonds par chapitre / global
 
-Modes `response_contract.generation_mode` :
+Modes `response_contract.generation_mode` (alignes sur le profil d'interpretation) :
 
-- `single_pass` — Basic, un appel LLM
-- `chapter_orchestrated` — Premium, orchestration multi-chapitres
+- `single_pass` — profil `natal_light`, un appel LLM
+- `chapter_orchestrated` — profils `natal_basic` / `natal_premium`, orchestration multi-chapitres
 
 ## Idempotence
 
@@ -539,7 +752,7 @@ Tables creees automatiquement **uniquement** si :
 - jargon (beginner), disclaimer legal, determinisme
 - fatalisme et conseils medical/juridique/financier (fixtures)
 
-**Premium** : validation **bloquante** (`READING_QUALITY_FAILED`) si `chapter_orchestrated` **ou** `product_code=natal_premium`. **Basic** : warnings seulement.
+**Premium** (`natal_premium`, `quality.blocking_gate`) : validation **bloquante** (`READING_QUALITY_FAILED`). **Light / Basic** : warnings seulement (`tracing`).
 
 ## Observabilite et logs
 

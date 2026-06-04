@@ -9,19 +9,18 @@ use astral_llm_domain::{
 use astral_llm_infra::EvidenceCanonicalCatalog;
 
 use crate::chapter_evidence_planner::requirement_pool_match;
-use crate::interpretive_evidence_builder::is_premium_product;
 
 pub struct EvidenceDiversityValidator;
 
 impl EvidenceDiversityValidator {
     pub fn validate_packs(
-        product_code: &str,
+        evidence_enabled: bool,
         pool: &InterpretiveEvidencePool,
         packs: &[ChapterEvidencePack],
         catalog: &EvidenceCanonicalCatalog,
         policy: &astral_llm_domain::PremiumEvidencePolicy,
     ) -> Result<Vec<RequirementAuditEntry>, GenerationError> {
-        if !is_premium_product(product_code) {
+        if !evidence_enabled {
             return Ok(Vec::new());
         }
 
@@ -50,13 +49,13 @@ impl EvidenceDiversityValidator {
     }
 
     pub fn validate_packs_planned(
-        product_code: &str,
+        evidence_enabled: bool,
         pool: &InterpretiveEvidencePool,
         packs: &[ChapterEvidencePack],
         catalog: &EvidenceCanonicalCatalog,
         policy: &astral_llm_domain::PremiumEvidencePolicy,
     ) -> Result<Vec<RequirementAuditEntry>, GenerationError> {
-        if !is_premium_product(product_code) {
+        if !evidence_enabled {
             return Ok(Vec::new());
         }
         crate::interpretive_evidence_builder::pool_richness_check(pool, policy)?;
@@ -196,12 +195,12 @@ impl EvidenceDiversityValidator {
     }
 
     pub fn validate_reading(
-        product_code: &str,
+        evidence_enabled: bool,
         pool: &InterpretiveEvidencePool,
         chapters: &[ReadingChapter],
         packs: &[ChapterEvidencePack],
     ) -> Result<(), GenerationError> {
-        if !is_premium_product(product_code) {
+        if !evidence_enabled {
             return Ok(());
         }
 

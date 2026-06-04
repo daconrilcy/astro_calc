@@ -98,7 +98,7 @@ async fn idempotency_concurrent_claim_single_winner() {
     persistence.ensure_schema().await.expect("schema");
 
     let key = format!("load-test-{}", Uuid::new_v4());
-    let product = "natal_basic";
+    let product = "natal_prompter";
     let payload = serde_json::json!({ "probe": "idempotency-load" });
     let input_hash = hash_json(&payload);
 

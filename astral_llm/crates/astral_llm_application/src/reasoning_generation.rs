@@ -93,7 +93,7 @@ mod tests {
     #[test]
     fn subtask_defaults_to_minimal_effort() {
         let cap = gpt5_mini_cap();
-        let policy = ProductGenerationPolicy::bootstrap_premium();
+        let policy = ProductGenerationPolicy::bootstrap_natal_prompter();
         let effort = resolve_reasoning_effort(&cap, &policy, None, ModelRouteContext::Subtask);
         assert_eq!(effort, Some(ReasoningEffort::Minimal));
     }
@@ -111,7 +111,7 @@ mod tests {
     #[test]
     fn frontier_subtask_defaults_to_none_effort() {
         let cap = gpt54_cap();
-        let policy = ProductGenerationPolicy::bootstrap_premium();
+        let policy = ProductGenerationPolicy::bootstrap_natal_prompter();
         let effort = resolve_reasoning_effort(&cap, &policy, None, ModelRouteContext::Subtask);
         assert_eq!(effort, Some(ReasoningEffort::None));
     }
@@ -119,7 +119,7 @@ mod tests {
     #[test]
     fn primary_defaults_to_low_effort() {
         let cap = gpt5_mini_cap();
-        let policy = ProductGenerationPolicy::bootstrap_premium();
+        let policy = ProductGenerationPolicy::bootstrap_natal_prompter();
         let effort =
             resolve_reasoning_effort(&cap, &policy, None, ModelRouteContext::PrimaryReading);
         assert_eq!(effort, Some(ReasoningEffort::Low));

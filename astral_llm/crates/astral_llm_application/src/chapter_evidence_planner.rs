@@ -902,7 +902,7 @@ mod tests {
             crate::InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).unwrap();
         let policy = catalog.evidence.premium_policy.clone();
         let plan = astral_llm_domain::chapter_orchestration::ReadingPlan {
-            product_code: "natal_premium".into(),
+            product_code: "natal_prompter".into(),
             domain_count: 5,
             selected_domains: vec![
                 "identity".into(),

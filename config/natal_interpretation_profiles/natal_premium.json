@@ -1,0 +1,56 @@
+{
+  "profile_code": "natal_premium",
+  "product_code": "natal_prompter",
+  "schema_version": "v1",
+  "generation_mode": "chapter_orchestrated",
+  "max_domains": 12,
+  "max_chapters": 12,
+  "max_output_tokens": 16000,
+  "max_reasoning_effort": "high",
+  "default_domain_count": 12,
+  "chapter_models": {
+    "default_provider": "openai",
+    "default_model": "gpt-5.4-mini",
+    "summary_model": "gpt-5-nano"
+  },
+  "chapter_types": [
+    "identity",
+    "emotional_life",
+    "relationships",
+    "career",
+    "money",
+    "family",
+    "inner_conflicts",
+    "talents",
+    "growth_path"
+  ],
+  "chapter_word_targets": {
+    "min": 80,
+    "target": 150,
+    "max": 300
+  },
+  "quality": {
+    "blocking_gate": true,
+    "min_words_per_chapter": 40,
+    "max_repeated_trigrams": 3,
+    "min_astro_basis_refs_per_chapter": 1,
+    "min_interpretive_astro_basis_refs_per_chapter": 1,
+    "require_disclaimer": true
+  },
+  "evidence": {
+    "enabled": true,
+    "policy": {
+      "min_evidence_per_chapter": 4,
+      "min_distinct_kind_families": 2,
+      "min_non_placement_if_available": 1,
+      "max_core_overlap_ratio": 0.6,
+      "domain_score_counts_in_minimum": false,
+      "max_core_evidence": 3,
+      "max_supporting_evidence": 4,
+      "max_nuance_evidence": 2,
+      "max_avoid_repeating": 5,
+      "max_supporting_semantic_chapters": 3
+    }
+  },
+  "task_fragment": "Produisez une lecture natal premium, riche et structuree chapitre par chapitre. Approfondissez les domaines prioritaires avec finesse psychologique et symbolique. Pour ce chapitre, utilisez prioritairement les preuves CORE du pack astrologique fourni. Utilisez les preuves SUPPORTING pour enrichir l'interpretation. Utilisez au moins une preuve NUANCE lorsqu'elle est presente. Ne repetez pas mecaniquement les fact_id deja listes dans avoid_repeating. Ne citez pas les domain_score comme fondement principal du texte. Chaque astro_basis doit referencer un fact_id present dans le pack."
+}

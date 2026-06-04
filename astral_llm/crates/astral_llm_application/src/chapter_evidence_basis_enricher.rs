@@ -25,16 +25,19 @@ impl ChapterEvidenceBasisEnricher {
             .map(|(e, role)| (e.fact_id.clone(), e.label.clone(), role.to_string()))
             .collect();
 
-        // Identity : pas de supporting injecte (Soleil reserve a career, pack volontairement leger).
-        if pack.chapter_code != "identity" {
-            missing.extend(
-                pack.supporting
-                    .iter()
-                    .map(|e| (e, "supporting"))
-                    .filter(|(e, _)| !already_cited(&cited, e))
-                    .map(|(e, role)| (e.fact_id.clone(), e.label.clone(), role.to_string())),
-            );
-        }
+        missing.extend(
+            pack.supporting
+                .iter()
+                .map(|e| (e, "supporting"))
+                .filter(|(e, _)| !already_cited(&cited, e))
+                .filter(|(e, _)| {
+                    // Identity : n'injecter que les supporting non-Soleil (Soleil reserve a career).
+                    pack.chapter_code != "identity"
+                        || !e.fact_id.contains(":sun:")
+                            && !e.semantic_fact_key.contains("sun")
+                })
+                .map(|(e, role)| (e.fact_id.clone(), e.label.clone(), role.to_string())),
+        );
 
         for (fact_id, factor, role) in missing {
             chapter.astro_basis.push(AstroBasisItem {

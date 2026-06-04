@@ -24,7 +24,8 @@ use crate::chapter_writing_guidance::ChapterWritingGuidance;
 use crate::chapter_evidence_planner::{pack_for_chapter, ChapterEvidencePlanner};
 use crate::evidence_diversity_validator::{compute_evidence_metrics, EvidenceDiversityValidator};
 use crate::reading_opening_diversity_validator::ReadingOpeningDiversityValidator;
-use crate::interpretive_evidence_builder::{is_premium_product, InterpretiveEvidenceBuilder};
+use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
+use crate::interpretive_evidence_builder::{evidence_enabled_for_request, InterpretiveEvidenceBuilder};
 use crate::chapter_quality_repair::{
     append_repair_instructions, is_min_words_violation, maybe_repair_repetition,
     retry_chapter_on_min_words, ChapterRepairKind,
@@ -41,7 +42,7 @@ use crate::prompt_trace;
 use crate::provider_router::ProviderRouter;
 use crate::provider_schema_compiler::ProviderSchemaCompiler;
 use crate::reading_plan::ReadingPlanBuilder;
-use crate::reading_quality_validator::{PremiumQualityThresholds, ReadingQualityValidator};
+use crate::reading_quality_validator::PremiumQualityThresholds;
 use crate::response_validator::ResponseValidator;
 use crate::safety_guard::SafetyGuard;
 use crate::summary_synthesizer::SummarySynthesizer;
@@ -88,33 +89,48 @@ impl<'a> ChapterOrchestrator<'a> {
         safety_policy: &SafetyPolicy,
         astro_facts: &NormalizedAstroFacts,
         product_policy: &ProductGenerationPolicy,
+        interpretation: Option<&ResolvedInterpretationContext>,
         run_id: &str,
         audit: &mut ExecutionAudit,
     ) -> Result<OrchestratedResult, GenerationError> {
-        let domains = DomainResolver::resolve(request, self.catalog, self.limits, product_policy);
+        let domains = DomainResolver::resolve(
+            request,
+            self.catalog,
+            self.limits,
+            product_policy,
+            interpretation,
+        );
         audit.selected_domains = domains.clone();
 
-        let plan = ReadingPlanBuilder::build(request, &domains);
+        let plan = ReadingPlanBuilder::build(request, &domains, interpretation);
         ReadingPlanBuilder::validate(&plan)?;
 
         let contracts = ReadingPlanBuilder::to_chapter_contracts(&plan);
-        let quality_thresholds = ReadingQualityValidator::thresholds_for_request(request);
+        let quality_thresholds =
+            crate::reading_quality_validator::thresholds_for_request(request, interpretation);
         let writing_locale =
             AstroLabelHumanizer::locale_key(&request.product_context.user_language);
 
         let pool = InterpretiveEvidenceBuilder::build(astro_facts, &self.catalog.evidence)?;
-        let premium = is_premium_product(&request.product_context.product_code);
-        let evidence_policy = &self.catalog.evidence.premium_policy;
+        let evidence_enabled = evidence_enabled_for_request(interpretation);
+        let evidence_policy = interpretation
+            .and_then(|ctx| ctx.profile.to_premium_evidence_policy())
+            .unwrap_or_else(|| self.catalog.evidence.premium_policy.clone());
 
         let mut requirement_audit = Vec::new();
-        let chapter_packs = if premium {
-            let packs = ChapterEvidencePlanner::plan_all(&pool, &plan, &self.catalog.evidence, evidence_policy)?;
+        let chapter_packs = if evidence_enabled {
+            let packs = ChapterEvidencePlanner::plan_all(
+                &pool,
+                &plan,
+                &self.catalog.evidence,
+                &evidence_policy,
+            )?;
             requirement_audit = EvidenceDiversityValidator::validate_packs_planned(
-                &request.product_context.product_code,
+                evidence_enabled,
                 &pool,
                 &packs,
                 &self.catalog.evidence,
-                evidence_policy,
+                &evidence_policy,
             )?;
             packs
         } else {
@@ -142,6 +158,7 @@ impl<'a> ChapterOrchestrator<'a> {
                     &generated,
                     run_id,
                     product_policy,
+                    interpretation,
                     None,
                 )
                 .await
@@ -170,6 +187,7 @@ impl<'a> ChapterOrchestrator<'a> {
                                 &generated,
                                 run_id,
                                 product_policy,
+                                interpretation,
                                 repair,
                             )
                         },
@@ -211,6 +229,7 @@ impl<'a> ChapterOrchestrator<'a> {
                             &generated,
                             run_id,
                             product_policy,
+                            interpretation,
                             Some(repair_kind),
                         )
                         .await
@@ -239,6 +258,7 @@ impl<'a> ChapterOrchestrator<'a> {
                                         &generated,
                                         run_id,
                                         product_policy,
+                                        interpretation,
                                         repair,
                                     )
                                 },
@@ -295,6 +315,7 @@ impl<'a> ChapterOrchestrator<'a> {
                                 &generated,
                                 run_id,
                                 product_policy,
+                                interpretation,
                                 repair,
                             )
                         },
@@ -323,6 +344,7 @@ impl<'a> ChapterOrchestrator<'a> {
                                 &generated,
                                 run_id,
                                 product_policy,
+                                interpretation,
                                 repair,
                             )
                         },
@@ -373,7 +395,7 @@ impl<'a> ChapterOrchestrator<'a> {
 
         let bundle = last_bundle.expect("at least one chapter");
 
-        if premium {
+        if evidence_enabled {
             self.repair_opening_duplicates(
                 request,
                 engine,
@@ -386,13 +408,14 @@ impl<'a> ChapterOrchestrator<'a> {
                 writing_locale,
                 run_id,
                 product_policy,
+                interpretation,
                 &mut generated,
                 audit,
             )
             .await?;
 
             EvidenceDiversityValidator::validate_reading(
-                &request.product_context.product_code,
+                evidence_enabled,
                 &pool,
                 &generated,
                 &chapter_packs,
@@ -404,8 +427,7 @@ impl<'a> ChapterOrchestrator<'a> {
         let mut summary_engine = resolve_subtask_engine(
             engine,
             &request.engine,
-            self.catalog,
-            &request.product_context.product_code,
+            Some(product_policy),
         );
         let registry = self.router.capability_registry();
         drop_unsupported_reasoning(&mut summary_engine, registry);
@@ -449,7 +471,7 @@ impl<'a> ChapterOrchestrator<'a> {
             },
         };
 
-        let evidence_metrics = if premium {
+        let evidence_metrics = if evidence_enabled {
             Some(compute_evidence_metrics(
                 &chapter_packs,
                 &reading.chapters,
@@ -480,6 +502,7 @@ impl<'a> ChapterOrchestrator<'a> {
         locale: &str,
         run_id: &str,
         product_policy: &ProductGenerationPolicy,
+        interpretation: Option<&ResolvedInterpretationContext>,
         generated: &mut Vec<ReadingChapter>,
         audit: &mut ExecutionAudit,
     ) -> Result<(), GenerationError> {
@@ -537,6 +560,7 @@ impl<'a> ChapterOrchestrator<'a> {
                         &prior,
                         run_id,
                         product_policy,
+                        interpretation,
                         Some(ChapterRepairKind::OpeningDiversity {
                             violations: chapter_violations,
                         }),
@@ -589,6 +613,7 @@ impl<'a> ChapterOrchestrator<'a> {
         prior_chapters: &[ReadingChapter],
         run_id: &str,
         product_policy: &ProductGenerationPolicy,
+        interpretation: Option<&ResolvedInterpretationContext>,
         repair: Option<ChapterRepairKind>,
     ) -> Result<
         (
@@ -598,9 +623,9 @@ impl<'a> ChapterOrchestrator<'a> {
         ),
         GenerationError,
     > {
-        let _ = ProductPolicyValidator::validate(
+        ProductPolicyValidator::validate_against_policy(
             request,
-            self.catalog,
+            product_policy,
             &engine.provider,
             &engine.model,
         )?;
@@ -615,6 +640,7 @@ impl<'a> ChapterOrchestrator<'a> {
                 chapter_code: Some(&chapter.code),
                 chapter_evidence_pack: chapter_pack,
                 catalog: self.catalog,
+                interpretation,
             })
             .map_err(|e| GenerationError::new(GenerationErrorCode::InvalidInput, e))?;
 

@@ -1,5 +1,8 @@
-use astral_llm_domain::{engine_params::EngineParams, EngineDefaults};
-use astral_llm_infra::{CanonicalCatalog, SharedCanonicalCatalog};
+use astral_llm_domain::{
+    engine_params::EngineParams, interpretation_profile::NATAL_PROMPTER_PRODUCT, EngineDefaults,
+    GenerateReadingRequest,
+};
+use astral_llm_infra::CanonicalCatalog;
 
 #[derive(Debug, Clone)]
 pub struct ResolvedEngineParams {
@@ -14,26 +17,40 @@ pub struct ResolvedEngineParams {
     pub allow_oracle_benchmark: bool,
 }
 
-/// Fusionne les defauts service (.env) et le moteur canonique du produit (base).
+/// Fusionne les defauts service (.env), la politique produit et le profil d'interpretation.
 pub fn resolve_service_engine_defaults(
     global: &EngineDefaults,
     catalog: &CanonicalCatalog,
-    product_code: &str,
+    request: &GenerateReadingRequest,
 ) -> EngineDefaults {
+    let product_code = request.product_context.product_code.as_str();
     let mut out = global.clone();
-    let Some(policy) = catalog.product_policy(product_code) else {
+
+    let policy = if product_code == NATAL_PROMPTER_PRODUCT {
+        request
+            .product_context
+            .interpretation_profile_code
+            .as_deref()
+            .and_then(|code| catalog.interpretation_profile(code))
+            .map(|p| p.to_product_generation_policy())
+            .or_else(|| catalog.product_policy(product_code).cloned())
+    } else {
+        catalog.product_policy(product_code).cloned()
+    };
+
+    let Some(policy) = policy else {
         return out;
     };
+
     if let Some(provider) = policy.default_provider.clone() {
         out.provider = provider;
     }
     if let Some(model) = policy
         .default_model
         .as_ref()
-        .map(|m| m.trim())
-        .filter(|m| !m.is_empty())
+        .and_then(|m| trimmed_model(m))
     {
-        out.model = model.to_string();
+        out.model = model;
     }
     out
 }
@@ -103,13 +120,12 @@ fn trimmed_model(model: &str) -> Option<String> {
     }
 }
 
-/// Moteur pour SummarySynthesizer (et tests E2E summary) : `engine.summary_model`, sinon
-/// `economic_model` produit si la requete n'a pas fixe `engine.model`, sinon le moteur chapitres.
+/// Moteur pour SummarySynthesizer : `engine.summary_model`, sinon `economic_model` politique,
+/// sinon le moteur chapitres (si la requete n'a pas fixe `engine.model`).
 pub fn resolve_subtask_engine(
     chapter_engine: &ResolvedEngineParams,
     request_engine: &EngineParams,
-    catalog: &SharedCanonicalCatalog,
-    product_code: &str,
+    product_policy: Option<&astral_llm_domain::ProductGenerationPolicy>,
 ) -> ResolvedEngineParams {
     let mut out = chapter_engine.clone();
 
@@ -126,7 +142,7 @@ pub fn resolve_subtask_engine(
         return out;
     }
 
-    if let Some(policy) = catalog.product_policy(product_code) {
+    if let Some(policy) = product_policy {
         if let Some(model) = policy
             .economic_model
             .as_ref()
@@ -162,8 +178,52 @@ pub fn drop_unsupported_temperature(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use astral_llm_domain::provider::ProviderKind;
-    use astral_llm_domain::ProductGenerationPolicy;
+    use astral_llm_domain::{
+        astrologer_profile::{JargonLevel, ToneProfile, WordingStyle},
+        generation_request::{AudienceLevel, ProductContext},
+        output_contract::{GenerationMode, OutputFormat, ResponseContract},
+        provider::ProviderKind,
+        AstroCalculationPayload, AstrologerProfile, GenerateReadingRequest, ProductGenerationPolicy,
+    };
+
+    fn minimal_request(product_code: &str, profile: Option<&str>) -> GenerateReadingRequest {
+        GenerateReadingRequest {
+            request_id: None,
+            idempotency_key: None,
+            product_context: ProductContext {
+                product_code: product_code.into(),
+                interpretation_profile_code: profile.map(str::to_string),
+                user_language: "fr".into(),
+                audience_level: AudienceLevel::Beginner,
+            },
+            astro_result: AstroCalculationPayload {
+                contract_version: "natal_structured_v13".into(),
+                chart_type: "natal".into(),
+                data: serde_json::json!({}),
+            },
+            astrologer_profile: AstrologerProfile {
+                profile_id: None,
+                name: None,
+                tone: ToneProfile::Warm,
+                jargon_level: JargonLevel::Beginner,
+                wording_style: WordingStyle::Clear,
+                preferred_domains: vec![],
+                forbidden_wording: vec![],
+                custom_instructions: None,
+            },
+            engine: EngineParams::default(),
+            response_contract: ResponseContract {
+                output_schema_version: "natal_reading_v1".into(),
+                generation_mode: GenerationMode::SinglePass,
+                format: OutputFormat::StructuredJson,
+                chapters: vec![],
+                global_max_tokens: None,
+                include_astro_sources: true,
+                include_legal_disclaimer: true,
+            },
+            safety_policy: None,
+        }
+    }
 
     #[test]
     fn applies_openai_defaults_when_missing() {
@@ -185,19 +245,24 @@ mod tests {
     #[test]
     fn product_default_overrides_global_model_when_request_omits_model() {
         let mut catalog = CanonicalCatalog::default();
+        catalog.interpretation_profiles = astral_llm_infra::bootstrap_interpretation_profiles();
         catalog
             .product_generation_policies
             .push(ProductGenerationPolicy {
-                product_code: "natal_premium".into(),
+                product_code: "natal_prompter".into(),
                 default_provider: Some(ProviderKind::OpenAi),
                 default_model: Some("gpt-5.4-mini".into()),
-                ..ProductGenerationPolicy::bootstrap_premium()
+                ..ProductGenerationPolicy::bootstrap_natal_prompter()
             });
         let global = EngineDefaults {
             provider: ProviderKind::OpenAi,
             model: "gpt-4.1".into(),
         };
-        let merged = resolve_service_engine_defaults(&global, &catalog, "natal_premium");
+        let merged = resolve_service_engine_defaults(
+            &global,
+            &catalog,
+            &minimal_request("natal_prompter", Some("natal_premium")),
+        );
         assert_eq!(merged.model, "gpt-5.4-mini");
 
         let params = EngineParams {
@@ -211,20 +276,14 @@ mod tests {
     #[test]
     fn explicit_request_model_overrides_product_default() {
         let mut catalog = CanonicalCatalog::default();
-        catalog
-            .product_generation_policies
-            .push(ProductGenerationPolicy {
-                product_code: "natal_premium".into(),
-                default_model: Some("gpt-5.4-mini".into()),
-                ..ProductGenerationPolicy::bootstrap_premium()
-            });
+        catalog.interpretation_profiles = astral_llm_infra::bootstrap_interpretation_profiles();
         let merged = resolve_service_engine_defaults(
             &EngineDefaults {
                 provider: ProviderKind::OpenAi,
                 model: "gpt-4.1".into(),
             },
             &catalog,
-            "natal_premium",
+            &minimal_request("natal_prompter", Some("natal_premium")),
         );
         let params = EngineParams {
             model: Some("gpt-5.5".into()),
@@ -237,16 +296,12 @@ mod tests {
 
     #[test]
     fn subtask_uses_economic_model_when_primary_not_specified() {
-        let mut catalog = CanonicalCatalog::default();
-        catalog
-            .product_generation_policies
-            .push(ProductGenerationPolicy {
-                product_code: "natal_premium".into(),
-                default_model: Some("gpt-5.4-mini".into()),
-                economic_model: Some("gpt-5-mini".into()),
-                ..ProductGenerationPolicy::bootstrap_premium()
-            });
-        let catalog = std::sync::Arc::new(catalog);
+        let policy = ProductGenerationPolicy {
+            product_code: "natal_prompter".into(),
+            default_model: Some("gpt-5.4-mini".into()),
+            economic_model: Some("gpt-5-mini".into()),
+            ..ProductGenerationPolicy::bootstrap_natal_prompter()
+        };
         let chapter = resolve_engine_params(
             &EngineParams {
                 allow_fallback: true,
@@ -264,23 +319,18 @@ mod tests {
                 allow_fallback: true,
                 ..Default::default()
             },
-            &catalog,
-            "natal_premium",
+            Some(&policy),
         );
         assert_eq!(summary.model, "gpt-5-mini");
     }
 
     #[test]
     fn subtask_keeps_explicit_primary_model_for_benchmark() {
-        let mut catalog = CanonicalCatalog::default();
-        catalog
-            .product_generation_policies
-            .push(ProductGenerationPolicy {
-                product_code: "natal_premium".into(),
-                economic_model: Some("gpt-5-mini".into()),
-                ..ProductGenerationPolicy::bootstrap_premium()
-            });
-        let catalog = std::sync::Arc::new(catalog);
+        let policy = ProductGenerationPolicy {
+            product_code: "natal_prompter".into(),
+            economic_model: Some("gpt-5-mini".into()),
+            ..ProductGenerationPolicy::bootstrap_natal_prompter()
+        };
         let chapter = resolve_engine_params(
             &EngineParams {
                 model: Some("gpt-5.4".into()),
@@ -300,23 +350,18 @@ mod tests {
                 allow_fallback: true,
                 ..Default::default()
             },
-            &catalog,
-            "natal_premium",
+            Some(&policy),
         );
         assert_eq!(summary.model, "gpt-5.4");
     }
 
     #[test]
     fn summary_model_overrides_economic_routing() {
-        let mut catalog = CanonicalCatalog::default();
-        catalog
-            .product_generation_policies
-            .push(ProductGenerationPolicy {
-                product_code: "natal_premium".into(),
-                economic_model: Some("gpt-5-mini".into()),
-                ..ProductGenerationPolicy::bootstrap_premium()
-            });
-        let catalog = std::sync::Arc::new(catalog);
+        let policy = ProductGenerationPolicy {
+            product_code: "natal_prompter".into(),
+            economic_model: Some("gpt-5-mini".into()),
+            ..ProductGenerationPolicy::bootstrap_natal_prompter()
+        };
         let chapter = resolve_engine_params(
             &EngineParams {
                 allow_fallback: true,
@@ -335,9 +380,25 @@ mod tests {
                 allow_fallback: true,
                 ..Default::default()
             },
-            &catalog,
-            "natal_premium",
+            Some(&policy),
         );
         assert_eq!(summary.model, "gpt-5-nano");
+    }
+
+    #[test]
+    fn profile_chapter_models_override_product_default() {
+        let catalog = CanonicalCatalog {
+            interpretation_profiles: astral_llm_infra::bootstrap_interpretation_profiles(),
+            ..Default::default()
+        };
+        let merged = resolve_service_engine_defaults(
+            &EngineDefaults {
+                provider: ProviderKind::OpenAi,
+                model: "gpt-4.1".into(),
+            },
+            &catalog,
+            &minimal_request("natal_prompter", Some("natal_premium")),
+        );
+        assert_eq!(merged.model, "gpt-5.4-mini");
     }
 }

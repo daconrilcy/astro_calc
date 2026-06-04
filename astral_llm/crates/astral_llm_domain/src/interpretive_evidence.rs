@@ -263,6 +263,7 @@ pub struct PremiumEvidencePolicy {
 
 impl Default for PremiumEvidencePolicy {
     fn default() -> Self {
+        // product_code = interpretation_profile_code (ex. natal_premium)
         Self {
             product_code: "natal_premium".into(),
             min_evidence_per_chapter: 4,

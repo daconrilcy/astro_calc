@@ -47,7 +47,7 @@ fn minimal_structured_request(model: String, product_code: &str) -> ProviderGene
 }
 
 async fn assert_invalid_api_key_rejected<P: LlmProvider>(provider: P) {
-    let request = minimal_structured_request("smoke-model".into(), "natal_basic");
+    let request = minimal_structured_request("smoke-model".into(), "natal_prompter");
     let err = provider.generate(request).await.expect_err("invalid key must fail");
     let msg = err.to_string().to_lowercase();
     assert!(
@@ -115,7 +115,7 @@ async fn openai_structured_minimal_smoke() {
     );
     let model = std::env::var("OPENAI_DEFAULT_MODEL").unwrap_or_else(|_| "gpt-4.1".into());
     let response = provider
-        .generate(minimal_structured_request(model, "natal_basic"))
+        .generate(minimal_structured_request(model, "natal_prompter"))
         .await
         .expect("openai ok");
     assert_eq!(provider.kind(), ProviderKind::OpenAi);
@@ -147,7 +147,7 @@ async fn mistral_structured_minimal_smoke() {
     let model = std::env::var("MISTRAL_DEFAULT_MODEL")
         .unwrap_or_else(|_| "mistral-small-latest".into());
     let response = provider
-        .generate(minimal_structured_request(model, "natal_basic"))
+        .generate(minimal_structured_request(model, "natal_prompter"))
         .await
         .expect("mistral ok");
     assert_eq!(provider.kind(), ProviderKind::Mistral);
@@ -178,7 +178,7 @@ async fn anthropic_structured_minimal_smoke() {
     let model = std::env::var("ANTHROPIC_DEFAULT_MODEL")
         .unwrap_or_else(|_| "claude-sonnet-4-20250514".into());
     let response = provider
-        .generate(minimal_structured_request(model, "natal_premium"))
+        .generate(minimal_structured_request(model, "natal_prompter"))
         .await
         .expect("anthropic ok");
     assert_eq!(provider.kind(), ProviderKind::Anthropic);
@@ -242,7 +242,7 @@ async fn openai_chapter_provider_schema_smoke() {
         metadata: GenerationMetadata {
             run_id: "chapter-smoke".into(),
             request_id: None,
-            product_code: "natal_premium".into(),
+            product_code: "natal_prompter".into(),
             chapter_code: Some("identity".into()),
         },
     };

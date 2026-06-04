@@ -56,7 +56,8 @@ mod tests {
             request_id: None,
             idempotency_key: None,
             product_context: astral_llm_domain::ProductContext {
-                product_code: "natal_basic".into(),
+                product_code: "natal_prompter".into(),
+                interpretation_profile_code: Some("natal_basic".into()),
                 user_language: "fr".into(),
                 audience_level: astral_llm_domain::AudienceLevel::Beginner,
             },

@@ -249,7 +249,7 @@ mod tests {
         NatalReadingResponse {
             schema_version: "natal_reading_v1".into(),
             language: "fr".into(),
-            reading_type: "natal_basic".into(),
+            reading_type: "natal_prompter".into(),
             summary: ReadingSummary {
                 title: "T".into(),
                 short_text: "S".into(),
@@ -269,7 +269,7 @@ mod tests {
                 used_provider: "fake".into(),
                 used_model: "fake".into(),
                 generation_mode: GenerationMode::SinglePass,
-                prompt_family: "natal_basic".into(),
+                prompt_family: "natal_prompter".into(),
                 prompt_version: "v1".into(),
                 astro_contract_version: "v13".into(),
                 fallback_used: false,

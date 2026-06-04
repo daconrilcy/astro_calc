@@ -333,7 +333,7 @@ mod tests {
             metadata: GenerationMetadata {
                 run_id: "r1".into(),
                 request_id: None,
-                product_code: "natal_basic".into(),
+                product_code: "natal_prompter".into(),
                 chapter_code: None,
             },
         };

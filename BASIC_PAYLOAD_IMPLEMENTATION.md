@@ -3052,8 +3052,8 @@ Script : `astral_llm/crates/astral_llm_infra/sql/llm_generation_runs.sql`
 
 ### Prompts versionnes
 
-- `astral_llm/prompts/natal_basic/v1/` (system, task, format, safety)
-- `astral_llm/prompts/natal_premium/v1/`
+- `astral_llm/prompts/natal_prompter/v1/` — prompts communs ; profils `natal_light` / `natal_basic` / `natal_premium` en JSON (`config/natal_interpretation_profiles/`, table `llm_interpretation_profiles`)
+- Ops profils : `scripts/manage_natal_interpretation_profiles.ps1`
 
 ### Tests
 
@@ -3067,9 +3067,9 @@ Script : `astral_llm/crates/astral_llm_infra/sql/llm_generation_runs.sql`
 
 **Statut produit** : **Premium interpretatif riche OpenAI — VALIDÉ PRODUIT**. Dernier E2E de reference : run `0619a1e8` (~47 s, 6 steps `generated`, libelles maîtrise FR, cap Soleil supporting ×3). Suite : phase **optimisation** (modeles, providers, slots evidence, style) — voir `Astral_llm_implementation.md`.
 
-**Modeles Premium** : `config/llm_product_models.conf` + `scripts/set_product_llm_models.ps1` (puis redemarrage API). Valeurs courantes : chapitres `gpt-5.4-mini`, summary `gpt-5-nano`.
+**Modeles Premium** : `chapter_models` du profil `natal_premium` (+ `config/llm_product_models.conf` pour defaut produit `natal_prompter`). Valeurs courantes : chapitres `gpt-5.4-mini`, summary `gpt-5-nano`.
 
-Couche entre `AstroPayloadNormalizer` et `PromptCompiler` pour `natal_premium` (code :
+Couche entre `AstroPayloadNormalizer` et `PromptCompiler` pour le profil `natal_premium` (`product_code=natal_prompter`, code :
 `astral_llm/crates/astral_llm_application`, tests racine `tests/astral_llm_*`).
 
 #### Donnees entree (payload / calculateur)

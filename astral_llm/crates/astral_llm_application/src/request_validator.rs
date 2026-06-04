@@ -19,6 +19,27 @@ impl RequestValidator {
             violations.push("product_context.product_code is required".into());
         }
 
+        if request.product_context.product_code == astral_llm_domain::NATAL_PROMPTER_PRODUCT {
+            let profile_code = request
+                .product_context
+                .interpretation_profile_code
+                .as_deref()
+                .map(str::trim)
+                .filter(|s| !s.is_empty());
+            if profile_code.is_none() {
+                violations.push(
+                    "product_context.interpretation_profile_code is required for natal_prompter"
+                        .into(),
+                );
+            } else if let Some(code) = profile_code {
+                if catalog.interpretation_profile(code).is_none() {
+                    violations.push(format!(
+                        "interpretation profile not found or inactive: {code}"
+                    ));
+                }
+            }
+        }
+
         let lang = request.product_context.user_language.trim().to_lowercase();
         if lang.len() != 2 {
             violations.push("product_context.user_language must be a 2-letter ISO code".into());
@@ -137,7 +158,8 @@ mod tests {
             request_id: None,
             idempotency_key: None,
             product_context: ProductContext {
-                product_code: "natal_basic".into(),
+                product_code: "natal_prompter".into(),
+                interpretation_profile_code: Some("natal_light".into()),
                 user_language: "fr".into(),
                 audience_level: AudienceLevel::Beginner,
             },

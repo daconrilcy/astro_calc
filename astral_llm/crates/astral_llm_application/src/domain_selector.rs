@@ -12,8 +12,8 @@ pub fn select_domains(
     let policy = catalog
         .product_policy(&request.product_context.product_code)
         .cloned()
-        .unwrap_or_else(ProductGenerationPolicy::bootstrap_basic);
-    DomainResolver::resolve(request, catalog, limits, &policy)
+        .unwrap_or_else(ProductGenerationPolicy::bootstrap_natal_prompter);
+    DomainResolver::resolve(request, catalog, limits, &policy, None)
 }
 
 #[cfg(test)]
@@ -35,7 +35,8 @@ mod tests {
             request_id: None,
             idempotency_key: None,
             product_context: ProductContext {
-                product_code: "natal_basic".into(),
+                product_code: "natal_prompter".into(),
+                interpretation_profile_code: Some("natal_basic".into()),
                 user_language: "fr".into(),
                 audience_level: AudienceLevel::Beginner,
             },
@@ -83,7 +84,8 @@ mod tests {
     fn uses_domain_scores_when_present() {
         let catalog = Arc::new(CanonicalCatalog {
             astrological_domains: vec!["career".into(), "identity".into()],
-            product_generation_policies: vec![ProductGenerationPolicy::bootstrap_basic()],
+            product_generation_policies: vec![ProductGenerationPolicy::bootstrap_natal_prompter()],
+            interpretation_profiles: astral_llm_infra::bootstrap_interpretation_profiles(),
             ..Default::default()
         });
         let request = base_request(serde_json::json!({

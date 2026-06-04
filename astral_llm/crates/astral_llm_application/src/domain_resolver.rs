@@ -4,6 +4,8 @@ use astral_llm_domain::{
 };
 use astral_llm_infra::SharedCanonicalCatalog;
 
+use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
+
 pub struct DomainResolver;
 
 impl DomainResolver {
@@ -12,18 +14,25 @@ impl DomainResolver {
         catalog: &SharedCanonicalCatalog,
         limits: &ServiceLimits,
         product_policy: &ProductGenerationPolicy,
+        interpretation: Option<&ResolvedInterpretationContext>,
     ) -> Vec<String> {
-        let allowed = catalog.domains_or_fallback(&[]);
-        let max_count = product_policy
-            .max_domains
-            .min(limits.max_domain_count) as usize;
+        let mut allowed = catalog.domains_or_fallback(&[]);
+        if let Some(ctx) = interpretation {
+            if !ctx.profile.document.chapter_types.is_empty() {
+                allowed.retain(|d| ctx.profile.document.chapter_types.contains(d));
+            }
+        }
+        let default_count = interpretation
+            .map(|c| c.profile.default_domain_count())
+            .unwrap_or(3);
         let count = request
             .engine
             .domain_count
-            .unwrap_or(3)
+            .unwrap_or(default_count)
             .max(1)
             .min(product_policy.max_domains)
             .min(limits.max_domain_count) as usize;
+        let max_count = count;
 
         if !request.astrologer_profile.preferred_domains.is_empty() {
             return request
@@ -127,7 +136,8 @@ mod tests {
             request_id: None,
             idempotency_key: None,
             product_context: ProductContext {
-                product_code: "natal_basic".into(),
+                product_code: "natal_prompter".into(),
+                interpretation_profile_code: Some("natal_basic".into()),
                 user_language: "fr".into(),
                 audience_level: AudienceLevel::Beginner,
             },
@@ -175,14 +185,16 @@ mod tests {
     fn prefers_domain_scores() {
         let catalog = Arc::new(CanonicalCatalog {
             astrological_domains: vec!["career".into(), "identity".into()],
-            product_generation_policies: vec![ProductGenerationPolicy::bootstrap_basic()],
+            product_generation_policies: vec![ProductGenerationPolicy::bootstrap_natal_prompter()],
+            interpretation_profiles: astral_llm_infra::bootstrap_interpretation_profiles(),
             ..Default::default()
         });
         let domains = DomainResolver::resolve(
             &request(serde_json::json!({ "domain_scores": { "career": 0.9, "identity": 0.2 } })),
             &catalog,
             &ServiceLimits::default(),
-            &ProductGenerationPolicy::bootstrap_basic(),
+            &ProductGenerationPolicy::bootstrap_natal_prompter(),
+            None,
         );
         assert_eq!(domains[0], "career");
     }

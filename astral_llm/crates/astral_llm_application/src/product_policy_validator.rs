@@ -2,30 +2,26 @@ use astral_llm_domain::{
     GenerateReadingRequest, GenerationError, GenerationErrorCode, ProductGenerationPolicy,
     ProviderKind,
 };
-use astral_llm_infra::SharedCanonicalCatalog;
 
 pub struct ProductPolicyValidator;
 
 impl ProductPolicyValidator {
     pub fn validate<'a>(
         request: &GenerateReadingRequest,
-        catalog: &'a SharedCanonicalCatalog,
+        policy: &'a ProductGenerationPolicy,
         resolved_provider: &ProviderKind,
         resolved_model: &str,
     ) -> Result<&'a ProductGenerationPolicy, GenerationError> {
-        let policy = catalog
-            .product_policy(&request.product_context.product_code)
-            .ok_or_else(|| {
-                GenerationError::with_details(
-                    GenerationErrorCode::ProductPolicyViolation,
-                    format!(
-                        "no generation policy for product: {}",
-                        request.product_context.product_code
-                    ),
-                    serde_json::json!({ "product_code": request.product_context.product_code }),
-                )
-            })?;
+        Self::validate_against_policy(request, policy, resolved_provider, resolved_model)?;
+        Ok(policy)
+    }
 
+    pub fn validate_against_policy(
+        request: &GenerateReadingRequest,
+        policy: &ProductGenerationPolicy,
+        resolved_provider: &ProviderKind,
+        resolved_model: &str,
+    ) -> Result<(), GenerationError> {
         if !policy.allows_provider(resolved_provider) {
             return Err(GenerationError::with_details(
                 GenerationErrorCode::ProductPolicyViolation,
@@ -49,13 +45,22 @@ impl ProductPolicyValidator {
         }
 
         if !policy.allows_mode(&request.response_contract.generation_mode) {
-            return Err(GenerationError::new(
+            return Err(GenerationError::with_details(
                 GenerationErrorCode::ProductPolicyViolation,
                 "generation mode not allowed for this product",
+                serde_json::json!({
+                    "generation_mode": request.response_contract.generation_mode.as_str()
+                }),
             ));
         }
 
-        let domain_count = request.engine.domain_count.unwrap_or(3);
+        let domain_count = request
+            .engine
+            .domain_count
+            .unwrap_or_else(|| {
+                // default applied later via profile in domain resolver when natal_prompter
+                3
+            });
         if domain_count > policy.max_domains {
             return Err(GenerationError::with_details(
                 GenerationErrorCode::ProductPolicyViolation,
@@ -87,6 +92,6 @@ impl ProductPolicyValidator {
             }
         }
 
-        Ok(policy)
+        Ok(())
     }
 }

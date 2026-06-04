@@ -59,7 +59,7 @@ impl EditorialValidator {
             violations.push("forbidden medical/legal/financial advice detected".into());
         }
 
-        let quality = ReadingQualityValidator::assess(request, reading);
+        let quality = ReadingQualityValidator::assess(request, reading, None);
         if !quality.is_acceptable() {
             violations.extend(quality.warnings.clone());
         }
@@ -81,7 +81,7 @@ impl EditorialValidator {
             ));
         }
 
-        if requires_blocking_quality_gate(request) && !quality.is_acceptable() {
+        if requires_blocking_quality_gate(request, None) && !quality.is_acceptable() {
             return Err(GenerationError::with_details(
                 GenerationErrorCode::ReadingQualityFailed,
                 "premium reading quality below threshold",

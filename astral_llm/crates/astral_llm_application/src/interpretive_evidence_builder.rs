@@ -81,8 +81,14 @@ impl InterpretiveEvidenceBuilder {
     }
 }
 
-pub fn is_premium_product(product_code: &str) -> bool {
-    product_code.contains("premium")
+use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
+
+pub fn evidence_enabled_for_request(
+    interpretation: Option<&ResolvedInterpretationContext>,
+) -> bool {
+    interpretation
+        .map(|ctx| ctx.profile.evidence_enabled())
+        .unwrap_or(false)
 }
 
 #[cfg(test)]

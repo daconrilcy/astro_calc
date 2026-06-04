@@ -1,7 +1,12 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
-use astral_llm_domain::{model_capability::ProviderModelRef, ProductGenerationPolicy, ProviderKind, ServiceLimits};
+use std::collections::HashMap;
+
+use astral_llm_domain::{
+    interpretation_profile::{InterpretationProfile, InterpretationProfileDocument},
+    model_capability::ProviderModelRef,
+    ProductGenerationPolicy, ProviderKind, ServiceLimits,
+};
 
 use crate::evidence_canonical::{bootstrap_evidence_catalog, EvidenceCanonicalCatalog};
 use crate::i18n_canonical::{
@@ -24,6 +29,8 @@ pub struct CanonicalCatalog {
     pub writing_locales: Vec<WritingLocale>,
     pub astro_basis_roles: std::collections::HashSet<String>,
     pub aspect_type_labels: HashMap<(String, String), String>,
+    /// profile_code -> profil actif
+    pub interpretation_profiles: HashMap<String, InterpretationProfile>,
 }
 
 #[derive(Debug, Clone)]
@@ -150,7 +157,9 @@ pub async fn load_canonical_catalog(pool: &sqlx::PgPool) -> CanonicalCatalog {
         }
     }
 
+    load_interpretation_profiles_from_db(pool, &mut catalog).await;
     load_evidence_from_db(pool, &mut catalog).await;
+    apply_profile_evidence_to_catalog(&mut catalog);
     load_i18n_from_db(pool, &mut catalog).await;
     enrich_catalog_from_bootstrap(&mut catalog);
     if catalog.evidence.chapter_slots.is_empty() {
@@ -160,6 +169,9 @@ pub async fn load_canonical_catalog(pool: &sqlx::PgPool) -> CanonicalCatalog {
 }
 
 async fn load_evidence_from_db(pool: &sqlx::PgPool, catalog: &mut CanonicalCatalog) {
+    if catalog.interpretation_profiles.contains_key("natal_premium") {
+        return;
+    }
     if let Ok(row) = sqlx::query_as::<_, (
         String,
         i32,
@@ -177,7 +189,8 @@ async fn load_evidence_from_db(pool: &sqlx::PgPool, catalog: &mut CanonicalCatal
          min_non_placement_if_available, max_core_overlap_ratio, domain_score_counts_in_minimum, \
          max_core_evidence, max_supporting_evidence, max_nuance_evidence, max_avoid_repeating, \
          COALESCE(max_supporting_semantic_chapters, 3) \
-         FROM llm_premium_evidence_policies WHERE is_active = true AND product_code = 'natal_premium' LIMIT 1",
+         FROM llm_premium_evidence_policies \
+         WHERE is_active = true AND product_code = 'natal_premium'",
     )
     .fetch_optional(pool)
     .await
@@ -258,6 +271,52 @@ pub fn enrich_catalog_from_bootstrap(catalog: &mut CanonicalCatalog) {
         catalog.aspect_type_labels = bootstrap_aspect_type_labels();
     }
     bootstrap_extra_object_sign_labels(&mut catalog.astro_object_labels, &mut catalog.zodiac_sign_labels);
+    if catalog.interpretation_profiles.is_empty() {
+        catalog.interpretation_profiles = bootstrap_interpretation_profiles();
+        apply_profile_evidence_to_catalog(catalog);
+    }
+}
+
+fn apply_profile_evidence_to_catalog(catalog: &mut CanonicalCatalog) {
+    if let Some(premium) = catalog.interpretation_profiles.get("natal_premium") {
+        if let Some(policy) = premium.to_premium_evidence_policy() {
+            catalog.evidence.premium_policy = policy;
+        }
+    }
+}
+
+async fn load_interpretation_profiles_from_db(
+    pool: &sqlx::PgPool,
+    catalog: &mut CanonicalCatalog,
+) {
+    let Ok(rows) = sqlx::query_as::<_, (String, String, String, serde_json::Value)>(
+        "SELECT profile_code, product_code, schema_version, profile_json \
+         FROM llm_interpretation_profiles WHERE is_active = true",
+    )
+    .fetch_all(pool)
+    .await
+    else {
+        return;
+    };
+
+    for (profile_code, _product_code, _schema_version, profile_json) in rows {
+        if let Ok(doc) = serde_json::from_value::<InterpretationProfileDocument>(profile_json) {
+            if doc.profile_code != profile_code {
+                tracing::warn!(
+                    profile_code = %profile_code,
+                    json_profile_code = %doc.profile_code,
+                    "skipping interpretation profile: profile_code column mismatch"
+                );
+                continue;
+            }
+            let profile = InterpretationProfile::from_document(doc);
+            if profile.validate().is_ok() {
+                catalog
+                    .interpretation_profiles
+                    .insert(profile_code, profile);
+            }
+        }
+    }
 }
 
 async fn load_i18n_from_db(pool: &sqlx::PgPool, catalog: &mut CanonicalCatalog) {
@@ -368,6 +427,10 @@ impl CanonicalCatalog {
 
     pub fn is_allowed_basis_role(&self, role: &str) -> bool {
         self.astro_basis_roles.contains(role)
+    }
+
+    pub fn interpretation_profile(&self, profile_code: &str) -> Option<&InterpretationProfile> {
+        self.interpretation_profiles.get(profile_code)
     }
 }
 
@@ -492,10 +555,26 @@ fn parse_catalog_provider(raw: &str) -> Option<ProviderKind> {
 }
 
 pub fn bootstrap_product_policies() -> Vec<ProductGenerationPolicy> {
-    vec![
-        ProductGenerationPolicy::bootstrap_basic(),
-        ProductGenerationPolicy::bootstrap_premium(),
-    ]
+    vec![ProductGenerationPolicy::bootstrap_natal_prompter()]
+}
+
+pub fn bootstrap_interpretation_profiles() -> HashMap<String, InterpretationProfile> {
+    let seeds = [
+        include_str!("../../../../config/natal_interpretation_profiles/natal_light.json"),
+        include_str!("../../../../config/natal_interpretation_profiles/natal_basic.json"),
+        include_str!("../../../../config/natal_interpretation_profiles/natal_premium.json"),
+    ];
+    let mut map = HashMap::new();
+    for json in seeds {
+        if let Ok(doc) = serde_json::from_str::<InterpretationProfileDocument>(json) {
+            let code = doc.profile_code.clone();
+            let profile = InterpretationProfile::from_document(doc);
+            if profile.validate().is_ok() {
+                map.insert(code, profile);
+            }
+        }
+    }
+    map
 }
 
 pub fn bootstrap_safety_patterns() -> Vec<SafetyPattern> {

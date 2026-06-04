@@ -6,6 +6,7 @@ use astral_llm_domain::{
 };
 
 use crate::astro_label_humanizer::AstroLabelHumanizer;
+use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
 use crate::text_trigrams::count_repeated_trigrams;
 
 #[derive(Debug, Clone, Default)]
@@ -44,22 +45,30 @@ impl Default for PremiumQualityThresholds {
 
 pub struct ReadingQualityValidator;
 
-/// Gate bloquante : orchestration chapitre ou produit Premium explicite.
-pub fn requires_blocking_quality_gate(request: &GenerateReadingRequest) -> bool {
+/// Gate bloquante selon le profil d'interpretation (ou orchestration chapitre en fallback legacy).
+pub fn requires_blocking_quality_gate(
+    request: &GenerateReadingRequest,
+    interpretation: Option<&ResolvedInterpretationContext>,
+) -> bool {
+    if let Some(ctx) = interpretation {
+        return ctx.profile.blocking_quality_gate();
+    }
     matches!(
         request.response_contract.generation_mode,
         GenerationMode::ChapterOrchestrated
-    ) || request.product_context.product_code == "natal_premium"
+    )
 }
 
 impl ReadingQualityValidator {
     pub fn assess(
         request: &GenerateReadingRequest,
         reading: &NatalReadingResponse,
+        interpretation: Option<&ResolvedInterpretationContext>,
     ) -> ReadingQualityReport {
-        let thresholds = thresholds_for(request);
+        let thresholds = thresholds_for_request(request, interpretation);
         let locale = AstroLabelHumanizer::locale_key(&request.product_context.user_language);
-        Self::assess_with_thresholds(request, reading, &thresholds, locale)
+        let blocking = requires_blocking_quality_gate(request, interpretation);
+        Self::assess_with_thresholds(request, reading, &thresholds, locale, blocking)
     }
 
     pub fn assess_with_thresholds(
@@ -67,6 +76,7 @@ impl ReadingQualityValidator {
         reading: &NatalReadingResponse,
         thresholds: &PremiumQualityThresholds,
         locale: &str,
+        blocking_gate: bool,
     ) -> ReadingQualityReport {
         let mut report = ReadingQualityReport::default();
         let mut warnings = Vec::new();
@@ -77,7 +87,7 @@ impl ReadingQualityValidator {
             .collect::<Vec<_>>()
             .join("\n");
 
-        if requires_blocking_quality_gate(request) && reading.chapters.is_empty() {
+        if blocking_gate && reading.chapters.is_empty() {
             warnings.push("premium reading has no chapters".into());
         }
 
@@ -142,10 +152,6 @@ impl ReadingQualityValidator {
         report
     }
 
-    pub fn thresholds_for_request(request: &GenerateReadingRequest) -> PremiumQualityThresholds {
-        thresholds_for(request)
-    }
-
     pub fn chapter_repetition_score(body: &str, locale: &str) -> usize {
         count_repeated_trigrams(body, locale)
     }
@@ -158,13 +164,14 @@ impl ReadingQualityValidator {
         count_repeated_trigrams(body, locale) > thresholds.max_repeated_trigrams
     }
 
-    /// Basic : log warnings. Premium : echec generation si qualite insuffisante.
+    /// Profils non bloquants : log warnings. Profils bloquants : echec si qualite insuffisante.
     pub fn validate_for_product(
         request: &GenerateReadingRequest,
         reading: &NatalReadingResponse,
+        interpretation: Option<&ResolvedInterpretationContext>,
     ) -> Result<ReadingQualityReport, GenerationError> {
-        let report = Self::assess(request, reading);
-        if requires_blocking_quality_gate(request) {
+        let report = Self::assess(request, reading, interpretation);
+        if requires_blocking_quality_gate(request, interpretation) {
             if !report.is_acceptable() {
                 return Err(GenerationError::with_details(
                     GenerationErrorCode::ReadingQualityFailed,
@@ -193,12 +200,23 @@ impl ReadingQualityValidator {
         request: &GenerateReadingRequest,
         reading: &NatalReadingResponse,
     ) -> ReadingQualityReport {
-        Self::validate_for_product(request, reading)
-            .unwrap_or_else(|_| Self::assess(request, reading))
+        Self::validate_for_product(request, reading, None)
+            .unwrap_or_else(|_| Self::assess(request, reading, None))
     }
 }
 
-fn thresholds_for(request: &GenerateReadingRequest) -> PremiumQualityThresholds {
+pub fn thresholds_for_request(
+    request: &GenerateReadingRequest,
+    interpretation: Option<&ResolvedInterpretationContext>,
+) -> PremiumQualityThresholds {
+    if let Some(ctx) = interpretation {
+        let q = &ctx.profile.document.quality;
+        return PremiumQualityThresholds {
+            min_words_per_chapter: q.min_words_per_chapter as usize,
+            max_repeated_trigrams: q.max_repeated_trigrams as usize,
+            min_astro_basis_per_chapter: q.min_astro_basis_refs_per_chapter,
+        };
+    }
     let mut t = PremiumQualityThresholds::default();
     if matches!(
         request.response_contract.generation_mode,
@@ -268,12 +286,25 @@ mod tests {
         output_contract::GenerationMode,
     };
 
+    fn premium_ctx() -> ResolvedInterpretationContext {
+        let profile = astral_llm_infra::bootstrap_interpretation_profiles()
+            .get("natal_premium")
+            .expect("natal_premium profile")
+            .clone();
+        let effective_policy = profile.to_product_generation_policy();
+        ResolvedInterpretationContext {
+            profile,
+            effective_policy,
+        }
+    }
+
     fn premium_request() -> GenerateReadingRequest {
         GenerateReadingRequest {
             request_id: None,
             idempotency_key: None,
             product_context: astral_llm_domain::ProductContext {
-                product_code: "natal_premium".into(),
+                product_code: "natal_prompter".into(),
+                interpretation_profile_code: Some("natal_premium".into()),
                 user_language: "fr".into(),
                 audience_level: AudienceLevel::Intermediate,
             },
@@ -326,7 +357,7 @@ mod tests {
         NatalReadingResponse {
             schema_version: "natal_reading_v1".into(),
             language: "fr".into(),
-            reading_type: "natal_premium".into(),
+            reading_type: "natal_prompter".into(),
             summary: ReadingSummary {
                 title: "T".into(),
                 short_text: "S".into(),
@@ -364,7 +395,7 @@ mod tests {
                 used_provider: "fake".into(),
                 used_model: "fake".into(),
                 generation_mode: GenerationMode::ChapterOrchestrated,
-                prompt_family: "natal_premium".into(),
+                prompt_family: "natal_prompter".into(),
                 prompt_version: "v1".into(),
                 astro_contract_version: "natal_structured_v13".into(),
                 fallback_used: false,
@@ -377,22 +408,31 @@ mod tests {
         let request = premium_request();
         let mut reading = good_reading();
         reading.chapters[0].body = "sun in aries. moon in cancer.".into();
-        assert!(ReadingQualityValidator::validate_for_product(&request, &reading).is_err());
+        let ctx = premium_ctx();
+        assert!(
+            ReadingQualityValidator::validate_for_product(&request, &reading, Some(&ctx)).is_err()
+        );
     }
 
     #[test]
     fn premium_accepts_rich_reading() {
         let request = premium_request();
         let reading = good_reading();
-        assert!(ReadingQualityValidator::validate_for_product(&request, &reading).is_ok());
+        let ctx = premium_ctx();
+        assert!(
+            ReadingQualityValidator::validate_for_product(&request, &reading, Some(&ctx)).is_ok()
+        );
     }
 
     #[test]
-    fn premium_product_code_blocks_even_in_single_pass_mode() {
+    fn premium_profile_blocks_even_in_single_pass_mode() {
         let mut request = premium_request();
         request.response_contract.generation_mode = GenerationMode::SinglePass;
         let mut reading = good_reading();
         reading.chapters[0].body = "sun aries. moon cancer.".into();
-        assert!(ReadingQualityValidator::validate_for_product(&request, &reading).is_err());
+        let ctx = premium_ctx();
+        assert!(
+            ReadingQualityValidator::validate_for_product(&request, &reading, Some(&ctx)).is_err()
+        );
     }
 }

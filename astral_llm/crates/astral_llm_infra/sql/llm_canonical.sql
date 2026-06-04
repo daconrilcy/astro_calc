@@ -92,16 +92,26 @@ INSERT INTO llm_astrological_domains (domain_code, label_fr, sort_order) VALUES
 ON CONFLICT (domain_code) DO NOTHING;
 
 INSERT INTO llm_product_prompt_profiles (product_code, prompt_family, prompt_version) VALUES
-    ('natal_basic', 'natal_basic', 'v1'),
-    ('natal_premium', 'natal_premium', 'v1')
+    ('natal_prompter', 'natal_prompter', 'v1')
 ON CONFLICT (product_code) DO NOTHING;
+
+UPDATE llm_product_prompt_profiles SET is_active = false
+WHERE product_code IN ('natal_basic', 'natal_premium');
 
 INSERT INTO llm_product_generation_policies (
     product_code, max_domains, max_chapters, max_output_tokens, max_reasoning_effort, allow_chapter_orchestrated
 ) VALUES
-    ('natal_basic', 6, 6, 8000, 'medium', false),
-    ('natal_premium', 12, 12, 16000, 'high', true)
-ON CONFLICT (product_code) DO NOTHING;
+    ('natal_prompter', 12, 12, 16000, 'high', true)
+ON CONFLICT (product_code) DO UPDATE SET
+    max_domains = EXCLUDED.max_domains,
+    max_chapters = EXCLUDED.max_chapters,
+    max_output_tokens = EXCLUDED.max_output_tokens,
+    max_reasoning_effort = EXCLUDED.max_reasoning_effort,
+    allow_chapter_orchestrated = EXCLUDED.allow_chapter_orchestrated,
+    is_active = true;
+
+UPDATE llm_product_generation_policies SET is_active = false
+WHERE product_code IN ('natal_basic', 'natal_premium');
 
 INSERT INTO llm_astro_object_labels (object_code, locale, label) VALUES
     ('sun', 'fr', 'Soleil'),

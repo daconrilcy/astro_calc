@@ -2,7 +2,8 @@
     "request_id": "e2e-premium-001",
     "idempotency_key": null,
     "product_context": {
-      "product_code": "natal_premium",
+      "product_code": "natal_prompter",
+      "interpretation_profile_code": "natal_premium",
       "user_language": "fr",
       "audience_level": "beginner"
     },

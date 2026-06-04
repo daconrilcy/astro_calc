@@ -22,6 +22,9 @@ pub struct GenerateReadingRequest {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ProductContext {
     pub product_code: String,
+    /// Profil d'interpretation (obligatoire pour `natal_prompter`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub interpretation_profile_code: Option<String>,
     pub user_language: String,
     pub audience_level: AudienceLevel,
 }
