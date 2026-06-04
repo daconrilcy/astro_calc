@@ -1,6 +1,9 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+/// Code interne pour l'etape de synthese finale (metadata provider).
+pub const READING_SUMMARY_STEP_CODE: &str = "__summary__";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ChapterGenerationStatus {

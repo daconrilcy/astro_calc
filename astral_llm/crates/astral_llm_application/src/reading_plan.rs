@@ -23,7 +23,7 @@ impl ReadingPlanBuilder {
                     title: humanize_domain(code),
                     min_words: 80,
                     target_words: 150,
-                    max_words: 250,
+                    max_words: 300,
                 })
                 .collect()
         };

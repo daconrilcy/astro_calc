@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use astral_llm_domain::{
     generation_response::{
         ChapterProviderResponse, ConfidenceLevel, LegalBlock, NatalReadingResponse,
-        QualityMetadata, ReadingChapter, ReadingSummary,
+        QualityMetadata, ReadingChapter, ReadingSummary, SummaryProviderResponse,
     },
     output_contract::GenerationMode,
     provider::{ProviderCapabilities, ProviderKind, StructuredOutputMode},
@@ -14,6 +14,8 @@ use crate::provider_trait::LlmProvider;
 use crate::types::{ProviderGenerationRequest, ProviderGenerationResponse, TokenUsage};
 use crate::LlmProviderError;
 
+use astral_llm_domain::chapter_orchestration::READING_SUMMARY_STEP_CODE;
+
 pub struct FakeProvider;
 
 const CHAPTER_BODY: &str = "Votre theme suggere une personnalite reflechie, orientee vers la \
@@ -23,6 +25,11 @@ const CHAPTER_BODY: &str = "Votre theme suggere une personnalite reflechie, orie
     phases de questionnement comme des espaces creatifs, plutot que comme des blocages. Elle \
     favorise aussi une lucidite emotionnelle progressive, utile pour comprendre vos motivations \
     profondes sans vous figer dans un role unique ni rigide.";
+
+const SUMMARY_SHORT_TEXT: &str = "Votre theme met en avant une dynamique d'affirmation personnelle, \
+    une grande richesse emotionnelle et un chemin relationnel structurant. Cette configuration \
+    symbolique invite a accueillir les transitions interieures comme des espaces de croissance \
+    authentique, sans figer votre parcours dans une trajectoire unique.";
 
 #[async_trait]
 impl LlmProvider for FakeProvider {
@@ -47,7 +54,9 @@ impl LlmProvider for FakeProvider {
         request: ProviderGenerationRequest,
     ) -> Result<ProviderGenerationResponse, LlmProviderError> {
         crate::http::with_timeout(request.timeout, async {
-            let json = if request.metadata.chapter_code.is_some() {
+            let json = if request.metadata.chapter_code.as_deref() == Some(READING_SUMMARY_STEP_CODE) {
+                serde_json::to_value(build_summary_response())
+            } else if request.metadata.chapter_code.is_some() {
                 serde_json::to_value(build_chapter_response(&request))
             } else {
                 serde_json::to_value(build_full_reading(&request))
@@ -70,24 +79,66 @@ impl LlmProvider for FakeProvider {
     }
 }
 
+fn build_summary_response() -> SummaryProviderResponse {
+    SummaryProviderResponse {
+        title: "Une dynamique d'affirmation et de profondeur".into(),
+        short_text: SUMMARY_SHORT_TEXT.into(),
+    }
+}
+
 fn build_chapter_response(request: &ProviderGenerationRequest) -> ChapterProviderResponse {
     let code = request
         .metadata
         .chapter_code
         .clone()
         .unwrap_or_else(|| "identity".into());
+    let available = extract_fact_ids_from_messages(&request.messages);
+    let interpretive = available
+        .iter()
+        .find(|id| !id.starts_with("domain_score:"))
+        .cloned()
+        .unwrap_or_else(|| "placement:sun:capricorn:house:2".into());
+
     ChapterProviderResponse {
         code: code.clone(),
         title: code.replace('_', " "),
         body: CHAPTER_BODY.to_string(),
-        astro_basis: vec![astral_llm_domain::AstroBasisItem {
-            fact_id: Some(format!("domain_score:{code}")),
-            label: Some(format!("Score domaine {code}")),
-            factor: code.clone(),
-            interpretive_role: "signal dominant du chapitre".into(),
-        }],
+        astro_basis: vec![
+            astral_llm_domain::AstroBasisItem {
+                fact_id: Some(format!("domain_score:{code}")),
+                label: Some(format!("Score domaine {code}")),
+                factor: code.clone(),
+                interpretive_role: "signal de selection du domaine".into(),
+            },
+            astral_llm_domain::AstroBasisItem {
+                fact_id: Some(interpretive),
+                label: None,
+                factor: "placement".into(),
+                interpretive_role: "base interpretative du chapitre".into(),
+            },
+        ],
         confidence: ConfidenceLevel::Medium,
     }
+}
+
+fn extract_fact_ids_from_messages(messages: &[crate::types::PromptMessage]) -> Vec<String> {
+    let mut ids = Vec::new();
+    for message in messages {
+        if let Some(start) = message.content.find("\"facts\"") {
+            let slice = &message.content[start..];
+            for part in slice.split("\"id\":") {
+                if let Some(rest) = part.strip_prefix(' ') {
+                    let trimmed = rest.trim_start_matches('"');
+                    if let Some(end) = trimmed.find('"') {
+                        ids.push(trimmed[..end].to_string());
+                    }
+                }
+            }
+        }
+    }
+    ids.sort();
+    ids.dedup();
+    ids
 }
 
 fn build_full_reading(request: &ProviderGenerationRequest) -> NatalReadingResponse {
@@ -131,6 +182,7 @@ mod tests {
     use super::*;
     use astral_llm_domain::provider::ReasoningEffort;
     use crate::types::{GenerationMetadata, PromptMessage, PromptRole};
+    use std::time::Duration;
 
     #[tokio::test]
     async fn fake_provider_returns_chapter_json() {
@@ -162,5 +214,34 @@ mod tests {
             .and_then(|v| v.get("code"))
             .and_then(|v| v.as_str());
         assert_eq!(code, Some("career"));
+    }
+
+    #[tokio::test]
+    async fn fake_provider_returns_summary_json() {
+        let provider = FakeProvider;
+        let request = ProviderGenerationRequest {
+            model: "fake-model".to_string(),
+            messages: vec![],
+            structured_schema: None,
+            reasoning_effort: None,
+            temperature: None,
+            max_output_tokens: Some(400),
+            safety_mode: astral_llm_domain::SafetyMode::PlatformRulesOnly,
+            timeout: Duration::from_secs(5),
+            metadata: GenerationMetadata {
+                run_id: "run-1".to_string(),
+                request_id: None,
+                product_code: "natal_premium".to_string(),
+                chapter_code: Some(READING_SUMMARY_STEP_CODE.into()),
+            },
+        };
+
+        let response = provider.generate(request).await.expect("fake ok");
+        let title = response
+            .parsed_json
+            .as_ref()
+            .and_then(|v| v.get("title"))
+            .and_then(|v| v.as_str());
+        assert!(title.is_some());
     }
 }

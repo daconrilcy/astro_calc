@@ -1,7 +1,7 @@
 param(
     [string]$RequestPath = "",
     [string]$OutputPath = "",
-    [string]$IdempotencyKey = "e2e-premium-001-v1",
+    [string]$IdempotencyKey = "",
     [string]$BaseUrl = "",
     [string]$ApiKey = "",
     [int]$TimeoutSec = 600
@@ -39,6 +39,10 @@ function Import-DotEnv {
 }
 
 Import-DotEnv (Join-Path $repoRoot ".env")
+
+if ([string]::IsNullOrWhiteSpace($IdempotencyKey)) {
+    $IdempotencyKey = "e2e-premium-$(Get-Date -Format 'yyyyMMddHHmmss')"
+}
 
 if ([string]::IsNullOrWhiteSpace($RequestPath)) {
     $RequestPath = Join-Path $repoRoot "request-premium.json"
@@ -121,6 +125,11 @@ try {
     $errorCode = $response.error.code
     Write-Host "HTTP $($raw.StatusCode) : $errorCode"
     Write-Host "Journal : $clientLogPath"
+
+    if ($errorCode -eq "IDEMPOTENCY_PAYLOAD_MISMATCH" -or $response.error -eq "IDEMPOTENCY_PAYLOAD_MISMATCH") {
+        Write-Host "Cle Idempotency-Key deja utilisee avec un payload different. Utilisez une nouvelle cle."
+        exit 3
+    }
 
     if ($errorCode -eq "READING_QUALITY_FAILED") {
         Write-Host "Echec qualite editoriale (attendu possible en E2E). Voir logs API et audit run."

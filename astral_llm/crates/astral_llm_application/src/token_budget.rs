@@ -2,17 +2,26 @@ use astral_llm_domain::{
     output_contract::ChapterContract, GenerationError, GenerationErrorCode,
 };
 
+/// Marge acceptee au-dela de max_words (variance LLM en sortie structuree).
+const CHAPTER_MAX_WORDS_SLACK: u32 = 25;
+
 pub struct TokenBudget;
 
 impl TokenBudget {
-    pub fn chapter_max_tokens(chapter: &ChapterContract, global_max: Option<u32>) -> u32 {
-        if let Some(tokens) = chapter.target_tokens {
-            return tokens;
+    pub fn chapter_max_tokens(chapter: &ChapterContract, engine_max: Option<u32>) -> u32 {
+        let body_budget = chapter
+            .target_tokens
+            .or_else(|| chapter.max_words.map(|w| w.saturating_mul(4)))
+            .unwrap_or(800);
+
+        // Structured chapter JSON (body + astro_basis[]) needs headroom beyond body text alone.
+        let mut tokens = body_budget.saturating_add(500);
+
+        if let Some(engine_max) = engine_max {
+            tokens = tokens.max(engine_max);
         }
-        if let Some(words) = chapter.max_words {
-            return words.saturating_mul(4);
-        }
-        global_max.unwrap_or(800)
+
+        tokens.min(16_000)
     }
 
     pub fn word_count(text: &str) -> u32 {
@@ -41,7 +50,7 @@ impl TokenBudget {
                 }
             }
             if let Some(max) = contract.max_words {
-                if words > max {
+                if words > max.saturating_add(CHAPTER_MAX_WORDS_SLACK) {
                     return Err(GenerationError::with_details(
                         GenerationErrorCode::SchemaValidationFailed,
                         format!("chapter {} above max_words", contract.code),

@@ -79,9 +79,7 @@ impl SafetyGuard {
             violations.push("deterministic claim detected".into());
         }
 
-        if policy.require_symbolic_framing
-            && !matches_patterns(&corpus, &catalog.patterns_for_type("symbolic"))
-        {
+        if policy.require_symbolic_framing && !has_symbolic_framing(&corpus, catalog) {
             violations.push("missing symbolic/interpretive framing".into());
         }
 
@@ -144,9 +142,7 @@ impl SafetyGuard {
         {
             violations.push("deterministic claim detected".into());
         }
-        if policy.require_symbolic_framing
-            && !matches_patterns(body, &catalog.patterns_for_type("symbolic"))
-        {
+        if policy.require_symbolic_framing && !has_symbolic_framing(body, catalog) {
             violations.push("missing symbolic/interpretive framing".into());
         }
 
@@ -193,6 +189,39 @@ fn matches_patterns(text: &str, patterns: &[&str]) -> bool {
     }
     let lower = text.to_lowercase();
     patterns.iter().any(|p| lower.contains(&p.to_lowercase()))
+}
+
+fn has_symbolic_framing(text: &str, catalog: &SharedCanonicalCatalog) -> bool {
+    if matches_patterns(text, &catalog.patterns_for_type("symbolic")) {
+        return true;
+    }
+    has_builtin_interpretive_framing(text)
+}
+
+fn has_builtin_interpretive_framing(body: &str) -> bool {
+    let lower = body.to_lowercase();
+    [
+        "symbolique",
+        "interpretation",
+        "interprétation",
+        "suggere",
+        "suggère",
+        "invite",
+        "tendance",
+        "peut",
+        "offre",
+        "révèle",
+        "revel",
+        "met en lumière",
+        "met en lumiere",
+        "suggests",
+        "invites",
+        "tendency",
+        "may",
+        "offers",
+    ]
+    .iter()
+    .any(|marker| lower.contains(marker))
 }
 
 #[cfg(test)]

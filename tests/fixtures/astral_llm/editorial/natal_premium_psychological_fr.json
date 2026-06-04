@@ -22,6 +22,11 @@
             "fact_id": "domain_score:identity",
             "factor": "identity",
             "interpretive_role": "axe identitaire"
+          },
+          {
+            "fact_id": "placement:sun:capricorn:house:2",
+            "factor": "sun",
+            "interpretive_role": "placement identitaire"
           }
         ],
         "confidence": "medium"
@@ -35,6 +40,11 @@
             "fact_id": "domain_score:relationships",
             "factor": "relationships",
             "interpretive_role": "dynamique relationnelle"
+          },
+          {
+            "fact_id": "placement:moon:pisces:house:4",
+            "factor": "moon",
+            "interpretive_role": "placement emotionnel"
           }
         ],
         "confidence": "medium"

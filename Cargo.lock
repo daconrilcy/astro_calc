@@ -189,6 +189,7 @@ dependencies = [
 name = "astral_llm_providers"
 version = "0.1.0"
 dependencies = [
+ "astral_llm_application",
  "astral_llm_domain",
  "async-trait",
  "dotenvy",

@@ -3,7 +3,7 @@ use schemars::schema_for;
 use jsonschema::JSONSchema;
 
 use astral_llm_domain::{
-    generation_response::{ChapterProviderResponse, NatalReadingResponse},
+    generation_response::{ChapterProviderResponse, NatalReadingResponse, SummaryProviderResponse},
     GenerationError, GenerationErrorCode,
 };
 
@@ -22,6 +22,7 @@ impl SchemaRegistry {
         };
         registry.register_natal_reading_v1();
         registry.register_chapter_provider_v1();
+        registry.register_summary_provider_v1();
         registry
     }
 
@@ -79,6 +80,19 @@ impl SchemaRegistry {
             .insert("chapter_provider_v1".to_string(), provider_schema);
         self.validators
             .insert("chapter_provider_v1".to_string(), validator);
+    }
+
+    fn register_summary_provider_v1(&mut self) {
+        let schema = schema_for!(SummaryProviderResponse);
+        let value = serde_json::to_value(schema).expect("schema serializable");
+        let provider_schema = strip_schema_for_provider(&value);
+        let validator = JSONSchema::compile(&value).expect("valid schema");
+        self.schemas
+            .insert("summary_provider_v1".to_string(), value);
+        self.provider_schemas
+            .insert("summary_provider_v1".to_string(), provider_schema);
+        self.validators
+            .insert("summary_provider_v1".to_string(), validator);
     }
 }
 

@@ -57,7 +57,11 @@ impl PromptCompiler {
             .map(|c| format!("Focus chapter code: {c}"))
             .unwrap_or_default();
 
-        let data_payload = AstroPayloadNormalizer::to_prompt_data_block(input.astro_facts);
+        let data_payload = if let Some(chapter_code) = input.chapter_code {
+            AstroPayloadNormalizer::to_chapter_prompt_data_block(input.astro_facts, chapter_code)
+        } else {
+            AstroPayloadNormalizer::to_prompt_data_block(input.astro_facts)
+        };
 
         Ok(PromptBundle {
             system_instructions: format!(

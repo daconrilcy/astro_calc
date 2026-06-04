@@ -82,6 +82,10 @@ fn sample_request_with_engine(mode: GenerationMode, engine: EngineParams) -> Gen
                 "domain_scores": {
                     "identity": 0.8,
                     "relationships": 0.6
+                },
+                "planets": {
+                    "sun": { "house": 2, "sign": "capricorn" },
+                    "moon": { "house": 4, "sign": "pisces" }
                 }
             }),
         },

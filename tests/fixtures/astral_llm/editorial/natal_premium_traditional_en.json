@@ -22,6 +22,11 @@
             "fact_id": "domain_score:identity",
             "factor": "identity",
             "interpretive_role": "temperamental anchor"
+          },
+          {
+            "fact_id": "placement:sun:capricorn:house:2",
+            "factor": "sun",
+            "interpretive_role": "core placement"
           }
         ],
         "confidence": "high"
@@ -35,6 +40,11 @@
             "fact_id": "domain_score:vocation",
             "factor": "vocation",
             "interpretive_role": "vocational signal"
+          },
+          {
+            "fact_id": "angle:midheaven:leo",
+            "factor": "midheaven",
+            "interpretive_role": "vocational angle"
           }
         ],
         "confidence": "medium"

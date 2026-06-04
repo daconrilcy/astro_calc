@@ -194,3 +194,65 @@ async fn anthropic_invalid_api_key_smoke() {
     );
     assert_invalid_api_key_rejected(bad).await;
 }
+
+#[tokio::test]
+#[ignore = "requires OPENAI_API_KEY and network"]
+async fn openai_chapter_provider_schema_smoke() {
+    use astral_llm_application::{ModelCapabilityRegistry, ProviderSchemaCompiler, SchemaRegistry};
+    use std::sync::Arc;
+
+    let provider = OpenAiProvider::with_client(
+        reqwest::Client::builder()
+            .timeout(Duration::from_secs(120))
+            .build()
+            .expect("client"),
+        load_api_key("OPENAI_API_KEY"),
+        std::env::var("OPENAI_BASE_URL").unwrap_or_else(|_| "https://api.openai.com".into()),
+    );
+    let model = std::env::var("OPENAI_DEFAULT_MODEL").unwrap_or_else(|_| "gpt-4.1".into());
+    let registry = SchemaRegistry::new();
+    let schema = registry
+        .provider_schema("chapter_provider_v1")
+        .expect("chapter schema")
+        .clone();
+    let cap = Arc::new(ModelCapabilityRegistry::bootstrap())
+        .require(&ProviderKind::OpenAi, &model)
+        .expect("capability")
+        .clone();
+    let compiled = ProviderSchemaCompiler::compile(&schema, &cap).expect("compile schema");
+
+    let request = ProviderGenerationRequest {
+        model,
+        messages: vec![
+            PromptMessage {
+                role: PromptRole::System,
+                content: "Return JSON for a natal chapter. Cite astro_basis with fact_ids from data.".into(),
+            },
+            PromptMessage {
+                role: PromptRole::User,
+                content: "Chapter identity. Data: {\"facts\":[{\"id\":\"domain_score:identity\"},{\"id\":\"placement:sun:capricorn:house:2\"}]}".into(),
+            },
+        ],
+        structured_schema: Some(compiled),
+        reasoning_effort: None,
+        temperature: Some(0.4),
+        max_output_tokens: Some(600),
+        safety_mode: SafetyMode::PlatformRulesOnly,
+        timeout: Duration::from_secs(120),
+        metadata: GenerationMetadata {
+            run_id: "chapter-smoke".into(),
+            request_id: None,
+            product_code: "natal_premium".into(),
+            chapter_code: Some("identity".into()),
+        },
+    };
+
+    let response = provider.generate(request).await.expect("openai chapter ok");
+    assert!(
+        response.parsed_json.is_some(),
+        "expected parsed JSON, raw={:?}",
+        response.raw_text
+    );
+    let json = response.parsed_json.unwrap();
+    assert_eq!(json.get("code").and_then(|v| v.as_str()), Some("identity"));
+}

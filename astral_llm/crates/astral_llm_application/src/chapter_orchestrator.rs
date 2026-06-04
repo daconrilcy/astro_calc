@@ -4,7 +4,7 @@ use astral_llm_domain::{
     chapter_orchestration::{ChapterGenerationStatus, ReadingPlan, ReadingPlanChapter},
     generation_response::{
         ChapterProviderResponse, LegalBlock, NatalReadingResponse, QualityMetadata,
-        ReadingChapter, ReadingSummary,
+        ReadingChapter,
     },
     output_contract::GenerationMode,
     GenerateReadingRequest, GenerationError, GenerationErrorCode, NormalizedAstroFacts,
@@ -29,6 +29,7 @@ use crate::reading_plan::ReadingPlanBuilder;
 use crate::reading_quality_validator::ReadingQualityValidator;
 use crate::response_validator::ResponseValidator;
 use crate::safety_guard::SafetyGuard;
+use crate::summary_synthesizer::SummarySynthesizer;
 use crate::token_budget::TokenBudget;
 use astral_llm_domain::ServiceLimits;
 
@@ -79,7 +80,6 @@ impl<'a> ChapterOrchestrator<'a> {
         ReadingPlanBuilder::validate(&plan)?;
 
         let contracts = ReadingPlanBuilder::to_chapter_contracts(&plan);
-        let min_astro_refs = product_policy.min_astro_basis_refs_per_chapter;
         let quality_thresholds = ReadingQualityValidator::thresholds_for_request(request);
 
         let mut generated = Vec::new();
@@ -99,7 +99,7 @@ impl<'a> ChapterOrchestrator<'a> {
                     chapter,
                     contract,
                     run_id,
-                    min_astro_refs,
+                    product_policy,
                     None,
                 )
                 .await
@@ -124,7 +124,7 @@ impl<'a> ChapterOrchestrator<'a> {
                                 chapter,
                                 contract,
                                 run_id,
-                                min_astro_refs,
+                                product_policy,
                                 repair,
                             )
                         },
@@ -156,27 +156,52 @@ impl<'a> ChapterOrchestrator<'a> {
                             chapter,
                             contract,
                             run_id,
-                            min_astro_refs,
+                            product_policy,
                             Some(ChapterRepairKind::Length),
                         )
                         .await
                     {
                         Ok((reading_chapter, bundle, route_meta)) => {
-                            last_bundle = Some(bundle);
-                            used_provider = route_meta.0;
-                            used_model = route_meta.1;
-                            fallback_used |= route_meta.2;
+                            let outcome = maybe_repair_repetition(
+                                chapter,
+                                reading_chapter,
+                                bundle,
+                                route_meta,
+                                &quality_thresholds,
+                                run_id,
+                                engine,
+                                started,
+                                audit,
+                                |repair| {
+                                    self.generate_one_chapter(
+                                        request,
+                                        engine,
+                                        safety_policy,
+                                        astro_facts,
+                                        chapter,
+                                        contract,
+                                        run_id,
+                                        product_policy,
+                                        repair,
+                                    )
+                                },
+                            )
+                            .await?;
+                            last_bundle = Some(outcome.bundle);
+                            used_provider = outcome.route_meta.0.clone();
+                            used_model = outcome.route_meta.1.clone();
+                            fallback_used |= outcome.route_meta.2;
                             audit.record_chapter_step(
                                 &chapter.code,
                                 &used_provider,
                                 &used_model,
-                                ChapterGenerationStatus::Repaired,
-                                route_meta.3,
-                                route_meta.4,
+                                outcome.status,
+                                outcome.route_meta.3,
+                                outcome.route_meta.4,
                                 started.elapsed().as_millis() as u64,
                                 None,
                             );
-                            generated.push(reading_chapter);
+                            generated.push(outcome.reading_chapter);
                         }
                         Err(repair_err) => {
                             audit.record_chapter_step(
@@ -221,14 +246,29 @@ impl<'a> ChapterOrchestrator<'a> {
         }
 
         let bundle = last_bundle.expect("at least one chapter");
+
+        let summary_started = Instant::now();
+        let synthesizer =
+            SummarySynthesizer::new(self.router, self.validator, self.catalog);
+        let summary = synthesizer
+            .synthesize(request, &generated, engine, safety_policy, run_id)
+            .await?;
+        audit.record_chapter_step(
+            "summary",
+            &used_provider,
+            &used_model,
+            ChapterGenerationStatus::Generated,
+            None,
+            None,
+            summary_started.elapsed().as_millis() as u64,
+            None,
+        );
+
         let reading = NatalReadingResponse {
             schema_version: request.response_contract.output_schema_version.clone(),
             language: request.product_context.user_language.clone(),
             reading_type: request.product_context.product_code.clone(),
-            summary: ReadingSummary {
-                title: format!("Lecture {} — synthese", request.product_context.product_code),
-                short_text: "Synthese produite par generation chapitre par chapitre.".into(),
-            },
+            summary,
             chapters: generated,
             legal: LegalBlock {
                 disclaimer: default_disclaimer(
@@ -259,7 +299,7 @@ impl<'a> ChapterOrchestrator<'a> {
         chapter: &ReadingPlanChapter,
         contract: &astral_llm_domain::output_contract::ChapterContract,
         run_id: &str,
-        min_astro_refs: u8,
+        product_policy: &ProductGenerationPolicy,
         repair: Option<ChapterRepairKind>,
     ) -> Result<
         (
@@ -315,7 +355,7 @@ impl<'a> ChapterOrchestrator<'a> {
             temperature: engine.temperature,
             max_output_tokens: Some(TokenBudget::chapter_max_tokens(
                 contract,
-                request.response_contract.global_max_tokens,
+                request.engine.max_output_tokens.or(request.response_contract.global_max_tokens),
             )),
             safety_mode: resolve_safety_mode(&engine.provider),
             timeout: Duration::from_millis(engine.timeout_ms.unwrap_or(120_000)),
@@ -342,9 +382,14 @@ impl<'a> ChapterOrchestrator<'a> {
         let output_tokens = route.response.usage.as_ref().map(|u| u.output_tokens);
 
         let json = route.response.parsed_json.ok_or_else(|| {
-            GenerationError::new(
+            GenerationError::with_details(
                 GenerationErrorCode::InvalidJsonOutput,
                 "provider returned no JSON for chapter",
+                serde_json::json!({
+                    "chapter": chapter.code,
+                    "raw_text_preview": route.response.raw_text.chars().take(800).collect::<String>(),
+                    "raw_text_len": route.response.raw_text.len(),
+                }),
             )
         })?;
 
@@ -377,11 +422,7 @@ impl<'a> ChapterOrchestrator<'a> {
             safety_flags: vec![],
         };
 
-        AstroBasisValidator::validate_chapter_with_min_refs(
-            &reading_chapter,
-            astro_facts,
-            min_astro_refs,
-        )?;
+        AstroBasisValidator::validate_chapter(&reading_chapter, astro_facts, product_policy)?;
 
         SafetyGuard::validate_chapter_text(
             &reading_chapter.body,

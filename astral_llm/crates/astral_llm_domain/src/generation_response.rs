@@ -35,6 +35,13 @@ pub struct ReadingSummary {
     pub short_text: String,
 }
 
+/// Schema minimal envoye au LLM pour la synthese finale (mode chapitre).
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SummaryProviderResponse {
+    pub title: String,
+    pub short_text: String,
+}
+
 /// Schema minimal envoye au LLM en mode chapitre (sans champs serveur `quality`).
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ChapterProviderResponse {

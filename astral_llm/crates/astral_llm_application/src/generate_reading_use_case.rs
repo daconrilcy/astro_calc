@@ -212,7 +212,7 @@ impl GenerateReadingUseCase {
             }
         };
 
-        AstroBasisValidator::validate_chapters(&reading.chapters, &astro_facts)?;
+        AstroBasisValidator::validate_chapters(&reading.chapters, &astro_facts, product_policy)?;
 
         SafetyGuard::validate_response(
             &reading,

@@ -17,6 +17,9 @@ pub struct ProductGenerationPolicy {
     pub allow_chapter_orchestrated: bool,
     /// References astro_basis valides minimum par chapitre (0 = pas de quota).
     pub min_astro_basis_refs_per_chapter: u8,
+    /// References interpretatives minimum par chapitre (0 = pas de quota).
+    /// Premium exige au moins 1 fact non-domain_score.
+    pub min_interpretive_astro_basis_refs_per_chapter: u8,
 }
 
 impl ProductGenerationPolicy {
@@ -40,6 +43,7 @@ impl ProductGenerationPolicy {
             max_reasoning_effort: ReasoningEffort::Medium,
             allow_chapter_orchestrated: false,
             min_astro_basis_refs_per_chapter: 0,
+            min_interpretive_astro_basis_refs_per_chapter: 0,
         }
     }
 
@@ -63,6 +67,7 @@ impl ProductGenerationPolicy {
             max_reasoning_effort: ReasoningEffort::High,
             allow_chapter_orchestrated: true,
             min_astro_basis_refs_per_chapter: 1,
+            min_interpretive_astro_basis_refs_per_chapter: 1,
         }
     }
 

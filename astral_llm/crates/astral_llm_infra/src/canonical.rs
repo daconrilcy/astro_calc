@@ -93,6 +93,11 @@ pub async fn load_canonical_catalog(pool: &sqlx::PgPool) -> CanonicalCatalog {
                         max_reasoning_effort: parse_reasoning_effort(&max_reasoning),
                         allow_chapter_orchestrated: allow_chapter,
                         min_astro_basis_refs_per_chapter: if allow_chapter { 1 } else { 0 },
+                        min_interpretive_astro_basis_refs_per_chapter: if allow_chapter {
+                            1
+                        } else {
+                            0
+                        },
                     }
                 },
             )
@@ -129,6 +134,12 @@ pub fn enrich_catalog_from_bootstrap(catalog: &mut CanonicalCatalog) {
             {
                 existing.min_astro_basis_refs_per_chapter =
                     bootstrap.min_astro_basis_refs_per_chapter;
+            }
+            if existing.min_interpretive_astro_basis_refs_per_chapter == 0
+                && bootstrap.min_interpretive_astro_basis_refs_per_chapter > 0
+            {
+                existing.min_interpretive_astro_basis_refs_per_chapter =
+                    bootstrap.min_interpretive_astro_basis_refs_per_chapter;
             }
         } else {
             catalog.product_generation_policies.push(bootstrap);

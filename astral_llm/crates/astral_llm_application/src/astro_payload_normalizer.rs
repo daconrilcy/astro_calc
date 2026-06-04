@@ -1,19 +1,8 @@
 use astral_llm_domain::{
-    astro_fact::{AstroFactKind, NormalizedAstroFact, NormalizedAstroFacts},
-    AstroCalculationPayload, GenerationError, GenerationErrorCode, PrivacyPolicy,
+    astro_fact::NormalizedAstroFacts, AstroCalculationPayload, GenerationError, PrivacyPolicy,
 };
-use astral_llm_infra::payload_redaction::redact_value;
 
-const KNOWN_CONTRACTS: &[&str] = &["natal_structured_v13"];
-
-const INTERNAL_FIELD_PREFIXES: &[&str] = &[
-    "_",
-    "debug",
-    "internal",
-    "raw_",
-    "trace",
-    "engine_",
-];
+use crate::astro_fact_extractor::{dedupe_facts, extract_facts};
 
 pub struct AstroPayloadNormalizer;
 
@@ -22,35 +11,11 @@ impl AstroPayloadNormalizer {
         payload: &AstroCalculationPayload,
         privacy: &PrivacyPolicy,
     ) -> Result<NormalizedAstroFacts, GenerationError> {
-        if !KNOWN_CONTRACTS.contains(&payload.contract_version.as_str()) {
-            return Err(GenerationError::with_details(
-                GenerationErrorCode::InvalidInput,
-                format!(
-                    "unsupported astro_result.contract_version: {}",
-                    payload.contract_version
-                ),
-                serde_json::json!({ "known_versions": KNOWN_CONTRACTS }),
-            ));
-        }
-
-        let mut facts = Vec::new();
-
-        if let Some(scores) = payload.data.get("domain_scores").and_then(|v| v.as_object()) {
-            for (domain, score) in scores {
-                if let Some(weight) = score.as_f64() {
-                    facts.push(NormalizedAstroFact {
-                        id: format!("domain_score:{domain}"),
-                        kind: AstroFactKind::DomainScore,
-                        label: format!("Score domaine {domain}"),
-                        value: serde_json::json!(weight),
-                        interpretive_weight: Some(weight as f32),
-                        domains: vec![domain.clone()],
-                    });
-                }
-            }
-        }
-
-        extract_whitelisted_objects(&payload.data, &mut facts, privacy);
+        let facts = dedupe_facts(extract_facts(
+            &payload.contract_version,
+            &payload.data,
+            privacy,
+        )?);
 
         Ok(NormalizedAstroFacts {
             contract_version: payload.contract_version.clone(),
@@ -66,57 +31,26 @@ impl AstroPayloadNormalizer {
             "facts": facts.facts,
         })
     }
-}
 
-fn extract_whitelisted_objects(
-    data: &serde_json::Value,
-    facts: &mut Vec<NormalizedAstroFact>,
-    privacy: &PrivacyPolicy,
-) {
-    let Some(obj) = data.as_object() else {
-        return;
-    };
+    pub fn to_chapter_prompt_data_block(
+        facts: &NormalizedAstroFacts,
+        chapter_code: &str,
+    ) -> serde_json::Value {
+        let chapter_facts: Vec<_> = facts
+            .facts_for_chapter_prompt(chapter_code)
+            .into_iter()
+            .cloned()
+            .collect();
 
-    for (key, value) in obj {
-        if is_internal_field(key) || key == "domain_scores" {
-            continue;
-        }
-        if key == "planets" {
-            if let Some(planets) = value.as_object() {
-                for (planet, detail) in planets {
-                    if let Some(house) = detail.get("house").and_then(|v| v.as_u64()) {
-                        let mut safe_value = serde_json::json!({ "house": house });
-                        if let Some(sign) = detail.get("sign") {
-                            safe_value["sign"] = sign.clone();
-                        }
-                        if privacy.redact_birth_data_before_llm {
-                            safe_value = redact_value(&safe_value);
-                        }
-                        facts.push(NormalizedAstroFact {
-                            id: format!("planet:{planet}:house:{house}"),
-                            kind: AstroFactKind::PlanetPosition,
-                            label: format!("{planet} en maison {house}"),
-                            value: safe_value,
-                            interpretive_weight: None,
-                            domains: vec![],
-                        });
-                    }
-                }
-            }
-            continue;
-        }
-
-        if privacy.redact_birth_data_before_llm {
-            continue;
-        }
+        serde_json::json!({
+            "_type": "normalized_astro_facts",
+            "_instruction": "DATA ONLY — cite interpretive facts (placements, aspects, angles) in astro_basis. \
+                domain_score signals weight the chapter focus but are not sufficient alone.",
+            "chapter_focus": chapter_code,
+            "contract_version": facts.contract_version,
+            "facts": chapter_facts,
+        })
     }
-}
-
-fn is_internal_field(key: &str) -> bool {
-    let lower = key.to_lowercase();
-    INTERNAL_FIELD_PREFIXES
-        .iter()
-        .any(|prefix| lower.starts_with(prefix))
 }
 
 #[cfg(test)]
@@ -125,7 +59,7 @@ mod tests {
 
     #[test]
     fn rejects_unknown_contract() {
-        let payload = AstroCalculationPayload {
+        let payload = astral_llm_domain::AstroCalculationPayload {
             contract_version: "unknown_v99".into(),
             chart_type: "natal".into(),
             data: serde_json::json!({}),
@@ -134,13 +68,38 @@ mod tests {
     }
 
     #[test]
+    fn chapter_block_includes_global_placements() {
+        let payload = astral_llm_domain::AstroCalculationPayload {
+            contract_version: "natal_structured_v13".into(),
+            chart_type: "natal".into(),
+            data: serde_json::json!({
+                "domain_scores": { "identity": 0.8, "career": 0.5 },
+                "planets": {
+                    "sun": { "house": 2, "sign": "capricorn" }
+                }
+            }),
+        };
+        let facts = AstroPayloadNormalizer::normalize(&payload, &PrivacyPolicy::default()).unwrap();
+        let block = AstroPayloadNormalizer::to_chapter_prompt_data_block(&facts, "identity");
+        let ids: Vec<String> = block["facts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|f| f.get("id").and_then(|v| v.as_str()))
+            .map(str::to_string)
+            .collect();
+        assert!(ids.iter().any(|id| id.starts_with("placement:sun")));
+        assert!(ids.iter().any(|id| id.starts_with("domain_score:identity")));
+    }
+
+    #[test]
     fn strips_birth_date_from_planet_facts() {
-        let payload = AstroCalculationPayload {
+        let payload = astral_llm_domain::AstroCalculationPayload {
             contract_version: "natal_structured_v13".into(),
             chart_type: "natal".into(),
             data: serde_json::json!({
                 "planets": {
-                    "sun": { "house": 8, "birth_date": "1990-01-01" }
+                    "sun": { "house": 8, "sign": "scorpio", "birth_date": "1990-01-01" }
                 }
             }),
         };

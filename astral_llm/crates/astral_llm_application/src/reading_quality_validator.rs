@@ -33,7 +33,7 @@ impl Default for PremiumQualityThresholds {
     fn default() -> Self {
         Self {
             min_words_per_chapter: 40,
-            max_repeated_trigrams: 1,
+            max_repeated_trigrams: 3,
             min_astro_basis_per_chapter: 1,
         }
     }
@@ -220,15 +220,31 @@ fn count_repeated_trigrams(body: &str) -> usize {
     if words.len() < 12 {
         return 0;
     }
-    let lower = body.to_lowercase();
-    let mut repeats = 0usize;
+    let mut counts = std::collections::HashMap::<String, usize>::new();
     for window in words.windows(3) {
-        let phrase = format!("{} {} {}", window[0], window[1], window[2]);
-        if lower.matches(&phrase.to_lowercase()).count() > 1 {
-            repeats += 1;
-        }
+        let phrase = format!(
+            "{} {} {}",
+            window[0].to_lowercase(),
+            window[1].to_lowercase(),
+            window[2].to_lowercase()
+        );
+        *counts.entry(phrase).or_insert(0) += 1;
     }
-    repeats
+    counts.values().filter(|&&n| n > 1).count()
+}
+
+#[cfg(test)]
+mod repetition_tests {
+    use super::count_repeated_trigrams;
+
+    #[test]
+    fn counts_distinct_repeated_phrases_not_every_window() {
+        let body = "votre theme invite votre theme invite votre theme invite \
+            a explorer la vie interieure avec douceur et clarte symbolique \
+            pour comprendre les emotions et les liens humains avec bienveillance";
+        let score = count_repeated_trigrams(body);
+        assert!(score <= 3, "expected at most 3 distinct repeats, got {score}");
+    }
 }
 
 fn has_deterministic_wording(corpus: &str) -> bool {
@@ -273,7 +289,12 @@ mod tests {
             astro_result: astral_llm_domain::AstroCalculationPayload {
                 contract_version: "natal_structured_v13".into(),
                 chart_type: "natal".into(),
-                data: serde_json::json!({ "domain_scores": { "identity": 0.5 } }),
+                data: serde_json::json!({
+                    "domain_scores": { "identity": 0.5 },
+                    "planets": {
+                        "sun": { "house": 2, "sign": "capricorn" }
+                    }
+                }),
             },
             astrologer_profile: astral_llm_domain::AstrologerProfile {
                 profile_id: None,
@@ -326,12 +347,20 @@ mod tests {
                     une grande capacite d'adaptation lorsque vous sentez une direction authentique. \
                     Cette configuration invite a accueillir les phases de questionnement comme \
                     des espaces creatifs, plutot que comme des blocages rigides.".into(),
-                astro_basis: vec![astral_llm_domain::AstroBasisItem {
-                    fact_id: Some("domain_score:identity".into()),
-                    label: None,
-                    factor: "identity".into(),
-                    interpretive_role: "signal".into(),
-                }],
+                astro_basis: vec![
+                    astral_llm_domain::AstroBasisItem {
+                        fact_id: Some("domain_score:identity".into()),
+                        label: None,
+                        factor: "identity".into(),
+                        interpretive_role: "signal".into(),
+                    },
+                    astral_llm_domain::AstroBasisItem {
+                        fact_id: Some("placement:sun:capricorn:house:2".into()),
+                        label: None,
+                        factor: "sun".into(),
+                        interpretive_role: "placement".into(),
+                    },
+                ],
                 confidence: ConfidenceLevel::Medium,
                 safety_flags: vec![],
             }],

@@ -24,6 +24,10 @@ impl ResponseValidator {
         self.schema_registry.validate("chapter_provider_v1", value)
     }
 
+    pub fn validate_summary(&self, value: &serde_json::Value) -> Result<(), GenerationError> {
+        self.schema_registry.validate("summary_provider_v1", value)
+    }
+
     pub fn validate_and_parse(
         &self,
         schema_version: &str,

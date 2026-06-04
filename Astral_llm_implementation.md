@@ -9,18 +9,19 @@ fournisseurs LLM.
 | Label | Statut | Signification |
 |---|---|---|
 | **V1-technical-freeze** | **VALIDE** | Gel architecture/securite : perimetre fige, P1–P4 implementes |
-| **V1-production-public** | **PRET — validation manuelle en attente** | Exposition publique apres smoke providers reels + E2E Premium |
+| **V1-production-public** | **VALIDABLE OpenAI — produit Premium durci** | Pipeline OpenAI valide ; astro_basis interpretatif + synthese finale obligatoires en Premium |
 
 ```txt
 V1 technical freeze accepted.
-Architecture/security scope closed.
-Manual provider validation pending.
-```
-
-Apres smoke providers reels + generation Premium end-to-end validee :
-
-```txt
-V1-production-public validated
+OpenAI provider smoke validated.
+PostgreSQL idempotency concurrency validated.
+Premium E2E pipeline validated (OpenAI).
+Premium editorial hardening:
+  - concrete astro_basis required beyond domain_score
+  - generated summary replaces technical placeholder
+Enabled provider for V1-production-public: OpenAI
+Certified provider smoke: OpenAI
+Mistral/Anthropic: adapter implemented but not production-certified
 ```
 
 Le gel **V1-technical-freeze** ne doit plus faire l'objet d'une refonte architecture. La prochaine etape est **prouver les providers reels** et valider le produit en conditions reelles (qualite interpretative, cout/latence par modele).
@@ -51,6 +52,7 @@ cargo test -p astral_llm_api --test astral_llm_tests
 cargo test -p astral_llm_api --test astral_llm_injection_tests
 cargo test -p astral_llm_api --test prompt_golden_tests
 cargo test -p astral_llm_api --test astral_llm_editorial_fixtures
+cargo test -p astral_llm_api --test astral_llm_astro_basis_tests
 cargo test -p astral_llm_api --test astral_llm_load_tests
 cargo test -p astral_llm_application
 cargo test -p astral_llm_infra
@@ -74,7 +76,9 @@ cargo test -p astral_llm_api --test astral_llm_load_tests -- --ignored  # idempo
 | Langue | `fr` |
 | Audience | `beginner` |
 
-Criteres de passage : JSON valide, `astro_basis` valide, pas de conseil medical/juridique/financier, pas de fatalisme, pas de repetition excessive, pas de liste froide de faits, disclaimer present, qualite Premium non rejetee (`READING_QUALITY_FAILED`), steps persistes, idempotence rejoue la reponse, `GET /v1/providers` expose `circuit_breakers`. Gate Premium : `product_code=natal_premium` bloquant meme si `single_pass` est force par erreur.
+Criteres de passage : JSON valide, `astro_basis` valide (≥1 fact interpretatif par chapitre Premium, pas de `domain_score` seul), synthese finale personnalisee (pas de placeholder pipeline), pas de conseil medical/juridique/financier, pas de fatalisme, pas de repetition excessive, pas de liste froide de faits, disclaimer present, qualite Premium non rejetee (`READING_QUALITY_FAILED`), steps persistes (chapitres + `summary`), idempotence rejoue la reponse, `GET /v1/providers` expose `circuit_breakers`. Gate Premium : `product_code=natal_premium` bloquant meme si `single_pass` est force par erreur.
+
+Le payload astro Premium doit inclure des placements/aspects (via `planets`, `positions` ou `llm_projection_natal_v1`) — un jeu `domain_scores` seul est rejete.
 
 ## Validation produit (implementee — V1-technical-freeze)
 
@@ -111,6 +115,27 @@ Checks : lisibilite, non-repetition, cadrage interpretatif, jargon, fatalisme, c
 - Code erreur : `READING_QUALITY_FAILED`
 - Seuils : longueur chapitre (≥40 mots), cadrage interpretatif, repetition (trigrammes), `astro_basis`, determinisme, disclaimer
 - `EditorialValidator` : fatalisme, conseils interdits, jargon beginner (fixtures)
+
+### P3b — Astro basis Premium (interpretatif obligatoire)
+
+`AstroFactUsage` distingue `domain_selection` (scores de domaine) et `interpretive_basis` (placements, aspects, angles, dignites, maitres).
+
+- **Basic** : `domain_score` autorise seul (`min_interpretive_astro_basis_refs_per_chapter = 0`)
+- **Premium** : ≥1 fact interpretatif valide par chapitre (`min_interpretive_astro_basis_refs_per_chapter = 1`) ; `domain_score` seul → `SCHEMA_VALIDATION_FAILED`
+- `PromptCompiler` : en mode chapitre, ne fournit au LLM que les facts du domaine + facts globaux (soleil, lune, ascendant, aspects majeurs)
+- Tests : `cargo test -p astral_llm_api --test astral_llm_astro_basis_tests`
+
+### P3c — SummarySynthesizer (mode chapter_orchestrated)
+
+Etape finale apres tous les chapitres :
+
+```txt
+Chapter outputs -> SummarySynthesizer -> summary.title + summary.short_text -> validation qualite
+```
+
+- Schema provider : `summary_provider_v1`
+- Placeholders interdits : « Synthese produite par… », « generation chapitre par chapitre », mention du pipeline
+- Step auditee : `summary` dans `ExecutionAudit`
 
 ### P4 — Tests de charge locaux
 
@@ -158,8 +183,14 @@ RequestValidator
   -> LLM
   -> ResponseValidator (schema)
   -> SafetyGuard (post)
-  -> AstroBasisValidator
+  -> AstroBasisValidator (refs + interpretive basis Premium)
   -> ReadingQualityValidator (bloquant Premium / natal_premium)
+```
+
+En `chapter_orchestrated`, apres la boucle chapitres :
+
+```txt
+  -> SummarySynthesizer -> summary final
 ```
 
 ### Middleware HTTP (ordre entrant)

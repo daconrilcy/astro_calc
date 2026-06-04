@@ -16,6 +16,11 @@
           "relationships": 0.72,
           "career": 0.55,
           "growth_path": 0.6
+        },
+        "planets": {
+          "sun": { "house": 2, "sign": "capricorn" },
+          "moon": { "house": 4, "sign": "pisces" },
+          "ascendant": { "house": 1, "sign": "scorpio" }
         }
       }
     },

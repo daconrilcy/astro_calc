@@ -1,6 +1,7 @@
 //! Cas d'usage et orchestration du gateway LLM.
 
 pub mod astro_basis_validator;
+pub mod astro_fact_extractor;
 pub mod astro_payload_normalizer;
 pub mod chapter_orchestrator;
 pub mod chapter_quality_repair;
@@ -27,6 +28,7 @@ pub mod response_validator;
 pub mod safety_guard;
 pub mod safety_resolver;
 pub mod schema_registry;
+pub mod summary_synthesizer;
 pub mod token_budget;
 
 pub use chapter_orchestrator::{new_run_id, ChapterOrchestrator};
@@ -37,6 +39,7 @@ pub use generation_trace::GenerationTraceContext;
 pub use generate_reading_use_case::{GenerateReadingUseCase, UseCaseOutput};
 pub use prompt_compiler::{PromptBundle, PromptCompiler};
 pub use astro_payload_normalizer::AstroPayloadNormalizer;
+pub use astro_basis_validator::AstroBasisValidator;
 pub use model_capability_registry::ModelCapabilityRegistry;
 pub use provider_factory::{
     build_capability_registry, build_capability_registry_with_db, build_fallback_policy,

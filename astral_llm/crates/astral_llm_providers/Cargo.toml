@@ -15,6 +15,7 @@ tokio.workspace = true
 
 [dev-dependencies]
 astral_llm_domain.workspace = true
+astral_llm_application.workspace = true
 dotenvy.workspace = true
 reqwest.workspace = true
 secrecy.workspace = true
