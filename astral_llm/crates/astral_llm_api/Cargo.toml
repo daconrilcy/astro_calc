@@ -57,6 +57,11 @@ name = "astral_llm_i18n_tests"
 path = "../../../tests/astral_llm_i18n_tests.rs"
 harness = true
 
+[[test]]
+name = "astral_llm_provider_catalog_tests"
+path = "../../../tests/astral_llm_provider_catalog_tests.rs"
+harness = true
+
 [dependencies]
 astral_llm_application.workspace = true
 astral_llm_domain.workspace = true

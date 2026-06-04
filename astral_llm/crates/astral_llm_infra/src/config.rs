@@ -190,7 +190,7 @@ fn default_model_for(provider: &ProviderKind) -> String {
         ProviderKind::Fake => "fake-model".into(),
         ProviderKind::Anthropic => "claude-sonnet-4-20250514".into(),
         ProviderKind::Mistral => "mistral-large-latest".into(),
-        _ => "gpt-4.1".into(),
+        _ => "gpt-5.4-mini".into(),
     }
 }
 

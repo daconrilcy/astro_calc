@@ -63,6 +63,7 @@ mod tests {
                 domain_count: Some(2),
                 allow_fallback: true,
                 timeout_ms: None,
+                allow_oracle_benchmark: false,
             },
             response_contract: ResponseContract {
                 output_schema_version: "natal_reading_v1".into(),

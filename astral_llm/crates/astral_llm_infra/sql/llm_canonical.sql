@@ -161,20 +161,7 @@ INSERT INTO llm_zodiac_sign_labels (sign_code, locale, label) VALUES
     ('pisces', 'en', 'Pisces')
 ON CONFLICT (sign_code, locale) DO NOTHING;
 
-INSERT INTO llm_provider_models (
-    provider, model, supports_json_schema_strict, supports_json_object, supports_reasoning_effort,
-    supports_streaming, max_input_tokens, max_output_tokens, structured_output_adapter, storage_disable_supported
-) VALUES
-    ('fake', 'fake-model', true, true, true, false, 128000, 16384, 'prompt_only', true),
-    ('openai', 'gpt-4.1', true, true, false, true, 128000, 16384, 'openai_responses_text_format', true),
-    ('openai', 'gpt-4o-mini', true, true, false, true, 128000, 16384, 'openai_responses_text_format', true),
-    ('anthropic', 'claude-sonnet-4-20250514', true, true, false, true, 200000, 8192, 'anthropic_output_config_format', false),
-    ('mistral', 'mistral-large-latest', true, true, false, true, 128000, 8192, 'mistral_response_format_json_schema', false)
-ON CONFLICT (provider, model) DO NOTHING;
-
-UPDATE llm_provider_models
-SET supports_reasoning_effort = false
-WHERE provider = 'openai' AND model = 'gpt-4.1';
+-- Catalogue providers/modeles : voir llm_provider_catalog.sql
 
 INSERT INTO llm_safety_content_patterns (pattern_type, locale, pattern) VALUES
     ('injection', 'en', 'ignore previous'),

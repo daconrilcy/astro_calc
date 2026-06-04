@@ -117,24 +117,6 @@ impl RequestValidator {
         Ok(())
     }
 
-    pub fn validate_engine_resolved(
-        provider: &ProviderKind,
-        model: &str,
-    ) -> Result<(), GenerationError> {
-        if model.trim().is_empty() {
-            return Err(GenerationError::new(
-                GenerationErrorCode::InvalidInput,
-                "resolved engine.model is empty",
-            ));
-        }
-        if matches!(provider, ProviderKind::Custom(_)) {
-            return Err(GenerationError::new(
-                GenerationErrorCode::UnsupportedProvider,
-                "custom providers are not supported",
-            ));
-        }
-        Ok(())
-    }
 }
 
 #[cfg(test)]
@@ -183,6 +165,7 @@ mod tests {
                 domain_count: Some(3),
                 allow_fallback: true,
                 timeout_ms: None,
+                allow_oracle_benchmark: false,
             },
             response_contract: ResponseContract {
                 output_schema_version: "natal_reading_v1".into(),

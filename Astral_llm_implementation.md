@@ -410,7 +410,20 @@ Tables (ou bootstrap si DB vide) :
 - `llm_astrological_domains`
 - `llm_safety_content_patterns`
 - `llm_product_prompt_profiles`
-- `llm_provider_models` — fusionne dans `ModelCapabilityRegistry` au boot
+- `llm_providers` — moteurs LLM (`provider_code`, `is_active`) ; liste modifiable
+- `llm_provider_models` — modeles par moteur (`is_active` = utilisable en production) ; jointure `provider_id` → `llm_providers`
+- `ProviderCatalogRepository` (infra) : `list_providers`, `add_provider`, `delete_provider`, `set_provider_active`, `list_models`, `add_model`, `delete_model`, `set_model_active`
+- Au boot : `load_active_provider_codes` + `load_model_capabilities` → `ModelCapabilityRegistry::from_db_catalog`
+- Avant prompt : `validate_engine_in_catalog` (moteur actif + modele actif dans le catalogue)
+- `llm_model_usage_tiers` — profils : `production_candidate`, `baseline`, `subtask_candidate`, `benchmark_compare`, `oracle_only`
+- `llm_generation_benchmark_usages` + `llm_generation_benchmark_usage_models` — matrice usage ↔ modeles recommandes
+- Seeds OpenAI (vague 1 + vague 2) : tous actifs ; tiers voir SQL ; E2E Premium : `scripts/benchmark_premium_e2e_models.ps1` (5 runs, `-MaxOutputTokens 4096` par defaut, `-IncludeOracle` pour gpt-5.5-pro avec `engine.allow_oracle_benchmark`)
+- Apres benchmark : `scripts/summarize_benchmark_runs.ps1` lit le JSONL resume, appelle `GET /v1/runs/{run_id}`, estime le cout (grille OpenAI de reference dans le script) et exporte `benchmark_metrics_<stamp>.csv` + JSONL enrichi (colonnes `manual_*` a remplir a la main)
+- Modeles reasoning : `reasoning_output_reserve_min`, `reasoning_effort_subtask` / `_primary` / `_oracle` (litteraux API par modele, ex. gpt-5-mini subtask=`minimal`, gpt-5.4+ subtask=`none`) ; module `reasoning_generation`
+- OpenAI Responses API (GPT-5) : `openai_adapter` agrege les blocs `output[].type=message`
+- Validation contexte : `PrimaryReading` (chapitres), `Subtask` (summary/repair), `OracleBenchmark` (oracle explicite)
+- `llm_product_allowed_models` — modeles autorises par `product_code` (ex. `natal_premium` + gpt-5.4-mini). Liste vide en politique = pas de filtre modele
+- `llm_product_default_engine` — moteur par defaut si `engine.model` absent (`natal_premium` → `gpt-5.4-mini`). Surcharge : champ JSON ou `generate_premium_reading_e2e.ps1 -Model`
 - `llm_product_generation_policies`
 
 Les valeurs metier ne sont pas dupliquees en constantes Rust lorsqu'elles existent en base.

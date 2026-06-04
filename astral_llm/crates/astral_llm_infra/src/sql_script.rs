@@ -12,10 +12,25 @@ fn split_sql_statements(script: &str) -> Vec<String> {
     let mut statements = Vec::new();
     let mut current = String::new();
     let mut in_single_quote = false;
+    let mut in_line_comment = false;
     let mut chars = script.chars().peekable();
 
     while let Some(ch) = chars.next() {
+        if in_line_comment {
+            current.push(ch);
+            if ch == '\n' {
+                in_line_comment = false;
+            }
+            continue;
+        }
+
         match ch {
+            '-' if !in_single_quote && chars.peek() == Some(&'-') => {
+                in_line_comment = true;
+                current.push(ch);
+                chars.next();
+                current.push('-');
+            }
             '\'' if !in_single_quote => {
                 in_single_quote = true;
                 current.push(ch);
@@ -87,5 +102,13 @@ mod tests {
         let parts = split_sql_statements(sql);
         assert_eq!(parts.len(), 2);
         assert!(parts[0].contains("'a;b'"));
+    }
+
+    #[test]
+    fn ignores_semicolon_in_line_comment() {
+        let sql = "-- a; b\nCREATE TABLE t (id INT);";
+        let parts = split_sql_statements(sql);
+        assert_eq!(parts.len(), 1);
+        assert!(parts[0].starts_with("CREATE TABLE"));
     }
 }

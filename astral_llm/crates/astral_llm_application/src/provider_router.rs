@@ -177,6 +177,15 @@ impl ProviderRouter {
 
             let mut provider_request = request.clone();
             provider_request.model = model_for_call.clone();
+            if let Ok(cap) = self
+                .capability_registry
+                .require(&provider_kind, &model_for_call)
+            {
+                provider_request.temperature = crate::reasoning_generation::effective_temperature(
+                    cap,
+                    provider_request.temperature,
+                );
+            }
 
             let mut attempt = 0;
             while attempt <= self.fallback_policy.max_retries_per_provider {

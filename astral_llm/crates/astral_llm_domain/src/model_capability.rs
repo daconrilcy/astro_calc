@@ -1,6 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::model_usage_tier::ModelUsageTierPolicy;
 use crate::provider::{ProviderKind, ReasoningEffort, StructuredOutputMode};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
@@ -43,6 +44,22 @@ pub struct ModelCapability {
     pub structured_output_adapter: StructuredOutputAdapterKind,
     pub storage_disable_supported: bool,
     pub is_active: bool,
+    pub supports_temperature: bool,
+    /// Plancher de `max_output_tokens` quand le modele consomme des tokens de raisonnement (canonique en base).
+    #[serde(default)]
+    pub reasoning_output_reserve_min: Option<u32>,
+    /// Effort par defaut (`llm_provider_models.reasoning_effort_*`), valeurs API OpenAI.
+    #[serde(default)]
+    pub reasoning_effort_subtask: Option<ReasoningEffort>,
+    #[serde(default)]
+    pub reasoning_effort_primary: Option<ReasoningEffort>,
+    #[serde(default)]
+    pub reasoning_effort_oracle: Option<ReasoningEffort>,
+    /// Code tier canonique (`llm_model_usage_tiers.tier_code`), ex. `production_candidate`.
+    #[serde(default)]
+    pub usage_tier_code: Option<String>,
+    #[serde(default = "ModelUsageTierPolicy::unrestricted")]
+    pub tier_policy: ModelUsageTierPolicy,
 }
 
 impl ModelCapability {
@@ -56,10 +73,20 @@ impl ModelCapability {
     }
 
     pub fn allows_reasoning(&self, effort: ReasoningEffort) -> bool {
-        if effort == ReasoningEffort::None {
+        if matches!(effort, ReasoningEffort::None) {
             return true;
         }
         self.supports_reasoning_effort
+    }
+
+    /// Reserve minimale de sortie pour laisser place au raisonnement + message (0 si non applicable).
+    pub fn reasoning_output_reserve(&self) -> u32 {
+        if !self.supports_reasoning_effort {
+            return 0;
+        }
+        self.reasoning_output_reserve_min
+            .filter(|&n| n > 0)
+            .unwrap_or(0)
     }
 
     pub fn to_provider_capabilities(&self) -> crate::provider::ProviderCapabilities {

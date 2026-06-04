@@ -15,7 +15,8 @@ use astral_llm_application::{
 use astral_llm_infra::{
     bootstrap_domains, bootstrap_product_policies, bootstrap_safety_patterns,
     enrich_catalog_from_bootstrap, init_tracing, load_canonical_catalog,
-    load_model_capabilities, AppConfig, CanonicalCatalog, ConfigValidator, ProviderSecrets,
+    load_active_provider_codes, load_model_capabilities, AppConfig, CanonicalCatalog,
+    ConfigValidator, ProviderSecrets,
     RunPersistence, SharedCanonicalCatalog,
 };
 use axum::http::StatusCode;
@@ -52,6 +53,7 @@ async fn main() {
     let mut catalog: SharedCanonicalCatalog = Arc::new(bootstrap_catalog);
 
     let mut db_models = Vec::new();
+    let mut active_providers = Vec::new();
     let persistence = if config.enable_persistence {
         if let Some(database_url) = &config.database_url {
             let pool = PgPoolOptions::new()
@@ -72,6 +74,7 @@ async fn main() {
             let mut loaded = load_canonical_catalog(&pool).await;
             enrich_catalog_from_bootstrap(&mut loaded);
             catalog = Arc::new(loaded);
+            active_providers = load_active_provider_codes(&pool).await;
             db_models = load_model_capabilities(&pool).await;
             Some(Arc::new(persistence))
         } else {
@@ -85,7 +88,7 @@ async fn main() {
     let capability_registry = if db_models.is_empty() {
         astral_llm_application::build_capability_registry()
     } else {
-        build_capability_registry_with_db(db_models)
+        build_capability_registry_with_db(active_providers, db_models)
     };
 
     let circuit_breaker = Arc::new(ProviderCircuitBreaker::new(

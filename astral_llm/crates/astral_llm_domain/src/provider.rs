@@ -35,10 +35,27 @@ pub enum StructuredOutputMode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ReasoningEffort {
+    /// Valeur API OpenAI `none` (frontier gpt-5.4+). Ne pas confondre avec l'absence de parametre.
     None,
+    /// OpenAI gpt-5-mini : effort `minimal` pour sous-taches.
+    Minimal,
     Low,
     Medium,
     High,
+}
+
+impl ReasoningEffort {
+    pub fn parse_api_value(raw: &str) -> Option<Self> {
+        match raw.trim().to_lowercase().as_str() {
+            "none" => Some(Self::None),
+            "minimal" => Some(Self::Minimal),
+            "low" => Some(Self::Low),
+            "medium" => Some(Self::Medium),
+            "high" => Some(Self::High),
+            "xhigh" => Some(Self::High),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

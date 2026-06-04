@@ -79,6 +79,7 @@ fn request_from_fixture(file: &EditorialFixtureFile) -> GenerateReadingRequest {
             domain_count: None,
             allow_fallback: false,
             timeout_ms: None,
+            allow_oracle_benchmark: false,
         },
         response_contract: ResponseContract {
             output_schema_version: "natal_reading_v1".into(),

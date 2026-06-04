@@ -62,6 +62,7 @@ fn sample_request(mode: GenerationMode) -> GenerateReadingRequest {
             domain_count: Some(1),
             allow_fallback: false,
             timeout_ms: Some(30_000),
+            allow_oracle_benchmark: false,
         },
     )
 }
@@ -186,7 +187,7 @@ async fn configured_fallback_without_openai_first() {
             allow_cross_vendor_data_transfer: true,
             ..FallbackPolicy::default()
         },
-        Arc::new(ModelCapabilityRegistry::bootstrap()),
+        Arc::new(ModelCapabilityRegistry::bootstrap_dev_fallback()),
         privacy,
         Arc::new(ProviderCircuitBreaker::new(5, 60)),
     );
@@ -215,6 +216,7 @@ async fn configured_fallback_without_openai_first() {
             domain_count: Some(1),
             allow_fallback: true,
             timeout_ms: Some(30_000),
+            allow_oracle_benchmark: false,
         },
     );
 

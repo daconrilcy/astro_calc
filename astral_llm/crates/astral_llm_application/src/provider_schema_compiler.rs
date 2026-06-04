@@ -59,6 +59,23 @@ fn prepare_strict_json_schema(schema: &serde_json::Value) -> serde_json::Value {
     out
 }
 
+/// Verrouille `code` sur la valeur attendue (evite les suffixes type `emotional_life_natal_premium_v1`).
+pub fn pin_chapter_code(schema: &mut serde_json::Value, chapter_code: &str) {
+    let Some(props) = schema.pointer_mut("/properties") else {
+        return;
+    };
+    let Some(obj) = props.as_object_mut() else {
+        return;
+    };
+    obj.insert(
+        "code".to_string(),
+        serde_json::json!({
+            "type": "string",
+            "const": chapter_code
+        }),
+    );
+}
+
 fn wrap_mistral_schema(schema: serde_json::Value) -> serde_json::Value {
     serde_json::json!({
         "type": "json_schema",
@@ -238,7 +255,7 @@ fn enforce_strict_object_rules(value: &mut serde_json::Value) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use astral_llm_domain::provider::{ProviderKind, StructuredOutputMode};
+    use astral_llm_domain::provider::{ProviderKind, ReasoningEffort, StructuredOutputMode};
     use astral_llm_domain::ModelCapability;
 
     fn openai_cap() -> ModelCapability {
@@ -256,6 +273,13 @@ mod tests {
             structured_output_adapter: StructuredOutputAdapterKind::OpenAiResponsesTextFormat,
             storage_disable_supported: true,
             is_active: true,
+            supports_temperature: true,
+            reasoning_output_reserve_min: Some(4096),
+            reasoning_effort_subtask: Some(ReasoningEffort::Minimal),
+            reasoning_effort_primary: Some(ReasoningEffort::Low),
+            reasoning_effort_oracle: Some(ReasoningEffort::Medium),
+            usage_tier_code: None,
+            tier_policy: astral_llm_domain::ModelUsageTierPolicy::unrestricted(),
         }
     }
 
@@ -318,5 +342,22 @@ mod tests {
             .unwrap()
             .iter()
             .any(|v| v == "astro_basis"));
+    }
+
+    #[test]
+    fn pin_chapter_code_sets_const() {
+        let mut schema = serde_json::json!({
+            "type": "object",
+            "properties": {
+                "code": { "type": "string" },
+                "title": { "type": "string" }
+            },
+            "required": ["code", "title"]
+        });
+        pin_chapter_code(&mut schema, "emotional_life");
+        assert_eq!(
+            schema["properties"]["code"]["const"],
+            serde_json::json!("emotional_life")
+        );
     }
 }

@@ -165,6 +165,7 @@ fn build_input(messages: &[PromptMessage]) -> Vec<serde_json::Value> {
 fn reasoning_effort_str(effort: ReasoningEffort) -> &'static str {
     match effort {
         ReasoningEffort::None => "none",
+        ReasoningEffort::Minimal => "minimal",
         ReasoningEffort::Low => "low",
         ReasoningEffort::Medium => "medium",
         ReasoningEffort::High => "high",
@@ -173,28 +174,133 @@ fn reasoning_effort_str(effort: ReasoningEffort) -> &'static str {
 
 fn extract_output_text(payload: &serde_json::Value) -> Result<String, LlmProviderError> {
     if let Some(text) = payload.get("output_text").and_then(|v| v.as_str()) {
-        return Ok(text.to_string());
+        if !text.is_empty() {
+            return Ok(text.to_string());
+        }
     }
 
-    if let Some(outputs) = payload.get("output").and_then(|v| v.as_array()) {
-        for item in outputs {
-            if item.get("type").and_then(|v| v.as_str()) == Some("message") {
-                if let Some(content) = item.get("content").and_then(|v| v.as_array()) {
-                    for part in content {
-                        if part.get("type").and_then(|v| v.as_str()) == Some("output_text") {
-                            if let Some(text) = part.get("text").and_then(|v| v.as_str()) {
-                                return Ok(text.to_string());
-                            }
-                        }
-                    }
+    let assembled = collect_assistant_output_text(payload);
+    if !assembled.is_empty() {
+        return Ok(assembled);
+    }
+
+    Err(missing_output_text_error(payload))
+}
+
+/// Concatene tous les blocs texte des messages assistant (Responses API GPT-5).
+fn collect_assistant_output_text(payload: &serde_json::Value) -> String {
+    let Some(outputs) = payload.get("output").and_then(|v| v.as_array()) else {
+        return String::new();
+    };
+
+    let mut parts = Vec::new();
+    for item in outputs {
+        if item.get("type").and_then(|v| v.as_str()) != Some("message") {
+            continue;
+        }
+        let role = item
+            .get("role")
+            .and_then(|v| v.as_str())
+            .unwrap_or("assistant");
+        if role != "assistant" {
+            continue;
+        }
+        let Some(content) = item.get("content").and_then(|v| v.as_array()) else {
+            continue;
+        };
+        for part in content {
+            let part_type = part.get("type").and_then(|v| v.as_str());
+            if !matches!(part_type, Some("output_text") | Some("text")) {
+                continue;
+            }
+            if let Some(text) = part.get("text").and_then(|v| v.as_str()) {
+                if !text.is_empty() {
+                    parts.push(text);
                 }
             }
         }
     }
+    parts.join("")
+}
 
-    Err(LlmProviderError::InvalidResponse(
-        "missing output text".to_string(),
-    ))
+fn missing_output_text_error(payload: &serde_json::Value) -> LlmProviderError {
+    let status = payload
+        .get("status")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
+
+    if status == "incomplete" {
+        let details = payload
+            .get("incomplete_details")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
+        return LlmProviderError::InvalidResponse(format!(
+            "incomplete response ({details}): no assistant message text"
+        ));
+    }
+
+    if output_has_only_reasoning(payload) {
+        return LlmProviderError::InvalidResponse(
+            "missing output text: response contains reasoning only; increase max_output_tokens"
+                .to_string(),
+        );
+    }
+
+    LlmProviderError::InvalidResponse("missing output text".to_string())
+}
+
+fn output_has_only_reasoning(payload: &serde_json::Value) -> bool {
+    let Some(outputs) = payload.get("output").and_then(|v| v.as_array()) else {
+        return false;
+    };
+    !outputs.is_empty()
+        && outputs.iter().all(|item| {
+            item.get("type").and_then(|v| v.as_str()) == Some("reasoning")
+        })
+}
+
+#[cfg(test)]
+mod extract_tests {
+    use super::*;
+
+    #[test]
+    fn uses_top_level_output_text() {
+        let payload = json!({ "output_text": "{\"ok\":true}" });
+        assert_eq!(
+            extract_output_text(&payload).unwrap(),
+            "{\"ok\":true}"
+        );
+    }
+
+    #[test]
+    fn falls_back_to_output_array_messages() {
+        let payload = json!({
+            "output": [
+                { "type": "reasoning", "id": "r1" },
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [
+                        { "type": "output_text", "text": "{\"chapter\":\"identity\"}" }
+                    ]
+                }
+            ]
+        });
+        assert_eq!(
+            extract_output_text(&payload).unwrap(),
+            "{\"chapter\":\"identity\"}"
+        );
+    }
+
+    #[test]
+    fn reasoning_only_yields_actionable_error() {
+        let payload = json!({
+            "status": "completed",
+            "output": [{ "type": "reasoning", "id": "r1" }]
+        });
+        let err = extract_output_text(&payload).unwrap_err().to_string();
+        assert!(err.contains("reasoning only"));
+    }
 }
 
 fn parse_usage(value: &serde_json::Value) -> TokenUsage {

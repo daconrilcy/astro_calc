@@ -94,11 +94,11 @@ impl AnthropicProvider {
             });
         }
         if let Some(effort) = request.reasoning_effort {
-            if effort != ReasoningEffort::None {
+            if !matches!(effort, ReasoningEffort::None) {
                 body["thinking"] = json!({
                     "type": "enabled",
                     "budget_tokens": match effort {
-                        ReasoningEffort::Low => 1024,
+                        ReasoningEffort::Minimal | ReasoningEffort::Low => 1024,
                         ReasoningEffort::Medium => 4096,
                         ReasoningEffort::High => 8192,
                         ReasoningEffort::None => 0,

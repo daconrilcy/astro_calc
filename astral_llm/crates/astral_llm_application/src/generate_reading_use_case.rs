@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use astral_llm_domain::{
     contract_versions::GenerationRunContractVersions,
+    model_usage_tier::ModelRouteContext,
     generation_response::{
         GenerateReadingResponse, GenerationFailedResponse, SafetyRejectedResponse,
         StructuredReadingResponse,
@@ -18,8 +19,14 @@ use crate::astro_basis_validator::AstroBasisValidator;
 use crate::astro_payload_normalizer::AstroPayloadNormalizer;
 use crate::chapter_orchestrator::{new_run_id, ChapterOrchestrator};
 use crate::domain_resolver::DomainResolver;
-use crate::engine_defaults::{drop_unsupported_reasoning, resolve_engine_params, ResolvedEngineParams};
+use crate::engine_defaults::{
+    drop_unsupported_reasoning, drop_unsupported_temperature, resolve_engine_params,
+    resolve_service_engine_defaults, ResolvedEngineParams,
+};
 use crate::execution_audit::ExecutionAudit;
+use crate::reasoning_generation::{
+    apply_reasoning_output_reserve, effective_temperature, resolve_reasoning_effort,
+};
 use crate::product_policy_validator::ProductPolicyValidator;
 use crate::prompt_compiler::{PromptCompilationInput, PromptCompiler};
 use crate::prompt_trace;
@@ -112,13 +119,25 @@ impl GenerateReadingUseCase {
     ) -> Result<astral_llm_domain::NatalReadingResponse, GenerationError> {
         RequestValidator::validate(request, &self.limits, &self.catalog)?;
 
+        let service_defaults = resolve_service_engine_defaults(
+            &self.engine_defaults,
+            &self.catalog,
+            &request.product_context.product_code,
+        );
         let mut engine = resolve_engine_params(
             &request.engine,
-            &self.engine_defaults,
+            &service_defaults,
             self.limits.default_request_timeout_ms,
         );
-        drop_unsupported_reasoning(&mut engine, self.router.capability_registry());
-        RequestValidator::validate_engine_resolved(&engine.provider, &engine.model)?;
+        let registry = self.router.capability_registry();
+        drop_unsupported_reasoning(&mut engine, registry);
+        drop_unsupported_temperature(&mut engine, registry);
+        self.router.capability_registry().validate_engine_for_context(
+            ModelRouteContext::PrimaryReading,
+            &engine.provider,
+            &engine.model,
+            engine.allow_oracle_benchmark,
+        )?;
 
         let product_policy =
             ProductPolicyValidator::validate(request, &self.catalog, &engine.provider, &engine.model)?;
@@ -211,6 +230,7 @@ impl GenerateReadingUseCase {
                     &safety_policy,
                     &astro_facts,
                     &domains,
+                    product_policy,
                     run_id,
                 )
                 .await?
@@ -249,6 +269,7 @@ impl GenerateReadingUseCase {
         safety_policy: &astral_llm_domain::SafetyPolicy,
         astro_facts: &astral_llm_domain::NormalizedAstroFacts,
         domains: &[String],
+        product_policy: &astral_llm_domain::ProductGenerationPolicy,
         run_id: &str,
     ) -> Result<astral_llm_domain::NatalReadingResponse, GenerationError> {
         let bundle = self
@@ -283,13 +304,23 @@ impl GenerateReadingUseCase {
             None
         };
 
+        let base_tokens = engine
+            .max_output_tokens
+            .or(request.response_contract.global_max_tokens)
+            .unwrap_or(product_policy.max_output_tokens);
+
         let provider_request = ProviderGenerationRequest {
             model: engine.model.clone(),
             messages,
             structured_schema: schema,
-            reasoning_effort: engine.reasoning_effort,
-            temperature: engine.temperature,
-            max_output_tokens: engine.max_output_tokens,
+            reasoning_effort: resolve_reasoning_effort(
+                model_cap,
+                product_policy,
+                engine.reasoning_effort,
+                astral_llm_domain::ModelRouteContext::PrimaryReading,
+            ),
+            temperature: effective_temperature(model_cap, engine.temperature),
+            max_output_tokens: Some(apply_reasoning_output_reserve(model_cap, base_tokens)),
             safety_mode: if engine.provider == astral_llm_domain::ProviderKind::Mistral {
                 SafetyMode::PlatformAndNative
             } else {

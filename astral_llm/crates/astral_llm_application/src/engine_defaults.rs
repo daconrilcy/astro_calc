@@ -1,4 +1,5 @@
 use astral_llm_domain::{engine_params::EngineParams, EngineDefaults};
+use astral_llm_infra::CanonicalCatalog;
 
 #[derive(Debug, Clone)]
 pub struct ResolvedEngineParams {
@@ -10,6 +11,31 @@ pub struct ResolvedEngineParams {
     pub domain_count: Option<u8>,
     pub allow_fallback: bool,
     pub timeout_ms: Option<u64>,
+    pub allow_oracle_benchmark: bool,
+}
+
+/// Fusionne les defauts service (.env) et le moteur canonique du produit (base).
+pub fn resolve_service_engine_defaults(
+    global: &EngineDefaults,
+    catalog: &CanonicalCatalog,
+    product_code: &str,
+) -> EngineDefaults {
+    let mut out = global.clone();
+    let Some(policy) = catalog.product_policy(product_code) else {
+        return out;
+    };
+    if let Some(provider) = policy.default_provider.clone() {
+        out.provider = provider;
+    }
+    if let Some(model) = policy
+        .default_model
+        .as_ref()
+        .map(|m| m.trim())
+        .filter(|m| !m.is_empty())
+    {
+        out.model = model.to_string();
+    }
+    out
 }
 
 pub fn resolve_engine_params(
@@ -35,6 +61,7 @@ pub fn resolve_engine_params(
         domain_count: params.domain_count,
         allow_fallback: params.allow_fallback,
         timeout_ms: Some(params.timeout_ms.unwrap_or(default_timeout_ms)),
+        allow_oracle_benchmark: params.allow_oracle_benchmark,
     }
 }
 
@@ -59,31 +86,99 @@ pub fn drop_unsupported_reasoning(
     }
 }
 
+pub fn drop_unsupported_temperature(
+    engine: &mut ResolvedEngineParams,
+    registry: &crate::model_capability_registry::ModelCapabilityRegistry,
+) {
+    if engine.temperature.is_none() {
+        return;
+    }
+    let Ok(cap) = registry.require(&engine.provider, &engine.model) else {
+        return;
+    };
+    if !cap.supports_temperature {
+        tracing::info!(
+            provider = engine.provider.as_str(),
+            model = %engine.model,
+            "dropping unsupported temperature for model"
+        );
+        engine.temperature = None;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use astral_llm_domain::provider::ProviderKind;
+    use astral_llm_domain::ProductGenerationPolicy;
 
     #[test]
     fn applies_openai_defaults_when_missing() {
         let params = EngineParams {
-            provider: None,
-            model: None,
-            reasoning_effort: None,
-            temperature: None,
-            max_output_tokens: None,
-            domain_count: None,
             allow_fallback: true,
-            timeout_ms: None,
+            ..Default::default()
         };
         let defaults = EngineDefaults {
             provider: ProviderKind::OpenAi,
-            model: "gpt-4.1".into(),
+            model: "gpt-5.4-mini".into(),
         };
 
         let resolved = resolve_engine_params(&params, &defaults, 60_000);
         assert_eq!(resolved.provider, ProviderKind::OpenAi);
-        assert_eq!(resolved.model, "gpt-4.1");
+        assert_eq!(resolved.model, "gpt-5.4-mini");
         assert_eq!(resolved.timeout_ms, Some(60_000));
+    }
+
+    #[test]
+    fn product_default_overrides_global_model_when_request_omits_model() {
+        let mut catalog = CanonicalCatalog::default();
+        catalog
+            .product_generation_policies
+            .push(ProductGenerationPolicy {
+                product_code: "natal_premium".into(),
+                default_provider: Some(ProviderKind::OpenAi),
+                default_model: Some("gpt-5.4-mini".into()),
+                ..ProductGenerationPolicy::bootstrap_premium()
+            });
+        let global = EngineDefaults {
+            provider: ProviderKind::OpenAi,
+            model: "gpt-4.1".into(),
+        };
+        let merged = resolve_service_engine_defaults(&global, &catalog, "natal_premium");
+        assert_eq!(merged.model, "gpt-5.4-mini");
+
+        let params = EngineParams {
+            allow_fallback: true,
+            ..Default::default()
+        };
+        let resolved = resolve_engine_params(&params, &merged, 60_000);
+        assert_eq!(resolved.model, "gpt-5.4-mini");
+    }
+
+    #[test]
+    fn explicit_request_model_overrides_product_default() {
+        let mut catalog = CanonicalCatalog::default();
+        catalog
+            .product_generation_policies
+            .push(ProductGenerationPolicy {
+                product_code: "natal_premium".into(),
+                default_model: Some("gpt-5.4-mini".into()),
+                ..ProductGenerationPolicy::bootstrap_premium()
+            });
+        let merged = resolve_service_engine_defaults(
+            &EngineDefaults {
+                provider: ProviderKind::OpenAi,
+                model: "gpt-4.1".into(),
+            },
+            &catalog,
+            "natal_premium",
+        );
+        let params = EngineParams {
+            model: Some("gpt-5.5".into()),
+            allow_fallback: true,
+            ..Default::default()
+        };
+        let resolved = resolve_engine_params(&params, &merged, 60_000);
+        assert_eq!(resolved.model, "gpt-5.5");
     }
 }

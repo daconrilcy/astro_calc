@@ -42,6 +42,7 @@ use crate::reading_quality_validator::{PremiumQualityThresholds, ReadingQualityV
 use crate::response_validator::ResponseValidator;
 use crate::safety_guard::SafetyGuard;
 use crate::summary_synthesizer::SummarySynthesizer;
+use crate::reasoning_generation::{effective_temperature, resolve_reasoning_effort};
 use crate::token_budget::TokenBudget;
 use astral_llm_domain::ServiceLimits;
 
@@ -638,6 +639,18 @@ impl<'a> ChapterOrchestrator<'a> {
             self.compiler,
             Some(attempt),
         );
+        let route_context = if repair.is_some() {
+            astral_llm_domain::ModelRouteContext::Subtask
+        } else {
+            astral_llm_domain::ModelRouteContext::PrimaryReading
+        };
+        self.router.capability_registry().validate_engine_for_context(
+            route_context,
+            &engine.provider,
+            &engine.model,
+            engine.allow_oracle_benchmark,
+        )?;
+
         let canonical_schema = self
             .validator
             .schema_registry()
@@ -649,18 +662,31 @@ impl<'a> ChapterOrchestrator<'a> {
             .require(&engine.provider, &engine.model)?;
         let schema = canonical_schema
             .as_ref()
-            .map(|s| ProviderSchemaCompiler::compile(s, model_cap))
+            .map(|s| {
+                let mut provider_schema = s.clone();
+                crate::provider_schema_compiler::pin_chapter_code(&mut provider_schema, &chapter.code);
+                ProviderSchemaCompiler::compile(&provider_schema, model_cap)
+            })
             .transpose()?;
 
         let provider_request = ProviderGenerationRequest {
             model: engine.model.clone(),
             messages,
             structured_schema: schema,
-            reasoning_effort: engine.reasoning_effort,
-            temperature: engine.temperature,
+            reasoning_effort: resolve_reasoning_effort(
+                model_cap,
+                product_policy,
+                engine.reasoning_effort,
+                route_context,
+            ),
+            temperature: effective_temperature(model_cap, engine.temperature),
             max_output_tokens: Some(TokenBudget::chapter_max_tokens(
                 contract,
-                request.engine.max_output_tokens.or(request.response_contract.global_max_tokens),
+                request
+                    .engine
+                    .max_output_tokens
+                    .or(request.response_contract.global_max_tokens),
+                model_cap,
             )),
             safety_mode: resolve_safety_mode(&engine.provider),
             timeout: Duration::from_millis(engine.timeout_ms.unwrap_or(120_000)),
@@ -700,7 +726,7 @@ impl<'a> ChapterOrchestrator<'a> {
 
         self.validator.validate_chapter(&json)?;
 
-        let chapter_reading: ChapterProviderResponse = serde_json::from_value(json).map_err(|e| {
+        let mut chapter_reading: ChapterProviderResponse = serde_json::from_value(json).map_err(|e| {
             GenerationError::new(
                 GenerationErrorCode::InvalidJsonOutput,
                 format!("chapter deserialization failed: {e}"),
@@ -708,14 +734,24 @@ impl<'a> ChapterOrchestrator<'a> {
         })?;
 
         if chapter_reading.code != chapter.code {
-            return Err(GenerationError::with_details(
-                GenerationErrorCode::SchemaValidationFailed,
-                "chapter code mismatch",
-                serde_json::json!({
-                    "expected": chapter.code,
-                    "received": chapter_reading.code
-                }),
-            ));
+            if let Some(normalized) = normalize_chapter_code(&chapter_reading.code, &chapter.code) {
+                tracing::warn!(
+                    expected = %chapter.code,
+                    received = %chapter_reading.code,
+                    normalized = %normalized,
+                    "chapter code normalized after provider drift"
+                );
+                chapter_reading.code = normalized;
+            } else {
+                return Err(GenerationError::with_details(
+                    GenerationErrorCode::SchemaValidationFailed,
+                    "chapter code mismatch",
+                    serde_json::json!({
+                        "expected": chapter.code,
+                        "received": chapter_reading.code
+                    }),
+                ));
+            }
         }
 
         let mut reading_chapter = ReadingChapter {
@@ -824,11 +860,43 @@ fn evidence_repair_from_error(err: &GenerationError) -> Option<ChapterRepairKind
     })
 }
 
+/// Corrige les derivees de code renvoyees par certains modeles (ex. `emotional_life_natal_premium_v1`).
+fn normalize_chapter_code(received: &str, expected: &str) -> Option<String> {
+    if received == expected {
+        return Some(expected.to_string());
+    }
+    if received.starts_with(expected) {
+        let suffix = &received[expected.len()..];
+        if suffix.is_empty() || suffix.starts_with('_') {
+            return Some(expected.to_string());
+        }
+    }
+    None
+}
+
 fn resolve_safety_mode(provider: &astral_llm_domain::ProviderKind) -> SafetyMode {
     if matches!(provider, astral_llm_domain::ProviderKind::Mistral) {
         SafetyMode::PlatformAndNative
     } else {
         SafetyMode::PlatformRulesOnly
+    }
+}
+
+#[cfg(test)]
+mod chapter_code_tests {
+    use super::normalize_chapter_code;
+
+    #[test]
+    fn normalizes_product_suffix_drift() {
+        assert_eq!(
+            normalize_chapter_code("emotional_life_natal_premium_v1", "emotional_life").as_deref(),
+            Some("emotional_life")
+        );
+    }
+
+    #[test]
+    fn rejects_unrelated_code() {
+        assert!(normalize_chapter_code("career", "emotional_life").is_none());
     }
 }
 

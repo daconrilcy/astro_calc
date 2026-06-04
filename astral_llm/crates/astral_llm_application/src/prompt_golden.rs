@@ -78,6 +78,7 @@ pub fn assert_compiled_prompt_is_safe(prompts_root: &std::path::Path) -> Result<
             domain_count: Some(1),
             allow_fallback: false,
             timeout_ms: None,
+            allow_oracle_benchmark: false,
         },
         response_contract: ResponseContract {
             output_schema_version: "natal_reading_v1".into(),

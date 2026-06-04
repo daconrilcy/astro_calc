@@ -4,13 +4,19 @@ use std::time::Duration;
 
 use astral_llm_domain::{
     generation_response::{ReadingChapter, ReadingSummary, SummaryProviderResponse},
+    model_usage_tier::ModelRouteContext,
     GenerateReadingRequest, GenerationError, GenerationErrorCode, SafetyMode, SafetyPolicy,
 };
 use astral_llm_infra::SharedCanonicalCatalog;
 use astral_llm_providers::{GenerationMetadata, PromptMessage, PromptRole, ProviderGenerationRequest};
 
 use crate::engine_defaults::ResolvedEngineParams;
+use crate::product_policy_validator::ProductPolicyValidator;
 use crate::provider_router::ProviderRouter;
+use crate::reasoning_generation::{
+    apply_reasoning_output_reserve, effective_temperature, resolve_reasoning_effort,
+    SUBTASK_BASE_OUTPUT_TOKENS,
+};
 use crate::prompt_trace;
 use crate::provider_schema_compiler::ProviderSchemaCompiler;
 use crate::response_validator::ResponseValidator;
@@ -79,6 +85,12 @@ impl<'a> SummarySynthesizer<'a> {
             .schema_registry()
             .provider_schema("summary_provider_v1")
             .cloned();
+        self.router.capability_registry().validate_engine_for_context(
+            ModelRouteContext::Subtask,
+            &engine.provider,
+            &engine.model,
+            engine.allow_oracle_benchmark,
+        )?;
         let model_cap = self
             .router
             .capability_registry()
@@ -88,13 +100,28 @@ impl<'a> SummarySynthesizer<'a> {
             .map(|s| ProviderSchemaCompiler::compile(s, model_cap))
             .transpose()?;
 
+        let product_policy = ProductPolicyValidator::validate(
+            request,
+            self.catalog,
+            &engine.provider,
+            &engine.model,
+        )?;
+
         let provider_request = ProviderGenerationRequest {
             model: engine.model.clone(),
             messages,
             structured_schema: schema,
-            reasoning_effort: engine.reasoning_effort,
-            temperature: engine.temperature,
-            max_output_tokens: Some(600),
+            reasoning_effort: resolve_reasoning_effort(
+                model_cap,
+                product_policy,
+                engine.reasoning_effort,
+                ModelRouteContext::Subtask,
+            ),
+            temperature: effective_temperature(model_cap, engine.temperature),
+            max_output_tokens: Some(apply_reasoning_output_reserve(
+                model_cap,
+                SUBTASK_BASE_OUTPUT_TOKENS,
+            )),
             safety_mode: resolve_safety_mode(&engine.provider),
             timeout: Duration::from_millis(engine.timeout_ms.unwrap_or(120_000)),
             metadata: GenerationMetadata {
@@ -215,7 +242,8 @@ fn build_summary_messages(
          Write a concise, personalized natal reading summary. \
          Output JSON with title and short_text only. \
          The summary must synthesize dominant themes from the chapter excerpts — \
-         never mention pipelines, generation modes, or technical process."
+         never mention pipelines, generation modes, or technical process. \
+         Frame the reading as symbolic and interpretive (use words such as symbolique, evoque, suggere, invite, tendance, peut)."
     );
 
     let user = format!(

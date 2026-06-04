@@ -23,6 +23,7 @@ pub mod editorial_validation;
 pub mod domain_selector;
 pub mod execution_audit;
 pub mod reading_plan;
+pub mod reasoning_generation;
 pub use reading_plan::ReadingPlanBuilder;
 pub mod engine_defaults;
 pub mod generation_trace;
@@ -47,7 +48,9 @@ pub mod summary_synthesizer;
 pub mod token_budget;
 
 pub use chapter_orchestrator::{new_run_id, ChapterOrchestrator};
-pub use engine_defaults::{resolve_engine_params, ResolvedEngineParams};
+pub use engine_defaults::{
+    resolve_engine_params, resolve_service_engine_defaults, ResolvedEngineParams,
+};
 pub use domain_resolver::DomainResolver;
 pub use execution_audit::ExecutionAudit;
 pub use generation_trace::GenerationTraceContext;

@@ -215,7 +215,7 @@ async fn openai_chapter_provider_schema_smoke() {
         .provider_schema("chapter_provider_v1")
         .expect("chapter schema")
         .clone();
-    let cap = Arc::new(ModelCapabilityRegistry::bootstrap())
+    let cap = Arc::new(ModelCapabilityRegistry::bootstrap_dev_fallback())
         .require(&ProviderKind::OpenAi, &model)
         .expect("capability")
         .clone();

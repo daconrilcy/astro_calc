@@ -1,11 +1,18 @@
 use astral_llm_domain::{
-    output_contract::ChapterContract, GenerationError, GenerationErrorCode,
+    model_capability::ModelCapability, output_contract::ChapterContract, GenerationError,
+    GenerationErrorCode,
 };
+
+use crate::reasoning_generation::apply_reasoning_output_reserve;
 
 pub struct TokenBudget;
 
 impl TokenBudget {
-    pub fn chapter_max_tokens(chapter: &ChapterContract, engine_max: Option<u32>) -> u32 {
+    pub fn chapter_max_tokens(
+        chapter: &ChapterContract,
+        engine_max: Option<u32>,
+        cap: &ModelCapability,
+    ) -> u32 {
         let body_budget = chapter
             .target_tokens
             .or_else(|| chapter.max_words.map(|w| w.saturating_mul(4)))
@@ -18,7 +25,7 @@ impl TokenBudget {
             tokens = tokens.max(engine_max);
         }
 
-        tokens.min(16_000)
+        apply_reasoning_output_reserve(cap, tokens).min(16_000)
     }
 
     pub fn word_count(text: &str) -> u32 {

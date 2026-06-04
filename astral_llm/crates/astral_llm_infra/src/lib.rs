@@ -6,6 +6,8 @@ pub mod i18n_canonical;
 pub mod config;
 pub mod config_validator;
 pub mod model_catalog;
+pub mod benchmark_catalog;
+pub mod provider_catalog;
 pub mod payload_redaction;
 pub mod persistence;
 mod sql_script;
@@ -27,7 +29,11 @@ pub use i18n_canonical::{
 pub use evidence_canonical::{bootstrap_evidence_catalog, EvidenceCanonicalCatalog};
 pub use config::{AppConfig, env_bool, env_var, load_dotenv, parse_provider_kind};
 pub use config_validator::{ConfigValidationError, ConfigValidator};
-pub use model_catalog::load_model_capabilities;
+pub use model_catalog::{load_active_provider_codes, load_model_capabilities};
+pub use benchmark_catalog::{load_benchmark_catalog, BenchmarkCatalog, BenchmarkUsageModelRow, BenchmarkUsageRow};
+pub use provider_catalog::{
+    LlmProviderModelRow, LlmProviderRow, ProviderCatalogRepository, UpsertProviderModelInput,
+};
 pub use payload_redaction::{redact_request_for_storage, redact_value};
 pub use persistence::{
     error_code, hash_json, GenerationRunRecord, IdempotencyClaim, IdempotencyHit, RunPersistence,

@@ -91,6 +91,7 @@ fn base_request() -> GenerateReadingRequest {
             domain_count: Some(1),
             allow_fallback: false,
             timeout_ms: Some(30_000),
+            allow_oracle_benchmark: false,
         },
         response_contract: ResponseContract {
             output_schema_version: "natal_reading_v1".into(),

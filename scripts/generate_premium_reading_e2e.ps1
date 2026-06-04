@@ -4,6 +4,8 @@ param(
     [string]$IdempotencyKey = "",
     [string]$BaseUrl = "",
     [string]$ApiKey = "",
+    [string]$Model = "",
+    [string]$Provider = "",
     [int]$TimeoutSec = 600
 )
 
@@ -86,10 +88,25 @@ if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
 $uri = "$($BaseUrl.TrimEnd('/'))/v1/readings/generate"
 $bodyObject = Get-Content -Raw -LiteralPath $RequestPath | ConvertFrom-Json
 $bodyObject.idempotency_key = $IdempotencyKey
+
+if (-not $bodyObject.engine) {
+    $bodyObject | Add-Member -NotePropertyName engine -NotePropertyValue ([PSCustomObject]@{}) -Force
+}
+if (-not [string]::IsNullOrWhiteSpace($Provider)) {
+    $bodyObject.engine.provider = $Provider
+}
+if (-not [string]::IsNullOrWhiteSpace($Model)) {
+    $bodyObject.engine.model = $Model
+}
+
 $body = $bodyObject | ConvertTo-Json -Depth 20 -Compress
+
+$engineModel = if ($bodyObject.engine.model) { $bodyObject.engine.model } else { "(defaut produit / service)" }
+$engineProvider = if ($bodyObject.engine.provider) { $bodyObject.engine.provider } else { "(defaut service)" }
 
 Write-Host "POST $uri"
 Write-Host "Request : $RequestPath"
+Write-Host "Engine  : $engineProvider / $engineModel"
 Write-Host "Idempotency-Key : $IdempotencyKey"
 Write-Host "Output  : $OutputPath"
 
@@ -114,10 +131,21 @@ try {
 
     $response = $null
     if (-not [string]::IsNullOrWhiteSpace($payloadText)) {
-        $response = $payloadText | ConvertFrom-Json
+        $trimmed = $payloadText.TrimStart()
+        if ($trimmed.StartsWith("{") -or $trimmed.StartsWith("[")) {
+            try {
+                $response = $payloadText | ConvertFrom-Json
+            } catch {
+                Write-Host "Reponse non-JSON (extrait) : $($payloadText.Substring(0, [Math]::Min(500, $payloadText.Length)))"
+                throw
+            }
+        } else {
+            Write-Host "Reponse non-JSON (extrait) : $($payloadText.Substring(0, [Math]::Min(500, $payloadText.Length)))"
+            exit 1
+        }
     }
 
-    if ($response.run_id) {
+    if ($response -and $response.run_id) {
         Write-Host "Audit run : .\scripts\show_generation_run.ps1 -RunId $($response.run_id)"
         $promptDir = Join-Path $repoRoot "output\logs\prompts\$($response.run_id)"
         Write-Host "Prompts LLM : $promptDir\*.txt (ex. identity_primary.txt, summary_summary.txt)"
@@ -129,7 +157,7 @@ try {
         exit 0
     }
 
-    $errorCode = $response.error.code
+    $errorCode = if ($response -and $response.error) { $response.error.code } else { $null }
     Write-Host "HTTP $($raw.StatusCode) : $errorCode"
     Write-Host "Journal : $clientLogPath"
 

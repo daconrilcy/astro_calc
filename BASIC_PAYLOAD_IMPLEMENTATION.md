@@ -3067,6 +3067,8 @@ Script : `astral_llm/crates/astral_llm_infra/sql/llm_generation_runs.sql`
 
 **Statut produit** : **Premium interpretatif riche OpenAI — VALIDÉ PRODUIT**. Dernier E2E de reference : run `0619a1e8` (~47 s, 6 steps `generated`, libelles maîtrise FR, cap Soleil supporting ×3). Suite : phase **optimisation** (modeles, providers, slots evidence, style) — voir `Astral_llm_implementation.md`.
 
+**Modele Premium par defaut (2026-06-04)** : `gpt-5.4-mini` via table `llm_product_default_engine` (`natal_premium`). Les payloads E2E (`request-premium*.json`) n’imposent plus `engine.model` ; surcharge manuelle : `.\scripts\generate_premium_reading_e2e.ps1 -Model gpt-5.4` ou champ `engine.model` dans le JSON.
+
 Couche entre `AstroPayloadNormalizer` et `PromptCompiler` pour `natal_premium` (code :
 `astral_llm/crates/astral_llm_application`, tests racine `tests/astral_llm_*`).
 

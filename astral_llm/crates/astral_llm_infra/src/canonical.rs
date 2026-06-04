@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use astral_llm_domain::{ProductGenerationPolicy, ServiceLimits};
+use astral_llm_domain::{model_capability::ProviderModelRef, ProductGenerationPolicy, ProviderKind, ServiceLimits};
 
 use crate::evidence_canonical::{bootstrap_evidence_catalog, EvidenceCanonicalCatalog};
 use crate::i18n_canonical::{
@@ -113,10 +113,14 @@ pub async fn load_canonical_catalog(pool: &sqlx::PgPool) -> CanonicalCatalog {
                         } else {
                             0
                         },
+                        default_provider: None,
+                        default_model: None,
                     }
                 },
             )
             .collect();
+        attach_product_allowed_models(pool, &mut catalog).await;
+        attach_product_default_engine(pool, &mut catalog).await;
     }
 
     if let Ok(rows) = sqlx::query_as::<_, (String, String, String)>(
@@ -213,9 +217,7 @@ pub fn enrich_catalog_from_bootstrap(catalog: &mut CanonicalCatalog) {
             if existing.allowed_providers.is_empty() {
                 existing.allowed_providers = bootstrap.allowed_providers.clone();
             }
-            if existing.allowed_models.is_empty() {
-                existing.allowed_models = bootstrap.allowed_models.clone();
-            }
+            // allowed_models : uniquement depuis llm_product_allowed_models (pas de restriction bootstrap)
             if existing.min_astro_basis_refs_per_chapter == 0
                 && bootstrap.min_astro_basis_refs_per_chapter > 0
             {
@@ -301,6 +303,7 @@ async fn load_i18n_from_db(pool: &sqlx::PgPool, catalog: &mut CanonicalCatalog) 
 
 fn parse_reasoning_effort(raw: &str) -> astral_llm_domain::ReasoningEffort {
     match raw.trim().to_lowercase().as_str() {
+        "minimal" => astral_llm_domain::ReasoningEffort::Minimal,
         "low" => astral_llm_domain::ReasoningEffort::Low,
         "medium" => astral_llm_domain::ReasoningEffort::Medium,
         "high" => astral_llm_domain::ReasoningEffort::High,
@@ -415,6 +418,74 @@ pub fn bootstrap_zodiac_sign_labels() -> HashMap<(String, String), String> {
         insert_label(&mut m, "en", code, en);
     }
     m
+}
+
+async fn attach_product_default_engine(pool: &sqlx::PgPool, catalog: &mut CanonicalCatalog) {
+    let Ok(rows) = sqlx::query_as::<_, (String, String, String)>(
+        "SELECT product_code, default_provider, default_model FROM llm_product_default_engine WHERE is_active = true",
+    )
+    .fetch_all(pool)
+    .await
+    else {
+        return;
+    };
+
+    for (product_code, provider, model) in rows {
+        let Some(provider_kind) = parse_catalog_provider(&provider) else {
+            continue;
+        };
+        let Some(policy) = catalog
+            .product_generation_policies
+            .iter_mut()
+            .find(|p| p.product_code == product_code)
+        else {
+            continue;
+        };
+        policy.default_provider = Some(provider_kind);
+        policy.default_model = Some(model);
+    }
+}
+
+async fn attach_product_allowed_models(pool: &sqlx::PgPool, catalog: &mut CanonicalCatalog) {
+    let Ok(rows) = sqlx::query_as::<_, (String, String, String)>(
+        "SELECT product_code, provider, model FROM llm_product_allowed_models WHERE is_active = true ORDER BY product_code, model",
+    )
+    .fetch_all(pool)
+    .await
+    else {
+        return;
+    };
+
+    for (product_code, provider, model) in rows {
+        let Some(provider_kind) = parse_catalog_provider(&provider) else {
+            continue;
+        };
+        let Some(policy) = catalog
+            .product_generation_policies
+            .iter_mut()
+            .find(|p| p.product_code == product_code)
+        else {
+            continue;
+        };
+        let reference = ProviderModelRef::new(provider_kind, model);
+        if !policy
+            .allowed_models
+            .iter()
+            .any(|m| m.provider == reference.provider && m.model.eq_ignore_ascii_case(&reference.model))
+        {
+            policy.allowed_models.push(reference);
+        }
+    }
+}
+
+fn parse_catalog_provider(raw: &str) -> Option<ProviderKind> {
+    match raw.trim().to_lowercase().as_str() {
+        "openai" | "open_ai" => Some(ProviderKind::OpenAi),
+        "anthropic" => Some(ProviderKind::Anthropic),
+        "mistral" => Some(ProviderKind::Mistral),
+        "fake" => Some(ProviderKind::Fake),
+        _ => None,
+    }
 }
 
 pub fn bootstrap_product_policies() -> Vec<ProductGenerationPolicy> {

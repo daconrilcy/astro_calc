@@ -20,6 +20,9 @@ pub struct ProductGenerationPolicy {
     /// References interpretatives minimum par chapitre (0 = pas de quota).
     /// Premium exige au moins 1 fact non-domain_score.
     pub min_interpretive_astro_basis_refs_per_chapter: u8,
+    /// Moteur par defaut si `engine.provider` / `engine.model` absents (charge depuis `llm_product_default_engine`).
+    pub default_provider: Option<ProviderKind>,
+    pub default_model: Option<String>,
 }
 
 impl ProductGenerationPolicy {
@@ -44,6 +47,8 @@ impl ProductGenerationPolicy {
             allow_chapter_orchestrated: false,
             min_astro_basis_refs_per_chapter: 0,
             min_interpretive_astro_basis_refs_per_chapter: 0,
+            default_provider: None,
+            default_model: None,
         }
     }
 
@@ -56,11 +61,8 @@ impl ProductGenerationPolicy {
                 ProviderKind::Anthropic,
                 ProviderKind::Mistral,
             ],
-            allowed_models: vec![
-                ProviderModelRef::new(ProviderKind::Fake, "fake-model"),
-                ProviderModelRef::new(ProviderKind::OpenAi, "gpt-4.1"),
-                ProviderModelRef::new(ProviderKind::Anthropic, "claude-sonnet-4-20250514"),
-            ],
+            // Liste vide hors DB : pas de filtre modele (referentiel llm_product_allowed_models en prod)
+            allowed_models: vec![],
             max_domains: 12,
             max_chapters: 12,
             max_output_tokens: 16_000,
@@ -68,6 +70,8 @@ impl ProductGenerationPolicy {
             allow_chapter_orchestrated: true,
             min_astro_basis_refs_per_chapter: 1,
             min_interpretive_astro_basis_refs_per_chapter: 1,
+            default_provider: None,
+            default_model: None,
         }
     }
 
@@ -124,8 +128,9 @@ mod tests {
 fn reasoning_rank(effort: ReasoningEffort) -> u8 {
     match effort {
         ReasoningEffort::None => 0,
-        ReasoningEffort::Low => 1,
-        ReasoningEffort::Medium => 2,
-        ReasoningEffort::High => 3,
+        ReasoningEffort::Minimal => 1,
+        ReasoningEffort::Low => 2,
+        ReasoningEffort::Medium => 3,
+        ReasoningEffort::High => 4,
     }
 }

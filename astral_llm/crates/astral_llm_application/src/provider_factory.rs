@@ -17,17 +17,17 @@ pub fn build_fallback_policy(config: &AppConfig) -> FallbackPolicy {
 }
 
 pub fn build_capability_registry() -> Arc<ModelCapabilityRegistry> {
-    Arc::new(ModelCapabilityRegistry::bootstrap())
+    Arc::new(ModelCapabilityRegistry::bootstrap_dev_fallback())
 }
 
 pub fn build_capability_registry_with_db(
+    active_provider_codes: Vec<String>,
     db_models: Vec<astral_llm_domain::ModelCapability>,
 ) -> Arc<ModelCapabilityRegistry> {
-    let mut registry = ModelCapabilityRegistry::bootstrap();
-    for cap in db_models {
-        registry.register(cap);
-    }
-    Arc::new(registry)
+    Arc::new(ModelCapabilityRegistry::from_db_catalog(
+        active_provider_codes,
+        db_models,
+    ))
 }
 
 pub fn build_providers(
