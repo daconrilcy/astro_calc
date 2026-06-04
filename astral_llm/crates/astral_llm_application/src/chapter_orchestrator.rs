@@ -832,6 +832,11 @@ impl<'a> ChapterOrchestrator<'a> {
             &request.product_context.user_language,
         );
 
+        crate::evidence_fact_parse::normalize_chapter_astro_basis_fact_ids(
+            &mut reading_chapter,
+            astro_facts,
+        );
+
         AstroBasisValidator::validate_chapter_with_pack(
             &reading_chapter,
             astro_facts,

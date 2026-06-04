@@ -2,6 +2,10 @@
 
 use std::collections::HashMap;
 
+use astral_llm_domain::{
+    astro_fact::NormalizedAstroFacts, generation_response::ReadingChapter,
+};
+
 pub fn object_code_from_fact_id(fact_id: &str) -> Option<String> {
     object_codes_from_fact_id(fact_id).into_iter().next()
 }
@@ -109,6 +113,27 @@ mod tests {
     }
 
     #[test]
+    fn resolves_aspect_signal_drift_without_aspect_segment() {
+        let facts = NormalizedAstroFacts {
+            contract_version: "v".into(),
+            facts: vec![astral_llm_domain::NormalizedAstroFact {
+                id: "signal:aspect:jupiter:uranus:opposition".into(),
+                kind: astral_llm_domain::AstroFactKind::Aspect,
+                kind_code: "aspect".into(),
+                usage: astral_llm_domain::AstroFactUsage::InterpretiveBasis,
+                label: "Jupiter opposition Uranus".into(),
+                value: serde_json::json!({}),
+                interpretive_weight: None,
+                domains: vec![],
+            }],
+        };
+        assert_eq!(
+            resolve_canonical_fact_id("signal:jupiter:uranus:opposition", &facts).as_deref(),
+            Some("signal:aspect:jupiter:uranus:opposition")
+        );
+    }
+
+    #[test]
     fn semantic_key_aligns_signal_and_placement_sun() {
         let mut placements = HashMap::new();
         placements.insert(
@@ -210,13 +235,8 @@ pub fn compute_semantic_fact_key(
         }
         return format!("object_position:{obj}");
     }
-    if fact_id.starts_with("signal:aspect:") {
-        let parts: Vec<&str> = fact_id.split(':').collect();
-        if parts.len() >= 5 {
-            let mut pair = [parts[2].to_string(), parts[3].to_string()];
-            pair.sort();
-            return format!("aspect:{}:{}:{}", pair[0], pair[1], parts[4]);
-        }
+    if let Some(key) = aspect_semantic_key_from_fact_id(fact_id) {
+        return key;
     }
     if fact_id.starts_with("signal:angle:") {
         let parts: Vec<&str> = fact_id.split(':').collect();
@@ -228,6 +248,78 @@ pub fn compute_semantic_fact_key(
         return fact_id.to_string();
     }
     fact_id.to_string()
+}
+
+const SIGNAL_KIND_SEGMENTS: &[&str] = &[
+    "aspect",
+    "object_position",
+    "angle",
+    "dignity",
+    "cluster",
+];
+
+/// Alias connus quand le modele omet le segment `aspect` (ex. `signal:jupiter:uranus:opposition`).
+pub fn candidate_fact_id_aliases(fact_id: &str) -> Vec<String> {
+    let parts: Vec<&str> = fact_id.split(':').collect();
+    let mut out = Vec::new();
+    if parts.len() == 4 && parts[0] == "signal" && !SIGNAL_KIND_SEGMENTS.contains(&parts[1]) {
+        out.push(format!("signal:aspect:{}:{}:{}", parts[1], parts[2], parts[3]));
+    }
+    if parts.len() == 4 && parts[0] == "aspect" {
+        out.push(format!("signal:aspect:{}:{}:{}", parts[1], parts[2], parts[3]));
+    }
+    out
+}
+
+/// Resout un fact_id cite par le LLM vers l'id canonique du catalogue de faits.
+pub fn resolve_canonical_fact_id(fact_id: &str, facts: &NormalizedAstroFacts) -> Option<String> {
+    if facts.contains_fact(fact_id) {
+        return Some(fact_id.to_string());
+    }
+    candidate_fact_id_aliases(fact_id)
+        .into_iter()
+        .find(|candidate| facts.contains_fact(candidate))
+}
+
+/// Reecrit les fact_id derives connus avant validation astro_basis.
+pub fn normalize_chapter_astro_basis_fact_ids(
+    chapter: &mut ReadingChapter,
+    facts: &NormalizedAstroFacts,
+) {
+    for basis in &mut chapter.astro_basis {
+        let Some(id) = basis.fact_id.as_ref() else {
+            continue;
+        };
+        let Some(resolved) = resolve_canonical_fact_id(id, facts) else {
+            continue;
+        };
+        if resolved != *id {
+            tracing::warn!(
+                chapter = %chapter.code,
+                received = %id,
+                normalized = %resolved,
+                "astro_basis fact_id normalized after provider drift"
+            );
+            basis.fact_id = Some(resolved);
+        }
+    }
+}
+
+fn aspect_semantic_key_from_fact_id(fact_id: &str) -> Option<String> {
+    let parts: Vec<&str> = fact_id.split(':').collect();
+    let (obj_a, obj_b, aspect_type) = if parts.len() >= 5 && parts[0] == "signal" && parts[1] == "aspect"
+    {
+        (parts[2], parts[3], parts[4])
+    } else if parts.len() == 4 && parts[0] == "signal" && !SIGNAL_KIND_SEGMENTS.contains(&parts[1]) {
+        (parts[1], parts[2], parts[3])
+    } else if parts.len() == 4 && parts[0] == "aspect" {
+        (parts[1], parts[2], parts[3])
+    } else {
+        return None;
+    };
+    let mut pair = [obj_a.to_string(), obj_b.to_string()];
+    pair.sort();
+    Some(format!("aspect:{}:{}:{}", pair[0], pair[1], aspect_type))
 }
 
 fn placement_key_from_evidence(object: &str, raw: &serde_json::Value) -> Option<String> {

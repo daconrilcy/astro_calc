@@ -60,9 +60,10 @@ impl AstroBasisValidator {
             .astro_basis
             .iter()
             .filter(|b| {
-                b.fact_id
-                    .as_ref()
-                    .is_some_and(|id| facts.contains_fact(id))
+                b.fact_id.as_ref().is_some_and(|id| {
+                    crate::evidence_fact_parse::resolve_canonical_fact_id(id, facts)
+                        .is_some()
+                })
             })
             .count();
 
@@ -85,9 +86,10 @@ impl AstroBasisValidator {
             .astro_basis
             .iter()
             .filter(|b| {
-                b.fact_id
-                    .as_ref()
-                    .is_some_and(|id| facts.is_interpretive_fact_id(id))
+                b.fact_id.as_ref().is_some_and(|id| {
+                    crate::evidence_fact_parse::resolve_canonical_fact_id(id, facts)
+                        .is_some_and(|resolved| facts.is_interpretive_fact_id(&resolved))
+                })
             })
             .count();
 
@@ -148,7 +150,9 @@ impl AstroBasisValidator {
             if fact_id.starts_with("domain_score:") {
                 continue;
             }
-            if !facts.contains_fact(fact_id) {
+            let resolved = crate::evidence_fact_parse::resolve_canonical_fact_id(fact_id, facts)
+                .unwrap_or_else(|| fact_id.clone());
+            if !facts.contains_fact(&resolved) {
                 return Err(GenerationError::with_details(
                     GenerationErrorCode::AstroBasisInvalid,
                     format!(
@@ -164,11 +168,11 @@ impl AstroBasisValidator {
             }
             if let Some(pack) = pack {
                 let semantic_key = crate::evidence_fact_parse::compute_semantic_fact_key(
-                    fact_id,
+                    &resolved,
                     &serde_json::json!({}),
                     &std::collections::HashMap::new(),
                 );
-                if !pack.contains_fact_id_or_semantic(fact_id, &semantic_key) {
+                if !pack.contains_fact_id_or_semantic(&resolved, &semantic_key) {
                     return Err(GenerationError::with_details(
                         GenerationErrorCode::AstroBasisInvalid,
                         format!(
@@ -299,6 +303,37 @@ mod tests {
         ]);
         let policy = premium_like_policy();
         assert!(AstroBasisValidator::validate_chapter(&chapter, &facts, &policy).is_ok());
+    }
+
+    #[test]
+    fn accepts_aspect_fact_id_missing_aspect_segment() {
+        let facts = NormalizedAstroFacts {
+            contract_version: "natal_structured_v13".into(),
+            facts: vec![NormalizedAstroFact {
+                id: "signal:aspect:jupiter:uranus:opposition".into(),
+                kind: AstroFactKind::Aspect,
+                kind_code: "aspect".into(),
+                usage: AstroFactUsage::InterpretiveBasis,
+                label: "Jupiter opposition Uranus".into(),
+                value: serde_json::json!({}),
+                interpretive_weight: None,
+                domains: vec![],
+            }],
+        };
+        let mut chapter = chapter_with_basis(vec![(
+            "signal:jupiter:uranus:opposition",
+            "supporting",
+        )]);
+        crate::evidence_fact_parse::normalize_chapter_astro_basis_fact_ids(
+            &mut chapter,
+            &facts,
+        );
+        let policy = premium_like_policy();
+        assert!(AstroBasisValidator::validate_chapter(&chapter, &facts, &policy).is_ok());
+        assert_eq!(
+            chapter.astro_basis[0].fact_id.as_deref(),
+            Some("signal:aspect:jupiter:uranus:opposition")
+        );
     }
 
     #[test]
