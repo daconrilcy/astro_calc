@@ -40,6 +40,42 @@ function Import-DotEnv {
     }
 }
 
+function Test-JsonPayloadPrefix {
+    param([string]$Text)
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return $false
+    }
+    switch ($Text.TrimStart()[0]) {
+        '{' { return $true }
+        '[' { return $true }
+        default { return $false }
+    }
+}
+
+function Convert-PremiumE2eResponse {
+    param([string]$PayloadText)
+
+    if ([string]::IsNullOrWhiteSpace($PayloadText)) {
+        return $null
+    }
+
+    if (-not (Test-JsonPayloadPrefix -Text $PayloadText)) {
+        $maxLen = [Math]::Min(500, $PayloadText.Length)
+        $excerpt = $PayloadText.Substring(0, $maxLen)
+        Write-Host "Reponse non-JSON, extrait :" $excerpt
+        exit 1
+    }
+
+    try {
+        return ($PayloadText | ConvertFrom-Json)
+    } catch {
+        $maxLen = [Math]::Min(500, $PayloadText.Length)
+        $excerpt = $PayloadText.Substring(0, $maxLen)
+        Write-Host "Reponse non-JSON, extrait :" $excerpt
+        throw
+    }
+}
+
 Import-DotEnv (Join-Path $repoRoot ".env")
 
 if ([string]::IsNullOrWhiteSpace($IdempotencyKey)) {
@@ -48,18 +84,26 @@ if ([string]::IsNullOrWhiteSpace($IdempotencyKey)) {
 
 if ([string]::IsNullOrWhiteSpace($RequestPath)) {
     $richDefault = Join-Path $repoRoot "request-premium-rich.json"
-    $RequestPath = if (Test-Path -LiteralPath $richDefault) {
-        $richDefault
+    if (Test-Path -LiteralPath $richDefault) {
+        $RequestPath = $richDefault
     } else {
-        Join-Path $repoRoot "request-premium.json"
+        $RequestPath = Join-Path $repoRoot "request-premium.json"
     }
 }
 if ([string]::IsNullOrWhiteSpace($OutputPath)) {
     $OutputPath = Join-Path $repoRoot "output\premium_reading_e2e.json"
 }
 if ([string]::IsNullOrWhiteSpace($BaseUrl)) {
-    $llmHost = if ($env:ASTRAL_LLM_HOST) { $env:ASTRAL_LLM_HOST } else { "127.0.0.1" }
-    $llmPort = if ($env:ASTRAL_LLM_PORT) { $env:ASTRAL_LLM_PORT } else { "8081" }
+    if ($env:ASTRAL_LLM_HOST) {
+        $llmHost = $env:ASTRAL_LLM_HOST
+    } else {
+        $llmHost = "127.0.0.1"
+    }
+    if ($env:ASTRAL_LLM_PORT) {
+        $llmPort = $env:ASTRAL_LLM_PORT
+    } else {
+        $llmPort = "8081"
+    }
     $BaseUrl = "http://${llmHost}:${llmPort}"
 }
 
@@ -72,8 +116,10 @@ if (-not (Test-Path -LiteralPath $RequestPath)) {
 }
 
 $outputDir = Split-Path -Parent $OutputPath
-if (-not [string]::IsNullOrWhiteSpace($outputDir) -and -not (Test-Path -LiteralPath $outputDir)) {
-    New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
+if (-not [string]::IsNullOrWhiteSpace($outputDir)) {
+    if (-not (Test-Path -LiteralPath $outputDir)) {
+        New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
+    }
 }
 
 $headers = @{
@@ -85,12 +131,13 @@ if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
     $headers["Authorization"] = "Bearer $ApiKey"
 }
 
-$uri = "$($BaseUrl.TrimEnd('/'))/v1/readings/generate"
+$uri = "{0}/v1/readings/generate" -f $BaseUrl.TrimEnd("/")
 $bodyObject = Get-Content -Raw -LiteralPath $RequestPath | ConvertFrom-Json
 $bodyObject.idempotency_key = $IdempotencyKey
 
 if (-not $bodyObject.engine) {
-    $bodyObject | Add-Member -NotePropertyName engine -NotePropertyValue ([PSCustomObject]@{}) -Force
+    $emptyEngine = [PSCustomObject]@{}
+    $bodyObject | Add-Member -NotePropertyName engine -NotePropertyValue $emptyEngine -Force
 }
 if (-not [string]::IsNullOrWhiteSpace($Provider)) {
     $bodyObject.engine.provider = $Provider
@@ -101,8 +148,16 @@ if (-not [string]::IsNullOrWhiteSpace($Model)) {
 
 $body = $bodyObject | ConvertTo-Json -Depth 20 -Compress
 
-$engineModel = if ($bodyObject.engine.model) { $bodyObject.engine.model } else { "(defaut produit / service)" }
-$engineProvider = if ($bodyObject.engine.provider) { $bodyObject.engine.provider } else { "(defaut service)" }
+if ($bodyObject.engine.model) {
+    $engineModel = $bodyObject.engine.model
+} else {
+    $engineModel = "defaut produit ou service"
+}
+if ($bodyObject.engine.provider) {
+    $engineProvider = $bodyObject.engine.provider
+} else {
+    $engineProvider = "defaut service"
+}
 
 Write-Host "POST $uri"
 Write-Host "Request : $RequestPath"
@@ -115,40 +170,33 @@ if (-not (Test-Path -LiteralPath $logDir)) {
     New-Item -ItemType Directory -Path $logDir -Force | Out-Null
 }
 $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
-$clientLogPath = Join-Path $logDir "premium_reading_e2e_${stamp}.json"
+$clientLogPath = Join-Path $logDir "premium_reading_e2e_$stamp.json"
 
 try {
-    $raw = Invoke-WebRequest `
-        -Uri $uri `
-        -Method POST `
-        -Headers $headers `
-        -Body $body `
-        -TimeoutSec $TimeoutSec `
-        -SkipHttpErrorCheck
+    $iwrParams = @{
+        Uri             = $uri
+        Method          = "POST"
+        Headers         = $headers
+        Body            = $body
+        TimeoutSec      = $TimeoutSec
+        UseBasicParsing = $true
+    }
+    if ($PSVersionTable.PSVersion.Major -ge 6) {
+        $iwrParams["SkipHttpErrorCheck"] = $true
+    }
+    $raw = Invoke-WebRequest @iwrParams
 
     $payloadText = $raw.Content
     $payloadText | Set-Content -LiteralPath $clientLogPath -Encoding utf8
 
-    $response = $null
-    if (-not [string]::IsNullOrWhiteSpace($payloadText)) {
-        $trimmed = $payloadText.TrimStart()
-        if ($trimmed.StartsWith("{") -or $trimmed.StartsWith("[")) {
-            try {
-                $response = $payloadText | ConvertFrom-Json
-            } catch {
-                Write-Host "Reponse non-JSON (extrait) : $($payloadText.Substring(0, [Math]::Min(500, $payloadText.Length)))"
-                throw
-            }
-        } else {
-            Write-Host "Reponse non-JSON (extrait) : $($payloadText.Substring(0, [Math]::Min(500, $payloadText.Length)))"
-            exit 1
-        }
-    }
+    $response = Convert-PremiumE2eResponse -PayloadText $payloadText
 
-    if ($response -and $response.run_id) {
-        Write-Host "Audit run : .\scripts\show_generation_run.ps1 -RunId $($response.run_id)"
-        $promptDir = Join-Path $repoRoot "output\logs\prompts\$($response.run_id)"
-        Write-Host "Prompts LLM : $promptDir\*.txt (ex. identity_primary.txt, summary_summary.txt)"
+    if ($null -ne $response) {
+        if ($null -ne $response.run_id) {
+            Write-Host "Audit run : .\scripts\show_generation_run.ps1 -RunId $($response.run_id)"
+            $promptDir = Join-Path $repoRoot "output\logs\prompts\$($response.run_id)"
+            Write-Host "Prompts LLM : $promptDir"
+        }
     }
 
     if ($raw.StatusCode -ge 200 -and $raw.StatusCode -lt 300) {
@@ -157,23 +205,26 @@ try {
         exit 0
     }
 
-    $errorCode = if ($response -and $response.error) { $response.error.code } else { $null }
+    if ($null -ne $response -and $null -ne $response.error) {
+        $errorCode = $response.error.code
+    } else {
+        $errorCode = $null
+    }
     Write-Host "HTTP $($raw.StatusCode) : $errorCode"
     Write-Host "Journal : $clientLogPath"
 
-    if ($errorCode -eq "IDEMPOTENCY_PAYLOAD_MISMATCH" -or $response.error -eq "IDEMPOTENCY_PAYLOAD_MISMATCH") {
+    if ($errorCode -eq "IDEMPOTENCY_PAYLOAD_MISMATCH") {
         Write-Host "Cle Idempotency-Key deja utilisee avec un payload different. Utilisez une nouvelle cle."
         exit 3
     }
 
     if ($errorCode -eq "READING_QUALITY_FAILED") {
-        Write-Host "Echec qualite editoriale (attendu possible en E2E). Voir logs API et audit run."
+        Write-Host "Echec qualite editoriale. Voir logs API et audit run."
         exit 2
     }
 
     exit 1
-}
-catch {
+} catch {
     Write-Host "Erreur reseau ou parsing : $_"
     exit 1
 }
