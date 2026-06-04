@@ -23,6 +23,9 @@ pub enum ChapterRepairKind {
         missing_pack_fact_ids: Vec<String>,
         orphan_object_codes: Vec<String>,
     },
+    OpeningDiversity {
+        phrases: Vec<String>,
+    },
 }
 
 pub struct ChapterOutcome {
@@ -285,6 +288,14 @@ pub fn append_repair_instructions(
                  Orphan mentions (not backed by astro_basis): {:?}. \
                  Do not develop placements or planets absent from the pack.",
                 chapter.code, missing_pack_fact_ids, orphan_object_codes
+            ));
+        }
+        ChapterRepairKind::OpeningDiversity { phrases } => {
+            bundle.task_instructions.push_str(&format!(
+                "\n\nREPAIR (opening diversity): Chapter '{}'. \
+                 Use a fresh chapter opening (first 5 words unique vs prior chapters) \
+                 and fresh paragraph openings (first 4 words). Conflicts: {:?}",
+                chapter.code, phrases
             ));
         }
     }

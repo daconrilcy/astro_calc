@@ -56,7 +56,131 @@ fn extract_natal_structured(
         }
     }
 
+    extract_rulership_context(data, &mut facts, privacy);
+
     facts
+}
+
+fn extract_rulership_context(
+    data: &serde_json::Value,
+    facts: &mut Vec<NormalizedAstroFact>,
+    privacy: &PrivacyPolicy,
+) {
+    let Some(ctx) = data.get("rulership_context") else {
+        return;
+    };
+
+    let entries: &[(&str, &serde_json::Value)] = &[
+        ("ascendant_ruler", ctx.get("ascendant_ruler").unwrap_or(&serde_json::Value::Null)),
+        ("mc_ruler", ctx.get("mc_ruler").unwrap_or(&serde_json::Value::Null)),
+        (
+            "descendant_ruler",
+            ctx.get("descendant_ruler").unwrap_or(&serde_json::Value::Null),
+        ),
+    ];
+
+    for (role, entry) in entries {
+        if !entry.is_null() {
+            push_rulership_fact(entry, role, facts, privacy);
+        }
+    }
+
+    if let Some(list) = ctx.get("dominant_house_rulers").and_then(|v| v.as_array()) {
+        for entry in list.iter().take(6) {
+            push_rulership_fact(entry, "dominant_house_ruler", facts, privacy);
+        }
+    }
+}
+
+fn angle_cusp_house_number(source_kind: &str, source_code: &str) -> Option<u8> {
+    if source_kind != "angle" {
+        return None;
+    }
+    match source_code {
+        "ascendant" => Some(1),
+        "descendant" => Some(7),
+        "mc" => Some(10),
+        "ic" => Some(4),
+        _ => None,
+    }
+}
+
+fn push_rulership_fact(
+    entry: &serde_json::Value,
+    role: &str,
+    facts: &mut Vec<NormalizedAstroFact>,
+    privacy: &PrivacyPolicy,
+) {
+    let ruler_object = entry
+        .get("ruler_object_code")
+        .and_then(|v| v.as_str())
+        .unwrap_or("ruler");
+    let source_code = entry
+        .get("source_code")
+        .and_then(|v| v.as_str())
+        .unwrap_or("source");
+    let source_kind = entry
+        .get("source_kind")
+        .and_then(|v| v.as_str())
+        .unwrap_or("house");
+    let sign_code = entry.get("sign_code").and_then(|v| v.as_str());
+    let ruler_house = entry
+        .get("ruler_house_number")
+        .and_then(|v| v.as_u64())
+        .and_then(|n| u8::try_from(n).ok());
+    let hint = entry
+        .get("interpretive_hint")
+        .and_then(|v| v.as_str())
+        .unwrap_or("House or angle rulership link");
+
+    let id = format!("ruler:{source_kind}:{source_code}:{ruler_object}");
+    let theme = match source_code {
+        "ascendant" => vec!["identity".into()],
+        "mc" => vec!["career".into()],
+        "descendant" => vec!["relationships".into()],
+        code if code.starts_with("house_") => {
+            let house = code.strip_prefix("house_").unwrap_or(code);
+            match house {
+                "7" => vec!["relationships".into()],
+                "4" => vec!["emotional_life".into()],
+                "8" | "9" | "12" => vec!["growth_path".into()],
+                "10" => vec!["career".into()],
+                _ => vec![],
+            }
+        }
+        _ => vec![],
+    };
+
+    let mut value = serde_json::json!({
+        "ruler_object": ruler_object,
+        "source_kind": source_kind,
+        "source_code": source_code,
+        "interpretive_hint": hint,
+        "interpretive_role": role,
+    });
+    if let Some(s) = sign_code {
+        value["sign"] = serde_json::json!(s);
+    }
+    if let Some(h) = ruler_house {
+        value["house"] = serde_json::json!(h);
+    }
+    if let Some(h) = angle_cusp_house_number(source_kind, source_code) {
+        value["source_house_number"] = serde_json::json!(h);
+    }
+    if privacy.redact_birth_data_before_llm {
+        value = redact_value(&value);
+    }
+
+    facts.push(NormalizedAstroFact {
+        id: id.clone(),
+        kind: AstroFactKind::Ruler,
+        kind_code: "house_ruler".to_string(),
+        usage: AstroFactUsage::InterpretiveBasis,
+        label: format!("Maitre ({source_code}) : {ruler_object}"),
+        value,
+        interpretive_weight: Some(0.85),
+        domains: theme,
+    });
 }
 
 fn extract_llm_projection(

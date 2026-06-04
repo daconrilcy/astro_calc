@@ -90,6 +90,9 @@ impl<'a> AstroLabelHumanizer<'a> {
         if let Some((angle, sign)) = parse_signal_angle_sign_fact_id(&fact.id) {
             return humanize_angle_sign_label(self, locale, &angle, &sign);
         }
+        if let Some(label) = humanize_ruler_fact_id(&fact.id, self, locale) {
+            return label;
+        }
         if fact.kind == AstroFactKind::PlanetPosition || fact.kind == AstroFactKind::Angle {
             if let Some(label) = label_from_fact_value(self, fact, locale) {
                 return label;
@@ -330,7 +333,99 @@ fn label_from_fact_id(
     if let Some((angle, sign)) = parse_signal_angle_sign_fact_id(fact_id) {
         return Some(humanize_angle_sign_label(humanizer, locale, &angle, &sign));
     }
+    if let Some(label) = humanize_ruler_fact_id(fact_id, humanizer, locale) {
+        return Some(label);
+    }
     parse_angle_fact_id(fact_id).map(|(angle, sign)| humanize_angle_sign_label(humanizer, locale, &angle, &sign))
+}
+
+/// `ruler:angle:mc:sun`, `ruler:angle:descendant:venus`, `ruler:dominant_house:house_1:mars`
+fn parse_ruler_fact_id(fact_id: &str) -> Option<(String, String, String)> {
+    let rest = fact_id.strip_prefix("ruler:")?;
+    let parts: Vec<&str> = rest.split(':').collect();
+    if parts.len() < 3 {
+        return None;
+    }
+    Some((
+        parts[0].to_string(),
+        parts[1].to_string(),
+        parts[2].to_string(),
+    ))
+}
+
+fn humanize_ruler_fact_id(
+    fact_id: &str,
+    humanizer: &AstroLabelHumanizer<'_>,
+    locale: &str,
+) -> Option<String> {
+    let (source_kind, source_code, ruler_object) = parse_ruler_fact_id(fact_id)?;
+    Some(humanize_ruler_label(
+        humanizer,
+        locale,
+        &source_kind,
+        &source_code,
+        &ruler_object,
+    ))
+}
+
+fn humanize_ruler_label(
+    humanizer: &AstroLabelHumanizer<'_>,
+    locale: &str,
+    source_kind: &str,
+    source_code: &str,
+    ruler_object: &str,
+) -> String {
+    let ruler_label = humanizer.object_label(locale, ruler_object);
+    match locale {
+        "fr" => match (source_kind, source_code) {
+            ("angle", "mc") => format!("Maître du Milieu du Ciel : {ruler_label}"),
+            ("angle", "descendant") => format!("Maître du Descendant : {ruler_label}"),
+            ("angle", "ascendant") => format!("Maître de l'Ascendant : {ruler_label}"),
+            ("angle", "ic") => format!("Maître du Fond du Ciel : {ruler_label}"),
+            ("angle", other) => {
+                let angle = humanizer.object_label(locale, other);
+                format!("Maître de {angle} : {ruler_label}")
+            }
+            ("dominant_house", code) if let Some(n) = code.strip_prefix("house_") => {
+                format!("Maître de la maison {n} : {ruler_label}")
+            }
+            _ => format!("Maître ({source_code}) : {ruler_label}"),
+        },
+        "es" => match (source_kind, source_code) {
+            ("angle", "mc") => format!("Regente del Medio Cielo : {ruler_label}"),
+            ("angle", "descendant") => format!("Regente del Descendente : {ruler_label}"),
+            ("angle", other) => {
+                let angle = humanizer.object_label(locale, other);
+                format!("Regente de {angle} : {ruler_label}")
+            }
+            ("dominant_house", code) if let Some(n) = code.strip_prefix("house_") => {
+                format!("Regente de la casa {n} : {ruler_label}")
+            }
+            _ => format!("Regente ({source_code}) : {ruler_label}"),
+        },
+        "de" => match (source_kind, source_code) {
+            ("angle", "mc") => format!("Herrscher des Medium Coeli : {ruler_label}"),
+            ("angle", "descendant") => format!("Herrscher des Deszendenten : {ruler_label}"),
+            ("angle", other) => {
+                let angle = humanizer.object_label(locale, other);
+                format!("Herrscher von {angle} : {ruler_label}")
+            }
+            ("dominant_house", code) if let Some(n) = code.strip_prefix("house_") => {
+                format!("Herrscher des Hauses {n} : {ruler_label}")
+            }
+            _ => format!("Herrscher ({source_code}) : {ruler_label}"),
+        },
+        _ => match (source_kind, source_code) {
+            ("angle", other) => {
+                let angle = humanizer.object_label(locale, other);
+                format!("Ruler of {angle}: {ruler_label}")
+            }
+            ("dominant_house", code) if let Some(n) = code.strip_prefix("house_") => {
+                format!("Ruler of house {n}: {ruler_label}")
+            }
+            _ => format!("Ruler ({source_code}): {ruler_label}"),
+        },
+    }
 }
 
 fn parse_signal_angle_sign_fact_id(id: &str) -> Option<(String, String)> {
@@ -431,6 +526,24 @@ mod tests {
             writing_locales: bootstrap_writing_locales(),
             ..CanonicalCatalog::default()
         }
+    }
+
+    #[test]
+    fn humanizes_ruler_angle_mc_in_french() {
+        let catalog = test_catalog();
+        let h = AstroLabelHumanizer::new(&catalog);
+        assert_eq!(
+            h.label_for_fact_id("ruler:angle:mc:sun", "fr", None).as_deref(),
+            Some("Maître du Milieu du Ciel : Soleil")
+        );
+        assert_eq!(
+            h.label_for_fact_id("ruler:angle:descendant:venus", "fr", None).as_deref(),
+            Some("Maître du Descendant : Vénus")
+        );
+        assert_eq!(
+            h.label_for_fact_id("ruler:dominant_house:house_1:mars", "fr", None).as_deref(),
+            Some("Maître de la maison 1 : Mars")
+        );
     }
 
     #[test]

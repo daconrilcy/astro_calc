@@ -7,6 +7,7 @@ pub mod astro_fact_extractor;
 pub mod chapter_evidence_planner;
 pub mod evidence_diversity_validator;
 pub mod evidence_fact_parse;
+pub mod prior_chapter_usage;
 pub mod interpretive_evidence_builder;
 pub mod astro_label_humanizer;
 pub mod astro_payload_normalizer;
@@ -14,6 +15,7 @@ pub mod chapter_evidence_basis_enricher;
 pub mod chapter_evidence_coherence;
 pub mod chapter_writing_guidance;
 pub mod text_trigrams;
+pub mod reading_opening_diversity_validator;
 pub mod chapter_orchestrator;
 pub mod chapter_quality_repair;
 pub mod domain_resolver;
@@ -56,6 +58,7 @@ pub use astro_basis_validator::AstroBasisValidator;
 pub use chapter_evidence_coherence::ChapterEvidenceCoherence;
 pub use chapter_evidence_planner::{pack_for_chapter, ChapterEvidencePlanner};
 pub use evidence_diversity_validator::{compute_evidence_metrics, EvidenceDiversityValidator};
+pub use reading_opening_diversity_validator::ReadingOpeningDiversityValidator;
 pub use interpretive_evidence_builder::{
     is_premium_product, pool_richness_check, InterpretiveEvidenceBuilder,
 };

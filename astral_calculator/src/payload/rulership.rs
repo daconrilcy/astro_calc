@@ -40,6 +40,14 @@ pub(super) fn build_rulership_context(
         &positions_by_object,
         &signal_keys,
     );
+    let descendant_ruler = angle_ruler(
+        "descendant",
+        "relationship_angle_ruler",
+        positions,
+        &rules_by_sign,
+        &positions_by_object,
+        &signal_keys,
+    );
     let dominant_sign_rulers = chart_emphasis
         .dominant_signs
         .iter()
@@ -85,6 +93,7 @@ pub(super) fn build_rulership_context(
     BasicRulershipContext {
         ascendant_ruler,
         mc_ruler,
+        descendant_ruler,
         dominant_house_rulers,
         dominant_sign_rulers,
         dispositor_links,
@@ -403,6 +412,9 @@ fn strength_context(position: Option<&ObjectPositionFact>) -> Vec<String> {
     }
     if position.house_number == Some(2) {
         context.push("resources_house".to_string());
+    }
+    if position.house_number == Some(7) {
+        context.push("partnership_house".to_string());
     }
     if matches!(position.object_code.as_str(), "sun" | "moon") {
         context.push("core_identity_signal".to_string());

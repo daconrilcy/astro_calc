@@ -935,6 +935,16 @@
         "mc_ruler": {
           "$ref": "#/$defs/ruler_context"
         },
+        "descendant_ruler": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ruler_context"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "dominant_house_rulers": {
           "type": "array",
           "items": {

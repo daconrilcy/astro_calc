@@ -9,23 +9,22 @@ fournisseurs LLM.
 | Label | Statut | Signification |
 |---|---|---|
 | **V1-technical-freeze** | **VALIDE** | Gel architecture/securite : perimetre fige, P1–P4 implementes |
-| **V1-production-public** | **VALIDABLE OpenAI — gateway technique** | Pipeline OpenAI valide ; securite, idempotence, astro_basis minimal |
-| **Premium interpretatif riche** | **Implemente (Evidence Planner)** | Packs chapitre diversifies ; rejet `PREMIUM_EVIDENCE_DIVERSITY_FAILED` si pool trop pauvre |
+| **astral_llm V1-production-public OpenAI** | **VALIDEE** | Gateway + orchestration Premium certifies sur OpenAI |
+| **Premium interpretatif riche OpenAI** | **VALIDÉ PRODUIT** | Evidence Planner clos ; E2E rich OpenAI OK (ex. run `0619a1e8`) |
+| **Chantier Evidence Planner** | **CLOS** | Plus de correction structurelle prevue ; maintenance bugs seulement |
+| **Mistral / Anthropic** | **Adapters presents, non certifies** | Smoke ignore ; phase optimisation quand cles disponibles |
 
 ```txt
-V1 technical freeze accepted.
-OpenAI provider smoke validated.
-PostgreSQL idempotency concurrency validated.
-Premium E2E pipeline validated (OpenAI).
-Premium editorial hardening:
-  - concrete astro_basis required beyond domain_score
-  - generated summary replaces technical placeholder
-Enabled provider for V1-production-public: OpenAI
-Certified provider smoke: OpenAI
-Mistral/Anthropic: adapter implemented but not production-certified
+astral_llm V1-production-public OpenAI     : VALIDEE
+Premium interpretatif riche OpenAI         : VALIDÉ PRODUIT
+Chantier Evidence Planner                  : CLOS (2026-06-04)
+E2E OpenAI rich (6 steps generated)        : OK — scripts/generate_premium_reading_e2e.ps1
+Mistral / Anthropic                        : adapters presents, non certifies
 ```
 
-Le gel **V1-technical-freeze** ne doit plus faire l'objet d'une refonte architecture. La prochaine etape est **prouver les providers reels** et valider le produit en conditions reelles (qualite interpretative, cout/latence par modele).
+**Reference E2E produit (2026-06-04)** : run `0619a1e8-4069-4f89-b6ea-db14f32f38ea` — ~47 s, 6 steps `generated`, libelles maîtrise humanises, cap Soleil supporting (3 chapitres), prompts dans `output/logs/prompts/0619a1e8-.../`.
+
+Le gel **V1-technical-freeze** ne doit plus faire l'objet d'une refonte architecture. La suite n'est plus une **correction** du planner, mais une **phase d'optimisation** (voir ci-dessous).
 
 Le gateway n'est **pas** un simple proxy LLM : la validation metier se fait **avant** tout appel provider.
 
@@ -37,12 +36,17 @@ AstroPayloadNormalizer, SafetyGuard, Idempotency flow, Rate limiting,
 Circuit breaker, ChapterOrchestrator
 ```
 
-### Prochain chantier (hors gel technique)
+### Limites editoriales connues (non bloquantes)
 
-```txt
-qualite interpretative reelle, robustesse editoriale,
-comparaison providers, cout / latence / qualite par modele
-```
+- **Amorces parfois « promptees »** : formulations type « En développant… », « En prenant en compte… » (effet secondaire des consignes `ChapterWritingGuidance` + diversite d'ouvertures). Acceptable en prod ; affinage style en optimisation.
+- **Densite des prompts chapitre** : structure tres controlee (4 paragraphes, liste `fact_id`, anti-trigrammes) — securise `astro_basis` et la diversite, peut donner une prose un peu scolaire. A equilibrer en phase optimisation, pas en rouvrant le planner.
+
+### Phase d'optimisation (suite logique, hors Evidence Planner)
+
+1. **OpenAI** : comparer cout / latence / qualite par modele (`gpt-4.1`, mini, etc.) sur le meme golden E2E.
+2. **Mistral / Anthropic** : `cargo test -p astral_llm_providers --test provider_real_smoke -- --ignored` puis E2E Premium quand cles disponibles.
+3. **Referentiel evidence** : enrichir progressivement les slots (noeuds, phases lunaires, dignites mineures, patterns d'aspects) via tables canoniques — pas de constantes en code.
+4. **Style redactionnel** : allegement cible des consignes prompt / guidance pour une prose moins « structuree par contraintes », sans casser les garde-fous qualite.
 
 ### Checklist avant V1-production-public
 
@@ -188,11 +192,13 @@ RequestValidator
   -> ProviderSchemaCompiler
   -> ProviderRouter (+ ProviderCircuitBreaker)
   -> LLM
-  -> post-traitement chapitre : AstroBasisRoleNormalizer → ChapterEvidenceBasisEnricher
+  -> post-traitement chapitre (par chapitre) :
+     AstroBasisRoleNormalizer → ChapterEvidenceBasisEnricher (CORE + SUPPORTING sauf identity)
      → AstroBasisRoleNormalizer → AstroLabelHumanizer
-  -> validations chapitre (schema, safety, AstroBasisValidator fact_id ⊆ pack)
-  -> ChapterEvidenceCoherence (corps ↔ astro_basis ↔ pack)
+     → AstroBasisValidator → ChapterEvidenceCoherence
+     (repair LLM repair_evidence si orphelins body / incoherence non enrichissable)
   -> EvidenceDiversityValidator::validate_reading (post-LLM, Premium)
+  -> repair_opening_duplicates (jusqu'a 6 tours, tous chapitres en violation)
   -> SummarySynthesizer
   -> ResponseValidator (lecture complete + summary)
   -> SafetyGuard (post)
@@ -203,7 +209,7 @@ RequestValidator
 Codes erreur dedies :
 
 - `PREMIUM_EVIDENCE_DIVERSITY_FAILED` — pool/payload insuffisant ou packs trop repetitifs
-- `ASTRO_BASIS_INVALID` — fact_id hors pack chapitre ; derive pack/body (`ChapterEvidenceCoherence`) : mention planetaire dans le `body` sans fact_id dans `astro_basis` (repair une fois). Slots CORE/SUPPORTING omis par le LLM sont **completes** avant validation par `ChapterEvidenceBasisEnricher`
+- `ASTRO_BASIS_INVALID` — fact_id hors pack ; `ChapterEvidenceCoherence` : planete citee dans le `body` sans `astro_basis`, ou slots pack encore absents apres enrichisseur. Repair LLM `repair_evidence` une fois. **Avant** coherence : `ChapterEvidenceBasisEnricher` injecte les CORE manquants (tous chapitres) et les SUPPORTING manquants (**sauf** `identity`) — evite un 2e appel LLM quand seuls des `fact_id` manquent
 - `READING_QUALITY_FAILED` — qualite redactionnelle
 
 Fixtures E2E :
@@ -215,20 +221,39 @@ SQL : [`astral_llm/crates/astral_llm_infra/sql/llm_evidence_canonical.sql`](astr
 
 **Langue de reponse LLM** : `OUTPUT_LANGUAGE` injecte dans les instructions systeme (`WritingLanguageDirective`) selon `product_context.user_language`. Le bloc `--- BEGIN ASTRO DATA ---` envoye au modele utilise des libelles humanises (`AstroPayloadNormalizer::to_chapter_evidence_pack_block` + `AstroLabelHumanizer::label_for_fact_id`). Post-LLM : `AstroBasisRoleNormalizer` (2 passages autour de `ChapterEvidenceBasisEnricher`) puis `AstroLabelHumanizer` sur `astro_basis` (label, factor). Roles : correspondance exacte `fact_id` puis alias `object_code` **dans la meme famille** (`evidence_fact_parse::fact_id_role_bucket` : ex. `signal:object_position:sun` ≠ `placement:sun:*`).
 
-**ChapterEvidencePlanner** (packs chapitre) :
+**ChapterEvidencePlanner** (`chapter_evidence_planner.rs`, catalogue `evidence_canonical.rs` / SQL) :
 
-- Slots remplis depuis `llm_chapter_evidence_slots` ; exclusion des `fact_id` deja **core** dans un chapitre precedent (supporting/nuance d'un autre chapitre peuvent revenir, ex. Saturne en `growth_path` apres supporting en `career`).
-- `avoid_repeating` : derniers cores precedents (consigne redaction + `validate_no_avoid_in_active_slots`).
-- `fill_minimums` : priorite aux familles d'evidence manquantes (aspect, house_ruler, dignite) ; swap supporting si slots pleins.
-- Validation adaptative : si le pool restant ne permet plus `min_evidence_per_chapter` ou `min_distinct_kind_families`, avertissement `tracing` et poursuite (evite `PREMIUM_EVIDENCE_DIVERSITY_FAILED` sur charts riches multi-chapitres).
+- `semantic_fact_key` sur chaque `InterpretiveEvidence` ; overlap, `avoid_repeating`, exclusions via `PriorChapterUsage` (cles semantiques, pas `fact_id` bruts).
+- Extracteur : `ascendant_ruler`, `mc_ruler`, `descendant_ruler` (payload v13), `dominant_house_rulers` → `house_ruler` avec `source_house_number` sur les angles (`astro_fact_extractor.rs`).
+- Slot `relationships` : `house_ruler` + `object_code` **`descendant`** ; requirement bloquant `relationships_ruler_7` ; `chapter_excludes_candidate` interdit `ruler:angle:mc:*` dans ce pack.
+- Slot `career` : `house_ruler` + `mc` ; requirement `career_ruler_10`.
+- Identity : `chapter_excludes_candidate` exclut tout fait Soleil ; pack sans soleil (reserve career).
+- `inject_blocking_requirements`, `fill_minimums` (familles aspect / house_ruler / dignite), validation adaptative (warning si pool pauvre).
 
-**Qualite redactionnelle amont** : `ChapterWritingGuidance` (4 paragraphes, anti-trigrammes, `avoid_repeating` dans le prompt). Repairs : repetition (`maybe_repair_repetition`), `min_words` (`retry_chapter_on_min_words`), coherence evidence (`ChapterEvidenceCoherence` + repair). `max_words` : consigne prompt uniquement, non bloquant.
+**Post-traitement basis** (`chapter_evidence_basis_enricher.rs`) :
+
+- **CORE** manquants : injectes pour **tous** les chapitres (y compris `identity`).
+- **SUPPORTING** manquants : injectes pour tous les chapitres **sauf** `identity` (aligne tests `does_not_append_supporting_from_pack`, `appends_supporting_for_career_coherence`).
+- Declenche **avant** `ChapterEvidenceCoherence::validate_premium` dans `generate_one_chapter`.
+
+**Requirements chapitre** (`llm_evidence_requirements`) : audit dans `EvidenceMetrics.requirement_audit`. Codes : `career_ruler_10`, `relationships_ruler_7`, `relationships_relational_aspect`, `growth_path_nodal`, `growth_path_structuring_aspect`, `growth_path_transformation_house`.
+
+**Qualite redactionnelle** :
+
+- `ChapterWritingGuidance` : structure 4 §, anti-trigrammes, `openings_to_avoid_from_prior`, liste **Mandatory astro_basis** (tous fact_id core + supporting du pack).
+- `ReadingOpeningDiversityValidator` + `text_trigrams` : amorces chapitre (5 mots) / paragraphe (4 mots) ; prefixes generiques FR non bloquants (`GENERIC_PARA_OPENING_PREFIXES_FR`).
+- `repair_opening_duplicates` : boucle jusqu'a 6 rounds, regenere **chaque** chapitre en violation (attempt `repair_opening`).
+- Autres repairs : repetition intra-chapitre, `min_words`, `repair_evidence` (si coherence echoue malgre enrichisseur).
+
+**E2E premium** (`scripts/generate_premium_reading_e2e.ps1`, `request-premium-rich.json`) : runs de reference `54d2634c`, `627c9ada` — ~38–43 s, 6 steps `generated`, 6 fichiers `*_primary.txt` (pas de `*_repair_*`).
 
 Tests :
 
 ```bash
+cargo test -p astral_llm_application
 cargo test -p astral_llm_api --test astral_llm_evidence_planner_tests
 cargo test -p astral_llm_api --test astral_llm_evidence_coherence_tests
+cargo test -p astral_calculator --test payload_tests basic_payload_exposes_rulership
 ```
 
 ### Middleware HTTP (ordre entrant)
@@ -552,8 +577,10 @@ Consultation API :
 | `ResponseValidator` / `SchemaRegistry` | JSON structure |
 | `ChapterEvidencePlanner` | Packs CORE/SUPPORTING/NUANCE par chapitre + `avoid_repeating` |
 | `ChapterEvidenceCoherence` | Cohérence pack / `astro_basis` / corps (repair) |
-| `ChapterEvidenceBasisEnricher` | Complete slots pack omis dans `astro_basis` |
-| `ChapterWritingGuidance` | Structure 4 paragraphes + anti-repetition amont |
+| `ChapterEvidenceBasisEnricher` | CORE (+ SUPPORTING sauf chapitre `identity`) omis dans `astro_basis` |
+| `ChapterWritingGuidance` | 4 §, anti-trigrammes, liste fact_id obligatoires, connecteurs generiques |
+| `ReadingOpeningDiversityValidator` | Amorces cross-chapitre ; connecteurs generiques FR ignores |
+| `PriorChapterUsage` | `avoid_repeating` semantique + exclusion aspects/dignites deja vus |
 | `prompt_trace` | Journalisation prompt compile (fichier + tracing) |
 | `ChapterOrchestrator` | Mode Premium (orchestration + repairs) |
 | `ExecutionAudit` | Traces steps + agregat tokens run |
@@ -572,16 +599,18 @@ Consultation API :
 | `astral_llm_load_tests` | Saturation semaphore / rate limit / circuit breaker |
 | `astral_llm_load_tests` (`#[ignore]`) | Idempotence concurrente PostgreSQL |
 | `provider_real_smoke` (`#[ignore]`) | OpenAI + Mistral + Anthropic (schema + auth) |
-| `astral_llm_evidence_planner_tests` | Pool, packs, exclusions core inter-chapitres |
+| `astral_llm_evidence_planner_tests` | Pool, packs, identity sans soleil, relationships descendant ruler |
 | `astral_llm_evidence_coherence_tests` | Coherence pack / corps / astro_basis |
 | `astral_llm_i18n_tests` | Locales + humanizer |
 | Tests unitaires crates | Registry, circuit breaker, redaction, qualite Premium |
 
-## Roadmap P2 (apres validation manuelle)
+## Roadmap P2 (optimisation — Evidence Planner clos)
 
-- Executer `provider_real_smoke` avec cles reelles et documenter les modeles valides
-- Scoring qualite enrichi (metriques numeriques exportees dans `quality` reponse)
-- `ReadingQualityValidator` declenchant reparation chapitre (au lieu d'echec sec)
+- Benchmark OpenAI : cout / latence / qualite par modele sur E2E Premium
+- Certification Mistral / Anthropic (smoke + E2E rich)
+- Enrichissement `llm_chapter_evidence_slots` / pool (noeuds, phases lunaires, dignites mineures, patterns d'aspects)
+- Affinage style : reduire formulations « promptees » et densite consignes sans relacher `astro_basis` / safety
+- Scoring qualite enrichi (metriques numeriques dans `quality` reponse)
 - Fixtures redactionnelles supplementaires (langues / profils astrologues)
 
 ## Phases implementees
@@ -600,4 +629,7 @@ Consultation API :
 12. Production publique (ConfigValidator) + rate limit par cle + golden prompt
 13. Validation produit : fixtures redactionnelles, load tests, qualite Premium bloquante, smoke providers
 14. Premium : planner packs adaptatif, coherence evidence, i18n prompt/humanizer, logs prompts compiles, repairs min_words/repetition
-15. `EditorialValidator`, `READING_QUALITY_FAILED`, crate `astral_llm_api` lib pour tests
+15. Polish Premium : `descendant_ruler`, semantic keys, enrichisseur SUPPORTING, opening diversity + repair multi-chapitres, E2E sans repair career/relationships
+16. Polish final : libelles `ruler:*` humanises ; cap supporting par `semantic_fact_key` (`max_supporting_semantic_chapters = 3`)
+17. **Evidence Planner clos** — Premium interpretatif riche OpenAI **VALIDÉ PRODUIT** (E2E `0619a1e8`, 2026-06-04)
+18. `EditorialValidator`, `READING_QUALITY_FAILED`, crate `astral_llm_api` lib pour tests

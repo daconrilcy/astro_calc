@@ -23,6 +23,7 @@ use crate::chapter_evidence_coherence::ChapterEvidenceCoherence;
 use crate::chapter_writing_guidance::ChapterWritingGuidance;
 use crate::chapter_evidence_planner::{pack_for_chapter, ChapterEvidencePlanner};
 use crate::evidence_diversity_validator::{compute_evidence_metrics, EvidenceDiversityValidator};
+use crate::reading_opening_diversity_validator::ReadingOpeningDiversityValidator;
 use crate::interpretive_evidence_builder::{is_premium_product, InterpretiveEvidenceBuilder};
 use crate::chapter_quality_repair::{
     append_repair_instructions, is_min_words_violation, maybe_repair_repetition,
@@ -37,7 +38,7 @@ use crate::prompt_trace;
 use crate::provider_router::ProviderRouter;
 use crate::provider_schema_compiler::ProviderSchemaCompiler;
 use crate::reading_plan::ReadingPlanBuilder;
-use crate::reading_quality_validator::ReadingQualityValidator;
+use crate::reading_quality_validator::{PremiumQualityThresholds, ReadingQualityValidator};
 use crate::response_validator::ResponseValidator;
 use crate::safety_guard::SafetyGuard;
 use crate::summary_synthesizer::SummarySynthesizer;
@@ -101,9 +102,10 @@ impl<'a> ChapterOrchestrator<'a> {
         let premium = is_premium_product(&request.product_context.product_code);
         let evidence_policy = &self.catalog.evidence.premium_policy;
 
+        let mut requirement_audit = Vec::new();
         let chapter_packs = if premium {
             let packs = ChapterEvidencePlanner::plan_all(&pool, &plan, &self.catalog.evidence, evidence_policy)?;
-            EvidenceDiversityValidator::validate_packs_planned(
+            requirement_audit = EvidenceDiversityValidator::validate_packs_planned(
                 &request.product_context.product_code,
                 &pool,
                 &packs,
@@ -368,12 +370,30 @@ impl<'a> ChapterOrchestrator<'a> {
         let bundle = last_bundle.expect("at least one chapter");
 
         if premium {
+            self.repair_opening_duplicates(
+                request,
+                engine,
+                safety_policy,
+                astro_facts,
+                &chapter_packs,
+                &plan,
+                &contracts,
+                &quality_thresholds,
+                writing_locale,
+                run_id,
+                product_policy,
+                &mut generated,
+                audit,
+            )
+            .await?;
+
             EvidenceDiversityValidator::validate_reading(
                 &request.product_context.product_code,
                 &pool,
                 &generated,
                 &chapter_packs,
             )?;
+            ReadingOpeningDiversityValidator::validate(&generated, writing_locale)?;
         }
 
         let summary_started = Instant::now();
@@ -417,7 +437,11 @@ impl<'a> ChapterOrchestrator<'a> {
         };
 
         let evidence_metrics = if premium {
-            Some(compute_evidence_metrics(&chapter_packs, &reading.chapters))
+            Some(compute_evidence_metrics(
+                &chapter_packs,
+                &reading.chapters,
+                requirement_audit,
+            ))
         } else {
             None
         };
@@ -428,6 +452,114 @@ impl<'a> ChapterOrchestrator<'a> {
             chapter_packs,
             evidence_metrics,
         })
+    }
+
+    async fn repair_opening_duplicates(
+        &self,
+        request: &GenerateReadingRequest,
+        engine: &ResolvedEngineParams,
+        safety_policy: &SafetyPolicy,
+        astro_facts: &NormalizedAstroFacts,
+        chapter_packs: &[astral_llm_domain::ChapterEvidencePack],
+        plan: &ReadingPlan,
+        contracts: &[astral_llm_domain::output_contract::ChapterContract],
+        _quality_thresholds: &PremiumQualityThresholds,
+        locale: &str,
+        run_id: &str,
+        product_policy: &ProductGenerationPolicy,
+        generated: &mut Vec<ReadingChapter>,
+        audit: &mut ExecutionAudit,
+    ) -> Result<(), GenerationError> {
+        const MAX_ROUNDS: usize = 6;
+
+        for round in 0..MAX_ROUNDS {
+            let violations = ReadingOpeningDiversityValidator::detect(generated, locale);
+            if violations.is_empty() {
+                return Ok(());
+            }
+
+            let targets: Vec<String> = plan
+                .chapters
+                .iter()
+                .filter(|ch| {
+                    violations.iter().any(|v| {
+                        v.chapter_code == ch.code && v.kind.contains("duplicate")
+                    })
+                })
+                .map(|ch| ch.code.clone())
+                .collect();
+
+            if targets.is_empty() {
+                break;
+            }
+
+            let mut any_repaired = false;
+            for target_code in targets {
+                let Some(idx) = generated.iter().position(|c| c.code == target_code) else {
+                    continue;
+                };
+                let Some(chapter) = plan.chapters.iter().find(|c| c.code == target_code) else {
+                    continue;
+                };
+                let Some(contract) = contracts.iter().find(|c| c.code == target_code) else {
+                    continue;
+                };
+                let prior: Vec<ReadingChapter> = generated[..idx].to_vec();
+                let pack = pack_for_chapter(chapter_packs, &target_code);
+                let phrases: Vec<String> = violations
+                    .iter()
+                    .filter(|v| v.chapter_code == target_code)
+                    .map(|v| v.phrase.clone())
+                    .collect();
+                let started = Instant::now();
+                match self
+                    .generate_one_chapter(
+                        request,
+                        engine,
+                        safety_policy,
+                        astro_facts,
+                        pack,
+                        chapter,
+                        contract,
+                        &prior,
+                        run_id,
+                        product_policy,
+                        Some(ChapterRepairKind::OpeningDiversity { phrases }),
+                    )
+                    .await
+                {
+                    Ok((repaired, _bundle, meta)) => {
+                        audit.record_chapter_step(
+                            &target_code,
+                            &meta.0,
+                            &meta.1,
+                            ChapterGenerationStatus::Repaired,
+                            meta.3,
+                            meta.4,
+                            started.elapsed().as_millis() as u64,
+                            None,
+                        );
+                        generated[idx] = repaired;
+                        any_repaired = true;
+                    }
+                    Err(err) => {
+                        tracing::warn!(
+                            run_id,
+                            round,
+                            chapter = %target_code,
+                            error = %err.detail().message,
+                            "opening diversity repair failed"
+                        );
+                    }
+                }
+            }
+
+            if !any_repaired {
+                break;
+            }
+        }
+
+        Ok(())
     }
 
     async fn generate_one_chapter(
@@ -494,6 +626,9 @@ impl<'a> ChapterOrchestrator<'a> {
             }
             Some(crate::chapter_quality_repair::ChapterRepairKind::EvidenceCoherence { .. }) => {
                 "repair_evidence"
+            }
+            Some(crate::chapter_quality_repair::ChapterRepairKind::OpeningDiversity { .. }) => {
+                "repair_opening"
             }
         };
         prompt_trace::log_prompt_bundle(

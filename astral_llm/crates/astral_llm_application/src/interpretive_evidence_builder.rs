@@ -8,7 +8,10 @@ use astral_llm_domain::{
 };
 use astral_llm_infra::EvidenceCanonicalCatalog;
 
-use crate::evidence_fact_parse::{house_number_from_fact, object_code_from_fact_id};
+use crate::evidence_fact_parse::{
+    compute_semantic_fact_key, house_number_from_fact, object_code_from_fact_id,
+    placement_index_by_object, sign_code_from_fact,
+};
 
 pub struct InterpretiveEvidenceBuilder;
 
@@ -17,10 +20,11 @@ impl InterpretiveEvidenceBuilder {
         facts: &NormalizedAstroFacts,
         _evidence_catalog: &EvidenceCanonicalCatalog,
     ) -> Result<InterpretiveEvidencePool, GenerationError> {
+        let placement_by_object = placement_index_by_object(&facts.facts);
         let evidence: Vec<InterpretiveEvidence> = facts
             .facts
             .iter()
-            .map(Self::from_fact)
+            .map(|f| Self::from_fact(f, &placement_by_object))
             .collect();
 
         Ok(InterpretiveEvidencePool {
@@ -29,7 +33,10 @@ impl InterpretiveEvidenceBuilder {
         })
     }
 
-    fn from_fact(fact: &astral_llm_domain::NormalizedAstroFact) -> InterpretiveEvidence {
+    fn from_fact(
+        fact: &astral_llm_domain::NormalizedAstroFact,
+        placement_by_object: &std::collections::HashMap<String, String>,
+    ) -> InterpretiveEvidence {
         let kind_code = fact.effective_kind_code().to_string();
         let family = EvidenceKindFamily::from_kind_code(&kind_code);
         let hint = fact
@@ -43,6 +50,9 @@ impl InterpretiveEvidenceBuilder {
         let weight = fact.interpretive_weight.unwrap_or(0.5);
         let object_code = object_code_from_fact_id(&fact.id);
         let house_number = house_number_from_fact(&fact.id, &fact.value);
+        let sign_code = sign_code_from_fact(&fact.id, &fact.value);
+        let semantic_fact_key =
+            compute_semantic_fact_key(&fact.id, &fact.value, placement_by_object);
 
         let (can_core, can_supporting, can_nuance) = if kind_code == KIND_DOMAIN_SCORE {
             (false, false, false)
@@ -52,6 +62,7 @@ impl InterpretiveEvidenceBuilder {
 
         InterpretiveEvidence {
             fact_id: fact.id.clone(),
+            semantic_fact_key,
             kind_code,
             family,
             label: fact.label.clone(),
@@ -64,6 +75,7 @@ impl InterpretiveEvidenceBuilder {
                 can_be_nuance: can_nuance,
             },
             object_code,
+            sign_code,
             house_number,
         }
     }
@@ -105,6 +117,24 @@ mod tests {
         let pool = InterpretiveEvidenceBuilder::build(&facts, &bootstrap_evidence_catalog()).unwrap();
         let policy = bootstrap_evidence_catalog().premium_policy;
         assert!(pool_richness_check(&pool, &policy).is_err());
+    }
+
+    #[test]
+    fn signal_and_placement_share_semantic_key() {
+        let facts = minimal_facts();
+        let pool = InterpretiveEvidenceBuilder::build(&facts, &bootstrap_evidence_catalog()).unwrap();
+        let placement = pool
+            .evidence
+            .iter()
+            .find(|e| e.fact_id.starts_with("placement:sun"))
+            .expect("placement sun");
+        let signal = pool
+            .evidence
+            .iter()
+            .find(|e| e.fact_id == "signal:object_position:sun");
+        if let Some(signal) = signal {
+            assert_eq!(signal.semantic_fact_key, placement.semantic_fact_key);
+        }
     }
 }
 

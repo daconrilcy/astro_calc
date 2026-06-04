@@ -930,6 +930,28 @@ fn basic_payload_exposes_rulership_context_from_reference_rules() {
     mc.sign_name = "Leo".to_string();
     mc.house_number = Some(10);
 
+    let mut descendant = angle_position(
+        13,
+        "descendant",
+        "Descendant",
+        "descendant",
+        "ascendant",
+        "horizontal",
+        42.0,
+    );
+    descendant.sign_id = 2;
+    descendant.sign_code = "taurus".to_string();
+    descendant.sign_name = "Taurus".to_string();
+    descendant.house_number = Some(7);
+
+    let mut venus = capricorn_house_2_position(3, "venus", "Venus");
+    venus.sign_id = 11;
+    venus.sign_code = "aquarius".to_string();
+    venus.sign_name = "Aquarius".to_string();
+    venus.house_id = Some(3);
+    venus.house_number = Some(3);
+    venus.house_name = Some("Communication".to_string());
+
     let mut mars = capricorn_house_2_position(5, "mars", "Mars");
     mars.sign_id = 9;
     mars.sign_code = "sagittarius".to_string();
@@ -942,6 +964,7 @@ fn basic_payload_exposes_rulership_context_from_reference_rules() {
     let signals = vec![
         placement_signal_row(1, "object_position:mars", "mars"),
         placement_signal_row(2, "object_position:sun", "sun"),
+        placement_signal_row(4, "object_position:venus", "venus"),
         InterpretationSignalRow {
             id: 3,
             signal_key: "angle:mc:sign:leo".to_string(),
@@ -969,6 +992,7 @@ fn basic_payload_exposes_rulership_context_from_reference_rules() {
         domicile_ruler(8, "scorpio", "Scorpio", 5, "mars", "Mars"),
         modern_domicile_ruler(8, "scorpio", "Scorpio", 10, "pluto", "Pluto"),
         domicile_ruler(5, "leo", "Leo", 1, "sun", "Sun"),
+        domicile_ruler(2, "taurus", "Taurus", 3, "venus", "Venus"),
         domicile_ruler(10, "capricorn", "Capricorn", 7, "saturn", "Saturn"),
         domicile_ruler(9, "sagittarius", "Sagittarius", 6, "jupiter", "Jupiter"),
     ];
@@ -976,7 +1000,7 @@ fn basic_payload_exposes_rulership_context_from_reference_rules() {
     let payload = build_basic_payload_with_rulership(
         42,
         &input(),
-        &[ascendant, mc, mars, sun],
+        &[ascendant, mc, descendant, mars, sun, venus],
         &signals,
         &rulers,
     );
@@ -1004,6 +1028,20 @@ fn basic_payload_exposes_rulership_context_from_reference_rules() {
     assert_eq!(mc_ruler.ruler_object_codes, vec!["sun"]);
     assert_eq!(mc_ruler.ruler_object_code, "sun");
     assert_eq!(mc_ruler.ruler_house_number, Some(2));
+
+    let descendant_ruler = payload
+        .rulership_context
+        .descendant_ruler
+        .as_ref()
+        .expect("descendant ruler");
+    assert_eq!(descendant_ruler.sign_code, "taurus");
+    assert_eq!(descendant_ruler.ruler_object_codes, vec!["venus"]);
+    assert_eq!(descendant_ruler.ruler_object_code, "venus");
+    assert_eq!(descendant_ruler.ruler_house_number, Some(3));
+    assert_eq!(
+        descendant_ruler.ruler_position_signal_key.as_deref(),
+        Some("object_position:venus")
+    );
     assert!(payload
         .rulership_context
         .dispositor_links

@@ -3,7 +3,9 @@ use astral_llm_domain::{
     interpretive_evidence::{ChapterEvidencePack, InterpretiveEvidence},
 };
 
-use crate::evidence_fact_parse::{fact_id_role_bucket, object_code_from_fact_id};
+use crate::evidence_fact_parse::{
+    compute_semantic_fact_key, fact_id_role_bucket, object_code_from_fact_id,
+};
 
 pub struct AstroBasisRoleNormalizer;
 
@@ -34,14 +36,13 @@ impl AstroBasisRoleNormalizer {
     }
 
     fn role_from_pack_fact_id(pack: &ChapterEvidencePack, fact_id: &str) -> Option<String> {
-        if pack.core.iter().any(|e| e.fact_id == fact_id) {
-            return Some("core".into());
-        }
-        if pack.supporting.iter().any(|e| e.fact_id == fact_id) {
-            return Some("supporting".into());
-        }
-        if pack.nuance.iter().any(|e| e.fact_id == fact_id) {
-            return Some("nuance".into());
+        let semantic_key = compute_semantic_fact_key(
+            fact_id,
+            &serde_json::json!({}),
+            &std::collections::HashMap::new(),
+        );
+        if let Some(role) = pack.role_for_fact_id(fact_id, &semantic_key) {
+            return Some(role.to_string());
         }
         let object = object_code_from_fact_id(fact_id)?;
         let bucket = fact_id_role_bucket(fact_id);
@@ -102,6 +103,7 @@ mod tests {
     fn sample_evidence_with_object(id: &str, object_code: Option<&str>) -> InterpretiveEvidence {
         InterpretiveEvidence {
             fact_id: id.into(),
+            semantic_fact_key: id.into(),
             kind_code: "placement".into(),
             family: EvidenceKindFamily::Placement,
             label: id.into(),
@@ -110,6 +112,7 @@ mod tests {
             weight: 1.0,
             slot_eligibility: SlotEligibility::default(),
             object_code: object_code.map(str::to_string),
+            sign_code: None,
             house_number: None,
         }
     }
@@ -150,6 +153,7 @@ mod tests {
             )],
             supporting: vec![InterpretiveEvidence {
                 fact_id: "signal:object_position:sun".into(),
+                semantic_fact_key: "placement:sun:capricorn:house:2".into(),
                 kind_code: "signal".into(),
                 family: EvidenceKindFamily::Other,
                 label: "Sun signal".into(),
@@ -158,6 +162,7 @@ mod tests {
                 weight: 1.0,
                 slot_eligibility: SlotEligibility::default(),
                 object_code: Some("sun".into()),
+                sign_code: None,
                 house_number: None,
             }],
             nuance: vec![],
@@ -190,6 +195,7 @@ mod tests {
             )],
             supporting: vec![InterpretiveEvidence {
                 fact_id: "signal:object_position:sun".into(),
+                semantic_fact_key: "placement:sun:capricorn:house:2".into(),
                 kind_code: "signal".into(),
                 family: EvidenceKindFamily::Other,
                 label: "Sun signal".into(),
@@ -198,6 +204,7 @@ mod tests {
                 weight: 1.0,
                 slot_eligibility: SlotEligibility::default(),
                 object_code: Some("sun".into()),
+                sign_code: None,
                 house_number: None,
             }],
             nuance: vec![],

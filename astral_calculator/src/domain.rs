@@ -410,6 +410,8 @@ pub struct BasicRulershipContext {
     #[serde(default)]
     pub mc_ruler: Option<BasicRulerContext>,
     #[serde(default)]
+    pub descendant_ruler: Option<BasicRulerContext>,
+    #[serde(default)]
     pub dominant_house_rulers: Vec<BasicRulerContext>,
     #[serde(default)]
     pub dominant_sign_rulers: Vec<BasicRulerContext>,

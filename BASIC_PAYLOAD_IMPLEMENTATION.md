@@ -1797,7 +1797,7 @@ jointure. Aucune correspondance signe -> maitre n'est codee dans le moteur.
 
 `rulership_context` expose:
 
-- `ascendant_ruler` et `mc_ruler`;
+- `ascendant_ruler`, `mc_ruler` et `descendant_ruler` (optionnel, schema v13 — maître du signe sur le Descendant, ex. Taureau → Vénus) ;
 - les maitres des signes et maisons dominants;
 - les `dispositor_links` des objets mobiles;
 - les `rulership_chains` limitees a une profondeur de 6 avec detection de cycle;
@@ -1811,8 +1811,14 @@ fournit, au lieu d'exposer une liste de sources ambiguë.
 
 `rulership_context` est consomme comme contexte de ponderation externe : le
 maitre de l'Ascendant peut servir l'identite, les maitres de dominantes peuvent
-servir le cluster, et `mc_ruler` peut servir le fond lorsque le MC y est traite.
-Ces decisions appartiennent a la couche LLM, pas au payload moteur.
+servir le cluster, `mc_ruler` la direction publique / carriere, et
+`descendant_ruler` la sphère relationnelle (maison 7). Ces decisions
+appartiennent a la couche LLM (`astral_llm`), pas au payload moteur.
+
+Implementation calculateur : `astral_calculator/src/payload/rulership.rs`
+(`angle_ruler("descendant", "relationship_angle_ruler", …)`). Test :
+`basic_payload_exposes_rulership_context_from_reference_rules` dans
+`tests/payload_tests.rs`.
 
 ### Etape 3B.1 - Coherence du referentiel et endpoints
 
@@ -3057,21 +3063,81 @@ Script : `astral_llm/crates/astral_llm_infra/sql/llm_generation_runs.sql`
 - `tests/astral_llm_astro_basis_tests.rs` — Premium minimal vs golden riche
 - Tests unitaires dans les crates application et providers
 
-### Premium — Interpretive Evidence Planner (2026-06-04)
+### Premium — Interpretive Evidence Planner — **CHANTIER CLOS** (2026-06-04)
 
-Couche entre `AstroPayloadNormalizer` et `PromptCompiler` pour `natal_premium` :
+**Statut produit** : **Premium interpretatif riche OpenAI — VALIDÉ PRODUIT**. Dernier E2E de reference : run `0619a1e8` (~47 s, 6 steps `generated`, libelles maîtrise FR, cap Soleil supporting ×3). Suite : phase **optimisation** (modeles, providers, slots evidence, style) — voir `Astral_llm_implementation.md`.
 
-- Tables canoniques : `astral_llm/crates/astral_llm_infra/sql/llm_evidence_canonical.sql` (bootstrap Rust si DB vide)
-- `InterpretiveEvidenceBuilder` → `ChapterEvidencePlanner` → `EvidenceDiversityValidator` (pre-LLM) ; `ChapterEvidenceCoherence` (post-LLM, repair)
-- Prompt chapitre : bloc `chapter_evidence_pack` (CORE / SUPPORTING / NUANCE), libelles humanises via `to_chapter_evidence_pack_block` + catalogue i18n
-- **Exclusions inter-chapitres** : seuls les `fact_id` deja **core** dans un chapitre precedent sont retires des slots ; supporting/nuance d'un autre chapitre peuvent revenir (ex. Saturne)
-- **`avoid_repeating`** : derniers cores precedents (consigne redaction + validation slots actifs) ; plus de `prune` global sur tout l'historique
-- **`fill_minimums`** : priorite familles manquantes (aspect, house_ruler, dignite) ; validation adaptative si pool epuise (evite 422 sur charts riches)
-- Erreurs : `PREMIUM_EVIDENCE_DIVERSITY_FAILED`, `ASTRO_BASIS_INVALID` (fact_id hors pack)
-- Post-LLM (ordre) : `AstroBasisRoleNormalizer` → `ChapterEvidenceBasisEnricher` → `AstroBasisRoleNormalizer` → `AstroLabelHumanizer` → validateurs
-- **Roles** : `evidence_fact_parse::fact_id_role_bucket` — alias `object_code` uniquement dans la meme famille (`signal:object_position:sun` ≠ `placement:sun:*`)
-- Fixtures requete : `request-premium-minimal.json` (echec attendu), `request-premium-rich.json` (golden v13 Paris)
-- E2E : `scripts/generate_premium_reading_e2e.ps1` ; prompts : `output/logs/prompts/{run_id}/*.txt` (`ASTRAL_LLM_PROMPT_LOG_DIR`)
+Couche entre `AstroPayloadNormalizer` et `PromptCompiler` pour `natal_premium` (code :
+`astral_llm/crates/astral_llm_application`, tests racine `tests/astral_llm_*`).
+
+#### Donnees entree (payload / calculateur)
+
+- Tables canoniques : `astral_llm/crates/astral_llm_infra/sql/llm_evidence_canonical.sql` (miroir bootstrap `evidence_canonical.rs` si DB vide).
+- **`rulership_context` → faits `house_ruler`** (`astro_fact_extractor.rs`) :
+  `ascendant_ruler`, `mc_ruler`, `descendant_ruler` (si present), `dominant_house_rulers`.
+  Chaque fait angle porte `source_house_number` (1 / 7 / 10 / 4) pour matcher les
+  `llm_evidence_requirements` par maison (`evidence_fact_parse::house_number_from_fact`).
+- Payload E2E : `request-premium-rich.json` et golden `tests/golden/natal_payload_v13_paris_1990.json`
+  incluent `descendant_ruler` (Descendant Taureau → Vénus maison 3).
+
+#### Planner (`ChapterEvidencePlanner`)
+
+- `InterpretiveEvidence` : `semantic_fact_key`, `sign_code` ; signaux `object_position:*`
+  alignes sur `placement:*` via `compute_semantic_fact_key`.
+- Slots : `llm_chapter_evidence_slots` — ex. `relationships` / `house_ruler` / objet
+  **`descendant`** (plus maison 7 seule) ; `career` / `house_ruler` / objet `mc`.
+- **`PriorChapterUsage`** : `avoid_repeating` = cles semantiques des cores precedents +
+  aspects/dignites deja vus (tous tiers) ; overlap inter-chapitres sur `semantic_fact_key`.
+- **`chapter_excludes_candidate`** : pas de Soleil dans le pack `identity` ; pas de
+  `ruler:angle:mc:*` dans le pack `relationships` (`chapter_evidence_planner.rs`).
+- **`inject_blocking_requirements`** : `career_ruler_10`, `relationships_ruler_7`, etc.
+- Identity : cores ascendant + mars (pas de soleil) ; test `identity_pack_excludes_sun`.
+
+#### Prompt et post-traitement chapitre
+
+- Bloc `chapter_evidence_pack` (CORE / SUPPORTING / NUANCE), libelles i18n
+  (`to_chapter_evidence_pack_block`, `AstroLabelHumanizer`) — faits `ruler:angle:mc:*`,
+  `ruler:angle:descendant:*`, `ruler:dominant_house:house_N:*` → ex. FR
+  « Maître du Milieu du Ciel : Soleil » (plus de `Maitre (mc) : sun` dans le pack prompt).
+- **Soft cap supporting** : meme `semantic_fact_key` en supporting limitee a
+  `max_supporting_semantic_chapters` (defaut **3**) sur les chapitres precedents ;
+  exemption si le fait est requis par un `llm_evidence_requirements` bloquant
+  `house_ruler` du chapitre (`supporting_cap_exempt_for_chapter`).
+- **`ChapterWritingGuidance`** : 4 paragraphes, anti-trigrammes, liste obligatoire des
+  `fact_id` (core + supporting) pour `astro_basis`, connecteurs generiques deconseilles
+  en paragraphes 2–4.
+- Ordre post-LLM chapitre : `AstroBasisRoleNormalizer` → **`ChapterEvidenceBasisEnricher`**
+  → `AstroBasisRoleNormalizer` → `AstroLabelHumanizer` → `AstroBasisValidator` →
+  **`ChapterEvidenceCoherence`**.
+- **Enrichisseur** (`chapter_evidence_basis_enricher.rs`) : complete les **CORE** manquants
+  pour tous les chapitres ; complete aussi les **SUPPORTING** manquants sauf `identity`
+  (evite `repair_evidence` LLM quand seuls des `fact_id` manquent dans `astro_basis`).
+- **`ChapterEvidenceCoherence`** : repair LLM `repair_evidence` si orphelins dans le
+  `body` ou incoherence non couverte par l'enrichisseur.
+
+#### Qualite lecture (apres tous les chapitres)
+
+- **`ReadingOpeningDiversityValidator`** (`text_trigrams.rs`) : doublons d'amorces chapitre
+  (5 mots) et paragraphe (4 mots) ; connecteurs generiques FR (`par ailleurs`, `en synthèse`, …)
+  **ignores** en cross-chapitre (`is_generic_paragraph_opening`).
+- **`repair_opening_duplicates`** : jusqu'a 6 tours, tous les chapitres en violation
+  (`chapter_orchestrator.rs`, attempt `repair_opening`).
+- Erreurs : `PREMIUM_EVIDENCE_DIVERSITY_FAILED`, `ASTRO_BASIS_INVALID`, `READING_QUALITY_FAILED`.
+
+#### Tests et E2E
+
+- `tests/astral_llm_evidence_planner_tests.rs` : pool, packs,
+  `identity_pack_excludes_sun`, `relationships_pack_prefers_descendant_ruler_not_mc`,
+  `prompt_pack_humanizes_ruler_labels_in_french`, `sun_supporting_semantic_key_capped_at_three_chapters`, …
+- `tests/astral_llm_evidence_coherence_tests.rs`, `tests/astral_llm_astro_basis_tests.rs`
+- `cargo test -p astral_llm_application` (enrichisseur, trigrams, coherence unitaires)
+- E2E : `scripts/generate_premium_reading_e2e.ps1` — profil cible ~40–50 s, **6 steps
+  `generated`** (aucun `repair_evidence` / `repair_opening` si enrichisseur + prompts OK)
+- Prompts traces : `output/logs/prompts/{run_id}/*.txt` (`ASTRAL_LLM_PROMPT_LOG_DIR`)
+
+**Limites editoriales acceptees en prod** : amorces parfois artificielles (« En développant… », « En prenant en compte… ») ; prose parfois scolaire du fait de la densite des consignes chapitre — a traiter en optimisation style, pas en reouverture planner.
+
+Detail pipeline, roadmap optimisation : `Astral_llm_implementation.md`.
 
 ### i18n reponse LLM (2026-06-04)
 

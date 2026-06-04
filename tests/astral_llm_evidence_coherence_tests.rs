@@ -23,6 +23,7 @@ fn premium_career_drift_jupiter_in_body_rejected() {
         chapter_code: "career".into(),
         core: vec![InterpretiveEvidence {
             fact_id: "placement:mc:leo:house:10".into(),
+            semantic_fact_key: "placement:mc:leo:house:10".into(),
             kind_code: "placement".into(),
             family: EvidenceKindFamily::Placement,
             label: String::new(),
@@ -31,6 +32,7 @@ fn premium_career_drift_jupiter_in_body_rejected() {
             weight: 1.0,
             slot_eligibility: SlotEligibility::default(),
             object_code: Some("mc".into()),
+            sign_code: Some("leo".into()),
             house_number: Some(10),
         }],
         supporting: vec![],

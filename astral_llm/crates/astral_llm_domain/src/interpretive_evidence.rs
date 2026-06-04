@@ -80,6 +80,8 @@ pub struct SlotEligibility {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct InterpretiveEvidence {
     pub fact_id: String,
+    /// Cle interpretative canonique (diversite, avoid_repeating, overlap).
+    pub semantic_fact_key: String,
     pub kind_code: String,
     pub family: EvidenceKindFamily,
     pub label: String,
@@ -89,6 +91,8 @@ pub struct InterpretiveEvidence {
     pub slot_eligibility: SlotEligibility,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub object_code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sign_code: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub house_number: Option<u8>,
 }
@@ -109,6 +113,15 @@ impl ChapterEvidencePack {
             .chain(self.supporting.iter())
             .chain(self.nuance.iter())
             .map(|e| e.fact_id.as_str())
+            .collect()
+    }
+
+    pub fn all_semantic_keys(&self) -> Vec<&str> {
+        self.core
+            .iter()
+            .chain(self.supporting.iter())
+            .chain(self.nuance.iter())
+            .map(|e| e.semantic_fact_key.as_str())
             .collect()
     }
 
@@ -134,6 +147,35 @@ impl ChapterEvidencePack {
 
     pub fn contains_fact_id(&self, fact_id: &str) -> bool {
         self.all_fact_ids().contains(&fact_id)
+    }
+
+    pub fn contains_semantic_key(&self, key: &str) -> bool {
+        self.all_semantic_keys().contains(&key)
+    }
+
+    pub fn role_for_fact_id(&self, fact_id: &str, semantic_key: &str) -> Option<&'static str> {
+        if self.core.iter().any(|e| e.fact_id == fact_id || e.semantic_fact_key == semantic_key) {
+            return Some("core");
+        }
+        if self
+            .supporting
+            .iter()
+            .any(|e| e.fact_id == fact_id || e.semantic_fact_key == semantic_key)
+        {
+            return Some("supporting");
+        }
+        if self
+            .nuance
+            .iter()
+            .any(|e| e.fact_id == fact_id || e.semantic_fact_key == semantic_key)
+        {
+            return Some("nuance");
+        }
+        None
+    }
+
+    pub fn contains_fact_id_or_semantic(&self, fact_id: &str, semantic_key: &str) -> bool {
+        self.contains_fact_id(fact_id) || self.contains_semantic_key(semantic_key)
     }
 }
 
@@ -215,6 +257,8 @@ pub struct PremiumEvidencePolicy {
     pub max_supporting_evidence: u8,
     pub max_nuance_evidence: u8,
     pub max_avoid_repeating: u8,
+    /// Nombre max de chapitres ou la meme `semantic_fact_key` peut apparaitre en supporting.
+    pub max_supporting_semantic_chapters: u8,
 }
 
 impl Default for PremiumEvidencePolicy {
@@ -230,6 +274,7 @@ impl Default for PremiumEvidencePolicy {
             max_supporting_evidence: 4,
             max_nuance_evidence: 2,
             max_avoid_repeating: 5,
+            max_supporting_semantic_chapters: 3,
         }
     }
 }
@@ -260,11 +305,31 @@ pub struct EvidenceRequirement {
     pub severity: EvidenceRequirementSeverity,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RequirementAuditStatus {
+    Applied,
+    Failed,
+    NotApplicable,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RequirementAuditEntry {
+    pub requirement_code: String,
+    pub chapter_code: String,
+    pub status: RequirementAuditStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct EvidenceMetrics {
     pub total_unique_facts: u32,
+    pub total_unique_semantic_keys: u32,
     pub distinct_kind_families: u32,
     pub max_core_overlap_ratio: f32,
     pub domain_score_used_as_basis: bool,
     pub chapters_with_non_placement: u32,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub requirement_audit: Vec<RequirementAuditEntry>,
 }

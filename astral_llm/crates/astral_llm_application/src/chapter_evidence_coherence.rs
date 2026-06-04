@@ -61,7 +61,16 @@ impl ChapterEvidenceCoherence {
         pack.core
             .iter()
             .chain(pack.supporting.iter())
-            .filter(|e| !cited.contains(e.fact_id.as_str()))
+            .filter(|e| {
+                !cited.contains(e.fact_id.as_str())
+                    && !cited.iter().any(|id| {
+                        crate::evidence_fact_parse::compute_semantic_fact_key(
+                            id,
+                            &serde_json::json!({}),
+                            &std::collections::HashMap::new(),
+                        ) == e.semantic_fact_key
+                    })
+            })
             .map(|e| e.fact_id.clone())
             .collect()
     }
@@ -182,6 +191,7 @@ mod tests {
     fn evidence(id: &str) -> InterpretiveEvidence {
         InterpretiveEvidence {
             fact_id: id.into(),
+            semantic_fact_key: id.into(),
             kind_code: "placement".into(),
             family: EvidenceKindFamily::Placement,
             label: id.into(),
@@ -190,6 +200,7 @@ mod tests {
             weight: 1.0,
             slot_eligibility: SlotEligibility::default(),
             object_code: None,
+            sign_code: None,
             house_number: None,
         }
     }

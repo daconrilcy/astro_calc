@@ -1836,6 +1836,35 @@
           ],
           "interpretive_hint": "The angle mc in leo is routed through Sun, placed in Capricorn house 2."
         },
+        "descendant_ruler": {
+          "context_key": "angle:descendant:ruler",
+          "source_kind": "angle",
+          "source_code": "descendant",
+          "sign_code": "taurus",
+          "ruler_object_codes": [
+            "venus"
+          ],
+          "ruler_object_code": "venus",
+          "ruler_position_signal_key": "object_position:venus",
+          "ruler_house_number": 3,
+          "ruler_sign_code": "aquarius",
+          "interpretive_role": "relationship_angle_ruler",
+          "strength_context": [
+            "partnership_house"
+          ],
+          "ruler_sources": [
+            {
+              "object_code": "venus",
+              "reference_version_id": 1,
+              "astral_system_id": 1,
+              "astral_system_code": "traditional",
+              "dignity_type": "domicile",
+              "weight": 1.0,
+              "is_primary": true
+            }
+          ],
+          "interpretive_hint": "The angle descendant in taurus is routed through Venus, placed in Aquarius house 3."
+        },
         "dominant_house_rulers": [
           {
             "context_key": "dominant_house:house_2:ruler",

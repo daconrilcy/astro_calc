@@ -1,5 +1,7 @@
 //! Parse object_code / house depuis fact_id et raw_value.
 
+use std::collections::HashMap;
+
 pub fn object_code_from_fact_id(fact_id: &str) -> Option<String> {
     object_codes_from_fact_id(fact_id).into_iter().next()
 }
@@ -36,6 +38,7 @@ pub fn object_codes_from_fact_id(fact_id: &str) -> Vec<String> {
     match parts.first().copied() {
         Some("placement") => placement_object_code(&parts).into_iter().collect(),
         Some("angle") if parts.len() >= 2 => vec![parts[1].to_string()],
+        Some("ruler") if parts.len() >= 4 => vec![parts[parts.len() - 1].to_string()],
         Some("ruler") if parts.len() >= 3 && parts[1] == "ascendant" => vec!["ascendant".into()],
         Some("ruler") if parts.len() >= 2 => vec![parts[1].to_string()],
         Some("signal") if parts.len() >= 5 && parts[1] == "aspect" => {
@@ -104,9 +107,27 @@ mod tests {
             "placement"
         );
     }
+
+    #[test]
+    fn semantic_key_aligns_signal_and_placement_sun() {
+        let mut placements = HashMap::new();
+        placements.insert(
+            "sun".into(),
+            "placement:sun:capricorn:house:2".into(),
+        );
+        let signal = compute_semantic_fact_key(
+            "signal:object_position:sun",
+            &serde_json::json!({}),
+            &placements,
+        );
+        assert_eq!(signal, "placement:sun:capricorn:house:2");
+    }
 }
 
 pub fn house_number_from_fact(fact_id: &str, raw: &serde_json::Value) -> Option<u8> {
+    if let Some(h) = raw.get("source_house_number").and_then(|v| v.as_u64()) {
+        return u8::try_from(h).ok();
+    }
     if let Some(h) = raw.get("house").and_then(|v| v.as_u64()) {
         return u8::try_from(h).ok();
     }
@@ -138,4 +159,91 @@ pub fn fact_involves_house(fact_id: &str, raw: &serde_json::Value, house: u8) ->
 pub fn aspect_involves_object(fact_id: &str, label: &str, object: &str) -> bool {
     let blob = format!("{fact_id} {label}").to_lowercase();
     blob.contains(object)
+}
+
+pub fn sign_code_from_fact(fact_id: &str, raw: &serde_json::Value) -> Option<String> {
+    if let Some(s) = raw.get("sign").and_then(|v| v.as_str()) {
+        return Some(s.to_string());
+    }
+    if let Some(s) = raw.pointer("/evidence/sign_code").and_then(|v| v.as_str()) {
+        return Some(s.to_string());
+    }
+    let parts: Vec<&str> = fact_id.split(':').collect();
+    if parts.first() == Some(&"placement") && parts.len() >= 3 {
+        return Some(parts[2].to_string());
+    }
+    if parts.len() >= 5 && parts[1] == "angle" && parts[3] == "sign" {
+        return Some(parts[4].to_string());
+    }
+    None
+}
+
+/// Index objet -> fact_id placement canonique (premier gagnant).
+pub fn placement_index_by_object(facts: &[astral_llm_domain::NormalizedAstroFact]) -> HashMap<String, String> {
+    let mut map = HashMap::new();
+    for fact in facts {
+        if !fact.id.starts_with("placement:") {
+            continue;
+        }
+        if let Some(obj) = object_code_from_fact_id(&fact.id) {
+            map.entry(obj).or_insert_with(|| fact.id.clone());
+        }
+    }
+    map
+}
+
+/// Cle interpretative stable : aligne signal:object_position:* sur placement:* equivalent.
+pub fn compute_semantic_fact_key(
+    fact_id: &str,
+    raw: &serde_json::Value,
+    placement_by_object: &HashMap<String, String>,
+) -> String {
+    if fact_id.starts_with("placement:") || fact_id.starts_with("ruler:") {
+        return fact_id.to_string();
+    }
+    if let Some(obj) = fact_id.strip_prefix("signal:object_position:") {
+        if let Some(placement_id) = placement_by_object.get(obj) {
+            return placement_id.clone();
+        }
+        if let Some(key) = placement_key_from_evidence(obj, raw) {
+            return key;
+        }
+        return format!("object_position:{obj}");
+    }
+    if fact_id.starts_with("signal:aspect:") {
+        let parts: Vec<&str> = fact_id.split(':').collect();
+        if parts.len() >= 5 {
+            let mut pair = [parts[2].to_string(), parts[3].to_string()];
+            pair.sort();
+            return format!("aspect:{}:{}:{}", pair[0], pair[1], parts[4]);
+        }
+    }
+    if fact_id.starts_with("signal:angle:") {
+        let parts: Vec<&str> = fact_id.split(':').collect();
+        if parts.len() >= 5 && parts[3] == "sign" {
+            return format!("angle:{}:{}", parts[2], parts[4]);
+        }
+    }
+    if fact_id.starts_with("angle:") {
+        return fact_id.to_string();
+    }
+    fact_id.to_string()
+}
+
+fn placement_key_from_evidence(object: &str, raw: &serde_json::Value) -> Option<String> {
+    let evidence = raw.get("evidence")?;
+    let sign = evidence.get("sign_code").and_then(|v| v.as_str())?;
+    let house = evidence.get("house_number").and_then(|v| v.as_u64())?;
+    Some(format!("placement:{object}:{sign}:house:{house}"))
+}
+
+pub fn matches_requirement_object(
+    fact_id: &str,
+    object_code: Option<&str>,
+    code: &str,
+) -> bool {
+    if fact_id.contains(&format!(":{code}:")) || fact_id.ends_with(&format!(":{code}")) {
+        return true;
+    }
+    object_code == Some(code)
 }

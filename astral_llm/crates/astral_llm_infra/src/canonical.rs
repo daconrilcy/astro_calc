@@ -166,10 +166,12 @@ async fn load_evidence_from_db(pool: &sqlx::PgPool, catalog: &mut CanonicalCatal
         i32,
         i32,
         i32,
+        i32,
     )>(
         "SELECT product_code, min_evidence_per_chapter, min_distinct_kind_families, \
          min_non_placement_if_available, max_core_overlap_ratio, domain_score_counts_in_minimum, \
-         max_core_evidence, max_supporting_evidence, max_nuance_evidence, max_avoid_repeating \
+         max_core_evidence, max_supporting_evidence, max_nuance_evidence, max_avoid_repeating, \
+         COALESCE(max_supporting_semantic_chapters, 3) \
          FROM llm_premium_evidence_policies WHERE is_active = true AND product_code = 'natal_premium' LIMIT 1",
     )
     .fetch_optional(pool)
@@ -187,6 +189,7 @@ async fn load_evidence_from_db(pool: &sqlx::PgPool, catalog: &mut CanonicalCatal
                 max_supporting_evidence: r.7 as u8,
                 max_nuance_evidence: r.8 as u8,
                 max_avoid_repeating: r.9 as u8,
+                max_supporting_semantic_chapters: r.10 as u8,
             };
         }
     }

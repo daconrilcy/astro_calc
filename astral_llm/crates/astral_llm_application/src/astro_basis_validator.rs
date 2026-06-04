@@ -163,7 +163,12 @@ impl AstroBasisValidator {
                 ));
             }
             if let Some(pack) = pack {
-                if !pack.contains_fact_id(fact_id) {
+                let semantic_key = crate::evidence_fact_parse::compute_semantic_fact_key(
+                    fact_id,
+                    &serde_json::json!({}),
+                    &std::collections::HashMap::new(),
+                );
+                if !pack.contains_fact_id_or_semantic(fact_id, &semantic_key) {
                     return Err(GenerationError::with_details(
                         GenerationErrorCode::AstroBasisInvalid,
                         format!(
