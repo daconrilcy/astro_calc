@@ -43,4 +43,54 @@ impl ExecutionAudit {
             error_code,
         });
     }
+
+    /// Somme des tokens enregistrés sur chaque step (chapitres + summary).
+    pub fn aggregate_token_usage(&self) -> (Option<i32>, Option<i32>) {
+        let input: Option<u32> = self
+            .steps
+            .iter()
+            .filter_map(|s| s.input_tokens)
+            .reduce(|a, b| a.saturating_add(b));
+        let output: Option<u32> = self
+            .steps
+            .iter()
+            .filter_map(|s| s.output_tokens)
+            .reduce(|a, b| a.saturating_add(b));
+        (
+            input.map(|v| i32::try_from(v).unwrap_or(i32::MAX)),
+            output.map(|v| i32::try_from(v).unwrap_or(i32::MAX)),
+        )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use astral_llm_domain::ChapterGenerationStatus;
+
+    #[test]
+    fn aggregates_tokens_from_all_steps() {
+        let mut audit = ExecutionAudit::new("run-1");
+        audit.record_chapter_step(
+            "identity",
+            "openai",
+            "gpt-4.1",
+            ChapterGenerationStatus::Generated,
+            Some(100),
+            Some(50),
+            1000,
+            None,
+        );
+        audit.record_chapter_step(
+            "summary",
+            "openai",
+            "gpt-4.1",
+            ChapterGenerationStatus::Generated,
+            Some(200),
+            Some(30),
+            500,
+            None,
+        );
+        assert_eq!(audit.aggregate_token_usage(), (Some(300), Some(80)));
+    }
 }

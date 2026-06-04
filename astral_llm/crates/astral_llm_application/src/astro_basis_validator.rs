@@ -1,8 +1,12 @@
+use std::collections::HashSet;
+
 use astral_llm_domain::{
     astro_fact::{AstroFactUsage, NormalizedAstroFacts},
     generation_response::ReadingChapter,
+    interpretive_evidence::ChapterEvidencePack,
     GenerationError, GenerationErrorCode, ProductGenerationPolicy,
 };
+use astral_llm_infra::bootstrap_astro_basis_roles;
 
 pub struct AstroBasisValidator;
 
@@ -23,9 +27,19 @@ impl AstroBasisValidator {
         facts: &NormalizedAstroFacts,
         policy: &ProductGenerationPolicy,
     ) -> Result<(), GenerationError> {
+        Self::validate_chapter_with_pack(chapter, facts, None, policy)
+    }
+
+    pub fn validate_chapter_with_pack(
+        chapter: &ReadingChapter,
+        facts: &NormalizedAstroFacts,
+        pack: Option<&ChapterEvidencePack>,
+        policy: &ProductGenerationPolicy,
+    ) -> Result<(), GenerationError> {
         Self::validate_chapter_with_min_refs(
             chapter,
             facts,
+            pack,
             policy.min_astro_basis_refs_per_chapter,
             policy.min_interpretive_astro_basis_refs_per_chapter,
         )
@@ -34,10 +48,13 @@ impl AstroBasisValidator {
     pub fn validate_chapter_with_min_refs(
         chapter: &ReadingChapter,
         facts: &NormalizedAstroFacts,
+        pack: Option<&ChapterEvidencePack>,
         min_refs: u8,
         min_interpretive_refs: u8,
     ) -> Result<(), GenerationError> {
-        Self::validate_fact_ids(chapter, facts)?;
+        Self::validate_fact_ids(chapter, facts, pack)?;
+        let allowed_roles = Self::allowed_basis_roles();
+        Self::validate_interpretive_roles(chapter, &allowed_roles)?;
 
         let valid_refs = chapter
             .astro_basis
@@ -93,24 +110,70 @@ impl AstroBasisValidator {
         Ok(())
     }
 
+    fn validate_interpretive_roles(
+        chapter: &ReadingChapter,
+        allowed: &HashSet<String>,
+    ) -> Result<(), GenerationError> {
+        for basis in &chapter.astro_basis {
+            let role = basis.interpretive_role.trim().to_lowercase();
+            if !allowed.contains(&role) {
+                return Err(GenerationError::with_details(
+                    GenerationErrorCode::AstroBasisInvalid,
+                    format!(
+                        "chapter '{}' has invalid interpretive_role '{}'",
+                        chapter.code, basis.interpretive_role
+                    ),
+                    serde_json::json!({
+                        "chapter": chapter.code,
+                        "interpretive_role": basis.interpretive_role,
+                        "allowed": allowed.iter().collect::<Vec<_>>(),
+                    }),
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    fn allowed_basis_roles() -> HashSet<String> {
+        bootstrap_astro_basis_roles()
+    }
+
     fn validate_fact_ids(
         chapter: &ReadingChapter,
         facts: &NormalizedAstroFacts,
+        pack: Option<&ChapterEvidencePack>,
     ) -> Result<(), GenerationError> {
         for basis in &chapter.astro_basis {
-            if let Some(fact_id) = &basis.fact_id {
-                if !facts.contains_fact(fact_id) {
+            let Some(fact_id) = &basis.fact_id else { continue };
+            if fact_id.starts_with("domain_score:") {
+                continue;
+            }
+            if !facts.contains_fact(fact_id) {
+                return Err(GenerationError::with_details(
+                    GenerationErrorCode::AstroBasisInvalid,
+                    format!(
+                        "chapter '{}' cites unknown astro fact_id: {fact_id}",
+                        chapter.code
+                    ),
+                    serde_json::json!({
+                        "chapter": chapter.code,
+                        "fact_id": fact_id,
+                        "available_facts": facts.fact_ids(),
+                    }),
+                ));
+            }
+            if let Some(pack) = pack {
+                if !pack.contains_fact_id(fact_id) {
                     return Err(GenerationError::with_details(
-                        GenerationErrorCode::SchemaValidationFailed,
+                        GenerationErrorCode::AstroBasisInvalid,
                         format!(
-                            "chapter '{}' cites unknown astro fact_id: {fact_id}",
+                            "chapter '{}' cites fact_id not in chapter evidence pack: {fact_id}",
                             chapter.code
                         ),
                         serde_json::json!({
                             "chapter": chapter.code,
                             "fact_id": fact_id,
-                            "available_facts": facts.fact_ids(),
-                            "interpretive_facts": facts.interpretive_fact_ids(),
+                            "pack_fact_ids": pack.all_fact_ids(),
                         }),
                     ));
                 }
@@ -166,6 +229,7 @@ mod tests {
                 NormalizedAstroFact {
                     id: "domain_score:identity".into(),
                     kind: AstroFactKind::DomainScore,
+                    kind_code: "domain_score".into(),
                     usage: AstroFactUsage::DomainSelection,
                     label: "Score identity".into(),
                     value: serde_json::json!(0.8),
@@ -175,6 +239,7 @@ mod tests {
                 NormalizedAstroFact {
                     id: "placement:sun:capricorn:house:2".into(),
                     kind: AstroFactKind::PlanetPosition,
+                    kind_code: "placement".into(),
                     usage: AstroFactUsage::InterpretiveBasis,
                     label: "Sun Capricorn H2".into(),
                     value: serde_json::json!({}),
@@ -185,18 +250,18 @@ mod tests {
         }
     }
 
-    fn chapter_with_basis(fact_ids: Vec<&str>) -> ReadingChapter {
+    fn chapter_with_basis(fact_ids: Vec<(&str, &str)>) -> ReadingChapter {
         ReadingChapter {
             code: "identity".into(),
             title: "Identite".into(),
             body: "body".into(),
             astro_basis: fact_ids
                 .into_iter()
-                .map(|id| astral_llm_domain::AstroBasisItem {
+                .map(|(id, role)| astral_llm_domain::AstroBasisItem {
                     fact_id: Some(id.to_string()),
                     label: None,
                     factor: id.to_string(),
-                    interpretive_role: "signal".into(),
+                    interpretive_role: role.to_string(),
                 })
                 .collect(),
             confidence: ConfidenceLevel::Medium,
@@ -207,7 +272,7 @@ mod tests {
     #[test]
     fn premium_rejects_domain_score_only() {
         let facts = sample_facts();
-        let chapter = chapter_with_basis(vec!["domain_score:identity"]);
+        let chapter = chapter_with_basis(vec![("domain_score:identity", "domain_score")]);
         let policy = ProductGenerationPolicy::bootstrap_premium();
         assert!(AstroBasisValidator::validate_chapter(&chapter, &facts, &policy).is_err());
     }
@@ -215,7 +280,10 @@ mod tests {
     #[test]
     fn premium_accepts_domain_score_plus_placement() {
         let facts = sample_facts();
-        let chapter = chapter_with_basis(vec!["domain_score:identity", "placement:sun:capricorn:house:2"]);
+        let chapter = chapter_with_basis(vec![
+            ("domain_score:identity", "domain_score"),
+            ("placement:sun:capricorn:house:2", "core"),
+        ]);
         let policy = ProductGenerationPolicy::bootstrap_premium();
         assert!(AstroBasisValidator::validate_chapter(&chapter, &facts, &policy).is_ok());
     }
@@ -223,7 +291,7 @@ mod tests {
     #[test]
     fn basic_allows_domain_score_only() {
         let facts = sample_facts();
-        let chapter = chapter_with_basis(vec!["domain_score:identity"]);
+        let chapter = chapter_with_basis(vec![("domain_score:identity", "domain_score")]);
         let policy = ProductGenerationPolicy::bootstrap_basic();
         assert!(AstroBasisValidator::validate_chapter(&chapter, &facts, &policy).is_ok());
     }

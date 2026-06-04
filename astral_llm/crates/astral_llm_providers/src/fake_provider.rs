@@ -97,26 +97,39 @@ fn build_chapter_response(request: &ProviderGenerationRequest) -> ChapterProvide
         .iter()
         .find(|id| !id.starts_with("domain_score:"))
         .cloned()
-        .unwrap_or_else(|| "placement:sun:capricorn:house:2".into());
+        .unwrap_or_else(|| {
+            available
+                .first()
+                .cloned()
+                .unwrap_or_else(|| "placement:sun:capricorn:house:2".into())
+        });
+    let supporting = available
+        .iter()
+        .find(|id| *id != interpretive.as_str() && !id.starts_with("domain_score:"))
+        .cloned();
+
+    let mut basis = vec![
+        astral_llm_domain::AstroBasisItem {
+            fact_id: Some(interpretive),
+            label: None,
+            factor: "placement".into(),
+            interpretive_role: "core".into(),
+        },
+    ];
+    if let Some(sid) = supporting {
+        basis.push(astral_llm_domain::AstroBasisItem {
+            fact_id: Some(sid),
+            label: None,
+            factor: "supporting".into(),
+            interpretive_role: "supporting".into(),
+        });
+    }
 
     ChapterProviderResponse {
         code: code.clone(),
         title: code.replace('_', " "),
         body: CHAPTER_BODY.to_string(),
-        astro_basis: vec![
-            astral_llm_domain::AstroBasisItem {
-                fact_id: Some(format!("domain_score:{code}")),
-                label: Some(format!("Score domaine {code}")),
-                factor: code.clone(),
-                interpretive_role: "signal de selection du domaine".into(),
-            },
-            astral_llm_domain::AstroBasisItem {
-                fact_id: Some(interpretive),
-                label: None,
-                factor: "placement".into(),
-                interpretive_role: "base interpretative du chapitre".into(),
-            },
-        ],
+        astro_basis: basis,
         confidence: ConfidenceLevel::Medium,
     }
 }
@@ -124,21 +137,73 @@ fn build_chapter_response(request: &ProviderGenerationRequest) -> ChapterProvide
 fn extract_fact_ids_from_messages(messages: &[crate::types::PromptMessage]) -> Vec<String> {
     let mut ids = Vec::new();
     for message in messages {
-        if let Some(start) = message.content.find("\"facts\"") {
-            let slice = &message.content[start..];
-            for part in slice.split("\"id\":") {
-                if let Some(rest) = part.strip_prefix(' ') {
-                    let trimmed = rest.trim_start_matches('"');
-                    if let Some(end) = trimmed.find('"') {
-                        ids.push(trimmed[..end].to_string());
-                    }
-                }
-            }
+        if let Ok(value) = serde_json::from_str::<serde_json::Value>(&message.content) {
+            collect_fact_ids_from_json(&value, &mut ids);
+            continue;
         }
+        collect_fact_ids_from_text(&message.content, &mut ids);
     }
     ids.sort();
     ids.dedup();
     ids
+}
+
+fn collect_fact_ids_from_json(value: &serde_json::Value, ids: &mut Vec<String>) {
+    if value.get("_type").and_then(|v| v.as_str()) == Some("chapter_evidence_pack") {
+        for key in ["core", "supporting", "nuance"] {
+            if let Some(arr) = value.get(key).and_then(|v| v.as_array()) {
+                for item in arr {
+                    if let Some(id) = item.get("fact_id").and_then(|v| v.as_str()) {
+                        ids.push(id.to_string());
+                    }
+                }
+            }
+        }
+        return;
+    }
+    if let Some(arr) = value.get("facts").and_then(|v| v.as_array()) {
+        for item in arr {
+            if let Some(id) = item.get("id").and_then(|v| v.as_str()) {
+                ids.push(id.to_string());
+            }
+        }
+    }
+}
+
+fn collect_fact_ids_from_text(content: &str, ids: &mut Vec<String>) {
+    if let Some(json) = extract_astro_data_json(content) {
+        collect_fact_ids_from_json(&json, ids);
+        return;
+    }
+    if content.contains("chapter_evidence_pack") {
+        for part in content.split("\"fact_id\":") {
+            let trimmed = part.trim_start_matches([' ', ':']).trim_start_matches('"');
+            if let Some(end) = trimmed.find('"') {
+                let id = trimmed[..end].trim();
+                if !id.is_empty() {
+                    ids.push(id.to_string());
+                }
+            }
+        }
+        return;
+    }
+    if let Some(start) = content.find("\"facts\"") {
+        let slice = &content[start..];
+        for part in slice.split("\"id\":") {
+            let trimmed = part.trim_start_matches([' ', ':']).trim_start_matches('"');
+            if let Some(end) = trimmed.find('"') {
+                ids.push(trimmed[..end].to_string());
+            }
+        }
+    }
+}
+
+fn extract_astro_data_json(content: &str) -> Option<serde_json::Value> {
+    let start = content.find("--- BEGIN ASTRO DATA")?;
+    let end = content.find("--- END ASTRO DATA")?;
+    let slice = content.get(start..end)?;
+    let json_start = slice.find('{')?;
+    serde_json::from_str(slice[json_start..].trim()).ok()
 }
 
 fn build_full_reading(request: &ProviderGenerationRequest) -> NatalReadingResponse {
@@ -161,9 +226,7 @@ fn build_full_reading(request: &ProviderGenerationRequest) -> NatalReadingRespon
             safety_flags: vec![],
         }],
         legal: LegalBlock {
-            disclaimer: "Cette lecture est une interpretation symbolique et ne remplace aucun \
-                          avis medical, psychologique, juridique ou financier."
-                .to_string(),
+            disclaimer: astral_llm_domain::default_legal_disclaimer("fr", true),
         },
         quality: QualityMetadata {
             used_provider: "fake".to_string(),
@@ -183,6 +246,25 @@ mod tests {
     use astral_llm_domain::provider::ReasoningEffort;
     use crate::types::{GenerationMetadata, PromptMessage, PromptRole};
     use std::time::Duration;
+
+    #[test]
+    fn extracts_fact_ids_from_evidence_pack_message() {
+        let pack = serde_json::json!({
+            "_type": "chapter_evidence_pack",
+            "core": [{ "fact_id": "signal:object_position:venus" }],
+            "supporting": [],
+            "nuance": []
+        });
+        let content = format!(
+            "task\n\n--- BEGIN ASTRO DATA (read-only) ---\n{}\n--- END ASTRO DATA ---\n",
+            serde_json::to_string_pretty(&pack).unwrap()
+        );
+        let ids = extract_fact_ids_from_messages(&[PromptMessage {
+            role: PromptRole::User,
+            content,
+        }]);
+        assert!(ids.contains(&"signal:object_position:venus".to_string()));
+    }
 
     #[tokio::test]
     async fn fake_provider_returns_chapter_json() {

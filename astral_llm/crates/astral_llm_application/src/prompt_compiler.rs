@@ -1,10 +1,14 @@
 use std::path::{Path, PathBuf};
 
-use astral_llm_domain::{GenerateReadingRequest, NormalizedAstroFacts, SafetyPolicy};
+use astral_llm_domain::{
+    interpretive_evidence::ChapterEvidencePack, GenerateReadingRequest, NormalizedAstroFacts,
+    SafetyPolicy,
+};
 use astral_llm_infra::SharedCanonicalCatalog;
 
 use crate::astro_payload_normalizer::AstroPayloadNormalizer;
 use crate::payload_sanitizer::sanitize_custom_instructions;
+use crate::writing_language::WritingLanguageDirective;
 
 #[derive(Debug, Clone)]
 pub struct PromptBundle {
@@ -24,6 +28,7 @@ pub struct PromptCompilationInput<'a> {
     pub astro_facts: &'a NormalizedAstroFacts,
     pub selected_domains: &'a [String],
     pub chapter_code: Option<&'a str>,
+    pub chapter_evidence_pack: Option<&'a ChapterEvidencePack>,
     pub catalog: &'a SharedCanonicalCatalog,
 }
 
@@ -46,7 +51,13 @@ impl PromptCompiler {
         let base_dir = self.prompts_root.join(&family).join(&version);
 
         let system = read_template(&base_dir.join("system.md"))?;
-        let task = read_template(&base_dir.join("task.md"))?;
+        let mut task = read_template(&base_dir.join("task.md"))?;
+        if input.chapter_evidence_pack.is_some() {
+            if let Ok(structure) = read_template(&base_dir.join("chapter_structure.md")) {
+                task.push_str("\n\n");
+                task.push_str(&structure);
+            }
+        }
         let format = read_template(&base_dir.join("format.md"))?;
         let safety = read_template(&base_dir.join("safety.md"))?;
 
@@ -57,15 +68,25 @@ impl PromptCompiler {
             .map(|c| format!("Focus chapter code: {c}"))
             .unwrap_or_default();
 
-        let data_payload = if let Some(chapter_code) = input.chapter_code {
+        let data_payload = if let Some(pack) = input.chapter_evidence_pack {
+            AstroPayloadNormalizer::to_chapter_evidence_pack_block(
+                pack,
+                input.catalog,
+                &input.request.product_context.user_language,
+                input.astro_facts,
+            )
+        } else if let Some(chapter_code) = input.chapter_code {
             AstroPayloadNormalizer::to_chapter_prompt_data_block(input.astro_facts, chapter_code)
         } else {
             AstroPayloadNormalizer::to_prompt_data_block(input.astro_facts)
         };
 
+        let language_block =
+            WritingLanguageDirective::prompt_block(input.catalog, &input.request.product_context.user_language);
+
         Ok(PromptBundle {
             system_instructions: format!(
-                "{system}\n\n{profile_block}\n\nDomains: {domain_block}\n{chapter_hint}"
+                "{system}\n\n{language_block}\n\n{profile_block}\n\nDomains: {domain_block}\n{chapter_hint}"
             ),
             task_instructions: task,
             format_instructions: format,

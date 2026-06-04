@@ -11,9 +11,11 @@ use astral_llm_providers::{GenerationMetadata, PromptMessage, PromptRole, Provid
 
 use crate::engine_defaults::ResolvedEngineParams;
 use crate::provider_router::ProviderRouter;
+use crate::prompt_trace;
 use crate::provider_schema_compiler::ProviderSchemaCompiler;
 use crate::response_validator::ResponseValidator;
 use crate::safety_guard::SafetyGuard;
+use crate::writing_language::WritingLanguageDirective;
 
 use astral_llm_domain::chapter_orchestration::READING_SUMMARY_STEP_CODE;
 
@@ -29,6 +31,12 @@ const BANNED_SUMMARY_PATTERNS: &[&str] = &[
     "pipeline technique",
     "placeholder",
 ];
+
+pub struct SummarySynthesisResult {
+    pub summary: ReadingSummary,
+    pub input_tokens: Option<u32>,
+    pub output_tokens: Option<u32>,
+}
 
 pub struct SummarySynthesizer<'a> {
     router: &'a ProviderRouter,
@@ -56,8 +64,16 @@ impl<'a> SummarySynthesizer<'a> {
         engine: &ResolvedEngineParams,
         safety_policy: &SafetyPolicy,
         run_id: &str,
-    ) -> Result<ReadingSummary, GenerationError> {
-        let messages = build_summary_messages(request, chapters);
+    ) -> Result<SummarySynthesisResult, GenerationError> {
+        let messages = build_summary_messages(request, chapters, &self.catalog);
+        prompt_trace::log_provider_messages(
+            run_id,
+            Some(READING_SUMMARY_STEP_CODE),
+            None,
+            None,
+            Some("summary"),
+            &messages,
+        );
         let canonical_schema = self
             .validator
             .schema_registry()
@@ -132,9 +148,16 @@ impl<'a> SummarySynthesizer<'a> {
             )
         })?;
 
-        Ok(ReadingSummary {
-            title: summary.title,
-            short_text: summary.short_text,
+        let input_tokens = route.response.usage.as_ref().map(|u| u.input_tokens);
+        let output_tokens = route.response.usage.as_ref().map(|u| u.output_tokens);
+
+        Ok(SummarySynthesisResult {
+            summary: ReadingSummary {
+                title: summary.title,
+                short_text: summary.short_text,
+            },
+            input_tokens,
+            output_tokens,
         })
     }
 }
@@ -172,8 +195,10 @@ pub fn validate_summary_content(summary: &SummaryProviderResponse) -> Result<(),
 fn build_summary_messages(
     request: &GenerateReadingRequest,
     chapters: &[ReadingChapter],
+    catalog: &SharedCanonicalCatalog,
 ) -> Vec<PromptMessage> {
-    let language = &request.product_context.user_language;
+    let language_block =
+        WritingLanguageDirective::prompt_block(catalog, &request.product_context.user_language);
     let chapter_digest: Vec<serde_json::Value> = chapters
         .iter()
         .map(|c| {
@@ -186,7 +211,8 @@ fn build_summary_messages(
         .collect();
 
     let system = format!(
-        "You write a concise, personalized natal reading summary in {language}. \
+        "{language_block}\n\n\
+         Write a concise, personalized natal reading summary. \
          Output JSON with title and short_text only. \
          The summary must synthesize dominant themes from the chapter excerpts — \
          never mention pipelines, generation modes, or technical process."
@@ -195,7 +221,7 @@ fn build_summary_messages(
     let user = format!(
         "Product: {}\nAudience: {:?}\n\nChapters:\n{}\n\n\
          Write title (one evocative line) and short_text (2-3 sentences, symbolic framing, \
-         no medical/legal/financial advice). Language: {language}.",
+         no medical/legal/financial advice).",
         request.product_context.product_code,
         request.product_context.audience_level,
         serde_json::to_string_pretty(&chapter_digest).unwrap_or_default(),

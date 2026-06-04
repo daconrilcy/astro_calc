@@ -155,6 +155,10 @@ async fn generate_chapter_orchestrated_multi_domain() {
     request.engine.domain_count = Some(2);
     request.astrologer_profile.preferred_domains =
         vec!["identity".into(), "relationships".into()];
+    let golden = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../tests/golden/natal_payload_v13_paris_1990.json");
+    let rich = std::fs::read_to_string(&golden).expect("golden");
+    request.astro_result.data = serde_json::from_str(&rich).expect("parse golden");
 
     let response = use_case.execute(request).await;
     match response {

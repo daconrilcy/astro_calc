@@ -9,6 +9,10 @@ use astral_llm_domain::{
     AstroCalculationPayload, AstrologerProfile, PrivacyPolicy, SafetyPolicy,
 };
 
+use astral_llm_infra::{
+    bootstrap_astro_object_labels, bootstrap_zodiac_sign_labels, CanonicalCatalog,
+};
+
 use crate::astro_payload_normalizer::AstroPayloadNormalizer;
 use crate::prompt_compiler::{PromptCompilationInput, PromptCompiler};
 
@@ -38,7 +42,12 @@ pub fn assert_compiled_prompt_is_safe(prompts_root: &std::path::Path) -> Result<
         }),
     };
 
-    let facts = AstroPayloadNormalizer::normalize(&payload, &privacy)
+    let catalog = CanonicalCatalog {
+        astro_object_labels: bootstrap_astro_object_labels(),
+        zodiac_sign_labels: bootstrap_zodiac_sign_labels(),
+        ..CanonicalCatalog::default()
+    };
+    let facts = AstroPayloadNormalizer::normalize(&payload, &privacy, &catalog, "fr")
         .map_err(|e| e.to_string())?;
 
     let request = GenerateReadingRequest {
@@ -93,6 +102,7 @@ pub fn assert_compiled_prompt_is_safe(prompts_root: &std::path::Path) -> Result<
             astro_facts: &facts,
             selected_domains: &["identity".into()],
             chapter_code: None,
+            chapter_evidence_pack: None,
             catalog: &catalog,
         })
         .map_err(|e| format!("compile failed: {e}"))?;
@@ -103,6 +113,10 @@ pub fn assert_compiled_prompt_is_safe(prompts_root: &std::path::Path) -> Result<
         .map(|m| m.content.as_str())
         .collect::<Vec<_>>()
         .join("\n");
+
+    if !full_prompt.contains("OUTPUT_LANGUAGE") {
+        return Err("compiled prompt missing OUTPUT_LANGUAGE block".into());
+    }
 
     for forbidden in FORBIDDEN_SUBSTRINGS {
         if full_prompt.to_lowercase().contains(&forbidden.to_lowercase()) {

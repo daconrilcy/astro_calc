@@ -5,6 +5,8 @@ use std::sync::OnceLock;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
 
+use crate::config::env_bool;
+
 static LOG_GUARD: OnceLock<WorkerGuard> = OnceLock::new();
 
 pub fn init_tracing() {
@@ -57,14 +59,23 @@ fn build_filter() -> EnvFilter {
             return filter;
         }
     }
+    let prompt_directive = if env_bool("ASTRAL_LLM_LOG_COMPILED_PROMPTS", true) {
+        ",astral_llm.prompt=debug"
+    } else {
+        ""
+    };
     if let Ok(level) = std::env::var("ASTRAL_LLM_LOG_LEVEL") {
-        let directive = format!("{level},astral_llm_api=debug,astral_llm.generation=debug,astral_llm.provider=debug");
+        let directive = format!(
+            "{level},astral_llm_api=debug,astral_llm.generation=debug,astral_llm.provider=debug{prompt_directive}"
+        );
         if let Ok(filter) = EnvFilter::try_new(directive) {
             return filter;
         }
     }
-    EnvFilter::try_new("info,astral_llm_api=debug,astral_llm.generation=debug,astral_llm.provider=debug")
-        .unwrap_or_else(|_| EnvFilter::new("info"))
+    EnvFilter::try_new(format!(
+        "info,astral_llm_api=debug,astral_llm.generation=debug,astral_llm.provider=debug{prompt_directive}"
+    ))
+    .unwrap_or_else(|_| EnvFilter::new("info"))
 }
 
 fn log_format_is_json() -> bool {

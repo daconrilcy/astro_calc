@@ -71,7 +71,8 @@ impl SchemaRegistry {
 
     fn register_chapter_provider_v1(&mut self) {
         let schema = schema_for!(ChapterProviderResponse);
-        let value = serde_json::to_value(schema).expect("schema serializable");
+        let mut value = serde_json::to_value(schema).expect("schema serializable");
+        patch_chapter_interpretive_role_enum(&mut value);
         let provider_schema = strip_schema_for_provider(&value);
         let validator = JSONSchema::compile(&value).expect("valid schema");
         self.schemas
@@ -100,6 +101,18 @@ impl Default for SchemaRegistry {
     fn default() -> Self {
         Self::new()
     }
+}
+
+fn patch_chapter_interpretive_role_enum(schema: &mut serde_json::Value) {
+    let Some(props) = schema
+        .pointer_mut("/properties/astro_basis/items/properties/interpretive_role")
+    else {
+        return;
+    };
+    *props = serde_json::json!({
+        "type": "string",
+        "enum": ["core", "supporting", "nuance", "domain_score"]
+    });
 }
 
 fn strip_schema_for_provider(schema: &serde_json::Value) -> serde_json::Value {

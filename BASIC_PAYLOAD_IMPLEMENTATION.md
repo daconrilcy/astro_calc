@@ -19,7 +19,7 @@ Ce document decrit l'implementation actuelle du payload moteur route par
 
 ## Objectif
 
-Etat courant au 2026-06-03 : le moteur Rust reste dans le perimetre du calcul
+Etat courant au 2026-06-04 : le moteur Rust reste dans le perimetre du calcul
 astrologique et des cles d'interpretation. Le payload route basic expose les
 faits calcules, les contextes astrologiques, les dignites essentielles et
 accidentelles (MVP), les orbes d'aspects majeurs canoniques (3F), les angles,
@@ -3052,6 +3052,33 @@ Script : `astral_llm/crates/astral_llm_infra/sql/llm_generation_runs.sql`
 ### Tests
 
 - `tests/astral_llm_tests.rs` — integration FakeProvider (single_pass, chapter_orchestrated, safety)
+- `tests/astral_llm_evidence_planner_tests.rs` — pool, packs, exclusions core inter-chapitres
+- `tests/astral_llm_evidence_coherence_tests.rs` — coherence pack / corps / astro_basis
+- `tests/astral_llm_astro_basis_tests.rs` — Premium minimal vs golden riche
 - Tests unitaires dans les crates application et providers
+
+### Premium — Interpretive Evidence Planner (2026-06-04)
+
+Couche entre `AstroPayloadNormalizer` et `PromptCompiler` pour `natal_premium` :
+
+- Tables canoniques : `astral_llm/crates/astral_llm_infra/sql/llm_evidence_canonical.sql` (bootstrap Rust si DB vide)
+- `InterpretiveEvidenceBuilder` → `ChapterEvidencePlanner` → `EvidenceDiversityValidator` (pre-LLM) ; `ChapterEvidenceCoherence` (post-LLM, repair)
+- Prompt chapitre : bloc `chapter_evidence_pack` (CORE / SUPPORTING / NUANCE), libelles humanises via `to_chapter_evidence_pack_block` + catalogue i18n
+- **Exclusions inter-chapitres** : seuls les `fact_id` deja **core** dans un chapitre precedent sont retires des slots ; supporting/nuance d'un autre chapitre peuvent revenir (ex. Saturne)
+- **`avoid_repeating`** : derniers cores precedents (consigne redaction + validation slots actifs) ; plus de `prune` global sur tout l'historique
+- **`fill_minimums`** : priorite familles manquantes (aspect, house_ruler, dignite) ; validation adaptative si pool epuise (evite 422 sur charts riches)
+- Erreurs : `PREMIUM_EVIDENCE_DIVERSITY_FAILED`, `ASTRO_BASIS_INVALID` (fact_id hors pack)
+- Post-LLM (ordre) : `AstroBasisRoleNormalizer` → `ChapterEvidenceBasisEnricher` → `AstroBasisRoleNormalizer` → `AstroLabelHumanizer` → validateurs
+- **Roles** : `evidence_fact_parse::fact_id_role_bucket` — alias `object_code` uniquement dans la meme famille (`signal:object_position:sun` ≠ `placement:sun:*`)
+- Fixtures requete : `request-premium-minimal.json` (echec attendu), `request-premium-rich.json` (golden v13 Paris)
+- E2E : `scripts/generate_premium_reading_e2e.ps1` ; prompts : `output/logs/prompts/{run_id}/*.txt` (`ASTRAL_LLM_PROMPT_LOG_DIR`)
+
+### i18n reponse LLM (2026-06-04)
+
+- Tables : `llm_writing_locales`, `llm_astro_basis_roles`, `llm_aspect_type_labels` (`llm_i18n_canonical.sql`)
+- Prompt : `WritingLanguageDirective` (fr/en/es/de) ; bloc ASTRO DATA : libelles humanises (signes, aspects, dignites) selon `user_language`
+- Post-LLM : `AstroLabelHumanizer`, `AstroBasisRoleNormalizer` (2 passages autour de l'enrichisseur)
+- Extracteur : `extract_signal` conserve le bloc `evidence` dans `NormalizedAstroFact.value`
+- Tests : `tests/astral_llm_i18n_tests.rs`, `tests/astral_llm_evidence_coherence_tests.rs`
 
 Documentation detaillee : `Astral_llm_implementation.md`.

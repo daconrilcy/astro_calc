@@ -42,6 +42,21 @@ name = "astral_llm_astro_basis_tests"
 path = "../../../tests/astral_llm_astro_basis_tests.rs"
 harness = true
 
+[[test]]
+name = "astral_llm_evidence_planner_tests"
+path = "../../../tests/astral_llm_evidence_planner_tests.rs"
+harness = true
+
+[[test]]
+name = "astral_llm_evidence_coherence_tests"
+path = "../../../tests/astral_llm_evidence_coherence_tests.rs"
+harness = true
+
+[[test]]
+name = "astral_llm_i18n_tests"
+path = "../../../tests/astral_llm_i18n_tests.rs"
+harness = true
+
 [dependencies]
 astral_llm_application.workspace = true
 astral_llm_domain.workspace = true

@@ -102,6 +102,7 @@ impl RunPersistence {
     pub async fn ensure_schema(&self) -> Result<(), sqlx::Error> {
         execute_sql_script(&self.pool, include_str!("../sql/llm_generation_runs.sql")).await?;
         execute_sql_script(&self.pool, include_str!("../sql/llm_canonical.sql")).await?;
+        execute_sql_script(&self.pool, include_str!("../sql/llm_i18n_canonical.sql")).await?;
         execute_sql_script(&self.pool, include_str!("../sql/llm_audit_extensions.sql")).await?;
         Ok(())
     }

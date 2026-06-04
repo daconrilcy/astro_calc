@@ -45,7 +45,12 @@ if ([string]::IsNullOrWhiteSpace($IdempotencyKey)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($RequestPath)) {
-    $RequestPath = Join-Path $repoRoot "request-premium.json"
+    $richDefault = Join-Path $repoRoot "request-premium-rich.json"
+    $RequestPath = if (Test-Path -LiteralPath $richDefault) {
+        $richDefault
+    } else {
+        Join-Path $repoRoot "request-premium.json"
+    }
 }
 if ([string]::IsNullOrWhiteSpace($OutputPath)) {
     $OutputPath = Join-Path $repoRoot "output\premium_reading_e2e.json"
@@ -114,6 +119,8 @@ try {
 
     if ($response.run_id) {
         Write-Host "Audit run : .\scripts\show_generation_run.ps1 -RunId $($response.run_id)"
+        $promptDir = Join-Path $repoRoot "output\logs\prompts\$($response.run_id)"
+        Write-Host "Prompts LLM : $promptDir\*.txt (ex. identity_primary.txt, summary_summary.txt)"
     }
 
     if ($raw.StatusCode -ge 200 -and $raw.StatusCode -lt 300) {

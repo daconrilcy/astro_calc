@@ -22,6 +22,7 @@ use crate::engine_defaults::{drop_unsupported_reasoning, resolve_engine_params, 
 use crate::execution_audit::ExecutionAudit;
 use crate::product_policy_validator::ProductPolicyValidator;
 use crate::prompt_compiler::{PromptCompilationInput, PromptCompiler};
+use crate::prompt_trace;
 use crate::provider_router::ProviderRouter;
 use crate::provider_schema_compiler::ProviderSchemaCompiler;
 use crate::request_validator::RequestValidator;
@@ -138,8 +139,12 @@ impl GenerateReadingUseCase {
             ));
         }
 
-        let astro_facts =
-            AstroPayloadNormalizer::normalize(&request.astro_result, &self.privacy_policy)?;
+        let astro_facts = AstroPayloadNormalizer::normalize(
+            &request.astro_result,
+            &self.privacy_policy,
+            &self.catalog,
+            &request.product_context.user_language,
+        )?;
 
         let product_default =
             SafetyResolver::product_default_for(&request.product_context.product_code);
@@ -212,7 +217,12 @@ impl GenerateReadingUseCase {
             }
         };
 
-        AstroBasisValidator::validate_chapters(&reading.chapters, &astro_facts, product_policy)?;
+        if !matches!(
+            request.response_contract.generation_mode,
+            GenerationMode::ChapterOrchestrated
+        ) {
+            AstroBasisValidator::validate_chapters(&reading.chapters, &astro_facts, product_policy)?;
+        }
 
         SafetyGuard::validate_response(
             &reading,
@@ -249,10 +259,12 @@ impl GenerateReadingUseCase {
                 astro_facts,
                 selected_domains: domains,
                 chapter_code: None,
+                chapter_evidence_pack: None,
                 catalog: &self.catalog,
             })
             .map_err(|e| GenerationError::new(GenerationErrorCode::InvalidInput, e))?;
 
+        prompt_trace::log_prompt_bundle(run_id, None, &bundle, &self.compiler, Some("primary"));
         let messages = self.compiler.to_provider_messages(&bundle);
         let canonical_schema = self
             .validator

@@ -9,7 +9,8 @@ fournisseurs LLM.
 | Label | Statut | Signification |
 |---|---|---|
 | **V1-technical-freeze** | **VALIDE** | Gel architecture/securite : perimetre fige, P1–P4 implementes |
-| **V1-production-public** | **VALIDABLE OpenAI — produit Premium durci** | Pipeline OpenAI valide ; astro_basis interpretatif + synthese finale obligatoires en Premium |
+| **V1-production-public** | **VALIDABLE OpenAI — gateway technique** | Pipeline OpenAI valide ; securite, idempotence, astro_basis minimal |
+| **Premium interpretatif riche** | **Implemente (Evidence Planner)** | Packs chapitre diversifies ; rejet `PREMIUM_EVIDENCE_DIVERSITY_FAILED` si pool trop pauvre |
 
 ```txt
 V1 technical freeze accepted.
@@ -123,7 +124,9 @@ Checks : lisibilite, non-repetition, cadrage interpretatif, jargon, fatalisme, c
 - **Basic** : `domain_score` autorise seul (`min_interpretive_astro_basis_refs_per_chapter = 0`)
 - **Premium** : ≥1 fact interpretatif valide par chapitre (`min_interpretive_astro_basis_refs_per_chapter = 1`) ; `domain_score` seul → `SCHEMA_VALIDATION_FAILED`
 - `PromptCompiler` : en mode chapitre, ne fournit au LLM que les facts du domaine + facts globaux (soleil, lune, ascendant, aspects majeurs)
-- Tests : `cargo test -p astral_llm_api --test astral_llm_astro_basis_tests`
+- Libelles affichables : tables `llm_astro_object_labels` / `llm_zodiac_sign_labels` (locale `fr`/`en`) ; `AstroLabelHumanizer` applique les libelles aux facts normalises et ecrase les `astro_basis[].label` renvoyes par le LLM (ex. `Soleil en Capricorne en maison 2`)
+- Disclaimer legal : `default_legal_disclaimer` (accents FR : interprétation, médical, …)
+- Tests : `cargo test -p astral_llm_api --test astral_llm_astro_basis_tests` ; `cargo test -p astral_llm_api --test astral_llm_evidence_planner_tests` ; `cargo test -p astral_llm_api --test astral_llm_evidence_coherence_tests`
 
 ### P3c — SummarySynthesizer (mode chapter_orchestrated)
 
@@ -135,7 +138,8 @@ Chapter outputs -> SummarySynthesizer -> summary.title + summary.short_text -> v
 
 - Schema provider : `summary_provider_v1`
 - Placeholders interdits : « Synthese produite par… », « generation chapitre par chapitre », mention du pipeline
-- Step auditee : `summary` dans `ExecutionAudit`
+- Step auditee : `summary` dans `ExecutionAudit` (tokens `input_tokens` / `output_tokens` remontés depuis `route.response.usage`)
+- Run : `token_input` / `token_output` = somme des steps (chapitres + summary) via `ExecutionAudit::aggregate_token_usage`
 
 ### P4 — Tests de charge locaux
 
@@ -164,33 +168,67 @@ astral_llm/
   crates/astral_llm_infra/sql/
     llm_generation_runs.sql  — runs, payloads, index
     llm_canonical.sql        — referentiels LLM (domains, safety, policies, models)
+    llm_evidence_canonical.sql — kinds, slots chapitre, policies Premium, requirements
     llm_audit_extensions.sql — steps, idempotence
 ```
 
-### Chaine de validation (verrou avant appel LLM)
-
-Toute generation passe par cette chaine **dans le domaine applicatif** ; le provider ne valide pas la requete a notre place :
+### Chaine gateway complete (Premium chapter_orchestrated)
 
 ```txt
 RequestValidator
   -> ProductPolicyValidator
   -> ModelCapabilityRegistry
   -> AstroPayloadNormalizer
-  -> SafetyResolver / SafetyGuard (pre)
-  -> PromptCompiler
+  -> InterpretiveEvidenceBuilder
+  -> ChapterEvidencePlanner
+  -> EvidenceDiversityValidator::validate_packs (pre-LLM, Premium)
+  -> SafetyResolver / SafetyGuard (pre requete)
+  -> PromptCompiler (ChapterEvidencePack par chapitre — pas la reserve globale)
+  -> prompt_trace (fichier + tracing : prompt compile envoye au provider)
   -> ProviderSchemaCompiler
   -> ProviderRouter (+ ProviderCircuitBreaker)
   -> LLM
-  -> ResponseValidator (schema)
+  -> post-traitement chapitre : AstroBasisRoleNormalizer → ChapterEvidenceBasisEnricher
+     → AstroBasisRoleNormalizer → AstroLabelHumanizer
+  -> validations chapitre (schema, safety, AstroBasisValidator fact_id ⊆ pack)
+  -> ChapterEvidenceCoherence (corps ↔ astro_basis ↔ pack)
+  -> EvidenceDiversityValidator::validate_reading (post-LLM, Premium)
+  -> SummarySynthesizer
+  -> ResponseValidator (lecture complete + summary)
   -> SafetyGuard (post)
-  -> AstroBasisValidator (refs + interpretive basis Premium)
   -> ReadingQualityValidator (bloquant Premium / natal_premium)
+  -> Persistence / audit (evidence_metrics dans steps si Premium)
 ```
 
-En `chapter_orchestrated`, apres la boucle chapitres :
+Codes erreur dedies :
 
-```txt
-  -> SummarySynthesizer -> summary final
+- `PREMIUM_EVIDENCE_DIVERSITY_FAILED` — pool/payload insuffisant ou packs trop repetitifs
+- `ASTRO_BASIS_INVALID` — fact_id hors pack chapitre ; derive pack/body (`ChapterEvidenceCoherence`) : mention planetaire dans le `body` sans fact_id dans `astro_basis` (repair une fois). Slots CORE/SUPPORTING omis par le LLM sont **completes** avant validation par `ChapterEvidenceBasisEnricher`
+- `READING_QUALITY_FAILED` — qualite redactionnelle
+
+Fixtures E2E :
+
+- `request-premium-minimal.json` — test negatif (trio asc/sun/moon)
+- `request-premium-rich.json` — golden `natal_payload_v13_paris_1990` pour E2E OpenAI
+
+SQL : [`astral_llm/crates/astral_llm_infra/sql/llm_evidence_canonical.sql`](astral_llm/crates/astral_llm_infra/sql/llm_evidence_canonical.sql) ; i18n : [`llm_i18n_canonical.sql`](astral_llm/crates/astral_llm_infra/sql/llm_i18n_canonical.sql) (`llm_writing_locales` fr/en/es/de, `llm_astro_basis_roles`, `llm_aspect_type_labels`)
+
+**Langue de reponse LLM** : `OUTPUT_LANGUAGE` injecte dans les instructions systeme (`WritingLanguageDirective`) selon `product_context.user_language`. Le bloc `--- BEGIN ASTRO DATA ---` envoye au modele utilise des libelles humanises (`AstroPayloadNormalizer::to_chapter_evidence_pack_block` + `AstroLabelHumanizer::label_for_fact_id`). Post-LLM : `AstroBasisRoleNormalizer` (2 passages autour de `ChapterEvidenceBasisEnricher`) puis `AstroLabelHumanizer` sur `astro_basis` (label, factor). Roles : correspondance exacte `fact_id` puis alias `object_code` **dans la meme famille** (`evidence_fact_parse::fact_id_role_bucket` : ex. `signal:object_position:sun` ≠ `placement:sun:*`).
+
+**ChapterEvidencePlanner** (packs chapitre) :
+
+- Slots remplis depuis `llm_chapter_evidence_slots` ; exclusion des `fact_id` deja **core** dans un chapitre precedent (supporting/nuance d'un autre chapitre peuvent revenir, ex. Saturne en `growth_path` apres supporting en `career`).
+- `avoid_repeating` : derniers cores precedents (consigne redaction + `validate_no_avoid_in_active_slots`).
+- `fill_minimums` : priorite aux familles d'evidence manquantes (aspect, house_ruler, dignite) ; swap supporting si slots pleins.
+- Validation adaptative : si le pool restant ne permet plus `min_evidence_per_chapter` ou `min_distinct_kind_families`, avertissement `tracing` et poursuite (evite `PREMIUM_EVIDENCE_DIVERSITY_FAILED` sur charts riches multi-chapitres).
+
+**Qualite redactionnelle amont** : `ChapterWritingGuidance` (4 paragraphes, anti-trigrammes, `avoid_repeating` dans le prompt). Repairs : repetition (`maybe_repair_repetition`), `min_words` (`retry_chapter_on_min_words`), coherence evidence (`ChapterEvidenceCoherence` + repair). `max_words` : consigne prompt uniquement, non bloquant.
+
+Tests :
+
+```bash
+cargo test -p astral_llm_api --test astral_llm_evidence_planner_tests
+cargo test -p astral_llm_api --test astral_llm_evidence_coherence_tests
 ```
 
 ### Middleware HTTP (ordre entrant)
@@ -368,7 +406,7 @@ Les valeurs metier ne sont pas dupliquees en constantes Rust lorsqu'elles existe
 
 - **DomainResolver** : domaines avant LLM (scores astro, preferred, politique produit)
 - **ReadingPlanBuilder** : validation du plan chapitres
-- **ChapterOrchestrator** : un appel LLM par chapitre ; statuts `generated`, `repaired`, `failed`, etc. ; retry longueur et **retry repetition** (trigrammes) ; safety par chapitre
+- **ChapterOrchestrator** : un appel LLM par chapitre ; statuts `generated`, `repaired`, `failed`, etc. ; **retry automatique** si chapitre sous `min_words` (2 tentatives, `max_words` non bloquant) ; retry repetition (trigrammes, 3 tentatives) ; **anti-repetition en amont** : `chapter_structure.md`, `ChapterWritingGuidance` (4 paragraphes, phrases des chapitres precedents, amorces interdites) ; score trigrammes sans mots grammaticaux (`text_trigrams`) ; safety par chapitre
 - **ExecutionAudit** : steps dans `llm_generation_steps`
 - **Token budget** : plafonds par chapitre / global
 
@@ -413,8 +451,6 @@ Tables creees automatiquement **uniquement** si :
 | `llm_idempotency_records` | Idempotence + reponse cachee |
 | `llm_generation_payloads` | Optionnel (`STORE_SANITIZED_PAYLOADS=true`) : JSON rediges + `prompt_hash` + `astro_facts_hash` |
 
-Les prompts complets ne sont **pas** logues par defaut.
-
 ### Politique mode degrade (V1)
 
 | Panne | Comportement |
@@ -446,6 +482,8 @@ Les prompts complets ne sont **pas** logues par defaut.
 | `ASTRAL_LLM_LOG_LEVEL` | `info` | Niveau global ; cibles `astral_llm.generation` / `astral_llm.provider` en `debug` |
 | `ASTRAL_LLM_LOG_FORMAT` | `pretty` | `json` pour logs machine (CI, agregation) |
 | `ASTRAL_LLM_LOG_FILE` | — | Fichier append (ex. `output/logs/astral_llm_api.log`) en plus de stdout |
+| `ASTRAL_LLM_LOG_COMPILED_PROMPTS` | `true` | Journalise le prompt compile (`target=astral_llm.prompt`, champ `compiled_prompt`) |
+| `ASTRAL_LLM_PROMPT_LOG_DIR` | `output/logs/prompts` | Fichier `.txt` par appel LLM : `{dir}/{run_id}/{chapter}_{attempt}.txt` |
 
 Chaque generation emet des evenements correles par `run_id` (et `request_id` si present) :
 
@@ -454,7 +492,11 @@ Chaque generation emet des evenements correles par `run_id` (et `request_id` si 
 - `generation failed` — code erreur, details, steps d'audit
 - `generation succeeded` — latence, nombre de chapitres
 
-Les prompts complets ne sont **pas** logues.
+**Prompts compiles** (`ASTRAL_LLM_LOG_COMPILED_PROMPTS`, defaut `true`) :
+
+- Tracing : cible `astral_llm.prompt`, champ `compiled_prompt` (actif si `ASTRAL_LLM_LOG_LEVEL=debug` ou filtre dedie).
+- Fichiers : `ASTRAL_LLM_PROMPT_LOG_DIR` (defaut `output/logs/prompts/{run_id}/{chapter}_{attempt}.txt`, summary → `summary_summary.txt`).
+- Module : `astral_llm_application::prompt_trace` (appele depuis `ChapterOrchestrator`, `GenerateReadingUseCase`, `SummarySynthesizer`).
 
 ### Audit PostgreSQL
 
@@ -473,9 +515,11 @@ Consultation API :
 ### Scripts E2E locaux
 
 ```powershell
-.\scripts\generate_premium_reading_e2e.ps1 -IdempotencyKey "e2e-premium-001-v7"
+.\scripts\generate_premium_reading_e2e.ps1 -IdempotencyKey "e2e-$(Get-Date -Format 'yyyyMMddHHmmss')"
+# reponse : output/premium_reading_e2e.json
 # journal client : output/logs/premium_reading_e2e_<timestamp>.json
-# en cas d'echec, le script affiche le run_id pour audit
+# prompts compiles : output/logs/prompts/<run_id>/*.txt
+.\scripts\show_generation_run.ps1 -RunId "<uuid>"
 ```
 
 ## Endpoints
@@ -506,9 +550,15 @@ Consultation API :
 | `ProviderRouter` | Appel + fallback + circuit breaker |
 | `GenerationTraceContext` | Logs correles par `run_id` (start/finish/provider) |
 | `ResponseValidator` / `SchemaRegistry` | JSON structure |
-| `ChapterOrchestrator` | Mode Premium |
-| `ExecutionAudit` | Traces steps |
-| `ReadingQualityValidator` | Qualite lecture (bloquant Premium) |
+| `ChapterEvidencePlanner` | Packs CORE/SUPPORTING/NUANCE par chapitre + `avoid_repeating` |
+| `ChapterEvidenceCoherence` | Cohérence pack / `astro_basis` / corps (repair) |
+| `ChapterEvidenceBasisEnricher` | Complete slots pack omis dans `astro_basis` |
+| `ChapterWritingGuidance` | Structure 4 paragraphes + anti-repetition amont |
+| `prompt_trace` | Journalisation prompt compile (fichier + tracing) |
+| `ChapterOrchestrator` | Mode Premium (orchestration + repairs) |
+| `ExecutionAudit` | Traces steps + agregat tokens run |
+| `AstroBasisRoleNormalizer` | Roles canoniques alignes pack |
+| `ReadingQualityValidator` | Qualite lecture (repetition amont ; `min_words` repair) |
 | `EditorialValidator` | Regles redactionnelles (fixtures + fatalisme) |
 
 ## Tests
@@ -522,6 +572,9 @@ Consultation API :
 | `astral_llm_load_tests` | Saturation semaphore / rate limit / circuit breaker |
 | `astral_llm_load_tests` (`#[ignore]`) | Idempotence concurrente PostgreSQL |
 | `provider_real_smoke` (`#[ignore]`) | OpenAI + Mistral + Anthropic (schema + auth) |
+| `astral_llm_evidence_planner_tests` | Pool, packs, exclusions core inter-chapitres |
+| `astral_llm_evidence_coherence_tests` | Coherence pack / corps / astro_basis |
+| `astral_llm_i18n_tests` | Locales + humanizer |
 | Tests unitaires crates | Registry, circuit breaker, redaction, qualite Premium |
 
 ## Roadmap P2 (apres validation manuelle)
@@ -546,4 +599,5 @@ Consultation API :
 11. Persistence PostgreSQL + idempotence + audit steps
 12. Production publique (ConfigValidator) + rate limit par cle + golden prompt
 13. Validation produit : fixtures redactionnelles, load tests, qualite Premium bloquante, smoke providers
-14. `EditorialValidator`, `READING_QUALITY_FAILED`, crate `astral_llm_api` lib pour tests
+14. Premium : planner packs adaptatif, coherence evidence, i18n prompt/humanizer, logs prompts compiles, repairs min_words/repetition
+15. `EditorialValidator`, `READING_QUALITY_FAILED`, crate `astral_llm_api` lib pour tests

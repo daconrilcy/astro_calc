@@ -419,6 +419,8 @@ fn build_run_record(
     audit: &astral_llm_application::ExecutionAudit,
     run_uuid: Uuid,
 ) -> GenerationRunRecord {
+    let (token_in, token_out) = audit.aggregate_token_usage();
+
     let (
         status,
         safety_status,
@@ -443,8 +445,8 @@ fn build_run_record(
             Some(success.reading.quality.used_model.clone()),
             success.reading.quality.prompt_family.clone(),
             success.reading.quality.prompt_version.clone(),
-            None,
-            None,
+            token_in,
+            token_out,
             success.reading.quality.fallback_used,
         ),
         GenerateReadingResponse::SafetyRejected(_) => (

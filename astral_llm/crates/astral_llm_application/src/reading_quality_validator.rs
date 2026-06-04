@@ -5,6 +5,9 @@ use astral_llm_domain::{
     GenerateReadingRequest, GenerationError, GenerationErrorCode,
 };
 
+use crate::astro_label_humanizer::AstroLabelHumanizer;
+use crate::text_trigrams::count_repeated_trigrams;
+
 #[derive(Debug, Clone, Default)]
 pub struct ReadingQualityReport {
     pub chapter_length_ok: bool,
@@ -55,13 +58,15 @@ impl ReadingQualityValidator {
         reading: &NatalReadingResponse,
     ) -> ReadingQualityReport {
         let thresholds = thresholds_for(request);
-        Self::assess_with_thresholds(request, reading, &thresholds)
+        let locale = AstroLabelHumanizer::locale_key(&request.product_context.user_language);
+        Self::assess_with_thresholds(request, reading, &thresholds, locale)
     }
 
     pub fn assess_with_thresholds(
         request: &GenerateReadingRequest,
         reading: &NatalReadingResponse,
         thresholds: &PremiumQualityThresholds,
+        locale: &str,
     ) -> ReadingQualityReport {
         let mut report = ReadingQualityReport::default();
         let mut warnings = Vec::new();
@@ -92,7 +97,7 @@ impl ReadingQualityValidator {
                 ));
             }
 
-            let repeats = count_repeated_trigrams(&chapter.body);
+            let repeats = count_repeated_trigrams(&chapter.body, locale);
             if repeats > thresholds.max_repeated_trigrams {
                 warnings.push(format!(
                     "chapter '{}' repetition score too high ({repeats})",
@@ -141,12 +146,16 @@ impl ReadingQualityValidator {
         thresholds_for(request)
     }
 
-    pub fn chapter_repetition_score(body: &str) -> usize {
-        count_repeated_trigrams(body)
+    pub fn chapter_repetition_score(body: &str, locale: &str) -> usize {
+        count_repeated_trigrams(body, locale)
     }
 
-    pub fn chapter_exceeds_repetition(body: &str, thresholds: &PremiumQualityThresholds) -> bool {
-        count_repeated_trigrams(body) > thresholds.max_repeated_trigrams
+    pub fn chapter_exceeds_repetition(
+        body: &str,
+        thresholds: &PremiumQualityThresholds,
+        locale: &str,
+    ) -> bool {
+        count_repeated_trigrams(body, locale) > thresholds.max_repeated_trigrams
     }
 
     /// Basic : log warnings. Premium : echec generation si qualite insuffisante.
@@ -215,34 +224,16 @@ fn has_interpretive_framing(body: &str) -> bool {
     .any(|marker| lower.contains(marker))
 }
 
-fn count_repeated_trigrams(body: &str) -> usize {
-    let words: Vec<&str> = body.split_whitespace().collect();
-    if words.len() < 12 {
-        return 0;
-    }
-    let mut counts = std::collections::HashMap::<String, usize>::new();
-    for window in words.windows(3) {
-        let phrase = format!(
-            "{} {} {}",
-            window[0].to_lowercase(),
-            window[1].to_lowercase(),
-            window[2].to_lowercase()
-        );
-        *counts.entry(phrase).or_insert(0) += 1;
-    }
-    counts.values().filter(|&&n| n > 1).count()
-}
-
 #[cfg(test)]
 mod repetition_tests {
-    use super::count_repeated_trigrams;
+    use crate::text_trigrams::count_repeated_trigrams;
 
     #[test]
     fn counts_distinct_repeated_phrases_not_every_window() {
         let body = "votre theme invite votre theme invite votre theme invite \
             a explorer la vie interieure avec douceur et clarte symbolique \
             pour comprendre les emotions et les liens humains avec bienveillance";
-        let score = count_repeated_trigrams(body);
+        let score = count_repeated_trigrams(body, "fr");
         assert!(score <= 3, "expected at most 3 distinct repeats, got {score}");
     }
 }
@@ -352,13 +343,13 @@ mod tests {
                         fact_id: Some("domain_score:identity".into()),
                         label: None,
                         factor: "identity".into(),
-                        interpretive_role: "signal".into(),
+                        interpretive_role: "domain_score".into(),
                     },
                     astral_llm_domain::AstroBasisItem {
                         fact_id: Some("placement:sun:capricorn:house:2".into()),
                         label: None,
                         factor: "sun".into(),
-                        interpretive_role: "placement".into(),
+                        interpretive_role: "core".into(),
                     },
                 ],
                 confidence: ConfidenceLevel::Medium,

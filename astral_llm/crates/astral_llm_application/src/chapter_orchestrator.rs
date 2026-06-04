@@ -14,15 +14,26 @@ use astral_llm_infra::SharedCanonicalCatalog;
 use astral_llm_providers::{GenerationMetadata, ProviderGenerationRequest};
 use uuid::Uuid;
 
+use astral_llm_domain::default_legal_disclaimer;
+
 use crate::astro_basis_validator::AstroBasisValidator;
+use crate::astro_label_humanizer::AstroLabelHumanizer;
+use crate::chapter_evidence_basis_enricher::ChapterEvidenceBasisEnricher;
+use crate::chapter_evidence_coherence::ChapterEvidenceCoherence;
+use crate::chapter_writing_guidance::ChapterWritingGuidance;
+use crate::chapter_evidence_planner::{pack_for_chapter, ChapterEvidencePlanner};
+use crate::evidence_diversity_validator::{compute_evidence_metrics, EvidenceDiversityValidator};
+use crate::interpretive_evidence_builder::{is_premium_product, InterpretiveEvidenceBuilder};
 use crate::chapter_quality_repair::{
-    append_repair_instructions, maybe_repair_repetition, ChapterRepairKind,
+    append_repair_instructions, is_min_words_violation, maybe_repair_repetition,
+    retry_chapter_on_min_words, ChapterRepairKind,
 };
 use crate::domain_resolver::DomainResolver;
 use crate::engine_defaults::ResolvedEngineParams;
 use crate::execution_audit::ExecutionAudit;
 use crate::product_policy_validator::ProductPolicyValidator;
 use crate::prompt_compiler::{PromptCompilationInput, PromptCompiler};
+use crate::prompt_trace;
 use crate::provider_router::ProviderRouter;
 use crate::provider_schema_compiler::ProviderSchemaCompiler;
 use crate::reading_plan::ReadingPlanBuilder;
@@ -44,6 +55,8 @@ pub struct ChapterOrchestrator<'a> {
 pub struct OrchestratedResult {
     pub reading: NatalReadingResponse,
     pub plan: ReadingPlan,
+    pub chapter_packs: Vec<astral_llm_domain::ChapterEvidencePack>,
+    pub evidence_metrics: Option<astral_llm_domain::EvidenceMetrics>,
 }
 
 impl<'a> ChapterOrchestrator<'a> {
@@ -81,6 +94,26 @@ impl<'a> ChapterOrchestrator<'a> {
 
         let contracts = ReadingPlanBuilder::to_chapter_contracts(&plan);
         let quality_thresholds = ReadingQualityValidator::thresholds_for_request(request);
+        let writing_locale =
+            AstroLabelHumanizer::locale_key(&request.product_context.user_language);
+
+        let pool = InterpretiveEvidenceBuilder::build(astro_facts, &self.catalog.evidence)?;
+        let premium = is_premium_product(&request.product_context.product_code);
+        let evidence_policy = &self.catalog.evidence.premium_policy;
+
+        let chapter_packs = if premium {
+            let packs = ChapterEvidencePlanner::plan_all(&pool, &plan, &self.catalog.evidence, evidence_policy)?;
+            EvidenceDiversityValidator::validate_packs_planned(
+                &request.product_context.product_code,
+                &pool,
+                &packs,
+                &self.catalog.evidence,
+                evidence_policy,
+            )?;
+            packs
+        } else {
+            Vec::new()
+        };
 
         let mut generated = Vec::new();
         let mut last_bundle = None;
@@ -89,6 +122,7 @@ impl<'a> ChapterOrchestrator<'a> {
         let mut fallback_used = false;
 
         for (chapter, contract) in plan.chapters.iter().zip(contracts.iter()) {
+            let chapter_pack = pack_for_chapter(&chapter_packs, &chapter.code);
             let started = Instant::now();
             match self
                 .generate_one_chapter(
@@ -96,8 +130,10 @@ impl<'a> ChapterOrchestrator<'a> {
                     engine,
                     safety_policy,
                     astro_facts,
+                    chapter_pack,
                     chapter,
                     contract,
+                    &generated,
                     run_id,
                     product_policy,
                     None,
@@ -111,6 +147,7 @@ impl<'a> ChapterOrchestrator<'a> {
                         bundle,
                         route_meta,
                         &quality_thresholds,
+                        writing_locale,
                         run_id,
                         engine,
                         started,
@@ -121,8 +158,10 @@ impl<'a> ChapterOrchestrator<'a> {
                                 engine,
                                 safety_policy,
                                 astro_facts,
+                                chapter_pack,
                                 chapter,
                                 contract,
+                                &generated,
                                 run_id,
                                 product_policy,
                                 repair,
@@ -146,18 +185,27 @@ impl<'a> ChapterOrchestrator<'a> {
                     );
                     generated.push(outcome.reading_chapter);
                 }
-                Err(err) if is_length_violation(&err) => {
+                Err(err) if is_evidence_coherence_violation(&err) && chapter_pack.is_some() =>
+                {
+                    let repair_kind = evidence_repair_from_error(&err).unwrap_or(
+                        ChapterRepairKind::EvidenceCoherence {
+                            missing_pack_fact_ids: vec![],
+                            orphan_object_codes: vec![],
+                        },
+                    );
                     match self
                         .generate_one_chapter(
                             request,
                             engine,
                             safety_policy,
                             astro_facts,
+                            chapter_pack,
                             chapter,
                             contract,
+                            &generated,
                             run_id,
                             product_policy,
-                            Some(ChapterRepairKind::Length),
+                            Some(repair_kind),
                         )
                         .await
                     {
@@ -168,6 +216,7 @@ impl<'a> ChapterOrchestrator<'a> {
                                 bundle,
                                 route_meta,
                                 &quality_thresholds,
+                                writing_locale,
                                 run_id,
                                 engine,
                                 started,
@@ -178,8 +227,10 @@ impl<'a> ChapterOrchestrator<'a> {
                                         engine,
                                         safety_policy,
                                         astro_facts,
+                                        chapter_pack,
                                         chapter,
                                         contract,
+                                        &generated,
                                         run_id,
                                         product_policy,
                                         repair,
@@ -195,7 +246,7 @@ impl<'a> ChapterOrchestrator<'a> {
                                 &chapter.code,
                                 &used_provider,
                                 &used_model,
-                                outcome.status,
+                                ChapterGenerationStatus::Repaired,
                                 outcome.route_meta.3,
                                 outcome.route_meta.4,
                                 started.elapsed().as_millis() as u64,
@@ -208,7 +259,7 @@ impl<'a> ChapterOrchestrator<'a> {
                                 &chapter.code,
                                 engine.provider.as_str(),
                                 &engine.model,
-                                ChapterGenerationStatus::Failed,
+                                ChapterGenerationStatus::AstroBasisInvalid,
                                 None,
                                 None,
                                 started.elapsed().as_millis() as u64,
@@ -217,6 +268,75 @@ impl<'a> ChapterOrchestrator<'a> {
                             return Err(repair_err);
                         }
                     }
+                }
+                Err(err) if is_min_words_violation(&err) => {
+                    let (reading_chapter, bundle, route_meta) = retry_chapter_on_min_words(
+                        chapter,
+                        err,
+                        run_id,
+                        engine,
+                        started,
+                        audit,
+                        |repair| {
+                            self.generate_one_chapter(
+                                request,
+                                engine,
+                                safety_policy,
+                                astro_facts,
+                                chapter_pack,
+                                chapter,
+                                contract,
+                                &generated,
+                                run_id,
+                                product_policy,
+                                repair,
+                            )
+                        },
+                    )
+                    .await?;
+                    let outcome = maybe_repair_repetition(
+                        chapter,
+                        reading_chapter,
+                        bundle,
+                        route_meta,
+                        &quality_thresholds,
+                        writing_locale,
+                        run_id,
+                        engine,
+                        started,
+                        audit,
+                        |repair| {
+                            self.generate_one_chapter(
+                                request,
+                                engine,
+                                safety_policy,
+                                astro_facts,
+                                chapter_pack,
+                                chapter,
+                                contract,
+                                &generated,
+                                run_id,
+                                product_policy,
+                                repair,
+                            )
+                        },
+                    )
+                    .await?;
+                    last_bundle = Some(outcome.bundle);
+                    used_provider = outcome.route_meta.0.clone();
+                    used_model = outcome.route_meta.1.clone();
+                    fallback_used |= outcome.route_meta.2;
+                    audit.record_chapter_step(
+                        &chapter.code,
+                        &used_provider,
+                        &used_model,
+                        ChapterGenerationStatus::Repaired,
+                        outcome.route_meta.3,
+                        outcome.route_meta.4,
+                        started.elapsed().as_millis() as u64,
+                        None,
+                    );
+                    generated.push(outcome.reading_chapter);
                 }
                 Err(err) => {
                     let status = if matches!(
@@ -247,10 +367,19 @@ impl<'a> ChapterOrchestrator<'a> {
 
         let bundle = last_bundle.expect("at least one chapter");
 
+        if premium {
+            EvidenceDiversityValidator::validate_reading(
+                &request.product_context.product_code,
+                &pool,
+                &generated,
+                &chapter_packs,
+            )?;
+        }
+
         let summary_started = Instant::now();
         let synthesizer =
             SummarySynthesizer::new(self.router, self.validator, self.catalog);
-        let summary = synthesizer
+        let summary_result = synthesizer
             .synthesize(request, &generated, engine, safety_policy, run_id)
             .await?;
         audit.record_chapter_step(
@@ -258,8 +387,8 @@ impl<'a> ChapterOrchestrator<'a> {
             &used_provider,
             &used_model,
             ChapterGenerationStatus::Generated,
-            None,
-            None,
+            summary_result.input_tokens,
+            summary_result.output_tokens,
             summary_started.elapsed().as_millis() as u64,
             None,
         );
@@ -268,12 +397,12 @@ impl<'a> ChapterOrchestrator<'a> {
             schema_version: request.response_contract.output_schema_version.clone(),
             language: request.product_context.user_language.clone(),
             reading_type: request.product_context.product_code.clone(),
-            summary,
+            summary: summary_result.summary,
             chapters: generated,
             legal: LegalBlock {
-                disclaimer: default_disclaimer(
-                    request.response_contract.include_legal_disclaimer,
+                disclaimer: default_legal_disclaimer(
                     &request.product_context.user_language,
+                    request.response_contract.include_legal_disclaimer,
                 ),
             },
             quality: QualityMetadata {
@@ -287,7 +416,18 @@ impl<'a> ChapterOrchestrator<'a> {
             },
         };
 
-        Ok(OrchestratedResult { reading, plan })
+        let evidence_metrics = if premium {
+            Some(compute_evidence_metrics(&chapter_packs, &reading.chapters))
+        } else {
+            None
+        };
+
+        Ok(OrchestratedResult {
+            reading,
+            plan,
+            chapter_packs,
+            evidence_metrics,
+        })
     }
 
     async fn generate_one_chapter(
@@ -296,8 +436,10 @@ impl<'a> ChapterOrchestrator<'a> {
         engine: &ResolvedEngineParams,
         safety_policy: &SafetyPolicy,
         astro_facts: &NormalizedAstroFacts,
+        chapter_pack: Option<&astral_llm_domain::ChapterEvidencePack>,
         chapter: &ReadingPlanChapter,
         contract: &astral_llm_domain::output_contract::ChapterContract,
+        prior_chapters: &[ReadingChapter],
         run_id: &str,
         product_policy: &ProductGenerationPolicy,
         repair: Option<ChapterRepairKind>,
@@ -324,15 +466,43 @@ impl<'a> ChapterOrchestrator<'a> {
                 astro_facts,
                 selected_domains: &[chapter.code.clone()],
                 chapter_code: Some(&chapter.code),
+                chapter_evidence_pack: chapter_pack,
                 catalog: self.catalog,
             })
             .map_err(|e| GenerationError::new(GenerationErrorCode::InvalidInput, e))?;
 
-        if let Some(repair) = repair {
-            append_repair_instructions(&mut bundle, chapter, repair);
+        ChapterWritingGuidance::append_upstream_directives(
+            &mut bundle,
+            chapter,
+            prior_chapters,
+            chapter_pack,
+            &request.product_context.user_language,
+        );
+
+        if let Some(ref repair_kind) = repair {
+            append_repair_instructions(&mut bundle, chapter, repair_kind.clone());
         }
 
         let messages = self.compiler.to_provider_messages(&bundle);
+        let attempt = match &repair {
+            None => "primary",
+            Some(crate::chapter_quality_repair::ChapterRepairKind::TooShort { .. }) => {
+                "repair_too_short"
+            }
+            Some(crate::chapter_quality_repair::ChapterRepairKind::Repetition { .. }) => {
+                "repair_repetition"
+            }
+            Some(crate::chapter_quality_repair::ChapterRepairKind::EvidenceCoherence { .. }) => {
+                "repair_evidence"
+            }
+        };
+        prompt_trace::log_prompt_bundle(
+            run_id,
+            Some(&chapter.code),
+            &bundle,
+            self.compiler,
+            Some(attempt),
+        );
         let canonical_schema = self
             .validator
             .schema_registry()
@@ -413,7 +583,7 @@ impl<'a> ChapterOrchestrator<'a> {
             ));
         }
 
-        let reading_chapter = ReadingChapter {
+        let mut reading_chapter = ReadingChapter {
             code: chapter_reading.code.clone(),
             title: chapter_reading.title,
             body: chapter_reading.body.clone(),
@@ -422,7 +592,40 @@ impl<'a> ChapterOrchestrator<'a> {
             safety_flags: vec![],
         };
 
-        AstroBasisValidator::validate_chapter(&reading_chapter, astro_facts, product_policy)?;
+        crate::astro_basis_role_normalizer::AstroBasisRoleNormalizer::normalize_chapter(
+            &mut reading_chapter,
+            chapter_pack,
+        );
+
+        if let Some(pack) = chapter_pack {
+            ChapterEvidenceBasisEnricher::enrich_missing_pack_slots(&mut reading_chapter, pack);
+            crate::astro_basis_role_normalizer::AstroBasisRoleNormalizer::normalize_chapter(
+                &mut reading_chapter,
+                chapter_pack,
+            );
+        }
+
+        AstroLabelHumanizer::new(self.catalog).enrich_chapter_astro_basis(
+            &mut reading_chapter.astro_basis,
+            astro_facts,
+            &request.product_context.user_language,
+        );
+
+        AstroBasisValidator::validate_chapter_with_pack(
+            &reading_chapter,
+            astro_facts,
+            chapter_pack,
+            product_policy,
+        )?;
+
+        if let Some(pack) = chapter_pack {
+            ChapterEvidenceCoherence::validate_premium(
+                &reading_chapter,
+                pack,
+                self.catalog.as_ref(),
+                &request.product_context.user_language,
+            )?;
+        }
 
         SafetyGuard::validate_chapter_text(
             &reading_chapter.body,
@@ -455,12 +658,35 @@ impl<'a> ChapterOrchestrator<'a> {
     }
 }
 
-fn is_length_violation(err: &GenerationError) -> bool {
-    matches!(
-        err.detail().code,
-        GenerationErrorCode::SchemaValidationFailed
-    ) && (err.detail().message.contains("min_words")
-        || err.detail().message.contains("max_words"))
+fn is_evidence_coherence_violation(err: &GenerationError) -> bool {
+    matches!(err.detail().code, GenerationErrorCode::AstroBasisInvalid)
+        && err.detail().message.contains("evidence coherence")
+}
+
+fn evidence_repair_from_error(err: &GenerationError) -> Option<ChapterRepairKind> {
+    let details = err.detail().details.as_ref()?;
+    let missing = details
+        .get("missing_pack_fact_ids")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|x| x.as_str().map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default();
+    let orphans = details
+        .get("orphan_object_codes")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|x| x.as_str().map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default();
+    Some(ChapterRepairKind::EvidenceCoherence {
+        missing_pack_fact_ids: missing,
+        orphan_object_codes: orphans,
+    })
 }
 
 fn resolve_safety_mode(provider: &astral_llm_domain::ProviderKind) -> SafetyMode {
@@ -468,16 +694,6 @@ fn resolve_safety_mode(provider: &astral_llm_domain::ProviderKind) -> SafetyMode
         SafetyMode::PlatformAndNative
     } else {
         SafetyMode::PlatformRulesOnly
-    }
-}
-
-fn default_disclaimer(include: bool, _language: &str) -> String {
-    if include {
-        "Cette lecture est une interpretation symbolique et ne remplace aucun avis medical, \
-         psychologique, juridique ou financier."
-            .into()
-    } else {
-        String::new()
     }
 }
 

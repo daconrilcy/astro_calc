@@ -1,6 +1,13 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use astral_llm_domain::{ProductGenerationPolicy, ServiceLimits};
+
+use crate::evidence_canonical::{bootstrap_evidence_catalog, EvidenceCanonicalCatalog};
+use crate::i18n_canonical::{
+    bootstrap_aspect_type_labels, bootstrap_astro_basis_roles, bootstrap_extra_object_sign_labels,
+    bootstrap_writing_locales, WritingLocale,
+};
 
 /// Referentiel canonique charge depuis PostgreSQL (tables `llm_*`).
 #[derive(Debug, Clone, Default)]
@@ -9,6 +16,14 @@ pub struct CanonicalCatalog {
     pub safety_patterns: Vec<SafetyPattern>,
     pub product_prompt_families: Vec<ProductPromptFamily>,
     pub product_generation_policies: Vec<ProductGenerationPolicy>,
+    /// (locale, object_code) -> libelle affichable
+    pub astro_object_labels: HashMap<(String, String), String>,
+    /// (locale, sign_code) -> libelle affichable
+    pub zodiac_sign_labels: HashMap<(String, String), String>,
+    pub evidence: EvidenceCanonicalCatalog,
+    pub writing_locales: Vec<WritingLocale>,
+    pub astro_basis_roles: std::collections::HashSet<String>,
+    pub aspect_type_labels: HashMap<(String, String), String>,
 }
 
 #[derive(Debug, Clone)]
@@ -104,8 +119,77 @@ pub async fn load_canonical_catalog(pool: &sqlx::PgPool) -> CanonicalCatalog {
             .collect();
     }
 
+    if let Ok(rows) = sqlx::query_as::<_, (String, String, String)>(
+        "SELECT object_code, locale, label FROM llm_astro_object_labels WHERE is_active = true",
+    )
+    .fetch_all(pool)
+    .await
+    {
+        for (object_code, locale, label) in rows {
+            catalog
+                .astro_object_labels
+                .insert((locale, object_code), label);
+        }
+    }
+
+    if let Ok(rows) = sqlx::query_as::<_, (String, String, String)>(
+        "SELECT sign_code, locale, label FROM llm_zodiac_sign_labels WHERE is_active = true",
+    )
+    .fetch_all(pool)
+    .await
+    {
+        for (sign_code, locale, label) in rows {
+            catalog
+                .zodiac_sign_labels
+                .insert((locale, sign_code), label);
+        }
+    }
+
+    load_evidence_from_db(pool, &mut catalog).await;
+    load_i18n_from_db(pool, &mut catalog).await;
     enrich_catalog_from_bootstrap(&mut catalog);
+    if catalog.evidence.chapter_slots.is_empty() {
+        catalog.evidence = bootstrap_evidence_catalog();
+    }
     catalog
+}
+
+async fn load_evidence_from_db(pool: &sqlx::PgPool, catalog: &mut CanonicalCatalog) {
+    if let Ok(row) = sqlx::query_as::<_, (
+        String,
+        i32,
+        i32,
+        i32,
+        f32,
+        bool,
+        i32,
+        i32,
+        i32,
+        i32,
+    )>(
+        "SELECT product_code, min_evidence_per_chapter, min_distinct_kind_families, \
+         min_non_placement_if_available, max_core_overlap_ratio, domain_score_counts_in_minimum, \
+         max_core_evidence, max_supporting_evidence, max_nuance_evidence, max_avoid_repeating \
+         FROM llm_premium_evidence_policies WHERE is_active = true AND product_code = 'natal_premium' LIMIT 1",
+    )
+    .fetch_optional(pool)
+    .await
+    {
+        if let Some(r) = row {
+            catalog.evidence.premium_policy = astral_llm_domain::PremiumEvidencePolicy {
+                product_code: r.0,
+                min_evidence_per_chapter: r.1 as u8,
+                min_distinct_kind_families: r.2 as u8,
+                min_non_placement_if_available: r.3 as u8,
+                max_core_overlap_ratio: r.4,
+                domain_score_counts_in_minimum: r.5,
+                max_core_evidence: r.6 as u8,
+                max_supporting_evidence: r.7 as u8,
+                max_nuance_evidence: r.8 as u8,
+                max_avoid_repeating: r.9 as u8,
+            };
+        }
+    }
 }
 
 /// Complete les trous laisses par le schema SQL (listes provider/model, patterns safety).
@@ -149,6 +233,67 @@ pub fn enrich_catalog_from_bootstrap(catalog: &mut CanonicalCatalog) {
     if catalog.product_generation_policies.is_empty() {
         catalog.product_generation_policies = bootstrap_product_policies();
     }
+    if catalog.astro_object_labels.is_empty() {
+        catalog.astro_object_labels = bootstrap_astro_object_labels();
+    }
+    if catalog.zodiac_sign_labels.is_empty() {
+        catalog.zodiac_sign_labels = bootstrap_zodiac_sign_labels();
+    }
+    if catalog.evidence.chapter_slots.is_empty() {
+        catalog.evidence = bootstrap_evidence_catalog();
+    }
+    if catalog.writing_locales.is_empty() {
+        catalog.writing_locales = bootstrap_writing_locales();
+    }
+    if catalog.astro_basis_roles.is_empty() {
+        catalog.astro_basis_roles = bootstrap_astro_basis_roles();
+    }
+    if catalog.aspect_type_labels.is_empty() {
+        catalog.aspect_type_labels = bootstrap_aspect_type_labels();
+    }
+    bootstrap_extra_object_sign_labels(&mut catalog.astro_object_labels, &mut catalog.zodiac_sign_labels);
+}
+
+async fn load_i18n_from_db(pool: &sqlx::PgPool, catalog: &mut CanonicalCatalog) {
+    if let Ok(rows) = sqlx::query_as::<_, (String, String, String, String)>(
+        "SELECT locale_code, iso_639_1, display_name, prompt_instruction \
+         FROM llm_writing_locales WHERE is_active = true ORDER BY locale_code",
+    )
+    .fetch_all(pool)
+    .await
+    {
+        catalog.writing_locales = rows
+            .into_iter()
+            .map(|(locale_code, iso_639_1, display_name, prompt_instruction)| WritingLocale {
+                locale_code,
+                iso_639_1,
+                display_name,
+                prompt_instruction,
+            })
+            .collect();
+    }
+
+    if let Ok(rows) = sqlx::query_as::<_, (String,)>(
+        "SELECT role_code FROM llm_astro_basis_roles WHERE is_active = true",
+    )
+    .fetch_all(pool)
+    .await
+    {
+        catalog.astro_basis_roles = rows.into_iter().map(|(c,)| c).collect();
+    }
+
+    if let Ok(rows) = sqlx::query_as::<_, (String, String, String)>(
+        "SELECT aspect_code, locale, label FROM llm_aspect_type_labels WHERE is_active = true",
+    )
+    .fetch_all(pool)
+    .await
+    {
+        for (aspect_code, locale, label) in rows {
+            catalog
+                .aspect_type_labels
+                .insert((locale, aspect_code), label);
+        }
+    }
 }
 
 fn parse_reasoning_effort(raw: &str) -> astral_llm_domain::ReasoningEffort {
@@ -188,6 +333,85 @@ impl CanonicalCatalog {
             .iter()
             .find(|p| p.product_code == product_code)
     }
+
+    pub fn object_label(&self, locale: &str, object_code: &str) -> Option<&str> {
+        self.astro_object_labels
+            .get(&(locale.to_string(), object_code.to_string()))
+            .map(String::as_str)
+    }
+
+    pub fn sign_label(&self, locale: &str, sign_code: &str) -> Option<&str> {
+        self.zodiac_sign_labels
+            .get(&(locale.to_string(), sign_code.to_string()))
+            .map(String::as_str)
+    }
+
+    pub fn writing_locale(&self, user_language: &str) -> Option<&WritingLocale> {
+        let code = user_language.trim().to_lowercase();
+        self.writing_locales
+            .iter()
+            .find(|l| l.locale_code == code || l.iso_639_1 == code)
+    }
+
+    pub fn aspect_label(&self, locale: &str, aspect_code: &str) -> Option<&str> {
+        self.aspect_type_labels
+            .get(&(locale.to_string(), aspect_code.to_string()))
+            .map(String::as_str)
+    }
+
+    pub fn is_allowed_basis_role(&self, role: &str) -> bool {
+        self.astro_basis_roles.contains(role)
+    }
+}
+
+fn insert_label(map: &mut HashMap<(String, String), String>, locale: &str, code: &str, label: &str) {
+    map.insert((locale.into(), code.into()), label.into());
+}
+
+pub fn bootstrap_astro_object_labels() -> HashMap<(String, String), String> {
+    let mut m = HashMap::new();
+    for (code, fr, en) in [
+        ("sun", "Soleil", "Sun"),
+        ("moon", "Lune", "Moon"),
+        ("mercury", "Mercure", "Mercury"),
+        ("venus", "Vénus", "Venus"),
+        ("mars", "Mars", "Mars"),
+        ("jupiter", "Jupiter", "Jupiter"),
+        ("saturn", "Saturne", "Saturn"),
+        ("uranus", "Uranus", "Uranus"),
+        ("neptune", "Neptune", "Neptune"),
+        ("pluto", "Pluton", "Pluto"),
+        ("ascendant", "Ascendant", "Ascendant"),
+        ("descendant", "Descendant", "Descendant"),
+        ("mc", "Milieu du Ciel", "Midheaven"),
+        ("ic", "Fond du Ciel", "Imum Coeli"),
+    ] {
+        insert_label(&mut m, "fr", code, fr);
+        insert_label(&mut m, "en", code, en);
+    }
+    m
+}
+
+pub fn bootstrap_zodiac_sign_labels() -> HashMap<(String, String), String> {
+    let mut m = HashMap::new();
+    for (code, fr, en) in [
+        ("aries", "Bélier", "Aries"),
+        ("taurus", "Taureau", "Taurus"),
+        ("gemini", "Gémeaux", "Gemini"),
+        ("cancer", "Cancer", "Cancer"),
+        ("leo", "Lion", "Leo"),
+        ("virgo", "Vierge", "Virgo"),
+        ("libra", "Balance", "Libra"),
+        ("scorpio", "Scorpion", "Scorpio"),
+        ("sagittarius", "Sagittaire", "Sagittarius"),
+        ("capricorn", "Capricorne", "Capricorn"),
+        ("aquarius", "Verseau", "Aquarius"),
+        ("pisces", "Poissons", "Pisces"),
+    ] {
+        insert_label(&mut m, "fr", code, fr);
+        insert_label(&mut m, "en", code, en);
+    }
+    m
 }
 
 pub fn bootstrap_product_policies() -> Vec<ProductGenerationPolicy> {

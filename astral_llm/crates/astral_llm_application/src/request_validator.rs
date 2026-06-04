@@ -19,8 +19,15 @@ impl RequestValidator {
             violations.push("product_context.product_code is required".into());
         }
 
-        if request.product_context.user_language.len() != 2 {
+        let lang = request.product_context.user_language.trim().to_lowercase();
+        if lang.len() != 2 {
             violations.push("product_context.user_language must be a 2-letter ISO code".into());
+        } else if !catalog.writing_locales.is_empty()
+            && catalog.writing_locale(&lang).is_none()
+        {
+            violations.push(format!(
+                "product_context.user_language '{lang}' is not an active writing locale"
+            ));
         }
 
         if request.astro_result.contract_version.is_empty() {

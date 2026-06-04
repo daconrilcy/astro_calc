@@ -30,12 +30,40 @@ impl AstroFactKind {
             _ => AstroFactUsage::InterpretiveBasis,
         }
     }
+
+    pub fn as_kind_code(self) -> &'static str {
+        match self {
+            Self::PlanetPosition => crate::interpretive_evidence::KIND_PLACEMENT,
+            Self::Angle => crate::interpretive_evidence::KIND_ANGLE,
+            Self::Aspect => crate::interpretive_evidence::KIND_ASPECT,
+            Self::Ruler => crate::interpretive_evidence::KIND_HOUSE_RULER,
+            Self::Dignity => "essential_dignity",
+            Self::HousePlacement => "house_axis",
+            Self::DomainScore => crate::interpretive_evidence::KIND_DOMAIN_SCORE,
+            Self::Other => "other",
+        }
+    }
+
+    pub fn from_kind_code(code: &str) -> Self {
+        match code {
+            "placement" => Self::PlanetPosition,
+            "angle" => Self::Angle,
+            "aspect" => Self::Aspect,
+            "house_ruler" => Self::Ruler,
+            "essential_dignity" | "accidental_dignity" => Self::Dignity,
+            "house_axis" | "house_emphasis" => Self::HousePlacement,
+            "domain_score" => Self::DomainScore,
+            _ => Self::Other,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct NormalizedAstroFact {
     pub id: String,
     pub kind: AstroFactKind,
+    #[serde(default = "default_empty_string")]
+    pub kind_code: String,
     #[serde(default = "default_usage_for_kind")]
     pub usage: AstroFactUsage,
     pub label: String,
@@ -48,6 +76,26 @@ pub struct NormalizedAstroFact {
 
 fn default_usage_for_kind() -> AstroFactUsage {
     AstroFactUsage::InterpretiveBasis
+}
+
+fn default_empty_string() -> String {
+    String::new()
+}
+
+impl NormalizedAstroFact {
+    pub fn effective_kind_code(&self) -> &str {
+        if !self.kind_code.is_empty() {
+            return self.kind_code.as_str();
+        }
+        self.kind.as_kind_code()
+    }
+
+    pub fn with_kind_code(mut self) -> Self {
+        if self.kind_code.is_empty() {
+            self.kind_code = self.kind.as_kind_code().to_string();
+        }
+        self
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

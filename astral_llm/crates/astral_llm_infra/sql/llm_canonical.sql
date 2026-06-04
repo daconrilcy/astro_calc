@@ -49,6 +49,24 @@ CREATE TABLE IF NOT EXISTS llm_provider_models (
     UNIQUE (provider, model)
 );
 
+CREATE TABLE IF NOT EXISTS llm_astro_object_labels (
+    id SERIAL PRIMARY KEY,
+    object_code TEXT NOT NULL,
+    locale TEXT NOT NULL DEFAULT 'fr',
+    label TEXT NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    UNIQUE (object_code, locale)
+);
+
+CREATE TABLE IF NOT EXISTS llm_zodiac_sign_labels (
+    id SERIAL PRIMARY KEY,
+    sign_code TEXT NOT NULL,
+    locale TEXT NOT NULL DEFAULT 'fr',
+    label TEXT NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    UNIQUE (sign_code, locale)
+);
+
 CREATE TABLE IF NOT EXISTS llm_product_generation_policies (
     id SERIAL PRIMARY KEY,
     product_code TEXT NOT NULL UNIQUE,
@@ -84,6 +102,64 @@ INSERT INTO llm_product_generation_policies (
     ('natal_basic', 6, 6, 8000, 'medium', false),
     ('natal_premium', 12, 12, 16000, 'high', true)
 ON CONFLICT (product_code) DO NOTHING;
+
+INSERT INTO llm_astro_object_labels (object_code, locale, label) VALUES
+    ('sun', 'fr', 'Soleil'),
+    ('moon', 'fr', 'Lune'),
+    ('mercury', 'fr', 'Mercure'),
+    ('venus', 'fr', 'Vénus'),
+    ('mars', 'fr', 'Mars'),
+    ('jupiter', 'fr', 'Jupiter'),
+    ('saturn', 'fr', 'Saturne'),
+    ('uranus', 'fr', 'Uranus'),
+    ('neptune', 'fr', 'Neptune'),
+    ('pluto', 'fr', 'Pluton'),
+    ('ascendant', 'fr', 'Ascendant'),
+    ('descendant', 'fr', 'Descendant'),
+    ('mc', 'fr', 'Milieu du Ciel'),
+    ('ic', 'fr', 'Fond du Ciel'),
+    ('sun', 'en', 'Sun'),
+    ('moon', 'en', 'Moon'),
+    ('mercury', 'en', 'Mercury'),
+    ('venus', 'en', 'Venus'),
+    ('mars', 'en', 'Mars'),
+    ('jupiter', 'en', 'Jupiter'),
+    ('saturn', 'en', 'Saturn'),
+    ('uranus', 'en', 'Uranus'),
+    ('neptune', 'en', 'Neptune'),
+    ('pluto', 'en', 'Pluto'),
+    ('ascendant', 'en', 'Ascendant'),
+    ('descendant', 'en', 'Descendant'),
+    ('mc', 'en', 'Midheaven'),
+    ('ic', 'en', 'Imum Coeli')
+ON CONFLICT (object_code, locale) DO NOTHING;
+
+INSERT INTO llm_zodiac_sign_labels (sign_code, locale, label) VALUES
+    ('aries', 'fr', 'Bélier'),
+    ('taurus', 'fr', 'Taureau'),
+    ('gemini', 'fr', 'Gémeaux'),
+    ('cancer', 'fr', 'Cancer'),
+    ('leo', 'fr', 'Lion'),
+    ('virgo', 'fr', 'Vierge'),
+    ('libra', 'fr', 'Balance'),
+    ('scorpio', 'fr', 'Scorpion'),
+    ('sagittarius', 'fr', 'Sagittaire'),
+    ('capricorn', 'fr', 'Capricorne'),
+    ('aquarius', 'fr', 'Verseau'),
+    ('pisces', 'fr', 'Poissons'),
+    ('aries', 'en', 'Aries'),
+    ('taurus', 'en', 'Taurus'),
+    ('gemini', 'en', 'Gemini'),
+    ('cancer', 'en', 'Cancer'),
+    ('leo', 'en', 'Leo'),
+    ('virgo', 'en', 'Virgo'),
+    ('libra', 'en', 'Libra'),
+    ('scorpio', 'en', 'Scorpio'),
+    ('sagittarius', 'en', 'Sagittarius'),
+    ('capricorn', 'en', 'Capricorn'),
+    ('aquarius', 'en', 'Aquarius'),
+    ('pisces', 'en', 'Pisces')
+ON CONFLICT (sign_code, locale) DO NOTHING;
 
 INSERT INTO llm_provider_models (
     provider, model, supports_json_schema_strict, supports_json_object, supports_reasoning_effort,

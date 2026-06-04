@@ -121,7 +121,12 @@ async fn birth_date_not_in_normalized_facts_for_llm() {
         redact_birth_data_before_llm: true,
         ..PrivacyPolicy::default()
     };
-    let facts = AstroPayloadNormalizer::normalize(&payload, &privacy).unwrap();
+    let catalog = astral_llm_infra::CanonicalCatalog {
+        astro_object_labels: astral_llm_infra::bootstrap_astro_object_labels(),
+        zodiac_sign_labels: astral_llm_infra::bootstrap_zodiac_sign_labels(),
+        ..Default::default()
+    };
+    let facts = AstroPayloadNormalizer::normalize(&payload, &privacy, &catalog, "fr").unwrap();
     let block = AstroPayloadNormalizer::to_prompt_data_block(&facts);
     let serialized = block.to_string();
     assert!(!serialized.contains("1990-01-01"));

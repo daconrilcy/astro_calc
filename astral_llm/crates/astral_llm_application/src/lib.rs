@@ -1,8 +1,19 @@
 //! Cas d'usage et orchestration du gateway LLM.
 
+pub mod astro_basis_role_normalizer;
 pub mod astro_basis_validator;
+pub mod writing_language;
 pub mod astro_fact_extractor;
+pub mod chapter_evidence_planner;
+pub mod evidence_diversity_validator;
+pub mod evidence_fact_parse;
+pub mod interpretive_evidence_builder;
+pub mod astro_label_humanizer;
 pub mod astro_payload_normalizer;
+pub mod chapter_evidence_basis_enricher;
+pub mod chapter_evidence_coherence;
+pub mod chapter_writing_guidance;
+pub mod text_trigrams;
 pub mod chapter_orchestrator;
 pub mod chapter_quality_repair;
 pub mod domain_resolver;
@@ -10,6 +21,7 @@ pub mod editorial_validation;
 pub mod domain_selector;
 pub mod execution_audit;
 pub mod reading_plan;
+pub use reading_plan::ReadingPlanBuilder;
 pub mod engine_defaults;
 pub mod generation_trace;
 pub mod generate_reading_use_case;
@@ -17,6 +29,7 @@ pub mod model_capability_registry;
 pub mod payload_sanitizer;
 pub mod product_policy_validator;
 pub mod prompt_compiler;
+pub mod prompt_trace;
 pub mod provider_circuit_breaker;
 pub mod provider_factory;
 pub mod provider_router;
@@ -40,6 +53,12 @@ pub use generate_reading_use_case::{GenerateReadingUseCase, UseCaseOutput};
 pub use prompt_compiler::{PromptBundle, PromptCompiler};
 pub use astro_payload_normalizer::AstroPayloadNormalizer;
 pub use astro_basis_validator::AstroBasisValidator;
+pub use chapter_evidence_coherence::ChapterEvidenceCoherence;
+pub use chapter_evidence_planner::{pack_for_chapter, ChapterEvidencePlanner};
+pub use evidence_diversity_validator::{compute_evidence_metrics, EvidenceDiversityValidator};
+pub use interpretive_evidence_builder::{
+    is_premium_product, pool_richness_check, InterpretiveEvidenceBuilder,
+};
 pub use model_capability_registry::ModelCapabilityRegistry;
 pub use provider_factory::{
     build_capability_registry, build_capability_registry_with_db, build_fallback_policy,

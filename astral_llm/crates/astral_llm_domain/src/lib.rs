@@ -2,6 +2,7 @@
 
 pub mod astrologer_profile;
 pub mod astro_fact;
+pub mod interpretive_evidence;
 pub mod chapter_orchestration;
 pub mod contract_versions;
 pub mod domain_selection;
@@ -11,6 +12,7 @@ pub mod errors;
 pub mod fallback_policy;
 pub mod generation_request;
 pub mod generation_response;
+pub mod legal_copy;
 pub mod model_capability;
 pub mod output_contract;
 pub mod privacy_policy;
@@ -23,6 +25,7 @@ pub mod service_limits;
 
 pub use astrologer_profile::*;
 pub use astro_fact::*;
+pub use interpretive_evidence::*;
 pub use chapter_orchestration::*;
 pub use contract_versions::*;
 pub use engine_defaults::EngineDefaults;
@@ -32,6 +35,7 @@ pub use errors::*;
 pub use fallback_policy::*;
 pub use generation_request::*;
 pub use generation_response::*;
+pub use legal_copy::default_legal_disclaimer;
 pub use model_capability::*;
 pub use output_contract::*;
 pub use privacy_policy::*;

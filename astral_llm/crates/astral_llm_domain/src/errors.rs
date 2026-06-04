@@ -20,6 +20,8 @@ pub enum GenerationErrorCode {
     ProductPolicyViolation,
     PolicyViolation,
     ReadingQualityFailed,
+    PremiumEvidenceDiversityFailed,
+    AstroBasisInvalid,
 }
 
 impl GenerationErrorCode {
@@ -40,6 +42,8 @@ impl GenerationErrorCode {
             Self::ProductPolicyViolation => "PRODUCT_POLICY_VIOLATION",
             Self::PolicyViolation => "POLICY_VIOLATION",
             Self::ReadingQualityFailed => "READING_QUALITY_FAILED",
+            Self::PremiumEvidenceDiversityFailed => "PREMIUM_EVIDENCE_DIVERSITY_FAILED",
+            Self::AstroBasisInvalid => "ASTRO_BASIS_INVALID",
         }
     }
 }

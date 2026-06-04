@@ -2,9 +2,6 @@ use astral_llm_domain::{
     output_contract::ChapterContract, GenerationError, GenerationErrorCode,
 };
 
-/// Marge acceptee au-dela de max_words (variance LLM en sortie structuree).
-const CHAPTER_MAX_WORDS_SLACK: u32 = 25;
-
 pub struct TokenBudget;
 
 impl TokenBudget {
@@ -49,16 +46,37 @@ impl TokenBudget {
                     ));
                 }
             }
-            if let Some(max) = contract.max_words {
-                if words > max.saturating_add(CHAPTER_MAX_WORDS_SLACK) {
-                    return Err(GenerationError::with_details(
-                        GenerationErrorCode::SchemaValidationFailed,
-                        format!("chapter {} above max_words", contract.code),
-                        serde_json::json!({ "code": contract.code, "words": words, "max": max }),
-                    ));
-                }
-            }
+            // max_words : consigne prompt uniquement, jamais bloquant en validation.
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use astral_llm_domain::output_contract::ChapterContract;
+
+    #[test]
+    fn rejects_only_below_min_words() {
+        let contracts = vec![ChapterContract {
+            code: "career".into(),
+            title: "Career".into(),
+            min_words: Some(80),
+            max_words: Some(300),
+            target_tokens: None,
+            required_fields: vec![],
+        }];
+        assert!(TokenBudget::validate_chapter_lengths(
+            &[("career".into(), "short".into())],
+            &contracts,
+        )
+        .is_err());
+        let long = (0..400).map(|_| "word").collect::<Vec<_>>().join(" ");
+        assert!(TokenBudget::validate_chapter_lengths(
+            &[("career".into(), long)],
+            &contracts,
+        )
+        .is_ok());
     }
 }

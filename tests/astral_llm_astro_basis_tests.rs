@@ -18,7 +18,10 @@ use astral_llm_domain::{
     AstroCalculationPayload, AstrologerProfile, EngineDefaults, FallbackPolicy, PrivacyPolicy,
     ProductGenerationPolicy, ServiceLimits,
 };
-use astral_llm_infra::{bootstrap_domains, bootstrap_product_policies, CanonicalCatalog, SafetyPattern};
+use astral_llm_infra::{
+    bootstrap_astro_object_labels, bootstrap_domains, bootstrap_product_policies,
+    bootstrap_zodiac_sign_labels, CanonicalCatalog, SafetyPattern,
+};
 use astral_llm_providers::FakeProvider;
 
 fn test_catalog() -> Arc<CanonicalCatalog> {
@@ -30,8 +33,20 @@ fn test_catalog() -> Arc<CanonicalCatalog> {
             locale: "fr".into(),
             pattern: "symbolique".into(),
         }],
+        astro_object_labels: bootstrap_astro_object_labels(),
+        zodiac_sign_labels: bootstrap_zodiac_sign_labels(),
         ..Default::default()
     })
+}
+
+fn normalize_facts(payload: &AstroCalculationPayload) -> astral_llm_domain::NormalizedAstroFacts {
+    AstroPayloadNormalizer::normalize(
+        payload,
+        &PrivacyPolicy::default(),
+        &test_catalog(),
+        "fr",
+    )
+    .expect("normalize")
 }
 
 fn premium_payload_with_scores_only() -> serde_json::Value {
@@ -129,15 +144,11 @@ fn build_use_case(catalog: Arc<CanonicalCatalog>) -> GenerateReadingUseCase {
 
 #[test]
 fn premium_rejects_domain_score_only_chapter_basis() {
-    let facts = AstroPayloadNormalizer::normalize(
-        &AstroCalculationPayload {
-            contract_version: "natal_structured_v13".into(),
-            chart_type: "natal".into(),
-            data: premium_payload_with_scores_only(),
-        },
-        &PrivacyPolicy::default(),
-    )
-    .expect("normalize");
+    let facts = normalize_facts(&AstroCalculationPayload {
+        contract_version: "natal_structured_v13".into(),
+        chart_type: "natal".into(),
+        data: premium_payload_with_scores_only(),
+    });
 
     assert!(
         !facts.facts.iter().any(|f| f.usage == AstroFactUsage::InterpretiveBasis),
@@ -152,7 +163,7 @@ fn premium_rejects_domain_score_only_chapter_basis() {
             fact_id: Some("domain_score:identity".into()),
             label: None,
             factor: "identity".into(),
-            interpretive_role: "signal".into(),
+            interpretive_role: "domain_score".into(),
         }],
         confidence: ConfidenceLevel::Medium,
         safety_flags: vec![],
@@ -164,15 +175,11 @@ fn premium_rejects_domain_score_only_chapter_basis() {
 
 #[test]
 fn premium_accepts_domain_score_plus_placement() {
-    let facts = AstroPayloadNormalizer::normalize(
-        &AstroCalculationPayload {
-            contract_version: "natal_structured_v13".into(),
-            chart_type: "natal".into(),
-            data: premium_payload_with_placements(),
-        },
-        &PrivacyPolicy::default(),
-    )
-    .expect("normalize");
+    let facts = normalize_facts(&AstroCalculationPayload {
+        contract_version: "natal_structured_v13".into(),
+        chart_type: "natal".into(),
+        data: premium_payload_with_placements(),
+    });
 
     let chapter = ReadingChapter {
         code: "identity".into(),
@@ -183,13 +190,13 @@ fn premium_accepts_domain_score_plus_placement() {
                 fact_id: Some("domain_score:identity".into()),
                 label: None,
                 factor: "identity".into(),
-                interpretive_role: "signal".into(),
+                interpretive_role: "domain_score".into(),
             },
             astral_llm_domain::AstroBasisItem {
                 fact_id: Some("placement:sun:capricorn:house:2".into()),
                 label: None,
                 factor: "sun".into(),
-                interpretive_role: "placement".into(),
+                interpretive_role: "core".into(),
             },
         ],
         confidence: ConfidenceLevel::Medium,
@@ -211,10 +218,36 @@ async fn premium_e2e_fails_without_interpretive_payload() {
     );
 }
 
+fn v13_golden_path() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../tests/golden/natal_payload_v13_paris_1990.json")
+}
+
+fn rich_premium_payload() -> serde_json::Value {
+    let raw = std::fs::read_to_string(v13_golden_path()).expect("golden payload");
+    serde_json::from_str(&raw).expect("parse golden")
+}
+
 #[tokio::test]
-async fn premium_e2e_succeeds_with_placements_and_summary() {
+async fn premium_e2e_minimal_placements_fails_diversity() {
     let use_case = build_use_case(test_catalog());
     let request = premium_request(premium_payload_with_placements());
+    let response = use_case.execute(request).await;
+    match response {
+        GenerateReadingResponse::Failed(failed) => {
+            assert_eq!(
+                failed.error.code.as_str(),
+                "PREMIUM_EVIDENCE_DIVERSITY_FAILED"
+            );
+        }
+        other => panic!("expected PREMIUM_EVIDENCE_DIVERSITY_FAILED, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn premium_e2e_succeeds_with_rich_payload_and_summary() {
+    let use_case = build_use_case(test_catalog());
+    let request = premium_request(rich_premium_payload());
     let response = use_case.execute(request).await;
 
     match response {

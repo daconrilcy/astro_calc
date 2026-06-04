@@ -11,10 +11,18 @@ use crate::execution_audit::ExecutionAudit;
 use crate::prompt_compiler::PromptBundle;
 use crate::reading_quality_validator::{PremiumQualityThresholds, ReadingQualityValidator};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ChapterRepairKind {
-    Length,
+    TooShort {
+        words: u32,
+        min_words: u32,
+        max_words: u32,
+    },
     Repetition { score: usize, max_allowed: usize },
+    EvidenceCoherence {
+        missing_pack_fact_ids: Vec<String>,
+        orphan_object_codes: Vec<String>,
+    },
 }
 
 pub struct ChapterOutcome {
@@ -24,7 +32,91 @@ pub struct ChapterOutcome {
     pub route_meta: (String, String, bool, Option<u32>, Option<u32>),
 }
 
-const MAX_REPETITION_REPAIR_ATTEMPTS: usize = 2;
+const MAX_REPETITION_REPAIR_ATTEMPTS: usize = 3;
+const MAX_MIN_WORDS_REPAIR_ATTEMPTS: usize = 2;
+
+pub fn length_repair_from_error(
+    err: &GenerationError,
+    chapter: &ReadingPlanChapter,
+) -> ChapterRepairKind {
+    let details = err.detail().details.as_ref();
+    let words = details
+        .and_then(|d| d.get("words"))
+        .and_then(|v| v.as_u64())
+        .map(|v| v as u32)
+        .unwrap_or(0);
+    ChapterRepairKind::TooShort {
+        words,
+        min_words: chapter.min_words,
+        max_words: chapter.max_words,
+    }
+}
+
+pub async fn retry_chapter_on_min_words<F, Fut>(
+    chapter: &ReadingPlanChapter,
+    initial_err: GenerationError,
+    run_id: &str,
+    engine: &ResolvedEngineParams,
+    started: Instant,
+    audit: &mut ExecutionAudit,
+    regenerate: F,
+) -> Result<
+    (
+        ReadingChapter,
+        PromptBundle,
+        (String, String, bool, Option<u32>, Option<u32>),
+    ),
+    GenerationError,
+>
+where
+    F: Fn(Option<ChapterRepairKind>) -> Fut,
+    Fut: std::future::Future<
+        Output = Result<
+            (
+                ReadingChapter,
+                PromptBundle,
+                (String, String, bool, Option<u32>, Option<u32>),
+            ),
+            GenerationError,
+        >,
+    >,
+{
+    let mut last_err = initial_err;
+    for attempt in 0..MAX_MIN_WORDS_REPAIR_ATTEMPTS {
+        let repair = length_repair_from_error(&last_err, chapter);
+        tracing::info!(
+            run_id,
+            chapter = %chapter.code,
+            attempt = attempt + 1,
+            "chapter below min_words, attempting repair"
+        );
+        match regenerate(Some(repair)).await {
+            Ok(ok) => return Ok(ok),
+            Err(e) if is_min_words_violation(&e) && attempt + 1 < MAX_MIN_WORDS_REPAIR_ATTEMPTS => {
+                last_err = e;
+            }
+            Err(e) => return Err(e),
+        }
+    }
+    audit.record_chapter_step(
+        &chapter.code,
+        engine.provider.as_str(),
+        &engine.model,
+        ChapterGenerationStatus::Failed,
+        None,
+        None,
+        started.elapsed().as_millis() as u64,
+        Some(GenerationErrorCode::SchemaValidationFailed.as_str().to_string()),
+    );
+    Err(last_err)
+}
+
+pub fn is_min_words_violation(err: &GenerationError) -> bool {
+    matches!(
+        err.detail().code,
+        GenerationErrorCode::SchemaValidationFailed
+    ) && err.detail().message.contains("below min_words")
+}
 
 pub async fn maybe_repair_repetition<F, Fut>(
     chapter: &ReadingPlanChapter,
@@ -32,6 +124,7 @@ pub async fn maybe_repair_repetition<F, Fut>(
     bundle: PromptBundle,
     route_meta: (String, String, bool, Option<u32>, Option<u32>),
     quality_thresholds: &PremiumQualityThresholds,
+    locale: &str,
     run_id: &str,
     engine: &ResolvedEngineParams,
     started: Instant,
@@ -54,6 +147,7 @@ where
     if !ReadingQualityValidator::chapter_exceeds_repetition(
         &reading_chapter.body,
         quality_thresholds,
+        locale,
     ) {
         return Ok(ChapterOutcome {
             reading_chapter,
@@ -63,7 +157,8 @@ where
         });
     }
 
-    let initial_score = ReadingQualityValidator::chapter_repetition_score(&reading_chapter.body);
+    let initial_score =
+        ReadingQualityValidator::chapter_repetition_score(&reading_chapter.body, locale);
     tracing::info!(
         run_id,
         chapter = %chapter.code,
@@ -85,7 +180,8 @@ where
         .await
         {
             Ok((repaired, repaired_bundle, repaired_meta)) => {
-                let score = ReadingQualityValidator::chapter_repetition_score(&repaired.body);
+                let score =
+                    ReadingQualityValidator::chapter_repetition_score(&repaired.body, locale);
                 if score <= best_score {
                     best_score = score;
                     best_chapter = repaired;
@@ -95,6 +191,7 @@ where
                 if !ReadingQualityValidator::chapter_exceeds_repetition(
                     &best_chapter.body,
                     quality_thresholds,
+                    locale,
                 ) {
                     return Ok(ChapterOutcome {
                         reading_chapter: best_chapter,
@@ -157,10 +254,15 @@ pub fn append_repair_instructions(
     repair: ChapterRepairKind,
 ) {
     match repair {
-        ChapterRepairKind::Length => {
+        ChapterRepairKind::TooShort {
+            words,
+            min_words,
+            max_words,
+        } => {
             bundle.task_instructions.push_str(&format!(
-                "\n\nREPAIR: Adjust chapter '{}' to between {} and {} words. Keep fact_ids valid.",
-                chapter.code, chapter.min_words, chapter.max_words
+                "\n\nREPAIR: Chapter '{}' is only {words} words; expand the body to at least {min_words} words \
+                 (target near {max_words}, but do not shorten if already long enough). Keep all fact_ids valid.",
+                chapter.code
             ));
         }
         ChapterRepairKind::Repetition { score, max_allowed } => {
@@ -169,6 +271,20 @@ pub fn append_repair_instructions(
                  Do not reuse the same three-word phrases. Current repetition score is {score} (max {max_allowed}). \
                  Vary transitions (cependant, par ailleurs, en revanche). Keep fact_ids valid and interpretive framing.",
                 chapter.code
+            ));
+        }
+        ChapterRepairKind::EvidenceCoherence {
+            missing_pack_fact_ids,
+            orphan_object_codes,
+        } => {
+            bundle.task_instructions.push_str(&format!(
+                "\n\nREPAIR (evidence coherence): Chapter '{}'. \
+                 Include EVERY CORE and SUPPORTING fact_id from the chapter evidence pack in astro_basis \
+                 (matching interpretive_role). Missing in astro_basis: {:?}. \
+                 Remove or replace body passages that cite celestial objects not listed in astro_basis. \
+                 Orphan mentions (not backed by astro_basis): {:?}. \
+                 Do not develop placements or planets absent from the pack.",
+                chapter.code, missing_pack_fact_ids, orphan_object_codes
             ));
         }
     }
