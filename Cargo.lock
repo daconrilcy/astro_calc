@@ -143,6 +143,7 @@ dependencies = [
  "astral_llm_infra",
  "astral_llm_providers",
  "jsonschema",
+ "regex",
  "reqwest",
  "schemars",
  "serde",

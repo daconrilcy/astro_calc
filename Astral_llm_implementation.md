@@ -222,7 +222,7 @@ Comparer une sortie v2 a la baseline v1 :
   -V2Path output\premium_plus_reading_e2e_v2.json
 ```
 
-**Certification E2E v2** (2026-06-05, profil **520/720/850** + `chapter_length_expansion_codes`) : run OpenAI `e76a8156-82de-4ddb-9a16-48b22fbd6955` — **5 517 mots** (corps) ; sortie reference `output\premium_plus_reading_e2e_v2d.json`. **Final polish** (2026-06-05) : run `31d81052-c5ab-49d0-bfdf-1eb2c3e0d027` — **5 582 mots**, gates polish (house_axis i18n, summary patterns, raw placement) ; sortie `output\premium_plus_reading_e2e.json`. Revalider : `.\scripts\test_natal_premium_plus_profile.ps1` ou `-SkipGenerate` sur la sortie cible.
+**Certification E2E v2** (2026-06-05, profil **520/720/850** + `chapter_length_expansion_codes`) : run OpenAI `e76a8156-82de-4ddb-9a16-48b22fbd6955` — **5 517 mots** (corps) ; sortie reference `output\premium_plus_reading_e2e_v2d.json`. **Final polish (P3e)** (2026-06-05) : run `31d81052-c5ab-49d0-bfdf-1eb2c3e0d027` — **5 582 mots**, gates polish (house_axis i18n, summary patterns, raw placement). **Premium Plus final certification — CLOSED** (2026-06-05) : run `673f2950-cca8-45fd-a572-2f1b5d69d753` — **5 537 mots**, summary UX compact (title 7 mots, short_text 64 mots / 2 phrases), summary hardening lexical, gates E2E + audit SQL ; sortie `output\premium_plus_reading_e2e.json`. Revalider : `.\scripts\test_natal_premium_plus_profile.ps1` ou `-SkipGenerate` sur la sortie cible.
 
 ---
 
@@ -1003,12 +1003,12 @@ SQL : [`astral_llm/crates/astral_llm_infra/sql/llm_evidence_canonical.sql`](astr
 - `ReadingOpeningDiversityValidator` : **bloquant** = amorce chapitre dupliquee (`chapter_opening_duplicate_of`) ; **warning** (log) = paragraphe / formules stock. `synthesis` exclu de la detection.
 - `repair_opening_duplicates` : jusqu'a 8 rounds, **un** chapitre par tour (premiere violation bloquante) ; combine `repair_opening_too_short` si regen sous `min_words`.
 - Repairs : repetition intra-chapitre (domaine + `synthesis`), `min_words`, `repair_evidence`, `SymbolicFraming` sur `synthesis` si `PostSafetyValidationFailed` (cadrage symbolique manquant — retry x1 avec consigne explicite).
-- `SummarySynthesizer` : summary court separe de `synthesis` ; ban divinatoire (`tirage`, `oracle`) ; `natal_premium_plus` exige un marqueur astro (`thème`, `lecture`, `symbolique`, …).
+- `SummarySynthesizer` : `summary.short_text` = accroche UI courte ; `synthesis` = integration longue ; regex divinatoire (`summary_forbidden_patterns`) + contrat UX compact (`summary_ux_rules`, 2 phrases / 75 mots max) ; `natal_premium_plus` exige un marqueur astro (`thème`, `lecture`, `symbolique`, …).
 - Benchmark v1/v2 : `scripts/compare_premium_plus_versions.ps1` — JSON (mots/chapitre, fillers par chapitre, repairs) + CSV agrege (totaux, latence, tokens).
 
 **E2E premium** (`scripts/generate_premium_reading_e2e.ps1`, `request-premium-rich.json`) : runs de reference `54d2634c`, `627c9ada` — ~38–43 s, 6 steps `generated`, 6 fichiers `*_primary.txt` (pas de `*_repair_*`).
 
-**E2E premium plus** (`scripts/generate_premium_plus_reading_e2e.ps1`, `scripts/test_natal_premium_plus_profile.ps1`, `request-premium-plus-rich.json`) : wrapper vers `generate_premium_reading_e2e.ps1` ; timeout script par defaut **1800 s**. Le JSON profil courant (`natal_premium_plus.json`) porte les seuils **v2** (520/720/850) et `chapter_length_expansion_codes`. **Certification v2** **clos** (2026-06-05) : run `e76a8156` — **5 517 mots** (`premium_plus_reading_e2e_v2d.json`). **Final polish clos** (2026-06-05) : run `31d81052` — **5 582 mots**, gates polish + audit SQL ; sortie `premium_plus_reading_e2e.json`.
+**E2E premium plus** (`scripts/generate_premium_plus_reading_e2e.ps1`, `scripts/test_natal_premium_plus_profile.ps1`, `request-premium-plus-rich.json`) : wrapper vers `generate_premium_reading_e2e.ps1` ; timeout script par defaut **1800 s**. Le JSON profil courant (`natal_premium_plus.json`) porte les seuils **v2** (520/720/850) et `chapter_length_expansion_codes`. **Certification v2** **clos** (2026-06-05) : run `e76a8156` — **5 517 mots** (`premium_plus_reading_e2e_v2d.json`). **Final polish (P3e) clos** (2026-06-05) : run `31d81052` — **5 582 mots**. **Premium Plus final certification — CLOSED** (2026-06-05) : run `673f2950` — **5 537 mots**, summary UX compact + hardening lexical + audit SQL ; sortie `premium_plus_reading_e2e.json`.
 
 Tests :
 
@@ -1210,8 +1210,11 @@ Chapter outputs -> SummarySynthesizer -> summary.title + summary.short_text
 ```
 
 - Schema provider : `summary_provider_v1`
-- Placeholders interdits : « Synthese produite par… », « generation chapitre par chapitre », mention du pipeline ; vocabulaire divinatoire (`tirage`, `oracle`, `consultation divinatoire`) ; cliches (`liane de constance`) ; formulation mecanique `tendance invite` (le mot `tendance` seul reste autorise)
-- `MAX_SUMMARY_ATTEMPTS = 2` : retry avec consigne repair si pattern interdit ; fallback deterministe safe si echec style persistant (pas sur erreur JSON/provider/safety)
+- Placeholders interdits : « Synthese produite par… », « generation chapitre par chapitre », mention du pipeline
+- Patterns lexicaux divinatoires (`summary_forbidden_patterns`) : regex Unicode `\b` sur `oracle(s)`, `tirage(s)`, `cartes tirées`, `consultation(s) divinatoire(s)`, `liane de constance`, `tendance invite` (le mot `tendance` seul reste autorise ; `retirage` non bloque)
+- Contrat UX compact (`summary_ux_rules`) : `title` ≤ 12 mots ; `short_text` ≤ 2 phrases (compteur aligné E2E : `.?!` + espaces) et ≤ 75 mots (cible prompt 55–75)
+- Violations summary retryables : patterns divinatoires, placeholders techniques, contrat UX, ouverture `Tendance`, marqueur astro manquant (`natal_premium_plus`)
+- `MAX_SUMMARY_ATTEMPTS = 2` : retry avec consigne repair si pattern interdit ou violation UX ; fallback deterministe safe si echec persistant (pas sur erreur JSON/provider/safety)
 - `natal_premium_plus` : marqueur astro obligatoire dans title + short_text (`thème`, `lecture`, `symbolique`, `carte natale`, …)
 - Step auditee : `summary` dans `ExecutionAudit` (tokens `input_tokens` / `output_tokens` remontés depuis `route.response.usage`)
 - Run : `token_input` / `token_output` = somme des steps via `ExecutionAudit::aggregate_token_usage`
@@ -1234,35 +1237,44 @@ Prior chapters + global evidence pack -> FinalSynthesisSynthesizer -> chapters[]
 
 #### P3e — Premium Plus final polish (`natal_premium_plus` v2 validé)
 
-Polish produit post-certification V2. **Certification final polish** (2026-06-05) : run OpenAI `31d81052-c5ab-49d0-bfdf-1eb2c3e0d027` — **5 582 mots** (corps), 9 chapitres, 6 §/ch., 6 basis/ch., 1 `repair_opening` (`communication_mind`), 0 `repair_too_short` ; sortie `output\premium_plus_reading_e2e.json`. Revalider : `.\scripts\test_natal_premium_plus_profile.ps1` (gates JSON + `GET /v1/runs/{run_id}`).
+Polish produit post-certification V2. **Certification final polish (P3e)** (2026-06-05) : run OpenAI `31d81052-c5ab-49d0-bfdf-1eb2c3e0d027` — **5 582 mots** (corps), 9 chapitres, 6 §/ch., 6 basis/ch., 1 `repair_opening` (`communication_mind`), 0 `repair_too_short`. **Certification finale summary** (2026-06-05) : run `673f2950-cca8-45fd-a572-2f1b5d69d753` — **5 537 mots**, summary UX compact certifie ; sortie `output\premium_plus_reading_e2e.json`. Revalider : `.\scripts\test_natal_premium_plus_profile.ps1` (gates JSON + `GET /v1/runs/{run_id}`).
 
 **Implémenté :**
 
 - **`llm_house_axis_labels`** (SQL + bootstrap) : libellés `display_label` / `interpretive_label` des 6 axes canoniques (FR + EN) ; `fact_id` technique (`house_axis:private_public`) conservé, fuite interdite dans `astro_basis.label` / `factor` (ex. `Axe vie privée / vie publique`)
-- **`SummarySynthesizer`** : patterns interdits (`liane de constance`, `tirage`, `oracle`, `tendance invite`, … — matching mot entier pour termes courts) ; `MAX_SUMMARY_ATTEMPTS = 2` ; fallback déterministe safe (`summary_fallback`) si style interdit persiste ; validation `SafetyGuard` sur le fallback
+- **`SummarySynthesizer`** : regex divinatoire (`summary_forbidden_patterns`) + placeholders techniques ; contrat UX compact (`summary_ux_rules`, 2 phrases / 75 mots max) ; `MAX_SUMMARY_ATTEMPTS = 2` ; fallback déterministe safe si violation persistante ; validation `SafetyGuard` sur le fallback
 - **`paragraph_opening_raw_placement`** : `detect_raw_placement_paragraph_openings` (planètes depuis `catalog.astro_object_labels`, préposition locale `en`/`in`) ; 2 rounds repair LLM `repair_opening` ; fallback déterministe `Dans cette perspective, …` ; gate stricte E2E
 - **Cadrage symbolique** : consigne `ChapterWritingGuidance` anti-boilerplate ; warning `ReadingQualityValidator` si > 2 chapitres domaine contiennent une formule stock (sans affaiblir `require_symbolic_framing`)
-- **E2E** (`test_natal_premium_plus_profile.ps1`) : 6 axis codes bruts absents de `label`/`factor` ; patterns summary ; ouvertures placement brut ; total corps ≥ **5 300** mots ; audit `GET /v1/runs/{run_id}` — échec si `step_type = repair_too_short`, warning si `repair_opening` > 2
+- **E2E** (`test_natal_premium_plus_profile.ps1`) : 6 axis codes bruts absents de `label`/`factor` ; patterns summary (regex pluriels + contrat UX title/short_text) ; ouvertures placement brut ; total corps ≥ **5 300** mots ; audit `GET /v1/runs/{run_id}` — échec si `step_type = repair_too_short`, warning si `repair_opening` > 2
 
-**Backlog non bloquant :** pluriels (`oracles`, `tirages`) ; densité `summary.short_text` (UX, limite 2 phrases).
-
-**Premium Plus v2 final certification — CLOSED** (2026-06-05)
+**Premium Plus final certification — CLOSED** (2026-06-05)
 
 ```txt
-Run certifie : 31d81052-c5ab-49d0-bfdf-1eb2c3e0d027
+Run certifie : 673f2950-cca8-45fd-a572-2f1b5d69d753
 Sortie       : output\premium_plus_reading_e2e.json
 Revalidation : .\scripts\test_natal_premium_plus_profile.ps1 -SkipGenerate
 
 Resultat :
-- 5 582 mots corps
+- 5 537 mots corps
 - 9 chapitres (8 domaines astro + synthesis)
 - tous les chapitres >= 520 mots
 - 6 astro_basis partout
-- summary patterns OK
-- house_axis labels OK (champs visibles label/factor)
-- raw placement openings OK
+- summary.title : 7 mots
+- summary.short_text : 64 mots, 2 phrases (accroche UI courte)
+- aucun vocabulaire divinatoire interdit
+- house_axis labels humanises (label/factor)
+- aucune ouverture brute [planete] en [signe]
 - 0 repair_too_short dans l'audit SQL (GET /v1/runs/{run_id})
+
+Separation editoriale :
+  summary.short_text = accroche UI courte
+  synthesis          = integration longue et profonde
+  chapters[]         = developpement par domaine
 ```
+
+Historique : polish P3e run `31d81052` (5 582 mots) ; v2 run `e76a8156` (5 517 mots).
+
+**Backlog summary — CLOSED** : hardening lexical (pluriels `oracles`/`tirages`, regex Unicode) ; UX compact (title ≤ 12 mots, short_text ≤ 2 phrases / 75 mots). Micro-polish non bloquant : espace fine avant `:` en typographie FR (`FrenchTypographyNormalizer` — backlog futur).
 
 **Perimetre gele `natal_premium_plus`** (maintenance bugs uniquement) :
 
@@ -1446,7 +1458,7 @@ cargo test -p astral_llm_domain
 OpenAI V1 prod              : CLOS
 Evidence Planner            : CLOS
 Benchmark OpenAI            : CLOS (gpt-5.4-mini + gpt-5-nano)
-natal_premium_plus v2       : CLOS (run 31d81052, 5 582 mots, audit SQL OK)
+natal_premium_plus v2       : CLOS (run 673f2950, 5 537 mots, summary UX + audit SQL OK)
 Multi-provider certification: REPORTEE
 Next product work           : evidence enrichment + style refinement
 ```
@@ -1463,7 +1475,7 @@ Next product work           : evidence enrichment + style refinement
 | **Premium interpretatif riche OpenAI** | **VALIDÉ PRODUIT** | Evidence Planner clos ; E2E rich OpenAI OK (run certif. `744fccda`) |
 | **Chantier Evidence Planner** | **CLOS** | Plus de correction structurelle prevue ; maintenance bugs seulement |
 | **Benchmark OpenAI (cout / latence / qualite)** | **CLOS** | Choix prod : chapitres `gpt-5.4-mini`, summary `gpt-5-nano` ; voir `config/llm_product_models.conf` |
-| **`natal_premium_plus` v2 final certification** | **CLOS** | Run `31d81052` — 5 582 mots, gates polish + audit SQL ; sortie `premium_plus_reading_e2e.json` |
+| **`natal_premium_plus` v2 final certification** | **CLOS** | Run `673f2950` — 5 537 mots, summary UX compact + hardening + audit SQL ; sortie `premium_plus_reading_e2e.json` |
 | **Certification Mistral / Anthropic** | **REPORTEE** | Adapters presents ; certification multi-provider a une etape ulterieure |
 
 **References E2E produit** :
@@ -1471,7 +1483,7 @@ Next product work           : evidence enrichment + style refinement
 - **Certification V1 (2026-06-05)** : run `744fccda-98b2-4565-a687-ecd9b9567730` — ~33 s, 5 chapitres `gpt-5.4-mini` + summary `gpt-5-nano`, 6 steps `generated`, `request-premium-rich.json`, sortie `output/premium_reading_e2e.json`.
 - Premium OpenAI (2026-06-04) : run `f79c04a7-d0ff-4d7a-b32e-42fd7fef7d80` — ~42 s, 5 chapitres + summary, sortie `output/premium_reading_real.json`.
 - Premium historique : run `0619a1e8-4069-4f89-b6ea-db14f32f38ea` — ~47 s, 6 steps `generated`, libelles maîtrise humanises.
-- **Premium Plus v2 final certification** (2026-06-05) : run `31d81052-c5ab-49d0-bfdf-1eb2c3e0d027` — **5 582 mots** (corps), 9 chapitres, gates polish + audit SQL (`0 repair_too_short`) ; sortie `output/premium_plus_reading_e2e.json`. Revalider : `.\scripts\test_natal_premium_plus_profile.ps1`.
+- **Premium Plus final certification** (2026-06-05) : run `673f2950-cca8-45fd-a572-2f1b5d69d753` — **5 537 mots** (corps), 9 chapitres, summary UX compact (64 mots / 2 phrases), gates polish + summary hardening + audit SQL (`0 repair_too_short`) ; sortie `output/premium_plus_reading_e2e.json`. Revalider : `.\scripts\test_natal_premium_plus_profile.ps1`.
 
 Le gel **V1-technical-freeze** ne doit plus faire l'objet d'une refonte architecture. Les chantiers **OpenAI V1 prod**, **Evidence Planner**, **Benchmark OpenAI** et **`natal_premium_plus` v2 + final polish** sont **clos**. La certification multi-provider (Mistral / Anthropic) est **reportee**. Le prochain travail produit porte sur **l'enrichissement evidence** et **l'affinage style** — voir ci-dessous.
 
@@ -1496,13 +1508,14 @@ AstroLabelHumanizer, test_natal_premium_plus_profile.ps1
 ### Limites editoriales connues (non bloquantes)
 
 - **Amorces parfois « promptees »** : formulations type « En développant… », « En prenant en compte… » (effet secondaire des consignes `ChapterWritingGuidance` + diversite d'ouvertures). Acceptable en prod ; affinage style (prochain travail produit).
+- **Typographie FR** : espace fine avant `:` parfois absente dans `summary.title` / titres chapitres (ex. `profondeur:` au lieu de `profondeur :`). Non bloquant ; backlog futur `FrenchTypographyNormalizer`.
 - **Densite des prompts chapitre** : structure controlee via `body_structure` (4 § compact, 6 § editorial), liste `fact_id`, anti-repetition perceptuelle — securise `astro_basis` et la diversite, peut donner une prose un peu scolaire. A equilibrer via affinage style, pas en rouvrant le planner.
 
 ### Prochain travail produit (hors perimetre clos)
 
 1. ~~**OpenAI** : comparer cout / latence / qualite par modele sur le meme golden E2E~~ — **clos** : chapitres `gpt-5.4-mini`, summary `gpt-5-nano` (produit `natal_prompter` + profils JSON). Outils : `scripts/benchmark_premium_e2e_models.ps1`, `scripts/summarize_benchmark_runs.ps1` ; config : `config/llm_product_models.conf` + `set_product_llm_models.ps1`.
 2. ~~**Mistral / Anthropic**~~ — **reporte** (etape ulterieure) : adapters deja presents ; certification (smoke + E2E Premium) a planifier plus tard si besoin multi-provider.
-3. ~~**Certification E2E `natal_premium_plus` v1**~~ — **clos** (2026-06-05) : run `fe811176`, seuils 420/550. ~~**v2**~~ — **clos** (2026-06-05) : run `e76a8156`, **5 517 mots** (`premium_plus_reading_e2e_v2d.json`). ~~**Final polish (P3e)**~~ — **clos** (2026-06-05) : run `31d81052`, **5 582 mots**, gates polish + audit SQL ; sortie `premium_plus_reading_e2e.json`.
+3. ~~**Certification E2E `natal_premium_plus` v1**~~ — **clos** (2026-06-05) : run `fe811176`, seuils 420/550. ~~**v2**~~ — **clos** (2026-06-05) : run `e76a8156`, **5 517 mots** (`premium_plus_reading_e2e_v2d.json`). ~~**Final polish (P3e)**~~ — **clos** (2026-06-05) : run `31d81052`, **5 582 mots**. ~~**Summary hardening + UX compact**~~ — **clos** (2026-06-05) : run `673f2950`, **5 537 mots**, certification finale ; sortie `premium_plus_reading_e2e.json`.
 4. **Referentiel evidence** *(actif)* : enrichir progressivement les slots (noeuds, phases lunaires, dignites mineures, patterns d'aspects) via tables canoniques — pas de constantes en code.
 5. **Style redactionnel** *(actif)* : allegement cible des consignes prompt / guidance pour une prose moins « structuree par contraintes », sans casser les garde-fous qualite.
 
@@ -1549,7 +1562,7 @@ cargo test -p astral_llm_api --test astral_llm_load_tests -- --ignored  # idempo
 
 Criteres de passage : JSON valide, `astro_basis` valide (≥1 fact interpretatif par chapitre Premium, pas de `domain_score` seul), synthese finale personnalisee (pas de placeholder pipeline), pas de conseil medical/juridique/financier, pas de fatalisme, pas de repetition excessive, pas de liste froide de faits, disclaimer present, qualite Premium non rejetee (`READING_QUALITY_FAILED`), steps persistes (chapitres + `summary`), idempotence rejoue la reponse, `GET /v1/providers` expose `circuit_breakers`. Gate Premium : profil `natal_premium` (`blocking_gate`) bloquant meme si `single_pass` est envoye par erreur (normalise au boot requete).
 
-**Validation E2E Premium Plus** (`natal_premium_plus`, apres smoke OpenAI) : `.\scripts\test_natal_premium_plus_profile.ps1` — 9 chapitres, min **520** mots et **6** basis (domaines), **520** mots et **4** basis (`synthesis`), total corps ≥ **5 300** mots, gates polish (axis labels, summary patterns, raw placement), audit `GET /v1/runs/{run_id}` (`repair_too_short` interdit). Run certifie final polish : `31d81052` (5 582 mots). Comparaison v1/v2 : `.\scripts\compare_premium_plus_versions.ps1`.
+**Validation E2E Premium Plus** (`natal_premium_plus`, apres smoke OpenAI) : `.\scripts\test_natal_premium_plus_profile.ps1` — 9 chapitres, min **520** mots et **6** basis (domaines), **520** mots et **4** basis (`synthesis`), total corps ≥ **5 300** mots, gates polish (axis labels, summary patterns + UX compact, raw placement), audit `GET /v1/runs/{run_id}` (`repair_too_short` interdit). Run certifie : `673f2950` (5 537 mots, summary 64 mots). Comparaison v1/v2 : `.\scripts\compare_premium_plus_versions.ps1`.
 
 **API** : `product_code=natal_prompter` + `interpretation_profile_code` (`natal_light` | `natal_basic` | `natal_premium` | `natal_premium_plus`). Shim legacy : `natal_premium` / `natal_basic` comme `product_code` sont migres vers `natal_prompter` + profil impose (log `warn`) ; rejet `PRODUCT_POLICY_VIOLATION` si `interpretation_profile_code` contredit le legacy envoye.
 
@@ -1562,7 +1575,7 @@ Le payload astro Premium doit inclure des placements/aspects (via `planets`, `po
 **Clos**
 
 - Benchmark OpenAI : cout / latence / qualite par modele sur E2E Premium (`gpt-5.4-mini` / `gpt-5-nano`)
-- Certification E2E `natal_premium_plus` v1 : run `fe811176`. v2 : run `e76a8156` (5 517 mots). Final polish : run `31d81052` (5 582 mots, gates P3e)
+- Certification E2E `natal_premium_plus` v1 : run `fe811176`. v2 : run `e76a8156` (5 517 mots). Final polish (P3e) : run `31d81052` (5 582 mots). Certification finale : run `673f2950` (5 537 mots, summary UX + hardening)
 
 **Reporte**
 
@@ -1598,4 +1611,5 @@ Le payload astro Premium doit inclure des placements/aspects (via `planets`, `po
 19. **Benchmark OpenAI cout / latence / qualite** — choix prod `gpt-5.4-mini` (chapitres) + `gpt-5-nano` (summary)
 20. **Profil `natal_premium_plus` v1** — lecture longue 8 domaines + `synthesis` ; sequence fixe ; E2E certifie (`fe811176`, seuils 420/550)
 21. **Profil `natal_premium_plus` v2** — certifie E2E OpenAI (`e76a8156`, 2026-06-05) : seuils **520/720/850**, `body_structure` 6 §, repairs, humanizer balance/modality/sect/`house_emphasis` ; **5 517 mots**
-22. **Premium Plus v2 final certification (P3e)** — **CLOSED** (`31d81052`, 2026-06-05) : `llm_house_axis_labels`, summary retry/fallback, `paragraph_opening_raw_placement`, anti-boilerplate symbolique, gates E2E + audit SQL ; **5 582 mots** ; sortie `premium_plus_reading_e2e.json` ; perimetre gele (maintenance bugs)
+22. **Premium Plus v2 final polish (P3e)** — **CLOSED** (`31d81052`, 2026-06-05) : `llm_house_axis_labels`, summary retry/fallback, `paragraph_opening_raw_placement`, anti-boilerplate symbolique, gates E2E + audit SQL ; **5 582 mots**
+23. **Premium Plus final certification — summary hardening + UX compact** — **CLOSED** (`673f2950`, 2026-06-05) : `summary_forbidden_patterns`, `summary_ux_rules`, gates E2E summary (regex pluriels, title ≤ 12, short_text ≤ 2 phrases / 75 mots) ; **5 537 mots**, summary 64 mots / 2 phrases ; sortie `premium_plus_reading_e2e.json` ; `natal_premium_plus` **VALIDÉ PRODUIT FINAL** ; perimetre gele (maintenance bugs)

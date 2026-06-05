@@ -45,7 +45,9 @@ pub mod response_validator;
 pub mod safety_guard;
 pub mod safety_resolver;
 pub mod schema_registry;
+pub mod summary_forbidden_patterns;
 pub mod summary_synthesizer;
+pub mod summary_ux_rules;
 pub mod final_synthesis_synthesizer;
 pub mod token_budget;
 

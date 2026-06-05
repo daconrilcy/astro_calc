@@ -176,38 +176,57 @@ $script:RawHouseAxisCodes = @(
     "control_surrender"
 )
 
-$script:BannedSummaryPatterns = @(
-    "liane de constance",
-    "tirage",
-    "cartes tirees",
-    "cartes tirées",
-    "oracle",
-    "consultation divinatoire",
-    "tendance invite",
+$script:ForbiddenSummaryRegexPatterns = @(
+    '(?i)\boracles?\b',
+    '(?i)\btirages?\b',
+    '(?i)\bcartes?\s+tir[ée]es?\b',
+    '(?i)\bconsultations?\s+divinatoires?\b',
+    '(?i)liane\s+de\s+constance',
+    '(?i)tendance\s+invite'
+)
+
+$script:BannedTechnicalSummaryPatterns = @(
     "synthese produite par",
     "synthèse produite par",
     "generation chapitre par chapitre",
-    "génération chapitre par chapitre"
+    "génération chapitre par chapitre",
+    "lecture natal_premium",
+    "lecture natal_basic",
+    "lecture natal_prompter",
+    "chapter_orchestrated",
+    "single_pass",
+    "pipeline technique",
+    "placeholder"
 )
 
-function Test-SummaryBannedPattern {
+function Test-SummaryForbiddenRegex {
+    param(
+        [string]$Text,
+        [string]$Pattern
+    )
+
+    return [regex]::IsMatch($Text, $Pattern)
+}
+
+function Test-SummaryTechnicalPattern {
     param(
         [string]$Corpus,
         [string]$Pattern
     )
 
-    $lower = $Corpus.ToLowerInvariant()
-    $patternLower = $Pattern.ToLowerInvariant()
-    if ($patternLower.Contains(" ")) {
-        return $lower.Contains($patternLower)
+    return $Corpus.ToLowerInvariant().Contains($Pattern.ToLowerInvariant())
+}
+
+function Get-SummarySentenceCount {
+    param([string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return 0
     }
-    $tokens = [regex]::Split($lower, '[^a-zàâäéèêëïîôùûüç0-9]+')
-    foreach ($token in $tokens) {
-        if ($token -eq $patternLower) {
-            return $true
-        }
-    }
-    return $false
+    $sentences = @(
+        $Text -split '(?<=[.!?])\s+'
+    ) | Where-Object { $_.Trim().Length -gt 0 }
+    return $sentences.Count
 }
 
 function Test-RawPlacementParagraphOpening {
@@ -343,14 +362,51 @@ function Assert-PremiumPlusReading {
     if (-not $content.summary -or [string]::IsNullOrWhiteSpace($content.summary.short_text)) {
         $failures.Add("summary.short_text manquant ou vide.")
     } else {
-        $summaryCorpus = (
-            "$(if ($content.summary.title) { $content.summary.title } else { '' }) " +
+        $summaryText = (
+            "$(if ($content.summary.title) { $content.summary.title } else { '' })`n" +
             "$(if ($content.summary.short_text) { $content.summary.short_text } else { '' })"
-        ).ToLowerInvariant()
-        foreach ($pattern in $script:BannedSummaryPatterns) {
-            if (Test-SummaryBannedPattern -Corpus $summaryCorpus -Pattern $pattern) {
+        )
+        foreach ($pattern in $script:ForbiddenSummaryRegexPatterns) {
+            if (Test-SummaryForbiddenRegex -Text $summaryText -Pattern $pattern) {
                 $failures.Add("summary contient pattern interdit : '$pattern'.")
             }
+        }
+        $summaryCorpusLower = $summaryText.ToLowerInvariant()
+        foreach ($pattern in $script:BannedTechnicalSummaryPatterns) {
+            if (Test-SummaryTechnicalPattern -Corpus $summaryCorpusLower -Pattern $pattern) {
+                $failures.Add("summary contient pattern technique interdit : '$pattern'.")
+            }
+        }
+
+        $titleWords = Get-WordCount -Text $content.summary.title
+        if ($titleWords -gt 12) {
+            $failures.Add("summary.title trop long : $titleWords mots (max 12).")
+        }
+
+        $shortWords = Get-WordCount -Text $content.summary.short_text
+        if ($shortWords -gt 75) {
+            $failures.Add("summary.short_text trop long : $shortWords mots (max 75).")
+        }
+
+        $sentenceCount = Get-SummarySentenceCount -Text $content.summary.short_text
+        if ($sentenceCount -gt 2) {
+            $failures.Add("summary.short_text contient trop de phrases : $sentenceCount (max 2).")
+        }
+
+        if ($content.summary.short_text.Trim().ToLowerInvariant().StartsWith("tendance")) {
+            $failures.Add("summary.short_text ne doit pas commencer par 'Tendance'.")
+        }
+
+        $summaryAstroMarkers = @("thème", "theme", "lecture", "configuration", "carte natale", "symbolique")
+        $hasAstroMarker = $false
+        foreach ($marker in $summaryAstroMarkers) {
+            if ($summaryCorpusLower.Contains($marker)) {
+                $hasAstroMarker = $true
+                break
+            }
+        }
+        if (-not $hasAstroMarker) {
+            $failures.Add("summary sans marqueur astro (thème, lecture, symbolique, carte natale, …).")
         }
     }
 

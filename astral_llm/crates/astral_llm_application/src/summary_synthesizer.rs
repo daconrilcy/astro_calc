@@ -21,11 +21,13 @@ use crate::prompt_trace;
 use crate::provider_schema_compiler::ProviderSchemaCompiler;
 use crate::response_validator::ResponseValidator;
 use crate::safety_guard::SafetyGuard;
+use crate::summary_forbidden_patterns::find_forbidden_summary_patterns;
+use crate::summary_ux_rules::{count_words, validate_summary_ux, SummaryUxRules};
 use crate::writing_language::WritingLanguageDirective;
 
 use astral_llm_domain::chapter_orchestration::READING_SUMMARY_STEP_CODE;
 
-const BANNED_SUMMARY_PATTERNS: &[&str] = &[
+const BANNED_TECHNICAL_SUMMARY_PATTERNS: &[&str] = &[
     "synthese produite par",
     "synthèse produite par",
     "generation chapitre par chapitre",
@@ -37,15 +39,12 @@ const BANNED_SUMMARY_PATTERNS: &[&str] = &[
     "single_pass",
     "pipeline technique",
     "placeholder",
-    "tirage",
-    "cartes tirées",
-    "cartes tirees",
-    "oracle",
-    "consultation divinatoire",
-    "tendance invite",
-    "le tirage",
-    "liane de constance",
 ];
+
+const SUMMARY_UX_REPAIR_SUFFIX: &str = "Rewrite only title and short_text. \
+title: max 12 words. short_text: max 2 sentences and max 75 words. \
+Do not use: oracle, oracles, tirage, tirages, cartes tirées, consultation divinatoire, \
+liane de constance, Tendance invite. Keep it clear, elegant and suitable for a UI card.";
 
 const ASTRO_SUMMARY_MARKERS: &[&str] = &[
     "thème",
@@ -239,27 +238,56 @@ pub fn validate_summary_content(
         ));
     }
 
-    if word_count(&summary.short_text) < 20 {
+    if count_words(&summary.short_text) < 20 {
         return Err(GenerationError::new(
             GenerationErrorCode::ReadingQualityFailed,
             "summary text too short for premium synthesis",
         ));
     }
 
-    for pattern in BANNED_SUMMARY_PATTERNS {
-        if corpus_matches_banned_pattern(&corpus, pattern) {
+    let joined = format!("{}\n{}", summary.title, summary.short_text);
+    let forbidden_matches = find_forbidden_summary_patterns(&joined);
+    if !forbidden_matches.is_empty() {
+        return Err(GenerationError::with_details(
+            GenerationErrorCode::ReadingQualityFailed,
+            "summary contains forbidden divinatory wording",
+            serde_json::json!({
+                "summary_retryable": true,
+                "reason": "forbidden_pattern",
+                "matches": forbidden_matches,
+            }),
+        ));
+    }
+
+    for pattern in BANNED_TECHNICAL_SUMMARY_PATTERNS {
+        if corpus.contains(pattern) {
             return Err(GenerationError::with_details(
                 GenerationErrorCode::ReadingQualityFailed,
                 "summary contains technical placeholder wording",
-                serde_json::json!({ "pattern": pattern }),
+                serde_json::json!({
+                    "summary_retryable": true,
+                    "reason": "technical_placeholder",
+                    "pattern": pattern,
+                }),
             ));
         }
     }
 
+    validate_summary_ux(
+        summary.title.trim(),
+        summary.short_text.trim(),
+        &SummaryUxRules::default(),
+    )?;
+
     if short_trimmed.to_lowercase().starts_with("tendance") {
-        return Err(GenerationError::new(
+        return Err(GenerationError::with_details(
             GenerationErrorCode::ReadingQualityFailed,
             "summary must not start with 'Tendance'",
+            serde_json::json!({
+                "summary_retryable": true,
+                "reason": "forbidden_pattern",
+                "matches": ["tendance"],
+            }),
         ));
     }
 
@@ -268,43 +296,38 @@ pub fn validate_summary_content(
             .iter()
             .any(|marker| corpus.contains(marker))
     {
-        return Err(GenerationError::new(
+        return Err(GenerationError::with_details(
             GenerationErrorCode::ReadingQualityFailed,
             "premium plus summary lacks astrological framing marker",
+            serde_json::json!({
+                "summary_retryable": true,
+                "reason": "missing_astro_marker",
+            }),
         ));
     }
 
     Ok(())
 }
 
-/// Mot entier pour patterns courts (`tirage`, `oracle`) afin d'eviter les faux positifs (`retirage`).
-fn corpus_matches_banned_pattern(corpus: &str, pattern: &str) -> bool {
-    if pattern.contains(' ') {
-        return corpus.contains(pattern);
-    }
-    corpus
-        .split(|c: char| !c.is_alphanumeric())
-        .any(|token| !token.is_empty() && token == pattern)
-}
-
 pub fn is_summary_banned_pattern_error(err: &GenerationError) -> bool {
     if err.detail().code != GenerationErrorCode::ReadingQualityFailed {
         return false;
     }
-    err.detail()
-        .details
-        .as_ref()
-        .and_then(|d| d.get("pattern"))
-        .is_some()
+    let details = err.detail().details.as_ref();
+    details
+        .and_then(|d| d.get("summary_retryable"))
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false)
+        || details.and_then(|d| d.get("pattern")).is_some()
 }
 
 pub fn deterministic_safe_summary_fallback() -> ReadingSummary {
     ReadingSummary {
-        title: "Présence intérieure, construction et ouverture".into(),
+        title: "Présence intérieure, constance et ouverture".into(),
         short_text: "Cette lecture symbolique met en lumière une carte natale structurée par la \
-            profondeur, la constance et le besoin d'une croissance habitée. Les chapitres \
-            décrivent une tension féconde entre sécurité, expression personnelle, lien aux autres \
-            et transformation intérieure."
+            profondeur, la fiabilité et le besoin d'une croissance habitée. Les chapitres \
+            développent ensuite les nuances du thème, entre identité, relations, ressources et \
+            chemin d'évolution."
             .into(),
     }
 }
@@ -330,24 +353,35 @@ fn build_summary_messages(
 
     let system = format!(
         "{language_block}\n\n\
-         Write a concise, personalized natal reading summary. \
-         Output JSON with title and short_text only. \
-         The summary must synthesize dominant themes from the chapter excerpts — \
-         never mention pipelines, generation modes, or technical process. \
-         Frame the reading as symbolic and interpretive. Prefer phrasing such as \
-         « Cette lecture symbolique suggère… », « L'ensemble invite… », « Le thème évoque… ». \
-         Use natal vocabulary (thème, carte natale, configuration) — never divinatory wording (tirage, oracle). \
-         Avoid forced poetic clichés (e.g. liane de constance); prefer a concrete, evocative title."
+         Write a concise UX summary for a natal reading.\n\
+         Rules:\n\
+         - Output JSON with title and short_text only.\n\
+         - title: maximum 12 words.\n\
+         - short_text: maximum 2 sentences.\n\
+         - short_text: 55–75 words.\n\
+         - Do not use divinatory vocabulary: oracle, oracles, tirage, tirages, cartes tirées.\n\
+         - Do not compress too many ideas into a single long sentence.\n\
+         - Let the final synthesis chapter carry the depth; the summary is only a clear entry point for the UI.\n\
+         - Synthesize dominant themes from the chapter excerpts — never mention pipelines, generation modes, or technical process.\n\
+         - Frame the reading as symbolic and interpretive. Prefer phrasing such as \
+         « Cette lecture symbolique suggère… », « L'ensemble invite… », « Le thème évoque… ».\n\
+         - Use natal vocabulary (thème, carte natale, configuration).\n\
+         - Avoid forced poetic clichés (e.g. liane de constance); prefer a concrete, evocative title."
     );
 
     let repair_block = repair_instruction
-        .map(|r| format!("\n\nREPAIR: {r}"))
+        .map(|r| {
+            format!(
+                "\n\nREPAIR SUMMARY:\nThe previous summary was too long or used forbidden wording.\n\
+                 {r}\n{SUMMARY_UX_REPAIR_SUFFIX}"
+            )
+        })
         .unwrap_or_default();
 
     let user = format!(
         "Product: {}\nAudience: {:?}\n\nChapters:\n{}\n\n\
-         Write title (one evocative line) and short_text (2-3 sentences, symbolic framing, \
-         no medical/legal/financial advice).{repair_block}",
+         Write title (one evocative line, max 12 words) and short_text (max 2 sentences, 55–75 words, \
+         symbolic framing, no medical/legal/financial advice).{repair_block}",
         request.product_context.product_code,
         request.product_context.audience_level,
         serde_json::to_string_pretty(&chapter_digest).unwrap_or_default(),
@@ -372,10 +406,6 @@ fn truncate_words(text: &str, max_words: usize) -> String {
         out.push_str("…");
     }
     out
-}
-
-fn word_count(text: &str) -> usize {
-    text.split_whitespace().count()
 }
 
 fn resolve_safety_mode(provider: &astral_llm_domain::ProviderKind) -> SafetyMode {
@@ -434,6 +464,89 @@ mod tests {
     }
 
     #[test]
+    fn rejects_oracle_singular_and_plural() {
+        let oracle = SummaryProviderResponse {
+            title: "Une lecture symbolique".into(),
+            short_text: "Cette lecture evoque un oracle dans le theme natal avec une \
+                profondeur emotionnelle et une stabilite relationnelle dans la vie \
+                quotidienne et les choix professionnels.".into(),
+        };
+        assert!(validate_summary_content(&oracle, Some("natal_premium_plus")).is_err());
+
+        let oracles = SummaryProviderResponse {
+            title: "Une lecture symbolique".into(),
+            short_text: "Ces oracles symboliques evoquent une presence attentive dans le \
+                theme natal avec une profondeur emotionnelle et une stabilite \
+                relationnelle dans la vie quotidienne.".into(),
+        };
+        assert!(validate_summary_content(&oracles, Some("natal_premium_plus")).is_err());
+    }
+
+    #[test]
+    fn rejects_tirage_singular_and_plural() {
+        let tirage = SummaryProviderResponse {
+            title: "Une lecture symbolique".into(),
+            short_text: "Ce tirage evoque une presence attentive dans le theme natal avec \
+                une profondeur emotionnelle et une stabilite relationnelle dans la vie \
+                quotidienne et les choix professionnels.".into(),
+        };
+        assert!(validate_summary_content(&tirage, Some("natal_premium_plus")).is_err());
+
+        let tirages = SummaryProviderResponse {
+            title: "Une lecture symbolique".into(),
+            short_text: "Ces tirages evoquent une presence attentive dans le theme natal \
+                avec une profondeur emotionnelle et une stabilite relationnelle dans la \
+                vie quotidienne et les choix professionnels.".into(),
+        };
+        assert!(validate_summary_content(&tirages, Some("natal_premium_plus")).is_err());
+    }
+
+    #[test]
+    fn rejects_cartes_tirees() {
+        let summary = SummaryProviderResponse {
+            title: "Une lecture symbolique".into(),
+            short_text: "Les cartes tirees indiquent une presence attentive dans le theme \
+                natal avec une profondeur emotionnelle et une stabilite relationnelle \
+                dans la vie quotidienne et les choix professionnels.".into(),
+        };
+        assert!(validate_summary_content(&summary, Some("natal_premium_plus")).is_err());
+    }
+
+    #[test]
+    fn allows_astrological_summary_without_divination_terms() {
+        let summary = SummaryProviderResponse {
+            title: "Présence intérieure et construction".into(),
+            short_text: "Cette lecture symbolique met en lumière une carte natale structurée \
+                par la profondeur et la constance. Les chapitres développent ensuite les \
+                nuances du thème entre identité et relations.".into(),
+        };
+        assert!(validate_summary_content(&summary, Some("natal_premium_plus")).is_ok());
+    }
+
+    #[test]
+    fn ux_violation_triggers_summary_retry() {
+        let summary = SummaryProviderResponse {
+            title: "Présence intérieure et construction".into(),
+            short_text: "Cette lecture symbolique met en lumière une carte natale structurée \
+                par la profondeur. Les chapitres développent les nuances du thème. \
+                Une troisième phrase dépasse le contrat UX.".into(),
+        };
+        let err = validate_summary_content(&summary, Some("natal_premium_plus")).unwrap_err();
+        assert!(is_summary_banned_pattern_error(&err));
+    }
+
+    #[test]
+    fn rejects_summary_with_more_than_two_sentences() {
+        let summary = SummaryProviderResponse {
+            title: "Présence intérieure et construction".into(),
+            short_text: "Cette lecture symbolique met en lumière une carte natale structurée \
+                par la profondeur. Les chapitres développent les nuances du thème. \
+                Une troisième phrase dépasse le contrat UX.".into(),
+        };
+        assert!(validate_summary_content(&summary, Some("natal_premium_plus")).is_err());
+    }
+
+    #[test]
     fn rejects_liane_de_constance_in_title() {
         let summary = SummaryProviderResponse {
             title: "Identité et profondeur: présence magnétique, liane de constance et de sens"
@@ -448,12 +561,44 @@ mod tests {
 
     #[test]
     fn deterministic_fallback_passes_validation() {
+        use crate::summary_ux_rules::{count_sentences_fr, count_words, SummaryUxRules};
+
         let summary = deterministic_safe_summary_fallback();
+        let rules = SummaryUxRules::default();
+        assert!(count_words(&summary.title) <= rules.max_title_words);
+        assert!(count_words(&summary.short_text) <= rules.max_short_text_words);
+        assert!(count_sentences_fr(&summary.short_text) <= rules.max_short_text_sentences);
+        assert!(count_words(&summary.short_text) >= 20);
+
         let provider = SummaryProviderResponse {
             title: summary.title,
             short_text: summary.short_text,
         };
         assert!(validate_summary_content(&provider, Some("natal_premium_plus")).is_ok());
+    }
+
+    #[test]
+    fn tendance_opening_triggers_summary_retry() {
+        let summary = SummaryProviderResponse {
+            title: "Une lecture symbolique".into(),
+            short_text: "Tendance vers une presence attentive dans le theme natal avec une \
+                profondeur emotionnelle et une stabilite relationnelle dans la vie quotidienne \
+                et les choix professionnels.".into(),
+        };
+        let err = validate_summary_content(&summary, Some("natal_premium_plus")).unwrap_err();
+        assert!(is_summary_banned_pattern_error(&err));
+    }
+
+    #[test]
+    fn missing_astro_marker_triggers_summary_retry() {
+        let summary = SummaryProviderResponse {
+            title: "Une dynamique personnelle".into(),
+            short_text: "Vous avancez avec assurance et une grande sensibilite aux relations \
+                humaines, en cultivant des liens authentiques et une ecoute attentive des autres \
+                dans votre vie quotidienne et professionnelle.".into(),
+        };
+        let err = validate_summary_content(&summary, Some("natal_premium_plus")).unwrap_err();
+        assert!(is_summary_banned_pattern_error(&err));
     }
 
     #[test]
