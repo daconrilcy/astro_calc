@@ -794,7 +794,7 @@ Declaration complete : `.env` / `.env.example` a la racine du depot.
 #### `production` — mode `internal`
 
 - `ASTRAL_LLM_API_KEY` obligatoire
-- Au moins une cle provider reelle (OpenAI, Anthropic ou Mistral)
+- Au moins une cle provider reelle (OpenAI requis pour la V1 certifiee ; Anthropic / Mistral optionnels, certification reportee)
 - `ASTRAL_LLM_ENABLE_FAKE=false`
 - `ASTRAL_LLM_DB_AUTO_MIGRATE=false` ; migrations SQL appliquees **hors runtime**
 - `verify_schema()` au boot si persistence sans auto-migrate
@@ -1033,7 +1033,8 @@ Reponse safety standardisee : `status`, `error.code`, `category`, `rule_id`, `vi
 cargo test -p astral_llm_providers --test provider_real_smoke -- --ignored
 ```
 
-- OpenAI / Mistral / Anthropic : JSON schema minimal `{"ok": true}`
+- OpenAI : JSON schema minimal `{"ok": true}` — **certifie V1**
+- Mistral / Anthropic : meme smoke technique ; certification **reportee** (etape ulterieure)
 - Rejet cle API invalide (HTTP/API/Config + message auth)
 - Fichier : `astral_llm_providers/tests/provider_real_smoke.rs` (remplace l'ancien `openai_smoke.rs`)
 
@@ -1231,7 +1232,7 @@ cargo test -p astral_llm_domain
 | `astral_llm_editorial_fixtures` | 3 fixtures redactionnelles + cas negatif |
 | `astral_llm_load_tests` | Saturation semaphore / rate limit / circuit breaker |
 | `astral_llm_load_tests` (`#[ignore]`) | Idempotence concurrente PostgreSQL |
-| `provider_real_smoke` (`#[ignore]`) | OpenAI + Mistral + Anthropic (schema + auth) |
+| `provider_real_smoke` (`#[ignore]`) | OpenAI certifie V1 (structured + chapitre) ; Mistral / Anthropic optionnels, certification reportee |
 | `astral_llm_evidence_planner_tests` | Pool, packs, identity sans soleil, relationships descendant ruler |
 | `astral_llm_evidence_coherence_tests` | Coherence pack / corps / astro_basis |
 | `astral_llm_i18n_tests` | Locales + humanizer |
@@ -1243,30 +1244,45 @@ cargo test -p astral_llm_domain
 
 ### Etat du projet
 
+#### Statut fige (V1-production-public)
+
+| Chantier | Statut |
+|---|---|
+| OpenAI V1 prod | **CLOS** |
+| Evidence Planner | **CLOS** |
+| Benchmark OpenAI (cout / latence / qualite) | **CLOS** |
+| Certification multi-provider (Mistral / Anthropic) | **REPORTEE** (etape ulterieure) |
+| Prochain travail produit | Enrichissement evidence + affinage style |
+
+```txt
+OpenAI V1 prod              : CLOS
+Evidence Planner            : CLOS
+Benchmark OpenAI            : CLOS (gpt-5.4-mini + gpt-5-nano)
+Multi-provider certification: REPORTEE
+Next product work           : evidence enrichment + style refinement
+```
+
+**Provider V1-production-public certifiee**
+
+- **OpenAI uniquement** pour la V1-production-public certifiee.
+- **Mistral / Anthropic** : adapters presents ; certification reportee a une etape ulterieure.
+
 | Label | Statut | Signification |
 |---|---|---|
 | **V1-technical-freeze** | **VALIDE** | Gel architecture/securite : perimetre fige, P1–P4 implementes |
-| **astral_llm V1-production-public OpenAI** | **VALIDEE** | Gateway + orchestration Premium certifies sur OpenAI |
-| **Premium interpretatif riche OpenAI** | **VALIDÉ PRODUIT** | Evidence Planner clos ; E2E rich OpenAI OK (ex. run `0619a1e8`) |
+| **astral_llm V1-production-public OpenAI** | **CLOS** | Gateway + orchestration Premium certifies sur OpenAI |
+| **Premium interpretatif riche OpenAI** | **VALIDÉ PRODUIT** | Evidence Planner clos ; E2E rich OpenAI OK (run certif. `744fccda`) |
 | **Chantier Evidence Planner** | **CLOS** | Plus de correction structurelle prevue ; maintenance bugs seulement |
-| **Benchmark OpenAI (cout / latence / qualite)** | **REALISE** | Choix prod : chapitres `gpt-5.4-mini`, summary `gpt-5-nano` ; voir `config/llm_product_models.conf` |
-| **Mistral / Anthropic** | **Hors perimetre actuel** | Adapters presents ; certification reportee (etape ulterieure) |
+| **Benchmark OpenAI (cout / latence / qualite)** | **CLOS** | Choix prod : chapitres `gpt-5.4-mini`, summary `gpt-5-nano` ; voir `config/llm_product_models.conf` |
+| **Certification Mistral / Anthropic** | **REPORTEE** | Adapters presents ; certification multi-provider a une etape ulterieure |
 
-```txt
-astral_llm V1-production-public OpenAI     : VALIDEE
-Premium interpretatif riche OpenAI         : VALIDÉ PRODUIT
-Chantier Evidence Planner                  : CLOS (2026-06-04)
-Benchmark OpenAI cout/latence/qualite      : REALISE — gpt-5.4-mini + gpt-5-nano
-E2E OpenAI rich (6 steps generated)        : OK — scripts/generate_premium_reading_e2e.ps1
-Mistral / Anthropic                        : hors perimetre actuel (etape ulterieure)
-```
+**References E2E produit** :
 
-**References E2E produit (2026-06-04)** :
-
-- Premium OpenAI : run `f79c04a7-d0ff-4d7a-b32e-42fd7fef7d80` — ~42 s, 5 chapitres + summary, `request-premium-rich.json`, sortie `output/premium_reading_real.json`.
+- **Certification V1 (2026-06-05)** : run `744fccda-98b2-4565-a687-ecd9b9567730` — ~33 s, 5 chapitres `gpt-5.4-mini` + summary `gpt-5-nano`, 6 steps `generated`, `request-premium-rich.json`, sortie `output/premium_reading_e2e.json`.
+- Premium OpenAI (2026-06-04) : run `f79c04a7-d0ff-4d7a-b32e-42fd7fef7d80` — ~42 s, 5 chapitres + summary, sortie `output/premium_reading_real.json`.
 - Premium historique : run `0619a1e8-4069-4f89-b6ea-db14f32f38ea` — ~47 s, 6 steps `generated`, libelles maîtrise humanises.
 
-Le gel **V1-technical-freeze** ne doit plus faire l'objet d'une refonte architecture. Le benchmark OpenAI cout / latence / qualite est **realise** ; la suite porte sur les chantiers restants (evidence, style). La certification Mistral / Anthropic est une **etape ulterieure**, hors perimetre actuel — voir ci-dessous.
+Le gel **V1-technical-freeze** ne doit plus faire l'objet d'une refonte architecture. Les chantiers **OpenAI V1 prod**, **Evidence Planner** et **Benchmark OpenAI** sont **clos**. La certification multi-provider (Mistral / Anthropic) est **reportee**. Le prochain travail produit porte sur **l'enrichissement evidence** et **l'affinage style** — voir ci-dessous.
 
 Le gateway n'est **pas** un simple proxy LLM : la validation metier se fait **avant** tout appel provider.
 
@@ -1280,15 +1296,15 @@ Circuit breaker, ChapterOrchestrator
 
 ### Limites editoriales connues (non bloquantes)
 
-- **Amorces parfois « promptees »** : formulations type « En développant… », « En prenant en compte… » (effet secondaire des consignes `ChapterWritingGuidance` + diversite d'ouvertures). Acceptable en prod ; affinage style en optimisation.
-- **Densite des prompts chapitre** : structure tres controlee (4 paragraphes, liste `fact_id`, anti-trigrammes) — securise `astro_basis` et la diversite, peut donner une prose un peu scolaire. A equilibrer en phase optimisation, pas en rouvrant le planner.
+- **Amorces parfois « promptees »** : formulations type « En développant… », « En prenant en compte… » (effet secondaire des consignes `ChapterWritingGuidance` + diversite d'ouvertures). Acceptable en prod ; affinage style (prochain travail produit).
+- **Densite des prompts chapitre** : structure tres controlee (4 paragraphes, liste `fact_id`, anti-trigrammes) — securise `astro_basis` et la diversite, peut donner une prose un peu scolaire. A equilibrer via affinage style, pas en rouvrant le planner.
 
-### Phase d'optimisation (suite logique, hors Evidence Planner)
+### Prochain travail produit (hors perimetre clos)
 
-1. ~~**OpenAI** : comparer cout / latence / qualite par modele sur le meme golden E2E~~ — **realise** : chapitres `gpt-5.4-mini`, summary `gpt-5-nano` (produit `natal_prompter` + profils JSON). Outils : `scripts/benchmark_premium_e2e_models.ps1`, `scripts/summarize_benchmark_runs.ps1` ; config : `config/llm_product_models.conf` + `set_product_llm_models.ps1`.
-2. **Mistral / Anthropic** *(etape ulterieure, hors perimetre actuel)* : adapters deja presents ; certification (smoke + E2E Premium) a planifier plus tard si besoin multi-provider.
-3. **Referentiel evidence** : enrichir progressivement les slots (noeuds, phases lunaires, dignites mineures, patterns d'aspects) via tables canoniques — pas de constantes en code.
-4. **Style redactionnel** : allegement cible des consignes prompt / guidance pour une prose moins « structuree par contraintes », sans casser les garde-fous qualite.
+1. ~~**OpenAI** : comparer cout / latence / qualite par modele sur le meme golden E2E~~ — **clos** : chapitres `gpt-5.4-mini`, summary `gpt-5-nano` (produit `natal_prompter` + profils JSON). Outils : `scripts/benchmark_premium_e2e_models.ps1`, `scripts/summarize_benchmark_runs.ps1` ; config : `config/llm_product_models.conf` + `set_product_llm_models.ps1`.
+2. ~~**Mistral / Anthropic**~~ — **reporte** (etape ulterieure) : adapters deja presents ; certification (smoke + E2E Premium) a planifier plus tard si besoin multi-provider.
+3. **Referentiel evidence** *(actif)* : enrichir progressivement les slots (noeuds, phases lunaires, dignites mineures, patterns d'aspects) via tables canoniques — pas de constantes en code.
+4. **Style redactionnel** *(actif)* : allegement cible des consignes prompt / guidance pour une prose moins « structuree par contraintes », sans casser les garde-fous qualite.
 
 ### Checklist avant V1-production-public
 
@@ -1306,21 +1322,25 @@ cargo test -p astral_llm_infra
 cargo test -p astral_llm_domain
 ```
 
-**Manuelle (cles + reseau / PostgreSQL) :**
+**Manuelle (cles + reseau / PostgreSQL) — V1 OpenAI certifiee :**
 
 ```bash
-cargo test -p astral_llm_providers --test provider_real_smoke -- --ignored
+# Smoke OpenAI (requis pour certification V1) :
+cargo test -p astral_llm_providers --test provider_real_smoke openai -- --ignored
 cargo test -p astral_llm_api --test astral_llm_load_tests -- --ignored  # idempotence DB
 ```
 
-**Validation E2E Premium (apres smoke providers) :**
+> Mistral / Anthropic : adapters presents ; tests smoke optionnels, certification **reportee** (etape ulterieure).
+
+**Validation E2E Premium (apres smoke OpenAI) :**
 
 | Parametre | Valeur |
 |---|---|
 | Produit | `natal_prompter` |
 | Profil | `natal_premium` (`interpretation_profile_code`) |
 | Mode | `chapter_orchestrated` (derive du profil si absent) |
-| Provider | OpenAI (seul provider certifie en prod ; Mistral / Anthropic = etape ulterieure) |
+| Provider | OpenAI uniquement pour la V1-production-public certifiee |
+| Providers differes | Mistral / Anthropic : adapters presents, certification reportee a une etape ulterieure |
 | Langue | `fr` |
 | Audience | `beginner` |
 
@@ -1332,10 +1352,18 @@ Criteres de passage : JSON valide, `astro_basis` valide (≥1 fact interpretatif
 
 Le payload astro Premium doit inclure des placements/aspects (via `planets`, `positions` ou `llm_projection_natal_v1`) — un jeu `domain_scores` seul est rejete.
 
-### Roadmap P2 (optimisation — Evidence Planner clos)
+### Roadmap produit (post-V1)
 
-- ~~Benchmark OpenAI : cout / latence / qualite par modele sur E2E Premium~~ — **realise** (`gpt-5.4-mini` / `gpt-5-nano`)
-- Certification Mistral / Anthropic (smoke + E2E rich) — **etape ulterieure**, hors perimetre actuel
+**Clos**
+
+- Benchmark OpenAI : cout / latence / qualite par modele sur E2E Premium (`gpt-5.4-mini` / `gpt-5-nano`)
+
+**Reporte**
+
+- Certification Mistral / Anthropic (smoke + E2E rich) — etape ulterieure
+
+**Actif (prochain travail produit)**
+
 - Enrichissement `llm_chapter_evidence_slots` / pool (noeuds, phases lunaires, dignites mineures, patterns d'aspects)
 - Affinage style : reduire formulations « promptees » et densite consignes sans relacher `astro_basis` / safety
 - Scoring qualite enrichi (metriques numeriques dans `quality` reponse)
@@ -1355,7 +1383,7 @@ Le payload astro Premium doit inclure des placements/aspects (via `planets`, `po
 10. DomainResolver + ReadingPlan + ChapterOrchestrator
 11. Persistence PostgreSQL + idempotence + audit steps
 12. Production publique (ConfigValidator) + rate limit par cle + golden prompt
-13. Validation produit : fixtures redactionnelles, load tests, qualite Premium bloquante, smoke providers
+13. Validation produit : fixtures redactionnelles, load tests, qualite Premium bloquante, smoke OpenAI
 14. Premium : planner packs adaptatif, coherence evidence, i18n prompt/humanizer, logs prompts compiles, repairs min_words/repetition
 15. Polish Premium : `descendant_ruler`, semantic keys, enrichisseur SUPPORTING, opening diversity + repair multi-chapitres, E2E sans repair career/relationships
 16. Polish final : libelles `ruler:*` humanises ; cap supporting par `semantic_fact_key` (`max_supporting_semantic_chapters = 3`)

@@ -3065,7 +3065,9 @@ Script : `astral_llm/crates/astral_llm_infra/sql/llm_generation_runs.sql`
 
 ### Premium — Interpretive Evidence Planner — **CHANTIER CLOS** (2026-06-04)
 
-**Statut produit** : **Premium interpretatif riche OpenAI — VALIDÉ PRODUIT**. Dernier E2E de reference : run `0619a1e8` (~47 s, 6 steps `generated`, libelles maîtrise FR, cap Soleil supporting ×3). Benchmark OpenAI cout / latence / qualite **realise** (`gpt-5.4-mini` + `gpt-5-nano`). Suite : slots evidence, style (certification Mistral / Anthropic = etape ulterieure) — voir `Astral_llm_implementation.md`.
+**Statut produit** : **Premium interpretatif riche OpenAI — VALIDÉ PRODUIT**. E2E certification V1 (2026-06-05) : run `744fccda` (~33 s, 6 steps `generated`, `gpt-5.4-mini` + `gpt-5-nano`).
+
+**Statut fige V1** : OpenAI V1 prod **clos** ; Evidence Planner **clos** ; Benchmark OpenAI **clos** (`gpt-5.4-mini` + `gpt-5-nano`). Certification multi-provider (Mistral / Anthropic) **reportee**. Prochain travail produit : enrichissement evidence + affinage style — voir `Astral_llm_implementation.md`.
 
 **Modeles Premium** : `chapter_models` du profil `natal_premium` (+ `config/llm_product_models.conf` pour defaut produit `natal_prompter`). Valeurs courantes : chapitres `gpt-5.4-mini`, summary `gpt-5-nano`.
 
