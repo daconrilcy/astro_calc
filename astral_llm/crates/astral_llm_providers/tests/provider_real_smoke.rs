@@ -198,7 +198,11 @@ async fn anthropic_invalid_api_key_smoke() {
 #[tokio::test]
 #[ignore = "requires OPENAI_API_KEY and network"]
 async fn openai_chapter_provider_schema_smoke() {
-    use astral_llm_application::{ModelCapabilityRegistry, ProviderSchemaCompiler, SchemaRegistry};
+    use astral_llm_application::{
+        provider_schema_compiler::pin_chapter_code,
+        reasoning_generation::effective_temperature,
+        ModelCapabilityRegistry, ProviderSchemaCompiler, SchemaRegistry,
+    };
     use std::sync::Arc;
 
     let provider = OpenAiProvider::with_client(
@@ -211,10 +215,11 @@ async fn openai_chapter_provider_schema_smoke() {
     );
     let model = std::env::var("OPENAI_DEFAULT_MODEL").unwrap_or_else(|_| "gpt-4.1".into());
     let registry = SchemaRegistry::new();
-    let schema = registry
+    let mut schema = registry
         .provider_schema("chapter_provider_v1")
         .expect("chapter schema")
         .clone();
+    pin_chapter_code(&mut schema, "identity");
     let cap = Arc::new(ModelCapabilityRegistry::bootstrap_dev_fallback())
         .require(&ProviderKind::OpenAi, &model)
         .expect("capability")
@@ -235,7 +240,7 @@ async fn openai_chapter_provider_schema_smoke() {
         ],
         structured_schema: Some(compiled),
         reasoning_effort: None,
-        temperature: Some(0.4),
+        temperature: effective_temperature(&cap, Some(0.4)),
         max_output_tokens: Some(600),
         safety_mode: SafetyMode::PlatformRulesOnly,
         timeout: Duration::from_secs(120),

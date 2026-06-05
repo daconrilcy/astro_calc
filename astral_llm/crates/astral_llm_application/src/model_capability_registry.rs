@@ -258,6 +258,64 @@ fn fake_capability() -> ModelCapability {
     }
 }
 
+fn openai_gpt54_mini_capability() -> ModelCapability {
+    ModelCapability {
+        provider: ProviderKind::OpenAi,
+        model: "gpt-5.4-mini".into(),
+        supports_json_schema_strict: true,
+        supports_json_object: true,
+        supports_reasoning_effort: true,
+        supports_streaming: true,
+        supports_native_safety_prompt: false,
+        max_input_tokens: 400_000,
+        max_output_tokens: 128_000,
+        structured_output_mode: StructuredOutputMode::JsonSchemaStrict,
+        structured_output_adapter: StructuredOutputAdapterKind::OpenAiResponsesTextFormat,
+        storage_disable_supported: true,
+        is_active: true,
+        supports_temperature: false,
+        reasoning_output_reserve_min: Some(4096),
+        reasoning_effort_subtask: Some(ReasoningEffort::None),
+        reasoning_effort_primary: Some(ReasoningEffort::Low),
+        reasoning_effort_oracle: Some(ReasoningEffort::Medium),
+        usage_tier_code: Some("production_candidate".into()),
+        tier_policy: astral_llm_domain::ModelUsageTierPolicy {
+            allows_primary_reading: true,
+            allows_subtask: true,
+            allows_oracle_benchmark: false,
+        },
+    }
+}
+
+fn openai_gpt5_nano_capability() -> ModelCapability {
+    ModelCapability {
+        provider: ProviderKind::OpenAi,
+        model: "gpt-5-nano".into(),
+        supports_json_schema_strict: true,
+        supports_json_object: true,
+        supports_reasoning_effort: true,
+        supports_streaming: true,
+        supports_native_safety_prompt: false,
+        max_input_tokens: 400_000,
+        max_output_tokens: 128_000,
+        structured_output_mode: StructuredOutputMode::JsonSchemaStrict,
+        structured_output_adapter: StructuredOutputAdapterKind::OpenAiResponsesTextFormat,
+        storage_disable_supported: true,
+        is_active: true,
+        supports_temperature: false,
+        reasoning_output_reserve_min: Some(4096),
+        reasoning_effort_subtask: Some(ReasoningEffort::Minimal),
+        reasoning_effort_primary: Some(ReasoningEffort::Low),
+        reasoning_effort_oracle: Some(ReasoningEffort::Medium),
+        usage_tier_code: Some("subtask_candidate".into()),
+        tier_policy: astral_llm_domain::ModelUsageTierPolicy {
+            allows_primary_reading: false,
+            allows_subtask: true,
+            allows_oracle_benchmark: false,
+        },
+    }
+}
+
 fn dev_fallback_capabilities() -> Vec<ModelCapability> {
     vec![
         ModelCapability {
@@ -286,6 +344,8 @@ fn dev_fallback_capabilities() -> Vec<ModelCapability> {
                 allows_oracle_benchmark: false,
             },
         },
+        openai_gpt54_mini_capability(),
+        openai_gpt5_nano_capability(),
         ModelCapability {
             provider: ProviderKind::OpenAi,
             model: "gpt-4o-mini".into(),
