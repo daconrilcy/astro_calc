@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://astral-calculation.local/schemas/astro_engine_request_v1.schema.json",
+  "title": "Astro Engine Request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_contract_version",
+    "calculation",
+    "birth",
+    "projection"
+  ],
+  "properties": {
+    "request_contract_version": {
+      "const": "astro_engine_request_v1"
+    },
+    "request_id": {
+      "type": ["string", "null"]
+    },
+    "idempotency_key": {
+      "type": ["string", "null"]
+    },
+    "calculation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["natal", "transit", "synastry", "solar_return", "progression"]
+        },
+        "zodiacal_reference_system": {
+          "type": "string",
+          "default": "tropical"
+        },
+        "coordinate_reference_system": {
+          "type": "string",
+          "default": "geocentric"
+        },
+        "house_system": {
+          "type": "string",
+          "default": "placidus"
+        }
+      }
+    },
+    "birth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["date", "time", "timezone", "location"],
+      "properties": {
+        "date": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "time": {
+          "type": "string",
+          "pattern": "^\\d{2}:\\d{2}:\\d{2}$"
+        },
+        "timezone": {
+          "type": "string",
+          "minLength": 1
+        },
+        "location": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["latitude", "longitude"],
+          "properties": {
+            "label": {
+              "type": ["string", "null"]
+            },
+            "latitude": {
+              "type": "number"
+            },
+            "longitude": {
+              "type": "number"
+            },
+            "country_code": {
+              "type": ["string", "null"]
+            }
+          }
+        },
+        "time_precision": {
+          "type": "string",
+          "enum": ["exact", "approximate", "unknown"]
+        }
+      }
+    },
+    "projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level"],
+      "properties": {
+        "contract_version": {
+          "const": "llm_projection_natal_v1"
+        },
+        "level": {
+          "type": "string",
+          "enum": ["compact", "standard", "rich", "expert"]
+        }
+      }
+    }
+  }
+}

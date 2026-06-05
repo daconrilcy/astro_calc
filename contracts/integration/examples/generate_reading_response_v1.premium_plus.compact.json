@@ -1,0 +1,24 @@
+{
+  "status": "success",
+  "run_id": "00000000-0000-4000-8000-000000000001",
+  "reading": {
+    "schema_version": "natal_reading_v1",
+    "language": "fr",
+    "reading_type": "natal",
+    "summary": {
+      "title": "Exemple compact",
+      "short_text": "Resume UX court de la lecture natal."
+    },
+    "chapters": [
+      {
+        "code": "identity",
+        "title": "Identite",
+        "body": "Corps de chapitre exemple.",
+        "astro_basis": [],
+        "confidence": "medium"
+      }
+    ],
+    "legal": { "disclaimer": "A titre indicatif." },
+    "quality": { "word_count": 42, "chapter_count": 1 }
+  }
+}

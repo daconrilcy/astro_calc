@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "astral_calculator",
+    "astral_calculator_api",
     "astral_llm/crates/astral_llm_domain",
     "astral_llm/crates/astral_llm_application",
     "astral_llm/crates/astral_llm_providers",

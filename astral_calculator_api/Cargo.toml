@@ -1,0 +1,38 @@
+[package]
+name = "astral_calculator_api"
+version.workspace = true
+edition.workspace = true
+default-run = "astral_calculator_api"
+
+[lib]
+name = "astral_calculator_api"
+path = "src/lib.rs"
+
+[[bin]]
+name = "astral_calculator_api"
+path = "src/main.rs"
+
+[[test]]
+name = "astral_calculator_api_tests"
+path = "../tests/astral_calculator_api_tests.rs"
+harness = true
+
+[dependencies]
+astral_calculator = { path = "../astral_calculator", features = ["swisseph-engine"] }
+axum.workspace = true
+jsonschema.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+tokio.workspace = true
+tower-http = { version = "0.6", features = ["trace", "timeout", "limit"] }
+tracing.workspace = true
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid.workspace = true
+
+[dev-dependencies]
+dotenvy.workspace = true
+reqwest = { workspace = true, features = ["json"] }
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
+hyper = { version = "1", features = ["full"] }

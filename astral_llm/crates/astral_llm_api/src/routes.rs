@@ -2,8 +2,7 @@ use std::time::Instant;
 
 use astral_llm_application::{resolve_engine_params, GenerationTraceContext};
 use astral_llm_domain::{
-    GenerateReadingRequest, GenerateReadingResponse, GenerationError, GenerationErrorCode,
-    GenerationRunContractVersions,
+    GenerateReadingRequest, GenerateReadingResponse, GenerationRunContractVersions,
 };
 use astral_llm_infra::{
     error_code, hash_json, redact_request_for_storage, GenerationRunRecord, IdempotencyClaim,
@@ -20,12 +19,20 @@ use chrono::Utc;
 use serde_json::json;
 use uuid::Uuid;
 
+use crate::api_contracts::{
+    contracts_index, load_published_schema, openapi_bytes, readiness_details, service_not_ready,
+};
+use crate::api_error::{error_response, from_generation_error, map_generation_error_status, too_many_requests};
 use crate::rate_limit::{rate_limit_key_id_from_headers, try_acquire_premium_addon, RateLimitReason};
 use crate::state::AppState;
 
 pub fn router(state: AppState) -> Router {
     Router::new()
-        .route("/health", get(health))
+        .route("/health", get(health_live))
+        .route("/health/live", get(health_live))
+        .route("/health/ready", get(health_ready))
+        .route("/v1/contracts", get(list_contracts))
+        .route("/openapi.yaml", get(openapi_spec))
         .route("/v1/readings/generate", post(generate_reading))
         .route("/v1/readings/validate", post(validate_reading))
         .route("/v1/runs/{run_id}", get(get_run_audit))
@@ -34,8 +41,50 @@ pub fn router(state: AppState) -> Router {
         .with_state(state)
 }
 
-async fn health() -> impl IntoResponse {
+async fn health_live() -> impl IntoResponse {
     Json(json!({ "status": "ok", "service": "astral_llm_api" }))
+}
+
+async fn health_ready(State(state): State<AppState>) -> Response {
+    let pool = state.persistence.as_ref().map(|p| p.pool());
+    let (ready, details) = readiness_details(
+        &state.config,
+        pool,
+        state.interpretation_profile_count,
+    )
+    .await;
+
+    if ready {
+        Json(json!({
+            "status": "ready",
+            "service": "astral_llm_api"
+        }))
+        .into_response()
+    } else {
+        let (status, body) = service_not_ready("LLM gateway is not ready.", details);
+        (status, body).into_response()
+    }
+}
+
+async fn list_contracts() -> impl IntoResponse {
+    Json(contracts_index())
+}
+
+async fn openapi_spec() -> Response {
+    match openapi_bytes() {
+        Ok(bytes) => (
+            StatusCode::OK,
+            [("content-type", "application/yaml")],
+            bytes,
+        )
+            .into_response(),
+        Err(message) => error_response(
+            StatusCode::NOT_FOUND,
+            "INTERNAL_ERROR",
+            message,
+            None,
+        ),
+    }
 }
 
 async fn generate_reading(
@@ -48,21 +97,19 @@ async fn generate_reading(
     }
 
     if let Err(err) = state.use_case.prepare_request(&mut request) {
-        return generation_error_response(err);
+        return from_generation_error(err);
     }
 
     let idempotency_key = request.idempotency_key.clone();
     let product_code = request.product_context.product_code.clone();
 
     if state.config.requires_strict_persistence() && idempotency_key.is_none() {
-        return (
+        return error_response(
             StatusCode::BAD_REQUEST,
-            Json(json!({
-                "error": "IDEMPOTENCY_KEY_REQUIRED",
-                "message": "Idempotency-Key is required for public production exposure"
-            })),
-        )
-            .into_response();
+            "IDEMPOTENCY_KEY_REQUIRED",
+            "Idempotency-Key is required for public production exposure",
+            None,
+        );
     }
 
     let redacted = redact_request_for_storage(&request);
@@ -97,27 +144,23 @@ async fn generate_reading(
                     .into_response();
             }
             Ok(IdempotencyClaim::PayloadMismatch) => {
-                return (
+                return error_response(
                     StatusCode::BAD_REQUEST,
-                    Json(json!({
-                        "error": "IDEMPOTENCY_PAYLOAD_MISMATCH",
-                        "message": "idempotency key reused with a different request payload"
-                    })),
-                )
-                    .into_response();
+                    "IDEMPOTENCY_PAYLOAD_MISMATCH",
+                    "idempotency key reused with a different request payload",
+                    None,
+                );
             }
             Ok(IdempotencyClaim::Acquired { .. }) => {}
             Err(err) => {
                 tracing::error!(error = %err, "idempotency claim failed");
                 if state.config.requires_strict_persistence() {
-                    return (
+                    return error_response(
                         StatusCode::SERVICE_UNAVAILABLE,
-                        Json(json!({
-                            "error": "IDEMPOTENCY_UNAVAILABLE",
-                            "message": "idempotency store unavailable; refusing duplicate-risk request"
-                        })),
-                    )
-                        .into_response();
+                        "IDEMPOTENCY_UNAVAILABLE",
+                        "idempotency store unavailable; refusing duplicate-risk request",
+                        None,
+                    );
                 }
             }
         }
@@ -223,7 +266,7 @@ fn map_response(response: GenerateReadingResponse) -> Response {
             (StatusCode::UNPROCESSABLE_ENTITY, Json(response)).into_response()
         }
         GenerateReadingResponse::Failed(failed) => {
-            let status = map_error_status(&failed.error.code);
+            let status = map_generation_error_status(&failed.error.code);
             (
                 StatusCode::from_u16(status.as_u16())
                     .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
@@ -239,11 +282,7 @@ fn premium_rate_limit_response(reason: RateLimitReason) -> Response {
         RateLimitReason::PremiumConcurrent => "API key premium concurrent limit reached",
         _ => "API key rate limit reached",
     };
-    (
-        StatusCode::TOO_MANY_REQUESTS,
-        Json(json!({ "error": "too_many_requests", "message": message })),
-    )
-        .into_response()
+    too_many_requests(message)
 }
 
 fn redact_response_for_storage(response: &GenerateReadingResponse) -> serde_json::Value {
@@ -333,14 +372,20 @@ async fn get_schema(
     State(state): State<AppState>,
     axum::extract::Path(schema_version): axum::extract::Path<String>,
 ) -> Response {
-    match state.schema_registry.get(&schema_version) {
-        Some(schema) => (StatusCode::OK, Json(schema.clone())).into_response(),
-        None => (
-            StatusCode::NOT_FOUND,
-            Json(json!({ "error": "schema not found", "schema_version": schema_version })),
-        )
-            .into_response(),
+    if let Some(schema) = state.schema_registry.get(&schema_version) {
+        return (StatusCode::OK, Json(schema.clone())).into_response();
     }
+
+    if let Some(schema) = load_published_schema(&schema_version) {
+        return (StatusCode::OK, Json(schema)).into_response();
+    }
+
+    error_response(
+        StatusCode::NOT_FOUND,
+        "UNSUPPORTED_CONTRACT_VERSION",
+        format!("Unknown schema version: {schema_version}"),
+        None,
+    )
 }
 
 async fn get_run_audit(
@@ -348,82 +393,43 @@ async fn get_run_audit(
     axum::extract::Path(run_id): axum::extract::Path<String>,
 ) -> Response {
     let Some(persistence) = state.persistence.as_ref() else {
-        return (
+        return error_response(
             StatusCode::SERVICE_UNAVAILABLE,
-            Json(json!({
-                "error": "PERSISTENCE_DISABLED",
-                "message": "run audit requires ASTRAL_LLM_ENABLE_PERSISTENCE=true"
-            })),
-        )
-            .into_response();
+            "PERSISTENCE_DISABLED",
+            "run audit requires ASTRAL_LLM_ENABLE_PERSISTENCE=true",
+            None,
+        );
     };
 
     let run_uuid = match Uuid::parse_str(&run_id) {
         Ok(id) => id,
         Err(_) => {
-            return (
+            return error_response(
                 StatusCode::BAD_REQUEST,
-                Json(json!({
-                    "error": "INVALID_RUN_ID",
-                    "message": "run_id must be a UUID"
-                })),
-            )
-                .into_response();
+                "INVALID_RUN_ID",
+                "run_id must be a UUID",
+                None,
+            );
         }
     };
 
     match persistence.get_run_audit(run_uuid).await {
         Ok(Some(audit)) => (StatusCode::OK, Json(audit)).into_response(),
-        Ok(None) => (
+        Ok(None) => error_response(
             StatusCode::NOT_FOUND,
-            Json(json!({
-                "error": "RUN_NOT_FOUND",
-                "message": "no generation run for this run_id",
-                "run_id": run_id
-            })),
-        )
-            .into_response(),
+            "RUN_NOT_FOUND",
+            "no generation run for this run_id",
+            Some(json!({ "run_id": run_id })),
+        ),
         Err(err) => {
             tracing::error!(error = %err, run_id = %run_id, "failed to load run audit");
-            (
+            error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({
-                    "error": "AUDIT_LOOKUP_FAILED",
-                    "message": "failed to load run audit"
-                })),
+                "AUDIT_LOOKUP_FAILED",
+                "failed to load run audit",
+                None,
             )
-                .into_response()
         }
-    }
-}
-
-fn generation_error_response(err: GenerationError) -> Response {
-    let detail = err.detail();
-    let status = map_error_status(&detail.code);
-    let mut body = json!({
-        "error": detail.code.as_str(),
-        "message": detail.message,
-    });
-    if let Some(details) = &detail.details {
-        body["details"] = details.clone();
-    }
-    (status, Json(body)).into_response()
-}
-
-fn map_error_status(code: &GenerationErrorCode) -> StatusCode {
-    match code {
-        GenerationErrorCode::InvalidInput => StatusCode::BAD_REQUEST,
-        GenerationErrorCode::UnsupportedProvider
-        | GenerationErrorCode::UnsupportedCapability
-        | GenerationErrorCode::ProductPolicyViolation
-        | GenerationErrorCode::PolicyViolation => StatusCode::BAD_REQUEST,
-        GenerationErrorCode::ProviderTimeout => StatusCode::GATEWAY_TIMEOUT,
-        GenerationErrorCode::ProviderRateLimited => StatusCode::TOO_MANY_REQUESTS,
-        GenerationErrorCode::ProviderUnavailable | GenerationErrorCode::FallbackFailed => {
-            StatusCode::BAD_GATEWAY
-        }
-        GenerationErrorCode::ReadingQualityFailed => StatusCode::UNPROCESSABLE_ENTITY,
-        _ => StatusCode::UNPROCESSABLE_ENTITY,
     }
 }
 

@@ -1,3 +1,9 @@
+name: astral
+
+# Stack locale : postgres + astral_calculator_api + astral_llm_api
+# Reseau partage astral_net, configuration partagee via .env a la racine.
+# Demarrage : docker compose up -d --build
+
 services:
   postgres:
     image: postgres:18-alpine
@@ -9,8 +15,10 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+    networks:
+      - astral_net
+    expose:
+      - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
@@ -19,6 +27,57 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  astral_calculator_api:
+    build:
+      context: .
+      dockerfile: docker/astral_calculator_api/Dockerfile
+    container_name: astral_calculator_api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      ASTRAL_CALCULATOR_HOST: 0.0.0.0
+      ASTRAL_CALCULATOR_ALLOW_PUBLIC_BIND: "true"
+      ASTRAL_EPHEMERIS_PATH: /app/ephe/se-2026a
+    networks:
+      - astral_net
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./ephe:/app/ephe:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  astral_llm_api:
+    build:
+      context: .
+      dockerfile: docker/astral_llm_api/Dockerfile
+    container_name: astral_llm_api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      ASTRAL_LLM_HOST: 0.0.0.0
+      ASTRAL_LLM_ALLOW_PUBLIC_BIND: "true"
+      ASTRAL_LLM_ENABLE_PERSISTENCE: "true"
+      ASTRAL_LLM_PROMPTS_DIR: /app/prompts
+      ASTRAL_LLM_CONTRACTS_DIR: /app/contracts/llm
+    networks:
+      - astral_net
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+networks:
+  astral_net:
+    name: astral_net
 
 volumes:
   postgres_data:

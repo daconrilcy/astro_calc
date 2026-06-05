@@ -1,0 +1,317 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "AstroBasisItem": {
+      "properties": {
+        "fact_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "factor": {
+          "type": "string"
+        },
+        "interpretive_role": {
+          "type": "string"
+        },
+        "label": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "factor",
+        "interpretive_role"
+      ],
+      "type": "object"
+    },
+    "ConfidenceLevel": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "type": "string"
+    },
+    "GenerationErrorCode": {
+      "enum": [
+        "INVALID_INPUT",
+        "UNSUPPORTED_PROVIDER",
+        "UNSUPPORTED_CAPABILITY",
+        "SAFETY_REJECTED",
+        "PROVIDER_TIMEOUT",
+        "PROVIDER_RATE_LIMITED",
+        "PROVIDER_UNAVAILABLE",
+        "INVALID_JSON_OUTPUT",
+        "SCHEMA_VALIDATION_FAILED",
+        "POST_SAFETY_VALIDATION_FAILED",
+        "FALLBACK_FAILED",
+        "PERSISTENCE_FAILED",
+        "PRODUCT_POLICY_VIOLATION",
+        "POLICY_VIOLATION",
+        "READING_QUALITY_FAILED",
+        "PREMIUM_EVIDENCE_DIVERSITY_FAILED",
+        "ASTRO_BASIS_INVALID"
+      ],
+      "type": "string"
+    },
+    "GenerationErrorDetail": {
+      "properties": {
+        "code": {
+          "$ref": "#/definitions/GenerationErrorCode"
+        },
+        "details": true,
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "type": "object"
+    },
+    "GenerationMode": {
+      "enum": [
+        "single_pass",
+        "chapter_orchestrated"
+      ],
+      "type": "string"
+    },
+    "LegalBlock": {
+      "properties": {
+        "disclaimer": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "disclaimer"
+      ],
+      "type": "object"
+    },
+    "NatalReadingResponse": {
+      "properties": {
+        "chapters": {
+          "items": {
+            "$ref": "#/definitions/ReadingChapter"
+          },
+          "type": "array"
+        },
+        "language": {
+          "type": "string"
+        },
+        "legal": {
+          "$ref": "#/definitions/LegalBlock"
+        },
+        "quality": {
+          "$ref": "#/definitions/QualityMetadata"
+        },
+        "reading_type": {
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "string"
+        },
+        "summary": {
+          "$ref": "#/definitions/ReadingSummary"
+        }
+      },
+      "required": [
+        "chapters",
+        "language",
+        "legal",
+        "quality",
+        "reading_type",
+        "schema_version",
+        "summary"
+      ],
+      "type": "object"
+    },
+    "QualityMetadata": {
+      "properties": {
+        "astro_contract_version": {
+          "type": "string"
+        },
+        "fallback_used": {
+          "type": "boolean"
+        },
+        "generation_mode": {
+          "$ref": "#/definitions/GenerationMode"
+        },
+        "prompt_family": {
+          "type": "string"
+        },
+        "prompt_version": {
+          "type": "string"
+        },
+        "used_model": {
+          "type": "string"
+        },
+        "used_provider": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "astro_contract_version",
+        "fallback_used",
+        "generation_mode",
+        "prompt_family",
+        "prompt_version",
+        "used_model",
+        "used_provider"
+      ],
+      "type": "object"
+    },
+    "ReadingChapter": {
+      "properties": {
+        "astro_basis": {
+          "items": {
+            "$ref": "#/definitions/AstroBasisItem"
+          },
+          "type": "array"
+        },
+        "body": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "confidence": {
+          "$ref": "#/definitions/ConfidenceLevel"
+        },
+        "safety_flags": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "body",
+        "code",
+        "confidence",
+        "title"
+      ],
+      "type": "object"
+    },
+    "ReadingSummary": {
+      "properties": {
+        "short_text": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "short_text",
+        "title"
+      ],
+      "type": "object"
+    },
+    "SafetyErrorBody": {
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "rule_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "category",
+        "code",
+        "message"
+      ],
+      "type": "object"
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "reading": {
+          "$ref": "#/definitions/NatalReadingResponse"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "success"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "reading",
+        "run_id",
+        "status"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/SafetyErrorBody"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "violations": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "error",
+        "run_id",
+        "status",
+        "violations"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/GenerationErrorDetail"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "failed"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "error",
+        "run_id",
+        "status"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "GenerateReadingResponse"
+}

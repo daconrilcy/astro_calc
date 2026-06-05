@@ -1,0 +1,180 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "AstroBasisItem": {
+      "properties": {
+        "fact_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "factor": {
+          "type": "string"
+        },
+        "interpretive_role": {
+          "type": "string"
+        },
+        "label": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "factor",
+        "interpretive_role"
+      ],
+      "type": "object"
+    },
+    "ConfidenceLevel": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "type": "string"
+    },
+    "GenerationMode": {
+      "enum": [
+        "single_pass",
+        "chapter_orchestrated"
+      ],
+      "type": "string"
+    },
+    "LegalBlock": {
+      "properties": {
+        "disclaimer": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "disclaimer"
+      ],
+      "type": "object"
+    },
+    "QualityMetadata": {
+      "properties": {
+        "astro_contract_version": {
+          "type": "string"
+        },
+        "fallback_used": {
+          "type": "boolean"
+        },
+        "generation_mode": {
+          "$ref": "#/definitions/GenerationMode"
+        },
+        "prompt_family": {
+          "type": "string"
+        },
+        "prompt_version": {
+          "type": "string"
+        },
+        "used_model": {
+          "type": "string"
+        },
+        "used_provider": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "astro_contract_version",
+        "fallback_used",
+        "generation_mode",
+        "prompt_family",
+        "prompt_version",
+        "used_model",
+        "used_provider"
+      ],
+      "type": "object"
+    },
+    "ReadingChapter": {
+      "properties": {
+        "astro_basis": {
+          "items": {
+            "$ref": "#/definitions/AstroBasisItem"
+          },
+          "type": "array"
+        },
+        "body": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "confidence": {
+          "$ref": "#/definitions/ConfidenceLevel"
+        },
+        "safety_flags": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "body",
+        "code",
+        "confidence",
+        "title"
+      ],
+      "type": "object"
+    },
+    "ReadingSummary": {
+      "properties": {
+        "short_text": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "short_text",
+        "title"
+      ],
+      "type": "object"
+    }
+  },
+  "properties": {
+    "chapters": {
+      "items": {
+        "$ref": "#/definitions/ReadingChapter"
+      },
+      "type": "array"
+    },
+    "language": {
+      "type": "string"
+    },
+    "legal": {
+      "$ref": "#/definitions/LegalBlock"
+    },
+    "quality": {
+      "$ref": "#/definitions/QualityMetadata"
+    },
+    "reading_type": {
+      "type": "string"
+    },
+    "schema_version": {
+      "type": "string"
+    },
+    "summary": {
+      "$ref": "#/definitions/ReadingSummary"
+    }
+  },
+  "required": [
+    "chapters",
+    "language",
+    "legal",
+    "quality",
+    "reading_type",
+    "schema_version",
+    "summary"
+  ],
+  "title": "NatalReadingResponse",
+  "type": "object"
+}

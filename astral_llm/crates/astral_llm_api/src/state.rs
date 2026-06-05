@@ -14,4 +14,5 @@ pub struct AppState {
     pub persistence: Option<Arc<RunPersistence>>,
     pub concurrency_limit: Option<Arc<Semaphore>>,
     pub api_key_limiter: Option<Arc<ApiKeyRateLimiter>>,
+    pub interpretation_profile_count: usize,
 }

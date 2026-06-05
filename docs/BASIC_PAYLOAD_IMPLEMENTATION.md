@@ -3152,3 +3152,28 @@ Detail pipeline, roadmap optimisation : `Astral_llm_implementation.md`.
 - Tests : `tests/astral_llm_i18n_tests.rs`, `tests/astral_llm_evidence_coherence_tests.rs`
 
 Documentation detaillee : `Astral_llm_implementation.md`.
+
+## API HTTP calculateur + Docker Compose (2026-06-05)
+
+### Crate `astral_calculator_api`
+
+- Binaire : `cargo run -p astral_calculator_api` (port **8080** par defaut).
+- Endpoints : `/health/live`, `/health/ready` (503 + `error_response_v1` si non pret),
+  `/v1/contracts`, `/v1/schemas/{version}`, `/v1/reference/status`,
+  `/v1/calculations/validate`, `/v1/calculations/natal`, `/openapi.yaml`.
+- Contrats publics : repertoire [`contracts/`](contracts/) (schemas + OpenAPI + exemples).
+- Test coherence schemas : `cargo test -p astral_llm_api --test contracts_publish_tests`.
+- Test API : `cargo test -p astral_calculator_api --test astral_calculator_api_tests`.
+
+### Docker Compose local
+
+```powershell
+docker compose up -d --build
+.\scripts\docker_bootstrap.ps1
+.\scripts\docker_compose_smoke.ps1
+```
+
+- Reseau : `astral_net` — `http://astral_calculator_api:8080`, `http://astral_llm_api:8081`.
+- PostgreSQL interne (`expose: 5432`) ; port hote optionnel via `docker-compose.dev-db-port.yml`.
+- Ephemerides : volume `./ephe:/app/ephe:ro` (non bakees dans l'image).
+- Profils Compose : `calculator`, `llm`, `full` ; `postgres` sans profil.

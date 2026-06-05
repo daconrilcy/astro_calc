@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ResponseContract {
     pub output_schema_version: String,
+    #[serde(default)]
     pub generation_mode: GenerationMode,
     #[serde(default)]
     pub format: OutputFormat,

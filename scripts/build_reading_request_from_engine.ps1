@@ -167,6 +167,7 @@ $request = [ordered]@{
     }
     response_contract = [ordered]@{
         output_schema_version = "natal_reading_v1"
+        generation_mode = "chapter_orchestrated"
         format = "structured_json"
         include_astro_sources = $true
         include_legal_disclaimer = $true

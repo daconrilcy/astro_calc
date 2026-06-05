@@ -4,12 +4,12 @@ use std::time::{Duration, Instant};
 
 use axum::{
     extract::State,
-    http::StatusCode,
     middleware::Next,
-    response::{IntoResponse, Response},
+    response::Response,
 };
 use tokio::sync::Semaphore;
 
+use crate::api_error::too_many_requests;
 use crate::state::AppState;
 
 #[derive(Debug)]
@@ -132,7 +132,7 @@ pub async fn api_key_rate_limit(
     let key_id = rate_limit_key_id(&request, &state);
     let permit = match limiter.try_acquire(&key_id, false) {
         Ok(permit) => permit,
-        Err(reason) => return rate_limit_response(reason).into_response(),
+        Err(reason) => return rate_limit_response(reason),
     };
     let response = next.run(request).await;
     drop(permit);
@@ -237,19 +237,13 @@ fn extract_api_token(request: &axum::http::Request<axum::body::Body>) -> Option<
         })
 }
 
-fn rate_limit_response(reason: RateLimitReason) -> (StatusCode, axum::Json<serde_json::Value>) {
+fn rate_limit_response(reason: RateLimitReason) -> Response {
     let message = match reason {
         RateLimitReason::ConcurrentPerKey => "API key concurrent request limit reached",
         RateLimitReason::RequestsPerMinute => "API key requests per minute limit reached",
         RateLimitReason::PremiumConcurrent => "API key premium concurrent limit reached",
     };
-    (
-        StatusCode::TOO_MANY_REQUESTS,
-        axum::Json(serde_json::json!({
-            "error": "too_many_requests",
-            "message": message
-        })),
-    )
+    too_many_requests(message)
 }
 
 pub async fn concurrency_limit(
@@ -268,16 +262,7 @@ pub async fn concurrency_limit(
 
     let permit = match semaphore.try_acquire() {
         Ok(permit) => permit,
-        Err(_) => {
-            return (
-                StatusCode::TOO_MANY_REQUESTS,
-                axum::Json(serde_json::json!({
-                    "error": "too_many_requests",
-                    "message": "server concurrency limit reached"
-                })),
-            )
-                .into_response();
-        }
+        Err(_) => return too_many_requests("server concurrency limit reached"),
     };
 
     let response = next.run(request).await;

@@ -1,0 +1,473 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "AstroCalculationPayload": {
+      "properties": {
+        "chart_type": {
+          "type": "string"
+        },
+        "contract_version": {
+          "type": "string"
+        },
+        "data": true
+      },
+      "required": [
+        "chart_type",
+        "contract_version",
+        "data"
+      ],
+      "type": "object"
+    },
+    "AstrologerProfile": {
+      "properties": {
+        "custom_instructions": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "forbidden_wording": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "jargon_level": {
+          "$ref": "#/definitions/JargonLevel"
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "preferred_domains": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "profile_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tone": {
+          "$ref": "#/definitions/ToneProfile"
+        },
+        "wording_style": {
+          "$ref": "#/definitions/WordingStyle"
+        }
+      },
+      "required": [
+        "forbidden_wording",
+        "jargon_level",
+        "preferred_domains",
+        "tone",
+        "wording_style"
+      ],
+      "type": "object"
+    },
+    "AudienceLevel": {
+      "enum": [
+        "beginner",
+        "intermediate",
+        "expert"
+      ],
+      "type": "string"
+    },
+    "ChapterContract": {
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "max_words": {
+          "format": "uint32",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "min_words": {
+          "format": "uint32",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "required_fields": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "target_tokens": {
+          "format": "uint32",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "title"
+      ],
+      "type": "object"
+    },
+    "EngineParams": {
+      "properties": {
+        "allow_fallback": {
+          "default": true,
+          "type": "boolean"
+        },
+        "allow_oracle_benchmark": {
+          "default": false,
+          "description": "Autorise un modele `oracle_only` (ex. gpt-5.5-pro) sur un run benchmark dedie.",
+          "type": "boolean"
+        },
+        "domain_count": {
+          "format": "uint8",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "max_output_tokens": {
+          "format": "uint32",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "model": {
+          "default": null,
+          "description": "Si absent ou vide : `llm_product_default_engine` pour le produit, sinon `ASTRAL_LLM_DEFAULT_MODEL`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ProviderKind"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Si absent, le service utilise `ASTRAL_LLM_DEFAULT_PROVIDER` (OpenAI par defaut)."
+        },
+        "reasoning_effort": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ReasoningEffort"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "summary_model": {
+          "default": null,
+          "description": "SummarySynthesizer uniquement ; sinon `economic_model` produit si `model` absent.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "temperature": {
+          "format": "float",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "timeout_ms": {
+          "format": "uint64",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "GenerationMode": {
+      "enum": [
+        "single_pass",
+        "chapter_orchestrated"
+      ],
+      "type": "string"
+    },
+    "JargonLevel": {
+      "enum": [
+        "beginner",
+        "balanced",
+        "expert"
+      ],
+      "type": "string"
+    },
+    "OutputFormat": {
+      "enum": [
+        "structured_json"
+      ],
+      "type": "string"
+    },
+    "ProductContext": {
+      "properties": {
+        "audience_level": {
+          "$ref": "#/definitions/AudienceLevel"
+        },
+        "interpretation_profile_code": {
+          "description": "Profil d'interpretation (obligatoire pour `natal_prompter`).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "product_code": {
+          "type": "string"
+        },
+        "user_language": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "audience_level",
+        "product_code",
+        "user_language"
+      ],
+      "type": "object"
+    },
+    "ProviderKind": {
+      "oneOf": [
+        {
+          "enum": [
+            "open_ai",
+            "anthropic",
+            "mistral",
+            "fake"
+          ],
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "custom": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "custom"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ReasoningEffort": {
+      "oneOf": [
+        {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "Valeur API OpenAI `none` (frontier gpt-5.4+). Ne pas confondre avec l'absence de parametre.",
+          "enum": [
+            "none"
+          ],
+          "type": "string"
+        },
+        {
+          "description": "OpenAI gpt-5-mini : effort `minimal` pour sous-taches.",
+          "enum": [
+            "minimal"
+          ],
+          "type": "string"
+        }
+      ]
+    },
+    "ResponseContract": {
+      "properties": {
+        "chapters": {
+          "default": [],
+          "items": {
+            "$ref": "#/definitions/ChapterContract"
+          },
+          "type": "array"
+        },
+        "format": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/OutputFormat"
+            }
+          ],
+          "default": "structured_json"
+        },
+        "generation_mode": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/GenerationMode"
+            }
+          ],
+          "default": "single_pass"
+        },
+        "global_max_tokens": {
+          "format": "uint32",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "include_astro_sources": {
+          "type": "boolean"
+        },
+        "include_legal_disclaimer": {
+          "type": "boolean"
+        },
+        "output_schema_version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "include_astro_sources",
+        "include_legal_disclaimer",
+        "output_schema_version"
+      ],
+      "type": "object"
+    },
+    "SafetyPolicy": {
+      "properties": {
+        "custom_forbidden_topics": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "forbid_death_prediction": {
+          "type": "boolean"
+        },
+        "forbid_deterministic_claims": {
+          "type": "boolean"
+        },
+        "forbid_financial_advice": {
+          "type": "boolean"
+        },
+        "forbid_legal_advice": {
+          "type": "boolean"
+        },
+        "forbid_medical_advice": {
+          "type": "boolean"
+        },
+        "forbid_pregnancy_prediction": {
+          "type": "boolean"
+        },
+        "require_disclaimer": {
+          "type": "boolean"
+        },
+        "require_symbolic_framing": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "forbid_death_prediction",
+        "forbid_deterministic_claims",
+        "forbid_financial_advice",
+        "forbid_legal_advice",
+        "forbid_medical_advice",
+        "forbid_pregnancy_prediction",
+        "require_disclaimer",
+        "require_symbolic_framing"
+      ],
+      "type": "object"
+    },
+    "ToneProfile": {
+      "enum": [
+        "warm",
+        "direct",
+        "spiritual",
+        "psychological",
+        "traditional",
+        "modern",
+        "poetic"
+      ],
+      "type": "string"
+    },
+    "WordingStyle": {
+      "enum": [
+        "clear",
+        "narrative",
+        "analytical",
+        "poetic"
+      ],
+      "type": "string"
+    }
+  },
+  "properties": {
+    "astro_result": {
+      "$ref": "#/definitions/AstroCalculationPayload"
+    },
+    "astrologer_profile": {
+      "$ref": "#/definitions/AstrologerProfile"
+    },
+    "engine": {
+      "$ref": "#/definitions/EngineParams"
+    },
+    "idempotency_key": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "product_context": {
+      "$ref": "#/definitions/ProductContext"
+    },
+    "request_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "response_contract": {
+      "$ref": "#/definitions/ResponseContract"
+    },
+    "safety_policy": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/SafetyPolicy"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "astro_result",
+    "astrologer_profile",
+    "engine",
+    "product_context",
+    "response_contract"
+  ],
+  "title": "GenerateReadingRequest",
+  "type": "object"
+}

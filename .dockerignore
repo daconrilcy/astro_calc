@@ -1,0 +1,30 @@
+# Artefacts Rust (racine + crates imbriques — evite plusieurs Go de contexte)
+target/
+**/target/
+target-review/
+**/target-review/
+target-verify/
+**/target-verify/
+
+# Sorties locales et secrets
+output/
+**/output/
+.env
+.env.*
+
+# Ephemerides montees en volume (./ephe:/app/ephe:ro) — inutiles dans l'image builder
+ephe/
+
+# VCS / IDE
+.git/
+.cursor/
+
+# Documentation (conserve contracts/ et prompts LLM pour les images runtime)
+**/*.md
+!contracts/**
+!astral_llm/prompts/**
+
+# Fichiers lourds non requis a la compilation
+horoscope.db
+**/__pycache__/
+**/*.pyc

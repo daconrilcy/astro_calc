@@ -162,6 +162,7 @@ async fn generate_chapter_orchestrated_multi_domain() {
     let mut request = sample_request(GenerationMode::ChapterOrchestrated);
     request.product_context.product_code = "natal_prompter".into();
     request.product_context.interpretation_profile_code = Some("natal_basic".into());
+    // natal_basic utilise une sequence fixe de 6 chapitres (domain_count ignore).
     request.engine.domain_count = Some(2);
     request.astrologer_profile.preferred_domains =
         vec!["identity".into(), "relationships".into()];
@@ -169,7 +170,7 @@ async fn generate_chapter_orchestrated_multi_domain() {
     let response = use_case.execute(request).await;
     match response {
         GenerateReadingResponse::Success(success) => {
-            assert_eq!(success.reading.chapters.len(), 2);
+            assert_eq!(success.reading.chapters.len(), 6);
             assert_eq!(
                 success.reading.quality.generation_mode,
                 GenerationMode::ChapterOrchestrated

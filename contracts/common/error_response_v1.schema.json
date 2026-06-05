@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://astral-calculation.local/contracts/common/error_response_v1.schema.json",
+  "title": "Error Response v1",
+  "description": "Contrat d erreur commun aux APIs astral_calculator_api et astral_llm_api.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "error"],
+  "properties": {
+    "status": { "const": "failed" },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "details": { "type": "object" }
+      }
+    },
+    "request_id": { "type": ["string", "null"] }
+  }
+}

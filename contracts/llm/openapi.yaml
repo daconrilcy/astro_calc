@@ -1,0 +1,104 @@
+openapi: 3.1.0
+info:
+  title: astral_llm_api
+  version: 1.0.0
+  description: Gateway LLM pour lectures astrologiques.
+servers:
+  - url: http://astral_llm_api:8081
+    description: Reseau Docker astral_net
+  - url: http://localhost:8081
+    description: Hote local
+paths:
+  /health/live:
+    get:
+      summary: Liveness probe
+      responses:
+        "200":
+          description: Process HTTP vivant
+  /health/ready:
+    get:
+      summary: Readiness probe
+      responses:
+        "200":
+          description: DB, profils, modeles et prompts OK
+        "503":
+          description: Service non pret (error_response_v1)
+  /v1/contracts:
+    get:
+      summary: Decouverte des contrats
+      responses:
+        "200":
+          description: Liste des schemas et lien OpenAPI
+  /v1/schemas/{schema_version}:
+    get:
+      summary: JSON Schema publie
+      parameters:
+        - name: schema_version
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Schema JSON
+  /v1/readings/generate:
+    post:
+      summary: Generer une lecture
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./generate_reading_request_v1.schema.json"
+      responses:
+        "200":
+          description: generate_reading_response_v1
+        "422":
+          description: safety_rejected ou error_response_v1
+  /v1/readings/validate:
+    post:
+      summary: Valider une reponse contre un schema
+      responses:
+        "200":
+          description: Valide
+  /v1/providers:
+    get:
+      summary: Capacites modeles et circuit breakers
+      responses:
+        "200":
+          description: Catalogue providers
+  /v1/runs/{run_id}:
+    get:
+      summary: Audit d un run
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Enregistrement audit
+  /openapi.yaml:
+    get:
+      summary: Cette specification OpenAPI
+      responses:
+        "200":
+          description: OpenAPI YAML
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key

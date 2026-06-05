@@ -67,6 +67,11 @@ name = "astral_llm_interpretation_profile_tests"
 path = "../../../tests/astral_llm_interpretation_profile_tests.rs"
 harness = true
 
+[[test]]
+name = "contracts_publish_tests"
+path = "../../../tests/contracts_publish_tests.rs"
+harness = true
+
 [dependencies]
 astral_llm_application.workspace = true
 astral_llm_domain.workspace = true
@@ -83,6 +88,8 @@ tracing.workspace = true
 uuid.workspace = true
 
 [dev-dependencies]
+schemars.workspace = true
+sha2.workspace = true
 astral_llm_application.workspace = true
 astral_llm_domain.workspace = true
 astral_llm_infra.workspace = true

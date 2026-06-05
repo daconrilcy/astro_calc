@@ -81,13 +81,33 @@ ASTRAL_LLM_DEFAULT_MODEL=gpt-5.4-mini
 ASTRAL_LLM_PROMPT_LOG_DIR=output/logs/prompts
 ```
 
-> **Auth** : si `ASTRAL_LLM_API_KEY` est definie, toutes les routes sauf **`GET /health`** exigent `Authorization: Bearer <cle>` ou `X-API-Key`. `/health` reste accessible sans credentials (sonde / scripts E2E).
+> **Auth** : si `ASTRAL_LLM_API_KEY` est definie, les routes protegees exigent `Authorization: Bearer <cle>` ou `X-API-Key`. Exemptes : `/health`, `/health/live`, `/health/ready`, `/v1/contracts`, `/v1/schemas/*`, `/openapi.yaml`.
 
 ### 3. Demarrer PostgreSQL
 
 ```powershell
 docker compose up -d postgres
 ```
+
+Stack complet (calculateur + LLM + PostgreSQL interne) :
+
+```powershell
+docker compose up -d --build
+.\scripts\docker_bootstrap.ps1
+.\scripts\docker_compose_smoke.ps1
+```
+
+Le smoke Docker (`docker_compose_smoke.ps1`) enchaine calculateur `:8080` puis LLM `:8081` avec profil **`natal_basic`** (6 chapitres, `chapter_orchestrated`, provider `fake`). Ce n'est **pas** le meme scenario que le test fake `natal_light` ci-dessous (1 chapitre, `single_pass`).
+
+E2E Premium / Premium Plus avec OpenAI reel (stack Docker) :
+
+```powershell
+.\scripts\docker_premium_openai_e2e.ps1
+```
+
+Reseau Docker `astral_net` : `http://astral_calculator_api:8080`, `http://astral_llm_api:8081`.
+Contrats publics : [`contracts/README.md`](contracts/README.md). Port PostgreSQL hote optionnel :
+`docker compose -f docker-compose.yml -f docker-compose.dev-db-port.yml up -d`.
 
 Verifier que `DATABASE_URL` pointe vers cette instance.
 
@@ -127,7 +147,9 @@ Attendre le log `astral_llm_api listening` sur `127.0.0.1:8081` (ou le port `AST
 
 Prerequis : `ASTRAL_LLM_ENABLE_FAKE=true` **et** redemarrage de l'API apres changement.
 
-Requete type `natal_light` (deja preparee apres un premier run) :
+**Smoke Docker** (calculateur + LLM, sans cout API) : `.\scripts\docker_compose_smoke.ps1` — profil `natal_basic`, 6 chapitres, provider `fake`.
+
+**Test fake light** (API seule, 1 chapitre) — requete type `natal_light` :
 
 ```powershell
 .\scripts\generate_premium_reading_e2e.ps1 `

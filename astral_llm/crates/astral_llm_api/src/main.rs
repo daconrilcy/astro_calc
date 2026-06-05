@@ -135,6 +135,7 @@ async fn main() {
         persistence,
         concurrency_limit: new_semaphore(config.max_concurrent_requests),
         api_key_limiter: new_api_key_limiter(&config),
+        interpretation_profile_count: catalog.interpretation_profiles.len(),
     };
 
     let timeout = Duration::from_millis(state.config.limits.default_request_timeout_ms + 5_000);

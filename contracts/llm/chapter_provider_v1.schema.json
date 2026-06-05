@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "AstroBasisItem": {
+      "properties": {
+        "fact_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "factor": {
+          "type": "string"
+        },
+        "interpretive_role": {
+          "type": "string"
+        },
+        "label": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "factor",
+        "interpretive_role"
+      ],
+      "type": "object"
+    },
+    "ConfidenceLevel": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "type": "string"
+    }
+  },
+  "description": "Schema minimal envoye au LLM en mode chapitre (sans champs serveur `quality`).",
+  "properties": {
+    "astro_basis": {
+      "items": {
+        "$ref": "#/definitions/AstroBasisItem"
+      },
+      "type": "array"
+    },
+    "body": {
+      "type": "string"
+    },
+    "code": {
+      "type": "string"
+    },
+    "confidence": {
+      "$ref": "#/definitions/ConfidenceLevel"
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "body",
+    "code",
+    "confidence",
+    "title"
+  ],
+  "title": "ChapterProviderResponse",
+  "type": "object"
+}

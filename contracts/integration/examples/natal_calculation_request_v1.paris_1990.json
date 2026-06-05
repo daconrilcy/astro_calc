@@ -1,0 +1,26 @@
+{
+  "request_contract_version": "astro_engine_request_v1",
+  "request_id": "example-paris-1990",
+  "calculation": {
+    "type": "natal",
+    "zodiacal_reference_system": "tropical",
+    "coordinate_reference_system": "geocentric",
+    "house_system": "placidus"
+  },
+  "birth": {
+    "date": "1990-01-02",
+    "time": "03:04:05",
+    "timezone": "Europe/Paris",
+    "location": {
+      "label": "Paris, France",
+      "latitude": 48.8566,
+      "longitude": 2.3522,
+      "country_code": "FR"
+    },
+    "time_precision": "exact"
+  },
+  "projection": {
+    "contract_version": "llm_projection_natal_v1",
+    "level": "rich"
+  }
+}

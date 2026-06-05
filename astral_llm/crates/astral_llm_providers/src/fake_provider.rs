@@ -130,6 +130,30 @@ fn build_chapter_response(request: &ProviderGenerationRequest) -> ChapterProvide
 const FAKE_CHAPTER_SUFFIX: &str = "Cette lecture symbolique reste une piste de reflexion, \
     jamais une prescription rigide ni une promesse certaine.";
 
+/// Seuil conservateur au-dessus des min_words des profils de test (ex. natal_basic = 70).
+const FAKE_MIN_CHAPTER_WORDS: u32 = 80;
+
+const FAKE_CHAPTER_PAD: &[&str] = &[
+    "Observer ces dynamiques avec curiosite permet de transformer l incertitude en matiere creative.",
+    "Chaque cycle interieur merite d etre accueilli comme une information utile, jamais comme un verdict.",
+    "La symbolique astrologique eclaire des possibles, non des obligations figees dans le temps.",
+    "Accueillir vos contradictions interieures ouvre un espace de lucidite bienveillante et concrete.",
+];
+
+fn chapter_word_count(text: &str) -> u32 {
+    text.split_whitespace().count() as u32
+}
+
+fn pad_to_min_words(mut body: String, min: u32) -> String {
+    let mut i = 0usize;
+    while chapter_word_count(&body) < min {
+        body.push(' ');
+        body.push_str(FAKE_CHAPTER_PAD[i % FAKE_CHAPTER_PAD.len()]);
+        i += 1;
+    }
+    body
+}
+
 fn chapter_body_for_code(code: &str) -> String {
     let core = match code {
         "identity" => "Votre identite se construit par strates successives, entre affirmations \
@@ -148,23 +172,42 @@ fn chapter_body_for_code(code: &str) -> String {
             Chaque relation devient alors un miroir evolutif, jamais un contrat fige."
             .into(),
         "emotional_life" => "Votre vie emotionnelle apparait comme un espace de nuances, entre \
-            intensite contenue et moments d'ouverture. Le theme suggere une intelligence \
-            affective en developpement, capable d'accueillir l'ambivalence sans la subir. Les \
+            intensite contenue et moments d ouverture. Le theme suggere une intelligence \
+            affective en developpement, capable d accueillir l ambivalence sans la subir. Les \
             cycles interieurs trouvent un sens lorsque vous les reliez a des experiences \
-            symboliques, plutot qu'a des jugements rigides sur vous-meme."
+            symboliques, plutot qu a des jugements rigides sur vous-meme. Accueillir vos \
+            variations d humeur devient alors un exercice de lucidite, jamais une condamnation \
+            de votre sensibilite naturelle."
             .into(),
         "career" => "Votre trajectoire professionnelle se dessine avec pragmatisme et intuition, \
             en equilibre entre structure et creativite. Le theme souligne une ambition mesuree, \
             attentive aux contextes et aux alliances utiles. Vous progressez lorsque vos \
             motivations profondes sont reconnues, sans sacrifier votre integrite ni votre rythme \
-            personnel de maturation."
+            personnel de maturation. Les transitions de carriere gagnent en coherence lorsque \
+            vous accueillez les phases d apprentissage comme des investissements durables."
+            .into(),
+        "growth_path" => "Votre chemin de croissance personnelle se revele par etapes, entre \
+            remises en question salutaires et consolidations progressives. Le theme suggere une \
+            capacite a transformer les epreuves en recit de sens, plutot qu en accumulation de \
+            frustrations muettes. Vous avancez lorsque vous accueillez l incertitude comme \
+            compagne de route, jamais comme ennemie a eliminer. Chaque saison interieure devient \
+            alors une occasion d affiner votre boussole existentielle avec plus de finesse."
+            .into(),
+        "talents" => "Vos talents s expriment souvent de maniere discrete, a travers des gestes \
+            concrets, une ecoute fine ou une capacite d adaptation remarquable. Le theme met en \
+            lumiere des ressources creatrices parfois sous-estimees, qui emergent lorsque la \
+            confiance remplace l autocritique excessive. Cultiver ces dons demande de la patience, \
+            un cadre protecteur et des occasions d essai sans jugement immediat. La reconnaissance \
+            progressive de vos forces ouvre des voies inattendues, toujours modulables."
             .into(),
         _ => format!(
             "Le domaine {code} du theme offre une lecture symbolique accessible, orientee vers \
-             la comprehension des dynamiques observees sans posture deterministe."
+             la comprehension des dynamiques observees sans posture deterministe. Cette perspective \
+             invite a relier les signaux du ciel aux choix concrets du quotidien, avec nuance \
+             et recul."
         ),
     };
-    format!("{core} {FAKE_CHAPTER_SUFFIX}")
+    pad_to_min_words(format!("{core} {FAKE_CHAPTER_SUFFIX}"), FAKE_MIN_CHAPTER_WORDS)
 }
 
 fn extract_fact_ids_from_messages(messages: &[crate::types::PromptMessage]) -> Vec<String> {
@@ -297,6 +340,16 @@ mod tests {
             content,
         }]);
         assert!(ids.contains(&"signal:object_position:venus".to_string()));
+    }
+
+    #[test]
+    fn emotional_life_meets_min_words_for_basic_profile() {
+        let body = chapter_body_for_code("emotional_life");
+        assert!(
+            chapter_word_count(&body) >= FAKE_MIN_CHAPTER_WORDS,
+            "expected at least {FAKE_MIN_CHAPTER_WORDS} words, got {}",
+            chapter_word_count(&body)
+        );
     }
 
     #[tokio::test]

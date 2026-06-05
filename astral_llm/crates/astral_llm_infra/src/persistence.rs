@@ -99,6 +99,10 @@ impl RunPersistence {
         Self { pool }
     }
 
+    pub fn pool(&self) -> &PgPool {
+        &self.pool
+    }
+
     pub async fn ensure_schema(&self) -> Result<(), sqlx::Error> {
         execute_sql_script(&self.pool, include_str!("../sql/llm_generation_runs.sql")).await?;
         execute_sql_script(&self.pool, include_str!("../sql/llm_canonical.sql")).await?;
