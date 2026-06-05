@@ -54,7 +54,7 @@ Naissance (.env) -> astral_calculator -> audit_payload -> astral_llm_api + profi
 |---|---|
 | Rust (stable) | `cargo run -p astral_llm_api`, tests |
 | Docker Desktop | PostgreSQL local (`docker compose`) |
-| Cle OpenAI | Test reel Premium (`OPENAI_API_KEY`) |
+| Cle OpenAI | Provider certifie V1 / test reel Premium (`OPENAI_API_KEY`) |
 | Optionnel | `psql` en ligne de commande (sinon le script utilise `docker compose exec`) |
 
 ### 2. Fichier `.env` a la racine
