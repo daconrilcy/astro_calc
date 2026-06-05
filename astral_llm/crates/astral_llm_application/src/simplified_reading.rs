@@ -3,7 +3,7 @@ use astral_llm_domain::{
     engine_params::EngineParams,
     generation_request::{AudienceLevel, GenerateReadingRequest, ProductContext},
     interpretation_profile::NATAL_PROMPTER_PRODUCT,
-    output_contract::{GenerationMode, OutputFormat, ResponseContract},
+    output_contract::{ChapterContract, GenerationMode, OutputFormat, ResponseContract},
     AstroCalculationPayload, AstrologerProfile, GenerationError, GenerationErrorCode,
 };
 use serde_json::Value;
@@ -11,6 +11,9 @@ use serde_json::Value;
 pub const SIMPLIFIED_PROFILE: &str = "natal_simplified";
 pub const SIMPLIFIED_PAYLOAD_CONTRACT: &str = "natal_simplified_structured_v1";
 pub const SIMPLIFIED_REQUEST_CONTRACT: &str = "astro_simplified_natal_request_v1";
+pub const SIMPLIFIED_CHAPTER_IDENTITY: &str = "identity";
+pub const SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE: &str = "ambiguous_core_identity";
+pub const SUN_SIGN_BLOCKED_CODE: &str = "sun.sign";
 
 pub fn validate_simplified_calculation_request(value: &Value) -> Result<(), GenerationError> {
     let version = value
@@ -69,61 +72,60 @@ pub fn validate_simplified_calculation_request(value: &Value) -> Result<(), Gene
 }
 
 pub fn prompt_constraints_block(controls: &Value) -> String {
-    let allowed = controls
-        .get("allowed_fact_codes")
-        .and_then(|v| v.as_array())
-        .map(|items| {
-            items
-                .iter()
-                .filter_map(|v| v.as_str())
-                .collect::<Vec<_>>()
-                .join(", ")
-        })
-        .unwrap_or_default();
-    let blocked = controls
-        .get("blocked_interpretation_fact_codes")
-        .and_then(|v| v.as_array())
-        .map(|items| {
-            items
-                .iter()
-                .filter_map(|v| v.as_str())
-                .collect::<Vec<_>>()
-                .join(", ")
-        })
-        .unwrap_or_default();
-    let excluded = controls
-        .get("excluded_feature_codes")
-        .and_then(|v| v.as_array())
-        .map(|items| {
-            items
-                .iter()
-                .filter_map(|v| v.as_str())
-                .collect::<Vec<_>>()
-                .join(", ")
-        })
-        .unwrap_or_default();
-    let limitation_mentions = controls
-        .get("allowed_limitation_mentions")
-        .and_then(|v| v.as_array())
-        .map(|items| {
-            items
-                .iter()
-                .filter_map(|v| v.as_str())
-                .collect::<Vec<_>>()
-                .join(", ")
-        })
-        .unwrap_or_default();
+    let allowed = join_code_array(controls.get("allowed_fact_codes"));
+    let basis_ids = join_code_array(controls.get("allowed_astro_basis_fact_ids"));
+    let blocked = join_code_array(controls.get("blocked_interpretation_fact_codes"));
+    let excluded = join_code_array(controls.get("excluded_feature_codes"));
+    let profile_excluded = join_code_array(controls.get("profile_excluded_feature_codes"));
+    let limitation_mentions = join_code_array(controls.get("allowed_limitation_mentions"));
+    let houses_calculated = excluded.is_empty() && !profile_excluded.is_empty();
 
     format!(
         "SIMPLIFIED NATAL CONSTRAINTS (mandatory):\n\
-         - Allowed interpretive fact codes: [{allowed}]\n\
+         - Allowed interpretive fact codes (wording only, NOT astro_basis.fact_id): [{allowed}]\n\
+         - Allowed astro_basis.fact_id values (use EXCLUSIVELY for astro_basis): [{basis_ids}]\n\
+         - Never use allowed_fact_codes (e.g. mercury.sign) as astro_basis.fact_id.\n\
          - Blocked interpretive affirmations (do NOT state these as facts): [{blocked}]\n\
-         - Excluded features (never compute or affirm): [{excluded}]\n\
+         - Calculation excluded (not computed): [{excluded}]\n\
+         - Profile excluded (computed but not used in this simplified reading): [{profile_excluded}]\n\
          - You MAY explain limitations for: [{limitation_mentions}]\n\
-         - Never affirm Ascendant, houses, sect, or house placements when excluded.\n\
-         - For blocked signs (e.g. moon.sign), explain uncertainty instead of picking one sign.\n\
-         - Wording: partial / simplified / indicative reading — never \"degraded\"."
+         - Never affirm Ascendant, houses, sect, or house placements when profile-excluded.\n\
+         - For blocked signs (e.g. sun.sign, moon.sign), explain uncertainty — do not pick one sign.\n\
+         - Wording: partial / simplified / indicative reading — never \"degraded\".{}",
+        if houses_calculated {
+            "\n- Houses/Ascendant may be calculated but are intentionally omitted from this simplified product tier; say so plainly if relevant."
+        } else {
+            ""
+        }
     )
+}
+
+fn join_code_array(value: Option<&Value>) -> String {
+    value
+        .and_then(|v| v.as_array())
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|v| v.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        })
+        .unwrap_or_default()
+}
+
+pub fn sun_sign_blocked(controls: &Value) -> bool {
+    controls
+        .get("blocked_interpretation_fact_codes")
+        .and_then(|v| v.as_array())
+        .is_some_and(|items| items.iter().any(|v| v.as_str() == Some(SUN_SIGN_BLOCKED_CODE)))
+}
+
+pub fn resolve_simplified_chapter_code(controls: &Value) -> &'static str {
+    if sun_sign_blocked(controls) {
+        SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE
+    } else {
+        SIMPLIFIED_CHAPTER_IDENTITY
+    }
 }
 
 pub fn merge_simplified_forbidden_wording(
@@ -165,12 +167,30 @@ pub fn build_reading_request(
 
     let mut data = payload;
     let mut forbidden_wording = Vec::new();
+    let mut custom_instructions = None;
+    let mut chapter_code = SIMPLIFIED_CHAPTER_IDENTITY;
     if let Some(controls) = calculation.get("llm_payload") {
         if let Some(obj) = data.as_object_mut() {
             obj.insert("llm_controls".into(), controls.clone());
+            scrub_simplified_payload_for_llm(obj, controls);
         }
         forbidden_wording = merge_simplified_forbidden_wording(controls, forbidden_wording);
+        chapter_code = resolve_simplified_chapter_code(controls);
+        if sun_sign_blocked(controls) {
+            custom_instructions = Some(
+                "Le Soleil est ambigu (sun.sign bloqué). N'affirmez aucun signe solaire. \
+                 Expliquez la zone de changement possible entre signes, puis seulement les \
+                 placements stables secondaires (Mercure, Vénus, Mars…) avec prudence."
+                    .to_string(),
+            );
+        }
     }
+
+    let chapter_title = if chapter_code == SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE {
+        "Identité — Soleil ambigu"
+    } else {
+        "Identité"
+    };
 
     Ok(GenerateReadingRequest {
         request_id: calculation
@@ -197,7 +217,7 @@ pub fn build_reading_request(
             wording_style: WordingStyle::Clear,
             preferred_domains: vec![],
             forbidden_wording,
-            custom_instructions: None,
+            custom_instructions,
         },
         engine: EngineParams {
             domain_count: Some(1),
@@ -207,11 +227,57 @@ pub fn build_reading_request(
             output_schema_version: "natal_reading_v1".to_string(),
             generation_mode: GenerationMode::SinglePass,
             format: OutputFormat::StructuredJson,
-            chapters: vec![],
+            chapters: vec![ChapterContract {
+                code: chapter_code.to_string(),
+                title: chapter_title.to_string(),
+                min_words: None,
+                max_words: None,
+                target_tokens: None,
+                required_fields: vec![],
+            }],
             global_max_tokens: None,
             include_astro_sources: false,
             include_legal_disclaimer: true,
         },
         safety_policy: None,
     })
+}
+
+fn blocked_object_codes(controls: &Value) -> Vec<String> {
+    controls
+        .get("blocked_interpretation_fact_codes")
+        .and_then(|v| v.as_array())
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|v| v.as_str())
+                .filter_map(|code| code.strip_suffix(".sign"))
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn scrub_simplified_payload_for_llm(payload: &mut serde_json::Map<String, Value>, controls: &Value) {
+    payload.remove("position_count");
+    payload.remove("house_cusp_count");
+    payload.remove("aspect_count");
+
+    let blocked = blocked_object_codes(controls);
+    if blocked.is_empty() {
+        return;
+    }
+
+    if let Some(facts) = payload.get_mut("facts").and_then(|v| v.as_array_mut()) {
+        facts.retain(|fact| {
+            fact.get("object_code")
+                .and_then(|v| v.as_str())
+                .is_none_or(|code| !blocked.contains(&code.to_string()))
+        });
+    }
+    if let Some(planets) = payload.get_mut("planets").and_then(|v| v.as_object_mut()) {
+        for code in &blocked {
+            planets.remove(code);
+        }
+    }
 }

@@ -283,11 +283,30 @@ fn extract_astro_data_json(content: &str) -> Option<serde_json::Value> {
 }
 
 fn build_full_reading(request: &ProviderGenerationRequest) -> NatalReadingResponse {
-    let body = pad_to_min_words(
+    let chapter_code = request
+        .metadata
+        .chapter_code
+        .clone()
+        .unwrap_or_else(|| "identity".to_string());
+    let core = if chapter_code == "ambiguous_core_identity" {
+        "Votre Soleil se situe dans une zone de changement possible entre deux signes. \
+         Sans heure ou fuseau plus precis, on ne peut pas poser clairement le coeur solaire \
+         du profil. Les autres placements stables peuvent neanmoins donner des indications \
+         secondaires, avec prudence."
+    } else {
         "Interpretation symbolique : votre theme suggere une personnalite reflechie, \
-         orientee vers la comprehension des experiences.".to_string(),
-        FAKE_MIN_CHAPTER_WORDS,
-    );
+         orientee vers la comprehension des experiences."
+    };
+    let body = pad_to_min_words(core.to_string(), FAKE_MIN_CHAPTER_WORDS);
+    let title = if chapter_code == "ambiguous_core_identity" {
+        "Identite - Soleil ambigu"
+    } else {
+        "Identite"
+    };
+    let astro_contract_version =
+        extract_simplified_contract_version(&request.messages).unwrap_or_else(|| {
+            "natal_simplified_structured_v1".to_string()
+        });
     NatalReadingResponse {
         schema_version: "natal_reading_v1".to_string(),
         language: "fr".to_string(),
@@ -297,10 +316,10 @@ fn build_full_reading(request: &ProviderGenerationRequest) -> NatalReadingRespon
             short_text: "Interpretation symbolique de demonstration via FakeProvider.".to_string(),
         },
         chapters: vec![ReadingChapter {
-            code: "identity".to_string(),
-            title: "Identite".to_string(),
+            code: chapter_code,
+            title: title.to_string(),
             body,
-            astro_basis: vec![],
+            astro_basis: simplified_fake_astro_basis(&request.messages),
             confidence: ConfidenceLevel::Medium,
             safety_flags: vec![],
         }],
@@ -313,10 +332,82 @@ fn build_full_reading(request: &ProviderGenerationRequest) -> NatalReadingRespon
             generation_mode: GenerationMode::SinglePass,
             prompt_family: request.metadata.product_code.clone(),
             prompt_version: "v1".to_string(),
-            astro_contract_version: "unknown".to_string(),
+            astro_contract_version,
             fallback_used: false,
         },
     }
+}
+
+fn simplified_fake_astro_basis(messages: &[crate::types::PromptMessage]) -> Vec<astral_llm_domain::AstroBasisItem> {
+    let blocked = extract_blocked_object_codes(messages);
+    extract_allowed_astro_basis_ids(messages)
+        .into_iter()
+        .filter(|id| {
+            id.strip_prefix("placement:")
+                .is_none_or(|object| !blocked.contains(&object.to_string()))
+        })
+        .take(2)
+        .map(|id| astral_llm_domain::AstroBasisItem {
+            fact_id: Some(id),
+            label: None,
+            factor: "placement".into(),
+            interpretive_role: "core".into(),
+        })
+        .collect()
+}
+
+fn extract_simplified_contract_version(messages: &[crate::types::PromptMessage]) -> Option<String> {
+    for msg in messages {
+        let Some(data) = extract_astro_data_json(&msg.content) else {
+            continue;
+        };
+        if let Some(version) = data
+            .get("payload_contract")
+            .and_then(|v| v.as_str())
+            .map(str::to_string)
+        {
+            return Some(version);
+        }
+    }
+    None
+}
+
+fn extract_blocked_object_codes(messages: &[crate::types::PromptMessage]) -> Vec<String> {
+    for msg in messages {
+        let Some(data) = extract_astro_data_json(&msg.content) else {
+            continue;
+        };
+        if let Some(items) = data
+            .pointer("/llm_controls/blocked_interpretation_fact_codes")
+            .and_then(|v| v.as_array())
+        {
+            return items
+                .iter()
+                .filter_map(|v| v.as_str())
+                .filter_map(|code| code.strip_suffix(".sign"))
+                .map(str::to_string)
+                .collect();
+        }
+    }
+    Vec::new()
+}
+
+fn extract_allowed_astro_basis_ids(messages: &[crate::types::PromptMessage]) -> Vec<String> {
+    for msg in messages {
+        let Some(data) = extract_astro_data_json(&msg.content) else {
+            continue;
+        };
+        if let Some(items) = data
+            .pointer("/llm_controls/allowed_astro_basis_fact_ids")
+            .and_then(|v| v.as_array())
+        {
+            return items
+                .iter()
+                .filter_map(|v| v.as_str().map(str::to_string))
+                .collect();
+        }
+    }
+    Vec::new()
 }
 
 #[cfg(test)]

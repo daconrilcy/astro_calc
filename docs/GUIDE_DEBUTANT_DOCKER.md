@@ -405,7 +405,7 @@ Validation client : [`scripts/test_natal_premium_profile.ps1`](../scripts/test_n
 - calcule ce qui est **fiable** (signes planétaires stables sur une fenêtre d'incertitude) ;
 - marque les faits **ambiguës** (ex. Lune à cheval sur deux signes) ;
 - **n'invente pas** Ascendant, maisons ni secte si l'entrée ne le permet pas ;
-- renvoie `reading_completeness: partial` ou `simplified`.
+- renvoie `reading_completeness: partial` (V1).
 
 **Deux façons d'intégrer** (voir aussi [`contracts/README.md`](../contracts/README.md)) :
 
@@ -448,18 +448,21 @@ docker compose up -d --build astral_llm_api   # après changement Rust LLM
 .\scripts\test_natal_simplified_e2e.ps1
 ```
 
-Résultat attendu : **11/11** calculateur (7 positifs + 4 négatifs 422) et **7/7** lectures orchestrées.
+Résultat attendu : **12/12** calculateur (7 positifs + 5 négatifs 422, dont `2024-02-30`) et **7/7** lectures orchestrées.
+
+> **Provider** : Docker Compose force `fake` dans le conteneur ; les scripts peuvent afficher un avertissement si `.env` local pointe vers `openai`. Avec le modèle produit (`gpt-5.4-mini`), des échecs sporadiques (contamination script, timeout) sont possibles — les gardes `reading_script_guard` et `simplified_reading_guard` rejettent alors en **422** avec détail dans `reading.violations`.
 
 Scripts complémentaires :
 
 ```powershell
 .\scripts\test_natal_simplified_calculator.ps1          # calculateur seul
 .\scripts\test_natal_simplified_reading.ps1             # lectures seules (fake)
-.\scripts\test_natal_simplified_e2e.ps1 -Case date_only -SaveOutputs
+.\scripts\test_natal_simplified_e2e.ps1 -Case date_only
+.\scripts\test_natal_simplified_e2e.ps1 -NoSaveOutputs
 .\scripts\test_natal_simplified_reading.ps1 -UseReal -SubmitProfile -TimeoutSec 900  # OpenAI facturé
 ```
 
-Artefacts optionnels : `output/simplified_natal/calculator/` et `output/simplified_natal/reading/`.
+Artefacts JSON (generes par defaut par `test_natal_simplified_e2e.ps1`) : `output/natal_simplified/calculator/`, `output/natal_simplified/reading/` et `output/natal_simplified/e2e_summary.json`. Desactiver : `-NoSaveOutputs`.
 
 #### Étape 3 — Appel HTTP manuel (lecture one-shot)
 
@@ -480,7 +483,9 @@ Invoke-RestMethod -Method Post -Uri "http://localhost:8081/v1/readings/natal/sim
   -Headers $headers -Body $body -ContentType "application/json"
 ```
 
-Réponse attendue : `reading_completeness` ∈ `{ partial, simplified }`, `reading.status: success`, un chapitre `identity`, `calculation.computed_scope: stable_birth_date_profile`.
+Réponse attendue : `reading_completeness: partial`, `reading.status: success`, chapitre `identity` (ou `ambiguous_core_identity` si Soleil ambigu), `calculation.computed_scope` selon l'entrée. En cas de rejet garde post-génération : HTTP **422**, enveloppe orchestrée avec `calculation` + `reading.status: safety_rejected` + `violations`.
+
+Erreurs entrée sur l'orchestration (contrat, format date, lieu incomplet, heure sans timezone) : HTTP **400** `INVALID_INPUT`, sans enveloppe orchestrée. Sur le calculateur seul (`POST /v1/calculations/natal/simplified`), les mêmes erreurs métier renvoient **422** `VALIDATION_FAILED`.
 
 Autres exemples de requêtes : [`contracts/integration/examples/natal_simplified_examples.json`](../contracts/integration/examples/natal_simplified_examples.json).
 

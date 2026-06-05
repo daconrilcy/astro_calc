@@ -136,15 +136,19 @@
       "required": [
         "profile_code",
         "allowed_fact_codes",
+        "allowed_astro_basis_fact_ids",
         "blocked_interpretation_fact_codes",
         "excluded_feature_codes",
+        "profile_excluded_feature_codes",
         "allowed_limitation_mentions"
       ],
       "properties": {
         "profile_code": { "const": "natal_simplified" },
         "allowed_fact_codes": { "type": "array", "items": { "type": "string" } },
+        "allowed_astro_basis_fact_ids": { "type": "array", "items": { "type": "string" } },
         "blocked_interpretation_fact_codes": { "type": "array", "items": { "type": "string" } },
         "excluded_feature_codes": { "type": "array", "items": { "type": "string" } },
+        "profile_excluded_feature_codes": { "type": "array", "items": { "type": "string" } },
         "allowed_limitation_mentions": { "type": "array", "items": { "type": "string" } },
         "forbidden_topics": { "type": "array", "items": { "type": "string" } }
       }

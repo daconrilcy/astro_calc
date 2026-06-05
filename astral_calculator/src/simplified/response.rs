@@ -71,8 +71,10 @@ pub struct SimplifiedPayloadEnvelope {
 pub struct LlmPayloadControls {
     pub profile_code: String,
     pub allowed_fact_codes: Vec<String>,
+    pub allowed_astro_basis_fact_ids: Vec<String>,
     pub blocked_interpretation_fact_codes: Vec<String>,
     pub excluded_feature_codes: Vec<String>,
+    pub profile_excluded_feature_codes: Vec<String>,
     pub allowed_limitation_mentions: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub forbidden_topics: Option<Vec<String>>,

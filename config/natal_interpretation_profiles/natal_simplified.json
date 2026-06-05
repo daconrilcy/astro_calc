@@ -13,7 +13,7 @@
     "default_model": "gpt-5.4-mini",
     "summary_model": "gpt-5-nano"
   },
-  "chapter_types": ["identity"],
+  "chapter_types": ["identity", "ambiguous_core_identity"],
   "chapter_word_targets": {
     "min": 60,
     "target": 120,
@@ -30,5 +30,5 @@
   "evidence": {
     "enabled": false
   },
-  "task_fragment": "Produisez une interprétation astrologique simplifiée et honnête en un seul passage. N'affirmez jamais l'Ascendant, les maisons, la secte ni un placement en maison. N'affirmez jamais un signe lunaire déterministe si le payload le bloque. Mentionnez les limitations lorsque allowed_limitation_mentions l'autorise. Utilisez un ton accessible ; parlez d'interprétation partielle ou indicative, jamais de lecture dégradée."
+  "task_fragment": "Produisez une interprétation astrologique simplifiée et honnête en un seul passage. Pour astro_basis.fact_id, utilisez exclusivement allowed_astro_basis_fact_ids — jamais allowed_fact_codes (ex. mercury.sign). N'affirmez jamais l'Ascendant, les maisons, la secte ni un placement en maison lorsque le profil les exclut. N'affirmez jamais un signe lunaire ou solaire déterministe si le payload le bloque. Si sun.sign est bloqué, utilisez le chapitre ambiguous_core_identity. Mentionnez les limitations lorsque allowed_limitation_mentions l'autorise. Utilisez un ton accessible ; parlez d'interprétation partielle ou indicative, jamais de lecture dégradée."
 }

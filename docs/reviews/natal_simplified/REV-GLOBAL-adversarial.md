@@ -16,7 +16,7 @@ Périmètre : CS-001 → CS-011, alignement plan v2.4 figé vs code + contrats +
 | G-003 | Blocker | `Astral_llm_implementation.md` sans doc `natal_simplified` | **Fixed** — endpoint, profil, contrôles anti-hallucination |
 | G-004 | Major | Route reading sans validation explicite requête calculateur | **Fixed** — `validate_simplified_calculation_request` avant appel calculator |
 | G-005 | Major | `contracts/llm/openapi.yaml` sans `/v1/readings/natal/simplified` | **Fixed** |
-| G-006 | Major | Pas de golden fixture simplified | **Fixed** — `tests/golden/simplified_natal_calculation_date_only_1990-03-21.json` |
+| G-006 | Major | Pas de golden fixture simplified | **Fixed** — `tests/golden/simplified_natal_calculation_stable_1990-06-15.json`, `simplified_natal_calculation_equinox_1990-03-21.json` |
 | G-007 | Major | Tests anti-hallucination CS-009 insuffisants | **Fixed** — `tests/astral_llm_simplified_reading_tests.rs` (prompt + forbidden_wording + golden) |
 | G-008 | Minor | Schéma `natal_simplified_structured_v1` avec `$ref` externe fragile | **Fixed** — `$defs` inline (source + `contracts/calculator/`) |
 | G-009 | Minor | `reference_instant_utc` / `reference_based` non exposés en fenêtre | **Accepted** — code mort documenté ; pas requis par le plan v2.4 pour l'exposition API |

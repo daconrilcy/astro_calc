@@ -42,10 +42,10 @@ if ([string]::IsNullOrWhiteSpace($LlmBase)) {
 
 if (-not $UseReal) {
     if ($env:ASTRAL_LLM_DEFAULT_PROVIDER -and $env:ASTRAL_LLM_DEFAULT_PROVIDER -ne "fake") {
-        Write-Host "Info : ASTRAL_LLM_DEFAULT_PROVIDER=$($env:ASTRAL_LLM_DEFAULT_PROVIDER) — utilisez -UseReal pour OpenAI." -ForegroundColor Yellow
+        Write-Host "Info : ASTRAL_LLM_DEFAULT_PROVIDER=$($env:ASTRAL_LLM_DEFAULT_PROVIDER) - utilisez -UseReal pour OpenAI." -ForegroundColor Yellow
     }
     if ($env:ASTRAL_LLM_ENABLE_FAKE -eq "false") {
-        throw "ASTRAL_LLM_ENABLE_FAKE=false — activez fake ou passez -UseReal."
+        throw "ASTRAL_LLM_ENABLE_FAKE=false - activez fake ou passez -UseReal."
     }
 } else {
     $TimeoutSec = [Math]::Max($TimeoutSec, 900)
@@ -55,11 +55,11 @@ if (-not $UseReal) {
 }
 
 if ([string]::IsNullOrWhiteSpace($env:ASTRAL_CALCULATOR_HOST) -or [string]::IsNullOrWhiteSpace($env:ASTRAL_CALCULATOR_PORT)) {
-    Write-Host "Attention : ASTRAL_CALCULATOR_HOST/PORT non definis — le gateway LLM ne pourra pas orchestrer le calcul." -ForegroundColor Yellow
+    Write-Host "Attention : ASTRAL_CALCULATOR_HOST/PORT non definis - le gateway LLM ne pourra pas orchestrer le calcul." -ForegroundColor Yellow
 }
 
 if ([string]::IsNullOrWhiteSpace($OutputDir)) {
-    $OutputDir = Join-Path $repoRoot "output\simplified_natal\reading"
+    $OutputDir = Join-Path $repoRoot "output\natal_simplified\reading"
 }
 if ($SaveOutputs) {
     New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
@@ -108,11 +108,19 @@ foreach ($testCase in $cases) {
     $uri = "$($LlmBase.TrimEnd('/'))/v1/readings/natal/simplified"
     $result = Invoke-AstralHttpWithStatus -Method Post -Uri $uri -Headers $headers -Body $body -TimeoutSec $TimeoutSec
 
-    if (-not $result.Ok) {
+    $apiResponse = $result.Body
+    $hasSimplifiedEnvelope = ($null -ne $apiResponse) -and ($null -ne $apiResponse.calculation) -and ($null -ne $apiResponse.reading)
+
+    if (-not $result.Ok -and -not $hasSimplifiedEnvelope) {
+        if ($SaveOutputs) {
+            $outPath = Join-Path $OutputDir "$($testCase.Label).error.json"
+            $payload = if ($null -ne $apiResponse) { $apiResponse } else { [ordered]@{ status_code = $result.StatusCode; raw = $result.Raw } }
+            $payload | ConvertTo-Json -Depth 40 | Set-Content -LiteralPath $outPath -Encoding utf8
+        }
         $failed++
         $msg = "HTTP $($result.StatusCode)"
-        if ($result.Body.error.message) { $msg += " — $($result.Body.error.message)" }
-        if ($result.Body.error.code -eq "CALCULATOR_UNAVAILABLE") {
+        if ($apiResponse.error.message) { $msg += " - $($apiResponse.error.message)" }
+        if ($apiResponse.error.code -eq "CALCULATOR_UNAVAILABLE") {
             $msg += " (verifier ASTRAL_CALCULATOR_HOST/PORT et calculateur up)"
         }
         Write-SimplifiedCaseResult -Label "$($testCase.Label)" -Passed $false -Failures @($msg)
@@ -121,18 +129,21 @@ foreach ($testCase in $cases) {
 
     if ($SaveOutputs) {
         $outPath = Join-Path $OutputDir "$($testCase.Label).json"
-        $result.Body | ConvertTo-Json -Depth 40 | Set-Content -LiteralPath $outPath -Encoding utf8
+        if (-not $result.Ok) {
+            $outPath = Join-Path $OutputDir "$($testCase.Label).error.json"
+        }
+        $apiResponse | ConvertTo-Json -Depth 40 | Set-Content -LiteralPath $outPath -Encoding utf8
     }
 
-    $caseFailures = Assert-SimplifiedReadingResponse -ApiResponse $result.Body -Case $testCase -MinWordsPerChapter $MinWordsPerChapter
+    $caseFailures = Assert-SimplifiedReadingResponse -ApiResponse $apiResponse -Case $testCase -MinWordsPerChapter $MinWordsPerChapter
     if ($caseFailures.Count -eq 0) {
         $passed++
-        $content = Get-SimplifiedReadingContent -ApiResponse $result.Body
+        $content = Get-SimplifiedReadingContent -ApiResponse $apiResponse
         $words = 0
         if ($content.chapters) {
             $words = Get-SimplifiedWordCount -Text $content.chapters[0].body
         }
-        Write-SimplifiedCaseResult -Label "$($testCase.Label) — run_id=$($result.Body.run_id) mots=$words" -Passed $true
+        Write-SimplifiedCaseResult -Label "$($testCase.Label) - run_id=$($apiResponse.run_id) mots=$words" -Passed $true
     } else {
         $failed++
         Write-SimplifiedCaseResult -Label "$($testCase.Label)" -Passed $false -Failures $caseFailures

@@ -41,7 +41,7 @@ if ([string]::IsNullOrWhiteSpace($CalculatorBase)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($OutputDir)) {
-    $OutputDir = Join-Path $repoRoot "output\simplified_natal\calculator"
+    $OutputDir = Join-Path $repoRoot "output\natal_simplified\calculator"
 }
 if ($SaveOutputs) {
     New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
@@ -79,6 +79,11 @@ foreach ($testCase in $cases) {
     $result = Invoke-AstralHttpWithStatus -Method Post -Uri $uri -Headers $headers -Body $testCase.Request -TimeoutSec $TimeoutSec
 
     if ($testCase.ExpectedStatus) {
+        if ($SaveOutputs) {
+            $outPath = Join-Path $OutputDir "$($testCase.Label).json"
+            $payload = if ($null -ne $result.Body) { $result.Body } else { [ordered]@{ status_code = $result.StatusCode; raw = $result.Raw } }
+            $payload | ConvertTo-Json -Depth 40 | Set-Content -LiteralPath $outPath -Encoding utf8
+        }
         $ok = ($result.StatusCode -eq $testCase.ExpectedStatus)
         if (-not $ok) {
             $failed++
@@ -95,7 +100,7 @@ foreach ($testCase in $cases) {
     if (-not $result.Ok) {
         $failed++
         $msg = "HTTP $($result.StatusCode)"
-        if ($result.Body.error.message) { $msg += " — $($result.Body.error.message)" }
+        if ($result.Body.error.message) { $msg += " - $($result.Body.error.message)" }
         $failuresAll.Add("$($testCase.Label): $msg")
         Write-SimplifiedCaseResult -Label "$($testCase.Label)" -Passed $false -Failures @($msg)
         continue
@@ -109,7 +114,7 @@ foreach ($testCase in $cases) {
     $caseFailures = Assert-SimplifiedCalculatorResponse -Response $result.Body -Case $testCase
     if ($caseFailures.Count -eq 0) {
         $passed++
-        Write-SimplifiedCaseResult -Label "$($testCase.Label) — scope=$($result.Body.computed_scope) facts=$($result.Body.facts.Count) ambiguous=$($result.Body.ambiguous_facts.Count)" -Passed $true
+        Write-SimplifiedCaseResult -Label "$($testCase.Label) - scope=$($result.Body.computed_scope) facts=$($result.Body.facts.Count) ambiguous=$($result.Body.ambiguous_facts.Count)" -Passed $true
     } else {
         $failed++
         foreach ($f in $caseFailures) { $failuresAll.Add("$($testCase.Label): $f") }

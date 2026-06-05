@@ -155,8 +155,12 @@ function Assert-SimplifiedCalculatorResponse {
 
     foreach ($fact in @($Response.facts)) {
         $code = "$($fact.object_code).sign"
+        $basis = "placement:$($fact.object_code)"
         if ($Response.llm_payload.allowed_fact_codes -notcontains $code) {
             $failures.Add("allowed_fact_codes manque stable: $code")
+        }
+        if ($Response.llm_payload.allowed_astro_basis_fact_ids -notcontains $basis) {
+            $failures.Add("allowed_astro_basis_fact_ids manque: $basis")
         }
         $planet = $Response.simplified_payload.payload.planets.($fact.object_code)
         if ($null -eq $planet -or -not $planet.sign) {
@@ -168,6 +172,12 @@ function Assert-SimplifiedCalculatorResponse {
         $code = "$($ambig.object_code).sign"
         if ($Response.llm_payload.blocked_interpretation_fact_codes -notcontains $code) {
             $failures.Add("blocked_interpretation_fact_codes manque: $code")
+        }
+        if ($Response.llm_payload.allowed_fact_codes -contains $code) {
+            $failures.Add("allowed_fact_codes contient un fait ambigu: $code")
+        }
+        if ($Response.llm_payload.allowed_astro_basis_fact_ids -contains "placement:$($ambig.object_code)") {
+            $failures.Add("allowed_astro_basis_fact_ids contient un fait ambigu: $($ambig.object_code)")
         }
         $planet = $Response.simplified_payload.payload.planets.($ambig.object_code)
         if ($null -ne $planet -and $planet.sign) {
@@ -194,6 +204,27 @@ function Assert-SimplifiedCalculatorResponse {
             if ($Response.llm_payload.blocked_interpretation_fact_codes -notcontains "moon.sign") {
                 $failures.Add("moon ambigu mais moon.sign non bloque")
             }
+        }
+    }
+
+    if (@($Response.llm_payload.profile_excluded_feature_codes).Count -lt 1) {
+        $failures.Add("profile_excluded_feature_codes vide")
+    }
+
+    if ($Case.ExpectedScope -eq "angular_chart" -and @($Response.excluded_features).Count -eq 0) {
+        if (@($Response.llm_payload.excluded_feature_codes).Count -ne 0) {
+            $failures.Add("excluded_feature_codes doit etre vide pour angular_chart")
+        }
+        foreach ($feature in @("ascendant", "houses")) {
+            if ($Response.llm_payload.profile_excluded_feature_codes -notcontains $feature) {
+                $failures.Add("profile_excluded_feature_codes manque: $feature")
+            }
+        }
+    }
+
+    if ($Case.Label -eq "date_with_location_without_timezone") {
+        if ($Response.llm_payload.allowed_limitation_mentions -notcontains "location_provided_without_usable_timezone") {
+            $failures.Add("allowed_limitation_mentions manque location_provided_without_usable_timezone")
         }
     }
 
@@ -269,11 +300,52 @@ function Assert-SimplifiedReadingResponse {
         }
     }
 
+    $profileExcluded = @($ApiResponse.calculation.llm_payload.profile_excluded_feature_codes)
+    if ($profileExcluded -contains "ascendant") {
+        if ($joined -match "ascendant (en|est|du |de la |:) (b[eé]lier|taureau|g[eé]meaux|cancer|lion|vierge|balance|scorpion|sagittaire|capricorne|verseau|poissons)") {
+            $failures.Add("affirmation ascendant par signe alors que le profil l'exclut")
+        }
+    }
+
+    $allowedBasis = @($ApiResponse.calculation.llm_payload.allowed_astro_basis_fact_ids)
+    foreach ($ch in @($content.chapters)) {
+        foreach ($basis in @($ch.astro_basis)) {
+            if ($basis.fact_id -and $allowedBasis -notcontains $basis.fact_id) {
+                $failures.Add("astro_basis.fact_id hors whitelist: $($basis.fact_id)")
+            }
+        }
+    }
+
     if ($Case.AssertMoonAmbiguity) {
         $moonBlocked = $ApiResponse.calculation.llm_payload.blocked_interpretation_fact_codes -contains "moon.sign"
         if ($moonBlocked -and $joined -match "lune (en|est) (b[eé]lier|taureau|g[eé]meaux|cancer|lion|vierge|balance|scorpion|sagittaire|capricorne|verseau|poissons)") {
             $failures.Add("signe lunaire affirme alors que moon.sign est bloque")
         }
+    }
+
+    if ($Case.AssertSunAmbiguity) {
+        $sunBlocked = $ApiResponse.calculation.llm_payload.blocked_interpretation_fact_codes -contains "sun.sign"
+        if ($sunBlocked -and $joined -match "soleil (en|est) (b[eé]lier|taureau|g[eé]meaux|cancer|lion|vierge|balance|scorpion|sagittaire|capricorne|verseau|poissons)") {
+            $failures.Add("signe solaire affirme alors que sun.sign est bloque")
+        }
+    }
+
+    if ($Case.ExpectAmbiguousChapter) {
+        $codes = @($content.chapters | ForEach-Object { $_.code })
+        if ($codes -notcontains "ambiguous_core_identity") {
+            $failures.Add("chapitre ambiguous_core_identity attendu, recu: $($codes -join ', ')")
+        }
+        if ($codes -contains "identity") {
+            $failures.Add("chapitre identity standard interdit quand sun.sign est ambigu")
+        }
+    }
+
+    $scriptText = $allText -join " "
+    if ($content.legal -and $content.legal.disclaimer) {
+        $scriptText += " " + $content.legal.disclaimer
+    }
+    if ($scriptText -match '[\u0900-\u097F]') {
+        $failures.Add("script devanagari detecte dans la lecture fr")
     }
 
     if ($content.legal -and -not $content.legal.disclaimer) {

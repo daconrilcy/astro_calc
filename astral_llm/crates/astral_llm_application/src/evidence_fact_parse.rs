@@ -144,6 +144,27 @@ mod tests {
     }
 
     #[test]
+    fn resolves_planet_dot_sign_to_placement_id() {
+        let facts = NormalizedAstroFacts {
+            contract_version: "natal_simplified_structured_v1".into(),
+            facts: vec![astral_llm_domain::NormalizedAstroFact {
+                id: "placement:mercury".into(),
+                kind: astral_llm_domain::AstroFactKind::PlanetPosition,
+                kind_code: "placement".into(),
+                usage: astral_llm_domain::AstroFactUsage::InterpretiveBasis,
+                label: "Mercury".into(),
+                value: serde_json::json!({}),
+                interpretive_weight: None,
+                domains: vec![],
+            }],
+        };
+        assert_eq!(
+            resolve_canonical_fact_id("mercury.sign", &facts).as_deref(),
+            Some("placement:mercury")
+        );
+    }
+
+    #[test]
     fn semantic_key_aligns_signal_and_placement_sun() {
         let mut placements = HashMap::new();
         placements.insert(
@@ -270,8 +291,13 @@ const SIGNAL_KIND_SEGMENTS: &[&str] = &[
 
 /// Alias connus quand le modele omet le segment `aspect` (ex. `signal:jupiter:uranus:opposition`).
 pub fn candidate_fact_id_aliases(fact_id: &str) -> Vec<String> {
-    let parts: Vec<&str> = fact_id.split(':').collect();
     let mut out = Vec::new();
+    if let Some((object, suffix)) = fact_id.split_once('.') {
+        if suffix == "sign" && !object.is_empty() {
+            out.push(format!("placement:{object}"));
+        }
+    }
+    let parts: Vec<&str> = fact_id.split(':').collect();
     if parts.len() == 4 && parts[0] == "signal" && !SIGNAL_KIND_SEGMENTS.contains(&parts[1]) {
         out.push(format!("signal:aspect:{}:{}:{}", parts[1], parts[2], parts[3]));
     }

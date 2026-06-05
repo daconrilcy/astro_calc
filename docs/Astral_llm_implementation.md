@@ -773,11 +773,31 @@ Corps JSON (extrait) :
 
 Contrôles anti-hallucination :
 
-- `llm_controls` (allowed / blocked / excluded) injectés dans le **prompt** (`task_instructions`) et le `data_payload`.
-- `blocked_interpretation_fact_codes` (ex. `moon.sign` ambigu) : ne pas affirmer le signe ; expliquer l'incertitude.
-- `excluded_feature_codes` (ex. `ascendant`, `houses`) : ne jamais les présenter comme calculés (contraintes prompt uniquement).
-- `forbidden_wording` (SafetyGuard post-génération) : reprend **uniquement** `blocked_interpretation_fact_codes`, pas `excluded_feature_codes` (évite les faux positifs substring, ex. `sect` dans « section »).
+- `llm_controls` (= `llm_payload`) injectés dans le **prompt** (`task_instructions`) et le `data_payload`.
+- **`allowed_astro_basis_fact_ids`** : seules valeurs valides pour `astro_basis.fact_id` (ex. `placement:mercury`, jamais `mercury.sign`).
+- **`allowed_fact_codes`** : affirmations rédactionnelles autorisées (ex. `mercury.sign`).
+- **`blocked_interpretation_fact_codes`** (ex. `sun.sign`, `moon.sign` ambigus) : ne pas affirmer le signe ; expliquer l'incertitude.
+- **`excluded_feature_codes`** : features non calculées (scope / limitations).
+- **`profile_excluded_feature_codes`** : features calculées mais **non utilisées** par le profil (ASC, maisons, secte, placements en maison) — cas `angular_chart` + lecture simplified.
+- **`allowed_limitation_mentions`** : inclut codes limitation (`location_provided_without_usable_timezone`, `local_day_window`, …).
+- Routing : si `sun.sign` bloqué → chapitre **`ambiguous_core_identity`**.
+- Scrub prompt : faits bloqués retirés du `data_payload` ; pas de `position_count` / `house_cusp_count` / `aspect_count` envoyés au LLM.
+- `forbidden_wording` (SafetyGuard) : reprend **uniquement** `blocked_interpretation_fact_codes`.
+- **`simplified_reading_guard`** (post-génération, **avant** SafetyGuard) : whitelist astro_basis, affirmations FR (« Soleil en Bélier »), ASC/maison si profil exclut.
+- **`SafetyGuard`** : patterns sensibles + `forbidden_wording` ; inclut **`reading_script_guard`** (rejet script inattendu en français).
+- Normalisation serveur : `mercury.sign` → `placement:mercury` via `normalize_chapter_astro_basis_fact_ids` avant validateurs.
 - `engine.domain_count` : fixé à **1** pour ce profil (`max_domains: 1`).
+
+Ordre validateurs (profil `natal_simplified`) : parse → `AstroBasisValidator` → `simplified_reading_guard` → `SafetyGuard` (+ script) → `ReadingQualityValidator` (non bloquant).
+
+Réponse HTTP :
+
+| Résultat | Code HTTP | Enveloppe |
+|----------|-----------|-----------|
+| Succès | 200 | `{ reading_completeness, calculation, reading, run_id }` |
+| `safety_rejected` | 422 | Idem (toujours `calculation` + `reading`) |
+| `failed` (génération) | 4xx/5xx | Idem |
+| Entrée invalide / calculateur rejette | **400** `INVALID_INPUT` | `{ status: failed, error }` — **sans** enveloppe orchestrée |
 
 Smoke Docker / local :
 
@@ -790,10 +810,16 @@ Tests Rust :
 
 ```powershell
 cargo test -p astral_llm_api --test astral_llm_simplified_reading_tests
+cargo test -p astral_llm_application simplified_reading_guard
 cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests
 ```
 
-Golden fixture : `tests/golden/simplified_natal_calculation_date_only_1990-03-21.json`.
+Golden fixtures :
+
+- `tests/golden/simplified_natal_calculation_stable_1990-06-15.json` — Soleil stable, chapitre `identity`
+- `tests/golden/simplified_natal_calculation_equinox_1990-03-21.json` — Soleil + Lune ambigus, chapitre `ambiguous_core_identity`
+
+Documentation métier : [`docs/natal_simplified_reading_contract.md`](../docs/natal_simplified_reading_contract.md), [`docs/natal_simplified_forbidden_topics.md`](../docs/natal_simplified_forbidden_topics.md).
 
 Découverte provider : `GET /v1/providers` expose `default_provider`, `default_model`, `fake_enabled`.
 

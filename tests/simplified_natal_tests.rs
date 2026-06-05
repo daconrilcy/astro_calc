@@ -247,8 +247,16 @@ fn llm_controls_block_ambiguous_and_allow_stable() {
     assert!(response.llm_payload.allowed_fact_codes.contains(&"sun.sign".to_string()));
     assert!(response
         .llm_payload
+        .allowed_astro_basis_fact_ids
+        .contains(&"placement:sun".to_string()));
+    assert!(response
+        .llm_payload
         .blocked_interpretation_fact_codes
         .contains(&"moon.sign".to_string()));
+    assert!(response
+        .llm_payload
+        .profile_excluded_feature_codes
+        .contains(&"ascendant".to_string()));
     assert!(response
         .llm_payload
         .allowed_limitation_mentions

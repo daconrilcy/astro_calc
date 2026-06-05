@@ -5,8 +5,9 @@ use std::sync::Arc;
 use astral_llm_application::{
     astro_payload_normalizer::AstroPayloadNormalizer,
     build_reading_request, merge_simplified_forbidden_wording, prompt_constraints_block,
-    validate_simplified_calculation_request, PromptCompiler, SIMPLIFIED_PAYLOAD_CONTRACT,
-    SIMPLIFIED_PROFILE,
+    resolve_simplified_chapter_code, sun_sign_blocked, validate_simplified_calculation_request,
+    PromptCompiler, SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE, SIMPLIFIED_CHAPTER_IDENTITY,
+    SIMPLIFIED_PAYLOAD_CONTRACT, SIMPLIFIED_PROFILE, SUN_SIGN_BLOCKED_CODE,
 };
 use astral_llm_application::prompt_compiler::PromptCompilationInput;
 use astral_llm_domain::{
@@ -15,10 +16,19 @@ use astral_llm_domain::{
 use astral_llm_infra::{bootstrap_interpretation_profiles, CanonicalCatalog};
 use serde_json::json;
 
-fn golden_calculation() -> serde_json::Value {
+fn load_golden(name: &str) -> serde_json::Value {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../tests/golden/simplified_natal_calculation_date_only_1990-03-21.json");
+        .join("../../../tests/golden")
+        .join(name);
     serde_json::from_str(&std::fs::read_to_string(path).expect("golden fixture")).expect("json")
+}
+
+fn stable_calculation() -> serde_json::Value {
+    load_golden("simplified_natal_calculation_stable_1990-06-15.json")
+}
+
+fn equinox_calculation() -> serde_json::Value {
+    load_golden("simplified_natal_calculation_equinox_1990-03-21.json")
 }
 
 #[test]
@@ -42,51 +52,85 @@ fn validate_simplified_request_rejects_bad_contract_and_missing_date() {
 }
 
 #[test]
-fn build_reading_request_injects_controls_and_forbidden_wording() {
-    let calculation = golden_calculation();
+fn build_reading_request_scrubs_blocked_objects_from_payload() {
+    let calculation = equinox_calculation();
     let request =
         build_reading_request(&calculation, "fr", AudienceLevel::Beginner).expect("build");
 
-    assert_eq!(
-        request.product_context.interpretation_profile_code.as_deref(),
-        Some(SIMPLIFIED_PROFILE)
-    );
-    assert_eq!(request.engine.domain_count, Some(1));
-    assert_eq!(
-        request.astro_result.contract_version,
-        SIMPLIFIED_PAYLOAD_CONTRACT
-    );
-    assert!(request.astro_result.data.get("llm_controls").is_some());
+    assert!(request.astro_result.data["planets"].get("sun").is_none());
+    assert!(request.astro_result.data["planets"].get("moon").is_none());
+    assert!(request.astro_result.data.get("position_count").is_none());
+    let facts = request.astro_result.data["facts"].as_array().expect("facts");
+    assert!(!facts.iter().any(|f| f["object_code"] == "sun"));
+    assert!(!facts.iter().any(|f| f["object_code"] == "moon"));
     assert!(
         request
             .astrologer_profile
             .forbidden_wording
             .contains(&"moon.sign".to_string())
     );
-    assert!(
-        !request
-            .astrologer_profile
-            .forbidden_wording
-            .contains(&"sect".to_string())
-    );
-    assert!(request.astro_result.data["planets"]["moon"].is_null()
-        || request.astro_result.data["planets"].get("moon").is_none());
 }
 
 #[test]
 fn prompt_constraints_block_mentions_blocked_moon_and_excluded_ascendant() {
-    let controls = golden_calculation()["llm_payload"].clone();
+    let controls = equinox_calculation()["llm_payload"].clone();
     let block = prompt_constraints_block(&controls);
     assert!(block.contains("SIMPLIFIED NATAL CONSTRAINTS"));
     assert!(block.contains("moon.sign"));
-    assert!(block.contains("ascendant"));
+    assert!(block.contains("placement:mercury"));
+    assert!(block.contains("Allowed astro_basis.fact_id"));
+    assert!(block.contains("Profile excluded"));
     assert!(block.contains("Never affirm Ascendant"));
     assert!(block.contains("never \"degraded\""));
 }
 
 #[test]
+fn build_reading_request_routes_ambiguous_core_when_sun_blocked() {
+    let calculation = equinox_calculation();
+    let controls = calculation["llm_payload"].clone();
+    assert!(sun_sign_blocked(&controls));
+    assert_eq!(
+        resolve_simplified_chapter_code(&controls),
+        SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE
+    );
+    let request =
+        build_reading_request(&calculation, "fr", AudienceLevel::Beginner).expect("build");
+    assert_eq!(
+        request.response_contract.chapters[0].code,
+        SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE
+    );
+    assert!(request.astrologer_profile.custom_instructions.is_some());
+}
+
+#[test]
+fn build_reading_request_uses_identity_when_sun_stable() {
+    let calculation = stable_calculation();
+    let request =
+        build_reading_request(&calculation, "fr", AudienceLevel::Beginner).expect("build");
+    assert_eq!(
+        request.response_contract.chapters[0].code,
+        SIMPLIFIED_CHAPTER_IDENTITY
+    );
+    assert!(request.astrologer_profile.custom_instructions.is_none());
+    let controls = calculation["llm_payload"].clone();
+    assert!(!sun_sign_blocked(&controls));
+    assert_eq!(
+        controls["allowed_astro_basis_fact_ids"][0].as_str(),
+        Some("placement:sun")
+    );
+    assert!(
+        !controls["blocked_interpretation_fact_codes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|v| v.as_str() == Some(SUN_SIGN_BLOCKED_CODE)),
+        "sun.sign must not be blocked when stable"
+    );
+}
+
+#[test]
 fn merge_forbidden_wording_deduplicates_controls() {
-    let controls = golden_calculation()["llm_payload"].clone();
+    let controls = equinox_calculation()["llm_payload"].clone();
     let merged = merge_simplified_forbidden_wording(&controls, vec!["custom".into(), "moon.sign".into()]);
     assert!(merged.contains(&"custom".to_string()));
     assert!(merged.contains(&"moon.sign".to_string()));
@@ -99,7 +143,7 @@ fn merge_forbidden_wording_deduplicates_controls() {
 
 #[test]
 fn compiled_simplified_prompt_injects_constraints_and_data_controls() {
-    let calculation = golden_calculation();
+    let calculation = equinox_calculation();
     let reading =
         build_reading_request(&calculation, "fr", AudienceLevel::Beginner).expect("build");
     let profiles = bootstrap_interpretation_profiles();
@@ -128,7 +172,7 @@ fn compiled_simplified_prompt_injects_constraints_and_data_controls() {
             safety_policy: &safety,
             astro_facts: &facts,
             selected_domains: &["identity".to_string()],
-            chapter_code: Some("identity"),
+            chapter_code: Some(SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE),
             chapter_evidence_pack: None,
             catalog: &catalog,
             interpretation: Some(&ctx),
@@ -146,7 +190,7 @@ fn compiled_simplified_prompt_injects_constraints_and_data_controls() {
 
 #[test]
 fn golden_fixture_matches_simplified_payload_schema_keys() {
-    let calculation = golden_calculation();
+    let calculation = stable_calculation();
     let payload = &calculation["simplified_payload"]["payload"];
     for key in [
         "payload_contract",

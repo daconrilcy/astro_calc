@@ -5,6 +5,7 @@
 .DESCRIPTION
     Enchaine test_natal_simplified_calculator.ps1 puis test_natal_simplified_reading.ps1.
     Couvre les 6 niveaux input_precision, le cas equinoxe ambigu, et les erreurs 422.
+    Par defaut, enregistre les reponses JSON dans output\natal_simplified\ (calculator\, reading\, e2e_summary.json).
 
 .EXAMPLE
     .\scripts\test_natal_simplified_e2e.ps1
@@ -14,6 +15,9 @@
 
 .EXAMPLE
     .\scripts\test_natal_simplified_e2e.ps1 -UseReal -SubmitProfile
+
+.EXAMPLE
+    .\scripts\test_natal_simplified_e2e.ps1 -NoSaveOutputs
 #>
 param(
     [string]$CalculatorBase = "",
@@ -23,7 +27,8 @@ param(
     [switch]$SkipCalculator,
     [switch]$UseReal,
     [switch]$SubmitProfile,
-    [switch]$SaveOutputs,
+    [switch]$NoSaveOutputs,
+    [string]$OutputDir = "",
     [switch]$Bootstrap,
     [int]$MinWordsPerChapter = 30,
     [int]$WaitReadySec = 120,
@@ -33,15 +38,28 @@ param(
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 
-Write-Host "=== Natal simplifie — suite E2E ===" -ForegroundColor Cyan
+if ([string]::IsNullOrWhiteSpace($OutputDir)) {
+    $OutputDir = Join-Path $repoRoot "output\natal_simplified"
+}
+$calcOutputDir = Join-Path $OutputDir "calculator"
+$readOutputDir = Join-Path $OutputDir "reading"
+$saveOutputs = -not $NoSaveOutputs
+if ($saveOutputs) {
+    New-Item -ItemType Directory -Force -Path $calcOutputDir, $readOutputDir | Out-Null
+}
+
+Write-Host "=== Natal simplifie - suite E2E ===" -ForegroundColor Cyan
 Write-Host "Cas : matrice input_precision (6) + equinoxe + negatifs 422"
 Write-Host ""
 
 $commonArgs = @{
     Case = $Case
-    SaveOutputs = $SaveOutputs
     WaitReadySec = $WaitReadySec
     TimeoutSec = $TimeoutSec
+}
+if ($saveOutputs) {
+    $commonArgs.SaveOutputs = $true
+    $commonArgs.OutputDir = $calcOutputDir
 }
 if ($Bootstrap) { $commonArgs.Bootstrap = $true }
 if ($CalculatorBase) { $commonArgs.CalculatorBase = $CalculatorBase }
@@ -50,18 +68,21 @@ if ($LlmBase) { $commonArgs.LlmBase = $LlmBase }
 if (-not $SkipCalculator) {
     Write-Host "--- Phase 1/2 : calculateur ---" -ForegroundColor Cyan
     & (Join-Path $PSScriptRoot "test_natal_simplified_calculator.ps1") @commonArgs
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    if ($null -ne $LASTEXITCODE -and $LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     Write-Host ""
 }
 
 if (-not $SkipReading) {
-    Write-Host "--- Phase 2/2 : lecture orchestrée ---" -ForegroundColor Cyan
+    Write-Host "--- Phase 2/2 : lecture orchestree ---" -ForegroundColor Cyan
     $readingArgs = @{
         Case = $Case
-        SaveOutputs = $SaveOutputs
         WaitReadySec = $WaitReadySec
         TimeoutSec = $TimeoutSec
         MinWordsPerChapter = $MinWordsPerChapter
+    }
+    if ($saveOutputs) {
+        $readingArgs.SaveOutputs = $true
+        $readingArgs.OutputDir = $readOutputDir
     }
     if ($LlmBase) { $readingArgs.LlmBase = $LlmBase }
     if ($UseReal) { $readingArgs.UseReal = $true }
@@ -74,8 +95,32 @@ if (-not $SkipReading) {
     }
 
     & (Join-Path $PSScriptRoot "test_natal_simplified_reading.ps1") @readingArgs
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    if ($null -ne $LASTEXITCODE -and $LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
 Write-Host ""
+if ($saveOutputs) {
+    Write-Host "Artefacts JSON : $OutputDir" -ForegroundColor Cyan
+    Write-Host "  calculator\  - reponses POST /v1/calculations/natal/simplified"
+    Write-Host "  reading\     - reponses POST /v1/readings/natal/simplified"
+    $summary = [ordered]@{
+        generated_at_utc = (Get-Date).ToUniversalTime().ToString("o")
+        output_root      = $OutputDir
+        calculator_dir   = $calcOutputDir
+        reading_dir      = $readOutputDir
+        skip_calculator  = [bool]$SkipCalculator
+        skip_reading     = [bool]$SkipReading
+        use_real         = [bool]$UseReal
+        cases_filter     = @($Case)
+    }
+    if (-not $SkipCalculator -and (Test-Path -LiteralPath $calcOutputDir)) {
+        $summary.calculator_files = @(Get-ChildItem -LiteralPath $calcOutputDir -Filter "*.json" | ForEach-Object { $_.Name })
+    }
+    if (-not $SkipReading -and (Test-Path -LiteralPath $readOutputDir)) {
+        $summary.reading_files = @(Get-ChildItem -LiteralPath $readOutputDir -Filter "*.json" | ForEach-Object { $_.Name })
+    }
+    $summaryPath = Join-Path $OutputDir "e2e_summary.json"
+    $summary | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $summaryPath -Encoding utf8
+    Write-Host "  e2e_summary.json"
+}
 Write-Host "Suite E2E natal simplifie OK." -ForegroundColor Green

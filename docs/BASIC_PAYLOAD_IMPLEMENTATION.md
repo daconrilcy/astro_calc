@@ -3208,7 +3208,37 @@ Repository : `load_simplified_catalog()` dans `simplified/repository.rs`.
 ### Endpoints
 
 - `POST /v1/calculations/natal/simplified` — contrats `astro_simplified_natal_*`
-- `POST /v1/readings/natal/simplified` (LLM API) — orchestration birth → calcul → profil `natal_simplified`
+- `POST /v1/readings/natal/simplified` (LLM API) — orchestration birth → calcul → profil `natal_simplified` (HTTP **422** si `safety_rejected` post-génération ; **400** si entrée invalide avant calcul)
+
+### Champs `llm_payload` (calculateur → LLM)
+
+| Champ | Rôle |
+|-------|------|
+| `allowed_fact_codes` | Affirmations rédactionnelles autorisées (`mercury.sign`) |
+| `allowed_astro_basis_fact_ids` | IDs autorisés pour `astro_basis.fact_id` (`placement:mercury`) |
+| `blocked_interpretation_fact_codes` | Faits ambigus — pas d'affirmation interprétative |
+| `excluded_feature_codes` | Non calculé (scope / limitations) |
+| `profile_excluded_feature_codes` | Calculé mais exclu du profil simplified |
+| `allowed_limitation_mentions` | Limitations mentionnables en UX |
+| `forbidden_topics` | Agrégat documentaire (prompt interne) |
+
+Implémentation : `astral_calculator/src/simplified/payload.rs` (`build_llm_controls`).
+
+### Garde-fous lecture (LLM)
+
+Ordre dans `generate_reading_use_case` :
+
+1. Parse + `normalize_chapter_astro_basis_fact_ids`
+2. `AstroBasisValidator`
+3. `simplified_reading_guard.rs` — whitelist astro_basis, affirmations FR, profil ASC/maisons
+4. `SafetyGuard` — inclut `reading_script_guard.rs` (script inattendu en `fr`)
+5. `ReadingQualityValidator` — non bloquant (`blocking_gate: false`)
+
+Autres modules :
+
+- `simplified_reading.rs` — validation entrée orchestration, scrub payload prompt (faits bloqués, compteurs angular)
+
+Note : `profile_excluded_feature_codes` est encore émis via constante Rust `PROFILE_INTERPRETATION_EXCLUDED` dans `payload.rs` (migration DB planifiée, cf. REV-011 F-07).
 
 ### Tests et E2E
 
@@ -3216,8 +3246,13 @@ Repository : `load_simplified_catalog()` dans `simplified/repository.rs`.
 |----------|-----------|
 | `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests` | Moteur calculateur |
 | `cargo test -p astral_calculator_api --test astral_calculator_api_tests` | Route HTTP calculateur |
-| `cargo test -p astral_llm_api --test astral_llm_simplified_reading_tests` | Prompt, forbidden_wording, golden |
-| `.\scripts\test_natal_simplified_e2e.ps1` | Suite complète (11 + 7 cas, fake) |
+| `cargo test -p astral_llm_api --test astral_llm_simplified_reading_tests` | Prompt, routing, golden |
+| `cargo test -p astral_llm_application simplified_reading_guard` | Garde simplified |
+| `.\scripts\test_natal_simplified_e2e.ps1` | Suite complète (**12** calculateur + **7** lectures) |
 | `.\scripts\docker_simplified_natal_smoke.ps1` | Smoke rapide `date_only` |
+
+Golden : `tests/golden/simplified_natal_calculation_stable_1990-06-15.json`, `tests/golden/simplified_natal_calculation_equinox_1990-03-21.json`.
+
+Revue adversariale : [`docs/reviews/natal_simplified/REV-011-adversarial-findings.md`](reviews/natal_simplified/REV-011-adversarial-findings.md).
 
 Guide débutant pas à pas : [`docs/GUIDE_DEBUTANT_DOCKER.md`](GUIDE_DEBUTANT_DOCKER.md) §9 (tutoriel natal simplifié).

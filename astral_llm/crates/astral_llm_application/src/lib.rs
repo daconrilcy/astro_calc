@@ -24,12 +24,15 @@ pub mod editorial_validation;
 pub mod domain_selector;
 pub mod execution_audit;
 pub mod reading_plan;
+pub mod reading_script_guard;
 pub mod reasoning_generation;
+pub mod simplified_reading_guard;
 pub mod simplified_reading;
 pub use simplified_reading::{
     build_reading_request, merge_simplified_forbidden_wording, prompt_constraints_block,
-    validate_simplified_calculation_request, SIMPLIFIED_PAYLOAD_CONTRACT, SIMPLIFIED_PROFILE,
-    SIMPLIFIED_REQUEST_CONTRACT,
+    resolve_simplified_chapter_code, sun_sign_blocked, validate_simplified_calculation_request,
+    SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE, SIMPLIFIED_CHAPTER_IDENTITY, SIMPLIFIED_PAYLOAD_CONTRACT,
+    SIMPLIFIED_PROFILE, SIMPLIFIED_REQUEST_CONTRACT, SUN_SIGN_BLOCKED_CODE,
 };
 pub use reading_plan::ReadingPlanBuilder;
 pub mod engine_defaults;

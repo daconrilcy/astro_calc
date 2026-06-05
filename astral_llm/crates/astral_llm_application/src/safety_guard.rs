@@ -94,6 +94,11 @@ impl SafetyGuard {
             }
         }
 
+        violations.extend(crate::reading_script_guard::script_violations_for_reading(
+            &reading.language,
+            reading,
+        ));
+
         if policy.require_disclaimer && reading.legal.disclaimer.trim().is_empty() {
             violations.push("missing legal disclaimer".into());
         }

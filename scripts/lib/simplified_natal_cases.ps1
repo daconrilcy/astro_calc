@@ -1,4 +1,4 @@
-# Cas de test natal simplifie — matrice input_precision x computed_scope (plan v2.4).
+# Cas de test natal simplifie - matrice input_precision x computed_scope (plan v2.4).
 
 function Get-SimplifiedNatalParisLocation {
     return @{
@@ -16,7 +16,7 @@ function Get-SimplifiedNatalPositiveCases {
     return @(
         [ordered]@{
             Label              = "date_only"
-            Description        = "Date seule — fenetre ~50h, scope stable"
+            Description        = "Date seule - fenetre ~50h, scope stable"
             Request            = [ordered]@{
                 request_contract_version = $contract
                 birth                    = [ordered]@{ date = "1990-06-15" }
@@ -29,7 +29,7 @@ function Get-SimplifiedNatalPositiveCases {
         },
         [ordered]@{
             Label              = "date_with_location_without_timezone"
-            Description        = "Date + lieu sans timezone — scope stable, limitation lieu sans TZ"
+            Description        = "Date + lieu sans timezone - scope stable, limitation lieu sans TZ"
             Request            = [ordered]@{
                 request_contract_version = $contract
                 birth                    = [ordered]@{
@@ -46,7 +46,7 @@ function Get-SimplifiedNatalPositiveCases {
         },
         [ordered]@{
             Label              = "date_with_timezone_without_time"
-            Description        = "Date + timezone sans heure — fenetre 24h locale"
+            Description        = "Date + timezone sans heure - fenetre 24h locale"
             Request            = [ordered]@{
                 request_contract_version = $contract
                 birth                    = [ordered]@{
@@ -62,7 +62,7 @@ function Get-SimplifiedNatalPositiveCases {
         },
         [ordered]@{
             Label              = "date_with_location_and_timezone_without_time"
-            Description        = "Date + lieu + timezone sans heure — fenetre 24h locale"
+            Description        = "Date + lieu + timezone sans heure - fenetre 24h locale"
             Request            = [ordered]@{
                 request_contract_version = $contract
                 birth                    = [ordered]@{
@@ -79,7 +79,7 @@ function Get-SimplifiedNatalPositiveCases {
         },
         [ordered]@{
             Label              = "datetime_without_location"
-            Description        = "Date + heure + timezone sans lieu — positions planetaires + aspects"
+            Description        = "Date + heure + timezone sans lieu - positions planetaires + aspects"
             Request            = [ordered]@{
                 request_contract_version = $contract
                 birth                    = [ordered]@{
@@ -97,7 +97,7 @@ function Get-SimplifiedNatalPositiveCases {
         },
         [ordered]@{
             Label              = "complete_birth_data"
-            Description        = "Donnees completes — theme angular (ASC, maisons, aspects)"
+            Description        = "Donnees completes - theme angular (ASC, maisons, aspects)"
             Request            = [ordered]@{
                 request_contract_version = $contract
                 birth                    = [ordered]@{
@@ -118,7 +118,7 @@ function Get-SimplifiedNatalPositiveCases {
         },
         [ordered]@{
             Label              = "date_only_equinox_window"
-            Description        = "Date equinoxe — verifie gestion faits ambigus / llm_controls moon.sign"
+            Description        = "Date equinoxe - verifie gestion faits ambigus / llm_controls moon.sign"
             Request            = [ordered]@{
                 request_contract_version = $contract
                 birth                    = [ordered]@{ date = "1990-03-21" }
@@ -129,6 +129,8 @@ function Get-SimplifiedNatalPositiveCases {
             ExpectedExcluded       = $excludedStable
             ExpectCounts           = $false
             AssertMoonAmbiguity    = $true
+            AssertSunAmbiguity     = $true
+            ExpectAmbiguousChapter = $true
         }
     )
 }
@@ -140,7 +142,7 @@ function Get-SimplifiedNatalNegativeCases {
     return @(
         [ordered]@{
             Label           = "invalid_date"
-            Description     = "Date invalide — 422"
+            Description     = "Date invalide - 422"
             Request         = [ordered]@{
                 request_contract_version = $contract
                 birth                    = [ordered]@{ date = "not-a-date" }
@@ -148,8 +150,17 @@ function Get-SimplifiedNatalNegativeCases {
             ExpectedStatus  = 422
         },
         [ordered]@{
+            Label           = "invalid_calendar_date"
+            Description     = "Date calendaire impossible - 422"
+            Request         = [ordered]@{
+                request_contract_version = $contract
+                birth                    = [ordered]@{ date = "2024-02-30" }
+            }
+            ExpectedStatus  = 422
+        },
+        [ordered]@{
             Label           = "time_without_timezone"
-            Description     = "Heure sans timezone — 422 metier"
+            Description     = "Heure sans timezone - 422 metier"
             Request         = [ordered]@{
                 request_contract_version = $contract
                 birth                    = [ordered]@{
@@ -161,7 +172,7 @@ function Get-SimplifiedNatalNegativeCases {
         },
         [ordered]@{
             Label           = "invalid_latitude"
-            Description     = "Latitude hors bornes — 422"
+            Description     = "Latitude hors bornes - 422"
             Request         = [ordered]@{
                 request_contract_version = $contract
                 birth                    = [ordered]@{
@@ -173,7 +184,7 @@ function Get-SimplifiedNatalNegativeCases {
         },
         [ordered]@{
             Label           = "wrong_contract_version"
-            Description     = "Contrat request obsolete — 422"
+            Description     = "Contrat request obsolete - 422"
             Request         = [ordered]@{
                 request_contract_version = "astro_simplified_natal_request_v0"
                 birth                    = [ordered]@{ date = "1990-06-15" }

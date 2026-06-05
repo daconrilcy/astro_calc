@@ -37,6 +37,11 @@ use crate::response_validator::ResponseValidator;
 use crate::safety_guard::SafetyGuard;
 use crate::reading_quality_validator::ReadingQualityValidator;
 use crate::safety_resolver::SafetyResolver;
+use crate::simplified_reading::SIMPLIFIED_PROFILE;
+use crate::simplified_reading_guard::{
+    blocked_sign_affirmation_violations, profile_excluded_affirmation_violations,
+    validate_allowed_astro_basis_ids,
+};
 
 pub struct GenerateReadingUseCase {
     pub router: ProviderRouter,
@@ -283,6 +288,15 @@ impl GenerateReadingUseCase {
             AstroBasisValidator::validate_chapters(&reading.chapters, &astro_facts, product_policy)?;
         }
 
+        if request
+            .product_context
+            .interpretation_profile_code
+            .as_deref()
+            == Some(SIMPLIFIED_PROFILE)
+        {
+            self.validate_simplified_reading(&request, &reading)?;
+        }
+
         SafetyGuard::validate_response(
             &reading,
             &safety_policy,
@@ -301,6 +315,77 @@ impl GenerateReadingUseCase {
         Ok(reading)
     }
 
+    fn validate_simplified_reading(
+        &self,
+        request: &GenerateReadingRequest,
+        reading: &astral_llm_domain::NatalReadingResponse,
+    ) -> Result<(), GenerationError> {
+        let controls = request
+            .astro_result
+            .data
+            .get("llm_controls")
+            .ok_or_else(|| {
+                GenerationError::new(
+                    GenerationErrorCode::InvalidInput,
+                    "simplified reading missing llm_controls in astro payload",
+                )
+            })?;
+
+        let allowed_ids = controls
+            .get("allowed_astro_basis_fact_ids")
+            .and_then(|v| v.as_array())
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|v| v.as_str().map(str::to_string))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        validate_allowed_astro_basis_ids(&reading.chapters, &allowed_ids)?;
+
+        let blocked = controls
+            .get("blocked_interpretation_fact_codes")
+            .and_then(|v| v.as_array())
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|v| v.as_str().map(str::to_string))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        let profile_excluded = controls
+            .get("profile_excluded_feature_codes")
+            .and_then(|v| v.as_array())
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|v| v.as_str().map(str::to_string))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+
+        let mut violations = blocked_sign_affirmation_violations(
+            reading,
+            &blocked,
+            &self.catalog,
+            &request.product_context.user_language,
+        );
+        violations.extend(profile_excluded_affirmation_violations(
+            reading,
+            &profile_excluded,
+        ));
+
+        if violations.is_empty() {
+            Ok(())
+        } else {
+            Err(GenerationError::with_details(
+                GenerationErrorCode::PostSafetyValidationFailed,
+                "generated content failed simplified reading guard",
+                serde_json::json!({ "violations": violations }),
+            ))
+        }
+    }
+
     async fn generate_single_pass(
         &self,
         request: &GenerateReadingRequest,
@@ -314,6 +399,12 @@ impl GenerateReadingUseCase {
         >,
         run_id: &str,
     ) -> Result<astral_llm_domain::NatalReadingResponse, GenerationError> {
+        let chapter_code = request
+            .response_contract
+            .chapters
+            .first()
+            .map(|c| c.code.as_str());
+
         let bundle = self
             .compiler
             .compile(PromptCompilationInput {
@@ -321,7 +412,7 @@ impl GenerateReadingUseCase {
                 safety_policy,
                 astro_facts,
                 selected_domains: domains,
-                chapter_code: None,
+                chapter_code,
                 chapter_evidence_pack: None,
                 catalog: &self.catalog,
                 interpretation,
@@ -374,7 +465,7 @@ impl GenerateReadingUseCase {
                 run_id: run_id.to_string(),
                 request_id: request.request_id.clone(),
                 product_code: request.product_context.product_code.clone(),
-                chapter_code: None,
+                chapter_code: chapter_code.map(str::to_string),
             },
         };
 
@@ -402,6 +493,13 @@ impl GenerateReadingUseCase {
             &json,
             &request.response_contract.chapters,
         )?;
+
+        for chapter in &mut reading.chapters {
+            crate::evidence_fact_parse::normalize_chapter_astro_basis_fact_ids(
+                chapter,
+                astro_facts,
+            );
+        }
 
         let prompt_family = bundle.prompt_family.clone();
         let prompt_version = bundle.prompt_version.clone();

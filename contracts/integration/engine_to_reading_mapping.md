@@ -79,8 +79,12 @@ Source : reponse `astro_simplified_natal_response_v1` :
   },
   "llm_payload": {
     "profile_code": "natal_simplified",
-    "allowed_fact_codes": ["sun.sign"],
-    "blocked_interpretation_fact_codes": ["moon.sign"]
+    "allowed_fact_codes": ["mercury.sign"],
+    "allowed_astro_basis_fact_ids": ["placement:mercury"],
+    "blocked_interpretation_fact_codes": ["sun.sign", "moon.sign"],
+    "excluded_feature_codes": ["ascendant", "houses", "sect", "house_placements"],
+    "profile_excluded_feature_codes": ["ascendant", "houses", "sect", "house_placements"],
+    "allowed_limitation_mentions": ["sun.sign", "moon.sign", "ascendant", "houses", "birth_time_missing"]
   },
   "reading_hint": {
     "recommended_profile_code": "natal_simplified",

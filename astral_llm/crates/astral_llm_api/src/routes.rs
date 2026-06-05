@@ -321,8 +321,10 @@ async fn generate_simplified_natal_reading(
         .and_then(|v| v.as_str())
         .unwrap_or("partial");
 
+    let status = simplified_reading_http_status(&output.response);
+
     (
-        StatusCode::OK,
+        status,
         Json(json!({
             "reading_completeness": reading_completeness,
             "calculation": calculation,
@@ -331,6 +333,17 @@ async fn generate_simplified_natal_reading(
         })),
     )
         .into_response()
+}
+
+fn simplified_reading_http_status(response: &GenerateReadingResponse) -> StatusCode {
+    match response {
+        GenerateReadingResponse::Success(_) => StatusCode::OK,
+        GenerateReadingResponse::SafetyRejected(_) => StatusCode::UNPROCESSABLE_ENTITY,
+        GenerateReadingResponse::Failed(failed) => {
+            let status = map_generation_error_status(&failed.error.code);
+            StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
 }
 
 fn idempotency_terminal_status(response: &GenerateReadingResponse) -> &'static str {

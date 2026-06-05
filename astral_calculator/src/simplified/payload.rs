@@ -92,6 +92,9 @@ fn build_simplified_payload(
     payload
 }
 
+const PROFILE_INTERPRETATION_EXCLUDED: &[&str] =
+    &["ascendant", "houses", "sect", "house_placements"];
+
 fn build_llm_controls(
     resolved: &ResolvedSimplifiedInput,
     catalog: &SimplifiedCatalog,
@@ -104,6 +107,13 @@ fn build_llm_controls(
         .map(|fact| format!("{}.sign", fact.object_code))
         .collect();
 
+    let allowed_astro_basis_fact_ids: Vec<String> = collected
+        .facts
+        .iter()
+        .filter(|fact| catalog.allows_interpretive_affirmation(&fact.reliability))
+        .map(|fact| format!("placement:{}", fact.object_code))
+        .collect();
+
     let blocked_interpretation_fact_codes: Vec<String> = collected
         .ambiguous_facts
         .iter()
@@ -111,25 +121,47 @@ fn build_llm_controls(
         .collect();
 
     let excluded_feature_codes = resolved.excluded_features.clone();
+    let profile_excluded_feature_codes: Vec<String> = PROFILE_INTERPRETATION_EXCLUDED
+        .iter()
+        .map(|s| (*s).to_string())
+        .collect();
 
     let mut allowed_limitation_mentions = blocked_interpretation_fact_codes.clone();
     for feature in &excluded_feature_codes {
-        if !allowed_limitation_mentions.contains(feature) {
-            allowed_limitation_mentions.push(feature.clone());
+        push_unique(&mut allowed_limitation_mentions, feature);
+    }
+    for feature in &profile_excluded_feature_codes {
+        push_unique(&mut allowed_limitation_mentions, feature);
+    }
+    for code in &resolved.limitations {
+        push_unique(&mut allowed_limitation_mentions, code);
+        if let Some(entry) = catalog.limitation(code) {
+            for feature in SimplifiedCatalog::affected_features(entry) {
+                push_unique(&mut allowed_limitation_mentions, &feature);
+            }
         }
     }
 
     let mut forbidden_topics = blocked_interpretation_fact_codes.clone();
     forbidden_topics.extend(excluded_feature_codes.clone());
+    forbidden_topics.extend(profile_excluded_feature_codes.clone());
     forbidden_topics.sort();
     forbidden_topics.dedup();
 
     LlmPayloadControls {
         profile_code: "natal_simplified".to_string(),
         allowed_fact_codes,
+        allowed_astro_basis_fact_ids,
         blocked_interpretation_fact_codes,
         excluded_feature_codes,
+        profile_excluded_feature_codes,
         allowed_limitation_mentions,
         forbidden_topics: Some(forbidden_topics),
+    }
+}
+
+fn push_unique(out: &mut Vec<String>, value: &str) {
+    if !out.iter().any(|existing| existing == value) {
+        out.push(value.to_string());
     }
 }

@@ -1,0 +1,54 @@
+{
+  "request_id": "golden-simplified-equinox-1990-03-21",
+  "response_contract_version": "astro_simplified_natal_response_v1",
+  "computed_scope": "stable_birth_date_profile",
+  "reading_hint": {
+    "recommended_profile_code": "natal_simplified",
+    "reading_completeness": "partial"
+  },
+  "simplified_payload": {
+    "payload_contract": "natal_simplified_structured_v1",
+    "payload": {
+      "payload_contract": "natal_simplified_structured_v1",
+      "computed_scope": "stable_birth_date_profile",
+      "input_precision_level": "date_only",
+      "facts": [
+        {
+          "object_code": "mercury",
+          "fact_type": "sign",
+          "sign_code": "aries",
+          "reliability": "stable_across_uncertainty_window",
+          "longitude_deg": null
+        }
+      ],
+      "ambiguous_facts": [
+        {
+          "object_code": "sun",
+          "fact_type": "sign",
+          "possible_sign_codes": ["pisces", "aries"],
+          "reliability": "ambiguous_across_uncertainty_window"
+        },
+        {
+          "object_code": "moon",
+          "fact_type": "sign",
+          "possible_sign_codes": ["capricorn", "aquarius"],
+          "reliability": "ambiguous_across_uncertainty_window"
+        }
+      ],
+      "excluded_features": ["ascendant", "houses", "sect", "house_placements"],
+      "planets": {
+        "mercury": { "sign": "aries" }
+      }
+    }
+  },
+  "llm_payload": {
+    "profile_code": "natal_simplified",
+    "allowed_fact_codes": ["mercury.sign"],
+    "allowed_astro_basis_fact_ids": ["placement:mercury"],
+    "blocked_interpretation_fact_codes": ["sun.sign", "moon.sign"],
+    "excluded_feature_codes": ["ascendant", "houses", "sect", "house_placements"],
+    "profile_excluded_feature_codes": ["ascendant", "houses", "sect", "house_placements"],
+    "allowed_limitation_mentions": ["sun.sign", "moon.sign", "ascendant", "houses", "sect", "house_placements", "birth_time_missing"],
+    "forbidden_topics": ["ascendant", "house_placements", "houses", "moon.sign", "sect", "sun.sign"]
+  }
+}

@@ -43,7 +43,9 @@ Orchestration one-shot : `POST /v1/readings/natal/simplified` (LLM API, birth �
 
 Smoke rapide : [`scripts/docker_simplified_natal_smoke.ps1`](../scripts/docker_simplified_natal_smoke.ps1).
 
-Suite E2E complète (matrice `input_precision` + 422) : [`scripts/test_natal_simplified_e2e.ps1`](../scripts/test_natal_simplified_e2e.ps1).
+Suite E2E complète (**12** cas calculateur + **7** lectures ; négatifs **422** sur calculateur seul, **400** sur orchestration lecture pour entrées invalides) : [`scripts/test_natal_simplified_e2e.ps1`](../scripts/test_natal_simplified_e2e.ps1).
+
+Documentation métier : [`docs/natal_simplified_reading_contract.md`](../docs/natal_simplified_reading_contract.md), [`docs/natal_simplified_forbidden_topics.md`](../docs/natal_simplified_forbidden_topics.md).
 
 Guide débutant : [docs/GUIDE_DEBUTANT_DOCKER.md](../docs/GUIDE_DEBUTANT_DOCKER.md) §9.
 
