@@ -1,8 +1,8 @@
 //! Referentiel evidence Premium (bootstrap + chargement DB optionnel).
 
 use astral_llm_domain::{
-    ChapterEvidenceSlot, EvidenceKindFamily, EvidenceRequirement, EvidenceRequirementSeverity,
-    EvidenceSlotRole, PremiumEvidencePolicy,
+    ChapterEvidenceExclusion, ChapterEvidenceSlot, EvidenceKindFamily, EvidenceRequirement,
+    EvidenceRequirementSeverity, EvidenceSlotRole, PremiumEvidencePolicy,
 };
 
 impl Default for EvidenceCanonicalCatalog {
@@ -16,6 +16,7 @@ pub struct EvidenceCanonicalCatalog {
     pub premium_policy: PremiumEvidencePolicy,
     pub chapter_slots: Vec<ChapterEvidenceSlot>,
     pub requirements: Vec<EvidenceRequirement>,
+    pub chapter_exclusions: Vec<ChapterEvidenceExclusion>,
 }
 
 impl EvidenceCanonicalCatalog {
@@ -35,6 +36,12 @@ impl EvidenceCanonicalCatalog {
             .filter(|r| r.chapter_code == chapter_code)
             .collect()
     }
+
+    pub fn excludes_candidate(&self, chapter_code: &str, ev: &astral_llm_domain::InterpretiveEvidence) -> bool {
+        self.chapter_exclusions
+            .iter()
+            .any(|rule| rule.excludes(chapter_code, ev))
+    }
 }
 
 pub fn bootstrap_evidence_catalog() -> EvidenceCanonicalCatalog {
@@ -42,7 +49,62 @@ pub fn bootstrap_evidence_catalog() -> EvidenceCanonicalCatalog {
         premium_policy: PremiumEvidencePolicy::default(),
         chapter_slots: bootstrap_chapter_slots(),
         requirements: bootstrap_requirements(),
+        chapter_exclusions: bootstrap_chapter_exclusions(),
     }
+}
+
+fn bootstrap_chapter_exclusions() -> Vec<ChapterEvidenceExclusion> {
+    vec![
+        ChapterEvidenceExclusion {
+            rule_code: "identity_no_sun".into(),
+            chapter_code: "identity".into(),
+            kind_code: None,
+            object_code: Some("sun".into()),
+            fact_id_contains: None,
+            global_filler_only: false,
+            global_filler_allow_contains: vec![],
+        },
+        ChapterEvidenceExclusion {
+            rule_code: "relationships_no_mc_ruler".into(),
+            chapter_code: "relationships".into(),
+            kind_code: Some("house_ruler".into()),
+            object_code: None,
+            fact_id_contains: Some(":mc:".into()),
+            global_filler_only: false,
+            global_filler_allow_contains: vec![],
+        },
+        ChapterEvidenceExclusion {
+            rule_code: "family_roots_global_filler".into(),
+            chapter_code: "family_roots".into(),
+            kind_code: None,
+            object_code: None,
+            fact_id_contains: None,
+            global_filler_only: true,
+            global_filler_allow_contains: vec![
+                ":house:4".into(),
+                ":moon:".into(),
+                ":ic:".into(),
+            ],
+        },
+        ChapterEvidenceExclusion {
+            rule_code: "communication_no_house_axis".into(),
+            chapter_code: "communication_mind".into(),
+            kind_code: Some("house_axis".into()),
+            object_code: None,
+            fact_id_contains: None,
+            global_filler_only: false,
+            global_filler_allow_contains: vec![],
+        },
+        ChapterEvidenceExclusion {
+            rule_code: "communication_no_private_public".into(),
+            chapter_code: "communication_mind".into(),
+            kind_code: None,
+            object_code: None,
+            fact_id_contains: Some("private_public".into()),
+            global_filler_only: false,
+            global_filler_allow_contains: vec![],
+        },
+    ]
 }
 
 fn bootstrap_chapter_slots() -> Vec<ChapterEvidenceSlot> {

@@ -43,7 +43,7 @@ use crate::prompt_trace;
 use crate::provider_router::ProviderRouter;
 use crate::provider_schema_compiler::ProviderSchemaCompiler;
 use crate::reading_plan::ReadingPlanBuilder;
-use crate::reading_quality_validator::PremiumQualityThresholds;
+use crate::reading_quality_validator::{PremiumQualityThresholds, ReadingQualityValidator};
 use crate::response_validator::ResponseValidator;
 use crate::safety_guard::SafetyGuard;
 use crate::final_synthesis_synthesizer::FinalSynthesisSynthesizer;
@@ -493,7 +493,12 @@ impl<'a> ChapterOrchestrator<'a> {
                                 crate::chapter_quality_repair::ChapterRepairKind::TooShort {
                                     words,
                                     min_words: synthesis_chapter.min_words,
-                                    max_words: synthesis_chapter.max_words,
+                                    target_words: synthesis_chapter.target_words,
+                                    mode: if attempt >= 1 {
+                                        crate::chapter_quality_repair::TooShortRepairMode::RewriteChapter
+                                    } else {
+                                        crate::chapter_quality_repair::TooShortRepairMode::ExpandSameChapter
+                                    },
                                 },
                             );
                         }
@@ -512,7 +517,75 @@ impl<'a> ChapterOrchestrator<'a> {
                         }
                     }
                 }
-                let synthesis_result = synthesis_result.expect("synthesis generated");
+                let mut synthesis_result = synthesis_result.expect("synthesis generated");
+                if ReadingQualityValidator::chapter_exceeds_repetition(
+                    &synthesis_result.chapter.body,
+                    &quality_thresholds,
+                    writing_locale,
+                ) {
+                    let mut best = synthesis_result;
+                    let mut best_score = ReadingQualityValidator::chapter_repetition_score(
+                        &best.chapter.body,
+                        writing_locale,
+                    );
+                    for rep_attempt in 0..3 {
+                        let repair = crate::chapter_quality_repair::ChapterRepairKind::Repetition {
+                            score: best_score,
+                            max_allowed: quality_thresholds.max_repeated_trigrams,
+                        };
+                        match final_synthesizer
+                            .synthesize(
+                                request,
+                                &generated,
+                                synthesis_chapter,
+                                synthesis_contract,
+                                synthesis_pack,
+                                astro_facts,
+                                engine,
+                                safety_policy,
+                                product_policy,
+                                interpretation,
+                                run_id,
+                                Some(repair),
+                            )
+                            .await
+                        {
+                            Ok(result) => {
+                                let score = ReadingQualityValidator::chapter_repetition_score(
+                                    &result.chapter.body,
+                                    writing_locale,
+                                );
+                                if score <= best_score {
+                                    best_score = score;
+                                    best = result;
+                                }
+                                if !ReadingQualityValidator::chapter_exceeds_repetition(
+                                    &best.chapter.body,
+                                    &quality_thresholds,
+                                    writing_locale,
+                                ) {
+                                    break;
+                                }
+                                tracing::info!(
+                                    run_id,
+                                    attempt = rep_attempt + 1,
+                                    repetition_score = score,
+                                    best_score,
+                                    "synthesis repetition repair still above threshold"
+                                );
+                            }
+                            Err(err) => {
+                                tracing::warn!(
+                                    run_id,
+                                    error = %err.detail().message,
+                                    "synthesis repetition repair failed, keeping best attempt"
+                                );
+                                break;
+                            }
+                        }
+                    }
+                    synthesis_result = best;
+                }
                 audit.record_chapter_step(
                     SYNTHESIS_CHAPTER_CODE,
                     engine.provider.as_str(),
@@ -695,7 +768,7 @@ impl<'a> ChapterOrchestrator<'a> {
                                     matches!(r, ChapterRepairKind::TooShort { .. })
                                 }) =>
                         {
-                            repairs.push(length_repair_from_error(&err, chapter));
+                            repairs.push(length_repair_from_error(&err, chapter, opening_attempt));
                             tracing::info!(
                                 run_id,
                                 round,

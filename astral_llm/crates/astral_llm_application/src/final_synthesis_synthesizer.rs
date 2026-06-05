@@ -21,7 +21,7 @@ use crate::astro_label_humanizer::AstroLabelHumanizer;
 use crate::astro_payload_normalizer::AstroPayloadNormalizer;
 use crate::chapter_evidence_basis_enricher::ChapterEvidenceBasisEnricher;
 use crate::chapter_evidence_coherence::ChapterEvidenceCoherence;
-use crate::chapter_quality_repair::ChapterRepairKind;
+use crate::chapter_quality_repair::{ChapterRepairKind, TooShortRepairMode};
 use crate::engine_defaults::ResolvedEngineParams;
 use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
 use crate::product_policy_validator::ProductPolicyValidator;
@@ -296,18 +296,28 @@ fn build_synthesis_messages(
         .and_then(|ctx| ctx.profile.document.task_fragment.clone())
         .unwrap_or_default();
 
+    let body_structure = interpretation
+        .and_then(|ctx| ctx.profile.body_structure());
+    let paragraph_count = body_structure.map(|bs| bs.paragraph_count).unwrap_or(6);
+    let (para_min_w, para_max_w) = body_structure
+        .map(|bs| (bs.paragraph_min_words, bs.paragraph_max_words))
+        .unwrap_or((80, 120));
+    let (min_w, target_w, max_w) = interpretation
+        .map(|ctx| ctx.profile.synthesis_word_targets())
+        .unwrap_or((
+            chapter.min_words as u16,
+            chapter.target_words as u16,
+            chapter.max_words as u16,
+        ));
     let system = format!(
         "{language_block}\n\n\
          Write the final integrative synthesis chapter of a natal reading (code: synthesis). \
          Output JSON matching chapter_provider_v1 (code, title, body, astro_basis, confidence). \
          This is NOT a new astrological domain chapter: weave together themes from prior chapters. \
          Cover: guiding line of the chart, main tensions, dominant resources, symbolic non-prescriptive counsel, closing phrase. \
-         Use 5-6 editorial paragraphs ({min_w}-{max_w} words, target ~{target_w}). \
+         Use exactly {paragraph_count} editorial paragraphs ({para_min_w}-{para_max_w} words each; \
+         total body {min_w}-{max_w} words, target ~{target_w}). \
          Frame as symbolic and interpretive. {task_fragment}"
-    ,
-        min_w = chapter.min_words,
-        max_w = chapter.max_words,
-        target_w = chapter.target_words,
     );
 
     let repair_block = repair
@@ -341,10 +351,26 @@ fn build_synthesis_messages(
 
 fn synthesis_repair_directive(chapter: &ReadingPlanChapter, repair: &ChapterRepairKind) -> String {
     match repair {
-        ChapterRepairKind::TooShort { words, min_words, max_words } => format!(
-            "\nREPAIR: synthesis chapter is only {words} words; expand to at least {min_words} \
-             (target near {max_words}). Integrate prior chapter themes without repeating openings."
-        ),
+        ChapterRepairKind::TooShort {
+            words,
+            min_words,
+            target_words,
+            mode,
+        } => {
+            let mode_hint = match mode {
+                TooShortRepairMode::ExpandSameChapter => {
+                    "EXPAND MODE: keep title and astro_basis; lengthen existing paragraphs."
+                }
+                TooShortRepairMode::RewriteChapter => {
+                    "REWRITE MODE: rewrite the full body while keeping all fact_ids valid."
+                }
+            };
+            format!(
+                "\nREPAIR: synthesis chapter is only {words} words; expand to at least {min_words} \
+                 (target ~{target_words}). {mode_hint} \
+                 Integrate prior chapter themes without repeating openings."
+            )
+        }
         ChapterRepairKind::Repetition { score, max_allowed } => format!(
             "\nREPAIR: synthesis repetition score {score} exceeds {max_allowed}; vary vocabulary \
              and sentence openings while keeping fact_ids valid."

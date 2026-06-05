@@ -12,12 +12,19 @@ use crate::prompt_compiler::PromptBundle;
 use crate::reading_opening_diversity_validator::OpeningViolation;
 use crate::reading_quality_validator::{PremiumQualityThresholds, ReadingQualityValidator};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TooShortRepairMode {
+    ExpandSameChapter,
+    RewriteChapter,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum ChapterRepairKind {
     TooShort {
         words: u32,
         min_words: u32,
-        max_words: u32,
+        target_words: u32,
+        mode: TooShortRepairMode,
     },
     Repetition { score: usize, max_allowed: usize },
     EvidenceCoherence {
@@ -42,6 +49,7 @@ const MAX_MIN_WORDS_REPAIR_ATTEMPTS: usize = 2;
 pub fn length_repair_from_error(
     err: &GenerationError,
     chapter: &ReadingPlanChapter,
+    attempt: usize,
 ) -> ChapterRepairKind {
     let details = err.detail().details.as_ref();
     let words = details
@@ -52,7 +60,12 @@ pub fn length_repair_from_error(
     ChapterRepairKind::TooShort {
         words,
         min_words: chapter.min_words,
-        max_words: chapter.max_words,
+        target_words: chapter.target_words,
+        mode: if attempt >= 1 {
+            TooShortRepairMode::RewriteChapter
+        } else {
+            TooShortRepairMode::ExpandSameChapter
+        },
     }
 }
 
@@ -87,7 +100,7 @@ where
 {
     let mut last_err = initial_err;
     for attempt in 0..MAX_MIN_WORDS_REPAIR_ATTEMPTS {
-        let repair = length_repair_from_error(&last_err, chapter);
+        let repair = length_repair_from_error(&last_err, chapter, attempt);
         tracing::info!(
             run_id,
             chapter = %chapter.code,
@@ -261,11 +274,23 @@ pub fn append_repair_instructions(
         ChapterRepairKind::TooShort {
             words,
             min_words,
-            max_words,
+            target_words,
+            mode,
         } => {
+            let mode_hint = match mode {
+                TooShortRepairMode::ExpandSameChapter => {
+                    "EXPAND MODE: Keep the title, astro_basis, and paragraph structure. \
+                     Lengthen the body by adding interpretive substance in existing paragraphs \
+                     or completing the final paragraph. Do not change fact_ids. \
+                     Do not shorten any existing passage."
+                }
+                TooShortRepairMode::RewriteChapter => {
+                    "REWRITE MODE: Rewrite the full body while keeping all fact_ids valid."
+                }
+            };
             bundle.task_instructions.push_str(&format!(
                 "\n\nREPAIR: Chapter '{}' is only {words} words; expand the body to at least {min_words} words \
-                 (target near {max_words}, but do not shorten if already long enough). Keep all fact_ids valid.",
+                 (target ~{target_words}; do not stop at the minimum). {mode_hint}",
                 chapter.code
             ));
         }

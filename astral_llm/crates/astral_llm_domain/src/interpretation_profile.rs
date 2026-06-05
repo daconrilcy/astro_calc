@@ -14,6 +14,9 @@ pub const PROFILE_NATAL_PREMIUM: &str = "natal_premium";
 pub const PROFILE_NATAL_PREMIUM_PLUS: &str = "natal_premium_plus";
 pub const SYNTHESIS_CHAPTER_CODE: &str = "synthesis";
 
+pub const BODY_STYLE_EDITORIAL_FLOW: &str = "editorial_flow";
+pub const BODY_STYLE_COMPACT_FLOW: &str = "compact_flow";
+
 /// Anciens `product_code` API acceptes temporairement par le shim de migration.
 pub const LEGACY_PRODUCT_NATAL_PREMIUM: &str = "natal_premium";
 pub const LEGACY_PRODUCT_NATAL_BASIC: &str = "natal_basic";
@@ -38,7 +41,17 @@ pub struct InterpretationProfileDocument {
     pub quality: InterpretationQualityConfig,
     pub evidence: InterpretationEvidenceConfig,
     #[serde(default)]
+    pub body_structure: Option<BodyStructureConfig>,
+    #[serde(default)]
     pub task_fragment: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct BodyStructureConfig {
+    pub paragraph_count: u8,
+    pub paragraph_min_words: u16,
+    pub paragraph_max_words: u16,
+    pub style: String,
 }
 
 fn default_schema_version() -> String {
@@ -69,6 +82,12 @@ pub struct InterpretationQualityConfig {
     pub min_interpretive_astro_basis_refs_per_chapter: u8,
     #[serde(default = "default_true")]
     pub require_disclaimer: bool,
+    #[serde(default)]
+    pub min_astro_basis_refs_synthesis: Option<u8>,
+    #[serde(default)]
+    pub min_words_synthesis: Option<u16>,
+    #[serde(default)]
+    pub target_words_synthesis: Option<u16>,
 }
 
 fn default_true() -> bool {
@@ -204,7 +223,31 @@ impl InterpretationProfile {
     }
 
     pub fn uses_rich_editorial_structure(&self) -> bool {
-        self.document.chapter_word_targets.target >= 420
+        self.document
+            .body_structure
+            .as_ref()
+            .is_some_and(|s| s.style == BODY_STYLE_EDITORIAL_FLOW)
+    }
+
+    pub fn body_structure(&self) -> Option<&BodyStructureConfig> {
+        self.document.body_structure.as_ref()
+    }
+
+    pub fn synthesis_min_astro_basis_refs(&self) -> u8 {
+        self.document
+            .quality
+            .min_astro_basis_refs_synthesis
+            .unwrap_or(self.document.quality.min_astro_basis_refs_per_chapter)
+    }
+
+    pub fn synthesis_word_targets(&self) -> (u16, u16, u16) {
+        let q = &self.document.quality;
+        let t = &self.document.chapter_word_targets;
+        (
+            q.min_words_synthesis.unwrap_or(t.min),
+            q.target_words_synthesis.unwrap_or(t.target),
+            t.max,
+        )
     }
 
     /// Profils dont l'ordre `chapter_types` definit la lecture (ex. `natal_premium_plus`).
@@ -246,6 +289,52 @@ impl InterpretationProfile {
         }
         if self.document.evidence.enabled && self.document.evidence.policy.is_none() {
             return Err("evidence.policy required when evidence.enabled is true".into());
+        }
+        if self.document.evidence.enabled && self.document.quality.blocking_gate {
+            if self.document.body_structure.is_none() {
+                return Err(
+                    "body_structure required when evidence.enabled and quality.blocking_gate"
+                        .into(),
+                );
+            }
+        }
+        if let Some(bs) = &self.document.body_structure {
+            if bs.paragraph_count == 0 {
+                return Err("body_structure.paragraph_count must be > 0".into());
+            }
+            if bs.paragraph_min_words > bs.paragraph_max_words {
+                return Err("body_structure.paragraph_min_words must be <= paragraph_max_words".into());
+            }
+            if bs.style != BODY_STYLE_EDITORIAL_FLOW && bs.style != BODY_STYLE_COMPACT_FLOW {
+                return Err(format!(
+                    "body_structure.style must be {BODY_STYLE_EDITORIAL_FLOW} or {BODY_STYLE_COMPACT_FLOW}"
+                ));
+            }
+        }
+        if self.has_final_synthesis_chapter() {
+            let q = &self.document.quality;
+            let t = &self.document.chapter_word_targets;
+            if let Some(min_syn) = q.min_words_synthesis {
+                if min_syn > t.max {
+                    return Err("min_words_synthesis must be <= chapter_word_targets.max".into());
+                }
+                if let Some(target_syn) = q.target_words_synthesis {
+                    if min_syn > target_syn {
+                        return Err("min_words_synthesis must be <= target_words_synthesis".into());
+                    }
+                    if target_syn > t.max {
+                        return Err("target_words_synthesis must be <= chapter_word_targets.max".into());
+                    }
+                }
+            }
+            if let Some(min_basis) = q.min_astro_basis_refs_synthesis {
+                if min_basis > q.min_astro_basis_refs_per_chapter {
+                    return Err(
+                        "min_astro_basis_refs_synthesis must be <= min_astro_basis_refs_per_chapter"
+                            .into(),
+                    );
+                }
+            }
         }
         Ok(())
     }
@@ -294,7 +383,8 @@ mod tests {
         assert!(profile.validate().is_ok());
         assert!(profile.has_final_synthesis_chapter());
         assert!(profile.uses_rich_editorial_structure());
-        assert_eq!(profile.document.quality.min_words_per_chapter, 420);
+        assert_eq!(profile.document.quality.min_words_per_chapter, 520);
         assert_eq!(profile.document.quality.min_astro_basis_refs_per_chapter, 6);
+        assert!(profile.body_structure().is_some());
     }
 }

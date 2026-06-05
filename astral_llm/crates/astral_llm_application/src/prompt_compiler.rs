@@ -63,7 +63,12 @@ impl PromptCompiler {
                 }
             }
         }
-        if input.chapter_evidence_pack.is_some() {
+        let inject_legacy_structure = input.chapter_evidence_pack.is_some()
+            && input
+                .interpretation
+                .map(|ctx| ctx.profile.body_structure().is_none())
+                .unwrap_or(true);
+        if inject_legacy_structure {
             if let Ok(structure) = read_template(&base_dir.join("chapter_structure.md")) {
                 task.push_str("\n\n");
                 task.push_str(&structure);

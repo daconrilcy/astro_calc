@@ -77,6 +77,14 @@ pub struct SlotEligibility {
     pub can_be_nuance: bool,
 }
 
+const GLOBAL_FILLER_KINDS: &[&str] = &[
+    "element_balance",
+    "modality_balance",
+    "house_axis",
+    "dominant_planet",
+    "house_emphasis",
+];
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct InterpretiveEvidence {
     pub fact_id: String,
@@ -95,6 +103,60 @@ pub struct InterpretiveEvidence {
     pub sign_code: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub house_number: Option<u8>,
+}
+
+impl InterpretiveEvidence {
+    pub fn is_global_filler_kind(kind_code: &str) -> bool {
+        GLOBAL_FILLER_KINDS.contains(&kind_code)
+    }
+
+    pub fn is_global_filler_for_chapter(&self, chapter_code: &str) -> bool {
+        if chapter_code == "synthesis" {
+            return false;
+        }
+        if self.kind_code == "house_emphasis" {
+            return !Self::house_emphasis_matches_chapter(&self.fact_id, chapter_code);
+        }
+        Self::is_global_filler_kind(&self.kind_code)
+    }
+
+    pub fn chapter_relevance_score(&self, chapter_code: &str) -> f32 {
+        if self.chapter_affinity.iter().any(|d| d == chapter_code) {
+            return 1.0;
+        }
+        if self.is_global_filler_for_chapter(chapter_code) {
+            return 0.2;
+        }
+        if !self.chapter_affinity.is_empty() {
+            return 0.4;
+        }
+        if self.weight >= 0.65 {
+            0.7
+        } else {
+            0.4
+        }
+    }
+
+    fn house_emphasis_matches_chapter(fact_id: &str, chapter_code: &str) -> bool {
+        let house = fact_id
+            .rsplit(':')
+            .next()
+            .and_then(|h| h.parse::<u8>().ok());
+        let Some(house) = house else {
+            return false;
+        };
+        matches!(
+            (chapter_code, house),
+            ("resources", 2)
+                | ("communication_mind", 3)
+                | ("family_roots", 4)
+                | ("relationships", 7)
+                | ("career", 10)
+                | ("growth_path", 8)
+                | ("growth_path", 9)
+                | ("growth_path", 12)
+        )
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -220,20 +282,14 @@ impl InterpretiveEvidencePool {
     pub fn matching_for_chapter(&self, chapter_code: &str) -> Vec<&InterpretiveEvidence> {
         let mut items: Vec<_> = self.interpretive_evidence().collect();
         items.sort_by(|a, b| {
-            let rank = |e: &InterpretiveEvidence| {
-                if e.chapter_affinity.is_empty() {
-                    1
-                } else if e.chapter_affinity.iter().any(|d| d == chapter_code) {
-                    2
-                } else {
-                    0
-                }
-            };
-            rank(b).cmp(&rank(a)).then(
-                b.weight
-                    .partial_cmp(&a.weight)
-                    .unwrap_or(std::cmp::Ordering::Equal),
-            )
+            b.chapter_relevance_score(chapter_code)
+                .partial_cmp(&a.chapter_relevance_score(chapter_code))
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then(
+                    b.weight
+                        .partial_cmp(&a.weight)
+                        .unwrap_or(std::cmp::Ordering::Equal),
+                )
         });
         items
     }
@@ -297,6 +353,66 @@ pub struct ChapterEvidenceSlot {
     pub required_if_available: bool,
 }
 
+/// Regle d'exclusion evidence par chapitre (source canonique : table SQL + bootstrap).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChapterEvidenceExclusion {
+    pub rule_code: String,
+    pub chapter_code: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind_code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub object_code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fact_id_contains: Option<String>,
+    #[serde(default)]
+    pub global_filler_only: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub global_filler_allow_contains: Vec<String>,
+}
+
+impl ChapterEvidenceExclusion {
+    pub fn excludes(&self, chapter_code: &str, ev: &InterpretiveEvidence) -> bool {
+        if self.chapter_code != chapter_code {
+            return false;
+        }
+        if self.global_filler_only {
+            if !ev.is_global_filler_for_chapter(chapter_code) {
+                return false;
+            }
+            if self
+                .global_filler_allow_contains
+                .iter()
+                .any(|pat| ev.fact_id.contains(pat))
+            {
+                return false;
+            }
+            return true;
+        }
+        if let Some(kind) = &self.kind_code {
+            if ev.kind_code != *kind {
+                return false;
+            }
+        }
+        if let Some(object) = &self.object_code {
+            let object_match = ev
+                .object_code
+                .as_deref()
+                .is_some_and(|o| o == object.as_str())
+                || ev.semantic_fact_key.contains(&format!(":{object}:"))
+                || ev.fact_id.contains(&format!(":{object}:"));
+            if !object_match {
+                return false;
+            }
+        }
+        if let Some(sub) = &self.fact_id_contains {
+            if !ev.fact_id.contains(sub) {
+                return false;
+            }
+        }
+        self.kind_code.is_some() || self.object_code.is_some() || self.fact_id_contains.is_some()
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EvidenceRequirement {
     pub requirement_code: String,
@@ -324,6 +440,47 @@ pub struct RequirementAuditEntry {
     pub status: RequirementAuditStatus,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub detail: Option<String>,
+}
+
+#[cfg(test)]
+mod exclusion_tests {
+    use super::*;
+
+    fn placement_sun() -> InterpretiveEvidence {
+        InterpretiveEvidence {
+            fact_id: "placement:sun:capricorn:house:2".into(),
+            semantic_fact_key: "placement:sun:capricorn:house:2".into(),
+            kind_code: KIND_PLACEMENT.into(),
+            family: EvidenceKindFamily::Placement,
+            label: String::new(),
+            interpretive_hint: String::new(),
+            chapter_affinity: vec![],
+            weight: 1.0,
+            slot_eligibility: SlotEligibility {
+                can_be_core: true,
+                can_be_supporting: true,
+                can_be_nuance: false,
+            },
+            object_code: Some("sun".into()),
+            sign_code: None,
+            house_number: None,
+        }
+    }
+
+    #[test]
+    fn identity_excludes_sun_placement() {
+        let rule = ChapterEvidenceExclusion {
+            rule_code: "identity_no_sun".into(),
+            chapter_code: "identity".into(),
+            kind_code: None,
+            object_code: Some("sun".into()),
+            fact_id_contains: None,
+            global_filler_only: false,
+            global_filler_allow_contains: vec![],
+        };
+        assert!(rule.excludes("identity", &placement_sun()));
+        assert!(!rule.excludes("career", &placement_sun()));
+    }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

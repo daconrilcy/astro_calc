@@ -10,8 +10,9 @@ use astral_llm_domain::{
 
 use crate::evidence_canonical::{bootstrap_evidence_catalog, EvidenceCanonicalCatalog};
 use crate::i18n_canonical::{
-    bootstrap_aspect_type_labels, bootstrap_astro_basis_roles, bootstrap_extra_object_sign_labels,
-    bootstrap_writing_locales, WritingLocale,
+    bootstrap_aspect_type_labels, bootstrap_astro_basis_roles, bootstrap_element_balance_labels,
+    bootstrap_extra_object_sign_labels, bootstrap_house_theme_labels, bootstrap_modality_balance_labels,
+    bootstrap_sect_labels, bootstrap_writing_locales, I18nLabelPair, WritingLocale,
 };
 
 /// Referentiel canonique charge depuis PostgreSQL (tables `llm_*`).
@@ -29,6 +30,10 @@ pub struct CanonicalCatalog {
     pub writing_locales: Vec<WritingLocale>,
     pub astro_basis_roles: std::collections::HashSet<String>,
     pub aspect_type_labels: HashMap<(String, String), String>,
+    pub element_balance_labels: HashMap<(String, String), I18nLabelPair>,
+    pub modality_balance_labels: HashMap<(String, String), I18nLabelPair>,
+    pub sect_labels: HashMap<(String, String), I18nLabelPair>,
+    pub house_theme_labels: HashMap<(String, u8), I18nLabelPair>,
     /// profile_code -> profil actif
     pub interpretation_profiles: HashMap<String, InterpretationProfile>,
 }
@@ -159,13 +164,57 @@ pub async fn load_canonical_catalog(pool: &sqlx::PgPool) -> CanonicalCatalog {
 
     load_interpretation_profiles_from_db(pool, &mut catalog).await;
     load_evidence_from_db(pool, &mut catalog).await;
+    load_chapter_exclusions_from_db(pool, &mut catalog).await;
     apply_profile_evidence_to_catalog(&mut catalog);
     load_i18n_from_db(pool, &mut catalog).await;
     enrich_catalog_from_bootstrap(&mut catalog);
     if catalog.evidence.chapter_slots.is_empty() {
         catalog.evidence = bootstrap_evidence_catalog();
+    } else if catalog.evidence.chapter_exclusions.is_empty() {
+        catalog.evidence.chapter_exclusions =
+            crate::evidence_canonical::bootstrap_evidence_catalog().chapter_exclusions;
     }
     catalog
+}
+
+async fn load_chapter_exclusions_from_db(pool: &sqlx::PgPool, catalog: &mut CanonicalCatalog) {
+    let Ok(rows) = sqlx::query_as::<_, (
+        String,
+        String,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        bool,
+        Vec<String>,
+    )>(
+        "SELECT rule_code, chapter_code, kind_code, object_code, fact_id_contains, \
+         global_filler_only, global_filler_allow_contains \
+         FROM llm_chapter_evidence_exclusions WHERE is_active = true",
+    )
+    .fetch_all(pool)
+    .await
+    else {
+        return;
+    };
+    if rows.is_empty() {
+        return;
+    }
+    catalog.evidence.chapter_exclusions = rows
+        .into_iter()
+        .map(
+            |(rule_code, chapter_code, kind_code, object_code, fact_id_contains, global_filler_only, allow)| {
+                astral_llm_domain::ChapterEvidenceExclusion {
+                    rule_code,
+                    chapter_code,
+                    kind_code,
+                    object_code,
+                    fact_id_contains,
+                    global_filler_only,
+                    global_filler_allow_contains: allow,
+                }
+            },
+        )
+        .collect();
 }
 
 async fn load_evidence_from_db(pool: &sqlx::PgPool, catalog: &mut CanonicalCatalog) {
@@ -260,6 +309,9 @@ pub fn enrich_catalog_from_bootstrap(catalog: &mut CanonicalCatalog) {
     }
     if catalog.evidence.chapter_slots.is_empty() {
         catalog.evidence = bootstrap_evidence_catalog();
+    } else if catalog.evidence.chapter_exclusions.is_empty() {
+        catalog.evidence.chapter_exclusions =
+            crate::evidence_canonical::bootstrap_evidence_catalog().chapter_exclusions;
     }
     if catalog.writing_locales.is_empty() {
         catalog.writing_locales = bootstrap_writing_locales();
@@ -271,6 +323,18 @@ pub fn enrich_catalog_from_bootstrap(catalog: &mut CanonicalCatalog) {
         catalog.aspect_type_labels = bootstrap_aspect_type_labels();
     }
     bootstrap_extra_object_sign_labels(&mut catalog.astro_object_labels, &mut catalog.zodiac_sign_labels);
+    if catalog.element_balance_labels.is_empty() {
+        catalog.element_balance_labels = bootstrap_element_balance_labels();
+    }
+    if catalog.modality_balance_labels.is_empty() {
+        catalog.modality_balance_labels = bootstrap_modality_balance_labels();
+    }
+    if catalog.sect_labels.is_empty() {
+        catalog.sect_labels = bootstrap_sect_labels();
+    }
+    if catalog.house_theme_labels.is_empty() {
+        catalog.house_theme_labels = bootstrap_house_theme_labels();
+    }
     if catalog.interpretation_profiles.is_empty() {
         catalog.interpretation_profiles = bootstrap_interpretation_profiles();
         apply_profile_evidence_to_catalog(catalog);
@@ -278,9 +342,12 @@ pub fn enrich_catalog_from_bootstrap(catalog: &mut CanonicalCatalog) {
 }
 
 fn apply_profile_evidence_to_catalog(catalog: &mut CanonicalCatalog) {
-    if let Some(premium) = catalog.interpretation_profiles.get("natal_premium") {
-        if let Some(policy) = premium.to_premium_evidence_policy() {
-            catalog.evidence.premium_policy = policy;
+    for profile_code in ["natal_premium_plus", "natal_premium"] {
+        if let Some(profile) = catalog.interpretation_profiles.get(profile_code) {
+            if let Some(policy) = profile.to_premium_evidence_policy() {
+                catalog.evidence.premium_policy = policy;
+                return;
+            }
         }
     }
 }
@@ -359,6 +426,78 @@ async fn load_i18n_from_db(pool: &sqlx::PgPool, catalog: &mut CanonicalCatalog) 
                 .insert((locale, aspect_code), label);
         }
     }
+
+    if let Ok(rows) = sqlx::query_as::<_, (String, String, String, String)>(
+        "SELECT element_code, locale, display_label, interpretive_label \
+         FROM llm_element_balance_labels WHERE is_active = true",
+    )
+    .fetch_all(pool)
+    .await
+    {
+        for (code, locale, display, interpretive) in rows {
+            catalog.element_balance_labels.insert(
+                (locale, code),
+                I18nLabelPair {
+                    display_label: display,
+                    interpretive_label: interpretive,
+                },
+            );
+        }
+    }
+
+    if let Ok(rows) = sqlx::query_as::<_, (String, String, String, String)>(
+        "SELECT modality_code, locale, display_label, interpretive_label \
+         FROM llm_modality_balance_labels WHERE is_active = true",
+    )
+    .fetch_all(pool)
+    .await
+    {
+        for (code, locale, display, interpretive) in rows {
+            catalog.modality_balance_labels.insert(
+                (locale, code),
+                I18nLabelPair {
+                    display_label: display,
+                    interpretive_label: interpretive,
+                },
+            );
+        }
+    }
+
+    if let Ok(rows) = sqlx::query_as::<_, (String, String, String, String)>(
+        "SELECT sect_code, locale, display_label, interpretive_label \
+         FROM llm_sect_labels WHERE is_active = true",
+    )
+    .fetch_all(pool)
+    .await
+    {
+        for (code, locale, display, interpretive) in rows {
+            catalog.sect_labels.insert(
+                (locale, code),
+                I18nLabelPair {
+                    display_label: display,
+                    interpretive_label: interpretive,
+                },
+            );
+        }
+    }
+
+    if let Ok(rows) = sqlx::query_as::<_, (i16, String, String, String)>(
+        "SELECT house_number, locale, display_label, interpretive_label \
+         FROM llm_house_theme_labels WHERE is_active = true",
+    )
+    .fetch_all(pool)
+    .await
+    {
+        for (house, locale, display, interpretive) in rows {
+            catalog.house_theme_labels.insert(
+                (locale, house as u8),
+                I18nLabelPair {
+                    display_label: display,
+                    interpretive_label: interpretive,
+                },
+            );
+        }
+    }
 }
 
 fn parse_reasoning_effort(raw: &str) -> astral_llm_domain::ReasoningEffort {
@@ -410,6 +549,26 @@ impl CanonicalCatalog {
         self.zodiac_sign_labels
             .get(&(locale.to_string(), sign_code.to_string()))
             .map(String::as_str)
+    }
+
+    pub fn element_balance_label(&self, locale: &str, element_code: &str) -> Option<&I18nLabelPair> {
+        self.element_balance_labels
+            .get(&(locale.to_string(), element_code.to_string()))
+    }
+
+    pub fn modality_balance_label(&self, locale: &str, modality_code: &str) -> Option<&I18nLabelPair> {
+        self.modality_balance_labels
+            .get(&(locale.to_string(), modality_code.to_string()))
+    }
+
+    pub fn sect_label(&self, locale: &str, sect_code: &str) -> Option<&I18nLabelPair> {
+        self.sect_labels
+            .get(&(locale.to_string(), sect_code.to_string()))
+    }
+
+    pub fn house_theme_label(&self, locale: &str, house_number: u8) -> Option<&I18nLabelPair> {
+        self.house_theme_labels
+            .get(&(locale.to_string(), house_number))
     }
 
     pub fn writing_locale(&self, user_language: &str) -> Option<&WritingLocale> {

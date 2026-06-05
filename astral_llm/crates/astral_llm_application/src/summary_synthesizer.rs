@@ -37,6 +37,22 @@ const BANNED_SUMMARY_PATTERNS: &[&str] = &[
     "single_pass",
     "pipeline technique",
     "placeholder",
+    "tirage",
+    "cartes tirées",
+    "cartes tirees",
+    "oracle",
+    "consultation divinatoire",
+    "tendance invite",
+    "le tirage",
+];
+
+const ASTRO_SUMMARY_MARKERS: &[&str] = &[
+    "thème",
+    "theme",
+    "lecture",
+    "configuration",
+    "carte natale",
+    "symbolique",
 ];
 
 pub struct SummarySynthesisResult {
@@ -170,7 +186,13 @@ impl<'a> SummarySynthesizer<'a> {
             )
         })?;
 
-        validate_summary_content(&summary)?;
+        validate_summary_content(
+            &summary,
+            request
+                .product_context
+                .interpretation_profile_code
+                .as_deref(),
+        )?;
 
         SafetyGuard::validate_chapter_text(
             &format!("{} {}", summary.title, summary.short_text),
@@ -200,8 +222,12 @@ impl<'a> SummarySynthesizer<'a> {
     }
 }
 
-pub fn validate_summary_content(summary: &SummaryProviderResponse) -> Result<(), GenerationError> {
+pub fn validate_summary_content(
+    summary: &SummaryProviderResponse,
+    interpretation_profile_code: Option<&str>,
+) -> Result<(), GenerationError> {
     let corpus = format!("{} {}", summary.title, summary.short_text).to_lowercase();
+    let short_trimmed = summary.short_text.trim();
 
     if summary.title.trim().len() < 8 {
         return Err(GenerationError::new(
@@ -225,6 +251,24 @@ pub fn validate_summary_content(summary: &SummaryProviderResponse) -> Result<(),
                 serde_json::json!({ "pattern": pattern }),
             ));
         }
+    }
+
+    if short_trimmed.to_lowercase().starts_with("tendance") {
+        return Err(GenerationError::new(
+            GenerationErrorCode::ReadingQualityFailed,
+            "summary must not start with 'Tendance'",
+        ));
+    }
+
+    if interpretation_profile_code == Some("natal_premium_plus")
+        && !ASTRO_SUMMARY_MARKERS
+            .iter()
+            .any(|marker| corpus.contains(marker))
+    {
+        return Err(GenerationError::new(
+            GenerationErrorCode::ReadingQualityFailed,
+            "premium plus summary lacks astrological framing marker",
+        ));
     }
 
     Ok(())
@@ -254,7 +298,9 @@ fn build_summary_messages(
          Output JSON with title and short_text only. \
          The summary must synthesize dominant themes from the chapter excerpts — \
          never mention pipelines, generation modes, or technical process. \
-         Frame the reading as symbolic and interpretive (use words such as symbolique, evoque, suggere, invite, tendance, peut)."
+         Frame the reading as symbolic and interpretive. Prefer phrasing such as \
+         « Cette lecture symbolique suggère… », « L'ensemble invite… », « Le thème évoque… ». \
+         Use natal vocabulary (thème, carte natale, configuration) — never divinatory wording (tirage, oracle)."
     );
 
     let user = format!(
@@ -309,7 +355,7 @@ mod tests {
             title: "Lecture natal_prompter — synthese".into(),
             short_text: "Synthese produite par generation chapitre par chapitre.".into(),
         };
-        assert!(validate_summary_content(&summary).is_err());
+        assert!(validate_summary_content(&summary, None).is_err());
     }
 
     #[test]
@@ -321,6 +367,28 @@ mod tests {
                 Cette configuration symbolique invite a accueillir les transitions interieures \
                 comme des espaces de croissance authentique.".into(),
         };
-        assert!(validate_summary_content(&summary).is_ok());
+        assert!(validate_summary_content(&summary, None).is_ok());
+    }
+
+    #[test]
+    fn premium_plus_summary_requires_astro_marker() {
+        let summary = SummaryProviderResponse {
+            title: "Une dynamique personnelle".into(),
+            short_text: "Vous avancez avec assurance et une grande sensibilite aux relations \
+                humaines, en cultivant des liens authentiques et une ecoute attentive des autres \
+                dans votre vie quotidienne et professionnelle.".into(),
+        };
+        assert!(
+            validate_summary_content(&summary, Some("natal_premium_plus")).is_err(),
+            "summary without natal marker must fail for premium_plus"
+        );
+        let with_marker = SummaryProviderResponse {
+            title: "Une lecture symbolique".into(),
+            short_text: summary.short_text.replace(
+                "Vous avancez",
+                "Cette lecture symbolique suggere que vous avancez",
+            ),
+        };
+        assert!(validate_summary_content(&with_marker, Some("natal_premium_plus")).is_ok());
     }
 }

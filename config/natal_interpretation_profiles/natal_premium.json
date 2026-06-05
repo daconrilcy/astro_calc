@@ -24,6 +24,12 @@
     "talents",
     "growth_path"
   ],
+  "body_structure": {
+    "paragraph_count": 4,
+    "paragraph_min_words": 40,
+    "paragraph_max_words": 90,
+    "style": "compact_flow"
+  },
   "chapter_word_targets": {
     "min": 80,
     "target": 150,

@@ -98,6 +98,9 @@ impl<'a> AstroLabelHumanizer<'a> {
                 return label;
             }
         }
+        if let Some(label) = label_from_fact_id(&fact.id, self, language, facts) {
+            return label;
+        }
         fact.label.clone()
     }
 
@@ -336,7 +339,71 @@ fn label_from_fact_id(
     if let Some(label) = humanize_ruler_fact_id(fact_id, humanizer, locale) {
         return Some(label);
     }
+    if let Some((kind, code)) = fact_id.split_once(':') {
+        match kind {
+            "element_balance" => {
+                return humanizer
+                    .catalog
+                    .element_balance_label(locale, code)
+                    .map(|p| p.display_label.clone());
+            }
+            "modality_balance" => {
+                return humanizer
+                    .catalog
+                    .modality_balance_label(locale, code)
+                    .map(|p| p.display_label.clone());
+            }
+            "sect_condition" => {
+                return humanizer
+                    .catalog
+                    .sect_label(locale, code)
+                    .map(|p| p.display_label.clone());
+            }
+            "house_emphasis" if fact_id.starts_with("house_emphasis:house:") => {
+                let house = fact_id.rsplit(':').next()?.parse().ok()?;
+                return humanizer
+                    .catalog
+                    .house_theme_label(locale, house)
+                    .map(|p| p.display_label.clone());
+            }
+            "dominant_planet" => {
+                let object = humanizer.object_label(locale, code);
+                return Some(match locale {
+                    "fr" => format!("{object} dominante"),
+                    "es" => format!("{object} dominante"),
+                    "de" => format!("{object} dominant"),
+                    _ => format!("{object} dominant"),
+                });
+            }
+            "signal" if fact_id.starts_with("signal:cluster:") => {
+                return humanize_cluster_signal(humanizer, fact_id, locale);
+            }
+            _ => {}
+        }
+    }
     parse_angle_fact_id(fact_id).map(|(angle, sign)| humanize_angle_sign_label(humanizer, locale, &angle, &sign))
+}
+
+fn humanize_cluster_signal(
+    humanizer: &AstroLabelHumanizer<'_>,
+    fact_id: &str,
+    locale: &str,
+) -> Option<String> {
+    let rest = fact_id.strip_prefix("signal:cluster:")?;
+    let parts: Vec<&str> = rest.split(':').collect();
+    if parts.len() < 2 {
+        return None;
+    }
+    let sign = humanizer.sign_label(locale, parts[0]);
+    let house = parts[1].strip_prefix("house_").and_then(|h| h.parse::<u8>().ok());
+    Some(match (locale, house) {
+        ("fr", Some(h)) => format!("Concentration en {sign} en maison {h}"),
+        ("es", Some(h)) => format!("Concentración en {sign} en casa {h}"),
+        ("de", Some(h)) => format!("Konzentration in {sign} im Haus {h}"),
+        (_, Some(h)) => format!("Concentration in {sign} in house {h}"),
+        ("fr", None) => format!("Concentration en {sign}"),
+        _ => format!("Concentration in {sign}"),
+    })
 }
 
 /// `ruler:angle:mc:sun`, `ruler:angle:descendant:venus`, `ruler:dominant_house:house_1:mars`
@@ -516,16 +583,36 @@ mod tests {
     };
 
     fn test_catalog() -> CanonicalCatalog {
-        let mut objects = bootstrap_astro_object_labels();
-        let mut signs = bootstrap_zodiac_sign_labels();
-        bootstrap_extra_object_sign_labels(&mut objects, &mut signs);
-        CanonicalCatalog {
-            astro_object_labels: objects,
-            zodiac_sign_labels: signs,
-            aspect_type_labels: bootstrap_aspect_type_labels(),
-            writing_locales: bootstrap_writing_locales(),
-            ..CanonicalCatalog::default()
-        }
+        let mut c = CanonicalCatalog::default();
+        c.astro_object_labels = bootstrap_astro_object_labels();
+        c.zodiac_sign_labels = bootstrap_zodiac_sign_labels();
+        bootstrap_extra_object_sign_labels(&mut c.astro_object_labels, &mut c.zodiac_sign_labels);
+        c.aspect_type_labels = bootstrap_aspect_type_labels();
+        c.writing_locales = bootstrap_writing_locales();
+        astral_llm_infra::enrich_catalog_from_bootstrap(&mut c);
+        c
+    }
+
+    #[test]
+    fn humanizes_balance_and_dominant_labels_in_french() {
+        let catalog = test_catalog();
+        let h = AstroLabelHumanizer::new(&catalog);
+        assert_eq!(
+            h.label_for_fact_id("element_balance:earth", "fr", None).as_deref(),
+            Some("Dominante élément Terre")
+        );
+        assert_eq!(
+            h.label_for_fact_id("modality_balance:cardinal", "fr", None).as_deref(),
+            Some("Dominante cardinale")
+        );
+        assert_eq!(
+            h.label_for_fact_id("dominant_planet:saturn", "fr", None).as_deref(),
+            Some("Saturne dominante")
+        );
+        assert_eq!(
+            h.label_for_fact_id("sect_condition:night", "fr", None).as_deref(),
+            Some("Thème nocturne")
+        );
     }
 
     #[test]

@@ -172,7 +172,9 @@ function Assert-PremiumPlusReading {
         $Reading,
         [string[]]$ExpectedChapterOrder,
         [int]$MinWords,
-        [int]$MinBasis
+        [int]$MinBasis,
+        [int]$MinWordsSynthesis = 0,
+        [int]$MinBasisSynthesis = 0
     )
 
     $failures = [System.Collections.Generic.List[string]]::new()
@@ -213,9 +215,20 @@ function Assert-PremiumPlusReading {
             $failures.Add("Ordre chapitre index $i : attendu '$expected', recu '$($ch.code)'.")
         }
 
+        $minWordsCh = if ($ch.code -eq "synthesis" -and $MinWordsSynthesis -gt 0) {
+            $MinWordsSynthesis
+        } else {
+            $MinWords
+        }
+        $minBasisCh = if ($ch.code -eq "synthesis" -and $MinBasisSynthesis -gt 0) {
+            $MinBasisSynthesis
+        } else {
+            $MinBasis
+        }
+
         $words = Get-WordCount -Text $ch.body
-        if ($words -lt $MinWords) {
-            $failures.Add("Chapitre '$($ch.code)' trop court : $words mots (min $MinWords).")
+        if ($words -lt $minWordsCh) {
+            $failures.Add("Chapitre '$($ch.code)' trop court : $words mots (min $minWordsCh).")
         }
 
         $basisCount = 0
@@ -224,9 +237,9 @@ function Assert-PremiumPlusReading {
                     $_.factor -and -not [string]::IsNullOrWhiteSpace($_.factor)
                 }).Count
         }
-        if ($basisCount -lt $MinBasis) {
+        if ($basisCount -lt $minBasisCh) {
             $failures.Add(
-                "Chapitre '$($ch.code)' astro_basis insuffisant : $basisCount (min $MinBasis)."
+                "Chapitre '$($ch.code)' astro_basis insuffisant : $basisCount (min $minBasisCh)."
             )
         }
     }
@@ -266,6 +279,19 @@ if ($MinAstroBasisPerChapter -le 0) {
     $MinAstroBasisPerChapter = [Math]::Max($minQuality, $minEvidence)
 }
 
+$MinWordsSynthesis = 0
+if ($profileDoc.quality.min_words_synthesis) {
+    $MinWordsSynthesis = [int]$profileDoc.quality.min_words_synthesis
+} else {
+    $MinWordsSynthesis = [int]$profileDoc.chapter_word_targets.min
+}
+$MinBasisSynthesis = 0
+if ($profileDoc.quality.min_astro_basis_refs_synthesis) {
+    $MinBasisSynthesis = [int]$profileDoc.quality.min_astro_basis_refs_synthesis
+} else {
+    $MinBasisSynthesis = $MinAstroBasisPerChapter
+}
+
 if ([string]::IsNullOrWhiteSpace($RequestPath)) {
     $RequestPath = Join-Path $repoRoot "request-premium-plus-rich.json"
 }
@@ -284,7 +310,7 @@ if ([string]::IsNullOrWhiteSpace($ApiKey)) {
 Write-Host "=== Test profil natal_premium_plus ==="
 Write-Host "Profil   : $($profileDoc.profile_code)"
 Write-Host "Chapitres: $($expectedChapters -join ', ')"
-Write-Host "Seuils   : min $MinWordsPerChapter mots/ch., min $MinAstroBasisPerChapter astro_basis/ch."
+Write-Host "Seuils   : domaine min $MinWordsPerChapter mots, $MinAstroBasisPerChapter basis ; synthesis min $MinWordsSynthesis mots, $MinBasisSynthesis basis"
 Write-Host "API      : $BaseUrl"
 Write-Host "Timeouts : client ${TimeoutSec}s, engine.timeout_ms ${EngineTimeoutMs} ms par appel LLM"
 $dotEnvPath = Join-Path $repoRoot ".env"
@@ -382,7 +408,9 @@ $failures = Assert-PremiumPlusReading `
     -Reading $apiResponse `
     -ExpectedChapterOrder $expectedChapters `
     -MinWords $MinWordsPerChapter `
-    -MinBasis $MinAstroBasisPerChapter
+    -MinBasis $MinAstroBasisPerChapter `
+    -MinWordsSynthesis $MinWordsSynthesis `
+    -MinBasisSynthesis $MinBasisSynthesis
 
 Write-Host "=== Validation structure premium_plus ==="
 Write-Host "Fichier : $OutputPath"
@@ -398,8 +426,10 @@ foreach ($ch in $readingContent.chapters) {
     $b = if ($ch.astro_basis) { $ch.astro_basis.Count } else { 0 }
     $totalWords += $w
     $totalBasis += $b
-    $okW = if ($w -ge $MinWordsPerChapter) { "OK" } else { "!!" }
-    $okB = if ($b -ge $MinAstroBasisPerChapter) { "OK" } else { "!!" }
+    $minW = if ($ch.code -eq "synthesis") { $MinWordsSynthesis } else { $MinWordsPerChapter }
+    $minB = if ($ch.code -eq "synthesis") { $MinBasisSynthesis } else { $MinAstroBasisPerChapter }
+    $okW = if ($w -ge $minW) { "OK" } else { "!!" }
+    $okB = if ($b -ge $minB) { "OK" } else { "!!" }
     Write-Host ("  {0,-22} {1,4} mots [{2}]  {3,2} basis [{4}]" -f $ch.code, $w, $okW, $b, $okB)
 }
 Write-Host ("  {0,-22} {1,4} mots (corps)  {2,2} basis (total)" -f "TOTAL", $totalWords, $totalBasis)

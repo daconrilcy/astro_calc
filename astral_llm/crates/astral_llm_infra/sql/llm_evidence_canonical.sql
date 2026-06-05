@@ -43,6 +43,18 @@ CREATE TABLE IF NOT EXISTS llm_premium_evidence_policies (
 ALTER TABLE llm_premium_evidence_policies
     ADD COLUMN IF NOT EXISTS max_supporting_semantic_chapters INTEGER NOT NULL DEFAULT 3;
 
+CREATE TABLE IF NOT EXISTS llm_chapter_evidence_exclusions (
+    id SERIAL PRIMARY KEY,
+    rule_code TEXT NOT NULL UNIQUE,
+    chapter_code TEXT NOT NULL,
+    kind_code TEXT,
+    object_code TEXT,
+    fact_id_contains TEXT,
+    global_filler_only BOOLEAN NOT NULL DEFAULT false,
+    global_filler_allow_contains TEXT[] NOT NULL DEFAULT '{}',
+    is_active BOOLEAN NOT NULL DEFAULT true
+);
+
 CREATE TABLE IF NOT EXISTS llm_evidence_requirements (
     id SERIAL PRIMARY KEY,
     requirement_code TEXT NOT NULL UNIQUE,
@@ -83,7 +95,7 @@ INSERT INTO llm_premium_evidence_policies (
     max_supporting_semantic_chapters
 ) VALUES
     ('natal_premium', 4, 2, 1, 0.60, false, 3, 4, 2, 5, 3),
-    ('natal_premium_plus', 6, 3, 2, 0.45, false, 3, 5, 2, 6, 2)
+    ('natal_premium_plus', 6, 3, 2, 0.45, false, 3, 5, 2, 5, 2)
 ON CONFLICT (product_code) DO UPDATE SET
     min_evidence_per_chapter = EXCLUDED.min_evidence_per_chapter,
     min_distinct_kind_families = EXCLUDED.min_distinct_kind_families,
@@ -155,6 +167,17 @@ INSERT INTO llm_chapter_evidence_slots (chapter_code, slot_role, kind_code, obje
     ('synthesis', 'supporting', 'aspect', NULL, NULL, 50, 2, false),
     ('synthesis', 'nuance', 'house_axis', NULL, NULL, 60, 1, false),
     ('synthesis', 'nuance', 'sect_condition', NULL, NULL, 70, 1, false);
+
+INSERT INTO llm_chapter_evidence_exclusions (
+    rule_code, chapter_code, kind_code, object_code, fact_id_contains,
+    global_filler_only, global_filler_allow_contains
+) VALUES
+    ('identity_no_sun', 'identity', NULL, 'sun', NULL, false, ARRAY[]::text[]),
+    ('relationships_no_mc_ruler', 'relationships', 'house_ruler', NULL, ':mc:', false, ARRAY[]::text[]),
+    ('family_roots_global_filler', 'family_roots', NULL, NULL, NULL, true, ARRAY[':house:4', ':moon:', ':ic:']),
+    ('communication_no_house_axis', 'communication_mind', 'house_axis', NULL, NULL, false, ARRAY[]::text[]),
+    ('communication_no_private_public', 'communication_mind', NULL, NULL, 'private_public', false, ARRAY[]::text[])
+ON CONFLICT (rule_code) DO NOTHING;
 
 INSERT INTO llm_evidence_requirements (
     requirement_code, chapter_code, accepted_kind_codes, accepted_object_codes,

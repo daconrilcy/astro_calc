@@ -6,6 +6,7 @@ use astral_llm_domain::{
         ChapterEvidencePack, ChapterEvidenceSlot, EvidenceRequirementSeverity, EvidenceSlotRole,
         InterpretiveEvidence, InterpretiveEvidencePool, PremiumEvidencePolicy, KIND_DOMAIN_SCORE,
     },
+    interpretation_profile::SYNTHESIS_CHAPTER_CODE,
     GenerationError, GenerationErrorCode,
 };
 use astral_llm_infra::EvidenceCanonicalCatalog;
@@ -129,15 +130,21 @@ impl ChapterEvidencePlanner {
             &prior_avoid_ref,
         );
 
-        let avoid_repeating = prior_usage.build_avoid_repeating(policy);
+        let mut avoid_repeating = prior_usage.build_avoid_repeating(policy);
+        if chapter_code == SYNTHESIS_CHAPTER_CODE {
+            const SYNTHESIS_MAX_AVOID_REPEATING: usize = 2;
+            avoid_repeating.truncate(SYNTHESIS_MAX_AVOID_REPEATING);
+        }
 
-        let pack = ChapterEvidencePack {
+        let mut pack = ChapterEvidencePack {
             chapter_code: chapter_code.to_string(),
             core,
             supporting,
             nuance,
             avoid_repeating,
         };
+
+        trim_excess_global_filler(&mut pack, chapter_code, policy.min_evidence_per_chapter);
 
         validate_pack_structure(
             &pack,
@@ -218,26 +225,62 @@ fn validate_no_avoid_in_active_slots(pack: &ChapterEvidencePack) -> Result<(), G
     Ok(())
 }
 
-/// Exclusions par chapitre (matrice editorial) : le Soleil sort de identity (reserve a career).
-fn chapter_excludes_candidate(chapter_code: &str, ev: &InterpretiveEvidence) -> bool {
-    if chapter_code == "identity" {
-        let sun_key = ev
-            .object_code
-            .as_deref()
-            .is_some_and(|o| o == "sun")
-            || ev.semantic_fact_key.contains(":sun:")
-            || ev.fact_id.contains(":sun:");
-        if sun_key {
-            return true;
+const MAX_GLOBAL_FILLER_PER_CHAPTER: usize = 2;
+
+/// Retire les fillers globaux en surplus sans descendre sous le minimum du chapitre.
+fn trim_excess_global_filler(
+    pack: &mut ChapterEvidencePack,
+    chapter_code: &str,
+    min_required: u8,
+) {
+    if chapter_code == "synthesis" {
+        return;
+    }
+    loop {
+        let filler_count = pack
+            .supporting
+            .iter()
+            .chain(pack.nuance.iter())
+            .filter(|e| e.is_global_filler_for_chapter(chapter_code))
+            .count();
+        if filler_count <= MAX_GLOBAL_FILLER_PER_CHAPTER {
+            break;
+        }
+        if pack.total_count() <= min_required as usize {
+            break;
+        }
+        let remove_from_supporting = pack
+            .supporting
+            .iter()
+            .enumerate()
+            .filter(|(_, e)| e.is_global_filler_for_chapter(chapter_code))
+            .min_by(|(_, a), (_, b)| {
+                a.weight
+                    .partial_cmp(&b.weight)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .map(|(i, _)| (true, i));
+        let remove_from_nuance = pack
+            .nuance
+            .iter()
+            .enumerate()
+            .filter(|(_, e)| e.is_global_filler_for_chapter(chapter_code))
+            .min_by(|(_, a), (_, b)| {
+                a.weight
+                    .partial_cmp(&b.weight)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .map(|(i, _)| (false, i));
+        match (remove_from_supporting, remove_from_nuance) {
+            (Some((true, i)), _) => {
+                pack.supporting.remove(i);
+            }
+            (_, Some((false, i))) => {
+                pack.nuance.remove(i);
+            }
+            _ => break,
         }
     }
-    if chapter_code == "relationships"
-        && ev.kind_code == "house_ruler"
-        && (ev.fact_id.contains(":mc:") || ev.fact_id.contains("ruler:angle:mc:"))
-    {
-        return true;
-    }
-    false
 }
 
 fn supporting_semantic_cap_blocks(
@@ -288,12 +331,12 @@ fn pick_for_slot<'a>(
     pool: &InterpretiveEvidencePool,
 ) -> Vec<InterpretiveEvidence> {
     let cap_supporting = slot.slot_role == EvidenceSlotRole::Supporting;
-    let mut scored: Vec<_> = candidates
+    let scored: Vec<_> = candidates
         .iter()
         .filter(|e| !assigned.contains(&e.fact_id))
         .filter(|e| !assigned_semantic.contains(&e.semantic_fact_key))
         .filter(|e| !prior_avoid.contains(e.semantic_fact_key.as_str()))
-        .filter(|e| !chapter_excludes_candidate(chapter_code, e))
+        .filter(|e| !catalog.excludes_candidate(chapter_code, e))
         .filter(|e| e.kind_code != KIND_DOMAIN_SCORE)
         .filter(|e| {
             !cap_supporting
@@ -302,10 +345,42 @@ fn pick_for_slot<'a>(
                 )
         })
         .filter(|e| matches_slot(e, slot))
-        .map(|e| (*e, e.weight))
         .collect();
-    scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-    scored
+
+    let min_w = slot.min_weight;
+    let mut eligible: Vec<_> = scored
+        .iter()
+        .filter(|e| min_w <= 0.0 || e.weight >= min_w)
+        .copied()
+        .collect();
+    if eligible.is_empty() && !slot.required_if_available {
+        if let Some(best) = scored.first() {
+            tracing::warn!(
+                chapter = chapter_code,
+                slot_kind = ?slot.kind_code,
+                fact_id = %best.fact_id,
+                weight = best.weight,
+                min_weight = min_w,
+                "evidence slot fell back below min_weight"
+            );
+            eligible.push(*best);
+        }
+    }
+
+    let mut ranked: Vec<_> = eligible
+        .into_iter()
+        .map(|e| (e, e.chapter_relevance_score(chapter_code)))
+        .collect();
+    ranked.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(
+                b.0.weight
+                    .partial_cmp(&a.0.weight)
+                    .unwrap_or(std::cmp::Ordering::Equal),
+            )
+    });
+    ranked
         .into_iter()
         .take(max as usize)
         .map(|(e, _)| (*e).clone())
@@ -417,6 +492,7 @@ fn collect_families(
 fn eligible_candidates<'a>(
     candidates: &[&'a InterpretiveEvidence],
     chapter: &str,
+    catalog: &EvidenceCanonicalCatalog,
     assigned: &HashSet<String>,
     assigned_semantic: &HashSet<String>,
     prior_avoid: &HashSet<&str>,
@@ -429,7 +505,7 @@ fn eligible_candidates<'a>(
         .filter(|e| !assigned.contains(&e.fact_id))
         .filter(|e| !assigned_semantic.contains(&e.semantic_fact_key))
         .filter(|e| !prior_avoid.contains(e.semantic_fact_key.as_str()))
-        .filter(|e| !chapter_excludes_candidate(chapter, e))
+        .filter(|e| !catalog.excludes_candidate(chapter, e))
         .filter(|e| e.kind_code != KIND_DOMAIN_SCORE)
         .filter(|e| {
             !require_new_family || !families.contains(&e.family.as_str().to_string())
@@ -578,6 +654,7 @@ fn fill_minimums(
         let pool: Vec<_> = eligible_candidates(
             candidates,
             chapter,
+            catalog,
             assigned,
             assigned_semantic,
             prior_avoid,
@@ -611,7 +688,7 @@ fn fill_minimums(
                     .filter(|e| !assigned.contains(&e.fact_id))
                     .filter(|e| !assigned_semantic.contains(&e.semantic_fact_key))
                     .filter(|e| !prior_avoid.contains(e.semantic_fact_key.as_str()))
-                    .filter(|e| !chapter_excludes_candidate(chapter, e))
+                    .filter(|e| !catalog.excludes_candidate(chapter, e))
                     .filter(|e| e.kind_code == *kind)
                     .filter(|e| !families.contains(&e.family.as_str().to_string()))
                     .filter(cap_ok)
@@ -650,6 +727,7 @@ fn fill_minimums(
         let pool: Vec<_> = eligible_candidates(
             candidates,
             chapter,
+            catalog,
             assigned,
             assigned_semantic,
             prior_avoid,

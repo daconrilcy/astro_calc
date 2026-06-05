@@ -52,12 +52,13 @@ impl ReadingPlanBuilder {
             if ctx.profile.has_final_synthesis_chapter()
                 && !chapters.iter().any(|c| c.code == SYNTHESIS_CHAPTER_CODE)
             {
+                let (syn_min, syn_target, syn_max) = ctx.profile.synthesis_word_targets();
                 chapters.push(ReadingPlanChapter {
                     code: SYNTHESIS_CHAPTER_CODE.into(),
                     title: humanize_domain(SYNTHESIS_CHAPTER_CODE),
-                    min_words: min_w as u32,
-                    target_words: target_w as u32,
-                    max_words: max_w as u32,
+                    min_words: syn_min as u32,
+                    target_words: syn_target as u32,
+                    max_words: syn_max as u32,
                 });
             }
         }
@@ -219,7 +220,7 @@ mod tests {
         let plan = ReadingPlanBuilder::build(&request, &domains, Some(&ctx));
         assert_eq!(plan.chapters.len(), 9);
         assert_eq!(plan.chapters.last().map(|c| c.code.as_str()), Some("synthesis"));
-        assert_eq!(plan.chapters[0].min_words, 420);
+        assert_eq!(plan.chapters[0].min_words, 520);
     }
 
     #[test]

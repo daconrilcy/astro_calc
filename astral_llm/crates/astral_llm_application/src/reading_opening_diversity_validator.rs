@@ -3,6 +3,7 @@
 use astral_llm_domain::{
     chapter_orchestration::ReadingPlanChapter,
     generation_response::ReadingChapter,
+    interpretation_profile::SYNTHESIS_CHAPTER_CODE,
     GenerationError, GenerationErrorCode,
 };
 
@@ -21,10 +22,27 @@ pub struct OpeningViolation {
     pub kind: String,
 }
 
+impl OpeningViolation {
+    pub fn is_blocking(&self) -> bool {
+        self.kind.starts_with("chapter_opening_duplicate_of:")
+    }
+}
+
 impl ReadingOpeningDiversityValidator {
     pub fn detect(chapters: &[ReadingChapter], locale: &str) -> Vec<OpeningViolation> {
+        Self::detect_all(chapters, locale)
+            .into_iter()
+            .filter(|v| v.is_blocking())
+            .collect()
+    }
+
+    pub fn detect_all(chapters: &[ReadingChapter], locale: &str) -> Vec<OpeningViolation> {
         detect_duplicate_openings(chapters, locale)
             .into_iter()
+            .filter(|(code, _, kind)| {
+                code != SYNTHESIS_CHAPTER_CODE
+                    && (kind.contains("duplicate") || kind.contains("stock_opening"))
+            })
             .map(|(code, phrase, kind)| OpeningViolation {
                 chapter_code: code,
                 phrase,
@@ -33,16 +51,30 @@ impl ReadingOpeningDiversityValidator {
             .collect()
     }
 
+    pub fn detect_warnings(chapters: &[ReadingChapter], locale: &str) -> Vec<OpeningViolation> {
+        Self::detect_all(chapters, locale)
+            .into_iter()
+            .filter(|v| !v.is_blocking())
+            .collect()
+    }
+
     pub fn validate(chapters: &[ReadingChapter], locale: &str) -> Result<(), GenerationError> {
-        let violations = Self::detect(chapters, locale);
-        if violations.is_empty() {
+        let blocking = Self::detect(chapters, locale);
+        let warnings = Self::detect_warnings(chapters, locale);
+        if !warnings.is_empty() {
+            tracing::warn!(
+                count = warnings.len(),
+                "non-blocking opening diversity warnings"
+            );
+        }
+        if blocking.is_empty() {
             return Ok(());
         }
         Err(GenerationError::with_details(
             GenerationErrorCode::ReadingQualityFailed,
-            "Repeated chapter or paragraph openings across the reading",
+            "Repeated chapter openings across the reading",
             serde_json::json!({
-                "violations": violations.iter().map(|v| serde_json::json!({
+                "violations": blocking.iter().map(|v| serde_json::json!({
                     "chapter": v.chapter_code,
                     "phrase": v.phrase,
                     "kind": v.kind,
@@ -59,16 +91,17 @@ impl ReadingOpeningDiversityValidator {
         violations: &[OpeningViolation],
     ) {
         let prior_bodies: Vec<&str> = prior_chapters.iter().map(|c| c.body.as_str()).collect();
-        let avoid = openings_to_avoid_from_prior(&prior_bodies, locale, 24);
+        let avoid = openings_to_avoid_from_prior(&prior_bodies, locale, 10);
         let chapter_violations: Vec<_> = violations
             .iter()
             .filter(|v| v.chapter_code == chapter.code)
             .collect();
 
         bundle.task_instructions.push_str(&format!(
-            "\n\nREPAIR (opening diversity) — chapter '{}': rewrite the entire body. \
+            "\n\nREPAIR (opening diversity) — chapter '{}': adjust openings only. \
              First 5 words of the chapter and first 4 words of EACH paragraph must be unique \
-             across the whole reading. Do not paraphrase a banned opening: change structure.",
+             across the whole reading. Do not paraphrase a banned opening: change structure. \
+             Keep fact_ids, title, and overall length.",
             chapter.code
         ));
 
@@ -127,5 +160,43 @@ impl ReadingOpeningDiversityValidator {
 
     pub fn opening_phrase_for_chapter(chapter: &ReadingChapter, locale: &str) -> String {
         chapter_opening_phrase(&chapter.body, locale)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use astral_llm_domain::generation_response::{ConfidenceLevel, ReadingChapter};
+
+    fn chapter(code: &str, body: &str) -> ReadingChapter {
+        ReadingChapter {
+            code: code.into(),
+            title: code.into(),
+            body: body.into(),
+            astro_basis: vec![],
+            confidence: ConfidenceLevel::Medium,
+            safety_flags: vec![],
+        }
+    }
+
+    #[test]
+    fn paragraph_duplicate_is_warning_not_blocking() {
+        let body_a = "Intro A.\n\nCette dynamique invite une lecture \
+            singuliere du theme.\n\nSuite A.";
+        let body_b = "Intro B.\n\nCette dynamique invite une autre \
+            lecture du meme theme.\n\nSuite B.";
+        let chapters = vec![chapter("identity", body_a), chapter("career", body_b)];
+        assert!(ReadingOpeningDiversityValidator::detect_warnings(&chapters, "fr").len() >= 1);
+        assert!(ReadingOpeningDiversityValidator::validate(&chapters, "fr").is_ok());
+    }
+
+    #[test]
+    fn chapter_opening_duplicate_blocks_validation() {
+        let opening = "Des le premier regard votre carte revele une force.";
+        let chapters = vec![
+            chapter("identity", &format!("{opening}\n\nSuite.")),
+            chapter("career", &format!("{opening}\n\nAutre suite.")),
+        ];
+        assert!(ReadingOpeningDiversityValidator::validate(&chapters, "fr").is_err());
     }
 }

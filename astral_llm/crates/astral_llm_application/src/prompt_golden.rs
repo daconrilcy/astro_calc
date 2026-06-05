@@ -14,6 +14,8 @@ use astral_llm_infra::{
 };
 
 use crate::astro_payload_normalizer::AstroPayloadNormalizer;
+use crate::chapter_writing_guidance::ChapterWritingGuidance;
+use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
 use crate::prompt_compiler::{PromptCompilationInput, PromptCompiler};
 
 const FORBIDDEN_SUBSTRINGS: &[&str] = &[
@@ -135,6 +137,147 @@ pub fn assert_compiled_prompt_is_safe(prompts_root: &std::path::Path) -> Result<
     Ok(())
 }
 
+pub fn assert_premium_plus_prompt_structure(prompts_root: &std::path::Path) -> Result<(), String> {
+    let profile = astral_llm_infra::bootstrap_interpretation_profiles()
+        .get("natal_premium_plus")
+        .expect("natal_premium_plus")
+        .clone();
+    let ctx = ResolvedInterpretationContext {
+        profile: profile.clone(),
+        effective_policy: profile.to_product_generation_policy(),
+    };
+    let catalog = std::sync::Arc::new({
+        let mut c = CanonicalCatalog::default();
+        astral_llm_infra::enrich_catalog_from_bootstrap(&mut c);
+        c
+    });
+    let payload = AstroCalculationPayload {
+        contract_version: "natal_structured_v13".into(),
+        chart_type: "natal".into(),
+        data: serde_json::json!({
+            "planets": { "sun": { "sign": "capricorn", "house": 2 } }
+        }),
+    };
+    let facts = AstroPayloadNormalizer::normalize(
+        &payload,
+        &PrivacyPolicy::default(),
+        &catalog,
+        "fr",
+    )
+    .map_err(|e| e.to_string())?;
+    use astral_llm_domain::interpretive_evidence::{
+        ChapterEvidencePack, EvidenceKindFamily, InterpretiveEvidence, SlotEligibility,
+    };
+    let pack = ChapterEvidencePack {
+        chapter_code: "identity".into(),
+        core: vec![InterpretiveEvidence {
+            fact_id: "placement:sun:capricorn:house:2".into(),
+            semantic_fact_key: "placement:sun:capricorn:house:2".into(),
+            kind_code: "placement".into(),
+            family: EvidenceKindFamily::Placement,
+            label: "Soleil en Capricorne en maison 2".into(),
+            interpretive_hint: String::new(),
+            chapter_affinity: vec!["identity".into()],
+            weight: 0.9,
+            slot_eligibility: SlotEligibility {
+                can_be_core: true,
+                can_be_supporting: true,
+                can_be_nuance: false,
+            },
+            object_code: Some("sun".into()),
+            sign_code: Some("capricorn".into()),
+            house_number: Some(2),
+        }],
+        supporting: vec![],
+        nuance: vec![],
+        avoid_repeating: vec![],
+    };
+
+    let request = GenerateReadingRequest {
+        request_id: None,
+        idempotency_key: None,
+        product_context: ProductContext {
+            product_code: "natal_prompter".into(),
+            interpretation_profile_code: Some("natal_premium_plus".into()),
+            user_language: "fr".into(),
+            audience_level: AudienceLevel::Intermediate,
+        },
+        astro_result: payload,
+        astrologer_profile: AstrologerProfile {
+            profile_id: None,
+            name: None,
+            tone: ToneProfile::Warm,
+            jargon_level: JargonLevel::Balanced,
+            wording_style: WordingStyle::Clear,
+            preferred_domains: vec![],
+            forbidden_wording: vec![],
+            custom_instructions: None,
+        },
+        engine: EngineParams::default(),
+        response_contract: ResponseContract {
+            output_schema_version: "natal_reading_v1".into(),
+            generation_mode: GenerationMode::ChapterOrchestrated,
+            format: OutputFormat::StructuredJson,
+            chapters: vec![],
+            global_max_tokens: None,
+            include_astro_sources: true,
+            include_legal_disclaimer: true,
+        },
+        safety_policy: None,
+    };
+
+    let compiler = PromptCompiler::new(prompts_root);
+    let safety = SafetyPolicy::mandatory();
+    let mut bundle = compiler
+        .compile(PromptCompilationInput {
+            request: &request,
+            safety_policy: &safety,
+            astro_facts: &facts,
+            selected_domains: &["identity".into()],
+            chapter_code: Some("identity"),
+            chapter_evidence_pack: Some(&pack),
+            catalog: &catalog,
+            interpretation: Some(&ctx),
+        })
+        .map_err(|e| format!("compile failed: {e}"))?;
+
+    ChapterWritingGuidance::append_upstream_directives(
+        &mut bundle,
+        &astral_llm_domain::chapter_orchestration::ReadingPlanChapter {
+            code: "identity".into(),
+            title: "Identite".into(),
+            min_words: 520,
+            target_words: 650,
+            max_words: 850,
+        },
+        &[],
+        Some(&pack),
+        "fr",
+        Some(&ctx),
+    );
+
+    let task = bundle.task_instructions.to_lowercase();
+    if task.contains("4 paragraphes") {
+        return Err("premium_plus prompt must not contain '4 paragraphes'".into());
+    }
+    if !task.contains("exactly 6 paragraphs") {
+        return Err("premium_plus prompt must contain exactly 6 paragraphs".into());
+    }
+    if !task.contains("80") || !task.contains("120") {
+        return Err("premium_plus prompt must contain paragraph word range".into());
+    }
+    if !task.contains("target ~650") {
+        return Err("premium_plus prompt must contain target ~650".into());
+    }
+    let structure_blocks = task.matches("--- chapter writing structure").count();
+    if structure_blocks != 1 {
+        return Err(format!(
+            "premium_plus prompt must contain exactly one structure block, found {structure_blocks}"
+        ));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -144,4 +287,149 @@ mod tests {
         let prompts = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../prompts");
         assert_compiled_prompt_is_safe(&prompts).expect("golden prompt safety");
     }
+
+    #[test]
+    fn premium_plus_compiled_prompt_does_not_contain_4_paragraphs() {
+        let prompts = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../prompts");
+        assert_premium_plus_prompt_structure(&prompts)
+            .expect("premium_plus prompt structure golden");
+    }
+
+    #[test]
+    fn premium_compact_prompt_has_single_structure_block() {
+        let prompts = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../prompts");
+        assert_premium_compact_prompt_structure(&prompts)
+            .expect("premium compact prompt structure golden");
+    }
+}
+
+pub fn assert_premium_compact_prompt_structure(prompts_root: &std::path::Path) -> Result<(), String> {
+    let profile = astral_llm_infra::bootstrap_interpretation_profiles()
+        .get("natal_premium")
+        .expect("natal_premium")
+        .clone();
+    let ctx = ResolvedInterpretationContext {
+        profile: profile.clone(),
+        effective_policy: profile.to_product_generation_policy(),
+    };
+    let catalog = std::sync::Arc::new({
+        let mut c = CanonicalCatalog::default();
+        astral_llm_infra::enrich_catalog_from_bootstrap(&mut c);
+        c
+    });
+    let payload = AstroCalculationPayload {
+        contract_version: "natal_structured_v13".into(),
+        chart_type: "natal".into(),
+        data: serde_json::json!({
+            "planets": { "sun": { "sign": "capricorn", "house": 2 } }
+        }),
+    };
+    let facts = AstroPayloadNormalizer::normalize(
+        &payload,
+        &PrivacyPolicy::default(),
+        &catalog,
+        "fr",
+    )
+    .map_err(|e| e.to_string())?;
+    use astral_llm_domain::interpretive_evidence::{
+        ChapterEvidencePack, EvidenceKindFamily, InterpretiveEvidence, SlotEligibility,
+    };
+    let pack = ChapterEvidencePack {
+        chapter_code: "identity".into(),
+        core: vec![InterpretiveEvidence {
+            fact_id: "placement:sun:capricorn:house:2".into(),
+            semantic_fact_key: "placement:sun:capricorn:house:2".into(),
+            kind_code: "placement".into(),
+            family: EvidenceKindFamily::Placement,
+            label: "Soleil".into(),
+            interpretive_hint: String::new(),
+            chapter_affinity: vec!["identity".into()],
+            weight: 0.9,
+            slot_eligibility: SlotEligibility {
+                can_be_core: true,
+                can_be_supporting: true,
+                can_be_nuance: false,
+            },
+            object_code: Some("sun".into()),
+            sign_code: Some("capricorn".into()),
+            house_number: Some(2),
+        }],
+        supporting: vec![],
+        nuance: vec![],
+        avoid_repeating: vec![],
+    };
+    let request = GenerateReadingRequest {
+        request_id: None,
+        idempotency_key: None,
+        product_context: ProductContext {
+            product_code: "natal_prompter".into(),
+            interpretation_profile_code: Some("natal_premium".into()),
+            user_language: "fr".into(),
+            audience_level: AudienceLevel::Intermediate,
+        },
+        astro_result: payload,
+        astrologer_profile: AstrologerProfile {
+            profile_id: None,
+            name: None,
+            tone: ToneProfile::Warm,
+            jargon_level: JargonLevel::Balanced,
+            wording_style: WordingStyle::Clear,
+            preferred_domains: vec![],
+            forbidden_wording: vec![],
+            custom_instructions: None,
+        },
+        engine: EngineParams::default(),
+        response_contract: ResponseContract {
+            output_schema_version: "natal_reading_v1".into(),
+            generation_mode: GenerationMode::ChapterOrchestrated,
+            format: OutputFormat::StructuredJson,
+            chapters: vec![],
+            global_max_tokens: None,
+            include_astro_sources: true,
+            include_legal_disclaimer: true,
+        },
+        safety_policy: None,
+    };
+    let compiler = PromptCompiler::new(prompts_root);
+    let safety = SafetyPolicy::mandatory();
+    let mut bundle = compiler
+        .compile(PromptCompilationInput {
+            request: &request,
+            safety_policy: &safety,
+            astro_facts: &facts,
+            selected_domains: &["identity".into()],
+            chapter_code: Some("identity"),
+            chapter_evidence_pack: Some(&pack),
+            catalog: &catalog,
+            interpretation: Some(&ctx),
+        })
+        .map_err(|e| format!("compile failed: {e}"))?;
+    ChapterWritingGuidance::append_upstream_directives(
+        &mut bundle,
+        &astral_llm_domain::chapter_orchestration::ReadingPlanChapter {
+            code: "identity".into(),
+            title: "Identite".into(),
+            min_words: 280,
+            target_words: 350,
+            max_words: 450,
+        },
+        &[],
+        Some(&pack),
+        "fr",
+        Some(&ctx),
+    );
+    let task = bundle.task_instructions.to_lowercase();
+    if task.contains("4 paragraphes") {
+        return Err("premium compact must not inject legacy chapter_structure.md (4 paragraphes)".into());
+    }
+    let structure_blocks = task.matches("--- chapter writing structure").count();
+    if structure_blocks != 1 {
+        return Err(format!(
+            "premium compact prompt must contain exactly one structure block, found {structure_blocks}"
+        ));
+    }
+    if !task.contains("exactly 4 paragraphs") {
+        return Err("premium compact prompt must contain exactly 4 paragraphs from body_structure".into());
+    }
+    Ok(())
 }

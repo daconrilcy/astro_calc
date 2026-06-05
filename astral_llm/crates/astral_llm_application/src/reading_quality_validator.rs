@@ -1,6 +1,7 @@
 use astral_llm_domain::{
     generation_request::AudienceLevel,
     generation_response::NatalReadingResponse,
+    interpretation_profile::SYNTHESIS_CHAPTER_CODE,
     output_contract::GenerationMode,
     GenerateReadingRequest, GenerationError, GenerationErrorCode,
 };
@@ -64,7 +65,18 @@ impl ReadingQualityValidator {
         let thresholds = thresholds_for_request(request, interpretation);
         let locale = AstroLabelHumanizer::locale_key(&request.product_context.user_language);
         let blocking = requires_blocking_quality_gate(request, interpretation);
-        Self::assess_with_thresholds(request, reading, &thresholds, locale, blocking)
+        let synthesis_min_astro = interpretation.map(|c| c.profile.synthesis_min_astro_basis_refs());
+        let synthesis_min_words = interpretation
+            .map(|c| c.profile.synthesis_word_targets().0 as usize);
+        Self::assess_with_thresholds(
+            request,
+            reading,
+            &thresholds,
+            locale,
+            blocking,
+            synthesis_min_astro,
+            synthesis_min_words,
+        )
     }
 
     pub fn assess_with_thresholds(
@@ -73,6 +85,8 @@ impl ReadingQualityValidator {
         thresholds: &PremiumQualityThresholds,
         locale: &str,
         blocking_gate: bool,
+        synthesis_min_astro_basis: Option<u8>,
+        synthesis_min_words: Option<usize>,
     ) -> ReadingQualityReport {
         let mut report = ReadingQualityReport::default();
         let mut warnings = Vec::new();
@@ -89,10 +103,15 @@ impl ReadingQualityValidator {
 
         for chapter in &reading.chapters {
             let words = word_count(&chapter.body);
-            if words < thresholds.min_words_per_chapter {
+            let min_words = if chapter.code == SYNTHESIS_CHAPTER_CODE {
+                synthesis_min_words.unwrap_or(thresholds.min_words_per_chapter)
+            } else {
+                thresholds.min_words_per_chapter
+            };
+            if words < min_words {
                 warnings.push(format!(
-                    "chapter '{}' too short ({words} words, min {})",
-                    chapter.code, thresholds.min_words_per_chapter
+                    "chapter '{}' too short ({words} words, min {min_words})",
+                    chapter.code
                 ));
             }
 
@@ -116,7 +135,13 @@ impl ReadingQualityValidator {
                 .iter()
                 .filter(|b| !b.factor.trim().is_empty())
                 .count();
-            if valid_basis < thresholds.min_astro_basis_per_chapter as usize {
+            let min_basis = if chapter.code == SYNTHESIS_CHAPTER_CODE {
+                synthesis_min_astro_basis
+                    .unwrap_or(thresholds.min_astro_basis_per_chapter) as usize
+            } else {
+                thresholds.min_astro_basis_per_chapter as usize
+            };
+            if valid_basis < min_basis {
                 warnings.push(format!(
                     "chapter '{}' astro_basis density too low ({valid_basis})",
                     chapter.code
@@ -440,6 +465,47 @@ mod tests {
     fn chapter_orchestrated_without_profile_does_not_block() {
         let request = premium_request();
         assert!(!requires_blocking_quality_gate(&request, None));
+    }
+
+    #[test]
+    fn premium_plus_rejects_short_synthesis_chapter() {
+        let profile = astral_llm_infra::bootstrap_interpretation_profiles()
+            .get("natal_premium_plus")
+            .expect("natal_premium_plus")
+            .clone();
+        let ctx = ResolvedInterpretationContext {
+            profile: profile.clone(),
+            effective_policy: profile.to_product_generation_policy(),
+        };
+        let mut request = premium_request();
+        request.product_context.interpretation_profile_code =
+            Some("natal_premium_plus".into());
+        let mut reading = good_reading();
+        let (syn_min, _, _) = profile.synthesis_word_targets();
+        let basis_item = astral_llm_domain::AstroBasisItem {
+            fact_id: Some("dominant_planet:jupiter".into()),
+            label: None,
+            factor: "jupiter".into(),
+            interpretive_role: "core".into(),
+        };
+        reading.chapters.push(ReadingChapter {
+            code: SYNTHESIS_CHAPTER_CODE.into(),
+            title: "Synthese".into(),
+            body: "Court.".into(),
+            astro_basis: vec![basis_item.clone(), basis_item.clone(), basis_item.clone(), basis_item],
+            confidence: ConfidenceLevel::Medium,
+            safety_flags: vec![],
+        });
+        let report = ReadingQualityValidator::assess(&request, &reading, Some(&ctx));
+        assert!(
+            report
+                .warnings
+                .iter()
+                .any(|w| w.contains("synthesis") && w.contains("too short")),
+            "expected synthesis too short warning, got {:?}",
+            report.warnings
+        );
+        assert!(syn_min > 2);
     }
 
     #[test]
