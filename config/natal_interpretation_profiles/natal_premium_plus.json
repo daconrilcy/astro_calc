@@ -13,6 +13,13 @@
     "default_model": "gpt-5.4-mini",
     "summary_model": "gpt-5-nano"
   },
+  "chapter_length_expansion_codes": [
+    "relationships",
+    "career",
+    "resources",
+    "communication_mind",
+    "growth_path"
+  ],
   "chapter_types": [
     "identity",
     "emotional_life",
@@ -32,7 +39,7 @@
   },
   "chapter_word_targets": {
     "min": 520,
-    "target": 650,
+    "target": 720,
     "max": 850
   },
   "quality": {
@@ -44,7 +51,7 @@
     "require_disclaimer": true,
     "min_astro_basis_refs_synthesis": 4,
     "min_words_synthesis": 520,
-    "target_words_synthesis": 650
+    "target_words_synthesis": 720
   },
   "evidence": {
     "enabled": true,
@@ -61,5 +68,5 @@
       "max_supporting_semantic_chapters": 2
     }
   },
-  "task_fragment": "Produisez une lecture natal premium approfondie, riche et editoriale chapitre par chapitre. Visez environ 650 mots par chapitre (minimum 520) avec une progression narrative incarnee. Pour ce chapitre, utilisez prioritairement les preuves CORE du pack astrologique fourni. Enrichissez avec les preuves SUPPORTING. Integrez au moins une preuve NUANCE lorsqu'elle est presente. Ne repetez pas mecaniquement les fact_id deja listes dans avoid_repeating. Ne citez pas les domain_score comme fondement principal du texte. Chaque astro_basis doit referencer un fact_id present dans le pack."
+  "task_fragment": "Produisez une lecture natal premium approfondie, riche et editoriale chapitre par chapitre. Visez environ 720 mots par chapitre (minimum 520, ne vous arretez pas au minimum) avec une progression narrative incarnee. Pour ce chapitre, utilisez prioritairement les preuves CORE du pack astrologique fourni. Enrichissez avec les preuves SUPPORTING. Integrez au moins une preuve NUANCE lorsqu'elle est presente. Ne repetez pas mecaniquement les fact_id deja listes dans avoid_repeating. Ne citez pas les domain_score comme fondement principal du texte. Chaque astro_basis doit referencer un fact_id present dans le pack."
 }

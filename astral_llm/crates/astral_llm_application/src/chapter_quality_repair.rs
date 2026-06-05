@@ -34,6 +34,30 @@ pub enum ChapterRepairKind {
     OpeningDiversity {
         violations: Vec<OpeningViolation>,
     },
+    SymbolicFraming,
+}
+
+pub fn safety_repair_from_error(err: &GenerationError) -> Option<ChapterRepairKind> {
+    if !matches!(
+        err.detail().code,
+        GenerationErrorCode::PostSafetyValidationFailed
+    ) {
+        return None;
+    }
+    let violations = err
+        .detail()
+        .details
+        .as_ref()
+        .and_then(|d| d.get("violations"))
+        .and_then(|v| v.as_array())?;
+    if violations.iter().any(|x| {
+        x.as_str()
+            .is_some_and(|s| s.contains("symbolic") || s.contains("interpretive framing"))
+    }) {
+        Some(ChapterRepairKind::SymbolicFraming)
+    } else {
+        None
+    }
 }
 
 pub struct ChapterOutcome {
@@ -323,5 +347,43 @@ pub fn append_repair_instructions(
                 chapter.code
             ));
         }
+        ChapterRepairKind::SymbolicFraming => {
+            bundle.task_instructions.push_str(&format!(
+                "\n\nREPAIR (symbolic framing): Chapter '{}' — rewrite the body with explicit \
+                 symbolic and interpretive framing. Use non-deterministic language (French: symbolique, \
+                 suggère, peut, invite, tendance, met en lumière; English: symbolic, suggests, may, invites). \
+                 Avoid categorical predictions or prescriptive advice.",
+                chapter.code
+            ));
+        }
+    }
+}
+
+#[cfg(test)]
+mod safety_repair_tests {
+    use super::*;
+    use astral_llm_domain::GenerationErrorCode;
+
+    #[test]
+    fn safety_repair_detects_symbolic_framing_violation() {
+        let err = GenerationError::with_details(
+            GenerationErrorCode::PostSafetyValidationFailed,
+            "chapter failed safety validation",
+            serde_json::json!({ "violations": ["missing symbolic/interpretive framing"] }),
+        );
+        assert_eq!(
+            safety_repair_from_error(&err),
+            Some(ChapterRepairKind::SymbolicFraming)
+        );
+    }
+
+    #[test]
+    fn safety_repair_ignores_other_violations() {
+        let err = GenerationError::with_details(
+            GenerationErrorCode::PostSafetyValidationFailed,
+            "chapter failed safety validation",
+            serde_json::json!({ "violations": ["medical advice detected"] }),
+        );
+        assert_eq!(safety_repair_from_error(&err), None);
     }
 }

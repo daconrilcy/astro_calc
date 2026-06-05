@@ -43,8 +43,8 @@ impl ChapterWritingGuidance {
                     let t = &ctx.profile.document.chapter_word_targets;
                     (t.min, t.target, t.max)
                 })
-                .unwrap_or((520, 650, 850));
-            format!(
+                .unwrap_or((520, 720, 850));
+            let mut editorial_block = format!(
                 "\n\n--- CHAPTER WRITING STRUCTURE (chapter '{}') ---\n\
                  Mandatory body layout: exactly {} paragraphs separated by blank lines.\n\
                  Each paragraph: {}–{} words.\n\
@@ -70,7 +70,17 @@ impl ChapterWritingGuidance {
                 min_w,
                 max_w,
                 target_w
-            )
+            );
+            if interpretation
+                .is_some_and(|ctx| ctx.profile.chapter_needs_length_expansion(&chapter.code))
+            {
+                editorial_block.push_str(&length_expansion_focus_block(
+                    min_w,
+                    target_w,
+                    bs.paragraph_max_words,
+                ));
+            }
+            editorial_block
         } else {
             let bs = interpretation
                 .and_then(|ctx| ctx.profile.body_structure().cloned())
@@ -174,11 +184,103 @@ fn default_editorial_body_structure() -> BodyStructureConfig {
     }
 }
 
+fn length_expansion_focus_block(min_w: u16, target_w: u16, para_max: u16) -> String {
+    format!(
+        "\nLENGTH EXPANSION FOCUS: This chapter type often lands below target. \
+         Write each paragraph toward the upper end of the per-paragraph range (~{para_max} words). \
+         Aim explicitly for ~{target_w} total body words, not merely the {min_w} minimum. \
+         Develop every SUPPORTING and NUANCE evidence with full interpretive paragraphs, not brief mentions.\n"
+    )
+}
+
 fn default_compact_body_structure() -> BodyStructureConfig {
     BodyStructureConfig {
         paragraph_count: 4,
         paragraph_min_words: 60,
         paragraph_max_words: 90,
         style: "compact_flow".into(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use astral_llm_infra::bootstrap_interpretation_profiles;
+    use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
+    use crate::prompt_compiler::PromptBundle;
+
+    fn premium_plus_ctx() -> ResolvedInterpretationContext {
+        let profile = bootstrap_interpretation_profiles()
+            .get("natal_premium_plus")
+            .expect("natal_premium_plus")
+            .clone();
+        let effective_policy = profile.to_product_generation_policy();
+        ResolvedInterpretationContext {
+            profile,
+            effective_policy,
+        }
+    }
+
+    fn empty_bundle() -> PromptBundle {
+        PromptBundle {
+            system_instructions: String::new(),
+            task_instructions: String::new(),
+            format_instructions: String::new(),
+            safety_instructions: String::new(),
+            data_payload: serde_json::Value::Null,
+            prompt_family: String::new(),
+            prompt_version: String::new(),
+        }
+    }
+
+    #[test]
+    fn expansion_chapter_gets_length_focus_block() {
+        let ctx = premium_plus_ctx();
+        let chapter = ReadingPlanChapter {
+            code: "resources".into(),
+            title: "Ressources".into(),
+            min_words: 520,
+            target_words: 720,
+            max_words: 850,
+        };
+        let mut bundle = empty_bundle();
+        ChapterWritingGuidance::append_upstream_directives(
+            &mut bundle,
+            &chapter,
+            &[],
+            None,
+            "fr",
+            Some(&ctx),
+        );
+        assert!(
+            bundle.task_instructions.contains("LENGTH EXPANSION FOCUS"),
+            "resources must receive expansion focus"
+        );
+        assert!(bundle.task_instructions.contains("target ~720"));
+    }
+
+    #[test]
+    fn non_expansion_chapter_omits_length_focus_block() {
+        let ctx = premium_plus_ctx();
+        let chapter = ReadingPlanChapter {
+            code: "identity".into(),
+            title: "Identite".into(),
+            min_words: 520,
+            target_words: 720,
+            max_words: 850,
+        };
+        let mut bundle = empty_bundle();
+        ChapterWritingGuidance::append_upstream_directives(
+            &mut bundle,
+            &chapter,
+            &[],
+            None,
+            "fr",
+            Some(&ctx),
+        );
+        assert!(
+            !bundle.task_instructions.contains("LENGTH EXPANSION FOCUS"),
+            "identity must not receive expansion focus"
+        );
     }
 }

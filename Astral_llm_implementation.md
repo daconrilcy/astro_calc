@@ -173,7 +173,7 @@ Prompts envoyes au modele : `output\logs\prompts\<run_id>\`.
 
 ### 9. Test reel Premium Plus (OpenAI)
 
-Lecture longue : 8 chapitres astro + summary court + chapitre `synthesis` integratif. Seuils profil v2 : chapitres domaine min **520** / cible **650** / max **850** mots, min **6** `astro_basis` ; `synthesis` min **520** mots et min **4** `astro_basis`.
+Lecture longue : 8 chapitres astro + summary court + chapitre `synthesis` integratif. Seuils profil v2 : chapitres domaine min **520** / cible **720** / max **850** mots, min **6** `astro_basis` ; `synthesis` min **520** mots et min **4** `astro_basis`.
 
 Prerequis : `OPENAI_API_KEY`, profil `natal_premium_plus` en base (`-Submit`), API redemarree, payload **riche**, `ASTRAL_LLM_REQUEST_TIMEOUT_MS=900000` dans `.env` (sinon HTTP **504** apres ~125 s).
 
@@ -186,7 +186,7 @@ Prerequis : `OPENAI_API_KEY`, profil `natal_premium_plus` en base (`-Submit`), A
   -OutputPath output\premium_plus_reading_e2e.json
 ```
 
-> Timeout script par defaut **1800 s** ; aligner `ASTRAL_LLM_REQUEST_TIMEOUT_MS=900000` dans `.env` sur la duree reelle (~155 s en run certifie, marge pour repairs opening).
+> Timeout script par defaut **1800 s** ; aligner `ASTRAL_LLM_REQUEST_TIMEOUT_MS=900000` dans `.env` sur la duree reelle (~90–130 s en run certifie v2, marge pour repairs opening / `too_short`).
 
 Options utiles du script de test :
 
@@ -221,6 +221,8 @@ Comparer une sortie v2 a la baseline v1 :
   -V1Path output\premium_plus_reading_e2e.json `
   -V2Path output\premium_plus_reading_e2e_v2.json
 ```
+
+**Certification E2E v2** (2026-06-05, profil **520/720/850** + `chapter_length_expansion_codes`) : run OpenAI `e76a8156-82de-4ddb-9a16-48b22fbd6955` — **5 517 mots** (corps), 9 chapitres ≥ 520 mots, 1 repair `relationships`, `synthesis` OK ; sortie reference `output\premium_plus_reading_e2e_v2d.json`. Revalider : `.\scripts\test_natal_premium_plus_profile.ps1 -SkipGenerate -OutputPath output\premium_plus_reading_e2e_v2d.json`.
 
 ---
 
@@ -322,8 +324,9 @@ Les modeles doivent exister et etre actifs dans le catalogue base (`llm_provider
 | `min_astro_basis_refs_synthesis` | Seuil `astro_basis` dedie pour `synthesis` (ex. 4 pour `natal_premium_plus`) |
 | `max_repeated_trigrams` | Score repetition max par chapitre (comptage perceptuel cote Rust) |
 | `require_disclaimer` | Disclaimer legal obligatoire dans la reponse |
+| `chapter_length_expansion_codes` | Liste optionnelle de codes chapitre domaine souvent sous la cible de mots ; injecte `LENGTH EXPANSION FOCUS` dans `ChapterWritingGuidance` (codes doivent figurer dans `chapter_types`, pas `synthesis`) |
 
-Seuil effectif gate qualite : `max(min_astro_basis_refs_per_chapter, evidence.policy.min_evidence_per_chapter)` pour les chapitres domaine ; pour `synthesis`, `min_astro_basis_refs_synthesis` et `min_words_synthesis` si presents. `InterpretationProfile::validate()` verifie la coherence (`body_structure.style`, bornes synthesis ≤ `chapter_word_targets.max`).
+Seuil effectif gate qualite : `max(min_astro_basis_refs_per_chapter, evidence.policy.min_evidence_per_chapter)` pour les chapitres domaine ; pour `synthesis`, `min_astro_basis_refs_synthesis` et `min_words_synthesis` si presents. `InterpretationProfile::validate()` verifie la coherence (`body_structure.style`, bornes synthesis ≤ `chapter_word_targets.max`, codes `chapter_length_expansion_codes` ⊆ `chapter_types`).
 
 **Evidence** (`evidence`) :
 
@@ -409,7 +412,7 @@ Puis redemarrer `astral_llm_api`.
 
 Le script `-Submit` rejette le fichier si l'un de ces champs manque :
 
-`profile_code`, `product_code`, `generation_mode`, `max_domains`, `max_chapters`, `max_output_tokens`, `max_reasoning_effort`, `chapter_models`, `chapter_word_targets`, `quality`, `evidence` — plus `chapter_models.default_model` et, si `evidence.enabled` est `true`, `evidence.policy`.
+`profile_code`, `product_code`, `generation_mode`, `max_domains`, `max_chapters`, `max_output_tokens`, `max_reasoning_effort`, `chapter_models`, `chapter_word_targets`, `quality`, `evidence` — plus `chapter_models.default_model`, `chapter_length_expansion_codes` (optionnel), et si `evidence.enabled` est `true`, `evidence.policy`.
 
 Le script `-Submit` ne verifie pas encore tous les champs metier. A l'**ingestion API** (`InterpretationProfile::validate()`), si `evidence.enabled` + `quality.blocking_gate` : `body_structure` est **obligatoire**. Pour `natal_premium_plus` : renseigner aussi `chapter_types` (avec `synthesis` en dernier), `default_domain_count` (= nombre de chapitres astro), et les seuils synthesis (`min_words_synthesis`, `min_astro_basis_refs_synthesis`) si differents des chapitres domaine.
 
@@ -498,7 +501,7 @@ $doc.audit_payload.payload.positions.Count  # > 0 si calcul OK
 | `natal_light` | Apercu rapide, 1 chapitre (`identity`) | `fake` OK |
 | `natal_basic` | Lecture complete mais gate qualite souple | `fake` OK |
 | `natal_premium` | Lecture riche compacte (1–9 chapitres selon `engine.domain_count`, E2E : 5 ; ~150–300 mots/ch.) | OpenAI requis (payload riche) |
-| `natal_premium_plus` | Lecture expert web (8 chapitres astro + `synthesis`, sequence fixe ; ~650 mots/ch. cible, min 520, 6+ preuves/ch.) | OpenAI requis (payload riche) |
+| `natal_premium_plus` | Lecture expert web (8 chapitres astro + `synthesis`, sequence fixe ; ~720 mots/ch. cible, min 520, 6+ preuves/ch.) | OpenAI requis (payload riche) |
 
 Pour un **premier test gratuit**, choisir `natal_light` ou `natal_basic`. Pour la **qualite produit**, `natal_premium` ou `natal_premium_plus` + `OPENAI_API_KEY`.
 
@@ -944,7 +947,7 @@ InterpretationProfileResolver::normalize_request (shim legacy + generation_mode)
      → AstroBasisValidator → ChapterEvidenceCoherence
      (repairs LLM : min_words, repetition, repair_evidence si orphelins body / incoherence non enrichissable)
   -> SummarySynthesizer (summary court)
-  -> [natal_premium_plus] FinalSynthesisSynthesizer (chapitre `synthesis`, retry min_words x2 : ExpandSameChapter puis RewriteChapter ; repair repetition si seuil depasse)
+  -> [natal_premium_plus] FinalSynthesisSynthesizer (chapitre `synthesis`, retry min_words x2 : ExpandSameChapter puis RewriteChapter ; repair repetition si seuil depasse ; retry SymbolicFraming si cadrage symbolique manquant)
   -> repair_opening_duplicates (jusqu'a 8 tours, **un** chapitre par tour — violations **chapter opening** uniquement)
   -> EvidenceDiversityValidator::validate_reading (post-LLM, Premium)
   -> ReadingOpeningDiversityValidator::validate (bloquant sur amorces chapitre ; warnings log pour paragraphe / stock)
@@ -993,19 +996,19 @@ SQL : [`astral_llm/crates/astral_llm_infra/sql/llm_evidence_canonical.sql`](astr
 
 **Qualite redactionnelle (v2 `natal_premium_plus`)** :
 
-- `ChapterWritingGuidance` : **une seule** consigne structure depuis `body_structure` — **4 §** (`compact_flow`, `natal_premium`) ou **6 §** (`editorial_flow`, `natal_premium_plus`, 80–120 mots/§). `chapter_structure.md` n'est injecte que si `body_structure` est **absent** (legacy) ; plus de double bloc 4 § / 6 §.
+- `ChapterWritingGuidance` : **une seule** consigne structure depuis `body_structure` — **4 §** (`compact_flow`, `natal_premium`) ou **6 §** (`editorial_flow`, `natal_premium_plus`, 80–120 mots/§). `chapter_structure.md` n'est injecte que si `body_structure` est **absent** (legacy) ; plus de double bloc 4 § / 6 §. Si le code chapitre est dans `chapter_length_expansion_codes`, ajout du bloc `LENGTH EXPANSION FOCUS` (vise borne haute par paragraphe + cible `chapter_word_targets.target`, developpe SUPPORTING/NUANCE en entier).
 - Repair longueur : 1re tentative `TooShortRepairMode::ExpandSameChapter` (conserve titre, `astro_basis`, structure) ; 2e tentative `RewriteChapter` si encore sous `min_words` (chapitres domaine + `synthesis`).
 - `chapter_relevance_score` + `min_weight` sur slots ; `trim_excess_global_filler` (max 2 fillers globaux/chapitre metier sans descendre sous `min_evidence_per_chapter`).
 - Pack `synthesis` : `avoid_repeating` tronque a **2** entrees max ; chapitre `synthesis` exclu des repairs opening stricts.
 - `ReadingOpeningDiversityValidator` : **bloquant** = amorce chapitre dupliquee (`chapter_opening_duplicate_of`) ; **warning** (log) = paragraphe / formules stock. `synthesis` exclu de la detection.
 - `repair_opening_duplicates` : jusqu'a 8 rounds, **un** chapitre par tour (premiere violation bloquante) ; combine `repair_opening_too_short` si regen sous `min_words`.
-- Repairs : repetition intra-chapitre (domaine + `synthesis`), `min_words`, `repair_evidence`.
+- Repairs : repetition intra-chapitre (domaine + `synthesis`), `min_words`, `repair_evidence`, `SymbolicFraming` sur `synthesis` si `PostSafetyValidationFailed` (cadrage symbolique manquant — retry x1 avec consigne explicite).
 - `SummarySynthesizer` : summary court separe de `synthesis` ; ban divinatoire (`tirage`, `oracle`) ; `natal_premium_plus` exige un marqueur astro (`thème`, `lecture`, `symbolique`, …).
 - Benchmark v1/v2 : `scripts/compare_premium_plus_versions.ps1` — JSON (mots/chapitre, fillers par chapitre, repairs) + CSV agrege (totaux, latence, tokens).
 
 **E2E premium** (`scripts/generate_premium_reading_e2e.ps1`, `request-premium-rich.json`) : runs de reference `54d2634c`, `627c9ada` — ~38–43 s, 6 steps `generated`, 6 fichiers `*_primary.txt` (pas de `*_repair_*`).
 
-**E2E premium plus** (`scripts/generate_premium_plus_reading_e2e.ps1`, `scripts/test_natal_premium_plus_profile.ps1`, `request-premium-plus-rich.json`) : wrapper vers `generate_premium_reading_e2e.ps1` ; timeout script par defaut **1800 s**. Le JSON profil courant (`natal_premium_plus.json`) porte les seuils **v2** (520/650/850). Run historique **v1** OpenAI `fe811176-c67b-4eb7-9d3e-5c51de7a6d70` (~155 s, anciens seuils 420/550, ~4 176 mots) sert de baseline `compare_premium_plus_versions.ps1`. **Re-certification v2** attendue : ≥ 5 500 mots, ≤ 2 repairs `too_short` — apres `-Submit` du profil et redemarrage `astral_llm_api`.
+**E2E premium plus** (`scripts/generate_premium_plus_reading_e2e.ps1`, `scripts/test_natal_premium_plus_profile.ps1`, `request-premium-plus-rich.json`) : wrapper vers `generate_premium_reading_e2e.ps1` ; timeout script par defaut **1800 s**. Le JSON profil courant (`natal_premium_plus.json`) porte les seuils **v2** (520/720/850) et `chapter_length_expansion_codes` (`relationships`, `career`, `resources`, `communication_mind`, `growth_path`). Run historique **v1** OpenAI `fe811176-c67b-4eb7-9d3e-5c51de7a6d70` (~155 s, anciens seuils 420/550, ~4 255 mots) sert de baseline `compare_premium_plus_versions.ps1`. **Certification v2** **clos** (2026-06-05) : run `e76a8156` — **5 517 mots**, 1 repair (opening/`relationships`), 0 repair `too_short`, objectif indicatif ≥ 5 500 mots atteint ; sortie `output\premium_plus_reading_e2e_v2d.json`.
 
 Tests :
 
@@ -1039,7 +1042,7 @@ Pour `generation_mode = chapter_orchestrated`, un quota supplementaire `MAX_PREM
 
 - **DomainResolver** : domaines avant LLM (scores astro, `preferred_domains`, politique produit). Profils a **sequence fixe** (`uses_fixed_chapter_sequence()`, ex. `natal_premium_plus`) : ordre impose par `chapter_types` du profil (`ProductDefault`) ; `preferred_domains`, `engine.domain_count` et reordonnancement par `domain_scores` **ignores** — toujours `default_domain_count` chapitres astro.
 - **ReadingPlanBuilder** : plan chapitres + validation `max_chapters`. Sequence fixe : ignore `response_contract.chapters` client (evite de reduire a 5–6 chapitres premium compact par erreur) ; ajoute `synthesis` en fin de plan si absent.
-- **ChapterOrchestrator** : un appel LLM par chapitre astro (hors `synthesis`) ; **summary** court via `SummarySynthesizer` ; puis pour `natal_premium_plus`, **chapitre `synthesis`** via `FinalSynthesisSynthesizer` (retry `min_words` x2 ExpandSameChapter/RewriteChapter + repair repetition) ; repairs opening (bloquants uniquement) / validation evidence **apres** synthesis ; retry `min_words` et repetition par chapitre domaine ; **anti-repetition en amont** : `ChapterWritingGuidance` ; safety par chapitre
+- **ChapterOrchestrator** : un appel LLM par chapitre astro (hors `synthesis`) ; **summary** court via `SummarySynthesizer` ; puis pour `natal_premium_plus`, **chapitre `synthesis`** via `FinalSynthesisSynthesizer` (retry `min_words` x2 ExpandSameChapter/RewriteChapter + repair repetition + retry `SymbolicFraming` si safety) ; repairs opening (bloquants uniquement) / validation evidence **apres** synthesis ; retry `min_words` et repetition par chapitre domaine ; **anti-repetition en amont** : `ChapterWritingGuidance` (+ `LENGTH EXPANSION FOCUS` si code dans `chapter_length_expansion_codes`) ; safety par chapitre
 - **ExecutionAudit** : steps dans `llm_generation_steps`
 - **Token budget** : plafonds par chapitre / global
 
@@ -1056,8 +1059,9 @@ Modes `response_contract.generation_mode` (alignes sur le profil d'interpretatio
 | Chapitre final | `synthesis` (genere apres summary ; code present dans `chapter_types` pour detection, exclu de `astrological_chapter_types()`) |
 | Plan total | 9 chapitres (`max_chapters` = 9) ; `default_domain_count` = 8 |
 | `body_structure` | 6 §, 80–120 mots/§, `editorial_flow` |
-| Mots / chapitre domaine | min **520**, cible **650**, max **850** |
-| Mots / `synthesis` | min **520**, cible **650** (meme `chapter_word_targets.max`) |
+| Mots / chapitre domaine | min **520**, cible **720**, max **850** |
+| Mots / `synthesis` | min **520**, cible **720** (meme `chapter_word_targets.max`) |
+| `chapter_length_expansion_codes` | Chapitres domaine souvent sous la cible : `relationships`, `career`, `resources`, `communication_mind`, `growth_path` — injecte `LENGTH EXPANSION FOCUS` dans `ChapterWritingGuidance` |
 | Evidence / chapitre | min 6 faits, 3 familles, 2 non-placement si dispo ; `max_supporting_semantic_chapters` = **2** |
 | `astro_basis` gate | min 6 refs/chapitre domaine ; min **4** refs pour `synthesis` (`ReadingQualityValidator` + script E2E) |
 | Repetition max | `max_repeated_trigrams` = **5** |
@@ -1090,12 +1094,12 @@ Modes `response_contract.generation_mode` (alignes sur le profil d'interpretatio
 | `ChapterEvidencePlanner` | Packs CORE/SUPPORTING/NUANCE par chapitre + `avoid_repeating` |
 | `ChapterEvidenceCoherence` | Cohérence pack / `astro_basis` / corps (repair) |
 | `ChapterEvidenceBasisEnricher` | CORE + SUPPORTING (sauf `identity`, filtre Soleil) + NUANCE omis dans `astro_basis` |
-| `ChapterWritingGuidance` | Structure depuis `body_structure` (4 § compact / 6 § editorial) ; anti-repetition perceptuelle ; liste `fact_id` obligatoires |
+| `ChapterWritingGuidance` | Structure depuis `body_structure` (4 § compact / 6 § editorial) ; `LENGTH EXPANSION FOCUS` si `chapter_length_expansion_codes` ; anti-repetition perceptuelle ; liste `fact_id` obligatoires |
 | `ReadingOpeningDiversityValidator` | Amorces chapitre bloquantes ; paragraphe/stock en warning ; `synthesis` exclu |
 | `PriorChapterUsage` | `avoid_repeating` semantique + exclusion aspects/dignites deja vus |
 | `prompt_trace` | Journalisation prompt compile (fichier + tracing) |
 | `ChapterOrchestrator` | Mode Premium (orchestration + repairs) |
-| `FinalSynthesisSynthesizer` | Chapitre `synthesis` integratif (`natal_premium_plus`) |
+| `FinalSynthesisSynthesizer` | Chapitre `synthesis` integratif (`natal_premium_plus`) ; cadrage symbolique explicite dans le prompt ; retry `SymbolicFraming` si `PostSafetyValidationFailed` |
 | `ExecutionAudit` | Traces steps + agregat tokens run |
 | `AstroBasisRoleNormalizer` | Roles canoniques alignes pack |
 | `ReadingQualityValidator` | Qualite lecture (repetition ; `min_words` repair ; seuil `astro_basis` = max profil qualite / evidence policy) |
@@ -1221,9 +1225,9 @@ Prior chapters + global evidence pack -> FinalSynthesisSynthesizer -> chapters[]
 
 - Digest des 8 chapitres precedents + pack evidence `synthesis` (dominantes globales) ; `avoid_repeating` limite a 2 cles
 - Modele : `default_model` du profil (meme moteur que les chapitres astro), pas `summary_model`
-- Prompt : 6 § editoriaux (80–120 mots/§) ; totaux body depuis `synthesis_word_targets()` (min 520, cible 650)
-- Gate : `min_words_synthesis` + `min_astro_basis_refs_synthesis` (4) via `ReadingQualityValidator`
-- Retry `min_words` (2 tentatives : ExpandSameChapter puis RewriteChapter) ; repair **repetition** si score > `max_repeated_trigrams`
+- Prompt : 6 § editoriaux (80–120 mots/§) ; totaux body depuis `synthesis_word_targets()` (min 520, cible 720) ; cadrage symbolique non deterministe explicite (FR/EN)
+- Gate : `min_words_synthesis` + `min_astro_basis_refs_synthesis` (4) via `ReadingQualityValidator` ; `SafetyGuard::validate_chapter_text` (cadrage symbolique)
+- Retry `min_words` (2 tentatives : ExpandSameChapter puis RewriteChapter) ; repair **repetition** si score > `max_repeated_trigrams` ; retry **SymbolicFraming** (1 tentative) si `missing symbolic/interpretive framing`
 - Repairs opening (bloquants) et `ReadingQualityValidator` s'executent **apres** generation de `synthesis`
 - Step auditee : `synthesis` dans `ExecutionAudit`
 
@@ -1445,7 +1449,7 @@ Circuit breaker, ChapterOrchestrator
 
 1. ~~**OpenAI** : comparer cout / latence / qualite par modele sur le meme golden E2E~~ — **clos** : chapitres `gpt-5.4-mini`, summary `gpt-5-nano` (produit `natal_prompter` + profils JSON). Outils : `scripts/benchmark_premium_e2e_models.ps1`, `scripts/summarize_benchmark_runs.ps1` ; config : `config/llm_product_models.conf` + `set_product_llm_models.ps1`.
 2. ~~**Mistral / Anthropic**~~ — **reporte** (etape ulterieure) : adapters deja presents ; certification (smoke + E2E Premium) a planifier plus tard si besoin multi-provider.
-3. ~~**Certification E2E `natal_premium_plus` v1**~~ — **clos** (2026-06-05) : run `fe811176`, seuils 420/550. **v2** : code + profil JSON **520/650/850** en place ; **re-certification E2E OpenAI** + `compare_premium_plus_versions.ps1` reste a executer.
+3. ~~**Certification E2E `natal_premium_plus` v1**~~ — **clos** (2026-06-05) : run `fe811176`, seuils 420/550. ~~**v2**~~ — **clos** (2026-06-05) : run `e76a8156`, seuils **520/720/850**, **5 517 mots**, `chapter_length_expansion_codes` ; sortie `premium_plus_reading_e2e_v2d.json`.
 4. **Referentiel evidence** *(actif)* : enrichir progressivement les slots (noeuds, phases lunaires, dignites mineures, patterns d'aspects) via tables canoniques — pas de constantes en code.
 5. **Style redactionnel** *(actif)* : allegement cible des consignes prompt / guidance pour une prose moins « structuree par contraintes », sans casser les garde-fous qualite.
 
@@ -1492,7 +1496,7 @@ cargo test -p astral_llm_api --test astral_llm_load_tests -- --ignored  # idempo
 
 Criteres de passage : JSON valide, `astro_basis` valide (≥1 fact interpretatif par chapitre Premium, pas de `domain_score` seul), synthese finale personnalisee (pas de placeholder pipeline), pas de conseil medical/juridique/financier, pas de fatalisme, pas de repetition excessive, pas de liste froide de faits, disclaimer present, qualite Premium non rejetee (`READING_QUALITY_FAILED`), steps persistes (chapitres + `summary`), idempotence rejoue la reponse, `GET /v1/providers` expose `circuit_breakers`. Gate Premium : profil `natal_premium` (`blocking_gate`) bloquant meme si `single_pass` est envoye par erreur (normalise au boot requete).
 
-**Validation E2E Premium Plus** (`natal_premium_plus`, apres smoke OpenAI) : `.\scripts\test_natal_premium_plus_profile.ps1` lit les seuils depuis `natal_premium_plus.json` — 9 chapitres (sequence fixe incluant `synthesis`), domaines : min **520** mots et **6** `astro_basis` ; `synthesis` : min **520** mots et **4** `astro_basis`. La gate HTTP bloquante (`ReadingQualityValidator`) applique les memes seuils synthesis. Comparaison baseline v1/v2 : `.\scripts\compare_premium_plus_versions.ps1`.
+**Validation E2E Premium Plus** (`natal_premium_plus`, apres smoke OpenAI) : `.\scripts\test_natal_premium_plus_profile.ps1` lit les seuils depuis `natal_premium_plus.json` — 9 chapitres (sequence fixe incluant `synthesis`), domaines : min **520** mots et **6** `astro_basis` ; `synthesis` : min **520** mots et **4** `astro_basis` ; cible **720** mots/ch. (`chapter_word_targets.target`). La gate HTTP bloquante (`ReadingQualityValidator`) applique les memes seuils synthesis. Objectif indicatif volume : ≥ **5 500** mots (corps) — atteint run certifie `e76a8156` (5 517). Comparaison baseline v1/v2 : `.\scripts\compare_premium_plus_versions.ps1`.
 
 **API** : `product_code=natal_prompter` + `interpretation_profile_code` (`natal_light` | `natal_basic` | `natal_premium` | `natal_premium_plus`). Shim legacy : `natal_premium` / `natal_basic` comme `product_code` sont migres vers `natal_prompter` + profil impose (log `warn`) ; rejet `PRODUCT_POLICY_VIOLATION` si `interpretation_profile_code` contredit le legacy envoye.
 
@@ -1505,7 +1509,7 @@ Le payload astro Premium doit inclure des placements/aspects (via `planets`, `po
 **Clos**
 
 - Benchmark OpenAI : cout / latence / qualite par modele sur E2E Premium (`gpt-5.4-mini` / `gpt-5-nano`)
-- Certification E2E `natal_premium_plus` v1 : run `fe811176`. v2 : profil + moteur alignes (520/650/850) ; re-run OpenAI + `compare_premium_plus_versions.ps1` a planifier
+- Certification E2E `natal_premium_plus` v1 : run `fe811176`. v2 : run `e76a8156` (5 517 mots, 520/720/850, `chapter_length_expansion_codes`)
 
 **Reporte**
 
@@ -1540,4 +1544,4 @@ Le payload astro Premium doit inclure des placements/aspects (via `planets`, `po
 18. `EditorialValidator`, `READING_QUALITY_FAILED`, crate `astral_llm_api` lib pour tests
 19. **Benchmark OpenAI cout / latence / qualite** — choix prod `gpt-5.4-mini` (chapitres) + `gpt-5-nano` (summary)
 20. **Profil `natal_premium_plus` v1** — lecture longue 8 domaines + `synthesis` ; sequence fixe ; E2E certifie (`fe811176`, seuils 420/550)
-21. **Profil `natal_premium_plus` v2** — implemente (code + JSON) : `body_structure` obligatoire ; seuils **520/650/850** ; prompt unique 6 § ; repairs ExpandSameChapter/RewriteChapter ; synthesis/summary/quality separes ; exclusions `llm_chapter_evidence_exclusions` ; opening hierarchy bloquant/warning ; humanizer balance/modality/sect/`house_emphasis` ; script `compare_premium_plus_versions.ps1` ; tests golden compact + premium plus ; **E2E OpenAI v2 non encore certifie**
+21. **Profil `natal_premium_plus` v2** — certifie E2E OpenAI (`e76a8156`, 2026-06-05) : `body_structure` obligatoire ; seuils **520/720/850** ; `chapter_length_expansion_codes` + `LENGTH EXPANSION FOCUS` ; prompt unique 6 § ; repairs ExpandSameChapter/RewriteChapter + `SymbolicFraming` synthesis ; synthesis/summary/quality separes ; exclusions `llm_chapter_evidence_exclusions` ; opening hierarchy bloquant/warning ; humanizer balance/modality/sect/`house_emphasis` ; script `compare_premium_plus_versions.ps1` ; tests golden compact + premium plus ; **5 517 mots** (objectif ≥ 5 500 atteint)

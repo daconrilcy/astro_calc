@@ -247,7 +247,7 @@ pub fn assert_premium_plus_prompt_structure(prompts_root: &std::path::Path) -> R
             code: "identity".into(),
             title: "Identite".into(),
             min_words: 520,
-            target_words: 650,
+            target_words: 720,
             max_words: 850,
         },
         &[],
@@ -266,8 +266,8 @@ pub fn assert_premium_plus_prompt_structure(prompts_root: &std::path::Path) -> R
     if !task.contains("80") || !task.contains("120") {
         return Err("premium_plus prompt must contain paragraph word range".into());
     }
-    if !task.contains("target ~650") {
-        return Err("premium_plus prompt must contain target ~650".into());
+    if !task.contains("target ~720") {
+        return Err("premium_plus prompt must contain target ~720".into());
     }
     let structure_blocks = task.matches("--- chapter writing structure").count();
     if structure_blocks != 1 {

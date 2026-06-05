@@ -28,8 +28,10 @@ fn premium_plus_profile_targets_rich_reading() {
     assert!(profile.blocking_quality_gate());
     assert!(profile.has_final_synthesis_chapter());
     assert_eq!(profile.astrological_chapter_types().len(), 8);
-    assert_eq!(profile.document.chapter_word_targets.target, 650);
+    assert_eq!(profile.document.chapter_word_targets.target, 720);
     assert_eq!(profile.document.chapter_word_targets.min, 520);
+    assert!(profile.chapter_needs_length_expansion("growth_path"));
+    assert!(!profile.chapter_needs_length_expansion("identity"));
     assert!(profile.uses_fixed_chapter_sequence());
     assert_eq!(profile.planned_chapter_count(None), 9);
     let policy = profile.to_premium_evidence_policy().expect("policy");

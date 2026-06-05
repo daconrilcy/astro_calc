@@ -503,11 +503,28 @@ impl<'a> ChapterOrchestrator<'a> {
                             );
                         }
                         Err(err) => {
+                            if synthesis_result.is_none() && attempt + 1 < MAX_SYNTHESIS_ATTEMPTS {
+                                if let Some(repair) =
+                                    crate::chapter_quality_repair::safety_repair_from_error(&err)
+                                {
+                                    synthesis_repair = Some(repair);
+                                    continue;
+                                }
+                            }
+                            let status = if matches!(
+                                err.detail().code,
+                                GenerationErrorCode::PostSafetyValidationFailed
+                                    | GenerationErrorCode::SafetyRejected
+                            ) {
+                                ChapterGenerationStatus::SafetyRejected
+                            } else {
+                                ChapterGenerationStatus::Failed
+                            };
                             audit.record_chapter_step(
                                 SYNTHESIS_CHAPTER_CODE,
                                 engine.provider.as_str(),
                                 &engine.model,
-                                ChapterGenerationStatus::Failed,
+                                status,
                                 None,
                                 None,
                                 synthesis_started.elapsed().as_millis() as u64,
@@ -876,6 +893,7 @@ impl<'a> ChapterOrchestrator<'a> {
                 ChapterRepairKind::Repetition { .. } => "repair_repetition",
                 ChapterRepairKind::EvidenceCoherence { .. } => "repair_evidence",
                 ChapterRepairKind::OpeningDiversity { .. } => "repair_opening",
+                ChapterRepairKind::SymbolicFraming => "repair_symbolic_framing",
             }
         } else {
             "primary"

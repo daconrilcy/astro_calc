@@ -317,7 +317,10 @@ fn build_synthesis_messages(
          Cover: guiding line of the chart, main tensions, dominant resources, symbolic non-prescriptive counsel, closing phrase. \
          Use exactly {paragraph_count} editorial paragraphs ({para_min_w}-{para_max_w} words each; \
          total body {min_w}-{max_w} words, target ~{target_w}). \
-         Frame as symbolic and interpretive. {task_fragment}"
+         Frame as symbolic and interpretive throughout the body: use non-deterministic language \
+         (French: symbolique, suggère, peut, invite, tendance, met en lumière; \
+         English: symbolic, suggests, may, invites). \
+         Avoid categorical predictions or prescriptive advice. {task_fragment}"
     );
 
     let repair_block = repair
@@ -375,6 +378,11 @@ fn synthesis_repair_directive(chapter: &ReadingPlanChapter, repair: &ChapterRepa
             "\nREPAIR: synthesis repetition score {score} exceeds {max_allowed}; vary vocabulary \
              and sentence openings while keeping fact_ids valid."
         ),
+        ChapterRepairKind::SymbolicFraming => {
+            "\nREPAIR: synthesis body lacks symbolic/interpretive framing. Rewrite with explicit \
+             non-deterministic language (French: symbolique, suggère, peut, invite, tendance, \
+             met en lumière). Keep fact_ids valid; avoid prescriptive advice.".into()
+        }
         _ => format!(
             "\nREPAIR: rewrite chapter '{}' addressing the quality issue noted above.",
             chapter.code

@@ -44,6 +44,9 @@ pub struct InterpretationProfileDocument {
     pub body_structure: Option<BodyStructureConfig>,
     #[serde(default)]
     pub task_fragment: Option<String>,
+    /// Chapitres domaine souvent sous la cible de mots ; declenche une consigne d'expansion dans le prompt.
+    #[serde(default)]
+    pub chapter_length_expansion_codes: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -233,6 +236,13 @@ impl InterpretationProfile {
         self.document.body_structure.as_ref()
     }
 
+    pub fn chapter_needs_length_expansion(&self, chapter_code: &str) -> bool {
+        self.document
+            .chapter_length_expansion_codes
+            .iter()
+            .any(|c| c == chapter_code)
+    }
+
     pub fn synthesis_min_astro_basis_refs(&self) -> u8 {
         self.document
             .quality
@@ -311,6 +321,19 @@ impl InterpretationProfile {
                 ));
             }
         }
+        for code in &self.document.chapter_length_expansion_codes {
+            if !self.document.chapter_types.iter().any(|t| t == code) {
+                return Err(format!(
+                    "chapter_length_expansion_codes contains unknown chapter: {code}"
+                ));
+            }
+            if code == SYNTHESIS_CHAPTER_CODE {
+                return Err(
+                    "chapter_length_expansion_codes must not include synthesis; use synthesis_word_targets"
+                        .into(),
+                );
+            }
+        }
         if self.has_final_synthesis_chapter() {
             let q = &self.document.quality;
             let t = &self.document.chapter_word_targets;
@@ -386,5 +409,7 @@ mod tests {
         assert_eq!(profile.document.quality.min_words_per_chapter, 520);
         assert_eq!(profile.document.quality.min_astro_basis_refs_per_chapter, 6);
         assert!(profile.body_structure().is_some());
+        assert!(profile.chapter_needs_length_expansion("resources"));
+        assert!(!profile.chapter_needs_length_expansion("identity"));
     }
 }
