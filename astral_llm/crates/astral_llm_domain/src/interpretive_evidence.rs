@@ -206,9 +206,12 @@ impl InterpretiveEvidencePool {
             .any(|e| e.family.counts_as_non_placement())
     }
 
-    pub fn is_rich_enough_for_premium(&self, min_per_chapter: u8) -> bool {
+    pub fn is_rich_enough_for_premium(&self, min_per_chapter: u8, chapter_count: usize) -> bool {
         let interpretive_count = self.interpretive_evidence().count();
-        interpretive_count >= min_per_chapter as usize * 3
+        let chapters = chapter_count.clamp(1, 12);
+        let shared_pool_factor = chapters.min(6).max(3);
+        let minimum = (min_per_chapter as usize).saturating_mul(shared_pool_factor);
+        interpretive_count >= minimum
     }
 
     /// Tous les faits interpretatifs, tries par affinite chapitre (pas de filtre dur).

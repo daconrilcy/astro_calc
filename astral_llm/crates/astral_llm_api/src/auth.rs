@@ -18,6 +18,10 @@ pub async fn require_api_key(
         return next.run(request).await;
     }
 
+    if request.uri().path() == "/health" {
+        return next.run(request).await;
+    }
+
     let expected = state.config.api_key.as_deref().unwrap_or("");
     let token = request
         .headers()

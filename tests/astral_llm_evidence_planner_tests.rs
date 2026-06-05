@@ -160,7 +160,7 @@ fn premium_minimal_pool_fails_richness() {
     let pool = InterpretiveEvidenceBuilder::build(&facts, &catalog_with_evidence().evidence)
         .expect("build pool");
     let policy = catalog_with_evidence().evidence.premium_policy;
-    let err = pool_richness_check(&pool, &policy).unwrap_err();
+    let err = pool_richness_check(&pool, &policy, 5).unwrap_err();
     assert_eq!(
         err.detail().code,
         GenerationErrorCode::PremiumEvidenceDiversityFailed
@@ -175,7 +175,7 @@ fn premium_rich_pool_plans_distinct_chapters() {
     let pool =
         InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
     let policy = catalog.evidence.premium_policy.clone();
-    pool_richness_check(&pool, &policy).expect("rich enough");
+    pool_richness_check(&pool, &policy, 5).expect("rich enough");
 
     let request = premium_request(payload);
     let domains = vec![
@@ -601,4 +601,46 @@ fn prompt_pack_smaller_than_global_facts_block() {
     assert!(block.get("facts").is_none());
     let global = AstroPayloadNormalizer::to_chapter_prompt_data_block(&facts, "identity");
     assert!(global["facts"].as_array().unwrap().len() > packs[0].total_count());
+}
+
+#[test]
+fn premium_plus_rich_pool_plans_synthesis_with_global_dominants() {
+    let payload = rich_payload_from_golden();
+    let facts = normalize(&payload);
+    let catalog = catalog_with_evidence();
+    let pool =
+        InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
+    let profiles = astral_llm_infra::bootstrap_interpretation_profiles();
+    let profile = profiles.get("natal_premium_plus").expect("profile");
+    let policy = profile.to_premium_evidence_policy().expect("policy");
+    pool_richness_check(&pool, &policy, 9).expect("rich enough");
+
+    let mut request = premium_request(payload);
+    request.product_context.interpretation_profile_code = Some("natal_premium_plus".into());
+    let ctx = astral_llm_application::interpretation_profile_resolver::ResolvedInterpretationContext {
+        profile: profile.clone(),
+        effective_policy: profile.to_product_generation_policy(),
+    };
+    let domains = ctx.profile.astrological_chapter_types();
+    let plan = ReadingPlanBuilder::build(&request, &domains, Some(&ctx));
+    assert_eq!(plan.chapters.len(), 9);
+    let packs = ChapterEvidencePlanner::plan_all(&pool, &plan, &catalog.evidence, &policy)
+        .expect("plan all chapters");
+    let synthesis = packs
+        .iter()
+        .find(|p| p.chapter_code == "synthesis")
+        .expect("synthesis pack");
+    assert!(
+        synthesis.total_count() >= policy.min_evidence_per_chapter as usize,
+        "synthesis pack too small: {}",
+        synthesis.total_count()
+    );
+    assert!(
+        synthesis
+            .core
+            .iter()
+            .chain(synthesis.supporting.iter())
+            .any(|e| e.kind_code == "dominant_planet" || e.kind_code == "house_emphasis"),
+        "synthesis should cite global dominants"
+    );
 }

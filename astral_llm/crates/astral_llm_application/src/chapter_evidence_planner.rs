@@ -766,7 +766,7 @@ fn validate_pack_structure(
     prior_avoid: &HashSet<&str>,
     candidates: &[&InterpretiveEvidence],
 ) -> Result<(), GenerationError> {
-    if !pool.is_rich_enough_for_premium(policy.min_evidence_per_chapter) {
+    if !pool.is_rich_enough_for_premium(policy.min_evidence_per_chapter, 1) {
         return Ok(());
     }
 
@@ -956,6 +956,102 @@ mod tests {
                     avoid
                 );
             }
+        }
+    }
+
+    #[test]
+    fn premium_plus_plans_synthesis_pack_with_global_dominants() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../tests/golden/natal_payload_v13_paris_1990.json");
+        let data: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        let payload = astral_llm_domain::AstroCalculationPayload {
+            contract_version: "natal_structured_v13".into(),
+            chart_type: "natal".into(),
+            data,
+        };
+        let mut catalog = astral_llm_infra::CanonicalCatalog::default();
+        catalog.evidence = astral_llm_infra::bootstrap_evidence_catalog();
+        catalog.astro_object_labels = astral_llm_infra::bootstrap_astro_object_labels();
+        catalog.zodiac_sign_labels = astral_llm_infra::bootstrap_zodiac_sign_labels();
+        let facts = crate::AstroPayloadNormalizer::normalize(
+            &payload,
+            &astral_llm_domain::PrivacyPolicy::default(),
+            &catalog,
+            "fr",
+        )
+        .unwrap();
+        let pool =
+            crate::InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).unwrap();
+        let profile = astral_llm_infra::bootstrap_interpretation_profiles()
+            .get("natal_premium_plus")
+            .expect("natal_premium_plus")
+            .clone();
+        let policy = profile.to_premium_evidence_policy().expect("policy");
+        crate::interpretive_evidence_builder::pool_richness_check(&pool, &policy, 9)
+            .expect("rich enough");
+        let domains = profile.astrological_chapter_types();
+        let plan = crate::ReadingPlanBuilder::build(
+            &premium_plus_request(),
+            &domains,
+            Some(&crate::interpretation_profile_resolver::ResolvedInterpretationContext {
+                profile: profile.clone(),
+                effective_policy: profile.to_product_generation_policy(),
+            }),
+        );
+        assert_eq!(plan.chapters.len(), 9);
+        let packs = ChapterEvidencePlanner::plan_all(&pool, &plan, &catalog.evidence, &policy)
+            .expect("plan premium_plus");
+        let synthesis = packs
+            .iter()
+            .find(|p| p.chapter_code == "synthesis")
+            .expect("synthesis pack");
+        assert!(synthesis.total_count() >= policy.min_evidence_per_chapter as usize);
+        assert!(
+            synthesis
+                .core
+                .iter()
+                .chain(synthesis.supporting.iter())
+                .any(|e| e.kind_code == "dominant_planet" || e.kind_code == "house_emphasis")
+        );
+    }
+
+    fn premium_plus_request() -> astral_llm_domain::GenerateReadingRequest {
+        astral_llm_domain::GenerateReadingRequest {
+            request_id: None,
+            idempotency_key: None,
+            product_context: astral_llm_domain::ProductContext {
+                product_code: "natal_prompter".into(),
+                interpretation_profile_code: Some("natal_premium_plus".into()),
+                user_language: "fr".into(),
+                audience_level: astral_llm_domain::AudienceLevel::Intermediate,
+            },
+            astro_result: astral_llm_domain::AstroCalculationPayload {
+                contract_version: "natal_structured_v13".into(),
+                chart_type: "natal".into(),
+                data: serde_json::json!({}),
+            },
+            astrologer_profile: astral_llm_domain::AstrologerProfile {
+                profile_id: None,
+                name: None,
+                tone: astral_llm_domain::ToneProfile::Warm,
+                jargon_level: astral_llm_domain::JargonLevel::Balanced,
+                wording_style: astral_llm_domain::WordingStyle::Clear,
+                preferred_domains: vec![],
+                forbidden_wording: vec![],
+                custom_instructions: None,
+            },
+            engine: astral_llm_domain::EngineParams::default(),
+            response_contract: astral_llm_domain::ResponseContract {
+                output_schema_version: "natal_reading_v1".into(),
+                generation_mode: astral_llm_domain::GenerationMode::ChapterOrchestrated,
+                format: astral_llm_domain::OutputFormat::StructuredJson,
+                chapters: vec![],
+                global_max_tokens: None,
+                include_astro_sources: true,
+                include_legal_disclaimer: true,
+            },
+            safety_policy: None,
         }
     }
 }

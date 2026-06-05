@@ -6,6 +6,7 @@ use astral_llm_domain::{
 };
 
 use crate::astro_label_humanizer::AstroLabelHumanizer;
+use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
 use crate::prompt_compiler::PromptBundle;
 use crate::text_trigrams::{openings_to_avoid_from_prior, phrases_to_avoid_from_prior};
 use astral_llm_domain::chapter_orchestration::ReadingPlanChapter;
@@ -20,25 +21,47 @@ impl ChapterWritingGuidance {
         prior_chapters: &[ReadingChapter],
         pack: Option<&ChapterEvidencePack>,
         language: &str,
+        interpretation: Option<&ResolvedInterpretationContext>,
     ) {
         let locale = AstroLabelHumanizer::locale_key(language);
         let prior_bodies: Vec<&str> = prior_chapters.iter().map(|c| c.body.as_str()).collect();
         let avoid_phrases = phrases_to_avoid_from_prior(&prior_bodies, locale, MAX_PRIOR_PHRASES);
         let avoid_openings = openings_to_avoid_from_prior(&prior_bodies, locale, 16);
+        let rich_editorial = interpretation
+            .map(|ctx| ctx.profile.uses_rich_editorial_structure())
+            .unwrap_or(false);
 
-        let mut block = format!(
-            "\n\n--- CHAPTER WRITING STRUCTURE (chapter '{}') ---\n\
-             Mandatory body layout: exactly 4 paragraphs separated by blank lines.\n\
-             - Paragraph 1: open with a fresh angle on the main CORE evidence (unique opening sentence).\n\
-             - Paragraph 2: develop a second CORE or SUPPORTING evidence with different vocabulary.\n\
-             - Paragraph 3: NUANCE or remaining evidence; new sentence openings only.\n\
-             - Paragraph 4: brief integrative close (max 3 sentences); do not reuse opening phrases from paragraphs 1-3.\n\
-             Do not start paragraphs 2-4 with generic connectors already used earlier in this reading \
-             (e.g. Par ailleurs, En synthèse, Pour finir, Sous l'influence).\n\
-             Rules: never repeat the same 3-word sequence twice in the body; vary interpretive verbs \
-             (suggere, evoque, invite, revele, colore, temper, enrichit — not the same twice in a row).",
-            chapter.code
-        );
+        let mut block = if rich_editorial {
+            format!(
+                "\n\n--- CHAPTER WRITING STRUCTURE (chapter '{}') ---\n\
+                 Mandatory body layout: 5 to 6 paragraphs separated by blank lines, with editorial flow (not a rigid core/supporting/nuance template).\n\
+                 Suggested progression:\n\
+                 - Paragraph 1: embodied opening on the chapter theme (fresh angle, unique opening sentence).\n\
+                 - Paragraphs 2-3: main astrological development using CORE and SUPPORTING evidence with varied vocabulary.\n\
+                 - Paragraph 4: nuance, tension or paradox when relevant.\n\
+                 - Paragraph 5: concrete life manifestation (symbolic, non-prescriptive).\n\
+                 - Paragraph 6 (optional): soft integrative close or symbolic vigilance point.\n\
+                 Do not start consecutive paragraphs with generic connectors already used earlier in this reading \
+                 (e.g. Par ailleurs, En synthèse, Pour finir, Sous l'influence).\n\
+                 Rules: never repeat the same 3-word sequence twice in the body; vary interpretive verbs \
+                 (suggere, evoque, invite, revele, colore, temper, enrichit — not the same twice in a row).",
+                chapter.code
+            )
+        } else {
+            format!(
+                "\n\n--- CHAPTER WRITING STRUCTURE (chapter '{}') ---\n\
+                 Mandatory body layout: exactly 4 paragraphs separated by blank lines.\n\
+                 - Paragraph 1: open with a fresh angle on the main CORE evidence (unique opening sentence).\n\
+                 - Paragraph 2: develop a second CORE or SUPPORTING evidence with different vocabulary.\n\
+                 - Paragraph 3: NUANCE or remaining evidence; new sentence openings only.\n\
+                 - Paragraph 4: brief integrative close (max 3 sentences); do not reuse opening phrases from paragraphs 1-3.\n\
+                 Do not start paragraphs 2-4 with generic connectors already used earlier in this reading \
+                 (e.g. Par ailleurs, En synthèse, Pour finir, Sous l'influence).\n\
+                 Rules: never repeat the same 3-word sequence twice in the body; vary interpretive verbs \
+                 (suggere, evoque, invite, revele, colore, temper, enrichit — not the same twice in a row).",
+                chapter.code
+            )
+        };
 
         if !avoid_phrases.is_empty() {
             block.push_str(
@@ -82,6 +105,7 @@ impl ChapterWritingGuidance {
                         .iter()
                         .map(|e| format!("- {} (supporting)", e.fact_id)),
                 )
+                .chain(pack.nuance.iter().map(|e| format!("- {} (nuance)", e.fact_id)))
                 .collect();
             if !basis_lines.is_empty() {
                 block.push_str(

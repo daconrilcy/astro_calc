@@ -1,5 +1,6 @@
 use astral_llm_domain::{
     chapter_orchestration::{ReadingPlan, ReadingPlanChapter},
+    interpretation_profile::SYNTHESIS_CHAPTER_CODE,
     output_contract::ChapterContract,
     GenerateReadingRequest, GenerationError, GenerationErrorCode,
 };
@@ -21,7 +22,13 @@ impl ReadingPlanBuilder {
             })
             .unwrap_or((80, 150, 300));
 
-        let chapters: Vec<ReadingPlanChapter> = if !request.response_contract.chapters.is_empty() {
+        let fixed_sequence = interpretation
+            .map(|ctx| ctx.profile.uses_fixed_chapter_sequence())
+            .unwrap_or(false);
+        let use_client_chapters =
+            !request.response_contract.chapters.is_empty() && !fixed_sequence;
+
+        let mut chapters: Vec<ReadingPlanChapter> = if use_client_chapters {
             request
                 .response_contract
                 .chapters
@@ -41,6 +48,20 @@ impl ReadingPlanBuilder {
                 .collect()
         };
 
+        if let Some(ctx) = interpretation {
+            if ctx.profile.has_final_synthesis_chapter()
+                && !chapters.iter().any(|c| c.code == SYNTHESIS_CHAPTER_CODE)
+            {
+                chapters.push(ReadingPlanChapter {
+                    code: SYNTHESIS_CHAPTER_CODE.into(),
+                    title: humanize_domain(SYNTHESIS_CHAPTER_CODE),
+                    min_words: min_w as u32,
+                    target_words: target_w as u32,
+                    max_words: max_w as u32,
+                });
+            }
+        }
+
         ReadingPlan {
             product_code: request.product_context.product_code.clone(),
             domain_count: domains.len() as u8,
@@ -49,7 +70,10 @@ impl ReadingPlanBuilder {
         }
     }
 
-    pub fn validate(plan: &ReadingPlan) -> Result<(), GenerationError> {
+    pub fn validate(
+        plan: &ReadingPlan,
+        interpretation: Option<&ResolvedInterpretationContext>,
+    ) -> Result<(), GenerationError> {
         if plan.chapters.is_empty() {
             return Err(GenerationError::new(
                 GenerationErrorCode::InvalidInput,
@@ -69,6 +93,20 @@ impl ReadingPlanBuilder {
                 return Err(GenerationError::new(
                     GenerationErrorCode::InvalidInput,
                     format!("chapter {} has min_words > max_words", ch.code),
+                ));
+            }
+        }
+        if let Some(ctx) = interpretation {
+            let max = ctx.profile.document.max_chapters as usize;
+            if plan.chapters.len() > max {
+                return Err(GenerationError::with_details(
+                    GenerationErrorCode::InvalidInput,
+                    format!("reading plan exceeds profile max_chapters ({max})"),
+                    serde_json::json!({
+                        "profile_code": ctx.profile.profile_code,
+                        "chapter_count": plan.chapters.len(),
+                        "max_chapters": max,
+                    }),
                 ));
             }
         }
@@ -104,5 +142,142 @@ fn contract_to_plan_chapter(contract: &ChapterContract) -> ReadingPlanChapter {
 }
 
 fn humanize_domain(code: &str) -> String {
-    code.replace('_', " ")
+    match code {
+        SYNTHESIS_CHAPTER_CODE => "Synthèse intégrative".into(),
+        "family_roots" => "Racines familiales".into(),
+        "communication_mind" => "Communication et esprit".into(),
+        "resources" => "Ressources et valeurs".into(),
+        _ => code.replace('_', " "),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use astral_llm_domain::{
+        astrologer_profile::{JargonLevel, ToneProfile, WordingStyle},
+        engine_params::EngineParams,
+        generation_request::{AudienceLevel, ProductContext},
+        output_contract::{ChapterContract, GenerationMode, OutputFormat, ResponseContract},
+        AstroCalculationPayload, AstrologerProfile,
+    };
+    use astral_llm_infra::bootstrap_interpretation_profiles;
+    use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
+
+    #[test]
+    fn premium_plus_plan_appends_synthesis_chapter() {
+        let profile = bootstrap_interpretation_profiles()
+            .get("natal_premium_plus")
+            .expect("natal_premium_plus")
+            .clone();
+        let ctx = ResolvedInterpretationContext {
+            effective_policy: profile.to_product_generation_policy(),
+            profile,
+        };
+        let request = GenerateReadingRequest {
+            request_id: None,
+            idempotency_key: None,
+            product_context: ProductContext {
+                product_code: "natal_prompter".into(),
+                interpretation_profile_code: Some("natal_premium_plus".into()),
+                user_language: "fr".into(),
+                audience_level: AudienceLevel::Intermediate,
+            },
+            astro_result: AstroCalculationPayload {
+                contract_version: "natal_structured_v13".into(),
+                chart_type: "natal".into(),
+                data: serde_json::json!({}),
+            },
+            astrologer_profile: AstrologerProfile {
+                profile_id: None,
+                name: None,
+                tone: ToneProfile::Warm,
+                jargon_level: JargonLevel::Balanced,
+                wording_style: WordingStyle::Clear,
+                preferred_domains: vec![],
+                forbidden_wording: vec![],
+                custom_instructions: None,
+            },
+            engine: EngineParams::default(),
+            response_contract: ResponseContract {
+                output_schema_version: "natal_reading_v1".into(),
+                generation_mode: GenerationMode::ChapterOrchestrated,
+                format: OutputFormat::StructuredJson,
+                chapters: vec![],
+                global_max_tokens: None,
+                include_astro_sources: true,
+                include_legal_disclaimer: true,
+            },
+            safety_policy: None,
+        };
+        let domains: Vec<String> = ctx
+            .profile
+            .astrological_chapter_types()
+            .into_iter()
+            .take(8)
+            .collect();
+        let plan = ReadingPlanBuilder::build(&request, &domains, Some(&ctx));
+        assert_eq!(plan.chapters.len(), 9);
+        assert_eq!(plan.chapters.last().map(|c| c.code.as_str()), Some("synthesis"));
+        assert_eq!(plan.chapters[0].min_words, 420);
+    }
+
+    #[test]
+    fn fixed_sequence_ignores_client_chapter_contracts() {
+        let profile = bootstrap_interpretation_profiles()
+            .get("natal_premium_plus")
+            .expect("natal_premium_plus")
+            .clone();
+        let ctx = ResolvedInterpretationContext {
+            effective_policy: profile.to_product_generation_policy(),
+            profile,
+        };
+        let request = GenerateReadingRequest {
+            request_id: None,
+            idempotency_key: None,
+            product_context: ProductContext {
+                product_code: "natal_prompter".into(),
+                interpretation_profile_code: Some("natal_premium_plus".into()),
+                user_language: "fr".into(),
+                audience_level: AudienceLevel::Intermediate,
+            },
+            astro_result: AstroCalculationPayload {
+                contract_version: "natal_structured_v13".into(),
+                chart_type: "natal".into(),
+                data: serde_json::json!({}),
+            },
+            astrologer_profile: AstrologerProfile {
+                profile_id: None,
+                name: None,
+                tone: ToneProfile::Warm,
+                jargon_level: JargonLevel::Balanced,
+                wording_style: WordingStyle::Clear,
+                preferred_domains: vec![],
+                forbidden_wording: vec![],
+                custom_instructions: None,
+            },
+            engine: EngineParams::default(),
+            response_contract: ResponseContract {
+                output_schema_version: "natal_reading_v1".into(),
+                generation_mode: GenerationMode::ChapterOrchestrated,
+                format: OutputFormat::StructuredJson,
+                chapters: vec![ChapterContract {
+                    code: "identity".into(),
+                    title: "Identite".into(),
+                    min_words: Some(40),
+                    max_words: Some(500),
+                    target_tokens: None,
+                    required_fields: vec![],
+                }],
+                global_max_tokens: None,
+                include_astro_sources: true,
+                include_legal_disclaimer: true,
+            },
+            safety_policy: None,
+        };
+        let domains = ctx.profile.astrological_chapter_types();
+        let plan = ReadingPlanBuilder::build(&request, &domains, Some(&ctx));
+        assert_eq!(plan.chapters.len(), 9);
+        assert_ne!(plan.chapters[0].min_words, 40);
+    }
 }

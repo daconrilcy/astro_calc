@@ -18,23 +18,30 @@ impl DomainResolver {
     ) -> Vec<String> {
         let mut allowed = catalog.domains_or_fallback(&[]);
         if let Some(ctx) = interpretation {
-            if !ctx.profile.document.chapter_types.is_empty() {
-                allowed.retain(|d| ctx.profile.document.chapter_types.contains(d));
+            let chapter_types = ctx.profile.astrological_chapter_types();
+            if !chapter_types.is_empty() {
+                allowed.retain(|d| chapter_types.contains(d));
             }
         }
+        let fixed_sequence = interpretation
+            .map(|ctx| ctx.profile.uses_fixed_chapter_sequence())
+            .unwrap_or(false);
+
         let default_count = interpretation
             .map(|c| c.profile.default_domain_count())
             .unwrap_or(3);
-        let count = request
-            .engine
-            .domain_count
-            .unwrap_or(default_count)
+        let requested_count = if fixed_sequence {
+            default_count
+        } else {
+            request.engine.domain_count.unwrap_or(default_count)
+        };
+        let count = requested_count
             .max(1)
             .min(product_policy.max_domains)
             .min(limits.max_domain_count) as usize;
         let max_count = count;
 
-        if !request.astrologer_profile.preferred_domains.is_empty() {
+        if !request.astrologer_profile.preferred_domains.is_empty() && !fixed_sequence {
             return request
                 .astrologer_profile
                 .preferred_domains
@@ -44,11 +51,10 @@ impl DomainResolver {
                 .cloned()
                 .collect();
         }
-
-        let strategy = if request.engine.domain_count.is_some() {
-            DomainSelectionStrategy::TopWeightedAstroSignals
-        } else {
+        let strategy = if fixed_sequence || request.engine.domain_count.is_none() {
             DomainSelectionStrategy::ProductDefault
+        } else {
+            DomainSelectionStrategy::TopWeightedAstroSignals
         };
 
         let selection = DomainSelection {
@@ -179,6 +185,106 @@ mod tests {
             },
             safety_policy: None,
         }
+    }
+
+    #[test]
+    fn premium_plus_keeps_profile_chapter_order_despite_domain_scores() {
+        let catalog = Arc::new(CanonicalCatalog {
+            astrological_domains: astral_llm_infra::bootstrap_domains(),
+            product_generation_policies: vec![ProductGenerationPolicy::bootstrap_natal_prompter()],
+            interpretation_profiles: astral_llm_infra::bootstrap_interpretation_profiles(),
+            ..Default::default()
+        });
+        let profile = catalog
+            .interpretation_profiles
+            .get("natal_premium_plus")
+            .expect("natal_premium_plus")
+            .clone();
+        let ctx = crate::interpretation_profile_resolver::ResolvedInterpretationContext {
+            profile,
+            effective_policy: ProductGenerationPolicy::bootstrap_natal_prompter(),
+        };
+        let mut req = request(serde_json::json!({
+            "domain_scores": {
+                "growth_path": 0.99,
+                "career": 0.95,
+                "identity": 0.1
+            }
+        }));
+        req.product_context.interpretation_profile_code = Some("natal_premium_plus".into());
+        req.engine.domain_count = Some(8);
+        let domains = DomainResolver::resolve(
+            &req,
+            &catalog,
+            &ServiceLimits::default(),
+            &ProductGenerationPolicy::bootstrap_natal_prompter(),
+            Some(&ctx),
+        );
+        assert_eq!(domains.len(), 8);
+        assert_eq!(domains[0], "identity");
+        assert_eq!(domains[7], "growth_path");
+    }
+
+    #[test]
+    fn fixed_sequence_ignores_domain_count_override() {
+        let catalog = Arc::new(CanonicalCatalog {
+            astrological_domains: astral_llm_infra::bootstrap_domains(),
+            product_generation_policies: vec![ProductGenerationPolicy::bootstrap_natal_prompter()],
+            interpretation_profiles: astral_llm_infra::bootstrap_interpretation_profiles(),
+            ..Default::default()
+        });
+        let profile = catalog
+            .interpretation_profiles
+            .get("natal_premium_plus")
+            .expect("natal_premium_plus")
+            .clone();
+        let ctx = crate::interpretation_profile_resolver::ResolvedInterpretationContext {
+            profile,
+            effective_policy: ProductGenerationPolicy::bootstrap_natal_prompter(),
+        };
+        let mut req = request(serde_json::json!({}));
+        req.product_context.interpretation_profile_code = Some("natal_premium_plus".into());
+        req.engine.domain_count = Some(5);
+        let domains = DomainResolver::resolve(
+            &req,
+            &catalog,
+            &ServiceLimits::default(),
+            &ProductGenerationPolicy::bootstrap_natal_prompter(),
+            Some(&ctx),
+        );
+        assert_eq!(domains.len(), 8);
+    }
+
+    #[test]
+    fn fixed_sequence_ignores_preferred_domains() {
+        let catalog = Arc::new(CanonicalCatalog {
+            astrological_domains: astral_llm_infra::bootstrap_domains(),
+            product_generation_policies: vec![ProductGenerationPolicy::bootstrap_natal_prompter()],
+            interpretation_profiles: astral_llm_infra::bootstrap_interpretation_profiles(),
+            ..Default::default()
+        });
+        let profile = catalog
+            .interpretation_profiles
+            .get("natal_premium_plus")
+            .expect("natal_premium_plus")
+            .clone();
+        let ctx = crate::interpretation_profile_resolver::ResolvedInterpretationContext {
+            profile,
+            effective_policy: ProductGenerationPolicy::bootstrap_natal_prompter(),
+        };
+        let mut req = request(serde_json::json!({}));
+        req.product_context.interpretation_profile_code = Some("natal_premium_plus".into());
+        req.engine.domain_count = None;
+        req.astrologer_profile.preferred_domains = vec!["career".into(), "identity".into()];
+        let domains = DomainResolver::resolve(
+            &req,
+            &catalog,
+            &ServiceLimits::default(),
+            &ProductGenerationPolicy::bootstrap_natal_prompter(),
+            Some(&ctx),
+        );
+        assert_eq!(domains[0], "identity");
+        assert_eq!(domains.len(), 8);
     }
 
     #[test]

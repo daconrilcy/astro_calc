@@ -55,6 +55,8 @@ pub fn object_codes_from_fact_id(fact_id: &str) -> Vec<String> {
             vec![parts[2].to_string()]
         }
         Some("signal") if parts.len() >= 4 && parts[1] == "dignity" => vec![parts[2].to_string()],
+        Some("dominant_planet") if parts.len() >= 2 => vec![parts[1].to_string()],
+        Some("dominant_planet") => vec![],
         Some("signal") if parts.len() >= 2 => {
             let key = parts[1];
             if key.starts_with("aspect:") {
@@ -101,6 +103,14 @@ mod tests {
         assert_eq!(
             object_codes_from_fact_id("signal:angle:ascendant:sign:scorpio"),
             vec!["ascendant"]
+        );
+        assert_eq!(
+            object_codes_from_fact_id("dominant_planet:saturn"),
+            vec!["saturn"]
+        );
+        assert_eq!(
+            object_codes_from_fact_id("dominant_planet:jupiter"),
+            vec!["jupiter"]
         );
         assert_eq!(
             fact_id_role_bucket("signal:object_position:sun"),

@@ -11,10 +11,10 @@ Le gateway n'est **pas** un simple proxy LLM : la validation metier se fait **av
 | Terme | Signification |
 |---|---|
 | `natal_prompter` | Produit API unique pour les lectures natales |
-| `interpretation_profile_code` | Tier ou profil custom (`natal_light`, `natal_basic`, `natal_premium`, …) — definit chapitres, qualite, evidence |
+| `interpretation_profile_code` | Tier ou profil custom (`natal_light`, `natal_basic`, `natal_premium`, `natal_premium_plus`, …) — definit chapitres, qualite, evidence |
 | `astrologer_profile` | Style redactionnel de la requete (ton, jargon) — independant du profil d'interpretation |
 | `astro_result` | Payload astro calcule (`natal_structured_v13` ou `llm_projection_natal_v1`) |
-| `generation_mode` | `single_pass` (1 appel) ou `chapter_orchestrated` (multi-chapitres + summary) — derive du profil |
+| `generation_mode` | `single_pass` (1 appel) ou `chapter_orchestrated` (multi-chapitres + summary ; + chapitre `synthesis` si profil `natal_premium_plus`) — derive du profil |
 
 ```txt
 Naissance (.env) -> astral_calculator -> audit_payload -> astral_llm_api + profil -> lecture JSON
@@ -81,7 +81,7 @@ ASTRAL_LLM_DEFAULT_MODEL=gpt-5.4-mini
 ASTRAL_LLM_PROMPT_LOG_DIR=output/logs/prompts
 ```
 
-> **Auth** : toutes les routes (y compris `/health`) exigent `Authorization: Bearer <ASTRAL_LLM_API_KEY>` ou `X-API-Key` si une cle gateway est definie dans `.env`.
+> **Auth** : si `ASTRAL_LLM_API_KEY` est definie, toutes les routes sauf **`GET /health`** exigent `Authorization: Bearer <cle>` ou `X-API-Key`. `/health` reste accessible sans credentials (sonde / scripts E2E).
 
 ### 3. Demarrer PostgreSQL
 
@@ -93,12 +93,13 @@ Verifier que `DATABASE_URL` pointe vers cette instance.
 
 ### 4. Enregistrer les profils d'interpretation en base
 
-Soumettre les trois profils fournis (detail et profil custom : **Tutoriel 1**, reference : **Partie IV**) :
+Soumettre les quatre profils fournis (detail et profil custom : **Tutoriel 1**, reference : **Partie IV**) :
 
 ```powershell
 .\scripts\manage_natal_interpretation_profiles.ps1 -Submit -Path config\natal_interpretation_profiles\natal_light.json
 .\scripts\manage_natal_interpretation_profiles.ps1 -Submit -Path config\natal_interpretation_profiles\natal_basic.json
 .\scripts\manage_natal_interpretation_profiles.ps1 -Submit -Path config\natal_interpretation_profiles\natal_premium.json
+.\scripts\manage_natal_interpretation_profiles.ps1 -Submit -Path config\natal_interpretation_profiles\natal_premium_plus.json
 .\scripts\manage_natal_interpretation_profiles.ps1 -List
 ```
 
@@ -170,6 +171,48 @@ Get-Content output\premium_reading_real.json | ConvertFrom-Json | Select-Object 
 
 Prompts envoyes au modele : `output\logs\prompts\<run_id>\`.
 
+### 9. Test reel Premium Plus (OpenAI)
+
+Lecture longue : 8 chapitres astro + summary court + chapitre `synthesis` integratif (~420–700 mots/chapitre, min 6 preuves/chapitre).
+
+Prerequis : `OPENAI_API_KEY`, profil `natal_premium_plus` en base (`-Submit`), API redemarree, payload **riche**, `ASTRAL_LLM_REQUEST_TIMEOUT_MS=900000` dans `.env` (sinon HTTP **504** apres ~125 s).
+
+```powershell
+# Generation + validation structure (recommande)
+.\scripts\test_natal_premium_plus_profile.ps1
+
+# Ou generation seule
+.\scripts\generate_premium_plus_reading_e2e.ps1 `
+  -OutputPath output\premium_plus_reading_e2e.json
+```
+
+> Timeout script par defaut **1800 s** ; aligner `ASTRAL_LLM_REQUEST_TIMEOUT_MS=900000` dans `.env` sur la duree reelle (~155 s en run certifie, marge pour repairs opening).
+
+Options utiles du script de test :
+
+| Parametre | Role |
+|---|---|
+| `-SubmitProfile` | Soumet `natal_premium_plus.json` en base avant le test |
+| `-SkipGenerate` | Valide un fichier deja genere (`-OutputPath`) |
+| `-UseFake` | `provider=fake` (smoke rapide ; gate 420 mots souvent en echec) |
+| `-Model` / `-SummaryModel` | Surcharge ponctuelle des modeles |
+
+Fixture : `request-premium-plus-rich.json` (copie de `request-premium-rich.json` avec `interpretation_profile_code: natal_premium_plus`, `engine.domain_count: 8`).
+
+Reponse attendue : enveloppe `{ status: "success", run_id, reading: { chapters[], summary, quality } }` — 9 entrees dans `reading.chapters[]` (8 domaines + `synthesis`), `reading.summary.short_text` court, steps audites : 8 chapitres + `summary` + `synthesis` (10 steps LLM si tout `generated`).
+
+Verifier la longueur et les packs :
+
+```powershell
+$r = Get-Content output\premium_plus_reading_e2e.json | ConvertFrom-Json
+$reading = if ($r.reading) { $r.reading } else { $r }
+$reading.chapters | ForEach-Object {
+  $wc = [regex]::Matches($_.body, '\S+').Count
+  "$($_.code): $wc mots, $($_.astro_basis.Count) basis"
+}
+.\scripts\show_generation_run.ps1 -RunId $r.run_id
+```
+
 ---
 
 ## Tutoriel 1 — Creer un nouveau profil d'interpretation (pas a pas)
@@ -190,7 +233,7 @@ config/natal_interpretation_profiles/     manage_natal_interpretation_profiles.p
 
 ### Etape 0 — Prerequis
 
-**Partie I** terminee (PostgreSQL, `.env`, API demarree). Les trois profils fournis (`natal_light`, `natal_basic`, `natal_premium`) servent de modeles.
+**Partie I** terminee (PostgreSQL, `.env`, API demarree). Les quatre profils fournis (`natal_light`, `natal_basic`, `natal_premium`, `natal_premium_plus`) servent de modeles.
 
 ### Etape 1 — Choisir un modele de depart
 
@@ -199,6 +242,7 @@ config/natal_interpretation_profiles/     manage_natal_interpretation_profiles.p
 | Lecture rapide, 1 domaine | `natal_light.json` | `single_pass` | non | non bloquante |
 | Lecture multi-chapitres standard | `natal_basic.json` | `chapter_orchestrated` | non | non bloquante |
 | Lecture riche avec preuves astro | `natal_premium.json` | `chapter_orchestrated` | oui | **bloquante** |
+| Lecture premium longue (8 chapitres + synthese) | `natal_premium_plus.json` | `chapter_orchestrated` | oui (min 6/ch.) | **bloquante** (min 420 mots/ch.) |
 
 ```powershell
 Copy-Item config\natal_interpretation_profiles\natal_basic.json `
@@ -227,6 +271,8 @@ Contraintes : code unique, snake_case recommande, pas d'espaces. Le champ **`pro
 
 Pour un profil custom proche du Basic, garder `chapter_orchestrated` et ajuster `chapter_types` (ex. retirer `talents` pour raccourcir la lecture).
 
+Pour une **sequence fixe** (comme `natal_premium_plus`, detectee quand `default_domain_count == astrological_chapter_types().len()`) : aligner `default_domain_count` sur le nombre de chapitres astro (hors `synthesis`), lister `synthesis` en dernier dans `chapter_types` pour activer `has_final_synthesis_chapter()`, et fixer `max_chapters` au total (astro + synthesis). L'ordre `chapter_types` devient contractuel : le client ne peut pas le contourner via `preferred_domains`, `engine.domain_count` ni `response_contract.chapters`. `natal_premium` n'est **pas** une sequence fixe (`default_domain_count` = 12, `chapter_types` = 9) : le nombre de chapitres suit `engine.domain_count` (defaut profil ou requete ; E2E `request-premium-rich.json` utilise `domain_count: 5`).
+
 ### Etape 4 — Configurer les modeles LLM du profil
 
 Bloc **`chapter_models`** (obligatoire) :
@@ -253,8 +299,11 @@ Les modeles doivent exister et etre actifs dans le catalogue base (`llm_provider
 |---|---|
 | `blocking_gate` | `true` = echec HTTP si la prose ne passe pas les controles (`READING_QUALITY_FAILED`) |
 | `min_words_per_chapter` | Longueur minimale par chapitre |
-| `min_interpretive_astro_basis_refs_per_chapter` | Nombre minimum de references astro interpretatives (pas seulement des scores de domaine) |
+| `min_astro_basis_refs_per_chapter` | Densite minimale `astro_basis` par chapitre (gate `ReadingQualityValidator`) |
+| `min_interpretive_astro_basis_refs_per_chapter` | Nombre minimum de references astro interpretatives (pas seulement des scores de domaine ; gate `AstroBasisValidator`) |
 | `require_disclaimer` | Disclaimer legal obligatoire dans la reponse |
+
+Seuil effectif gate qualite : `max(min_astro_basis_refs_per_chapter, evidence.policy.min_evidence_per_chapter)` lorsque l'evidence est activee.
 
 **Evidence** (`evidence`) :
 
@@ -426,9 +475,18 @@ $doc.audit_payload.payload.positions.Count  # > 0 si calcul OK
 |---|---|---|
 | `natal_light` | Apercu rapide, 1 chapitre (`identity`) | `fake` OK |
 | `natal_basic` | Lecture complete mais gate qualite souple | `fake` OK |
-| `natal_premium` | Lecture riche, preuves astro, gate bloquante | OpenAI requis (payload riche) |
+| `natal_premium` | Lecture riche compacte (1–9 chapitres selon `engine.domain_count`, E2E : 5 ; ~150–300 mots/ch.) | OpenAI requis (payload riche) |
+| `natal_premium_plus` | Lecture expert web (8 chapitres astro + `synthesis`, sequence fixe ; ~550 mots/ch., 6+ preuves/ch.) | OpenAI requis (payload riche) |
 
-Pour un **premier test gratuit**, choisir `natal_light` ou `natal_basic`. Pour la **qualite produit**, `natal_premium` + `OPENAI_API_KEY`.
+Pour un **premier test gratuit**, choisir `natal_light` ou `natal_basic`. Pour la **qualite produit**, `natal_premium` ou `natal_premium_plus` + `OPENAI_API_KEY`.
+
+Benchmark E2E premium plus :
+
+```powershell
+.\scripts\generate_premium_plus_reading_e2e.ps1
+# fixture : request-premium-plus-rich.json
+# sortie  : output\premium_plus_reading_e2e.json
+```
 
 ### Etape 3 — Construire la requete HTTP
 
@@ -594,7 +652,7 @@ Erreurs supplementaires (flux naissance → interpretation) :
 
 | Methode | Route | Description |
 |---|---|---|
-| GET | `/health` | Sante (hors rate limit) |
+| GET | `/health` | Sante (hors rate limit, **sans auth** si gateway key active) |
 | POST | `/v1/readings/generate` | Generation lecture |
 | POST | `/v1/readings/validate` | Validation JSON vs schema |
 | GET | `/v1/runs/{run_id}` | Audit run + steps (PostgreSQL requis) |
@@ -670,7 +728,8 @@ Sans persistence, l'idempotence **n'est pas** durable entre processus.
 |---|---|---|---|---|
 | `natal_light` | `single_pass` | non | non bloquante | 1 domaine, rapide |
 | `natal_basic` | `chapter_orchestrated` | non | non bloquante | multi-chapitres standard |
-| `natal_premium` | `chapter_orchestrated` | oui | **bloquante** | evidence + qualite stricte |
+| `natal_premium` | `chapter_orchestrated` | oui (min 4/ch.) | **bloquante** (min 40 mots/ch.) | compact, nombre de chapitres variable (`domain_count`) |
+| `natal_premium_plus` | `chapter_orchestrated` | oui (min 6/ch.) | **bloquante** (min 420 mots/ch.) | sequence fixe : 8 domaines + `synthesis` |
 
 Creation d'un profil personnalise : **Tutoriel 1**. Soumission initiale :
 
@@ -678,6 +737,7 @@ Creation d'un profil personnalise : **Tutoriel 1**. Soumission initiale :
 .\scripts\manage_natal_interpretation_profiles.ps1 -Submit -Path config\natal_interpretation_profiles\natal_light.json
 .\scripts\manage_natal_interpretation_profiles.ps1 -Submit -Path config\natal_interpretation_profiles\natal_basic.json
 .\scripts\manage_natal_interpretation_profiles.ps1 -Submit -Path config\natal_interpretation_profiles\natal_premium.json
+.\scripts\manage_natal_interpretation_profiles.ps1 -Submit -Path config\natal_interpretation_profiles\natal_premium_plus.json
 .\scripts\manage_natal_interpretation_profiles.ps1 -List
 ```
 
@@ -854,14 +914,16 @@ InterpretationProfileResolver::normalize_request (shim legacy + generation_mode)
   -> ProviderSchemaCompiler
   -> ProviderRouter (+ ProviderCircuitBreaker)
   -> LLM
-  -> post-traitement chapitre (par chapitre) :
-     AstroBasisRoleNormalizer → ChapterEvidenceBasisEnricher (CORE + SUPPORTING sauf identity)
+  -> post-traitement chapitre (par chapitre, pendant generation) :
+     AstroBasisRoleNormalizer → ChapterEvidenceBasisEnricher (CORE + SUPPORTING sauf identity + NUANCE)
      → AstroBasisRoleNormalizer → AstroLabelHumanizer
      → AstroBasisValidator → ChapterEvidenceCoherence
-     (repair LLM repair_evidence si orphelins body / incoherence non enrichissable)
+     (repairs LLM : min_words, repetition, repair_evidence si orphelins body / incoherence non enrichissable)
+  -> SummarySynthesizer (summary court)
+  -> [natal_premium_plus] FinalSynthesisSynthesizer (chapitre `synthesis`, retry min_words x2)
+  -> repair_opening_duplicates (jusqu'a 8 tours, **un** chapitre par tour)
   -> EvidenceDiversityValidator::validate_reading (post-LLM, Premium)
-  -> repair_opening_duplicates (jusqu'a 6 tours, tous chapitres en violation)
-  -> SummarySynthesizer
+  -> ReadingOpeningDiversityValidator::validate (bloquant)
   -> ResponseValidator (lecture complete + summary)
   -> SafetyGuard (post)
   -> ReadingQualityValidator (bloquant si profil `blocking_gate`)
@@ -871,13 +933,14 @@ InterpretationProfileResolver::normalize_request (shim legacy + generation_mode)
 Codes erreur dedies :
 
 - `PREMIUM_EVIDENCE_DIVERSITY_FAILED` — pool/payload insuffisant ou packs trop repetitifs
-- `ASTRO_BASIS_INVALID` — fact_id hors pack ; `ChapterEvidenceCoherence` : planete citee dans le `body` sans `astro_basis`, ou slots pack encore absents apres enrichisseur. Repair LLM `repair_evidence` une fois. **Avant** coherence : `ChapterEvidenceBasisEnricher` injecte les CORE manquants (tous chapitres) et les SUPPORTING manquants (**sauf** `identity`) — evite un 2e appel LLM quand seuls des `fact_id` manquent
+- `ASTRO_BASIS_INVALID` — fact_id hors pack ; `ChapterEvidenceCoherence` : planete citee dans le `body` sans `astro_basis` (y compris `dominant_planet:*` via `evidence_fact_parse`), ou slots pack encore absents apres enrichisseur. Repair LLM `repair_evidence` une fois. **Avant** coherence : `ChapterEvidenceBasisEnricher` injecte les CORE, SUPPORTING (**sauf** `identity`, avec filtre Soleil) et NUANCE manquants — evite un 2e appel LLM quand seuls des `fact_id` manquent
 - `READING_QUALITY_FAILED` — qualite redactionnelle
 
 Fixtures E2E :
 
 - `request-premium-minimal.json` — test negatif (trio asc/sun/moon)
-- `request-premium-rich.json` — golden `natal_payload_v13_paris_1990` pour E2E OpenAI
+- `request-premium-rich.json` — golden `natal_payload_v13_paris_1990` pour E2E OpenAI (`natal_premium`)
+- `request-premium-plus-rich.json` — meme golden, profil `natal_premium_plus` (lecture longue)
 
 SQL : [`astral_llm/crates/astral_llm_infra/sql/llm_evidence_canonical.sql`](astral_llm/crates/astral_llm_infra/sql/llm_evidence_canonical.sql) ; i18n : [`llm_i18n_canonical.sql`](astral_llm/crates/astral_llm_infra/sql/llm_i18n_canonical.sql) (`llm_writing_locales` fr/en/es/de, `llm_astro_basis_roles`, `llm_aspect_type_labels`)
 
@@ -891,29 +954,36 @@ SQL : [`astral_llm/crates/astral_llm_infra/sql/llm_evidence_canonical.sql`](astr
 - Slot `career` : `house_ruler` + `mc` ; requirement `career_ruler_10`.
 - Identity : `chapter_excludes_candidate` exclut tout fait Soleil ; pack sans soleil (reserve career).
 - `inject_blocking_requirements`, `fill_minimums` (familles aspect / house_ruler / dignite), validation adaptative (warning si pool pauvre).
+- Profil `natal_premium_plus` : slots `resources` (maison 2), `family_roots` (maison 4 / IC / Lune en supporting — Lune reste **core** dans `emotional_life`), `communication_mind` (Mercure / maison 3), `synthesis` (`dominant_planet`, `element_balance`, `modality_balance`, `house_emphasis`, `house_axis`, `sect_condition` via `chart_emphasis` dans `astro_fact_extractor.rs`). Requirement `synthesis_global_dominants` en **warning** si dominantes absentes du pool.
+- `pool_richness_check(pool, policy, chapter_count)` : minimum pool = `min_evidence_per_chapter × min(chapter_count, 6).max(3)` faits interpretatifs (ex. premium plus : 6 × 6 = 36).
 
 **Post-traitement basis** (`chapter_evidence_basis_enricher.rs`) :
 
 - **CORE** manquants : injectes pour **tous** les chapitres (y compris `identity`).
-- **SUPPORTING** manquants : injectes pour tous les chapitres **sauf** `identity` (aligne tests `does_not_append_supporting_from_pack`, `appends_supporting_for_career_coherence`).
+- **SUPPORTING** manquants : injectes pour tous les chapitres **sauf** `identity` (filtre Soleil ; aligne tests `does_not_append_supporting_from_pack`, `appends_supporting_for_career_coherence`).
+- **NUANCE** manquants : injectes pour **tous** les chapitres lorsque le pack en fournit.
 - Declenche **avant** `ChapterEvidenceCoherence::validate_premium` dans `generate_one_chapter`.
 
 **Requirements chapitre** (`llm_evidence_requirements`) : audit dans `EvidenceMetrics.requirement_audit`. Codes : `career_ruler_10`, `relationships_ruler_7`, `relationships_relational_aspect`, `growth_path_nodal`, `growth_path_structuring_aspect`, `growth_path_transformation_house`.
 
 **Qualite redactionnelle** :
 
-- `ChapterWritingGuidance` : structure 4 §, anti-trigrammes, `openings_to_avoid_from_prior`, liste **Mandatory astro_basis** (tous fact_id core + supporting du pack).
-- `ReadingOpeningDiversityValidator` + `text_trigrams` : amorces chapitre (5 mots) / paragraphe (4 mots) ; prefixes generiques FR non bloquants (`GENERIC_PARA_OPENING_PREFIXES_FR`).
-- `repair_opening_duplicates` : boucle jusqu'a 6 rounds, regenere **chaque** chapitre en violation (attempt `repair_opening`).
+- `ChapterWritingGuidance` : structure **4 §** (profil sans `uses_rich_editorial_structure()`) ou **5–6 §** editoriaux si `chapter_word_targets.target >= 420` (`natal_premium_plus`) ; anti-trigrammes, `openings_to_avoid_from_prior`, liste **Mandatory astro_basis** (tous fact_id core + supporting + nuance du pack).
+- `ReadingOpeningDiversityValidator` + `text_trigrams` : amorces chapitre (5 mots) / paragraphe (4 mots) ; prefixes generiques FR non bloquants (`GENERIC_PARA_OPENING_PREFIXES_FR`, ex. `dans le même`, `dans la vie`, `au quotidien`, `au fil du`, `concrètement cela`).
+- `repair_opening_duplicates` : boucle jusqu'a 8 rounds (`MAX_ROUNDS`), regenere **un** chapitre par tour (premiere violation) pour limiter les oscillations (`repair_opening` ; si `below min_words`, retry combine `repair_opening_too_short`).
 - Autres repairs : repetition intra-chapitre, `min_words`, `repair_evidence` (si coherence echoue malgre enrichisseur).
 
 **E2E premium** (`scripts/generate_premium_reading_e2e.ps1`, `request-premium-rich.json`) : runs de reference `54d2634c`, `627c9ada` — ~38–43 s, 6 steps `generated`, 6 fichiers `*_primary.txt` (pas de `*_repair_*`).
+
+**E2E premium plus** (`scripts/generate_premium_plus_reading_e2e.ps1`, `scripts/test_natal_premium_plus_profile.ps1`, `request-premium-plus-rich.json`) : wrapper vers `generate_premium_reading_e2e.ps1` ; timeout script par defaut **1800 s** (10 appels LLM : 8 chapitres + summary + synthesis). Run certifie OpenAI **`fe811176-c67b-4eb7-9d3e-5c51de7a6d70`** (~155 s, `gpt-5.4-mini` + summary `gpt-5-nano`, 9 chapitres 421–559 mots / 6 basis chacun, repairs opening post-synthesis).
 
 Tests :
 
 ```bash
 cargo test -p astral_llm_application
+cargo test -p astral_llm_domain
 cargo test -p astral_llm_api --test astral_llm_evidence_planner_tests
+cargo test -p astral_llm_api --test astral_llm_interpretation_profile_tests
 cargo test -p astral_llm_api --test astral_llm_evidence_coherence_tests
 cargo test -p astral_calculator --test payload_tests basic_payload_exposes_rulership
 ```
@@ -937,16 +1007,35 @@ Pour `generation_mode = chapter_orchestrated`, un quota supplementaire `MAX_PREM
 
 ### Orchestration Premium
 
-- **DomainResolver** : domaines avant LLM (scores astro, preferred, politique produit)
-- **ReadingPlanBuilder** : validation du plan chapitres
-- **ChapterOrchestrator** : un appel LLM par chapitre ; **summary** via `resolve_subtask_engine` (`economic_model` si la requete ne fixe pas `engine.model`) ; statuts `generated`, `repaired`, `failed`, etc. ; **retry automatique** si chapitre sous `min_words` (2 tentatives, `max_words` non bloquant) ; retry repetition (trigrammes, 3 tentatives) ; **anti-repetition en amont** : `chapter_structure.md`, `ChapterWritingGuidance` (4 paragraphes, phrases des chapitres precedents, amorces interdites) ; score trigrammes sans mots grammaticaux (`text_trigrams`) ; safety par chapitre
+- **DomainResolver** : domaines avant LLM (scores astro, `preferred_domains`, politique produit). Profils a **sequence fixe** (`uses_fixed_chapter_sequence()`, ex. `natal_premium_plus`) : ordre impose par `chapter_types` du profil (`ProductDefault`) ; `preferred_domains`, `engine.domain_count` et reordonnancement par `domain_scores` **ignores** — toujours `default_domain_count` chapitres astro.
+- **ReadingPlanBuilder** : plan chapitres + validation `max_chapters`. Sequence fixe : ignore `response_contract.chapters` client (evite de reduire a 5–6 chapitres premium compact par erreur) ; ajoute `synthesis` en fin de plan si absent.
+- **ChapterOrchestrator** : un appel LLM par chapitre astro (hors `synthesis`) ; **summary** court via `SummarySynthesizer` ; puis pour `natal_premium_plus`, **chapitre `synthesis`** via `FinalSynthesisSynthesizer` (retry `min_words` x2, directives `ChapterRepairKind`) ; repairs / validation evidence et openings **apres** synthesis ; statuts `generated`, `repaired`, `failed` ; retry `min_words` et repetition (trigrammes) par chapitre ; **anti-repetition en amont** : `ChapterWritingGuidance` ; safety par chapitre
 - **ExecutionAudit** : steps dans `llm_generation_steps`
 - **Token budget** : plafonds par chapitre / global
 
 Modes `response_contract.generation_mode` (alignes sur le profil d'interpretation) :
 
 - `single_pass` — profil `natal_light`, un appel LLM
-- `chapter_orchestrated` — profils `natal_basic` / `natal_premium`, orchestration multi-chapitres
+- `chapter_orchestrated` — profils `natal_basic` / `natal_premium` / `natal_premium_plus`, orchestration multi-chapitres
+
+#### Profil `natal_premium_plus` (lecture longue)
+
+| Parametre | Valeur |
+|---|---|
+| Chapitres astro | `identity`, `emotional_life`, `relationships`, `career`, `resources`, `family_roots`, `communication_mind`, `growth_path` |
+| Chapitre final | `synthesis` (genere apres summary ; code present dans `chapter_types` pour detection, exclu de `astrological_chapter_types()`) |
+| Plan total | 9 chapitres (`max_chapters` = 9) ; `default_domain_count` = 8 |
+| Mots / chapitre | min 420, cible 550, max 700 (y compris `synthesis`) |
+| Evidence / chapitre | min 6 faits, 3 familles, 2 non-placement si dispo |
+| `astro_basis` gate | min 6 refs/chapitre (`max(quality, evidence policy)`) |
+| Repetition max | `max_repeated_trigrams` = 4 |
+| Modeles | chapitres astro + `synthesis` : `default_model` (`gpt-5.4-mini`) ; summary court : `summary_model` (`gpt-5-nano` via `resolve_subtask_engine`) |
+
+**Comportement runtime specifique** :
+
+- Sequence fixe : ni `preferred_domains`, ni `engine.domain_count`, ni `domain_scores`, ni `response_contract.chapters` ne peuvent raccourcir ou reordonner la lecture.
+- Orchestration : 8 chapitres LLM (`default_model`) → summary court (`summary_model`) → `synthesis` long (`default_model`, digest des chapitres precedents + pack dominantes globales) ; **10 appels LLM** au total.
+- `natal_premium` reste la version **compacte** (nombre de chapitres = `engine.domain_count`, typiquement 5 en E2E ; ~150–300 mots/ch., min 4 preuves/ch., `max_repeated_trigrams` = 3) — non modifiee.
 
 ### Composants application (reference)
 
@@ -967,15 +1056,16 @@ Modes `response_contract.generation_mode` (alignes sur le profil d'interpretatio
 | `ResponseValidator` / `SchemaRegistry` | JSON structure |
 | `ChapterEvidencePlanner` | Packs CORE/SUPPORTING/NUANCE par chapitre + `avoid_repeating` |
 | `ChapterEvidenceCoherence` | Cohérence pack / `astro_basis` / corps (repair) |
-| `ChapterEvidenceBasisEnricher` | CORE (+ SUPPORTING sauf chapitre `identity`) omis dans `astro_basis` |
-| `ChapterWritingGuidance` | 4 §, anti-trigrammes, liste fact_id obligatoires, connecteurs generiques |
+| `ChapterEvidenceBasisEnricher` | CORE + SUPPORTING (sauf `identity`, filtre Soleil) + NUANCE omis dans `astro_basis` |
+| `ChapterWritingGuidance` | 4 § (compact) ou 5–6 § (premium plus), anti-trigrammes, liste fact_id obligatoires, connecteurs generiques |
 | `ReadingOpeningDiversityValidator` | Amorces cross-chapitre ; connecteurs generiques FR ignores |
 | `PriorChapterUsage` | `avoid_repeating` semantique + exclusion aspects/dignites deja vus |
 | `prompt_trace` | Journalisation prompt compile (fichier + tracing) |
 | `ChapterOrchestrator` | Mode Premium (orchestration + repairs) |
+| `FinalSynthesisSynthesizer` | Chapitre `synthesis` integratif (`natal_premium_plus`) |
 | `ExecutionAudit` | Traces steps + agregat tokens run |
 | `AstroBasisRoleNormalizer` | Roles canoniques alignes pack |
-| `ReadingQualityValidator` | Qualite lecture (repetition amont ; `min_words` repair) |
+| `ReadingQualityValidator` | Qualite lecture (repetition ; `min_words` repair ; seuil `astro_basis` = max profil qualite / evidence policy) |
 | `EditorialValidator` | Regles redactionnelles (fixtures + fatalisme) |
 
 ---
@@ -993,7 +1083,7 @@ Modes `response_contract.generation_mode` (alignes sur le profil d'interpretatio
 
 ### Auth et rate limiting
 
-- Auth : `Authorization: Bearer` ou `X-API-Key` (comparaison constant-time)
+- Auth : `Authorization: Bearer` ou `X-API-Key` (comparaison constant-time) ; **`GET /health` exempt** si auth active
 - Limite **globale** : ne remplace pas les quotas **par cle API**
 - 429 standardise (`too_many_requests`)
 
@@ -1023,7 +1113,7 @@ Reponse safety standardisee : `status`, `error.code`, `category`, `rule_id`, `vi
 - jargon (beginner), disclaimer legal, determinisme
 - fatalisme et conseils medical/juridique/financier (fixtures)
 
-**Premium** (`natal_premium`, `quality.blocking_gate`) : validation **bloquante** (`READING_QUALITY_FAILED`). **Light / Basic** : warnings seulement (`tracing`).
+**Premium** (`natal_premium`, `natal_premium_plus`, `quality.blocking_gate`) : validation **bloquante** (`READING_QUALITY_FAILED`). **Light / Basic** : warnings seulement (`tracing`).
 
 ### Validation produit (implementee — V1-technical-freeze)
 
@@ -1057,9 +1147,9 @@ Checks : lisibilite, non-repetition, cadrage interpretatif, jargon, fatalisme, c
 `ReadingQualityValidator::validate_for_product` + `requires_blocking_quality_gate()` :
 
 - **Light / Basic** (profils `natal_light`, `natal_basic`) : warnings non bloquants (`tracing`)
-- **Premium** (profil `natal_premium`) : gate bloquante via `quality.blocking_gate` du profil (meme en `single_pass` mal configure, corrige par `normalize_request`)
+- **Premium** (profils `natal_premium`, `natal_premium_plus`) : gate bloquante via `quality.blocking_gate` du profil (meme en `single_pass` mal configure, corrige par `normalize_request`)
 - Code erreur : `READING_QUALITY_FAILED`
-- Seuils : longueur chapitre (≥40 mots), cadrage interpretatif, repetition (trigrammes), `astro_basis`, determinisme, disclaimer
+- Seuils : longueur chapitre (`min_words_per_chapter` du profil : 40 pour `natal_premium`, 420 pour `natal_premium_plus`), cadrage interpretatif, repetition (trigrammes), densite `astro_basis` (`max(min_astro_basis_refs_per_chapter, min_evidence_per_chapter)`), determinisme, disclaimer
 - `EditorialValidator` : fatalisme, conseils interdits, jargon beginner (fixtures)
 
 #### P3b — Astro basis Premium (interpretatif obligatoire)
@@ -1067,7 +1157,8 @@ Checks : lisibilite, non-repetition, cadrage interpretatif, jargon, fatalisme, c
 `AstroFactUsage` distingue `domain_selection` (scores de domaine) et `interpretive_basis` (placements, aspects, angles, dignites, maitres).
 
 - **Basic** : `domain_score` autorise seul (`min_interpretive_astro_basis_refs_per_chapter = 0`)
-- **Premium** : ≥1 fact interpretatif valide par chapitre (`min_interpretive_astro_basis_refs_per_chapter = 1`) ; `domain_score` seul → `SCHEMA_VALIDATION_FAILED`
+- **Premium compact** (`natal_premium`) : ≥1 fact interpretatif valide par chapitre ; `domain_score` seul → `SCHEMA_VALIDATION_FAILED`
+- **Premium plus** (`natal_premium_plus`) : ≥6 facts interpretatifs par chapitre (`min_interpretive_astro_basis_refs_per_chapter = 6`)
 - `PromptCompiler` : en mode chapitre, ne fournit au LLM que les facts du domaine + facts globaux (soleil, lune, ascendant, aspects majeurs)
 - Libelles affichables : tables `llm_astro_object_labels` / `llm_zodiac_sign_labels` (locale `fr`/`en`) ; `AstroLabelHumanizer` applique les libelles aux facts normalises et ecrase les `astro_basis[].label` renvoyes par le LLM (ex. `Soleil en Capricorne en maison 2`)
 - Disclaimer legal : `default_legal_disclaimer` (accents FR : interprétation, médical, …)
@@ -1075,16 +1166,31 @@ Checks : lisibilite, non-repetition, cadrage interpretatif, jargon, fatalisme, c
 
 #### P3c — SummarySynthesizer (mode chapter_orchestrated)
 
-Etape finale apres tous les chapitres :
+Etape apres tous les chapitres astro :
 
 ```txt
-Chapter outputs -> SummarySynthesizer -> summary.title + summary.short_text -> validation qualite
+Chapter outputs -> SummarySynthesizer -> summary.title + summary.short_text
 ```
 
 - Schema provider : `summary_provider_v1`
 - Placeholders interdits : « Synthese produite par… », « generation chapitre par chapitre », mention du pipeline
 - Step auditee : `summary` dans `ExecutionAudit` (tokens `input_tokens` / `output_tokens` remontés depuis `route.response.usage`)
-- Run : `token_input` / `token_output` = somme des steps (chapitres + summary) via `ExecutionAudit::aggregate_token_usage`
+- Run : `token_input` / `token_output` = somme des steps via `ExecutionAudit::aggregate_token_usage`
+
+#### P3d — FinalSynthesisSynthesizer (`natal_premium_plus` uniquement)
+
+Etape apres le summary court :
+
+```txt
+Prior chapters + global evidence pack -> FinalSynthesisSynthesizer -> chapters[] code "synthesis"
+```
+
+- Digest des 8 chapitres precedents + pack evidence `synthesis` (dominantes globales)
+- Modele : `default_model` du profil (meme moteur que les chapitres astro), pas `summary_model`
+- Meme contraintes longueur / `astro_basis` que les chapitres astro (min 420 mots, min 6 refs)
+- Retry automatique (2 tentatives) si `synthesis` sous `min_words` ; directives `ChapterRepairKind` injectees au 2e essai
+- Repairs evidence / openings et `ReadingQualityValidator` s'executent **apres** generation de `synthesis`
+- Step auditee : `synthesis` dans `ExecutionAudit`
 
 #### P4 — Tests de charge locaux
 
@@ -1233,7 +1339,8 @@ cargo test -p astral_llm_domain
 | `astral_llm_load_tests` | Saturation semaphore / rate limit / circuit breaker |
 | `astral_llm_load_tests` (`#[ignore]`) | Idempotence concurrente PostgreSQL |
 | `provider_real_smoke` (`#[ignore]`) | OpenAI certifie V1 (structured + chapitre) ; Mistral / Anthropic optionnels, certification reportee |
-| `astral_llm_evidence_planner_tests` | Pool, packs, identity sans soleil, relationships descendant ruler |
+| `astral_llm_evidence_planner_tests` | Pool, packs, identity sans soleil, relationships descendant ruler, `premium_plus` synthesis + dominantes |
+| `astral_llm_interpretation_profile_tests` | Bootstrap 4 tiers, fixture JSON, migration legacy, `natal_premium_plus` seuils |
 | `astral_llm_evidence_coherence_tests` | Coherence pack / corps / astro_basis |
 | `astral_llm_i18n_tests` | Locales + humanizer |
 | Tests unitaires crates | Registry, circuit breaker, redaction, qualite Premium |
@@ -1297,14 +1404,15 @@ Circuit breaker, ChapterOrchestrator
 ### Limites editoriales connues (non bloquantes)
 
 - **Amorces parfois « promptees »** : formulations type « En développant… », « En prenant en compte… » (effet secondaire des consignes `ChapterWritingGuidance` + diversite d'ouvertures). Acceptable en prod ; affinage style (prochain travail produit).
-- **Densite des prompts chapitre** : structure tres controlee (4 paragraphes, liste `fact_id`, anti-trigrammes) — securise `astro_basis` et la diversite, peut donner une prose un peu scolaire. A equilibrer via affinage style, pas en rouvrant le planner.
+- **Densite des prompts chapitre** : structure tres controlee (4 § premium compact, 5–6 § premium plus, liste `fact_id`, anti-trigrammes) — securise `astro_basis` et la diversite, peut donner une prose un peu scolaire. A equilibrer via affinage style, pas en rouvrant le planner.
 
 ### Prochain travail produit (hors perimetre clos)
 
 1. ~~**OpenAI** : comparer cout / latence / qualite par modele sur le meme golden E2E~~ — **clos** : chapitres `gpt-5.4-mini`, summary `gpt-5-nano` (produit `natal_prompter` + profils JSON). Outils : `scripts/benchmark_premium_e2e_models.ps1`, `scripts/summarize_benchmark_runs.ps1` ; config : `config/llm_product_models.conf` + `set_product_llm_models.ps1`.
 2. ~~**Mistral / Anthropic**~~ — **reporte** (etape ulterieure) : adapters deja presents ; certification (smoke + E2E Premium) a planifier plus tard si besoin multi-provider.
-3. **Referentiel evidence** *(actif)* : enrichir progressivement les slots (noeuds, phases lunaires, dignites mineures, patterns d'aspects) via tables canoniques — pas de constantes en code.
-4. **Style redactionnel** *(actif)* : allegement cible des consignes prompt / guidance pour une prose moins « structuree par contraintes », sans casser les garde-fous qualite.
+3. ~~**Certification E2E `natal_premium_plus`**~~ — **clos** (2026-06-05) : run `fe811176-c67b-4eb7-9d3e-5c51de7a6d70`, script `test_natal_premium_plus_profile.ps1` PASS, sortie `output/premium_plus_reading_e2e.json`.
+4. **Referentiel evidence** *(actif)* : enrichir progressivement les slots (noeuds, phases lunaires, dignites mineures, patterns d'aspects) via tables canoniques — pas de constantes en code.
+5. **Style redactionnel** *(actif)* : allegement cible des consignes prompt / guidance pour une prose moins « structuree par contraintes », sans casser les garde-fous qualite.
 
 ### Checklist avant V1-production-public
 
@@ -1320,6 +1428,9 @@ cargo test -p astral_llm_api --test astral_llm_load_tests
 cargo test -p astral_llm_application
 cargo test -p astral_llm_infra
 cargo test -p astral_llm_domain
+cargo test -p astral_llm_api --test astral_llm_interpretation_profile_tests
+cargo test -p astral_llm_api --test astral_llm_evidence_planner_tests
+.\scripts\test_natal_premium_plus_profile.ps1 -SkipGenerate  # validation structure seule (apres generation)
 ```
 
 **Manuelle (cles + reseau / PostgreSQL) — V1 OpenAI certifiee :**
@@ -1346,9 +1457,11 @@ cargo test -p astral_llm_api --test astral_llm_load_tests -- --ignored  # idempo
 
 Criteres de passage : JSON valide, `astro_basis` valide (≥1 fact interpretatif par chapitre Premium, pas de `domain_score` seul), synthese finale personnalisee (pas de placeholder pipeline), pas de conseil medical/juridique/financier, pas de fatalisme, pas de repetition excessive, pas de liste froide de faits, disclaimer present, qualite Premium non rejetee (`READING_QUALITY_FAILED`), steps persistes (chapitres + `summary`), idempotence rejoue la reponse, `GET /v1/providers` expose `circuit_breakers`. Gate Premium : profil `natal_premium` (`blocking_gate`) bloquant meme si `single_pass` est envoye par erreur (normalise au boot requete).
 
-**API** : `product_code=natal_prompter` + `interpretation_profile_code` (`natal_light` | `natal_basic` | `natal_premium`). Shim legacy : `natal_premium` / `natal_basic` comme `product_code` sont migres vers `natal_prompter` + profil impose (log `warn`) ; rejet `PRODUCT_POLICY_VIOLATION` si `interpretation_profile_code` contredit le legacy envoye.
+**Validation E2E Premium Plus** (`natal_premium_plus`, apres smoke OpenAI) : `.\scripts\test_natal_premium_plus_profile.ps1` — 9 chapitres (sequence fixe + `synthesis`), min 420 mots et 6 `astro_basis`/chapitre, run certifie `fe811176-c67b-4eb7-9d3e-5c51de7a6d70`.
 
-**Nettoyage runtime** : normalisation en tete de `POST /v1/readings/generate` (idempotence sur `natal_prompter` normalise) ; rate limit premium uniquement si le profil active evidence ou `blocking_gate` (`natal_premium`) ; gate qualite sans fallback sur `chapter_orchestrated` seul. SQL ops : `scripts/sql/deactivate_legacy_llm_products.sql`.
+**API** : `product_code=natal_prompter` + `interpretation_profile_code` (`natal_light` | `natal_basic` | `natal_premium` | `natal_premium_plus`). Shim legacy : `natal_premium` / `natal_basic` comme `product_code` sont migres vers `natal_prompter` + profil impose (log `warn`) ; rejet `PRODUCT_POLICY_VIOLATION` si `interpretation_profile_code` contredit le legacy envoye.
+
+**Nettoyage runtime** : normalisation en tete de `POST /v1/readings/generate` (idempotence sur `natal_prompter` normalise) ; rate limit premium (`MAX_PREMIUM_RUNS_PER_KEY`) si le profil active evidence ou `blocking_gate` (`natal_premium`, `natal_premium_plus`) ; gate qualite sans fallback sur `chapter_orchestrated` seul. SQL ops : `scripts/sql/deactivate_legacy_llm_products.sql`.
 
 Le payload astro Premium doit inclure des placements/aspects (via `planets`, `positions` ou `llm_projection_natal_v1`) — un jeu `domain_scores` seul est rejete.
 
@@ -1357,6 +1470,7 @@ Le payload astro Premium doit inclure des placements/aspects (via `planets`, `po
 **Clos**
 
 - Benchmark OpenAI : cout / latence / qualite par modele sur E2E Premium (`gpt-5.4-mini` / `gpt-5-nano`)
+- Certification E2E `natal_premium_plus` : run `fe811176`, `test_natal_premium_plus_profile.ps1`
 
 **Reporte**
 
@@ -1390,3 +1504,4 @@ Le payload astro Premium doit inclure des placements/aspects (via `planets`, `po
 17. **Evidence Planner clos** — Premium interpretatif riche OpenAI **VALIDÉ PRODUIT** (E2E `0619a1e8`, 2026-06-04)
 18. `EditorialValidator`, `READING_QUALITY_FAILED`, crate `astral_llm_api` lib pour tests
 19. **Benchmark OpenAI cout / latence / qualite** — choix prod `gpt-5.4-mini` (chapitres) + `gpt-5-nano` (summary)
+20. **Profil `natal_premium_plus`** — lecture longue 8 domaines + `synthesis` ; sequence fixe ; evidence slots dedies ; `FinalSynthesisSynthesizer` ; gate qualite 420 mots / 6 preuves/chapitre ; E2E certifie (`fe811176`, `test_natal_premium_plus_profile.ps1`)

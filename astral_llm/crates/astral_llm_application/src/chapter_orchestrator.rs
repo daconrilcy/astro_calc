@@ -2,6 +2,7 @@ use std::time::{Duration, Instant};
 
 use astral_llm_domain::{
     chapter_orchestration::{ChapterGenerationStatus, ReadingPlan, ReadingPlanChapter},
+    interpretation_profile::SYNTHESIS_CHAPTER_CODE,
     generation_response::{
         ChapterProviderResponse, LegalBlock, NatalReadingResponse, QualityMetadata,
         ReadingChapter,
@@ -27,8 +28,8 @@ use crate::reading_opening_diversity_validator::ReadingOpeningDiversityValidator
 use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
 use crate::interpretive_evidence_builder::{evidence_enabled_for_request, InterpretiveEvidenceBuilder};
 use crate::chapter_quality_repair::{
-    append_repair_instructions, is_min_words_violation, maybe_repair_repetition,
-    retry_chapter_on_min_words, ChapterRepairKind,
+    append_repair_instructions, is_min_words_violation, length_repair_from_error,
+    maybe_repair_repetition, retry_chapter_on_min_words, ChapterRepairKind,
 };
 use crate::domain_resolver::DomainResolver;
 use crate::engine_defaults::{
@@ -45,6 +46,7 @@ use crate::reading_plan::ReadingPlanBuilder;
 use crate::reading_quality_validator::PremiumQualityThresholds;
 use crate::response_validator::ResponseValidator;
 use crate::safety_guard::SafetyGuard;
+use crate::final_synthesis_synthesizer::FinalSynthesisSynthesizer;
 use crate::summary_synthesizer::SummarySynthesizer;
 use crate::reasoning_generation::{effective_temperature, resolve_reasoning_effort};
 use crate::token_budget::TokenBudget;
@@ -103,7 +105,7 @@ impl<'a> ChapterOrchestrator<'a> {
         audit.selected_domains = domains.clone();
 
         let plan = ReadingPlanBuilder::build(request, &domains, interpretation);
-        ReadingPlanBuilder::validate(&plan)?;
+        ReadingPlanBuilder::validate(&plan, interpretation)?;
 
         let contracts = ReadingPlanBuilder::to_chapter_contracts(&plan);
         let quality_thresholds =
@@ -143,7 +145,12 @@ impl<'a> ChapterOrchestrator<'a> {
         let mut used_model = engine.model.clone();
         let mut fallback_used = false;
 
-        for (chapter, contract) in plan.chapters.iter().zip(contracts.iter()) {
+        for (chapter, contract) in plan
+            .chapters
+            .iter()
+            .zip(contracts.iter())
+            .filter(|(ch, _)| ch.code != SYNTHESIS_CHAPTER_CODE)
+        {
             let chapter_pack = pack_for_chapter(&chapter_packs, &chapter.code);
             let started = Instant::now();
             match self
@@ -159,7 +166,7 @@ impl<'a> ChapterOrchestrator<'a> {
                     run_id,
                     product_policy,
                     interpretation,
-                    None,
+                    &[],
                 )
                 .await
             {
@@ -175,7 +182,8 @@ impl<'a> ChapterOrchestrator<'a> {
                         engine,
                         started,
                         audit,
-                        |repair| {
+                        |repair| async {
+                            let repair_buf: Vec<ChapterRepairKind> = repair.into_iter().collect();
                             self.generate_one_chapter(
                                 request,
                                 engine,
@@ -188,8 +196,9 @@ impl<'a> ChapterOrchestrator<'a> {
                                 run_id,
                                 product_policy,
                                 interpretation,
-                                repair,
+                                &repair_buf,
                             )
+                            .await
                         },
                     )
                     .await?;
@@ -230,7 +239,7 @@ impl<'a> ChapterOrchestrator<'a> {
                             run_id,
                             product_policy,
                             interpretation,
-                            Some(repair_kind),
+                            std::slice::from_ref(&repair_kind),
                         )
                         .await
                     {
@@ -246,7 +255,9 @@ impl<'a> ChapterOrchestrator<'a> {
                                 engine,
                                 started,
                                 audit,
-                                |repair| {
+                                |repair| async {
+                                    let repair_buf: Vec<ChapterRepairKind> =
+                                        repair.into_iter().collect();
                                     self.generate_one_chapter(
                                         request,
                                         engine,
@@ -259,8 +270,9 @@ impl<'a> ChapterOrchestrator<'a> {
                                         run_id,
                                         product_policy,
                                         interpretation,
-                                        repair,
+                                        &repair_buf,
                                     )
+                                    .await
                                 },
                             )
                             .await?;
@@ -303,7 +315,8 @@ impl<'a> ChapterOrchestrator<'a> {
                         engine,
                         started,
                         audit,
-                        |repair| {
+                        |repair| async {
+                            let repair_buf: Vec<ChapterRepairKind> = repair.into_iter().collect();
                             self.generate_one_chapter(
                                 request,
                                 engine,
@@ -316,8 +329,9 @@ impl<'a> ChapterOrchestrator<'a> {
                                 run_id,
                                 product_policy,
                                 interpretation,
-                                repair,
+                                &repair_buf,
                             )
+                            .await
                         },
                     )
                     .await?;
@@ -332,7 +346,8 @@ impl<'a> ChapterOrchestrator<'a> {
                         engine,
                         started,
                         audit,
-                        |repair| {
+                        |repair| async {
+                            let repair_buf: Vec<ChapterRepairKind> = repair.into_iter().collect();
                             self.generate_one_chapter(
                                 request,
                                 engine,
@@ -345,8 +360,9 @@ impl<'a> ChapterOrchestrator<'a> {
                                 run_id,
                                 product_policy,
                                 interpretation,
-                                repair,
+                                &repair_buf,
                             )
+                            .await
                         },
                     )
                     .await?;
@@ -395,6 +411,126 @@ impl<'a> ChapterOrchestrator<'a> {
 
         let bundle = last_bundle.expect("at least one chapter");
 
+        let summary_started = Instant::now();
+        let mut summary_engine = resolve_subtask_engine(
+            engine,
+            &request.engine,
+            Some(product_policy),
+        );
+        let registry = self.router.capability_registry();
+        drop_unsupported_reasoning(&mut summary_engine, registry);
+        drop_unsupported_temperature(&mut summary_engine, registry);
+        let synthesizer =
+            SummarySynthesizer::new(self.router, self.validator, self.catalog);
+        let summary_result = synthesizer
+            .synthesize(request, &generated, &summary_engine, safety_policy, run_id)
+            .await?;
+        audit.record_chapter_step(
+            "summary",
+            summary_engine.provider.as_str(),
+            &summary_engine.model,
+            ChapterGenerationStatus::Generated,
+            summary_result.input_tokens,
+            summary_result.output_tokens,
+            summary_started.elapsed().as_millis() as u64,
+            None,
+        );
+
+        if interpretation.is_some_and(|ctx| ctx.profile.has_final_synthesis_chapter()) {
+            if let Some((synthesis_chapter, synthesis_contract)) = plan
+                .chapters
+                .iter()
+                .zip(contracts.iter())
+                .find(|(ch, _)| ch.code == SYNTHESIS_CHAPTER_CODE)
+            {
+                let synthesis_pack = pack_for_chapter(&chapter_packs, SYNTHESIS_CHAPTER_CODE);
+                let synthesis_started = Instant::now();
+                let final_synthesizer =
+                    FinalSynthesisSynthesizer::new(self.router, self.validator, self.catalog);
+                const MAX_SYNTHESIS_ATTEMPTS: usize = 2;
+                let mut synthesis_repair: Option<crate::chapter_quality_repair::ChapterRepairKind> =
+                    None;
+                let mut synthesis_result = None;
+                for attempt in 0..MAX_SYNTHESIS_ATTEMPTS {
+                    match final_synthesizer
+                        .synthesize(
+                            request,
+                            &generated,
+                            synthesis_chapter,
+                            synthesis_contract,
+                            synthesis_pack,
+                            astro_facts,
+                            engine,
+                            safety_policy,
+                            product_policy,
+                            interpretation,
+                            run_id,
+                            synthesis_repair.clone(),
+                        )
+                        .await
+                    {
+                        Ok(result) => {
+                            let words = result.chapter.body.split_whitespace().count() as u32;
+                            if words >= synthesis_chapter.min_words {
+                                synthesis_result = Some(result);
+                                break;
+                            }
+                            if attempt + 1 >= MAX_SYNTHESIS_ATTEMPTS {
+                                return Err(GenerationError::with_details(
+                                    GenerationErrorCode::ReadingQualityFailed,
+                                    format!(
+                                        "synthesis chapter too short ({words} words, min {})",
+                                        synthesis_chapter.min_words
+                                    ),
+                                    serde_json::json!({
+                                        "chapter": SYNTHESIS_CHAPTER_CODE,
+                                        "words": words,
+                                        "min_words": synthesis_chapter.min_words,
+                                    }),
+                                ));
+                            }
+                            synthesis_repair = Some(
+                                crate::chapter_quality_repair::ChapterRepairKind::TooShort {
+                                    words,
+                                    min_words: synthesis_chapter.min_words,
+                                    max_words: synthesis_chapter.max_words,
+                                },
+                            );
+                        }
+                        Err(err) => {
+                            audit.record_chapter_step(
+                                SYNTHESIS_CHAPTER_CODE,
+                                engine.provider.as_str(),
+                                &engine.model,
+                                ChapterGenerationStatus::Failed,
+                                None,
+                                None,
+                                synthesis_started.elapsed().as_millis() as u64,
+                                Some(err.detail().code.as_str().to_string()),
+                            );
+                            return Err(err);
+                        }
+                    }
+                }
+                let synthesis_result = synthesis_result.expect("synthesis generated");
+                audit.record_chapter_step(
+                    SYNTHESIS_CHAPTER_CODE,
+                    engine.provider.as_str(),
+                    &engine.model,
+                    if synthesis_repair.is_some() {
+                        ChapterGenerationStatus::Repaired
+                    } else {
+                        ChapterGenerationStatus::Generated
+                    },
+                    synthesis_result.input_tokens,
+                    synthesis_result.output_tokens,
+                    synthesis_started.elapsed().as_millis() as u64,
+                    None,
+                );
+                generated.push(synthesis_result.chapter);
+            }
+        }
+
         if evidence_enabled {
             self.repair_opening_duplicates(
                 request,
@@ -422,31 +558,6 @@ impl<'a> ChapterOrchestrator<'a> {
             )?;
             ReadingOpeningDiversityValidator::validate(&generated, writing_locale)?;
         }
-
-        let summary_started = Instant::now();
-        let mut summary_engine = resolve_subtask_engine(
-            engine,
-            &request.engine,
-            Some(product_policy),
-        );
-        let registry = self.router.capability_registry();
-        drop_unsupported_reasoning(&mut summary_engine, registry);
-        drop_unsupported_temperature(&mut summary_engine, registry);
-        let synthesizer =
-            SummarySynthesizer::new(self.router, self.validator, self.catalog);
-        let summary_result = synthesizer
-            .synthesize(request, &generated, &summary_engine, safety_policy, run_id)
-            .await?;
-        audit.record_chapter_step(
-            "summary",
-            summary_engine.provider.as_str(),
-            &summary_engine.model,
-            ChapterGenerationStatus::Generated,
-            summary_result.input_tokens,
-            summary_result.output_tokens,
-            summary_started.elapsed().as_millis() as u64,
-            None,
-        );
 
         let reading = NatalReadingResponse {
             schema_version: request.response_contract.output_schema_version.clone(),
@@ -514,23 +625,16 @@ impl<'a> ChapterOrchestrator<'a> {
                 return Ok(());
             }
 
-            let targets: Vec<String> = plan
-                .chapters
+            let Some(first_violation) = violations
                 .iter()
-                .filter(|ch| {
-                    violations.iter().any(|v| {
-                        v.chapter_code == ch.code && v.kind.contains("duplicate")
-                    })
-                })
-                .map(|ch| ch.code.clone())
-                .collect();
-
-            if targets.is_empty() {
+                .find(|v| v.kind.contains("duplicate"))
+            else {
                 break;
-            }
+            };
+            let target_code = first_violation.chapter_code.clone();
 
             let mut any_repaired = false;
-            for target_code in targets {
+            {
                 let Some(idx) = generated.iter().position(|c| c.code == target_code) else {
                     continue;
                 };
@@ -544,51 +648,71 @@ impl<'a> ChapterOrchestrator<'a> {
                 let pack = pack_for_chapter(chapter_packs, &target_code);
                 let chapter_violations: Vec<_> = violations
                     .iter()
-                    .filter(|v| v.chapter_code == target_code)
+                    .filter(|v| v.chapter_code == target_code && v.kind.contains("duplicate"))
                     .cloned()
                     .collect();
                 let started = Instant::now();
-                match self
-                    .generate_one_chapter(
-                        request,
-                        engine,
-                        safety_policy,
-                        astro_facts,
-                        pack,
-                        chapter,
-                        contract,
-                        &prior,
-                        run_id,
-                        product_policy,
-                        interpretation,
-                        Some(ChapterRepairKind::OpeningDiversity {
-                            violations: chapter_violations,
-                        }),
-                    )
-                    .await
-                {
-                    Ok((repaired, _bundle, meta)) => {
-                        audit.record_chapter_step(
-                            &target_code,
-                            &meta.0,
-                            &meta.1,
-                            ChapterGenerationStatus::Repaired,
-                            meta.3,
-                            meta.4,
-                            started.elapsed().as_millis() as u64,
-                            None,
-                        );
-                        generated[idx] = repaired;
-                        any_repaired = true;
-                    }
-                    Err(err) => {
-                        tracing::warn!(
+                let mut repairs = vec![ChapterRepairKind::OpeningDiversity {
+                    violations: chapter_violations,
+                }];
+                for opening_attempt in 0..2 {
+                    match self
+                        .generate_one_chapter(
+                            request,
+                            engine,
+                            safety_policy,
+                            astro_facts,
+                            pack,
+                            chapter,
+                            contract,
+                            &prior,
                             run_id,
-                            round,
-                            chapter = %target_code,
-                            error = %err.detail().message,
-                            "opening diversity repair failed"
-                        );
+                            product_policy,
+                            interpretation,
+                            &repairs,
+                        )
+                        .await
+                    {
+                        Ok((repaired, _bundle, meta)) => {
+                            audit.record_chapter_step(
+                                &target_code,
+                                &meta.0,
+                                &meta.1,
+                                ChapterGenerationStatus::Repaired,
+                                meta.3,
+                                meta.4,
+                                started.elapsed().as_millis() as u64,
+                                None,
+                            );
+                            generated[idx] = repaired;
+                            any_repaired = true;
+                            break;
+                        }
+                        Err(err)
+                            if is_min_words_violation(&err)
+                                && opening_attempt == 0
+                                && !repairs.iter().any(|r| {
+                                    matches!(r, ChapterRepairKind::TooShort { .. })
+                                }) =>
+                        {
+                            repairs.push(length_repair_from_error(&err, chapter));
+                            tracing::info!(
+                                run_id,
+                                round,
+                                chapter = %target_code,
+                                "opening diversity repair too short; retrying with min_words expansion"
+                            );
+                        }
+                        Err(err) => {
+                            tracing::warn!(
+                                run_id,
+                                round,
+                                chapter = %target_code,
+                                error = %err.detail().message,
+                                "opening diversity repair failed"
+                            );
+                            break;
+                        }
                     }
                 }
             }
@@ -614,7 +738,7 @@ impl<'a> ChapterOrchestrator<'a> {
         run_id: &str,
         product_policy: &ProductGenerationPolicy,
         interpretation: Option<&ResolvedInterpretationContext>,
-        repair: Option<ChapterRepairKind>,
+        repairs: &[ChapterRepairKind],
     ) -> Result<
         (
             ReadingChapter,
@@ -650,9 +774,10 @@ impl<'a> ChapterOrchestrator<'a> {
             prior_chapters,
             chapter_pack,
             &request.product_context.user_language,
+            interpretation,
         );
 
-        if let Some(ref repair_kind) = repair {
+        for repair_kind in repairs {
             append_repair_instructions(&mut bundle, chapter, repair_kind.clone());
             if let ChapterRepairKind::OpeningDiversity { violations } = repair_kind {
                 ReadingOpeningDiversityValidator::append_opening_repair_directives(
@@ -666,20 +791,21 @@ impl<'a> ChapterOrchestrator<'a> {
         }
 
         let messages = self.compiler.to_provider_messages(&bundle);
-        let attempt = match &repair {
-            None => "primary",
-            Some(crate::chapter_quality_repair::ChapterRepairKind::TooShort { .. }) => {
-                "repair_too_short"
+        let attempt = if repairs.is_empty() {
+            "primary"
+        } else if repairs.iter().any(|r| matches!(r, ChapterRepairKind::OpeningDiversity { .. }))
+            && repairs.iter().any(|r| matches!(r, ChapterRepairKind::TooShort { .. }))
+        {
+            "repair_opening_too_short"
+        } else if let Some(primary) = repairs.last() {
+            match primary {
+                ChapterRepairKind::TooShort { .. } => "repair_too_short",
+                ChapterRepairKind::Repetition { .. } => "repair_repetition",
+                ChapterRepairKind::EvidenceCoherence { .. } => "repair_evidence",
+                ChapterRepairKind::OpeningDiversity { .. } => "repair_opening",
             }
-            Some(crate::chapter_quality_repair::ChapterRepairKind::Repetition { .. }) => {
-                "repair_repetition"
-            }
-            Some(crate::chapter_quality_repair::ChapterRepairKind::EvidenceCoherence { .. }) => {
-                "repair_evidence"
-            }
-            Some(crate::chapter_quality_repair::ChapterRepairKind::OpeningDiversity { .. }) => {
-                "repair_opening"
-            }
+        } else {
+            "primary"
         };
         prompt_trace::log_prompt_bundle(
             run_id,
@@ -688,10 +814,10 @@ impl<'a> ChapterOrchestrator<'a> {
             self.compiler,
             Some(attempt),
         );
-        let route_context = if repair.is_some() {
-            astral_llm_domain::ModelRouteContext::Subtask
-        } else {
+        let route_context = if repairs.is_empty() {
             astral_llm_domain::ModelRouteContext::PrimaryReading
+        } else {
+            astral_llm_domain::ModelRouteContext::Subtask
         };
         self.router.capability_registry().validate_engine_for_context(
             route_context,

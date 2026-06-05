@@ -61,6 +61,7 @@ impl ChapterEvidenceCoherence {
         pack.core
             .iter()
             .chain(pack.supporting.iter())
+            .chain(pack.nuance.iter())
             .filter(|e| {
                 !cited.contains(e.fact_id.as_str())
                     && !cited.iter().any(|id| {
@@ -289,6 +290,40 @@ mod tests {
         };
         let v = ChapterEvidenceCoherence::detect(&chapter, &pack, &catalog(), "fr");
         assert!(!v.orphan_object_codes.contains(&"ascendant".to_string()));
+    }
+
+    #[test]
+    fn allows_dominant_planet_in_basis_for_body_mention() {
+        let pack = ChapterEvidencePack {
+            chapter_code: "synthesis".into(),
+            core: vec![evidence("dominant_planet:saturn")],
+            supporting: vec![evidence("dominant_planet:jupiter")],
+            nuance: vec![],
+            avoid_repeating: vec![],
+        };
+        let chapter = ReadingChapter {
+            code: "synthesis".into(),
+            title: "t".into(),
+            body: "Saturne structure le fil conducteur ; Jupiter ouvre des perspectives.".into(),
+            astro_basis: vec![
+                AstroBasisItem {
+                    fact_id: Some("dominant_planet:saturn".into()),
+                    label: None,
+                    factor: "Saturne".into(),
+                    interpretive_role: "core".into(),
+                },
+                AstroBasisItem {
+                    fact_id: Some("dominant_planet:jupiter".into()),
+                    label: None,
+                    factor: "Jupiter".into(),
+                    interpretive_role: "core".into(),
+                },
+            ],
+            confidence: ConfidenceLevel::Medium,
+            safety_flags: vec![],
+        };
+        let v = ChapterEvidenceCoherence::detect(&chapter, &pack, &catalog(), "fr");
+        assert!(v.orphan_object_codes.is_empty());
     }
 
     #[test]

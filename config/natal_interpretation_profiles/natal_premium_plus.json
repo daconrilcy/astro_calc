@@ -1,0 +1,56 @@
+{
+  "profile_code": "natal_premium_plus",
+  "product_code": "natal_prompter",
+  "schema_version": "v1",
+  "generation_mode": "chapter_orchestrated",
+  "max_domains": 10,
+  "max_chapters": 9,
+  "max_output_tokens": 24000,
+  "max_reasoning_effort": "high",
+  "default_domain_count": 8,
+  "chapter_models": {
+    "default_provider": "openai",
+    "default_model": "gpt-5.4-mini",
+    "summary_model": "gpt-5-nano"
+  },
+  "chapter_types": [
+    "identity",
+    "emotional_life",
+    "relationships",
+    "career",
+    "resources",
+    "family_roots",
+    "communication_mind",
+    "growth_path",
+    "synthesis"
+  ],
+  "chapter_word_targets": {
+    "min": 420,
+    "target": 550,
+    "max": 700
+  },
+  "quality": {
+    "blocking_gate": true,
+    "min_words_per_chapter": 420,
+    "max_repeated_trigrams": 4,
+    "min_astro_basis_refs_per_chapter": 6,
+    "min_interpretive_astro_basis_refs_per_chapter": 6,
+    "require_disclaimer": true
+  },
+  "evidence": {
+    "enabled": true,
+    "policy": {
+      "min_evidence_per_chapter": 6,
+      "min_distinct_kind_families": 3,
+      "min_non_placement_if_available": 2,
+      "max_core_overlap_ratio": 0.45,
+      "domain_score_counts_in_minimum": false,
+      "max_core_evidence": 3,
+      "max_supporting_evidence": 5,
+      "max_nuance_evidence": 2,
+      "max_avoid_repeating": 6,
+      "max_supporting_semantic_chapters": 2
+    }
+  },
+  "task_fragment": "Produisez une lecture natal premium approfondie, riche et editoriale chapitre par chapitre. Developpez chaque domaine avec finesse psychologique et symbolique, en variant le rythme et les ouvertures de paragraphe. Pour ce chapitre, utilisez prioritairement les preuves CORE du pack astrologique fourni. Enrichissez avec les preuves SUPPORTING. Integrez au moins une preuve NUANCE lorsqu'elle est presente. Ne repetez pas mecaniquement les fact_id deja listes dans avoid_repeating. Ne citez pas les domain_score comme fondement principal du texte. Chaque astro_basis doit referencer un fact_id present dans le pack. Privilegiez une progression narrative incarnée plutot qu'une structure scolaire repetee."
+}

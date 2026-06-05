@@ -46,6 +46,7 @@ pub mod safety_guard;
 pub mod safety_resolver;
 pub mod schema_registry;
 pub mod summary_synthesizer;
+pub mod final_synthesis_synthesizer;
 pub mod token_budget;
 
 pub use chapter_orchestrator::{new_run_id, ChapterOrchestrator};

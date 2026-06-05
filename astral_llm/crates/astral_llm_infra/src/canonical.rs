@@ -563,6 +563,7 @@ pub fn bootstrap_interpretation_profiles() -> HashMap<String, InterpretationProf
         include_str!("../../../../config/natal_interpretation_profiles/natal_light.json"),
         include_str!("../../../../config/natal_interpretation_profiles/natal_basic.json"),
         include_str!("../../../../config/natal_interpretation_profiles/natal_premium.json"),
+        include_str!("../../../../config/natal_interpretation_profiles/natal_premium_plus.json"),
     ];
     let mut map = HashMap::new();
     for json in seeds {
@@ -629,11 +630,15 @@ pub fn bootstrap_domains() -> Vec<String> {
         "emotional_life".into(),
         "relationships".into(),
         "career".into(),
+        "resources".into(),
+        "family_roots".into(),
+        "communication_mind".into(),
         "money".into(),
         "family".into(),
         "inner_conflicts".into(),
         "talents".into(),
         "growth_path".into(),
+        "synthesis".into(),
     ]
 }
 

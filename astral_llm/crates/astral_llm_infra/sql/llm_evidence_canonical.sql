@@ -82,7 +82,8 @@ INSERT INTO llm_premium_evidence_policies (
     max_core_evidence, max_supporting_evidence, max_nuance_evidence, max_avoid_repeating,
     max_supporting_semantic_chapters
 ) VALUES
-    ('natal_premium', 4, 2, 1, 0.60, false, 3, 4, 2, 5, 3)
+    ('natal_premium', 4, 2, 1, 0.60, false, 3, 4, 2, 5, 3),
+    ('natal_premium_plus', 6, 3, 2, 0.45, false, 3, 5, 2, 6, 2)
 ON CONFLICT (product_code) DO UPDATE SET
     min_evidence_per_chapter = EXCLUDED.min_evidence_per_chapter,
     min_distinct_kind_families = EXCLUDED.min_distinct_kind_families,
@@ -97,7 +98,7 @@ ON CONFLICT (product_code) DO UPDATE SET
     is_active = true;
 
 UPDATE llm_premium_evidence_policies SET is_active = false
-WHERE product_code NOT IN ('natal_premium', 'natal_light', 'natal_basic');
+WHERE product_code NOT IN ('natal_premium', 'natal_premium_plus', 'natal_light', 'natal_basic');
 
 INSERT INTO llm_chapter_evidence_slots (chapter_code, slot_role, kind_code, object_code, house_number, priority, max_items, required_if_available) VALUES
     ('identity', 'core', 'angle', 'ascendant', 1, 10, 1, true),
@@ -119,14 +120,41 @@ INSERT INTO llm_chapter_evidence_slots (chapter_code, slot_role, kind_code, obje
     ('career', 'core', 'house_ruler', 'mc', NULL, 30, 1, true),
     ('career', 'supporting', 'placement', 'saturn', NULL, 40, 1, false),
     ('career', 'supporting', 'placement', 'jupiter', NULL, 50, 1, false),
-    ('career', 'supporting', 'placement', NULL, 2, 60, 1, false),
     ('career', 'supporting', 'placement', NULL, 6, 70, 1, false),
+    ('career', 'nuance', 'essential_dignity', NULL, NULL, 80, 1, false),
+    ('resources', 'core', 'placement', NULL, 2, 10, 1, true),
+    ('resources', 'core', 'house_ruler', NULL, 2, 20, 1, true),
+    ('resources', 'supporting', 'placement', 'sun', NULL, 30, 1, false),
+    ('resources', 'supporting', 'placement', 'saturn', NULL, 40, 1, false),
+    ('resources', 'supporting', 'house_emphasis', NULL, 2, 50, 1, false),
+    ('resources', 'supporting', 'essential_dignity', NULL, NULL, 60, 1, false),
+    ('resources', 'nuance', 'accidental_dignity', NULL, NULL, 70, 1, false),
+    ('family_roots', 'core', 'placement', NULL, 4, 10, 1, true),
+    ('family_roots', 'core', 'angle', 'ic', 4, 20, 1, false),
+    ('family_roots', 'supporting', 'placement', 'moon', NULL, 30, 1, true),
+    ('family_roots', 'supporting', 'house_ruler', NULL, 4, 40, 1, true),
+    ('family_roots', 'supporting', 'aspect', NULL, NULL, 50, 2, false),
+    ('family_roots', 'nuance', 'lunar_phase', NULL, NULL, 60, 1, false),
+    ('communication_mind', 'core', 'placement', 'mercury', NULL, 10, 1, true),
+    ('communication_mind', 'core', 'placement', NULL, 3, 20, 1, true),
+    ('communication_mind', 'supporting', 'house_ruler', NULL, 3, 30, 1, true),
+    ('communication_mind', 'supporting', 'aspect', NULL, NULL, 40, 2, false),
+    ('communication_mind', 'supporting', 'placement', 'venus', NULL, 50, 1, false),
+    ('communication_mind', 'nuance', 'planetary_condition', NULL, NULL, 60, 1, false),
     ('growth_path', 'core', 'placement', 'north_node', NULL, 10, 1, false),
     ('growth_path', 'core', 'placement', 'saturn', NULL, 20, 1, false),
     ('growth_path', 'supporting', 'aspect', NULL, NULL, 30, 2, false),
     ('growth_path', 'supporting', 'placement', NULL, 8, 40, 1, false),
     ('growth_path', 'supporting', 'placement', NULL, 9, 50, 1, false),
-    ('growth_path', 'supporting', 'placement', NULL, 12, 60, 1, false);
+    ('growth_path', 'supporting', 'placement', NULL, 12, 60, 1, false),
+    ('growth_path', 'nuance', 'aspect', NULL, NULL, 70, 1, false),
+    ('synthesis', 'core', 'dominant_planet', NULL, NULL, 10, 2, true),
+    ('synthesis', 'core', 'element_balance', NULL, NULL, 20, 1, true),
+    ('synthesis', 'supporting', 'modality_balance', NULL, NULL, 30, 1, false),
+    ('synthesis', 'supporting', 'house_emphasis', NULL, NULL, 40, 2, false),
+    ('synthesis', 'supporting', 'aspect', NULL, NULL, 50, 2, false),
+    ('synthesis', 'nuance', 'house_axis', NULL, NULL, 60, 1, false),
+    ('synthesis', 'nuance', 'sect_condition', NULL, NULL, 70, 1, false);
 
 INSERT INTO llm_evidence_requirements (
     requirement_code, chapter_code, accepted_kind_codes, accepted_object_codes,
@@ -142,5 +170,9 @@ INSERT INTO llm_evidence_requirements (
     ('relationships_relational_aspect', 'relationships', ARRAY['aspect'], ARRAY['venus','descendant'], ARRAY[]::integer[], 1, true, 'warning'),
     ('growth_path_nodal', 'growth_path', ARRAY['placement'], ARRAY['north_node','south_node'], ARRAY[]::integer[], 1, true, 'blocking'),
     ('growth_path_structuring_aspect', 'growth_path', ARRAY['aspect'], ARRAY['saturn','north_node','south_node'], ARRAY[]::integer[], 1, true, 'warning'),
-    ('growth_path_transformation_house', 'growth_path', ARRAY['placement'], ARRAY[]::text[], ARRAY[8,9,12], 1, true, 'warning')
+    ('growth_path_transformation_house', 'growth_path', ARRAY['placement'], ARRAY[]::text[], ARRAY[8,9,12], 1, true, 'warning'),
+    ('resources_house_2', 'resources', ARRAY['placement','house_ruler','house_emphasis'], ARRAY[]::text[], ARRAY[2], 1, true, 'blocking'),
+    ('family_roots_house_4', 'family_roots', ARRAY['placement','angle','house_ruler'], ARRAY['moon','ic'], ARRAY[4], 1, true, 'blocking'),
+    ('communication_mercury_or_house_3', 'communication_mind', ARRAY['placement','house_ruler'], ARRAY['mercury'], ARRAY[3], 1, true, 'blocking'),
+    ('synthesis_global_dominants', 'synthesis', ARRAY['dominant_planet','element_balance','modality_balance','house_emphasis'], ARRAY[]::text[], ARRAY[]::integer[], 1, true, 'warning')
 ON CONFLICT (requirement_code) DO NOTHING;

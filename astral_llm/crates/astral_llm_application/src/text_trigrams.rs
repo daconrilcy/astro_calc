@@ -78,6 +78,17 @@ const GENERIC_PARA_OPENING_PREFIXES_FR: &[&str] = &[
     "en integrant",
     "sous l'influence",
     "sous l influence",
+    "dans le même",
+    "dans le meme",
+    "dans cette dynamique",
+    "au fil du",
+    "dans la vie",
+    "au quotidien",
+    "concrètement cela",
+    "concretement cela",
+    "dans l'expression",
+    "dans l expression",
+    "en pratique cela",
 ];
 
 pub fn is_generic_paragraph_opening(phrase: &str) -> bool {
@@ -310,6 +321,58 @@ mod tests {
                 title: "R".into(),
                 body: "Autre entree venus et partenaires.\n\nPar ailleurs la presence \
                     de venus invite a nuancer.\n\nFin.".into(),
+                astro_basis: vec![],
+                confidence: ConfidenceLevel::High,
+                safety_flags: vec![],
+            },
+        ];
+        assert!(super::detect_duplicate_openings(&chapters, "fr").is_empty());
+    }
+
+    #[test]
+    fn ignores_dans_le_meme_mouvement_transition() {
+        use astral_llm_domain::generation_response::{ConfidenceLevel, ReadingChapter};
+        let chapters = vec![
+            ReadingChapter {
+                code: "career".into(),
+                title: "C".into(),
+                body: "Ouverture carriere.\n\nDans le même mouvement le milieu \
+                    du ciel colore la trajectoire.\n\nSuite.".into(),
+                astro_basis: vec![],
+                confidence: ConfidenceLevel::High,
+                safety_flags: vec![],
+            },
+            ReadingChapter {
+                code: "growth_path".into(),
+                title: "G".into(),
+                body: "Ouverture croissance.\n\nDans le même mouvement saturne \
+                    invite a consolider.\n\nFin.".into(),
+                astro_basis: vec![],
+                confidence: ConfidenceLevel::High,
+                safety_flags: vec![],
+            },
+        ];
+        assert!(super::detect_duplicate_openings(&chapters, "fr").is_empty());
+    }
+
+    #[test]
+    fn ignores_dans_la_vie_quotidienne_transition() {
+        use astral_llm_domain::generation_response::{ConfidenceLevel, ReadingChapter};
+        let chapters = vec![
+            ReadingChapter {
+                code: "career".into(),
+                title: "C".into(),
+                body: "Ouverture carriere.\n\nDans la vie quotidienne le milieu \
+                    du ciel colore la trajectoire.\n\nSuite.".into(),
+                astro_basis: vec![],
+                confidence: ConfidenceLevel::High,
+                safety_flags: vec![],
+            },
+            ReadingChapter {
+                code: "resources".into(),
+                title: "R".into(),
+                body: "Ouverture ressources.\n\nDans la vie quotidienne saturne \
+                    invite a consolider.\n\nFin.".into(),
                 astro_basis: vec![],
                 confidence: ConfidenceLevel::High,
                 safety_flags: vec![],

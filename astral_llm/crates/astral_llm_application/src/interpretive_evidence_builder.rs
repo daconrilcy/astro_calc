@@ -122,7 +122,7 @@ mod tests {
         let facts = minimal_facts();
         let pool = InterpretiveEvidenceBuilder::build(&facts, &bootstrap_evidence_catalog()).unwrap();
         let policy = bootstrap_evidence_catalog().premium_policy;
-        assert!(pool_richness_check(&pool, &policy).is_err());
+        assert!(pool_richness_check(&pool, &policy, 5).is_err());
     }
 
     #[test]
@@ -147,18 +147,20 @@ mod tests {
 pub fn pool_richness_check(
     pool: &InterpretiveEvidencePool,
     policy: &astral_llm_domain::PremiumEvidencePolicy,
+    chapter_count: usize,
 ) -> Result<(), GenerationError> {
-    if !pool.is_rich_enough_for_premium(policy.min_evidence_per_chapter) {
+    if !pool.is_rich_enough_for_premium(policy.min_evidence_per_chapter, chapter_count) {
+        let minimum = (policy.min_evidence_per_chapter as usize)
+            * chapter_count.clamp(1, 12).min(6).max(3);
         return Err(GenerationError::with_details(
             GenerationErrorCode::PremiumEvidenceDiversityFailed,
             "The provided astrology payload does not contain enough interpretive evidence for a Premium reading.",
             serde_json::json!({
                 "missing": ["aspects", "rulers", "angles", "dignities", "extended_placements"],
                 "interpretive_count": pool.interpretive_evidence().count(),
-                "minimum_required": format!(
-                    "{} evidence items per chapter when pool is rich",
-                    policy.min_evidence_per_chapter
-                ),
+                "minimum_required": minimum,
+                "chapter_count": chapter_count,
+                "min_evidence_per_chapter": policy.min_evidence_per_chapter,
             }),
         ));
     }

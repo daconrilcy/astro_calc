@@ -84,11 +84,15 @@ INSERT INTO llm_astrological_domains (domain_code, label_fr, sort_order) VALUES
     ('emotional_life', 'Vie emotionnelle', 2),
     ('relationships', 'Relations', 3),
     ('career', 'Carriere', 4),
-    ('money', 'Argent', 5),
-    ('family', 'Famille', 6),
-    ('inner_conflicts', 'Conflits interieurs', 7),
-    ('talents', 'Talents', 8),
-    ('growth_path', 'Chemin de croissance', 9)
+    ('resources', 'Ressources et valeurs', 5),
+    ('family_roots', 'Racines familiales', 6),
+    ('communication_mind', 'Communication et esprit', 7),
+    ('money', 'Argent', 8),
+    ('family', 'Famille', 9),
+    ('inner_conflicts', 'Conflits interieurs', 10),
+    ('talents', 'Talents', 11),
+    ('growth_path', 'Chemin de croissance', 12),
+    ('synthesis', 'Synthese integrative', 13)
 ON CONFLICT (domain_code) DO NOTHING;
 
 INSERT INTO llm_product_prompt_profiles (product_code, prompt_family, prompt_version) VALUES

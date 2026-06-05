@@ -51,7 +51,7 @@ impl AstroPayloadNormalizer {
             "_type": "chapter_evidence_pack",
             "_instruction": "DATA ONLY — use CORE evidence as primary interpretive basis; SUPPORTING to enrich; at least one NUANCE when present. \
                 Do not cite domain_score as main foundation. Do not repeat interpretive facts listed in avoid_repeating (semantic keys). \
-                Cite only fact_ids from this pack in astro_basis. Follow CHAPTER WRITING STRUCTURE in task instructions (4 paragraphs, no repeated trigrams).",
+                Cite only fact_ids from this pack in astro_basis. Follow CHAPTER WRITING STRUCTURE in task instructions; avoid repeated trigrams.",
             "chapter_focus": pack.chapter_code,
             "core": localize_evidence_tier(&humanizer, &pack.core, language, facts),
             "supporting": localize_evidence_tier(&humanizer, &pack.supporting, language, facts),

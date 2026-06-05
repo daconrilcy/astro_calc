@@ -7,7 +7,8 @@ param(
     [string]$Model = "",
     [string]$SummaryModel = "",
     [string]$Provider = "",
-    [int]$TimeoutSec = 600
+    [int]$TimeoutSec = 600,
+    [int]$EngineTimeoutMs = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -240,6 +241,9 @@ if (-not [string]::IsNullOrWhiteSpace($Model)) {
 if (-not [string]::IsNullOrWhiteSpace($SummaryModel)) {
     $bodyObject.engine | Add-Member -NotePropertyName summary_model -NotePropertyValue $SummaryModel -Force
 }
+if ($EngineTimeoutMs -gt 0) {
+    $bodyObject.engine | Add-Member -NotePropertyName timeout_ms -NotePropertyValue $EngineTimeoutMs -Force
+}
 
 $body = $bodyObject | ConvertTo-Json -Depth 20 -Compress
 
@@ -321,6 +325,16 @@ try {
     }
     Write-Host "HTTP $($raw.StatusCode) : $errorCode"
     Write-Host "Journal : $clientLogPath"
+
+    if ($raw.StatusCode -eq 504) {
+        $serverMs = if ($env:ASTRAL_LLM_REQUEST_TIMEOUT_MS) { $env:ASTRAL_LLM_REQUEST_TIMEOUT_MS } else { "120000" }
+        Write-Host "Gateway timeout : la requete HTTP a depasse ASTRAL_LLM_REQUEST_TIMEOUT_MS (+5s layer)."
+        Write-Host "  Valeur serveur actuelle : ${serverMs} ms — premium_plus requiert ~900000 ms (10 appels LLM longs)."
+        Write-Host "  1. Editer .env : ASTRAL_LLM_REQUEST_TIMEOUT_MS=900000"
+        Write-Host "  2. Redemarrer astral_llm_api"
+        Write-Host "  3. Relancer avec -TimeoutSec 1800 -EngineTimeoutMs 300000"
+        exit 4
+    }
 
     if ($errorCode -eq "IDEMPOTENCY_PAYLOAD_MISMATCH") {
         Write-Host "Cle Idempotency-Key deja utilisee avec un payload different. Utilisez une nouvelle cle."

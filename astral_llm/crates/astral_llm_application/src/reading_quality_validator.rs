@@ -207,10 +207,14 @@ pub fn thresholds_for_request(
 ) -> PremiumQualityThresholds {
     if let Some(ctx) = interpretation {
         let q = &ctx.profile.document.quality;
+        let mut min_astro = q.min_astro_basis_refs_per_chapter;
+        if let Some(policy) = ctx.profile.to_premium_evidence_policy() {
+            min_astro = min_astro.max(policy.min_evidence_per_chapter);
+        }
         return PremiumQualityThresholds {
             min_words_per_chapter: q.min_words_per_chapter as usize,
             max_repeated_trigrams: q.max_repeated_trigrams as usize,
-            min_astro_basis_per_chapter: q.min_astro_basis_refs_per_chapter,
+            min_astro_basis_per_chapter: min_astro,
         };
     }
     let mut t = PremiumQualityThresholds::default();
@@ -379,6 +383,18 @@ mod tests {
                         label: None,
                         factor: "sun".into(),
                         interpretive_role: "core".into(),
+                    },
+                    astral_llm_domain::AstroBasisItem {
+                        fact_id: Some("placement:moon:cancer:house:4".into()),
+                        label: None,
+                        factor: "moon".into(),
+                        interpretive_role: "core".into(),
+                    },
+                    astral_llm_domain::AstroBasisItem {
+                        fact_id: Some("aspect:sun:moon:trine".into()),
+                        label: None,
+                        factor: "sun_moon".into(),
+                        interpretive_role: "supporting".into(),
                     },
                 ],
                 confidence: ConfidenceLevel::Medium,

@@ -57,8 +57,220 @@ fn extract_natal_structured(
     }
 
     extract_rulership_context(data, &mut facts, privacy);
+    extract_chart_emphasis(data, &mut facts, privacy);
+    extract_house_axis_emphasis(data, &mut facts, privacy);
+    extract_chart_sect(data, &mut facts, privacy);
 
     facts
+}
+
+fn extract_chart_emphasis(
+    data: &serde_json::Value,
+    facts: &mut Vec<NormalizedAstroFact>,
+    privacy: &PrivacyPolicy,
+) {
+    let Some(emphasis) = data.get("chart_emphasis").and_then(|v| v.as_object()) else {
+        return;
+    };
+
+    if let Some(objects) = emphasis.get("dominant_objects").and_then(|v| v.as_array()) {
+        for entry in objects.iter().take(3) {
+            let object_code = entry
+                .get("object_code")
+                .and_then(|v| v.as_str())
+                .unwrap_or("object");
+            let score = entry.get("score").and_then(|v| v.as_f64()).unwrap_or(0.5);
+            let mut value = entry.clone();
+            if privacy.redact_birth_data_before_llm {
+                value = redact_value(&value);
+            }
+            facts.push(NormalizedAstroFact {
+                id: format!("dominant_planet:{object_code}"),
+                kind: AstroFactKind::PlanetPosition,
+                kind_code: "dominant_planet".to_string(),
+                usage: AstroFactUsage::InterpretiveBasis,
+                label: format!("Planete dominante : {object_code}"),
+                value,
+                interpretive_weight: Some(score as f32),
+                domains: vec!["synthesis".into()],
+            });
+        }
+    }
+
+    if let Some(houses) = emphasis.get("dominant_houses").and_then(|v| v.as_array()) {
+        for entry in houses.iter().take(3) {
+            let house_number = entry
+                .get("house_number")
+                .and_then(|v| v.as_u64())
+                .and_then(|n| u8::try_from(n).ok());
+            let theme = entry
+                .get("theme_code")
+                .and_then(|v| v.as_str())
+                .unwrap_or("house");
+            let score = entry.get("score").and_then(|v| v.as_f64()).unwrap_or(0.5);
+            let mut value = entry.clone();
+            if privacy.redact_birth_data_before_llm {
+                value = redact_value(&value);
+            }
+            facts.push(NormalizedAstroFact {
+                id: format!(
+                    "house_emphasis:house:{}",
+                    house_number.unwrap_or(0)
+                ),
+                kind: AstroFactKind::HousePlacement,
+                kind_code: "house_emphasis".to_string(),
+                usage: AstroFactUsage::InterpretiveBasis,
+                label: format!("Emphase maison {theme}"),
+                value,
+                interpretive_weight: Some(score as f32),
+                domains: vec!["synthesis".into(), "resources".into()],
+            });
+        }
+    }
+
+    let mut element_scores: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
+    let mut modality_scores: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
+    if let Some(signs) = emphasis.get("dominant_signs").and_then(|v| v.as_array()) {
+        for entry in signs {
+            let sign = entry
+                .get("sign_code")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown");
+            let score = entry.get("score").and_then(|v| v.as_f64()).unwrap_or(0.5);
+            if let Some(element) = sign_element_code(sign) {
+                *element_scores.entry(element.to_string()).or_insert(0.0) += score;
+            }
+            if let Some(modality) = sign_modality_code(sign) {
+                *modality_scores.entry(modality.to_string()).or_insert(0.0) += score;
+            }
+        }
+    }
+    push_balance_fact(
+        facts,
+        "element_balance",
+        &element_scores,
+        "Balance elementaire",
+        privacy,
+    );
+    push_balance_fact(
+        facts,
+        "modality_balance",
+        &modality_scores,
+        "Balance modale",
+        privacy,
+    );
+}
+
+fn push_balance_fact(
+    facts: &mut Vec<NormalizedAstroFact>,
+    kind_code: &str,
+    scores: &std::collections::HashMap<String, f64>,
+    label_prefix: &str,
+    privacy: &PrivacyPolicy,
+) {
+    let Some((winner, score)) = scores
+        .iter()
+        .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
+    else {
+        return;
+    };
+    let mut value = serde_json::json!({
+        "dominant_code": winner,
+        "score": score,
+        "distribution": scores,
+    });
+    if privacy.redact_birth_data_before_llm {
+        value = redact_value(&value);
+    }
+    facts.push(NormalizedAstroFact {
+        id: format!("{kind_code}:{winner}"),
+        kind: AstroFactKind::HousePlacement,
+        kind_code: kind_code.to_string(),
+        usage: AstroFactUsage::InterpretiveBasis,
+        label: format!("{label_prefix} : {winner}"),
+        value,
+        interpretive_weight: Some(*score as f32),
+        domains: vec!["synthesis".into()],
+    });
+}
+
+fn extract_house_axis_emphasis(
+    data: &serde_json::Value,
+    facts: &mut Vec<NormalizedAstroFact>,
+    privacy: &PrivacyPolicy,
+) {
+    let Some(axes) = data.get("house_axis_emphasis").and_then(|v| v.as_array()) else {
+        return;
+    };
+    for axis in axes.iter().take(3) {
+        let axis_code = axis
+            .get("axis_code")
+            .and_then(|v| v.as_str())
+            .unwrap_or("axis");
+        let mut value = axis.clone();
+        if privacy.redact_birth_data_before_llm {
+            value = redact_value(&value);
+        }
+        facts.push(NormalizedAstroFact {
+            id: format!("house_axis:{axis_code}"),
+            kind: AstroFactKind::HousePlacement,
+            kind_code: "house_axis".to_string(),
+            usage: AstroFactUsage::InterpretiveBasis,
+            label: format!("Axe maison : {axis_code}"),
+            value,
+            interpretive_weight: Some(0.7),
+            domains: vec!["synthesis".into()],
+        });
+    }
+}
+
+fn extract_chart_sect(
+    data: &serde_json::Value,
+    facts: &mut Vec<NormalizedAstroFact>,
+    privacy: &PrivacyPolicy,
+) {
+    let Some(sect) = data
+        .pointer("/chart_context/sect/chart_sect")
+        .and_then(|v| v.as_str())
+    else {
+        return;
+    };
+    let mut value = data
+        .pointer("/chart_context/sect")
+        .cloned()
+        .unwrap_or_else(|| serde_json::json!({ "chart_sect": sect }));
+    if privacy.redact_birth_data_before_llm {
+        value = redact_value(&value);
+    }
+    facts.push(NormalizedAstroFact {
+        id: format!("sect_condition:{sect}"),
+        kind: AstroFactKind::PlanetPosition,
+        kind_code: "sect_condition".to_string(),
+        usage: AstroFactUsage::InterpretiveBasis,
+        label: format!("Secte du theme : {sect}"),
+        value,
+        interpretive_weight: Some(0.6),
+        domains: vec!["synthesis".into()],
+    });
+}
+
+fn sign_element_code(sign: &str) -> Option<&'static str> {
+    match sign.to_lowercase().as_str() {
+        "aries" | "leo" | "sagittarius" => Some("fire"),
+        "taurus" | "virgo" | "capricorn" => Some("earth"),
+        "gemini" | "libra" | "aquarius" => Some("air"),
+        "cancer" | "scorpio" | "pisces" => Some("water"),
+        _ => None,
+    }
+}
+
+fn sign_modality_code(sign: &str) -> Option<&'static str> {
+    match sign.to_lowercase().as_str() {
+        "aries" | "cancer" | "libra" | "capricorn" => Some("cardinal"),
+        "taurus" | "leo" | "scorpio" | "aquarius" => Some("fixed"),
+        "gemini" | "virgo" | "sagittarius" | "pisces" => Some("mutable"),
+        _ => None,
+    }
 }
 
 fn extract_rulership_context(
@@ -137,12 +349,15 @@ fn push_rulership_fact(
     let theme = match source_code {
         "ascendant" => vec!["identity".into()],
         "mc" => vec!["career".into()],
+        "ic" => vec!["family_roots".into(), "emotional_life".into()],
         "descendant" => vec!["relationships".into()],
         code if code.starts_with("house_") => {
             let house = code.strip_prefix("house_").unwrap_or(code);
             match house {
+                "2" => vec!["resources".into()],
+                "3" => vec!["communication_mind".into()],
+                "4" => vec!["emotional_life".into(), "family_roots".into()],
                 "7" => vec!["relationships".into()],
-                "4" => vec!["emotional_life".into()],
                 "8" | "9" | "12" => vec!["growth_path".into()],
                 "10" => vec!["career".into()],
                 _ => vec![],
@@ -660,5 +875,24 @@ mod tests {
             moon.value.pointer("/evidence/sign_code").and_then(|v| v.as_str()),
             Some("pisces")
         );
+    }
+
+    #[test]
+    fn extracts_chart_emphasis_for_synthesis_slots() {
+        let data = serde_json::json!({
+            "chart_emphasis": {
+                "dominant_objects": [{ "object_code": "saturn", "score": 0.8 }],
+                "dominant_houses": [{ "house_number": 2, "theme_code": "resources", "score": 0.9 }],
+                "dominant_signs": [{ "sign_code": "capricorn", "score": 1.0 }]
+            },
+            "chart_context": {
+                "sect": { "chart_sect": "night" }
+            }
+        });
+        let facts = extract_natal_structured(&data, &PrivacyPolicy::default());
+        assert!(facts.iter().any(|f| f.id == "dominant_planet:saturn"));
+        assert!(facts.iter().any(|f| f.id == "house_emphasis:house:2"));
+        assert!(facts.iter().any(|f| f.kind_code == "element_balance"));
+        assert!(facts.iter().any(|f| f.id == "sect_condition:night"));
     }
 }

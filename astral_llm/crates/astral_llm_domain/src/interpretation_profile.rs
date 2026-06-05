@@ -11,6 +11,8 @@ pub const NATAL_PROMPTER_PRODUCT: &str = "natal_prompter";
 pub const PROFILE_NATAL_LIGHT: &str = "natal_light";
 pub const PROFILE_NATAL_BASIC: &str = "natal_basic";
 pub const PROFILE_NATAL_PREMIUM: &str = "natal_premium";
+pub const PROFILE_NATAL_PREMIUM_PLUS: &str = "natal_premium_plus";
+pub const SYNTHESIS_CHAPTER_CODE: &str = "synthesis";
 
 /// Anciens `product_code` API acceptes temporairement par le shim de migration.
 pub const LEGACY_PRODUCT_NATAL_PREMIUM: &str = "natal_premium";
@@ -185,6 +187,50 @@ impl InterpretationProfile {
         })
     }
 
+    pub fn has_final_synthesis_chapter(&self) -> bool {
+        self.document
+            .chapter_types
+            .iter()
+            .any(|c| c == SYNTHESIS_CHAPTER_CODE)
+    }
+
+    pub fn astrological_chapter_types(&self) -> Vec<String> {
+        self.document
+            .chapter_types
+            .iter()
+            .filter(|c| *c != SYNTHESIS_CHAPTER_CODE)
+            .cloned()
+            .collect()
+    }
+
+    pub fn uses_rich_editorial_structure(&self) -> bool {
+        self.document.chapter_word_targets.target >= 420
+    }
+
+    /// Profils dont l'ordre `chapter_types` definit la lecture (ex. `natal_premium_plus`).
+    pub fn uses_fixed_chapter_sequence(&self) -> bool {
+        let astro = self.astrological_chapter_types();
+        !astro.is_empty()
+            && self.default_domain_count() as usize == astro.len()
+    }
+
+    pub fn planned_chapter_count(&self, engine_domain_count: Option<u8>) -> u8 {
+        let astro_len = self.astrological_chapter_types().len();
+        let domain_n = engine_domain_count
+            .unwrap_or_else(|| self.default_domain_count())
+            .max(1) as usize;
+        let astro_count = if astro_len == 0 {
+            domain_n
+        } else {
+            domain_n.min(astro_len)
+        };
+        let mut total = astro_count as u8;
+        if self.has_final_synthesis_chapter() {
+            total = total.saturating_add(1);
+        }
+        total
+    }
+
     pub fn validate(&self) -> Result<(), String> {
         if self.product_code != NATAL_PROMPTER_PRODUCT {
             return Err(format!(
@@ -227,5 +273,28 @@ mod tests {
         assert!(profile.validate().is_ok());
         assert!(profile.evidence_enabled());
         assert!(profile.blocking_quality_gate());
+    }
+
+    #[test]
+    fn premium_plus_uses_fixed_chapter_sequence() {
+        let json =
+            include_str!("../../../../config/natal_interpretation_profiles/natal_premium_plus.json");
+        let doc: InterpretationProfileDocument = serde_json::from_str(json).expect("parse");
+        let profile = InterpretationProfile::from_document(doc);
+        assert!(profile.uses_fixed_chapter_sequence());
+        assert_eq!(profile.planned_chapter_count(None), 9);
+    }
+
+    #[test]
+    fn premium_plus_profile_parses_from_fixture_shape() {
+        let json =
+            include_str!("../../../../config/natal_interpretation_profiles/natal_premium_plus.json");
+        let doc: InterpretationProfileDocument = serde_json::from_str(json).expect("parse");
+        let profile = InterpretationProfile::from_document(doc);
+        assert!(profile.validate().is_ok());
+        assert!(profile.has_final_synthesis_chapter());
+        assert!(profile.uses_rich_editorial_structure());
+        assert_eq!(profile.document.quality.min_words_per_chapter, 420);
+        assert_eq!(profile.document.quality.min_astro_basis_refs_per_chapter, 6);
     }
 }

@@ -24,7 +24,7 @@ impl EvidenceDiversityValidator {
             return Ok(Vec::new());
         }
 
-        crate::interpretive_evidence_builder::pool_richness_check(pool, policy)?;
+        crate::interpretive_evidence_builder::pool_richness_check(pool, policy, packs.len())?;
 
         let mut audit = Vec::new();
         for pack in packs {
@@ -58,7 +58,7 @@ impl EvidenceDiversityValidator {
         if !evidence_enabled {
             return Ok(Vec::new());
         }
-        crate::interpretive_evidence_builder::pool_richness_check(pool, policy)?;
+        crate::interpretive_evidence_builder::pool_richness_check(pool, policy, packs.len())?;
         let mut audit = Vec::new();
         for pack in packs {
             audit.extend(Self::validate_chapter_requirements(pool, pack, catalog)?);

@@ -209,6 +209,26 @@ impl InterpretationProfileResolver {
             resolved_model,
         )?;
 
+        if let Some(ctx) = &interpretation {
+            let planned = ctx
+                .profile
+                .planned_chapter_count(request.engine.domain_count);
+            if planned > policy.max_chapters {
+                return Err(GenerationError::with_details(
+                    GenerationErrorCode::ProductPolicyViolation,
+                    format!(
+                        "planned chapter count exceeds profile maximum ({})",
+                        policy.max_chapters
+                    ),
+                    serde_json::json!({
+                        "planned_chapters": planned,
+                        "max_chapters": policy.max_chapters,
+                        "profile_code": ctx.profile.profile_code,
+                    }),
+                ));
+            }
+        }
+
         Ok(ValidatedProductContext {
             policy,
             interpretation,

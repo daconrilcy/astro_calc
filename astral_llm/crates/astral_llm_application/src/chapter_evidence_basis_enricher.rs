@@ -39,6 +39,14 @@ impl ChapterEvidenceBasisEnricher {
                 .map(|(e, role)| (e.fact_id.clone(), e.label.clone(), role.to_string())),
         );
 
+        missing.extend(
+            pack.nuance
+                .iter()
+                .map(|e| (e, "nuance"))
+                .filter(|(e, _)| !already_cited(&cited, e))
+                .map(|(e, role)| (e.fact_id.clone(), e.label.clone(), role.to_string())),
+        );
+
         for (fact_id, factor, role) in missing {
             chapter.astro_basis.push(AstroBasisItem {
                 fact_id: Some(fact_id),
@@ -165,6 +173,46 @@ mod tests {
                 .any(|b| b.fact_id.as_deref() == Some("ruler:angle:ascendant:mars"))
         );
         assert!(v.orphan_object_codes.is_empty());
+    }
+
+    #[test]
+    fn appends_nuance_when_core_and_supporting_already_cited() {
+        let pack = ChapterEvidencePack {
+            chapter_code: "identity".into(),
+            core: vec![evidence("placement:ascendant:scorpio:house:1", "Asc")],
+            supporting: vec![evidence("signal:aspect:jupiter:uranus:opposition", "Asp")],
+            nuance: vec![evidence("signal:dignity:saturn:domicile:capricorn", "Sat")],
+            avoid_repeating: vec![],
+        };
+        let mut chapter = ReadingChapter {
+            code: "identity".into(),
+            title: "t".into(),
+            body: "body".into(),
+            astro_basis: vec![
+                AstroBasisItem {
+                    fact_id: Some("placement:ascendant:scorpio:house:1".into()),
+                    label: None,
+                    factor: "Asc".into(),
+                    interpretive_role: "core".into(),
+                },
+                AstroBasisItem {
+                    fact_id: Some("signal:aspect:jupiter:uranus:opposition".into()),
+                    label: None,
+                    factor: "Asp".into(),
+                    interpretive_role: "supporting".into(),
+                },
+            ],
+            confidence: ConfidenceLevel::Medium,
+            safety_flags: vec![],
+        };
+        ChapterEvidenceBasisEnricher::enrich_missing_pack_slots(&mut chapter, &pack);
+        assert!(
+            chapter
+                .astro_basis
+                .iter()
+                .any(|b| b.fact_id.as_deref() == Some("signal:dignity:saturn:domicile:capricorn"))
+        );
+        assert_eq!(chapter.astro_basis.len(), 3);
     }
 
     #[test]
