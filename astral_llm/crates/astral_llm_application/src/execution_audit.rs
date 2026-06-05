@@ -30,9 +30,10 @@ impl ExecutionAudit {
         output_tokens: Option<u32>,
         latency_ms: u64,
         error_code: Option<String>,
+        step_type: Option<&str>,
     ) {
         self.push_step(GenerationStepRecord {
-            step_type: "chapter_generate".into(),
+            step_type: step_type.unwrap_or("chapter_generate").into(),
             chapter_code: Some(chapter_code.to_string()),
             provider: provider.to_string(),
             model: model.to_string(),
@@ -80,6 +81,7 @@ mod tests {
             Some(50),
             1000,
             None,
+            None,
         );
         audit.record_chapter_step(
             "summary",
@@ -89,6 +91,7 @@ mod tests {
             Some(200),
             Some(30),
             500,
+            None,
             None,
         );
         assert_eq!(audit.aggregate_token_usage(), (Some(300), Some(80)));

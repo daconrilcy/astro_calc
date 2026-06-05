@@ -157,6 +157,14 @@ impl ReadingQualityValidator {
             warnings.push("deterministic wording detected".into());
         }
 
+        let symbolic_boilerplate_chapters =
+            count_symbolic_disclaimer_boilerplate_chapters(&reading.chapters);
+        if symbolic_boilerplate_chapters > 2 {
+            warnings.push(format!(
+                "symbolic disclaimer boilerplate repeated in {symbolic_boilerplate_chapters} domain chapters (max 2)"
+            ));
+        }
+
         if matches!(request.product_context.audience_level, AudienceLevel::Beginner) {
             if has_beginner_jargon(&corpus) {
                 warnings.push("beginner audience contains excessive jargon".into());
@@ -298,6 +306,30 @@ fn has_beginner_jargon(corpus: &str) -> bool {
     ["maison xii", "quincunx", "pars fortunae", "biquintile"]
         .iter()
         .any(|j| corpus.contains(j))
+}
+
+const SYMBOLIC_DISCLAIMER_STOCK_PHRASES: &[&str] = &[
+    "lecture reste symbolique",
+    "lecture astrologique reste symbolique",
+    "dans une lecture symbolique",
+    "cette lecture reste symbolique",
+];
+
+fn chapter_has_symbolic_disclaimer_boilerplate(body: &str) -> bool {
+    let lower = body.to_lowercase();
+    SYMBOLIC_DISCLAIMER_STOCK_PHRASES
+        .iter()
+        .any(|p| lower.contains(p))
+}
+
+fn count_symbolic_disclaimer_boilerplate_chapters(
+    chapters: &[astral_llm_domain::generation_response::ReadingChapter],
+) -> usize {
+    chapters
+        .iter()
+        .filter(|c| c.code != SYNTHESIS_CHAPTER_CODE)
+        .filter(|c| chapter_has_symbolic_disclaimer_boilerplate(&c.body))
+        .count()
 }
 
 #[cfg(test)]

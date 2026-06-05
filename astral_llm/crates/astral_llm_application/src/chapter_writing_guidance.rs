@@ -61,6 +61,9 @@ impl ChapterWritingGuidance {
                  Natural grammatical repetitions are acceptable.\n\
                  Do not start paragraphs with raw placement citations such as « Saturne en Capricorne… »; \
                  start with the life domain or interpretive idea; cite the astrological factor later in the sentence.\n\
+                 The legal disclaimer is added separately. Do not repeat boilerplate symbolic framing in each chapter \
+                 (e.g. « Cette lecture reste symbolique et exploratoire », « Dans une lecture symbolique »). \
+                 Keep naturally interpretive vocabulary: suggests, evokes, highlights, invites, may indicate.\n\
                  Do not start consecutive paragraphs with generic connectors already used earlier in this reading \
                  (e.g. Par ailleurs, En synthèse, Pour finir, Sous l'influence).",
                 chapter.code,

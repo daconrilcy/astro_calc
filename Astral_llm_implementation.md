@@ -222,7 +222,7 @@ Comparer une sortie v2 a la baseline v1 :
   -V2Path output\premium_plus_reading_e2e_v2.json
 ```
 
-**Certification E2E v2** (2026-06-05, profil **520/720/850** + `chapter_length_expansion_codes`) : run OpenAI `e76a8156-82de-4ddb-9a16-48b22fbd6955` — **5 517 mots** (corps), 9 chapitres ≥ 520 mots, 1 repair `relationships`, `synthesis` OK ; sortie reference `output\premium_plus_reading_e2e_v2d.json`. Revalider : `.\scripts\test_natal_premium_plus_profile.ps1 -SkipGenerate -OutputPath output\premium_plus_reading_e2e_v2d.json`.
+**Certification E2E v2** (2026-06-05, profil **520/720/850** + `chapter_length_expansion_codes`) : run OpenAI `e76a8156-82de-4ddb-9a16-48b22fbd6955` — **5 517 mots** (corps) ; sortie reference `output\premium_plus_reading_e2e_v2d.json`. **Final polish** (2026-06-05) : run `31d81052-c5ab-49d0-bfdf-1eb2c3e0d027` — **5 582 mots**, gates polish (house_axis i18n, summary patterns, raw placement) ; sortie `output\premium_plus_reading_e2e.json`. Revalider : `.\scripts\test_natal_premium_plus_profile.ps1` ou `-SkipGenerate` sur la sortie cible.
 
 ---
 
@@ -822,7 +822,7 @@ Tables (ou bootstrap si DB vide) :
 - `llm_product_default_engine` — `default_model` (chapitres), `economic_model` (summary) ; voir section **Modeles LLM par produit**
 - `llm_product_generation_policies`
 - `llm_chapter_evidence_exclusions` — regles d'exclusion evidence par chapitre (bootstrap + chargement DB ; ex. Soleil hors `identity`, MC ruler hors `relationships`)
-- `llm_element_balance_labels`, `llm_modality_balance_labels`, `llm_sect_labels`, `llm_house_theme_labels` — libelles humanises post-LLM (`AstroLabelHumanizer`)
+- `llm_element_balance_labels`, `llm_modality_balance_labels`, `llm_sect_labels`, `llm_house_theme_labels`, `llm_house_axis_labels` — libelles humanises post-LLM (`AstroLabelHumanizer`) ; `llm_house_axis_labels` : `display_label` → `astro_basis.label`/`factor`, `interpretive_label` → evidence pack (6 axes FR/EN)
 
 Les valeurs metier ne sont pas dupliquees en constantes Rust lorsqu'elles existent en base.
 
@@ -969,7 +969,7 @@ Fixtures E2E :
 - `request-premium-rich.json` — golden `natal_payload_v13_paris_1990` pour E2E OpenAI (`natal_premium`)
 - `request-premium-plus-rich.json` — meme golden, profil `natal_premium_plus` (lecture longue)
 
-SQL : [`astral_llm/crates/astral_llm_infra/sql/llm_evidence_canonical.sql`](astral_llm/crates/astral_llm_infra/sql/llm_evidence_canonical.sql) (`llm_chapter_evidence_slots`, `llm_evidence_requirements`, `llm_chapter_evidence_exclusions`) ; i18n : [`llm_i18n_canonical.sql`](astral_llm/crates/astral_llm_infra/sql/llm_i18n_canonical.sql) (`llm_writing_locales` fr/en/es/de, `llm_astro_basis_roles`, `llm_aspect_type_labels`, labels balance/modality/sect/maisons)
+SQL : [`astral_llm/crates/astral_llm_infra/sql/llm_evidence_canonical.sql`](astral_llm/crates/astral_llm_infra/sql/llm_evidence_canonical.sql) (`llm_chapter_evidence_slots`, `llm_evidence_requirements`, `llm_chapter_evidence_exclusions`) ; i18n : [`llm_i18n_canonical.sql`](astral_llm/crates/astral_llm_infra/sql/llm_i18n_canonical.sql) (`llm_writing_locales` fr/en/es/de, `llm_astro_basis_roles`, `llm_aspect_type_labels`, labels balance/modality/sect/maisons, `llm_house_axis_labels`)
 
 **Langue de reponse LLM** : `OUTPUT_LANGUAGE` injecte dans les instructions systeme (`WritingLanguageDirective`) selon `product_context.user_language`. Le bloc `--- BEGIN ASTRO DATA ---` envoye au modele utilise des libelles humanises (`AstroPayloadNormalizer::to_chapter_evidence_pack_block` + `AstroLabelHumanizer::label_for_fact_id`). Post-LLM : `AstroBasisRoleNormalizer` (2 passages autour de `ChapterEvidenceBasisEnricher`) puis `AstroLabelHumanizer` sur `astro_basis` (label, factor). Roles : correspondance exacte `fact_id` puis alias `object_code` **dans la meme famille** (`evidence_fact_parse::fact_id_role_bucket` : ex. `signal:object_position:sun` ≠ `placement:sun:*`).
 
@@ -1008,7 +1008,7 @@ SQL : [`astral_llm/crates/astral_llm_infra/sql/llm_evidence_canonical.sql`](astr
 
 **E2E premium** (`scripts/generate_premium_reading_e2e.ps1`, `request-premium-rich.json`) : runs de reference `54d2634c`, `627c9ada` — ~38–43 s, 6 steps `generated`, 6 fichiers `*_primary.txt` (pas de `*_repair_*`).
 
-**E2E premium plus** (`scripts/generate_premium_plus_reading_e2e.ps1`, `scripts/test_natal_premium_plus_profile.ps1`, `request-premium-plus-rich.json`) : wrapper vers `generate_premium_reading_e2e.ps1` ; timeout script par defaut **1800 s**. Le JSON profil courant (`natal_premium_plus.json`) porte les seuils **v2** (520/720/850) et `chapter_length_expansion_codes` (`relationships`, `career`, `resources`, `communication_mind`, `growth_path`). Run historique **v1** OpenAI `fe811176-c67b-4eb7-9d3e-5c51de7a6d70` (~155 s, anciens seuils 420/550, ~4 255 mots) sert de baseline `compare_premium_plus_versions.ps1`. **Certification v2** **clos** (2026-06-05) : run `e76a8156` — **5 517 mots**, 1 repair (opening/`relationships`), 0 repair `too_short`, objectif indicatif ≥ 5 500 mots atteint ; sortie `output\premium_plus_reading_e2e_v2d.json`.
+**E2E premium plus** (`scripts/generate_premium_plus_reading_e2e.ps1`, `scripts/test_natal_premium_plus_profile.ps1`, `request-premium-plus-rich.json`) : wrapper vers `generate_premium_reading_e2e.ps1` ; timeout script par defaut **1800 s**. Le JSON profil courant (`natal_premium_plus.json`) porte les seuils **v2** (520/720/850) et `chapter_length_expansion_codes`. **Certification v2** **clos** (2026-06-05) : run `e76a8156` — **5 517 mots** (`premium_plus_reading_e2e_v2d.json`). **Final polish clos** (2026-06-05) : run `31d81052` — **5 582 mots**, gates polish + audit SQL ; sortie `premium_plus_reading_e2e.json`.
 
 Tests :
 
@@ -1197,7 +1197,7 @@ Checks : lisibilite, non-repetition, cadrage interpretatif, jargon, fatalisme, c
 - **Premium compact** (`natal_premium`) : ≥1 fact interpretatif valide par chapitre ; `domain_score` seul → `SCHEMA_VALIDATION_FAILED`
 - **Premium plus** (`natal_premium_plus`) : ≥6 facts interpretatifs par chapitre domaine ; chapitre `synthesis` : ≥4 si `min_astro_basis_refs_synthesis` est defini (`min_interpretive_astro_basis_refs_per_chapter = 6` sur les domaines)
 - `PromptCompiler` : en mode chapitre, ne fournit au LLM que les facts du domaine + facts globaux (soleil, lune, ascendant, aspects majeurs)
-- Libelles affichables : tables `llm_astro_object_labels` / `llm_zodiac_sign_labels` (locale `fr`/`en`/`es`/`de`) + `llm_element_balance_labels`, `llm_modality_balance_labels`, `llm_sect_labels`, `llm_house_theme_labels` ; `AstroLabelHumanizer` humanise placements, aspects, dignites, `element_balance`, `modality_balance`, `sect_condition`, `house_emphasis`, `dominant_planet`, clusters. Les kinds `house_axis` et `lunar_phase` restent sur libelles fact_id / hint tant qu'aucune table i18n dediee n'existe.
+- Libelles affichables : tables `llm_astro_object_labels` / `llm_zodiac_sign_labels` (locale `fr`/`en`/`es`/`de`) + `llm_element_balance_labels`, `llm_modality_balance_labels`, `llm_sect_labels`, `llm_house_theme_labels`, `llm_house_axis_labels` ; `AstroLabelHumanizer` humanise placements, aspects, dignites, `element_balance`, `modality_balance`, `sect_condition`, `house_emphasis`, `house_axis` (`display_label` → `astro_basis`, `interpretive_label` → evidence pack), `dominant_planet`, clusters. Fallback locale : locale demandee → `fr`/`en` → code humanise. Le kind `lunar_phase` reste sur libelles fact_id / hint tant qu'aucune table i18n dediee n'existe.
 - Disclaimer legal : `default_legal_disclaimer` (accents FR : interprétation, médical, …)
 - Tests : `cargo test -p astral_llm_api --test astral_llm_astro_basis_tests` ; `cargo test -p astral_llm_api --test astral_llm_evidence_planner_tests` ; `cargo test -p astral_llm_api --test astral_llm_evidence_coherence_tests`
 
@@ -1210,7 +1210,8 @@ Chapter outputs -> SummarySynthesizer -> summary.title + summary.short_text
 ```
 
 - Schema provider : `summary_provider_v1`
-- Placeholders interdits : « Synthese produite par… », « generation chapitre par chapitre », mention du pipeline ; vocabulaire divinatoire (`tirage`, `oracle`)
+- Placeholders interdits : « Synthese produite par… », « generation chapitre par chapitre », mention du pipeline ; vocabulaire divinatoire (`tirage`, `oracle`, `consultation divinatoire`) ; cliches (`liane de constance`) ; formulation mecanique `tendance invite` (le mot `tendance` seul reste autorise)
+- `MAX_SUMMARY_ATTEMPTS = 2` : retry avec consigne repair si pattern interdit ; fallback deterministe safe si echec style persistant (pas sur erreur JSON/provider/safety)
 - `natal_premium_plus` : marqueur astro obligatoire dans title + short_text (`thème`, `lecture`, `symbolique`, `carte natale`, …)
 - Step auditee : `summary` dans `ExecutionAudit` (tokens `input_tokens` / `output_tokens` remontés depuis `route.response.usage`)
 - Run : `token_input` / `token_output` = somme des steps via `ExecutionAudit::aggregate_token_usage`
@@ -1230,6 +1231,46 @@ Prior chapters + global evidence pack -> FinalSynthesisSynthesizer -> chapters[]
 - Retry `min_words` (2 tentatives : ExpandSameChapter puis RewriteChapter) ; repair **repetition** si score > `max_repeated_trigrams` ; retry **SymbolicFraming** (1 tentative) si `missing symbolic/interpretive framing`
 - Repairs opening (bloquants) et `ReadingQualityValidator` s'executent **apres** generation de `synthesis`
 - Step auditee : `synthesis` dans `ExecutionAudit`
+
+#### P3e — Premium Plus final polish (`natal_premium_plus` v2 validé)
+
+Polish produit post-certification V2. **Certification final polish** (2026-06-05) : run OpenAI `31d81052-c5ab-49d0-bfdf-1eb2c3e0d027` — **5 582 mots** (corps), 9 chapitres, 6 §/ch., 6 basis/ch., 1 `repair_opening` (`communication_mind`), 0 `repair_too_short` ; sortie `output\premium_plus_reading_e2e.json`. Revalider : `.\scripts\test_natal_premium_plus_profile.ps1` (gates JSON + `GET /v1/runs/{run_id}`).
+
+**Implémenté :**
+
+- **`llm_house_axis_labels`** (SQL + bootstrap) : libellés `display_label` / `interpretive_label` des 6 axes canoniques (FR + EN) ; `fact_id` technique (`house_axis:private_public`) conservé, fuite interdite dans `astro_basis.label` / `factor` (ex. `Axe vie privée / vie publique`)
+- **`SummarySynthesizer`** : patterns interdits (`liane de constance`, `tirage`, `oracle`, `tendance invite`, … — matching mot entier pour termes courts) ; `MAX_SUMMARY_ATTEMPTS = 2` ; fallback déterministe safe (`summary_fallback`) si style interdit persiste ; validation `SafetyGuard` sur le fallback
+- **`paragraph_opening_raw_placement`** : `detect_raw_placement_paragraph_openings` (planètes depuis `catalog.astro_object_labels`, préposition locale `en`/`in`) ; 2 rounds repair LLM `repair_opening` ; fallback déterministe `Dans cette perspective, …` ; gate stricte E2E
+- **Cadrage symbolique** : consigne `ChapterWritingGuidance` anti-boilerplate ; warning `ReadingQualityValidator` si > 2 chapitres domaine contiennent une formule stock (sans affaiblir `require_symbolic_framing`)
+- **E2E** (`test_natal_premium_plus_profile.ps1`) : 6 axis codes bruts absents de `label`/`factor` ; patterns summary ; ouvertures placement brut ; total corps ≥ **5 300** mots ; audit `GET /v1/runs/{run_id}` — échec si `step_type = repair_too_short`, warning si `repair_opening` > 2
+
+**Backlog non bloquant :** pluriels (`oracles`, `tirages`) ; densité `summary.short_text` (UX, limite 2 phrases).
+
+**Premium Plus v2 final certification — CLOSED** (2026-06-05)
+
+```txt
+Run certifie : 31d81052-c5ab-49d0-bfdf-1eb2c3e0d027
+Sortie       : output\premium_plus_reading_e2e.json
+Revalidation : .\scripts\test_natal_premium_plus_profile.ps1 -SkipGenerate
+
+Resultat :
+- 5 582 mots corps
+- 9 chapitres (8 domaines astro + synthesis)
+- tous les chapitres >= 520 mots
+- 6 astro_basis partout
+- summary patterns OK
+- house_axis labels OK (champs visibles label/factor)
+- raw placement openings OK
+- 0 repair_too_short dans l'audit SQL (GET /v1/runs/{run_id})
+```
+
+**Perimetre gele `natal_premium_plus`** (maintenance bugs uniquement) :
+
+```txt
+ChapterWritingGuidance, ChapterEvidencePlanner, FinalSynthesisSynthesizer,
+SummarySynthesizer, ReadingOpeningDiversityValidator, ReadingQualityValidator,
+AstroLabelHumanizer, test_natal_premium_plus_profile.ps1
+```
 
 #### P4 — Tests de charge locaux
 
@@ -1397,6 +1438,7 @@ cargo test -p astral_llm_domain
 | OpenAI V1 prod | **CLOS** |
 | Evidence Planner | **CLOS** |
 | Benchmark OpenAI (cout / latence / qualite) | **CLOS** |
+| **`natal_premium_plus` v2 + final polish** | **CLOS** (certifie E2E + audit SQL) |
 | Certification multi-provider (Mistral / Anthropic) | **REPORTEE** (etape ulterieure) |
 | Prochain travail produit | Enrichissement evidence + affinage style |
 
@@ -1404,6 +1446,7 @@ cargo test -p astral_llm_domain
 OpenAI V1 prod              : CLOS
 Evidence Planner            : CLOS
 Benchmark OpenAI            : CLOS (gpt-5.4-mini + gpt-5-nano)
+natal_premium_plus v2       : CLOS (run 31d81052, 5 582 mots, audit SQL OK)
 Multi-provider certification: REPORTEE
 Next product work           : evidence enrichment + style refinement
 ```
@@ -1420,6 +1463,7 @@ Next product work           : evidence enrichment + style refinement
 | **Premium interpretatif riche OpenAI** | **VALIDÉ PRODUIT** | Evidence Planner clos ; E2E rich OpenAI OK (run certif. `744fccda`) |
 | **Chantier Evidence Planner** | **CLOS** | Plus de correction structurelle prevue ; maintenance bugs seulement |
 | **Benchmark OpenAI (cout / latence / qualite)** | **CLOS** | Choix prod : chapitres `gpt-5.4-mini`, summary `gpt-5-nano` ; voir `config/llm_product_models.conf` |
+| **`natal_premium_plus` v2 final certification** | **CLOS** | Run `31d81052` — 5 582 mots, gates polish + audit SQL ; sortie `premium_plus_reading_e2e.json` |
 | **Certification Mistral / Anthropic** | **REPORTEE** | Adapters presents ; certification multi-provider a une etape ulterieure |
 
 **References E2E produit** :
@@ -1427,8 +1471,9 @@ Next product work           : evidence enrichment + style refinement
 - **Certification V1 (2026-06-05)** : run `744fccda-98b2-4565-a687-ecd9b9567730` — ~33 s, 5 chapitres `gpt-5.4-mini` + summary `gpt-5-nano`, 6 steps `generated`, `request-premium-rich.json`, sortie `output/premium_reading_e2e.json`.
 - Premium OpenAI (2026-06-04) : run `f79c04a7-d0ff-4d7a-b32e-42fd7fef7d80` — ~42 s, 5 chapitres + summary, sortie `output/premium_reading_real.json`.
 - Premium historique : run `0619a1e8-4069-4f89-b6ea-db14f32f38ea` — ~47 s, 6 steps `generated`, libelles maîtrise humanises.
+- **Premium Plus v2 final certification** (2026-06-05) : run `31d81052-c5ab-49d0-bfdf-1eb2c3e0d027` — **5 582 mots** (corps), 9 chapitres, gates polish + audit SQL (`0 repair_too_short`) ; sortie `output/premium_plus_reading_e2e.json`. Revalider : `.\scripts\test_natal_premium_plus_profile.ps1`.
 
-Le gel **V1-technical-freeze** ne doit plus faire l'objet d'une refonte architecture. Les chantiers **OpenAI V1 prod**, **Evidence Planner** et **Benchmark OpenAI** sont **clos**. La certification multi-provider (Mistral / Anthropic) est **reportee**. Le prochain travail produit porte sur **l'enrichissement evidence** et **l'affinage style** — voir ci-dessous.
+Le gel **V1-technical-freeze** ne doit plus faire l'objet d'une refonte architecture. Les chantiers **OpenAI V1 prod**, **Evidence Planner**, **Benchmark OpenAI** et **`natal_premium_plus` v2 + final polish** sont **clos**. La certification multi-provider (Mistral / Anthropic) est **reportee**. Le prochain travail produit porte sur **l'enrichissement evidence** et **l'affinage style** — voir ci-dessous.
 
 Le gateway n'est **pas** un simple proxy LLM : la validation metier se fait **avant** tout appel provider.
 
@@ -1440,6 +1485,14 @@ AstroPayloadNormalizer, SafetyGuard, Idempotency flow, Rate limiting,
 Circuit breaker, ChapterOrchestrator
 ```
 
+**`natal_premium_plus` (certifie E2E + audit SQL)** — maintenance bugs uniquement :
+
+```txt
+ChapterWritingGuidance, ChapterEvidencePlanner, FinalSynthesisSynthesizer,
+SummarySynthesizer, ReadingOpeningDiversityValidator, ReadingQualityValidator,
+AstroLabelHumanizer, test_natal_premium_plus_profile.ps1
+```
+
 ### Limites editoriales connues (non bloquantes)
 
 - **Amorces parfois « promptees »** : formulations type « En développant… », « En prenant en compte… » (effet secondaire des consignes `ChapterWritingGuidance` + diversite d'ouvertures). Acceptable en prod ; affinage style (prochain travail produit).
@@ -1449,7 +1502,7 @@ Circuit breaker, ChapterOrchestrator
 
 1. ~~**OpenAI** : comparer cout / latence / qualite par modele sur le meme golden E2E~~ — **clos** : chapitres `gpt-5.4-mini`, summary `gpt-5-nano` (produit `natal_prompter` + profils JSON). Outils : `scripts/benchmark_premium_e2e_models.ps1`, `scripts/summarize_benchmark_runs.ps1` ; config : `config/llm_product_models.conf` + `set_product_llm_models.ps1`.
 2. ~~**Mistral / Anthropic**~~ — **reporte** (etape ulterieure) : adapters deja presents ; certification (smoke + E2E Premium) a planifier plus tard si besoin multi-provider.
-3. ~~**Certification E2E `natal_premium_plus` v1**~~ — **clos** (2026-06-05) : run `fe811176`, seuils 420/550. ~~**v2**~~ — **clos** (2026-06-05) : run `e76a8156`, seuils **520/720/850**, **5 517 mots**, `chapter_length_expansion_codes` ; sortie `premium_plus_reading_e2e_v2d.json`.
+3. ~~**Certification E2E `natal_premium_plus` v1**~~ — **clos** (2026-06-05) : run `fe811176`, seuils 420/550. ~~**v2**~~ — **clos** (2026-06-05) : run `e76a8156`, **5 517 mots** (`premium_plus_reading_e2e_v2d.json`). ~~**Final polish (P3e)**~~ — **clos** (2026-06-05) : run `31d81052`, **5 582 mots**, gates polish + audit SQL ; sortie `premium_plus_reading_e2e.json`.
 4. **Referentiel evidence** *(actif)* : enrichir progressivement les slots (noeuds, phases lunaires, dignites mineures, patterns d'aspects) via tables canoniques — pas de constantes en code.
 5. **Style redactionnel** *(actif)* : allegement cible des consignes prompt / guidance pour une prose moins « structuree par contraintes », sans casser les garde-fous qualite.
 
@@ -1496,7 +1549,7 @@ cargo test -p astral_llm_api --test astral_llm_load_tests -- --ignored  # idempo
 
 Criteres de passage : JSON valide, `astro_basis` valide (≥1 fact interpretatif par chapitre Premium, pas de `domain_score` seul), synthese finale personnalisee (pas de placeholder pipeline), pas de conseil medical/juridique/financier, pas de fatalisme, pas de repetition excessive, pas de liste froide de faits, disclaimer present, qualite Premium non rejetee (`READING_QUALITY_FAILED`), steps persistes (chapitres + `summary`), idempotence rejoue la reponse, `GET /v1/providers` expose `circuit_breakers`. Gate Premium : profil `natal_premium` (`blocking_gate`) bloquant meme si `single_pass` est envoye par erreur (normalise au boot requete).
 
-**Validation E2E Premium Plus** (`natal_premium_plus`, apres smoke OpenAI) : `.\scripts\test_natal_premium_plus_profile.ps1` lit les seuils depuis `natal_premium_plus.json` — 9 chapitres (sequence fixe incluant `synthesis`), domaines : min **520** mots et **6** `astro_basis` ; `synthesis` : min **520** mots et **4** `astro_basis` ; cible **720** mots/ch. (`chapter_word_targets.target`). La gate HTTP bloquante (`ReadingQualityValidator`) applique les memes seuils synthesis. Objectif indicatif volume : ≥ **5 500** mots (corps) — atteint run certifie `e76a8156` (5 517). Comparaison baseline v1/v2 : `.\scripts\compare_premium_plus_versions.ps1`.
+**Validation E2E Premium Plus** (`natal_premium_plus`, apres smoke OpenAI) : `.\scripts\test_natal_premium_plus_profile.ps1` — 9 chapitres, min **520** mots et **6** basis (domaines), **520** mots et **4** basis (`synthesis`), total corps ≥ **5 300** mots, gates polish (axis labels, summary patterns, raw placement), audit `GET /v1/runs/{run_id}` (`repair_too_short` interdit). Run certifie final polish : `31d81052` (5 582 mots). Comparaison v1/v2 : `.\scripts\compare_premium_plus_versions.ps1`.
 
 **API** : `product_code=natal_prompter` + `interpretation_profile_code` (`natal_light` | `natal_basic` | `natal_premium` | `natal_premium_plus`). Shim legacy : `natal_premium` / `natal_basic` comme `product_code` sont migres vers `natal_prompter` + profil impose (log `warn`) ; rejet `PRODUCT_POLICY_VIOLATION` si `interpretation_profile_code` contredit le legacy envoye.
 
@@ -1509,7 +1562,7 @@ Le payload astro Premium doit inclure des placements/aspects (via `planets`, `po
 **Clos**
 
 - Benchmark OpenAI : cout / latence / qualite par modele sur E2E Premium (`gpt-5.4-mini` / `gpt-5-nano`)
-- Certification E2E `natal_premium_plus` v1 : run `fe811176`. v2 : run `e76a8156` (5 517 mots, 520/720/850, `chapter_length_expansion_codes`)
+- Certification E2E `natal_premium_plus` v1 : run `fe811176`. v2 : run `e76a8156` (5 517 mots). Final polish : run `31d81052` (5 582 mots, gates P3e)
 
 **Reporte**
 
@@ -1544,4 +1597,5 @@ Le payload astro Premium doit inclure des placements/aspects (via `planets`, `po
 18. `EditorialValidator`, `READING_QUALITY_FAILED`, crate `astral_llm_api` lib pour tests
 19. **Benchmark OpenAI cout / latence / qualite** — choix prod `gpt-5.4-mini` (chapitres) + `gpt-5-nano` (summary)
 20. **Profil `natal_premium_plus` v1** — lecture longue 8 domaines + `synthesis` ; sequence fixe ; E2E certifie (`fe811176`, seuils 420/550)
-21. **Profil `natal_premium_plus` v2** — certifie E2E OpenAI (`e76a8156`, 2026-06-05) : `body_structure` obligatoire ; seuils **520/720/850** ; `chapter_length_expansion_codes` + `LENGTH EXPANSION FOCUS` ; prompt unique 6 § ; repairs ExpandSameChapter/RewriteChapter + `SymbolicFraming` synthesis ; synthesis/summary/quality separes ; exclusions `llm_chapter_evidence_exclusions` ; opening hierarchy bloquant/warning ; humanizer balance/modality/sect/`house_emphasis` ; script `compare_premium_plus_versions.ps1` ; tests golden compact + premium plus ; **5 517 mots** (objectif ≥ 5 500 atteint)
+21. **Profil `natal_premium_plus` v2** — certifie E2E OpenAI (`e76a8156`, 2026-06-05) : seuils **520/720/850**, `body_structure` 6 §, repairs, humanizer balance/modality/sect/`house_emphasis` ; **5 517 mots**
+22. **Premium Plus v2 final certification (P3e)** — **CLOSED** (`31d81052`, 2026-06-05) : `llm_house_axis_labels`, summary retry/fallback, `paragraph_opening_raw_placement`, anti-boilerplate symbolique, gates E2E + audit SQL ; **5 582 mots** ; sortie `premium_plus_reading_e2e.json` ; perimetre gele (maintenance bugs)

@@ -167,6 +167,59 @@ function Wait-ApiHealth {
     throw "API indisponible sur $Url/health apres ${TimeoutSec}s (derniere erreur : $lastError). Verifiez cargo run -p astral_llm_api et ASTRAL_LLM_PORT."
 }
 
+$script:RawHouseAxisCodes = @(
+    "private_public",
+    "self_relationship",
+    "resources_sharing",
+    "local_distant",
+    "creation_collective",
+    "control_surrender"
+)
+
+$script:BannedSummaryPatterns = @(
+    "liane de constance",
+    "tirage",
+    "cartes tirees",
+    "cartes tirées",
+    "oracle",
+    "consultation divinatoire",
+    "tendance invite",
+    "synthese produite par",
+    "synthèse produite par",
+    "generation chapitre par chapitre",
+    "génération chapitre par chapitre"
+)
+
+function Test-SummaryBannedPattern {
+    param(
+        [string]$Corpus,
+        [string]$Pattern
+    )
+
+    $lower = $Corpus.ToLowerInvariant()
+    $patternLower = $Pattern.ToLowerInvariant()
+    if ($patternLower.Contains(" ")) {
+        return $lower.Contains($patternLower)
+    }
+    $tokens = [regex]::Split($lower, '[^a-zàâäéèêëïîôùûüç0-9]+')
+    foreach ($token in $tokens) {
+        if ($token -eq $patternLower) {
+            return $true
+        }
+    }
+    return $false
+}
+
+function Test-RawPlacementParagraphOpening {
+    param([string]$Paragraph)
+
+    if ([string]::IsNullOrWhiteSpace($Paragraph)) {
+        return $false
+    }
+    $pattern = "^(Le|La|L'|L')?\s*(Soleil|Lune|Mercure|Vénus|Venus|Mars|Jupiter|Saturne|Uranus|Neptune|Pluton)\s+en\s+"
+    return [regex]::IsMatch($Paragraph.Trim(), $pattern, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+}
+
 function Assert-PremiumPlusReading {
     param(
         $Reading,
@@ -174,7 +227,8 @@ function Assert-PremiumPlusReading {
         [int]$MinWords,
         [int]$MinBasis,
         [int]$MinWordsSynthesis = 0,
-        [int]$MinBasisSynthesis = 0
+        [int]$MinBasisSynthesis = 0,
+        [int]$MinTotalWords = 5300
     )
 
     $failures = [System.Collections.Generic.List[string]]::new()
@@ -242,6 +296,43 @@ function Assert-PremiumPlusReading {
                 "Chapitre '$($ch.code)' astro_basis insuffisant : $basisCount (min $minBasisCh)."
             )
         }
+
+        if ($ch.astro_basis) {
+            foreach ($basis in $ch.astro_basis) {
+                foreach ($field in @($basis.label, $basis.factor)) {
+                    if ([string]::IsNullOrWhiteSpace($field)) {
+                        continue
+                    }
+                    foreach ($axisCode in $script:RawHouseAxisCodes) {
+                        if ($field.Contains($axisCode)) {
+                            $failures.Add(
+                                "Chapitre '$($ch.code)' astro_basis contient axis_code brut '$axisCode' dans '$field'."
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        if ($ch.body) {
+            $paragraphs = $ch.body -split '(\r?\n){2,}'
+            foreach ($para in $paragraphs) {
+                if (Test-RawPlacementParagraphOpening -Paragraph $para) {
+                    $snippet = if ($para.Length -gt 80) { $para.Substring(0, 80) + "..." } else { $para }
+                    $failures.Add(
+                        "Chapitre '$($ch.code)' : paragraphe commence par placement brut : $snippet"
+                    )
+                }
+            }
+        }
+    }
+
+    $totalWords = 0
+    foreach ($ch in $content.chapters) {
+        $totalWords += Get-WordCount -Text $ch.body
+    }
+    if ($totalWords -lt $MinTotalWords) {
+        $failures.Add("Total mots corps chapitres : $totalWords (min $MinTotalWords).")
     }
 
     $synthesis = $content.chapters | Where-Object { $_.code -eq "synthesis" } | Select-Object -First 1
@@ -251,6 +342,16 @@ function Assert-PremiumPlusReading {
 
     if (-not $content.summary -or [string]::IsNullOrWhiteSpace($content.summary.short_text)) {
         $failures.Add("summary.short_text manquant ou vide.")
+    } else {
+        $summaryCorpus = (
+            "$(if ($content.summary.title) { $content.summary.title } else { '' }) " +
+            "$(if ($content.summary.short_text) { $content.summary.short_text } else { '' })"
+        ).ToLowerInvariant()
+        foreach ($pattern in $script:BannedSummaryPatterns) {
+            if (Test-SummaryBannedPattern -Corpus $summaryCorpus -Pattern $pattern) {
+                $failures.Add("summary contient pattern interdit : '$pattern'.")
+            }
+        }
     }
 
     if ($content.quality.generation_mode -and $content.quality.generation_mode -ne "chapter_orchestrated") {
@@ -260,6 +361,57 @@ function Assert-PremiumPlusReading {
     }
 
     return ,$failures
+}
+
+function Get-RunAuditFailures {
+    param(
+        [string]$RunId,
+        [string]$BaseUrl,
+        [string]$ApiKey = ""
+    )
+
+    $result = [System.Collections.Generic.List[string]]::new()
+    if ([string]::IsNullOrWhiteSpace($RunId)) {
+        Write-Warning "run_id absent — verification repair_too_short ignoree."
+        return ,$result
+    }
+
+    $uri = "{0}/v1/runs/{1}" -f $BaseUrl.TrimEnd("/"), $RunId
+    $headers = @{}
+    if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
+        $headers["Authorization"] = "Bearer $ApiKey"
+    }
+
+    try {
+        $params = @{
+            Uri             = $uri
+            UseBasicParsing = $true
+            TimeoutSec      = 30
+        }
+        if ($headers.Count -gt 0) {
+            $params["Headers"] = $headers
+        }
+        $audit = Invoke-RestMethod @params
+    } catch {
+        $result.Add("Audit run introuvable pour run_id=$RunId : $($_.Exception.Message)")
+        return ,$result
+    }
+
+    if (-not $audit.steps) {
+        return ,$result
+    }
+
+    $repairTooShort = @($audit.steps | Where-Object { $_.step_type -eq "repair_too_short" })
+    if ($repairTooShort.Count -gt 0) {
+        $result.Add("Audit : $($repairTooShort.Count) step(s) repair_too_short detecte(s).")
+    }
+
+    $repairOpening = @($audit.steps | Where-Object { $_.step_type -eq "repair_opening" })
+    if ($repairOpening.Count -gt 2) {
+        Write-Warning "Audit : $($repairOpening.Count) repair_opening (warning, seuil > 2)."
+    }
+
+    return ,$result
 }
 
 Import-DotEnv (Join-Path $repoRoot ".env")
@@ -410,7 +562,18 @@ $failures = Assert-PremiumPlusReading `
     -MinWords $MinWordsPerChapter `
     -MinBasis $MinAstroBasisPerChapter `
     -MinWordsSynthesis $MinWordsSynthesis `
-    -MinBasisSynthesis $MinBasisSynthesis
+    -MinBasisSynthesis $MinBasisSynthesis `
+    -MinTotalWords 5300
+
+if ($apiResponse.run_id) {
+    $auditFailures = Get-RunAuditFailures `
+        -RunId $apiResponse.run_id `
+        -BaseUrl $BaseUrl `
+        -ApiKey $ApiKey
+    foreach ($af in $auditFailures) {
+        $failures.Add($af)
+    }
+}
 
 Write-Host "=== Validation structure premium_plus ==="
 Write-Host "Fichier : $OutputPath"

@@ -11,7 +11,8 @@ use astral_llm_domain::{
 use crate::evidence_canonical::{bootstrap_evidence_catalog, EvidenceCanonicalCatalog};
 use crate::i18n_canonical::{
     bootstrap_aspect_type_labels, bootstrap_astro_basis_roles, bootstrap_element_balance_labels,
-    bootstrap_extra_object_sign_labels, bootstrap_house_theme_labels, bootstrap_modality_balance_labels,
+    bootstrap_extra_object_sign_labels, bootstrap_house_axis_labels, bootstrap_house_theme_labels,
+    bootstrap_modality_balance_labels,
     bootstrap_sect_labels, bootstrap_writing_locales, I18nLabelPair, WritingLocale,
 };
 
@@ -34,6 +35,7 @@ pub struct CanonicalCatalog {
     pub modality_balance_labels: HashMap<(String, String), I18nLabelPair>,
     pub sect_labels: HashMap<(String, String), I18nLabelPair>,
     pub house_theme_labels: HashMap<(String, u8), I18nLabelPair>,
+    pub house_axis_labels: HashMap<(String, String), I18nLabelPair>,
     /// profile_code -> profil actif
     pub interpretation_profiles: HashMap<String, InterpretationProfile>,
 }
@@ -335,6 +337,9 @@ pub fn enrich_catalog_from_bootstrap(catalog: &mut CanonicalCatalog) {
     if catalog.house_theme_labels.is_empty() {
         catalog.house_theme_labels = bootstrap_house_theme_labels();
     }
+    if catalog.house_axis_labels.is_empty() {
+        catalog.house_axis_labels = bootstrap_house_axis_labels();
+    }
     if catalog.interpretation_profiles.is_empty() {
         catalog.interpretation_profiles = bootstrap_interpretation_profiles();
         apply_profile_evidence_to_catalog(catalog);
@@ -498,6 +503,41 @@ async fn load_i18n_from_db(pool: &sqlx::PgPool, catalog: &mut CanonicalCatalog) 
             );
         }
     }
+
+    if let Ok(rows) = sqlx::query_as::<_, (String, String, String, String)>(
+        "SELECT axis_code, locale, display_label, interpretive_label \
+         FROM llm_house_axis_labels WHERE is_active = true",
+    )
+    .fetch_all(pool)
+    .await
+    {
+        for (axis_code, locale, display, interpretive) in rows {
+            catalog.house_axis_labels.insert(
+                (locale, axis_code),
+                I18nLabelPair {
+                    display_label: display,
+                    interpretive_label: interpretive,
+                },
+            );
+        }
+    }
+}
+
+fn locale_fallback_chain(locale: &str) -> Vec<&'static str> {
+    let code = locale.trim().to_lowercase();
+    let primary = match code.as_str() {
+        s if s.starts_with("fr") => "fr",
+        s if s.starts_with("es") => "es",
+        s if s.starts_with("de") => "de",
+        _ => "en",
+    };
+    match primary {
+        "fr" => vec!["fr", "en"],
+        "en" => vec!["en", "fr"],
+        "es" => vec!["es", "en", "fr"],
+        "de" => vec!["de", "en", "fr"],
+        _ => vec!["en", "fr"],
+    }
 }
 
 fn parse_reasoning_effort(raw: &str) -> astral_llm_domain::ReasoningEffort {
@@ -569,6 +609,16 @@ impl CanonicalCatalog {
     pub fn house_theme_label(&self, locale: &str, house_number: u8) -> Option<&I18nLabelPair> {
         self.house_theme_labels
             .get(&(locale.to_string(), house_number))
+    }
+
+    pub fn house_axis_label(&self, locale: &str, axis_code: &str) -> Option<&I18nLabelPair> {
+        for loc in locale_fallback_chain(locale) {
+            if let Some(pair) = self.house_axis_labels.get(&(loc.to_string(), axis_code.to_string()))
+            {
+                return Some(pair);
+            }
+        }
+        None
     }
 
     pub fn writing_locale(&self, user_language: &str) -> Option<&WritingLocale> {

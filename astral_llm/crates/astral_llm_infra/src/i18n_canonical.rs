@@ -164,6 +164,70 @@ pub fn bootstrap_sect_labels() -> HashMap<(String, String), I18nLabelPair> {
     m
 }
 
+pub fn bootstrap_house_axis_labels() -> HashMap<(String, String), I18nLabelPair> {
+    let mut m = HashMap::new();
+    for (code, fr_display, fr_interp, en_display, en_interp) in [
+        (
+            "private_public",
+            "Axe vie privée / vie publique",
+            "Axe vie privée / vie publique : tension entre foyer intérieur, exposition et rôle social",
+            "Private / public life axis",
+            "Private / public life axis: tension between inner home, visibility and social role",
+        ),
+        (
+            "self_relationship",
+            "Axe identité / relation",
+            "Axe identité / relation : équilibre entre affirmation personnelle et rencontre de l'autre",
+            "Identity / relationship axis",
+            "Identity / relationship axis: balance between personal assertion and encounter with others",
+        ),
+        (
+            "resources_sharing",
+            "Axe ressources personnelles / ressources partagées",
+            "Axe ressources personnelles / ressources partagées : circulation entre sécurité propre, confiance et engagement commun",
+            "Personal / shared resources axis",
+            "Personal / shared resources axis: flow between self-security, trust and shared commitment",
+        ),
+        (
+            "local_distant",
+            "Axe proche / lointain",
+            "Axe proche / lointain : tension entre environnement immédiat et horizons élargis",
+            "Near / distant axis",
+            "Near / distant axis: tension between immediate environment and wider horizons",
+        ),
+        (
+            "creation_collective",
+            "Axe création personnelle / collectif",
+            "Axe création personnelle / collectif : tension entre expression individuelle et idéaux partagés",
+            "Personal creation / collective axis",
+            "Personal creation / collective axis: tension between individual expression and shared ideals",
+        ),
+        (
+            "control_surrender",
+            "Axe maîtrise / lâcher-prise",
+            "Axe maîtrise / lâcher-prise : tension entre ordre quotidien et besoin de relâchement intérieur",
+            "Control / surrender axis",
+            "Control / surrender axis: tension between daily order and inner release",
+        ),
+    ] {
+        m.insert(
+            ("fr".into(), code.into()),
+            I18nLabelPair {
+                display_label: fr_display.into(),
+                interpretive_label: fr_interp.into(),
+            },
+        );
+        m.insert(
+            ("en".into(), code.into()),
+            I18nLabelPair {
+                display_label: en_display.into(),
+                interpretive_label: en_interp.into(),
+            },
+        );
+    }
+    m
+}
+
 pub fn bootstrap_house_theme_labels() -> HashMap<(String, u8), I18nLabelPair> {
     let mut m = HashMap::new();
     for (house, fr_display, fr_interp) in [

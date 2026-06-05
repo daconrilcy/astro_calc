@@ -148,6 +148,7 @@ where
         None,
         started.elapsed().as_millis() as u64,
         Some(GenerationErrorCode::SchemaValidationFailed.as_str().to_string()),
+        Some("repair_too_short"),
     );
     Err(last_err)
 }
@@ -260,6 +261,7 @@ where
                     None,
                     started.elapsed().as_millis() as u64,
                     Some(repair_err.detail().code.as_str().to_string()),
+                    Some("repair_repetition"),
                 );
                 return Err(repair_err);
             }
@@ -275,6 +277,7 @@ where
         best_meta.4,
         started.elapsed().as_millis() as u64,
         Some(GenerationErrorCode::ReadingQualityFailed.as_str().to_string()),
+        Some("repair_repetition"),
     );
     Err(GenerationError::with_details(
         GenerationErrorCode::ReadingQualityFailed,

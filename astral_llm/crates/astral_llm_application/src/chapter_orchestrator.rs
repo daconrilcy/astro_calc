@@ -47,7 +47,9 @@ use crate::reading_quality_validator::{PremiumQualityThresholds, ReadingQualityV
 use crate::response_validator::ResponseValidator;
 use crate::safety_guard::SafetyGuard;
 use crate::final_synthesis_synthesizer::FinalSynthesisSynthesizer;
-use crate::summary_synthesizer::SummarySynthesizer;
+use crate::summary_synthesizer::{
+    deterministic_safe_summary_fallback, is_summary_banned_pattern_error, SummarySynthesizer,
+};
 use crate::reasoning_generation::{effective_temperature, resolve_reasoning_effort};
 use crate::token_budget::TokenBudget;
 use astral_llm_domain::ServiceLimits;
@@ -206,6 +208,11 @@ impl<'a> ChapterOrchestrator<'a> {
                     used_provider = outcome.route_meta.0.clone();
                     used_model = outcome.route_meta.1.clone();
                     fallback_used |= outcome.route_meta.2;
+                    let step_type = if outcome.status == ChapterGenerationStatus::Repaired {
+                        Some("repair_repetition")
+                    } else {
+                        None
+                    };
                     audit.record_chapter_step(
                         &chapter.code,
                         &used_provider,
@@ -215,6 +222,7 @@ impl<'a> ChapterOrchestrator<'a> {
                         outcome.route_meta.4,
                         started.elapsed().as_millis() as u64,
                         None,
+                        step_type,
                     );
                     generated.push(outcome.reading_chapter);
                 }
@@ -289,6 +297,7 @@ impl<'a> ChapterOrchestrator<'a> {
                                 outcome.route_meta.4,
                                 started.elapsed().as_millis() as u64,
                                 None,
+                                Some("repair_evidence"),
                             );
                             generated.push(outcome.reading_chapter);
                         }
@@ -302,6 +311,7 @@ impl<'a> ChapterOrchestrator<'a> {
                                 None,
                                 started.elapsed().as_millis() as u64,
                                 Some(repair_err.detail().code.as_str().to_string()),
+                                Some("repair_evidence"),
                             );
                             return Err(repair_err);
                         }
@@ -379,6 +389,7 @@ impl<'a> ChapterOrchestrator<'a> {
                         outcome.route_meta.4,
                         started.elapsed().as_millis() as u64,
                         None,
+                        Some("repair_too_short"),
                     );
                     generated.push(outcome.reading_chapter);
                 }
@@ -403,6 +414,7 @@ impl<'a> ChapterOrchestrator<'a> {
                         None,
                         started.elapsed().as_millis() as u64,
                         Some(err.detail().code.as_str().to_string()),
+                        None,
                     );
                     return Err(err);
                 }
@@ -422,18 +434,91 @@ impl<'a> ChapterOrchestrator<'a> {
         drop_unsupported_temperature(&mut summary_engine, registry);
         let synthesizer =
             SummarySynthesizer::new(self.router, self.validator, self.catalog);
-        let summary_result = synthesizer
-            .synthesize(request, &generated, &summary_engine, safety_policy, run_id)
-            .await?;
+        const MAX_SUMMARY_ATTEMPTS: usize = 2;
+        const SUMMARY_STYLE_REPAIR: &str = "Rewrite title and short_text without banned poetic \
+            clichés (e.g. liane de constance), divinatory wording, or mechanical formulas. \
+            Keep symbolic natal framing with thème/lecture/carte natale vocabulary.";
+        let mut summary_result = None;
+        let mut summary_used_fallback = false;
+        for attempt in 0..MAX_SUMMARY_ATTEMPTS {
+            let repair = if attempt > 0 {
+                Some(SUMMARY_STYLE_REPAIR)
+            } else {
+                None
+            };
+            match synthesizer
+                .synthesize(
+                    request,
+                    &generated,
+                    &summary_engine,
+                    safety_policy,
+                    run_id,
+                    repair,
+                )
+                .await
+            {
+                Ok(result) => {
+                    summary_result = Some(result);
+                    break;
+                }
+                Err(err) if is_summary_banned_pattern_error(&err) && attempt + 1 < MAX_SUMMARY_ATTEMPTS => {
+                    tracing::warn!(
+                        attempt = attempt + 1,
+                        "summary banned pattern — retrying with repair instruction"
+                    );
+                }
+                Err(err) if is_summary_banned_pattern_error(&err) => {
+                    tracing::warn!("summary banned pattern persists — using deterministic fallback");
+                    let fallback = deterministic_safe_summary_fallback();
+                    let fallback_corpus =
+                        format!("{} {}", fallback.title, fallback.short_text);
+                    SafetyGuard::validate_chapter_text(
+                        &fallback_corpus,
+                        safety_policy,
+                        &request.astrologer_profile.forbidden_wording,
+                        self.catalog,
+                    )
+                    .map_err(|violations| {
+                        GenerationError::with_details(
+                            GenerationErrorCode::PostSafetyValidationFailed,
+                            "deterministic summary fallback failed safety validation",
+                            serde_json::json!({ "violations": violations }),
+                        )
+                    })?;
+                    summary_result = Some(crate::summary_synthesizer::SummarySynthesisResult {
+                        summary: fallback,
+                        input_tokens: None,
+                        output_tokens: None,
+                    });
+                    summary_used_fallback = true;
+                    break;
+                }
+                Err(err) => return Err(err),
+            }
+        }
+        let summary_result = summary_result.expect("summary synthesis or fallback");
         audit.record_chapter_step(
-            "summary",
+            if summary_used_fallback {
+                "summary_fallback"
+            } else {
+                "summary"
+            },
             summary_engine.provider.as_str(),
             &summary_engine.model,
-            ChapterGenerationStatus::Generated,
+            if summary_used_fallback {
+                ChapterGenerationStatus::Repaired
+            } else {
+                ChapterGenerationStatus::Generated
+            },
             summary_result.input_tokens,
             summary_result.output_tokens,
             summary_started.elapsed().as_millis() as u64,
             None,
+            if summary_used_fallback {
+                Some("summary_fallback")
+            } else {
+                Some("summary")
+            },
         );
 
         if interpretation.is_some_and(|ctx| ctx.profile.has_final_synthesis_chapter()) {
@@ -529,6 +614,7 @@ impl<'a> ChapterOrchestrator<'a> {
                                 None,
                                 synthesis_started.elapsed().as_millis() as u64,
                                 Some(err.detail().code.as_str().to_string()),
+                                None,
                             );
                             return Err(err);
                         }
@@ -603,6 +689,11 @@ impl<'a> ChapterOrchestrator<'a> {
                     }
                     synthesis_result = best;
                 }
+                let synthesis_step_type = if synthesis_repair.is_some() {
+                    Some("repair_symbolic_framing")
+                } else {
+                    Some("synthesis")
+                };
                 audit.record_chapter_step(
                     SYNTHESIS_CHAPTER_CODE,
                     engine.provider.as_str(),
@@ -616,6 +707,7 @@ impl<'a> ChapterOrchestrator<'a> {
                     synthesis_result.output_tokens,
                     synthesis_started.elapsed().as_millis() as u64,
                     None,
+                    synthesis_step_type,
                 );
                 generated.push(synthesis_result.chapter);
             }
@@ -639,6 +731,75 @@ impl<'a> ChapterOrchestrator<'a> {
                 audit,
             )
             .await?;
+
+            let planet_names =
+                AstroLabelHumanizer::new(self.catalog).natal_planet_display_names(writing_locale);
+            let mut raw_placement_warnings =
+                ReadingOpeningDiversityValidator::detect_raw_placement_warnings(
+                    &generated,
+                    &planet_names,
+                    writing_locale,
+                );
+            if !raw_placement_warnings.is_empty() {
+                tracing::warn!(
+                    count = raw_placement_warnings.len(),
+                    "non-blocking raw placement paragraph openings detected"
+                );
+                if interpretation.is_some_and(|ctx| ctx.profile.uses_rich_editorial_structure()) {
+                    const MAX_RAW_PLACEMENT_ROUNDS: usize = 2;
+                    for round in 0..MAX_RAW_PLACEMENT_ROUNDS {
+                        if raw_placement_warnings.is_empty() {
+                            break;
+                        }
+                        self.repair_raw_placement_openings(
+                            request,
+                            engine,
+                            safety_policy,
+                            astro_facts,
+                            &chapter_packs,
+                            &plan,
+                            &contracts,
+                            run_id,
+                            product_policy,
+                            interpretation,
+                            &raw_placement_warnings,
+                            &mut generated,
+                            audit,
+                        )
+                        .await?;
+                        raw_placement_warnings =
+                            ReadingOpeningDiversityValidator::detect_raw_placement_warnings(
+                                &generated,
+                                &planet_names,
+                                writing_locale,
+                            );
+                        if raw_placement_warnings.is_empty() {
+                            break;
+                        }
+                        tracing::warn!(
+                            round = round + 1,
+                            count = raw_placement_warnings.len(),
+                            "raw placement paragraph openings remain after LLM repair"
+                        );
+                    }
+                    if !raw_placement_warnings.is_empty() {
+                        tracing::warn!(
+                            count = raw_placement_warnings.len(),
+                            "applying deterministic soften for raw placement paragraph openings"
+                        );
+                        for chapter in generated.iter_mut() {
+                            if chapter.code == SYNTHESIS_CHAPTER_CODE {
+                                continue;
+                            }
+                            chapter.body = crate::text_trigrams::soften_raw_placement_openings_in_body(
+                                &chapter.body,
+                                &planet_names,
+                                writing_locale,
+                            );
+                        }
+                    }
+                }
+            }
 
             EvidenceDiversityValidator::validate_reading(
                 evidence_enabled,
@@ -773,6 +934,7 @@ impl<'a> ChapterOrchestrator<'a> {
                                 meta.4,
                                 started.elapsed().as_millis() as u64,
                                 None,
+                                Some("repair_opening"),
                             );
                             generated[idx] = repaired;
                             any_repaired = true;
@@ -812,6 +974,98 @@ impl<'a> ChapterOrchestrator<'a> {
             }
         }
 
+        Ok(())
+    }
+
+    async fn repair_raw_placement_openings(
+        &self,
+        request: &GenerateReadingRequest,
+        engine: &ResolvedEngineParams,
+        safety_policy: &SafetyPolicy,
+        astro_facts: &NormalizedAstroFacts,
+        chapter_packs: &[astral_llm_domain::ChapterEvidencePack],
+        plan: &ReadingPlan,
+        contracts: &[astral_llm_domain::output_contract::ChapterContract],
+        run_id: &str,
+        product_policy: &ProductGenerationPolicy,
+        interpretation: Option<&ResolvedInterpretationContext>,
+        violations: &[crate::reading_opening_diversity_validator::OpeningViolation],
+        generated: &mut Vec<ReadingChapter>,
+        audit: &mut ExecutionAudit,
+    ) -> Result<(), GenerationError> {
+        if violations.is_empty() {
+            return Ok(());
+        }
+
+        let mut target_codes: Vec<String> = violations
+            .iter()
+            .map(|v| v.chapter_code.clone())
+            .collect();
+        target_codes.sort();
+        target_codes.dedup();
+
+        for target_code in target_codes {
+            let Some(idx) = generated.iter().position(|c| c.code == target_code) else {
+                continue;
+            };
+            let Some(chapter) = plan.chapters.iter().find(|c| c.code == target_code) else {
+                continue;
+            };
+            let Some(contract) = contracts.iter().find(|c| c.code == target_code) else {
+                continue;
+            };
+            let prior: Vec<ReadingChapter> = generated[..idx].to_vec();
+            let pack = pack_for_chapter(chapter_packs, &target_code);
+            let chapter_violations: Vec<_> = violations
+                .iter()
+                .filter(|v| v.chapter_code == target_code)
+                .cloned()
+                .collect();
+            let started = Instant::now();
+            let repairs = vec![ChapterRepairKind::OpeningDiversity {
+                violations: chapter_violations,
+            }];
+            match self
+                .generate_one_chapter(
+                    request,
+                    engine,
+                    safety_policy,
+                    astro_facts,
+                    pack,
+                    chapter,
+                    contract,
+                    &prior,
+                    run_id,
+                    product_policy,
+                    interpretation,
+                    &repairs,
+                )
+                .await
+            {
+                Ok((repaired, _bundle, meta)) => {
+                    audit.record_chapter_step(
+                        &target_code,
+                        &meta.0,
+                        &meta.1,
+                        ChapterGenerationStatus::Repaired,
+                        meta.3,
+                        meta.4,
+                        started.elapsed().as_millis() as u64,
+                        None,
+                        Some("repair_opening"),
+                    );
+                    generated[idx] = repaired;
+                }
+                Err(err) => {
+                    tracing::warn!(
+                        run_id,
+                        chapter = %target_code,
+                        error = %err.detail().message,
+                        "raw placement opening repair failed"
+                    );
+                }
+            }
+        }
         Ok(())
     }
 

@@ -126,3 +126,40 @@ INSERT INTO llm_house_theme_labels (house_number, locale, display_label, interpr
     (4, 'fr', 'Emphase de la maison 4', 'Emphase de la maison 4 : racines, foyer et mémoire'),
     (10, 'fr', 'Emphase de la maison 10', 'Emphase de la maison 10 : vocation et reconnaissance')
 ON CONFLICT (house_number, locale) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS llm_house_axis_labels (
+    id SERIAL PRIMARY KEY,
+    axis_code TEXT NOT NULL,
+    locale TEXT NOT NULL,
+    display_label TEXT NOT NULL,
+    interpretive_label TEXT NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    UNIQUE (axis_code, locale)
+);
+
+INSERT INTO llm_house_axis_labels (axis_code, locale, display_label, interpretive_label) VALUES
+    ('private_public', 'fr', 'Axe vie privée / vie publique',
+     'Axe vie privée / vie publique : tension entre foyer intérieur, exposition et rôle social'),
+    ('self_relationship', 'fr', 'Axe identité / relation',
+     'Axe identité / relation : équilibre entre affirmation personnelle et rencontre de l''autre'),
+    ('resources_sharing', 'fr', 'Axe ressources personnelles / ressources partagées',
+     'Axe ressources personnelles / ressources partagées : circulation entre sécurité propre, confiance et engagement commun'),
+    ('local_distant', 'fr', 'Axe proche / lointain',
+     'Axe proche / lointain : tension entre environnement immédiat et horizons élargis'),
+    ('creation_collective', 'fr', 'Axe création personnelle / collectif',
+     'Axe création personnelle / collectif : tension entre expression individuelle et idéaux partagés'),
+    ('control_surrender', 'fr', 'Axe maîtrise / lâcher-prise',
+     'Axe maîtrise / lâcher-prise : tension entre ordre quotidien et besoin de relâchement intérieur'),
+    ('private_public', 'en', 'Private / public life axis',
+     'Private / public life axis: tension between inner home, visibility and social role'),
+    ('self_relationship', 'en', 'Identity / relationship axis',
+     'Identity / relationship axis: balance between personal assertion and encounter with others'),
+    ('resources_sharing', 'en', 'Personal / shared resources axis',
+     'Personal / shared resources axis: flow between self-security, trust and shared commitment'),
+    ('local_distant', 'en', 'Near / distant axis',
+     'Near / distant axis: tension between immediate environment and wider horizons'),
+    ('creation_collective', 'en', 'Personal creation / collective axis',
+     'Personal creation / collective axis: tension between individual expression and shared ideals'),
+    ('control_surrender', 'en', 'Control / surrender axis',
+     'Control / surrender axis: tension between daily order and inner release')
+ON CONFLICT (axis_code, locale) DO NOTHING;

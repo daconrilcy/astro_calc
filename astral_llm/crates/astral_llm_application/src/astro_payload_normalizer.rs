@@ -101,8 +101,12 @@ fn evidence_for_prompt(
     let mut value =
         serde_json::to_value(ev).unwrap_or_else(|_| serde_json::json!({ "fact_id": ev.fact_id }));
     if let Some(label) = humanizer.label_for_fact_id(&ev.fact_id, language, Some(facts)) {
-        value["label"] = serde_json::Value::String(label.clone());
-        value["interpretive_hint"] = serde_json::Value::String(label);
+        value["label"] = serde_json::Value::String(label);
+    }
+    if let Some(hint) = humanizer.interpretive_hint_for_fact_id(&ev.fact_id, language, Some(facts)) {
+        value["interpretive_hint"] = serde_json::Value::String(hint);
+    } else if let Some(label) = value.get("label").and_then(|v| v.as_str()) {
+        value["interpretive_hint"] = serde_json::Value::String(label.to_string());
     }
     value
 }

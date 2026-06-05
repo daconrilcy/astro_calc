@@ -44,6 +44,7 @@ const BANNED_SUMMARY_PATTERNS: &[&str] = &[
     "consultation divinatoire",
     "tendance invite",
     "le tirage",
+    "liane de constance",
 ];
 
 const ASTRO_SUMMARY_MARKERS: &[&str] = &[
@@ -87,8 +88,10 @@ impl<'a> SummarySynthesizer<'a> {
         engine: &ResolvedEngineParams,
         safety_policy: &SafetyPolicy,
         run_id: &str,
+        repair_instruction: Option<&str>,
     ) -> Result<SummarySynthesisResult, GenerationError> {
-        let messages = build_summary_messages(request, chapters, &self.catalog);
+        let messages =
+            build_summary_messages(request, chapters, &self.catalog, repair_instruction);
         prompt_trace::log_provider_messages(
             run_id,
             Some(READING_SUMMARY_STEP_CODE),
@@ -244,7 +247,7 @@ pub fn validate_summary_content(
     }
 
     for pattern in BANNED_SUMMARY_PATTERNS {
-        if corpus.contains(pattern) {
+        if corpus_matches_banned_pattern(&corpus, pattern) {
             return Err(GenerationError::with_details(
                 GenerationErrorCode::ReadingQualityFailed,
                 "summary contains technical placeholder wording",
@@ -274,10 +277,43 @@ pub fn validate_summary_content(
     Ok(())
 }
 
+/// Mot entier pour patterns courts (`tirage`, `oracle`) afin d'eviter les faux positifs (`retirage`).
+fn corpus_matches_banned_pattern(corpus: &str, pattern: &str) -> bool {
+    if pattern.contains(' ') {
+        return corpus.contains(pattern);
+    }
+    corpus
+        .split(|c: char| !c.is_alphanumeric())
+        .any(|token| !token.is_empty() && token == pattern)
+}
+
+pub fn is_summary_banned_pattern_error(err: &GenerationError) -> bool {
+    if err.detail().code != GenerationErrorCode::ReadingQualityFailed {
+        return false;
+    }
+    err.detail()
+        .details
+        .as_ref()
+        .and_then(|d| d.get("pattern"))
+        .is_some()
+}
+
+pub fn deterministic_safe_summary_fallback() -> ReadingSummary {
+    ReadingSummary {
+        title: "Présence intérieure, construction et ouverture".into(),
+        short_text: "Cette lecture symbolique met en lumière une carte natale structurée par la \
+            profondeur, la constance et le besoin d'une croissance habitée. Les chapitres \
+            décrivent une tension féconde entre sécurité, expression personnelle, lien aux autres \
+            et transformation intérieure."
+            .into(),
+    }
+}
+
 fn build_summary_messages(
     request: &GenerateReadingRequest,
     chapters: &[ReadingChapter],
     catalog: &SharedCanonicalCatalog,
+    repair_instruction: Option<&str>,
 ) -> Vec<PromptMessage> {
     let language_block =
         WritingLanguageDirective::prompt_block(catalog, &request.product_context.user_language);
@@ -300,13 +336,18 @@ fn build_summary_messages(
          never mention pipelines, generation modes, or technical process. \
          Frame the reading as symbolic and interpretive. Prefer phrasing such as \
          « Cette lecture symbolique suggère… », « L'ensemble invite… », « Le thème évoque… ». \
-         Use natal vocabulary (thème, carte natale, configuration) — never divinatory wording (tirage, oracle)."
+         Use natal vocabulary (thème, carte natale, configuration) — never divinatory wording (tirage, oracle). \
+         Avoid forced poetic clichés (e.g. liane de constance); prefer a concrete, evocative title."
     );
+
+    let repair_block = repair_instruction
+        .map(|r| format!("\n\nREPAIR: {r}"))
+        .unwrap_or_default();
 
     let user = format!(
         "Product: {}\nAudience: {:?}\n\nChapters:\n{}\n\n\
          Write title (one evocative line) and short_text (2-3 sentences, symbolic framing, \
-         no medical/legal/financial advice).",
+         no medical/legal/financial advice).{repair_block}",
         request.product_context.product_code,
         request.product_context.audience_level,
         serde_json::to_string_pretty(&chapter_digest).unwrap_or_default(),
@@ -368,6 +409,51 @@ mod tests {
                 comme des espaces de croissance authentique.".into(),
         };
         assert!(validate_summary_content(&summary, None).is_ok());
+    }
+
+    #[test]
+    fn does_not_ban_tirage_as_substring_of_retirage() {
+        let summary = SummaryProviderResponse {
+            title: "Une dynamique de retirage et de recentrage".into(),
+            short_text: "Cette lecture symbolique evoque un theme de recentrage interieur \
+                avec une profondeur emotionnelle et une clarte relationnelle dans la vie \
+                quotidienne et les choix professionnels.".into(),
+        };
+        assert!(validate_summary_content(&summary, Some("natal_premium_plus")).is_ok());
+    }
+
+    #[test]
+    fn bans_divinatory_tirage_as_whole_word() {
+        let summary = SummaryProviderResponse {
+            title: "Une lecture symbolique du theme".into(),
+            short_text: "Ce tirage evoque une presence attentive et une quete de sens \
+                dans les relations et la vie professionnelle avec une profondeur \
+                emotionnelle et une stabilite interieure.".into(),
+        };
+        assert!(validate_summary_content(&summary, Some("natal_premium_plus")).is_err());
+    }
+
+    #[test]
+    fn rejects_liane_de_constance_in_title() {
+        let summary = SummaryProviderResponse {
+            title: "Identité et profondeur: présence magnétique, liane de constance et de sens"
+                .into(),
+            short_text: "Cette lecture symbolique met en lumière une carte natale riche en \
+                tensions fécondes entre sécurité intérieure, expression personnelle et besoin de \
+                croissance relationnelle authentique dans la vie quotidienne.".into(),
+        };
+        let err = validate_summary_content(&summary, Some("natal_premium_plus")).unwrap_err();
+        assert!(is_summary_banned_pattern_error(&err));
+    }
+
+    #[test]
+    fn deterministic_fallback_passes_validation() {
+        let summary = deterministic_safe_summary_fallback();
+        let provider = SummaryProviderResponse {
+            title: summary.title,
+            short_text: summary.short_text,
+        };
+        assert!(validate_summary_content(&provider, Some("natal_premium_plus")).is_ok());
     }
 
     #[test]

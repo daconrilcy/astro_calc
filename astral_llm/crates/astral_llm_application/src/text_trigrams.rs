@@ -246,6 +246,98 @@ pub fn phrases_to_avoid_from_prior(prior_bodies: &[&str], locale: &str, max: usi
     phrases
 }
 
+fn normalize_paragraph_for_placement_check(paragraph: &str) -> String {
+    paragraph
+        .trim()
+        .chars()
+        .map(|c| match c {
+            '’' | '\'' => '\'',
+            c if c.is_alphanumeric() || c.is_whitespace() => c,
+            _ => ' ',
+        })
+        .collect::<String>()
+        .to_lowercase()
+}
+
+fn placement_preposition(locale: &str) -> &'static str {
+    match locale {
+        "fr" | "es" => "en",
+        _ => "in",
+    }
+}
+
+/// Paragraphe commençant par « [planète] en/in » (article optionnel), noms fournis par le catalogue locale.
+pub fn paragraph_starts_with_raw_placement(
+    paragraph: &str,
+    planet_names: &[String],
+    locale: &str,
+) -> bool {
+    let normalized = normalize_paragraph_for_placement_check(paragraph);
+    if normalized.is_empty() {
+        return false;
+    }
+    let prep = placement_preposition(locale);
+    let articles = ["le ", "la ", "l'"];
+    for planet in planet_names {
+        let planet_lower = planet.trim().to_lowercase();
+        if planet_lower.is_empty() {
+            continue;
+        }
+        if normalized.starts_with(&format!("{planet_lower} {prep} ")) {
+            return true;
+        }
+        for art in articles {
+            if normalized.starts_with(&format!("{art}{planet_lower} {prep} ")) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn raw_placement_opening_prefix(locale: &str) -> &'static str {
+    match locale {
+        "fr" => "Dans cette perspective, ",
+        "es" => "En esta perspectiva, ",
+        "de" => "In dieser Perspektive ",
+        _ => "In this perspective, ",
+    }
+}
+
+/// Préfixe neutre si un paragraphe commence encore par « planète en signe » (fallback déterministe post-repair).
+pub fn soften_raw_placement_openings_in_body(
+    body: &str,
+    planet_names: &[String],
+    locale: &str,
+) -> String {
+    body.split("\n\n")
+        .map(|para| {
+            if paragraph_starts_with_raw_placement(para, planet_names, locale) {
+                format!("{}{para}", raw_placement_opening_prefix(locale))
+            } else {
+                para.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n")
+}
+
+pub fn detect_raw_placement_paragraph_openings(
+    body: &str,
+    planet_names: &[String],
+    locale: &str,
+) -> Vec<String> {
+    body.split("\n\n")
+        .map(str::trim)
+        .filter(|p| !p.is_empty())
+        .filter(|p| paragraph_starts_with_raw_placement(p, planet_names, locale))
+        .map(|p| {
+            let words: Vec<_> = p.split_whitespace().take(8).collect();
+            words.join(" ")
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -254,6 +346,58 @@ mod tests {
     fn planet_in_sign_opening_pattern() {
         assert!(is_planet_in_sign_paragraph_opening("jupiter en cancer en"));
         assert!(!is_planet_in_sign_paragraph_opening("par ailleurs la presence"));
+    }
+
+    #[test]
+    fn detects_raw_placement_paragraph_opening_fr() {
+        let planets = vec![
+            "Soleil".into(),
+            "Lune".into(),
+            "Mars".into(),
+            "Jupiter".into(),
+            "Saturne".into(),
+        ];
+        assert!(paragraph_starts_with_raw_placement(
+            "Mars en Sagittaire en maison 1 colore votre présence.",
+            &planets,
+            "fr",
+        ));
+        assert!(!paragraph_starts_with_raw_placement(
+            "Par ailleurs Mars en Sagittaire structure le récit.",
+            &planets,
+            "fr",
+        ));
+        let openings = detect_raw_placement_paragraph_openings(
+            "Intro neutre.\n\nMars en Sagittaire en maison 1 ouvre le chapitre.\n\nSuite.",
+            &planets,
+            "fr",
+        );
+        assert_eq!(openings.len(), 1);
+
+        let planets_en = vec!["Sun".into(), "Mars".into()];
+        assert!(paragraph_starts_with_raw_placement(
+            "Mars in Sagittarius in house 1 shapes your presence.",
+            &planets_en,
+            "en",
+        ));
+        assert!(!paragraph_starts_with_raw_placement(
+            "Mars en Sagittaire en maison 1",
+            &planets_en,
+            "en",
+        ));
+    }
+
+    #[test]
+    fn soften_prefixes_raw_placement_opening() {
+        let planets = vec!["Jupiter".into()];
+        let body = "Intro.\n\nJupiter en Cancer en maison 8 apporte une nuance.\n\nSuite.";
+        let softened = soften_raw_placement_openings_in_body(&body, &planets, "fr");
+        assert!(!paragraph_starts_with_raw_placement(
+            softened.split("\n\n").nth(1).unwrap(),
+            &planets,
+            "fr",
+        ));
+        assert!(softened.contains("Dans cette perspective, Jupiter"));
     }
 
     #[test]

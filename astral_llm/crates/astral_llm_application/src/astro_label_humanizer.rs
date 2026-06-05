@@ -113,6 +113,26 @@ impl<'a> AstroLabelHumanizer<'a> {
         label_from_fact_id(fact_id, self, language, facts)
     }
 
+    pub fn natal_planet_display_names(&self, locale: &str) -> Vec<String> {
+        const NATAL_OBJECTS: &[&str] = &[
+            "sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune",
+            "pluto",
+        ];
+        NATAL_OBJECTS
+            .iter()
+            .map(|code| self.object_label(locale, code))
+            .collect()
+    }
+
+    pub fn interpretive_hint_for_fact_id(
+        &self,
+        fact_id: &str,
+        language: &str,
+        facts: Option<&NormalizedAstroFacts>,
+    ) -> Option<String> {
+        interpretive_hint_from_fact_id(fact_id, self, language, facts)
+    }
+
     pub fn enrich_chapter_astro_basis(
         &self,
         items: &mut [AstroBasisItem],
@@ -366,6 +386,13 @@ fn label_from_fact_id(
                     .house_theme_label(locale, house)
                     .map(|p| p.display_label.clone());
             }
+            "house_axis" => {
+                return humanizer
+                    .catalog
+                    .house_axis_label(locale, code)
+                    .map(|p| p.display_label.clone())
+                    .or_else(|| Some(humanized_axis_code_fallback(locale, code)));
+            }
             "dominant_planet" => {
                 let object = humanizer.object_label(locale, code);
                 return Some(match locale {
@@ -382,6 +409,63 @@ fn label_from_fact_id(
         }
     }
     parse_angle_fact_id(fact_id).map(|(angle, sign)| humanize_angle_sign_label(humanizer, locale, &angle, &sign))
+}
+
+fn interpretive_hint_from_fact_id(
+    fact_id: &str,
+    humanizer: &AstroLabelHumanizer<'_>,
+    language: &str,
+    facts: Option<&NormalizedAstroFacts>,
+) -> Option<String> {
+    let locale = AstroLabelHumanizer::locale_key(language);
+    if let Some((kind, code)) = fact_id.split_once(':') {
+        match kind {
+            "house_axis" => {
+                return humanizer
+                    .catalog
+                    .house_axis_label(locale, code)
+                    .map(|p| p.interpretive_label.clone())
+                    .or_else(|| Some(humanized_axis_code_fallback(locale, code)));
+            }
+            "element_balance" => {
+                return humanizer
+                    .catalog
+                    .element_balance_label(locale, code)
+                    .map(|p| p.interpretive_label.clone());
+            }
+            "modality_balance" => {
+                return humanizer
+                    .catalog
+                    .modality_balance_label(locale, code)
+                    .map(|p| p.interpretive_label.clone());
+            }
+            "sect_condition" => {
+                return humanizer
+                    .catalog
+                    .sect_label(locale, code)
+                    .map(|p| p.interpretive_label.clone());
+            }
+            "house_emphasis" if fact_id.starts_with("house_emphasis:house:") => {
+                let house = fact_id.rsplit(':').next()?.parse().ok()?;
+                return humanizer
+                    .catalog
+                    .house_theme_label(locale, house)
+                    .map(|p| p.interpretive_label.clone());
+            }
+            _ => {}
+        }
+    }
+    label_from_fact_id(fact_id, humanizer, language, facts)
+}
+
+fn humanized_axis_code_fallback(locale: &str, axis_code: &str) -> String {
+    let readable = axis_code.replace('_', " ");
+    match locale {
+        "fr" => format!("Axe {readable}"),
+        "es" => format!("Eje {readable}"),
+        "de" => format!("Achse {readable}"),
+        _ => format!("Axis {readable}"),
+    }
 }
 
 fn humanize_cluster_signal(
@@ -612,6 +696,29 @@ mod tests {
         assert_eq!(
             h.label_for_fact_id("sect_condition:night", "fr", None).as_deref(),
             Some("Thème nocturne")
+        );
+    }
+
+    #[test]
+    fn humanizes_house_axis_labels_in_french() {
+        let catalog = test_catalog();
+        let h = AstroLabelHumanizer::new(&catalog);
+        assert_eq!(
+            h.label_for_fact_id("house_axis:private_public", "fr", None).as_deref(),
+            Some("Axe vie privée / vie publique")
+        );
+        assert_eq!(
+            h.interpretive_hint_for_fact_id("house_axis:resources_sharing", "fr", None)
+                .as_deref(),
+            Some("Axe ressources personnelles / ressources partagées : circulation entre sécurité propre, confiance et engagement commun")
+        );
+        assert_eq!(
+            h.label_for_fact_id("element_balance:earth", "fr", None).as_deref(),
+            Some("Dominante élément Terre")
+        );
+        assert_eq!(
+            h.interpretive_hint_for_fact_id("element_balance:earth", "fr", None).as_deref(),
+            Some("Dominante Terre : stabilité, réalisme et construction")
         );
     }
 

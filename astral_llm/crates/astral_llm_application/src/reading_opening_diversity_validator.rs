@@ -8,8 +8,8 @@ use astral_llm_domain::{
 };
 
 use crate::text_trigrams::{
-    chapter_opening_phrase, detect_duplicate_openings, openings_to_avoid_from_prior,
-    paragraph_opening_phrases, source_chapter_from_duplicate_kind,
+    chapter_opening_phrase, detect_duplicate_openings, detect_raw_placement_paragraph_openings,
+    openings_to_avoid_from_prior, paragraph_opening_phrases, source_chapter_from_duplicate_kind,
     is_planet_in_sign_paragraph_opening, STOCK_OPENINGS_FR,
 };
 
@@ -136,11 +136,23 @@ impl ReadingOpeningDiversityValidator {
             }
         }
 
-        let needs_astro_rule = chapter_violations
+        let needs_raw_placement_rule = chapter_violations
             .iter()
-            .any(|v| is_planet_in_sign_paragraph_opening(&v.phrase))
+            .any(|v| v.kind == "paragraph_opening_raw_placement");
+        let needs_astro_rule = needs_raw_placement_rule
+            || chapter_violations
+                .iter()
+                .any(|v| is_planet_in_sign_paragraph_opening(&v.phrase))
             || banned.iter().any(|p| is_planet_in_sign_paragraph_opening(p));
-        if needs_astro_rule {
+        if needs_raw_placement_rule {
+            bundle.task_instructions.push_str(
+                "\nREPAIR (raw placement opening): at least one paragraph still opens with \
+                 « [planet] en [sign] ». Rewrite ONLY those paragraph openings — start with the life \
+                 domain, house theme, or an interpretive verb (e.g. « Sur le plan de la communication… », \
+                 « En maison 8… »). Keep the planet citation later in the same sentence. \
+                 Do not shorten the chapter.\n",
+            );
+        } else if needs_astro_rule {
             bundle.task_instructions.push_str(
                 "\nPlacement citations: do NOT open any paragraph with « [planet] en [sign] en » \
                  (e.g. Jupiter en Cancer en…, Saturne en Capricorne en…). \
@@ -160,6 +172,26 @@ impl ReadingOpeningDiversityValidator {
 
     pub fn opening_phrase_for_chapter(chapter: &ReadingChapter, locale: &str) -> String {
         chapter_opening_phrase(&chapter.body, locale)
+    }
+
+    pub fn detect_raw_placement_warnings(
+        chapters: &[ReadingChapter],
+        planet_names: &[String],
+        locale: &str,
+    ) -> Vec<OpeningViolation> {
+        chapters
+            .iter()
+            .filter(|c| c.code != SYNTHESIS_CHAPTER_CODE)
+            .flat_map(|chapter| {
+                detect_raw_placement_paragraph_openings(&chapter.body, planet_names, locale)
+                    .into_iter()
+                    .map(|phrase| OpeningViolation {
+                        chapter_code: chapter.code.clone(),
+                        phrase,
+                        kind: "paragraph_opening_raw_placement".into(),
+                    })
+            })
+            .collect()
     }
 }
 
