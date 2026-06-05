@@ -195,6 +195,12 @@ ON CONFLICT (product_code) DO UPDATE SET
     is_active = EXCLUDED.is_active,
     updated_at = NOW();
 
+-- Legacy (historique) : ces "produits" n'existent plus en runtime (migre vers natal_prompter + interpretation_profile_code).
+-- On les desactive pour eviter qu'ils apparaissent comme des moteurs paralleles dans les vues ops (ex. set_product_llm_models.ps1 -Show).
+UPDATE llm_product_default_engine
+SET is_active = false, updated_at = NOW()
+WHERE product_code IN ('natal_basic', 'natal_premium');
+
 CREATE TABLE IF NOT EXISTS llm_product_fallback_models (
     id SERIAL PRIMARY KEY,
     product_code TEXT NOT NULL,

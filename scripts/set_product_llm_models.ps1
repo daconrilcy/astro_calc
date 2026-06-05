@@ -161,6 +161,17 @@ ON CONFLICT (product_code) DO UPDATE SET
     Write-Host ("OK {0} : chapitres={1} summary={2} ({3})" -f $row.Product, $row.Chapters, $row.Summary, $row.Provider)
 }
 
+#
+# Legacy products (historique) : l'API migre ces codes vers natal_prompter + interpretation_profile_code.
+# On les desactive pour qu'ils ne soient pas visibles comme "moteurs" actifs dans les vues ops (-Show).
+#
+$deactivateLegacySql = @"
+UPDATE llm_product_default_engine
+SET is_active = false, updated_at = NOW()
+WHERE product_code IN ('natal_basic', 'natal_premium');
+"@
+Invoke-ProjectPsql -Sql $deactivateLegacySql | Out-Null
+
 Write-Host ""
 Write-Host "Redemarrer astral_llm_api pour prendre en compte les modeles."
 Write-Host "Verifier : .\scripts\set_product_llm_models.ps1 -Show"
