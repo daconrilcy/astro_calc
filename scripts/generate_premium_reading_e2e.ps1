@@ -355,6 +355,12 @@ try {
                 Write-Host "    - [$ch] $kind : `"$phrase`""
             }
         }
+        if ($null -ne $response.error.details -and $null -ne $response.error.details.warnings) {
+            Write-Host "  Warnings :"
+            foreach ($w in @($response.error.details.warnings)) {
+                Write-Host "    - $w"
+            }
+        }
         Write-Host "  Relancer ou mettre a jour astral_llm_api (repair opening : jusqu'a 8 tours, consignes renforcees)."
         if ($null -ne $response.run_id) {
             Show-PremiumRunAuditSummary -RunId $response.run_id -BaseUrl $BaseUrl -ApiKey $ApiKey

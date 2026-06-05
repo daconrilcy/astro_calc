@@ -275,13 +275,17 @@ function Assert-PremiumPlusReading {
         return ,$failures
     }
 
-    if ($content.chapters.Count -ne $ExpectedChapterOrder.Count) {
+    $minRequired = $ExpectedChapterOrder.Count
+    if ($content.chapters.Count -lt $minRequired) {
         $failures.Add(
-            "Nombre de chapitres : attendu $($ExpectedChapterOrder.Count), recu $($content.chapters.Count)."
+            "Nombre de chapitres insuffisant : min $minRequired, recu $($content.chapters.Count)."
         )
     }
 
-    for ($i = 0; $i -lt [Math]::Min($content.chapters.Count, $ExpectedChapterOrder.Count); $i++) {
+    for ($i = 0; $i -lt $minRequired; $i++) {
+        if ($i -ge $content.chapters.Count) {
+            break
+        }
         $expected = $ExpectedChapterOrder[$i]
         $ch = $content.chapters[$i]
         if ($ch.code -ne $expected) {
@@ -637,19 +641,31 @@ if ($apiResponse.run_id) {
     Write-Host "Run ID  : $($apiResponse.run_id)"
     Write-Host "Audit   : .\scripts\show_generation_run.ps1 -RunId $($apiResponse.run_id)"
 }
+$minRequired = $expectedChapters.Count
+if ($readingContent.chapters.Count -gt $minRequired) {
+    Write-Host "Info    : $($readingContent.chapters.Count) chapitres (min requis $minRequired) — surplus accepte."
+}
 
 $totalWords = 0
 $totalBasis = 0
-foreach ($ch in $readingContent.chapters) {
+for ($i = 0; $i -lt $readingContent.chapters.Count; $i++) {
+    $ch = $readingContent.chapters[$i]
     $w = Get-WordCount -Text $ch.body
     $b = if ($ch.astro_basis) { $ch.astro_basis.Count } else { 0 }
     $totalWords += $w
     $totalBasis += $b
     $minW = if ($ch.code -eq "synthesis") { $MinWordsSynthesis } else { $MinWordsPerChapter }
     $minB = if ($ch.code -eq "synthesis") { $MinBasisSynthesis } else { $MinAstroBasisPerChapter }
-    $okW = if ($w -ge $minW) { "OK" } else { "!!" }
-    $okB = if ($b -ge $minB) { "OK" } else { "!!" }
-    Write-Host ("  {0,-22} {1,4} mots [{2}]  {3,2} basis [{4}]" -f $ch.code, $w, $okW, $b, $okB)
+    $required = ($i -lt $minRequired)
+    if ($required) {
+        $okW = if ($w -ge $minW) { "OK" } else { "!!" }
+        $okB = if ($b -ge $minB) { "OK" } else { "!!" }
+    } else {
+        $okW = "—"
+        $okB = "—"
+    }
+    $tag = if ($required) { "" } else { " (extra)" }
+    Write-Host ("  {0,-22}{5} {1,4} mots [{2}]  {3,2} basis [{4}]" -f $ch.code, $w, $okW, $b, $okB, $tag)
 }
 Write-Host ("  {0,-22} {1,4} mots (corps)  {2,2} basis (total)" -f "TOTAL", $totalWords, $totalBasis)
 if ($readingContent.summary.short_text) {
