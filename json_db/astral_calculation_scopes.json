@@ -1,0 +1,75 @@
+{
+  "name": "astral_calculation_scopes",
+  "structure": {
+    "id": "integer, primary key",
+    "code": "string, unique",
+    "label": "string",
+    "description": "string",
+    "min_input_precision_code": "string",
+    "supports_angles": "boolean",
+    "supports_houses": "boolean",
+    "supports_aspects": "boolean",
+    "supports_object_sign_facts": "boolean",
+    "supports_ambiguous_facts": "boolean",
+    "sort_order": "integer",
+    "is_active": "boolean"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "stable_birth_date_profile",
+      "label": "Stable birth date profile",
+      "description": "Planetary sign facts stable or explicitly ambiguous over uncertainty window; no angles or houses.",
+      "min_input_precision_code": "date_only",
+      "supports_angles": false,
+      "supports_houses": false,
+      "supports_aspects": false,
+      "supports_object_sign_facts": true,
+      "supports_ambiguous_facts": true,
+      "sort_order": 1,
+      "is_active": true
+    },
+    {
+      "id": 2,
+      "code": "planetary_positions",
+      "label": "Planetary positions",
+      "description": "Geocentric planetary positions at declared datetime; aspects; no angles or houses.",
+      "min_input_precision_code": "datetime_without_location",
+      "supports_angles": false,
+      "supports_houses": false,
+      "supports_aspects": true,
+      "supports_object_sign_facts": true,
+      "supports_ambiguous_facts": false,
+      "sort_order": 2,
+      "is_active": true
+    },
+    {
+      "id": 3,
+      "code": "angular_chart",
+      "label": "Angular chart",
+      "description": "Geocentric planets plus angles and houses for birth location.",
+      "min_input_precision_code": "complete_birth_data",
+      "supports_angles": true,
+      "supports_houses": true,
+      "supports_aspects": true,
+      "supports_object_sign_facts": true,
+      "supports_ambiguous_facts": false,
+      "sort_order": 3,
+      "is_active": true
+    },
+    {
+      "id": 4,
+      "code": "full_natal",
+      "label": "Full natal",
+      "description": "Complete natal chart with signals, dignities, emphasis (existing engine).",
+      "min_input_precision_code": "complete_birth_data",
+      "supports_angles": true,
+      "supports_houses": true,
+      "supports_aspects": true,
+      "supports_object_sign_facts": true,
+      "supports_ambiguous_facts": false,
+      "sort_order": 4,
+      "is_active": true
+    }
+  ]
+}

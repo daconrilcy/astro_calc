@@ -32,6 +32,10 @@ impl SwissEphemerisEngine {
     pub fn default_from_workspace() -> Self {
         Self::new(Path::new("..").join("ephe").join("se-2026a"))
     }
+
+    pub fn ephemeris_path(&self) -> &Path {
+        &self.ephemeris_path
+    }
 }
 
 impl EphemerisEngine for SwissEphemerisEngine {

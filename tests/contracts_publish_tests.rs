@@ -45,6 +45,10 @@ fn calculator_schemas_match_published_contracts() {
         ("astro_engine_response_v1.schema.json", "astro_engine_response_v1.schema.json"),
         ("natal_structured_v13.schema.json", "natal_structured_v13.schema.json"),
         ("llm_projection_natal_v1.schema.json", "llm_projection_natal_v1.schema.json"),
+        ("astro_simplified_natal_request_v1.schema.json", "astro_simplified_natal_request_v1.schema.json"),
+        ("astro_simplified_natal_response_v1.schema.json", "astro_simplified_natal_response_v1.schema.json"),
+        ("natal_simplified_structured_v1.schema.json", "natal_simplified_structured_v1.schema.json"),
+        ("llm_projection_natal_simplified_v1.schema.json", "llm_projection_natal_simplified_v1.schema.json"),
     ];
 
     for (src, dst) in pairs {

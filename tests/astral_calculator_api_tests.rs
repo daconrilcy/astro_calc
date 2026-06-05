@@ -140,6 +140,55 @@ async fn calculate_natal_paris_1990_when_ready() {
 }
 
 #[tokio::test]
+async fn validate_rejects_invalid_simplified_request() {
+    let Some(state) = build_test_state().await else {
+        eprintln!("SKIP validate_rejects_invalid_simplified_request: database unavailable");
+        return;
+    };
+    let base = spawn_test_server(state).await;
+    let client = reqwest::Client::new();
+    let response = client
+        .post(format!("{base}/v1/calculations/validate"))
+        .json(&serde_json::json!({
+            "schema_version": "astro_simplified_natal_request_v1",
+            "payload": { "birth": { "date": "not-a-date" } }
+        }))
+        .send()
+        .await
+        .expect("request");
+    assert_eq!(response.status(), 422);
+}
+
+#[tokio::test]
+async fn calculate_simplified_date_only_when_ready() {
+    let Some(state) = build_test_state().await else {
+        eprintln!("SKIP calculate_simplified_date_only_when_ready: database unavailable");
+        return;
+    };
+    let status = check_reference_status(&state.pool).await;
+    if status.status != "ready" {
+        eprintln!("SKIP calculate_simplified_date_only_when_ready: reference not ready");
+        return;
+    }
+    let base = spawn_test_server(state).await;
+    let client = reqwest::Client::new();
+    let response = client
+        .post(format!("{base}/v1/calculations/natal/simplified"))
+        .json(&serde_json::json!({
+            "request_contract_version": "astro_simplified_natal_request_v1",
+            "birth": { "date": "1990-06-15" }
+        }))
+        .send()
+        .await
+        .expect("request");
+    assert!(response.status().is_success(), "status={}", response.status());
+    let body: serde_json::Value = response.json().await.expect("json");
+    assert_eq!(body["response_contract_version"], "astro_simplified_natal_response_v1");
+    assert_eq!(body["computed_scope"], "stable_birth_date_profile");
+    assert_eq!(body["reading_hint"]["reading_completeness"], "partial");
+}
+
+#[tokio::test]
 async fn health_ready_returns_503_when_reference_missing() {
     let Some(state) = build_test_state().await else {
         eprintln!("SKIP health_ready_returns_503_when_reference_missing: database unavailable");

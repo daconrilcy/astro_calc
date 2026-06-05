@@ -1,6 +1,7 @@
 //! Infrastructure : configuration, secrets, persistence, telemetry.
 
 pub mod canonical;
+pub mod calculator_client;
 pub mod evidence_canonical;
 pub mod i18n_canonical;
 pub mod config;
@@ -29,6 +30,9 @@ pub use i18n_canonical::{
 };
 pub use evidence_canonical::{bootstrap_evidence_catalog, EvidenceCanonicalCatalog};
 pub use config::{AppConfig, env_bool, env_var, load_dotenv, parse_provider_kind};
+pub use calculator_client::{
+    calculator_api_key_from_env, calculator_base_url_from_env, CalculatorClient,
+};
 pub use config_validator::{ConfigValidationError, ConfigValidator};
 pub use model_catalog::{load_active_provider_codes, load_model_capabilities};
 pub use benchmark_catalog::{load_benchmark_catalog, BenchmarkCatalog, BenchmarkUsageModelRow, BenchmarkUsageRow};

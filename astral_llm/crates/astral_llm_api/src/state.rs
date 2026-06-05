@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use astral_llm_application::{GenerateReadingUseCase, SchemaRegistry};
-use astral_llm_infra::{AppConfig, RunPersistence};
+use astral_llm_infra::{AppConfig, CalculatorClient, RunPersistence};
 use tokio::sync::Semaphore;
 
 use crate::rate_limit::ApiKeyRateLimiter;
@@ -15,4 +15,5 @@ pub struct AppState {
     pub concurrency_limit: Option<Arc<Semaphore>>,
     pub api_key_limiter: Option<Arc<ApiKeyRateLimiter>>,
     pub interpretation_profile_count: usize,
+    pub calculator_client: Option<CalculatorClient>,
 }

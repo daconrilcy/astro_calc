@@ -67,6 +67,12 @@ services:
       ASTRAL_LLM_ENABLE_PERSISTENCE: "true"
       ASTRAL_LLM_PROMPTS_DIR: /app/prompts
       ASTRAL_LLM_CONTRACTS_DIR: /app/contracts/llm
+      # Reseau Docker : le gateway appelle le calculateur par nom de service (pas 127.0.0.1 du .env hote).
+      ASTRAL_CALCULATOR_HOST: astral_calculator_api
+      ASTRAL_CALCULATOR_PORT: "8080"
+      ASTRAL_LLM_DEFAULT_PROVIDER: fake
+      ASTRAL_LLM_DEFAULT_MODEL: fake-model
+      ASTRAL_LLM_ENABLE_FAKE: "true"
     networks:
       - astral_net
     ports:

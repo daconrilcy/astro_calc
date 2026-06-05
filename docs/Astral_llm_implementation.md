@@ -11,9 +11,9 @@ Le gateway n'est **pas** un simple proxy LLM : la validation metier se fait **av
 | Terme | Signification |
 |---|---|
 | `natal_prompter` | Produit API unique pour les lectures natales |
-| `interpretation_profile_code` | Tier ou profil custom (`natal_light`, `natal_basic`, `natal_premium`, `natal_premium_plus`, …) — definit chapitres, qualite, evidence |
+| `interpretation_profile_code` | Tier ou profil custom (`natal_light`, `natal_basic`, `natal_premium`, `natal_premium_plus`, `natal_simplified`, …) — definit chapitres, qualite, evidence |
 | `astrologer_profile` | Style redactionnel de la requete (ton, jargon) — independant du profil d'interpretation |
-| `astro_result` | Payload astro calcule (`natal_structured_v13` ou `llm_projection_natal_v1`) |
+| `astro_result` | Payload astro calcule (`natal_structured_v13`, `llm_projection_natal_v1`, ou `natal_simplified_structured_v1`) |
 | `generation_mode` | `single_pass` (1 appel) ou `chapter_orchestrated` (multi-chapitres + summary ; + chapitre `synthesis` si profil `natal_premium_plus`) — derive du profil |
 
 ```txt
@@ -701,6 +701,7 @@ Erreurs supplementaires (flux naissance → interpretation) :
 |---|---|---|
 | GET | `/health` | Sante (hors rate limit, **sans auth** si gateway key active) |
 | POST | `/v1/readings/generate` | Generation lecture |
+| POST | `/v1/readings/natal/simplified` | Orchestration birth → calcul simplifie → lecture `natal_simplified` |
 | POST | `/v1/readings/validate` | Validation JSON vs schema |
 | GET | `/v1/runs/{run_id}` | Audit run + steps (PostgreSQL requis) |
 | GET | `/v1/providers` | Capacites modeles + `circuit_breakers` |
@@ -753,6 +754,49 @@ $body = Get-Content request-premium-rich.json -Raw
 Invoke-RestMethod -Method POST -Uri "http://127.0.0.1:8081/v1/readings/generate" -Headers $headers -Body $body
 ```
 
+### Contrat `POST /v1/readings/natal/simplified`
+
+Orchestration **naissance → calculateur simplifié → lecture** en un seul appel. Le gateway appelle `POST /v1/calculations/natal/simplified` puis génère avec le profil `natal_simplified`.
+
+Prérequis gateway : `ASTRAL_CALCULATOR_HOST` et `ASTRAL_CALCULATOR_PORT` (voir `.env.example`).
+
+Corps JSON (extrait) :
+
+```json
+{
+  "request_contract_version": "astro_simplified_natal_request_v1",
+  "birth": { "date": "1990-06-15" },
+  "user_language": "fr",
+  "audience_level": "beginner"
+}
+```
+
+Contrôles anti-hallucination :
+
+- `llm_controls` (allowed / blocked / excluded) injectés dans le **prompt** (`task_instructions`) et le `data_payload`.
+- `blocked_interpretation_fact_codes` (ex. `moon.sign` ambigu) : ne pas affirmer le signe ; expliquer l'incertitude.
+- `excluded_feature_codes` (ex. `ascendant`, `houses`) : ne jamais les présenter comme calculés (contraintes prompt uniquement).
+- `forbidden_wording` (SafetyGuard post-génération) : reprend **uniquement** `blocked_interpretation_fact_codes`, pas `excluded_feature_codes` (évite les faux positifs substring, ex. `sect` dans « section »).
+- `engine.domain_count` : fixé à **1** pour ce profil (`max_domains: 1`).
+
+Smoke Docker / local :
+
+```powershell
+.\scripts\docker_simplified_natal_smoke.ps1
+.\scripts\test_natal_simplified_e2e.ps1
+```
+
+Tests Rust :
+
+```powershell
+cargo test -p astral_llm_api --test astral_llm_simplified_reading_tests
+cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests
+```
+
+Golden fixture : `tests/golden/simplified_natal_calculation_date_only_1990-03-21.json`.
+
+Découverte provider : `GET /v1/providers` expose `default_provider`, `default_model`, `fake_enabled`.
+
 ### Idempotence
 
 - Header `Idempotency-Key` ou champ `idempotency_key`
@@ -777,6 +821,7 @@ Sans persistence, l'idempotence **n'est pas** durable entre processus.
 | `natal_basic` | `chapter_orchestrated` | non | non bloquante | multi-chapitres standard |
 | `natal_premium` | `chapter_orchestrated` | oui (min 4/ch.) | **bloquante** (min 40 mots/ch.) | compact (`body_structure` 4 §) ; nombre de chapitres variable (`domain_count`) |
 | `natal_premium_plus` | `chapter_orchestrated` | oui (min 6/ch.) | **bloquante** (min 520 mots/ch., synthesis 520 / 4 basis) | sequence fixe : 8 domaines + `synthesis` ; `body_structure` 6 § (`editorial_flow`) |
+| `natal_simplified` | `single_pass` | non | non bloquante | date seule ou partielle ; contrôles `llm_controls` ; lecture `partial` |
 
 Creation d'un profil personnalise : **Tutoriel 1**. Soumission initiale :
 
@@ -785,6 +830,7 @@ Creation d'un profil personnalise : **Tutoriel 1**. Soumission initiale :
 .\scripts\manage_natal_interpretation_profiles.ps1 -Submit -Path config\natal_interpretation_profiles\natal_basic.json
 .\scripts\manage_natal_interpretation_profiles.ps1 -Submit -Path config\natal_interpretation_profiles\natal_premium.json
 .\scripts\manage_natal_interpretation_profiles.ps1 -Submit -Path config\natal_interpretation_profiles\natal_premium_plus.json
+.\scripts\manage_natal_interpretation_profiles.ps1 -Submit -Path config\natal_interpretation_profiles\natal_simplified.json
 .\scripts\manage_natal_interpretation_profiles.ps1 -List
 ```
 

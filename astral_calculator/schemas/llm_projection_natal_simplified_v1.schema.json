@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://astral-calculation.local/schemas/llm_projection_natal_simplified_v1.schema.json",
+  "title": "LLM Projection Natal Simplified v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "profile_code",
+    "allowed_fact_codes",
+    "blocked_interpretation_fact_codes",
+    "excluded_feature_codes",
+    "allowed_limitation_mentions"
+  ],
+  "properties": {
+    "contract_version": { "const": "llm_projection_natal_simplified_v1" },
+    "profile_code": { "const": "natal_simplified" },
+    "allowed_fact_codes": { "type": "array", "items": { "type": "string" } },
+    "blocked_interpretation_fact_codes": { "type": "array", "items": { "type": "string" } },
+    "excluded_feature_codes": { "type": "array", "items": { "type": "string" } },
+    "allowed_limitation_mentions": { "type": "array", "items": { "type": "string" } },
+    "forbidden_topics": { "type": "array", "items": { "type": "string" } }
+  }
+}

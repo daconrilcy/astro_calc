@@ -3,7 +3,11 @@
     "astro_engine_request": "astro_engine_request_v1",
     "astro_engine_response": "astro_engine_response_v1",
     "natal_structured": "natal_structured_v13",
-    "llm_projection": "llm_projection_natal_v1"
+    "llm_projection": "llm_projection_natal_v1",
+    "astro_simplified_natal_request": "astro_simplified_natal_request_v1",
+    "astro_simplified_natal_response": "astro_simplified_natal_response_v1",
+    "natal_simplified_structured": "natal_simplified_structured_v1",
+    "llm_projection_simplified": "llm_projection_natal_simplified_v1"
   },
   "llm": {
     "generate_reading_request": "generate_reading_request_v1",

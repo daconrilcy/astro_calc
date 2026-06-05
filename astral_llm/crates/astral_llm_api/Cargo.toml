@@ -72,6 +72,11 @@ name = "contracts_publish_tests"
 path = "../../../tests/contracts_publish_tests.rs"
 harness = true
 
+[[test]]
+name = "astral_llm_simplified_reading_tests"
+path = "../../../tests/astral_llm_simplified_reading_tests.rs"
+harness = true
+
 [dependencies]
 astral_llm_application.workspace = true
 astral_llm_domain.workspace = true

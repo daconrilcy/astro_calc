@@ -20,6 +20,7 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 [features]
 default = []
 swisseph-engine = ["dep:swiss_eph"]
+test-utils = []
 
 [dev-dependencies]
 jsonschema = "0.18"
@@ -68,3 +69,8 @@ path = "../tests/contract_basic_v8_tests.rs"
 [[test]]
 name = "engine_contract_tests"
 path = "../tests/engine_contract_tests.rs"
+
+[[test]]
+name = "simplified_natal_tests"
+path = "../tests/simplified_natal_tests.rs"
+required-features = ["test-utils"]

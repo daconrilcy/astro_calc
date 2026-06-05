@@ -54,13 +54,7 @@ impl ProductPolicyValidator {
             ));
         }
 
-        let domain_count = request
-            .engine
-            .domain_count
-            .unwrap_or_else(|| {
-                // default applied later via profile in domain resolver when natal_prompter
-                3
-            });
+        let domain_count = request.engine.domain_count.unwrap_or(1);
         if domain_count > policy.max_domains {
             return Err(GenerationError::with_details(
                 GenerationErrorCode::ProductPolicyViolation,

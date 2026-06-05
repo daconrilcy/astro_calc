@@ -1,0 +1,46 @@
+{
+  "request_id": "golden-simplified-date-only-1990-03-21",
+  "response_contract_version": "astro_simplified_natal_response_v1",
+  "computed_scope": "stable_birth_date_profile",
+  "reading_hint": {
+    "recommended_profile_code": "natal_simplified",
+    "reading_completeness": "partial"
+  },
+  "simplified_payload": {
+    "payload_contract": "natal_simplified_structured_v1",
+    "payload": {
+      "payload_contract": "natal_simplified_structured_v1",
+      "computed_scope": "stable_birth_date_profile",
+      "input_precision_level": "date_only",
+      "facts": [
+        {
+          "object_code": "sun",
+          "fact_type": "sign",
+          "sign_code": "aries",
+          "reliability": "stable_across_uncertainty_window",
+          "longitude_deg": null
+        }
+      ],
+      "ambiguous_facts": [
+        {
+          "object_code": "moon",
+          "fact_type": "sign",
+          "possible_sign_codes": ["gemini", "cancer"],
+          "reliability": "ambiguous_across_uncertainty_window"
+        }
+      ],
+      "excluded_features": ["ascendant", "houses", "aspects", "sect"],
+      "planets": {
+        "sun": { "sign": "aries" }
+      }
+    }
+  },
+  "llm_payload": {
+    "profile_code": "natal_simplified",
+    "allowed_fact_codes": ["sun.sign"],
+    "blocked_interpretation_fact_codes": ["moon.sign"],
+    "excluded_feature_codes": ["ascendant", "houses", "aspects", "sect"],
+    "allowed_limitation_mentions": ["moon.sign", "ascendant", "houses", "aspects", "sect"],
+    "forbidden_topics": ["ascendant", "aspects", "houses", "moon.sign", "sect"]
+  }
+}

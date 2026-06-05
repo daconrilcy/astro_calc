@@ -25,6 +25,12 @@ pub mod domain_selector;
 pub mod execution_audit;
 pub mod reading_plan;
 pub mod reasoning_generation;
+pub mod simplified_reading;
+pub use simplified_reading::{
+    build_reading_request, merge_simplified_forbidden_wording, prompt_constraints_block,
+    validate_simplified_calculation_request, SIMPLIFIED_PAYLOAD_CONTRACT, SIMPLIFIED_PROFILE,
+    SIMPLIFIED_REQUEST_CONTRACT,
+};
 pub use reading_plan::ReadingPlanBuilder;
 pub mod engine_defaults;
 pub mod generation_trace;

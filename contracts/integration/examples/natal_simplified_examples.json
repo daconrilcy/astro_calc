@@ -1,0 +1,69 @@
+{
+  "description": "Exemples request/response natal simplifié — un cas par input_precision.level",
+  "examples": [
+    {
+      "label": "date_only",
+      "request": {
+        "request_contract_version": "astro_simplified_natal_request_v1",
+        "birth": { "date": "1990-06-15" }
+      }
+    },
+    {
+      "label": "date_with_location_without_timezone",
+      "request": {
+        "request_contract_version": "astro_simplified_natal_request_v1",
+        "birth": {
+          "date": "1990-06-15",
+          "location": { "latitude": 48.8566, "longitude": 2.3522, "label": "Paris" }
+        },
+        "input_metadata": { "location_label": "Paris, France" }
+      }
+    },
+    {
+      "label": "date_with_timezone_without_time",
+      "request": {
+        "request_contract_version": "astro_simplified_natal_request_v1",
+        "birth": { "date": "1990-06-15", "timezone": "Europe/Paris" },
+        "input_metadata": { "location_label": "Paris, France" }
+      }
+    },
+    {
+      "label": "date_with_location_and_timezone_without_time",
+      "request": {
+        "request_contract_version": "astro_simplified_natal_request_v1",
+        "birth": {
+          "date": "1990-06-15",
+          "timezone": "Europe/Paris",
+          "location": { "latitude": 48.8566, "longitude": 2.3522, "label": "Paris" }
+        }
+      }
+    },
+    {
+      "label": "datetime_without_location",
+      "request": {
+        "request_contract_version": "astro_simplified_natal_request_v1",
+        "birth": {
+          "date": "1990-06-15",
+          "time": "14:30:00",
+          "timezone": "Europe/Paris"
+        }
+      }
+    },
+    {
+      "label": "complete_birth_data",
+      "request": {
+        "request_contract_version": "astro_simplified_natal_request_v1",
+        "birth": {
+          "date": "1990-06-15",
+          "time": "14:30:00",
+          "timezone": "Europe/Paris",
+          "location": { "latitude": 48.8566, "longitude": 2.3522, "label": "Paris" }
+        }
+      }
+    },
+    {
+      "label": "legacy_mirror_absent_when_sun_ambiguous",
+      "note": "Réponse attendue : ambiguous_facts contient sun ; simplified_payload.planets sans sun.sign"
+    }
+  ]
+}

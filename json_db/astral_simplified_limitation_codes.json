@@ -1,0 +1,45 @@
+{
+  "name": "astral_simplified_limitation_codes",
+  "structure": {
+    "id": "integer, primary key",
+    "code": "string, unique",
+    "public_label": "string",
+    "public_message": "string",
+    "severity": "string",
+    "affected_features_json": "json_array",
+    "sort_order": "integer",
+    "is_active": "boolean"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "birth_time_missing",
+      "public_label": "Heure de naissance absente",
+      "public_message": "Sans heure de naissance, l'Ascendant, les maisons et les placements en maisons ne peuvent pas être calculés.",
+      "severity": "blocking",
+      "affected_features_json": ["ascendant", "houses", "sect", "house_placements"],
+      "sort_order": 1,
+      "is_active": true
+    },
+    {
+      "id": 2,
+      "code": "location_provided_without_usable_timezone",
+      "public_label": "Lieu sans fuseau horaire",
+      "public_message": "Le lieu fourni sans fuseau horaire explicite n'améliore pas la précision temporelle en V1.",
+      "severity": "info",
+      "affected_features_json": ["local_day_window"],
+      "sort_order": 2,
+      "is_active": true
+    },
+    {
+      "id": 3,
+      "code": "location_missing_for_ascendant_and_houses",
+      "public_label": "Lieu absent pour angles et maisons",
+      "public_message": "Sans lieu de naissance, l'Ascendant et les maisons ne peuvent pas être calculés même avec une heure connue.",
+      "severity": "info",
+      "affected_features_json": ["ascendant", "houses", "sect", "house_placements"],
+      "sort_order": 3,
+      "is_active": true
+    }
+  ]
+}

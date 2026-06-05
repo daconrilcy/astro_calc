@@ -33,6 +33,22 @@ Voir [integration/engine_to_reading_mapping.md](integration/engine_to_reading_ma
 
 `POST /v1/natal/readings/from-birth` — non implemente.
 
+### Mode natal simplifie (v2.4)
+
+1. `POST /v1/calculations/natal/simplified` (`astro_simplified_natal_request_v1` → `astro_simplified_natal_response_v1`)
+2. Extraire `simplified_payload.payload` + controles `llm_payload`
+3. `POST /v1/readings/generate` avec `interpretation_profile_code: natal_simplified` et `astro_result.contract_version: natal_simplified_structured_v1`
+
+Orchestration one-shot : `POST /v1/readings/natal/simplified` (LLM API, birth → calcul → lecture).
+
+Smoke rapide : [`scripts/docker_simplified_natal_smoke.ps1`](../scripts/docker_simplified_natal_smoke.ps1).
+
+Suite E2E complète (matrice `input_precision` + 422) : [`scripts/test_natal_simplified_e2e.ps1`](../scripts/test_natal_simplified_e2e.ps1).
+
+Guide débutant : [docs/GUIDE_DEBUTANT_DOCKER.md](../docs/GUIDE_DEBUTANT_DOCKER.md) §9.
+
+Contrats calculateur supplementaires : voir `versions.json` (`astro_simplified_*`, `natal_simplified_structured_v1`, `llm_projection_natal_simplified_v1`).
+
 ## Decouverte des contrats
 
 | Service | Endpoint |

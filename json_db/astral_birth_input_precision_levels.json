@@ -1,0 +1,61 @@
+{
+  "name": "astral_birth_input_precision_levels",
+  "structure": {
+    "id": "integer, primary key",
+    "code": "string, unique",
+    "label": "string",
+    "description": "string",
+    "sort_order": "integer",
+    "is_active": "boolean"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "date_only",
+      "label": "Date only",
+      "description": "Birth date without time, timezone, or calculatory location.",
+      "sort_order": 1,
+      "is_active": true
+    },
+    {
+      "id": 2,
+      "code": "date_with_location_without_timezone",
+      "label": "Date with location without timezone",
+      "description": "Date and calculatory location without time or timezone; location does not narrow uncertainty window in V1.",
+      "sort_order": 2,
+      "is_active": true
+    },
+    {
+      "id": 3,
+      "code": "date_with_timezone_without_time",
+      "label": "Date with timezone without time",
+      "description": "Date and IANA timezone without time; local civil day window.",
+      "sort_order": 3,
+      "is_active": true
+    },
+    {
+      "id": 4,
+      "code": "date_with_location_and_timezone_without_time",
+      "label": "Date with location and timezone without time",
+      "description": "Date, timezone, and calculatory location without time; local day window; location audited but not used for houses without time.",
+      "sort_order": 4,
+      "is_active": true
+    },
+    {
+      "id": 5,
+      "code": "datetime_without_location",
+      "label": "Datetime without location",
+      "description": "Declared birth datetime with timezone; no calculatory location.",
+      "sort_order": 5,
+      "is_active": true
+    },
+    {
+      "id": 6,
+      "code": "complete_birth_data",
+      "label": "Complete birth data",
+      "description": "Date, time, timezone, and calculatory location.",
+      "sort_order": 6,
+      "is_active": true
+    }
+  ]
+}

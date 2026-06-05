@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://astral-calculation.local/schemas/astro_simplified_natal_response_v1.schema.json",
+  "title": "Astro Simplified Natal Response v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "response_contract_version",
+    "input_precision",
+    "computed_scope",
+    "limitations",
+    "facts",
+    "ambiguous_facts",
+    "excluded_features",
+    "simplified_payload",
+    "llm_payload",
+    "reading_hint"
+  ],
+  "properties": {
+    "response_contract_version": {
+      "const": "astro_simplified_natal_response_v1"
+    },
+    "input_precision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "level",
+        "date_provided",
+        "time_provided",
+        "timezone_provided",
+        "location_provided"
+      ],
+      "properties": {
+        "level": { "type": "string" },
+        "date_provided": { "type": "boolean" },
+        "time_provided": { "type": "boolean" },
+        "timezone_provided": { "type": "boolean" },
+        "location_provided": { "type": "boolean" }
+      }
+    },
+    "computed_scope": { "type": "string" },
+    "limitations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/limitation" }
+    },
+    "facts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/sign_fact" }
+    },
+    "ambiguous_facts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ambiguous_sign_fact" }
+    },
+    "excluded_features": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "cusp_warnings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/cusp_warning" }
+    },
+    "simplified_payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["payload_contract", "payload"],
+      "properties": {
+        "payload_contract": { "const": "natal_simplified_structured_v1" },
+        "payload": { "type": "object" }
+      }
+    },
+    "llm_payload": { "$ref": "#/$defs/llm_payload_controls" },
+    "reading_hint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["recommended_profile_code", "reading_completeness"],
+      "properties": {
+        "recommended_profile_code": { "const": "natal_simplified" },
+        "reading_completeness": {
+          "type": "string",
+          "enum": ["partial", "simplified"]
+        }
+      }
+    }
+  },
+  "$defs": {
+    "limitation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "affects"],
+      "properties": {
+        "code": { "type": "string" },
+        "severity": { "type": "string" },
+        "affects": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "sign_fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["object_code", "fact_type", "sign_code", "reliability"],
+      "properties": {
+        "object_code": { "type": "string" },
+        "fact_type": { "const": "sign" },
+        "sign_code": { "type": "string" },
+        "reliability": { "type": "string" },
+        "longitude_deg": { "type": ["number", "null"] }
+      }
+    },
+    "ambiguous_sign_fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["object_code", "fact_type", "possible_sign_codes", "reliability"],
+      "properties": {
+        "object_code": { "type": "string" },
+        "fact_type": { "const": "sign" },
+        "possible_sign_codes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 2
+        },
+        "reliability": { "const": "ambiguous_across_uncertainty_window" }
+      }
+    },
+    "cusp_warning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["object_code", "message_code", "orb_deg"],
+      "properties": {
+        "object_code": { "type": "string" },
+        "message_code": { "type": "string" },
+        "orb_deg": { "type": "number" }
+      }
+    },
+    "llm_payload_controls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_code",
+        "allowed_fact_codes",
+        "blocked_interpretation_fact_codes",
+        "excluded_feature_codes",
+        "allowed_limitation_mentions"
+      ],
+      "properties": {
+        "profile_code": { "const": "natal_simplified" },
+        "allowed_fact_codes": { "type": "array", "items": { "type": "string" } },
+        "blocked_interpretation_fact_codes": { "type": "array", "items": { "type": "string" } },
+        "excluded_feature_codes": { "type": "array", "items": { "type": "string" } },
+        "allowed_limitation_mentions": { "type": "array", "items": { "type": "string" } },
+        "forbidden_topics": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

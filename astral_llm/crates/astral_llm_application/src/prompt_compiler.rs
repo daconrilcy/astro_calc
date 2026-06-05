@@ -10,6 +10,7 @@ use astral_llm_infra::SharedCanonicalCatalog;
 use crate::astro_payload_normalizer::AstroPayloadNormalizer;
 use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
 use crate::payload_sanitizer::sanitize_custom_instructions;
+use crate::simplified_reading::{prompt_constraints_block, SIMPLIFIED_PROFILE};
 use crate::writing_language::WritingLanguageDirective;
 
 #[derive(Debug, Clone)]
@@ -62,6 +63,12 @@ impl PromptCompiler {
                     task.push_str(fragment.trim());
                 }
             }
+            if ctx.profile.profile_code == SIMPLIFIED_PROFILE {
+                if let Some(controls) = input.request.astro_result.data.get("llm_controls") {
+                    task.push_str("\n\n");
+                    task.push_str(&prompt_constraints_block(controls));
+                }
+            }
         }
         let inject_legacy_structure = input.chapter_evidence_pack.is_some()
             && input
@@ -88,7 +95,26 @@ impl PromptCompiler {
             .map(|c| format!("Focus chapter code: {c}"))
             .unwrap_or_default();
 
-        let data_payload = if let Some(pack) = input.chapter_evidence_pack {
+        let data_payload = if input
+            .interpretation
+            .is_some_and(|ctx| ctx.profile.profile_code == SIMPLIFIED_PROFILE)
+        {
+            let mut block = AstroPayloadNormalizer::to_prompt_data_block(input.astro_facts);
+            if let Some(obj) = block.as_object_mut() {
+                if let Some(controls) = input.request.astro_result.data.get("llm_controls") {
+                    obj.insert("llm_controls".into(), controls.clone());
+                }
+                if let Some(excluded) = input
+                    .request
+                    .astro_result
+                    .data
+                    .get("excluded_features")
+                {
+                    obj.insert("excluded_features".into(), excluded.clone());
+                }
+            }
+            block
+        } else if let Some(pack) = input.chapter_evidence_pack {
             AstroPayloadNormalizer::to_chapter_evidence_pack_block(
                 pack,
                 input.catalog,

@@ -3177,3 +3177,47 @@ docker compose up -d --build
 - PostgreSQL interne (`expose: 5432`) ; port hote optionnel via `docker-compose.dev-db-port.yml`.
 - Ephemerides : volume `./ephe:/app/ephe:ro` (non bakees dans l'image).
 - Profils Compose : `calculator`, `llm`, `full` ; `postgres` sans profil.
+
+---
+
+## Natal simplifié (v2.4)
+
+Moteur : `astral_calculator/src/simplified/` — résolution `input_precision`, fenêtre d'incertitude, fiabilité faits, payload `natal_simplified_structured_v1`.
+
+### Tables canoniques (`json_db/` → Postgres)
+
+| Table | Rôle |
+|-------|------|
+| `astral_calculation_scopes` | `stable_birth_date_profile`, `planetary_positions`, `angular_chart`, `full_natal` |
+| `astral_birth_input_precision_levels` | 6 niveaux V1 dont `date_with_location_and_timezone_without_time` |
+| `astral_simplified_calculation_policies` | `uncertainty_sampling_minutes = 60`, orb cusp UX |
+| `astral_simplified_limitation_codes` | causes (`birth_time_missing`, …) |
+| `astral_fact_reliability_levels` | stable / ambiguous / reference_based / … |
+
+Repository : `load_simplified_catalog()` dans `simplified/repository.rs`.
+
+### Algorithme fenêtre (CS-004 / CS-005)
+
+1. Date seule ou lieu sans timezone → fenêtre UTC mondiale ~50h (UTC-12 … UTC+14 autour de la date).
+2. Date + timezone sans heure → journée civile locale 24h.
+3. Date + heure + timezone → instant déclaré.
+4. Échantillons : `start_utc`, `end_utc`, puis pas `uncertainty_sampling_minutes` (60 en seed).
+5. Signes collectés dans l'ordre d'observation, dédupliqués ; 1 signe → stable, 2+ → ambiguous.
+6. `cusp_warning_orb_deg` : alerte UX seulement, n'affecte pas stable/ambiguous.
+
+### Endpoints
+
+- `POST /v1/calculations/natal/simplified` — contrats `astro_simplified_natal_*`
+- `POST /v1/readings/natal/simplified` (LLM API) — orchestration birth → calcul → profil `natal_simplified`
+
+### Tests et E2E
+
+| Commande | Périmètre |
+|----------|-----------|
+| `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests` | Moteur calculateur |
+| `cargo test -p astral_calculator_api --test astral_calculator_api_tests` | Route HTTP calculateur |
+| `cargo test -p astral_llm_api --test astral_llm_simplified_reading_tests` | Prompt, forbidden_wording, golden |
+| `.\scripts\test_natal_simplified_e2e.ps1` | Suite complète (11 + 7 cas, fake) |
+| `.\scripts\docker_simplified_natal_smoke.ps1` | Smoke rapide `date_only` |
+
+Guide débutant pas à pas : [`docs/GUIDE_DEBUTANT_DOCKER.md`](GUIDE_DEBUTANT_DOCKER.md) §9 (tutoriel natal simplifié).

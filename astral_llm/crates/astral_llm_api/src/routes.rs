@@ -1,8 +1,12 @@
 use std::time::Instant;
 
-use astral_llm_application::{resolve_engine_params, GenerationTraceContext};
+use astral_llm_application::{
+    build_reading_request, resolve_engine_params, validate_simplified_calculation_request,
+    GenerationTraceContext,
+};
 use astral_llm_domain::{
-    GenerateReadingRequest, GenerateReadingResponse, GenerationRunContractVersions,
+    generation_request::AudienceLevel, GenerateReadingRequest, GenerateReadingResponse,
+    GenerationRunContractVersions,
 };
 use astral_llm_infra::{
     error_code, hash_json, redact_request_for_storage, GenerationRunRecord, IdempotencyClaim,
@@ -34,6 +38,7 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/contracts", get(list_contracts))
         .route("/openapi.yaml", get(openapi_spec))
         .route("/v1/readings/generate", post(generate_reading))
+        .route("/v1/readings/natal/simplified", post(generate_simplified_natal_reading))
         .route("/v1/readings/validate", post(validate_reading))
         .route("/v1/runs/{run_id}", get(get_run_audit))
         .route("/v1/providers", get(list_providers))
@@ -251,6 +256,83 @@ async fn generate_reading(
     map_response(response)
 }
 
+#[derive(Debug, serde::Deserialize)]
+struct SimplifiedNatalReadingBody {
+    #[serde(flatten)]
+    calculation: serde_json::Value,
+    #[serde(default = "default_user_language")]
+    user_language: String,
+    #[serde(default = "default_audience_level")]
+    audience_level: AudienceLevel,
+}
+
+fn default_audience_level() -> AudienceLevel {
+    AudienceLevel::Beginner
+}
+
+fn default_user_language() -> String {
+    "fr".to_string()
+}
+
+async fn generate_simplified_natal_reading(
+    State(state): State<AppState>,
+    Json(body): Json<SimplifiedNatalReadingBody>,
+) -> Response {
+    let Some(client) = state.calculator_client.as_ref() else {
+        return error_response(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "CALCULATOR_UNAVAILABLE",
+            "Calculator client is not configured (ASTRAL_CALCULATOR_HOST/PORT).",
+            None,
+        );
+    };
+
+    let calculation = match validate_simplified_calculation_request(&body.calculation) {
+        Ok(()) => body.calculation,
+        Err(err) => return from_generation_error(err),
+    };
+
+    let calculation = match client.calculate_simplified_natal(&calculation).await {
+        Ok(value) => value,
+        Err(err) => return from_generation_error(err),
+    };
+
+    let mut reading_request = match build_reading_request(
+        &calculation,
+        &body.user_language,
+        body.audience_level,
+    ) {
+        Ok(value) => value,
+        Err(err) => return from_generation_error(err),
+    };
+
+    if let Err(err) = state.use_case.prepare_request(&mut reading_request) {
+        return from_generation_error(err);
+    }
+
+    let run_id = Uuid::new_v4().to_string();
+    let output = state
+        .use_case
+        .execute_with_audit(reading_request, run_id.clone())
+        .await;
+
+    let reading_completeness = calculation
+        .pointer("/reading_hint/reading_completeness")
+        .and_then(|v| v.as_str())
+        .unwrap_or("partial");
+
+    (
+        StatusCode::OK,
+        Json(json!({
+            "reading_completeness": reading_completeness,
+            "calculation": calculation,
+            "reading": output.response,
+            "run_id": run_id,
+        })),
+    )
+        .into_response()
+}
+
 fn idempotency_terminal_status(response: &GenerateReadingResponse) -> &'static str {
     match response {
         GenerateReadingResponse::Success(_) => "completed",
@@ -363,6 +445,9 @@ async fn list_providers(State(state): State<AppState>) -> impl IntoResponse {
 
     Json(json!({
         "provider_capability_version": GenerationRunContractVersions::PROVIDER_CAPABILITY_VERSION,
+        "default_provider": state.config.default_provider.as_str(),
+        "default_model": state.config.default_model,
+        "fake_enabled": state.config.enable_fake_provider,
         "models": models,
         "circuit_breakers": circuits
     }))

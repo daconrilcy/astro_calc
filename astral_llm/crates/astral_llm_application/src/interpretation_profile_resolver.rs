@@ -49,6 +49,9 @@ impl InterpretationProfileResolver {
         })?;
 
         request.response_contract.generation_mode = profile.document.generation_mode;
+        if request.engine.domain_count.is_none() {
+            request.engine.domain_count = Some(profile.default_domain_count());
+        }
         Ok(())
     }
 

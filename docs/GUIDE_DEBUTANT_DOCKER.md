@@ -39,7 +39,9 @@ Le projet expose **deux services HTTP** complémentaires :
 | **astral_llm_api** | `8081` | Génère une **lecture textuelle** structurée à partir du résultat du calculateur |
 | **PostgreSQL** | interne (`5432`) | Référentiels astrologiques, profils LLM, persistance des runs |
 
-En **V1**, l'orchestration est **externe** : votre application (ou un script) enchaîne les deux appels. Il n'existe pas encore d'endpoint unique « naissance → lecture ».
+En **V1 certifié**, l'orchestration du thème natal **complet** reste **externe** : votre application enchaîne `POST /v1/calculations/natal` puis `POST /v1/readings/generate`.
+
+Pour les **données de naissance partielles** (date seule, sans heure, lieu incomplet…), le produit **natal simplifié** (v2.4) ajoute un parcours **one-shot** : `POST /v1/readings/natal/simplified` calcule et génère la lecture en un seul appel. Voir le [tutoriel débutant §9](#tutoriel-débutant--natal-simplifié-v24).
 
 Les **contrats** (JSON Schema + OpenAPI) vivent dans le dossier [`contracts/`](../contracts/). Ils décrivent les payloads échangés entre services et avec les applications tierces.
 
@@ -396,6 +398,104 @@ Sorties par défaut : `output/premium_reading_e2e_docker.json`, `output/premium_
 
 Validation client : [`scripts/test_natal_premium_profile.ps1`](../scripts/test_natal_premium_profile.ps1) et [`scripts/test_natal_premium_plus_profile.ps1`](../scripts/test_natal_premium_plus_profile.ps1).
 
+### Tutoriel débutant — natal simplifié (v2.4)
+
+**À quoi ça sert ?** Produire une **lecture astrologique honnête** quand l'utilisateur ne fournit qu'une **date de naissance** (ou des données incomplètes). Le moteur :
+
+- calcule ce qui est **fiable** (signes planétaires stables sur une fenêtre d'incertitude) ;
+- marque les faits **ambiguës** (ex. Lune à cheval sur deux signes) ;
+- **n'invente pas** Ascendant, maisons ni secte si l'entrée ne le permet pas ;
+- renvoie `reading_completeness: partial` ou `simplified`.
+
+**Deux façons d'intégrer** (voir aussi [`contracts/README.md`](../contracts/README.md)) :
+
+| Mode | Appels | Quand l'utiliser |
+|------|--------|------------------|
+| **Orchestration one-shot** | `POST /v1/readings/natal/simplified` | Parcours produit « date → texte » (recommandé) |
+| **Orchestration manuelle** | `POST /v1/calculations/natal/simplified` puis `POST /v1/readings/generate` | Contrôle fin du payload intermédiaire |
+
+#### Étape 0 — Prérequis (une seule fois)
+
+```powershell
+docker compose up -d --build
+python scripts/import_json_db_to_postgres.py   # tables simplified + référentiel
+.\scripts\docker_bootstrap.ps1               # profils LLM dont natal_simplified
+```
+
+Vérifier que les services répondent :
+
+```powershell
+Invoke-RestMethod http://localhost:8080/health/ready
+Invoke-RestMethod http://localhost:8081/health/ready
+```
+
+> **Docker vs `.env` hôte** : `docker-compose.yml` configure déjà `ASTRAL_CALCULATOR_HOST=astral_calculator_api` **dans le conteneur** LLM. Les scripts PowerShell peuvent afficher `ASTRAL_CALCULATOR_HOST/PORT non definis` — c'est normal si ces variables ne sont pas dans votre `.env` local ; l'orchestration Docker fonctionne quand même. En développement **hors Docker** (`cargo run`), définissez `ASTRAL_CALCULATOR_HOST=127.0.0.1` et `ASTRAL_CALCULATOR_PORT=8080` dans `.env`.
+
+> **Provider fake** : Compose force `ASTRAL_LLM_DEFAULT_PROVIDER=fake` dans le conteneur (tests sans OpenAI). Un `.env` local avec `openai` n'affecte pas Docker ; vérifiez avec `GET /v1/providers` (`default_provider: fake`).
+
+#### Étape 1 — Smoke rapide (1 cas, ~30 s)
+
+```powershell
+.\scripts\docker_simplified_natal_smoke.ps1
+```
+
+Équivalent à `test_natal_simplified_e2e.ps1` sur le cas `date_only`. Sortie attendue : `Calculator OK` puis `Reading OK`.
+
+#### Étape 2 — Suite complète (recommandée après modification du code)
+
+```powershell
+docker compose up -d --build astral_llm_api   # après changement Rust LLM
+.\scripts\test_natal_simplified_e2e.ps1
+```
+
+Résultat attendu : **11/11** calculateur (7 positifs + 4 négatifs 422) et **7/7** lectures orchestrées.
+
+Scripts complémentaires :
+
+```powershell
+.\scripts\test_natal_simplified_calculator.ps1          # calculateur seul
+.\scripts\test_natal_simplified_reading.ps1             # lectures seules (fake)
+.\scripts\test_natal_simplified_e2e.ps1 -Case date_only -SaveOutputs
+.\scripts\test_natal_simplified_reading.ps1 -UseReal -SubmitProfile -TimeoutSec 900  # OpenAI facturé
+```
+
+Artefacts optionnels : `output/simplified_natal/calculator/` et `output/simplified_natal/reading/`.
+
+#### Étape 3 — Appel HTTP manuel (lecture one-shot)
+
+Exemple **date seule** avec les clés API de votre `.env` :
+
+```powershell
+. .\scripts\lib\astral_http_auth.ps1
+Import-AstralDotEnv -RepoRoot (Get-Location)
+$headers = New-AstralAuthHeaders -Service llm
+$body = @{
+  request_contract_version = "astro_simplified_natal_request_v1"
+  birth = @{ date = "1990-06-15" }
+  user_language = "fr"
+  audience_level = "beginner"
+} | ConvertTo-Json -Depth 5
+
+Invoke-RestMethod -Method Post -Uri "http://localhost:8081/v1/readings/natal/simplified" `
+  -Headers $headers -Body $body -ContentType "application/json"
+```
+
+Réponse attendue : `reading_completeness` ∈ `{ partial, simplified }`, `reading.status: success`, un chapitre `identity`, `calculation.computed_scope: stable_birth_date_profile`.
+
+Autres exemples de requêtes : [`contracts/integration/examples/natal_simplified_examples.json`](../contracts/integration/examples/natal_simplified_examples.json).
+
+Documentation métier : [`docs/natal_simplified_reading_contract.md`](natal_simplified_reading_contract.md), [`docs/natal_simplified_forbidden_topics.md`](natal_simplified_forbidden_topics.md).
+
+### Smoke test E2E — natal simplifié (`docker_simplified_natal_smoke.ps1`)
+
+Raccourci vers l'étape 1 du tutoriel ci-dessus :
+
+```powershell
+.\scripts\docker_simplified_natal_smoke.ps1
+# Calcul seul :
+.\scripts\docker_simplified_natal_smoke.ps1 -SkipReading
+```
+
 ---
 
 ## 10. Utiliser les APIs HTTP
@@ -454,7 +554,49 @@ Invoke-RestMethod -Method Post -Uri "http://localhost:8080/v1/calculations/natal
 
 Réponse attendue : `response_contract_version: astro_engine_response_v1`, `calculation_result.status: completed`.
 
-### LLM — génération de lecture
+### Calculateur — natal simplifié (données partielles)
+
+Contrat : `astro_simplified_natal_request_v1` → `astro_simplified_natal_response_v1`.
+
+```powershell
+$headers = @{
+  "Content-Type" = "application/json"
+  "Authorization" = "Bearer $env:ASTRAL_CALCULATOR_API_KEY"
+}
+$body = @{
+  request_contract_version = "astro_simplified_natal_request_v1"
+  birth = @{ date = "1990-06-15" }
+} | ConvertTo-Json -Depth 5
+
+Invoke-RestMethod -Method Post -Uri "http://localhost:8080/v1/calculations/natal/simplified" `
+  -Headers $headers -Body $body
+```
+
+Champs utiles dans la réponse : `input_precision.level`, `computed_scope`, `facts` / `ambiguous_facts`, `llm_payload.allowed_fact_codes` / `blocked_interpretation_fact_codes`, `simplified_payload.payload`.
+
+### LLM — lecture natal simplifiée (orchestration one-shot)
+
+Un seul appel : naissance → calculateur interne → profil `natal_simplified`.
+
+```powershell
+$headers = @{
+  "Content-Type" = "application/json"
+  "Authorization" = "Bearer $env:ASTRAL_LLM_API_KEY"
+}
+$body = @{
+  request_contract_version = "astro_simplified_natal_request_v1"
+  birth = @{ date = "1990-06-15" }
+  user_language = "fr"
+  audience_level = "beginner"
+} | ConvertTo-Json -Depth 5
+
+Invoke-RestMethod -Method Post -Uri "http://localhost:8081/v1/readings/natal/simplified" `
+  -Headers $headers -Body $body
+```
+
+Prérequis gateway : client calculateur configuré (`ASTRAL_CALCULATOR_HOST` / `PORT` — automatique sous Docker Compose).
+
+### LLM — génération de lecture (thème complet)
 
 Avec le provider fake (local, gratuit) :
 
@@ -509,7 +651,9 @@ Réponse attendue : `status: success`, `reading.schema_version: natal_reading_v1
 | Calculateur | POST | `/v1/calculations/validate` | Valide un JSON sans calculer |
 | Calculateur | GET | `/v1/reference/status` | État DB + éphémérides |
 | LLM | POST | `/v1/readings/validate` | Valide une lecture JSON |
-| LLM | GET | `/v1/providers` | Modèles et circuit breakers |
+| Calculateur | POST | `/v1/calculations/natal/simplified` | Calcul partiel (contrats `astro_simplified_*`) |
+| LLM | POST | `/v1/readings/natal/simplified` | Naissance → calcul simplifié → lecture |
+| LLM | GET | `/v1/providers` | Modèles, `default_provider`, circuit breakers |
 | LLM | GET | `/v1/runs/{run_id}` | Audit d'un run (si persistance active) |
 
 ---
@@ -558,6 +702,26 @@ En résumé :
 | `contracts/integration/examples/natal_calculation_request_v1.paris_1990.json` | Requête calculateur |
 | `contracts/integration/examples/natal_calculation_response_v1.paris_1990.json` | Réponse calculateur (référence) |
 | `contracts/integration/examples/generate_reading_request_v1.from_engine_paris_1990.json` | Requête LLM déjà mappée |
+| `contracts/integration/examples/natal_simplified_examples.json` | Matrice `input_precision` (requêtes simplified) |
+
+### Flux natal simplifié (one-shot ou manuel)
+
+```
+  [Client]
+     │
+     │  POST /v1/readings/natal/simplified   (one-shot, recommandé)
+     │  OU
+     │  POST /v1/calculations/natal/simplified
+     │       puis POST /v1/readings/generate (profil natal_simplified)
+     ▼
+  [astral_llm_api] ──HTTP interne──► [astral_calculator_api]
+     │
+     │  reading + calculation dans la réponse
+     ▼
+  [Client]
+```
+
+Mapping détaillé : [`contracts/integration/engine_to_reading_mapping.md`](../contracts/integration/engine_to_reading_mapping.md) (section natal simplifié).
 
 ---
 
@@ -573,6 +737,9 @@ Index des versions actives : [`contracts/versions.json`](../contracts/versions.j
 | `astro_engine_response_v1` | `astro_engine_response_v1.schema.json` | Sortie : résultat calcul + audit |
 | `natal_structured_v13` | `natal_structured_v13.schema.json` | Payload structuré interne (dans `audit_payload`) |
 | `llm_projection_natal_v1` | `llm_projection_natal_v1.schema.json` | Niveau de projection vers le LLM |
+| `astro_simplified_natal_request_v1` | `astro_simplified_natal_request_v1.schema.json` | Entrée natal simplifié (date partielle…) |
+| `astro_simplified_natal_response_v1` | `astro_simplified_natal_response_v1.schema.json` | Sortie calculateur simplified |
+| `natal_simplified_structured_v1` | `natal_simplified_structured_v1.schema.json` | Payload structuré pour le LLM |
 
 **Champs clés de la requête calculateur** (`astro_engine_request_v1`) :
 
@@ -726,6 +893,14 @@ docker compose up -d --build
 .\scripts\docker_bootstrap.ps1
 .\scripts\docker_compose_smoke.ps1
 
+# Natal simplifié (fake, sans OpenAI)
+.\scripts\docker_simplified_natal_smoke.ps1
+.\scripts\test_natal_simplified_e2e.ps1
+
+# Tests Rust natal simplifié
+cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests
+cargo test -p astral_llm_api --test astral_llm_simplified_reading_tests
+
 # Logs
 docker compose logs -f astral_llm_api
 
@@ -795,6 +970,35 @@ ASTRAL_LLM_REQUEST_TIMEOUT_MS=900000
 
 Redémarrez : `docker compose restart astral_llm_api`.
 
+### Natal simplifié — HTTP 500 / `REFERENCE_DATA_MISSING`
+
+**Cause** : tables `astral_simplified_*` ou scopes absents (import DB non fait).
+
+**Action** :
+
+```powershell
+python scripts/import_json_db_to_postgres.py
+docker compose restart astral_calculator_api astral_llm_api
+.\scripts\test_natal_simplified_calculator.ps1 -Case date_only
+```
+
+### Natal simplifié — `PRODUCT_POLICY_VIOLATION domain_count`
+
+**Cause** : binaire `astral_llm_api` obsolète (profil `natal_simplified` limite à **1** domaine).
+
+**Action** :
+
+```powershell
+docker compose up -d --build astral_llm_api
+.\scripts\test_natal_simplified_reading.ps1 -Case date_only
+```
+
+### Natal simplifié — tests lecture échouent sans fake
+
+**Cause** : gateway configuré sur OpenAI alors que les scripts E2E attendent le provider **fake** (gratuit).
+
+**Action** : utiliser Docker Compose (`ASTRAL_LLM_DEFAULT_PROVIDER=fake` dans le conteneur) ou `-UseReal` avec `OPENAI_API_KEY`. Vérifier : `GET /v1/providers` → `default_provider: fake`.
+
 ### `DATABASE_URL absent` au bootstrap (étape 3)
 
 **Cause** : `manage_natal_interpretation_profiles.ps1` ou `set_product_llm_models.ps1` lance une erreur si `DATABASE_URL` est vide.
@@ -823,6 +1027,14 @@ DATABASE_URL=postgres://postgres:change-me@localhost:5432/astral
 | [`AGENTS.md`](../AGENTS.md) | Règles workspace, commandes développeur |
 | [`BASIC_PAYLOAD_IMPLEMENTATION.md`](../BASIC_PAYLOAD_IMPLEMENTATION.md) | Détails moteur calculateur et API HTTP |
 | [`Astral_llm_implementation.md`](../Astral_llm_implementation.md) | Pipeline LLM, quality gates, profils Premium Plus |
+| [`docs/natal_simplified_reading_contract.md`](natal_simplified_reading_contract.md) | Contrat produit lecture simplifiée |
+| [`docs/natal_simplified_forbidden_topics.md`](natal_simplified_forbidden_topics.md) | Sujets interdits et contrôles anti-hallucination |
+
+Pour certifier le **natal simplifié** (fake, sans coût OpenAI) :
+
+```powershell
+.\scripts\test_natal_simplified_e2e.ps1
+```
 
 Pour certifier une lecture Premium Plus de bout en bout (hors Docker ou avec stack Docker) :
 
@@ -839,4 +1051,4 @@ Pour certifier une lecture Premium Plus de bout en bout (hors Docker ou avec sta
 
 ---
 
-*Dernière mise à jour : juin 2026 — stack Docker Compose V1 (orchestration externe calculateur → LLM).*
+*Dernière mise à jour : juin 2026 — stack Docker Compose V1 + natal simplifié v2.4 (`POST /v1/readings/natal/simplified`).*

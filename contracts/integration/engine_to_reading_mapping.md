@@ -65,3 +65,37 @@ Corps `POST /v1/readings/generate` :
 - [examples/natal_calculation_request_v1.paris_1990.json](examples/natal_calculation_request_v1.paris_1990.json)
 - [examples/natal_calculation_response_v1.paris_1990.json](examples/natal_calculation_response_v1.paris_1990.json)
 - [examples/generate_reading_request_v1.from_engine_paris_1990.json](examples/generate_reading_request_v1.from_engine_paris_1990.json)
+
+## Natal simplifie (v2.4)
+
+Source : reponse `astro_simplified_natal_response_v1` :
+
+```json
+{
+  "response_contract_version": "astro_simplified_natal_response_v1",
+  "simplified_payload": {
+    "payload_contract": "natal_simplified_structured_v1",
+    "payload": { }
+  },
+  "llm_payload": {
+    "profile_code": "natal_simplified",
+    "allowed_fact_codes": ["sun.sign"],
+    "blocked_interpretation_fact_codes": ["moon.sign"]
+  },
+  "reading_hint": {
+    "recommended_profile_code": "natal_simplified",
+    "reading_completeness": "partial"
+  }
+}
+```
+
+Mapping manuel vers `POST /v1/readings/generate` :
+
+- `interpretation_profile_code`: **`natal_simplified`** (obligatoire)
+- `astro_result.contract_version`: **`natal_simplified_structured_v1`**
+- `astro_result.data`: `simplified_payload.payload` enrichi de `llm_controls` (= `llm_payload`)
+- `response_contract.generation_mode`: **`single_pass`** (derive du profil)
+
+Orchestration integree : `POST /v1/readings/natal/simplified` avec le corps `astro_simplified_natal_request_v1` + `user_language`.
+
+Exemples : [examples/natal_simplified_examples.json](examples/natal_simplified_examples.json)

@@ -283,6 +283,11 @@ fn extract_astro_data_json(content: &str) -> Option<serde_json::Value> {
 }
 
 fn build_full_reading(request: &ProviderGenerationRequest) -> NatalReadingResponse {
+    let body = pad_to_min_words(
+        "Interpretation symbolique : votre theme suggere une personnalite reflechie, \
+         orientee vers la comprehension des experiences.".to_string(),
+        FAKE_MIN_CHAPTER_WORDS,
+    );
     NatalReadingResponse {
         schema_version: "natal_reading_v1".to_string(),
         language: "fr".to_string(),
@@ -294,9 +299,7 @@ fn build_full_reading(request: &ProviderGenerationRequest) -> NatalReadingRespon
         chapters: vec![ReadingChapter {
             code: "identity".to_string(),
             title: "Identite".to_string(),
-            body: "Interpretation symbolique : votre theme suggere une personnalite reflechie, \
-                   orientee vers la comprehension des experiences."
-                .to_string(),
+            body,
             astro_basis: vec![],
             confidence: ConfidenceLevel::Medium,
             safety_flags: vec![],

@@ -102,7 +102,21 @@ Verifier : Invoke-WebRequest $LlmUrl/health/ready -SkipHttpErrorCheck
 }
 Write-Host "  OK" -ForegroundColor Green
 
-Write-Host "`n[5/5] Referentiel calculateur"
+Write-Host "`n[5/6] Referentiel calculateur (json_db -> PostgreSQL)"
+$simplifiedTableCheck = @"
+SELECT to_regclass('public.astral_simplified_calculation_policies') IS NOT NULL AS ok;
+"@
+$tableExists = docker compose exec -T postgres psql -U $env:POSTGRES_USER -d $env:POSTGRES_DB -tAc $simplifiedTableCheck 2>$null
+$tableExists = ($tableExists | ForEach-Object { $_.Trim() })
+if ($tableExists -ne "t") {
+    Write-Host "  Tables natal simplifie absentes — import json_db..." -ForegroundColor Yellow
+    python (Join-Path $repoRoot "scripts\import_json_db_to_postgres.py")
+    if ($LASTEXITCODE -ne 0) { throw "import_json_db_to_postgres.py a echoue" }
+} else {
+    Write-Host "  Tables natal simplifie presentes" -ForegroundColor Green
+}
+
+Write-Host "`n[6/6] Etat reference calculateur"
 $calcHeaders = New-AstralAuthHeaders -Service calculator
 $ref = Invoke-AstralJson -Method Get -Uri "$CalculatorUrl/v1/reference/status" -Headers $calcHeaders
 Write-Host ("  status={0}" -f $ref.status)

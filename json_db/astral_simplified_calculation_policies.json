@@ -1,0 +1,29 @@
+{
+  "name": "astral_simplified_calculation_policies",
+  "structure": {
+    "id": "integer, primary key",
+    "code": "string, unique",
+    "reference_time_utc": "string",
+    "date_only_uncertainty_mode": "string",
+    "uncertainty_sampling_minutes": "integer",
+    "default_timezone_strategy": "string",
+    "cusp_warning_orb_deg": "number",
+    "stable_fact_strategy": "string",
+    "description": "string",
+    "is_active": "boolean"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "default_v1",
+      "reference_time_utc": "12:00:00",
+      "date_only_uncertainty_mode": "world_civil_date_window",
+      "uncertainty_sampling_minutes": 60,
+      "default_timezone_strategy": "explicit_iana_only",
+      "cusp_warning_orb_deg": 1.0,
+      "stable_fact_strategy": "sampled_window_unique_signs",
+      "description": "V1 simplified natal policy: 60-minute sampling, world window for date-only, cusp orb for UX warning only.",
+      "is_active": true
+    }
+  ]
+}

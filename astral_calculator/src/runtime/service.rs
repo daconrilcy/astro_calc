@@ -18,6 +18,8 @@ use crate::payload::build_basic_payload_with_accidental_references;
 use crate::repositories::RuntimeRepository;
 use crate::signals::aggregate_basic_signals;
 
+use crate::simplified::{calculate_simplified_natal, AstroSimplifiedNatalRequest, AstroSimplifiedNatalResponse};
+
 use super::error::RuntimeError;
 use super::payload_freshness::{has_current_rulership_references, is_current_basic_payload};
 use super::references::{
@@ -105,6 +107,20 @@ where
             &house_axes,
             &profile,
         )
+    }
+
+    pub async fn calculate_simplified_natal_engine(
+        &self,
+        request: AstroSimplifiedNatalRequest,
+        ephemeris_path: &std::path::Path,
+    ) -> Result<AstroSimplifiedNatalResponse, RuntimeError> {
+        calculate_simplified_natal(
+            &self.repository,
+            &self.ephemeris,
+            ephemeris_path,
+            request,
+        )
+        .await
     }
 
     pub async fn calculate_natal_basic(

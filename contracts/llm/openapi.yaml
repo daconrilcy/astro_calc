@@ -63,6 +63,39 @@ paths:
           description: generate_reading_response_v1
         "422":
           description: safety_rejected ou error_response_v1
+  /v1/readings/natal/simplified:
+    post:
+      summary: Lecture natal simplifiee (calcul + generation)
+      description: |
+        Orchestre POST calculateur /v1/calculations/natal/simplified puis generation
+        avec profil natal_simplified. Requiert ASTRAL_CALCULATOR_HOST/PORT sur le gateway LLM.
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "../calculator/astro_simplified_natal_request_v1.schema.json"
+                - type: object
+                  required: []
+                  properties:
+                    user_language:
+                      type: string
+                      default: fr
+                    audience_level:
+                      type: string
+                      enum: [beginner, intermediate, advanced]
+                      default: beginner
+      responses:
+        "200":
+          description: calculation + reading + run_id + reading_completeness
+        "422":
+          description: error_response_v1 (requete invalide)
+        "503":
+          description: CALCULATOR_UNAVAILABLE si client calculateur non configure
   /v1/readings/validate:
     post:
       summary: Valider une reponse contre un schema

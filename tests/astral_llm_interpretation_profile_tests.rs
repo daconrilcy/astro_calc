@@ -12,12 +12,13 @@ use astral_llm_infra::{bootstrap_interpretation_profiles, CanonicalCatalog};
 use std::sync::Arc;
 
 #[test]
-fn bootstrap_profiles_load_four_tiers() {
+fn bootstrap_profiles_load_five_tiers() {
     let profiles = bootstrap_interpretation_profiles();
     assert!(profiles.contains_key("natal_light"));
     assert!(profiles.contains_key("natal_basic"));
     assert!(profiles.contains_key("natal_premium"));
     assert!(profiles.contains_key("natal_premium_plus"));
+    assert!(profiles.contains_key("natal_simplified"));
 }
 
 #[test]
@@ -64,6 +65,15 @@ fn profile_json_fixture_roundtrip() {
     assert_eq!(profile.product_code, NATAL_PROMPTER_PRODUCT);
     assert!(profile.validate().is_ok());
     assert!(!profile.evidence_enabled());
+}
+
+#[test]
+fn simplified_profile_single_pass_with_disclaimer() {
+    let profiles = bootstrap_interpretation_profiles();
+    let profile = profiles.get("natal_simplified").expect("natal_simplified");
+    assert!(!profile.evidence_enabled());
+    assert!(profile.document.quality.require_disclaimer);
+    assert_eq!(profile.document.generation_mode, GenerationMode::SinglePass);
 }
 
 #[test]

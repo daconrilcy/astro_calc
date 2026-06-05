@@ -1,0 +1,59 @@
+{
+  "name": "astral_fact_reliability_levels",
+  "structure": {
+    "id": "integer, primary key",
+    "code": "string, unique",
+    "label": "string",
+    "description": "string",
+    "allows_interpretive_affirmation": "boolean",
+    "sort_order": "integer",
+    "is_active": "boolean"
+  },
+  "data": [
+    {
+      "id": 1,
+      "code": "calculated_from_declared_datetime",
+      "label": "Calculated from declared datetime",
+      "description": "Fact computed at the declared birth instant; accuracy depends on user-provided time.",
+      "allows_interpretive_affirmation": true,
+      "sort_order": 1,
+      "is_active": true
+    },
+    {
+      "id": 2,
+      "code": "stable_across_uncertainty_window",
+      "label": "Stable across uncertainty window",
+      "description": "Single zodiac sign observed across all samples in the uncertainty window.",
+      "allows_interpretive_affirmation": true,
+      "sort_order": 2,
+      "is_active": true
+    },
+    {
+      "id": 3,
+      "code": "ambiguous_across_uncertainty_window",
+      "label": "Ambiguous across uncertainty window",
+      "description": "Multiple possible signs within the uncertainty window.",
+      "allows_interpretive_affirmation": false,
+      "sort_order": 3,
+      "is_active": true
+    },
+    {
+      "id": 4,
+      "code": "reference_based",
+      "label": "Reference based",
+      "description": "Indicative projection at reference time; not an exact interpretive fact by default.",
+      "allows_interpretive_affirmation": false,
+      "sort_order": 4,
+      "is_active": true
+    },
+    {
+      "id": 5,
+      "code": "excluded_missing_input",
+      "label": "Excluded missing input",
+      "description": "Fact not computable due to insufficient input.",
+      "allows_interpretive_affirmation": false,
+      "sort_order": 5,
+      "is_active": true
+    }
+  ]
+}

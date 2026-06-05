@@ -14,9 +14,9 @@ use astral_llm_application::{
 };
 use astral_llm_infra::{
     bootstrap_domains, bootstrap_product_policies, bootstrap_safety_patterns,
-    enrich_catalog_from_bootstrap, init_tracing, load_canonical_catalog,
-    load_active_provider_codes, load_model_capabilities, AppConfig, CanonicalCatalog,
-    ConfigValidator, ProviderSecrets,
+    calculator_api_key_from_env, calculator_base_url_from_env, enrich_catalog_from_bootstrap,
+    init_tracing, load_active_provider_codes, load_canonical_catalog, load_model_capabilities,
+    AppConfig, CalculatorClient, CanonicalCatalog, ConfigValidator, ProviderSecrets,
     RunPersistence, SharedCanonicalCatalog,
 };
 use axum::http::StatusCode;
@@ -128,6 +128,13 @@ async fn main() {
         "astral_llm_api ready"
     );
 
+    let calculator_client = CalculatorClient::new(
+        calculator_base_url_from_env(),
+        calculator_api_key_from_env(),
+        config.limits.default_request_timeout_ms,
+    )
+    .ok();
+
     let state = AppState {
         use_case,
         schema_registry,
@@ -136,6 +143,7 @@ async fn main() {
         concurrency_limit: new_semaphore(config.max_concurrent_requests),
         api_key_limiter: new_api_key_limiter(&config),
         interpretation_profile_count: catalog.interpretation_profiles.len(),
+        calculator_client,
     };
 
     let timeout = Duration::from_millis(state.config.limits.default_request_timeout_ms + 5_000);

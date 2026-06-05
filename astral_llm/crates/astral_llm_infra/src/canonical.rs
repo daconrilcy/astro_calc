@@ -773,6 +773,7 @@ pub fn bootstrap_interpretation_profiles() -> HashMap<String, InterpretationProf
         include_str!("../../../../config/natal_interpretation_profiles/natal_basic.json"),
         include_str!("../../../../config/natal_interpretation_profiles/natal_premium.json"),
         include_str!("../../../../config/natal_interpretation_profiles/natal_premium_plus.json"),
+        include_str!("../../../../config/natal_interpretation_profiles/natal_simplified.json"),
     ];
     let mut map = HashMap::new();
     for json in seeds {

@@ -7,7 +7,9 @@ use astral_llm_domain::{GenerationError, GenerationErrorCode, PrivacyPolicy};
 use astral_llm_infra::payload_redaction::redact_value;
 
 const NATAL_CONTRACT: &str = "natal_structured_v13";
+const SIMPLIFIED_CONTRACT: &str = "natal_simplified_structured_v1";
 const PROJECTION_CONTRACT: &str = "llm_projection_natal_v1";
+const PROJECTION_SIMPLIFIED_CONTRACT: &str = "llm_projection_natal_simplified_v1";
 
 pub fn extract_facts(
     contract_version: &str,
@@ -16,13 +18,87 @@ pub fn extract_facts(
 ) -> Result<Vec<NormalizedAstroFact>, GenerationError> {
     match contract_version {
         NATAL_CONTRACT => Ok(extract_natal_structured(data, privacy)),
+        SIMPLIFIED_CONTRACT => Ok(extract_simplified_structured(data, privacy)),
         PROJECTION_CONTRACT => Ok(extract_llm_projection(data, privacy)),
+        PROJECTION_SIMPLIFIED_CONTRACT => Ok(extract_llm_projection_simplified(data, privacy)),
         other => Err(GenerationError::with_details(
             GenerationErrorCode::InvalidInput,
             format!("unsupported astro_result.contract_version: {other}"),
-            serde_json::json!({ "known_versions": [NATAL_CONTRACT, PROJECTION_CONTRACT] }),
+            serde_json::json!({
+                "known_versions": [
+                    NATAL_CONTRACT,
+                    SIMPLIFIED_CONTRACT,
+                    PROJECTION_CONTRACT,
+                    PROJECTION_SIMPLIFIED_CONTRACT
+                ]
+            }),
         )),
     }
+}
+
+fn extract_simplified_structured(
+    data: &serde_json::Value,
+    privacy: &PrivacyPolicy,
+) -> Vec<NormalizedAstroFact> {
+    let mut facts = Vec::new();
+
+    if let Some(entries) = data.get("facts").and_then(|v| v.as_array()) {
+        for entry in entries {
+            let Some(object_code) = entry.get("object_code").and_then(|v| v.as_str()) else {
+                continue;
+            };
+            let Some(sign_code) = entry.get("sign_code").and_then(|v| v.as_str()) else {
+                continue;
+            };
+            let reliability = entry
+                .get("reliability")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            if reliability == "ambiguous_across_uncertainty_window"
+                || reliability == "reference_based"
+                || reliability == "excluded_missing_input"
+            {
+                continue;
+            }
+            let mut value = serde_json::json!({
+                "object_code": object_code,
+                "sign_code": sign_code,
+                "reliability": reliability,
+            });
+            if privacy.redact_birth_data_before_llm {
+                value = redact_value(&value);
+            }
+            facts.push(NormalizedAstroFact {
+                id: format!("placement:{object_code}"),
+                kind: AstroFactKind::PlanetPosition,
+                kind_code: "planet_sign".to_string(),
+                usage: AstroFactUsage::InterpretiveBasis,
+                label: format!("{object_code} in {sign_code}"),
+                value,
+                interpretive_weight: None,
+                domains: vec!["identity".to_string()],
+            });
+        }
+    }
+
+    if let Some(planets) = data.get("planets").and_then(|v| v.as_object()) {
+        for (planet, detail) in planets {
+            if facts.iter().any(|fact| fact.id == format!("placement:{planet}")) {
+                continue;
+            }
+            extract_legacy_planet(planet, detail, &mut facts, privacy);
+        }
+    }
+
+    facts
+}
+
+fn extract_llm_projection_simplified(
+    data: &serde_json::Value,
+    _privacy: &PrivacyPolicy,
+) -> Vec<NormalizedAstroFact> {
+    let _ = data;
+    Vec::new()
 }
 
 fn extract_natal_structured(
@@ -837,6 +913,33 @@ pub fn dedupe_facts(facts: Vec<NormalizedAstroFact>) -> Vec<NormalizedAstroFact>
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn extracts_simplified_stable_signs_only() {
+        let data = serde_json::json!({
+            "facts": [{
+                "object_code": "sun",
+                "fact_type": "sign",
+                "sign_code": "aries",
+                "reliability": "stable_across_uncertainty_window"
+            }],
+            "ambiguous_facts": [{
+                "object_code": "moon",
+                "fact_type": "sign",
+                "possible_sign_codes": ["gemini", "cancer"],
+                "reliability": "ambiguous_across_uncertainty_window"
+            }],
+            "planets": { "sun": { "sign": "aries" } }
+        });
+        let facts = extract_facts(
+            "natal_simplified_structured_v1",
+            &data,
+            &PrivacyPolicy::default(),
+        )
+        .expect("extract");
+        assert!(facts.iter().any(|f| f.id == "placement:sun"));
+        assert!(!facts.iter().any(|f| f.id == "placement:moon"));
+    }
 
     #[test]
     fn extracts_interpretive_placements_from_natal() {
