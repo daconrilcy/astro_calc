@@ -27,6 +27,6 @@ Statut : **CLOSED**
 
 ## Smoke de clôture
 
-Artefacts : `output/natal_simplified_openai/2026-06-06T113454Z/quality_summary.json` — `gate_passed: true`, 7/7.
+Artefacts : `output/natal_simplified_openai/2026-06-06T125816Z/quality_summary.json` — `gate_passed: true`, 7/7, modèle `gpt-5.4-mini`.
 
 Gate REV-021 : **CLOSED**.

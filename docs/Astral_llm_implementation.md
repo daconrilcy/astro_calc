@@ -827,8 +827,9 @@ Recette E2E attendue : **12/12** calculateur, **7/7** lectures, **5/5** négatif
 .\scripts\test_natal_simplified_e2e.ps1 -UseReal -SubmitProfile -TimeoutSec 900
 ```
 
-- Assertions : `Assert-SimplifiedStrictOpenAiQuality` (longueurs, whitelist `astro_basis`, regex anti-ASC/maisons, cas `ambiguous_core_identity`).
+- Assertions : `Assert-SimplifiedStrictOpenAiQuality` (longueurs, whitelist `astro_basis`, regex anti-ASC/maisons, cas `ambiguous_core_identity`, **`confidence=low`** équinoxe).
 - Artefacts horodatés : `output/natal_simplified_openai/{timestamp}/` (`quality_summary.json`, lectures JSON).
+- Dernier smoke certifié post-durcissement : `output/natal_simplified_openai/2026-06-06T125816Z/` (7/7, `gate_passed: true`, `gpt-5.4-mini`).
 - Privacy provider : `ASTRAL_LLM_ALLOW_CROSS_PROVIDER_FALLBACK=false` par défaut ; pas de journalisation Rust dédiée au contenu prompt/réponse simplified (audit manuel via artefacts E2E `-UseReal`).
 
 Golden fixtures :

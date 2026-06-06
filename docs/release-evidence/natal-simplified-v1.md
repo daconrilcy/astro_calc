@@ -158,6 +158,8 @@ Test Rust dédié au rename : `llm_controls_block_ambiguous_and_allow_stable`, `
 | `381c8a1` | docs(natal_simplified): aligner doc sur certification E2E v2.4 |
 | `c30648d` | docs(natal_simplified): clôture V1 avec preuve E2E et gate llm_payload |
 | `ba65f94` | feat(natal_simplified): fermer risques résiduels F-07 et reading_completeness |
+| `cef6e65` | fix(natal_simplified): agrégation StrictOpenAiQuality et export qualité E2E |
+| `1a5ca2c` | feat(natal_simplified): durcir cas equinoxe OpenAI en 3 couches (REV-018…022) |
 
 ---
 
@@ -165,7 +167,7 @@ Test Rust dédié au rename : `llm_controls_block_ambiguous_and_allow_stable`, `
 
 | Référence | Statut |
 |-----------|--------|
-| [`docs/reviews/natal_simplified/INDEX.md`](../reviews/natal_simplified/INDEX.md) | REV-001…021 **closed** |
+| [`docs/reviews/natal_simplified/INDEX.md`](../reviews/natal_simplified/INDEX.md) | REV-001…022 **closed** |
 | [`docs/reviews/natal_simplified/REV-015-final-closure.md`](../reviews/natal_simplified/REV-015-final-closure.md) | Clôture finale V1 |
 | [`docs/reviews/natal_simplified/REV-GLOBAL-adversarial.md`](../reviews/natal_simplified/REV-GLOBAL-adversarial.md) | Gate OK après G-001…G-011 |
 | [`docs/reviews/natal_simplified/REV-012-doc-audit.md`](../reviews/natal_simplified/REV-012-doc-audit.md) | Doc produit alignée runtime |
@@ -183,7 +185,7 @@ Test Rust dédié au rename : `llm_controls_block_ambiguous_and_allow_stable`, `
 |----|-------|--------|--------|
 | F-07 | Exclusions profil en constante Rust | **CLOSED** | Table `astral_simplified_profile_feature_exclusions`, REV-013, E2E 24/24 |
 | `reading_completeness` | Tolérance PS1 `simplified` | **CLOSED** | Runtime + PS1 = `partial` strict, REV-013 |
-| Qualité OpenAI | Variabilité provider | **CLOSED WITH MONITORING** | `-StrictOpenAiQuality` + REV-014 ; durcissement équinoxe REV-018…021 ; smoke **7/7** (2026-06-06T113454Z) |
+| Qualité OpenAI | Variabilité provider | **CLOSED WITH MONITORING** | `-StrictOpenAiQuality` + REV-014 ; durcissement équinoxe REV-018…022 ; smoke **7/7** post-durcissement (`2026-06-06T125816Z`) |
 
 Recette OpenAI (monitoring périodique) :
 
@@ -191,17 +193,19 @@ Recette OpenAI (monitoring périodique) :
 .\scripts\test_natal_simplified_e2e.ps1 -UseReal -SubmitProfile -TimeoutSec 900
 ```
 
-Dernier smoke certifié : `output/natal_simplified_openai/2026-06-06T100348Z/` — **7/7**, P0=0, P1=0, ~87 s wall time.
+Dernier smoke certifié (post-durcissement équinoxe, REV-020) : `output/natal_simplified_openai/2026-06-06T125816Z/` — **7/7**, P0=0, P1=0, `gate_passed: true`, modèle **`gpt-5.4-mini`**.
+
+Smoke REV-014 (pré-durcissement, référence historique) : `output/natal_simplified_openai/2026-06-06T100348Z/`.
 
 | Volet D | Logs Rust privacy run (contenu prompt/réponse) | **DEFERRED** | Audit manuel via artefacts E2E `-UseReal` ; doc Astral_llm § simplified |
 
-Exemples `run_id` (phase 2, OpenAI) :
+Exemples `run_id` (phase 2, OpenAI — run `2026-06-06T125816Z`) :
 
 | Cas | `run_id` | Mots |
 |-----|----------|------|
-| `date_only` | `1d1082a1-7d4e-4b96-94ea-989f7ad4ae15` | 263 |
-| `complete_birth_data` | `1006bb48-8baa-4e0b-b362-753555469437` | 319 |
-| `date_only_equinox_window` | `6bbc98b7-9f38-4c3e-bb79-f2e03d45447f` | 250 |
+| `date_only` | `c9755101-93a6-4ceb-aebc-750531ab1907` | 278 |
+| `complete_birth_data` | `f83a1050-c10a-483e-91e1-1cb86a498a0f` | 379 |
+| `date_only_equinox_window` | `e5a36301-37f9-4410-89cc-84c4596eed5d` | 322 |
 
 ### Règles de réouverture du risque OpenAI
 
