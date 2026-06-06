@@ -659,8 +659,8 @@ function Assert-SimplifiedStrictOpenAiQuality {
     }
 
     return [ordered]@{
-        Failures = ,@($failures)
-        Warnings = ,@($warnings)
+        Failures = @($failures.ToArray())
+        Warnings = @($warnings.ToArray())
     }
 }
 

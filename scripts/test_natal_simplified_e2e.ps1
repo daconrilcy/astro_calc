@@ -120,7 +120,13 @@ if (-not $SkipReading) {
     }
 
     & (Join-Path $PSScriptRoot "test_natal_simplified_reading.ps1") @readingArgs
-    if ($null -ne $LASTEXITCODE -and $LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    $readingExitCode = $LASTEXITCODE
+    if ($UseReal -and $qualityMetricsPath -and (Test-Path -LiteralPath $qualityMetricsPath)) {
+        $rawMetrics = Get-Content -LiteralPath $qualityMetricsPath -Raw | ConvertFrom-Json
+        $qualityPath = Join-Path $OutputDir "quality_summary.json"
+        Export-SimplifiedQualitySummary -Metrics $rawMetrics -OutputPath $qualityPath | Out-Null
+    }
+    if ($null -ne $readingExitCode -and $readingExitCode -ne 0) { exit $readingExitCode }
 
     Write-Host ""
     Write-Host "--- Phase 2b/2 : lecture orchestration (negatifs 400) ---" -ForegroundColor Cyan
@@ -173,8 +179,10 @@ if ($saveOutputs) {
 if ($UseReal -and $qualityMetricsPath) {
     $qualityPath = Join-Path $OutputDir "quality_summary.json"
     if (Test-Path -LiteralPath $qualityMetricsPath) {
-        $rawMetrics = Get-Content -LiteralPath $qualityMetricsPath -Raw | ConvertFrom-Json
-        Export-SimplifiedQualitySummary -Metrics $rawMetrics -OutputPath $qualityPath | Out-Null
+        if (-not (Test-Path -LiteralPath $qualityPath)) {
+            $rawMetrics = Get-Content -LiteralPath $qualityMetricsPath -Raw | ConvertFrom-Json
+            Export-SimplifiedQualitySummary -Metrics $rawMetrics -OutputPath $qualityPath | Out-Null
+        }
         if (-not $saveOutputs) {
             Write-Host "Artefacts qualite : $OutputDir" -ForegroundColor Cyan
         }
