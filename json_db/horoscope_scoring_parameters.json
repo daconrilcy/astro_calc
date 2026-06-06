@@ -18,6 +18,15 @@
       "default_confidence_score": 0.86,
       "default_duration_class": "daily_slot",
       "unknown_orb_weight": 0.7
+    },
+    {
+      "service_code": "horoscope_premium_daily_local_2h_slots",
+      "exact_orb_bonus_max_deg": 1.0,
+      "exactness_bonus": 0.18,
+      "default_house_weight": 1.0,
+      "default_confidence_score": 0.88,
+      "default_duration_class": "daily_slot",
+      "unknown_orb_weight": 0.7
     }
   ]
 }

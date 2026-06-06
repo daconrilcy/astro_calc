@@ -27,6 +27,15 @@
       "max_evidence": 3,
       "max_required_evidence_per_slot": 2,
       "min_priority_score": 0.5
+    },
+    {
+      "service_code": "horoscope_premium_daily_local_2h_slots",
+      "max_main_signals": 24,
+      "max_main_signals_per_slot": 5,
+      "max_dominant_themes": 4,
+      "max_evidence": 60,
+      "max_required_evidence_per_slot": 4,
+      "min_priority_score": 0.25
     }
   ]
 }

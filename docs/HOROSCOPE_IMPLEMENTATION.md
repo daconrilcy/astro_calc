@@ -56,7 +56,55 @@ Roadmap produit indicative :
 
 - Free : daily natal synthetique, sans slots publics.
 - Basic : daily natal 3 slots, V1 retenue.
-- Premium : local 2h slots, future story.
+- Premium : `horoscope_premium_daily_local_2h_slots`, horoscope quotidien
+  local en 12 creneaux publics de 2 heures.
+
+## Decision Premium V1
+
+Service Premium V1 retenu :
+
+```text
+horoscope_premium_daily_local_2h_slots
+```
+
+Premium V1 reste une extension du workflow horoscope existant :
+
+- pas de nouvel endpoint ;
+- pas de nouveau worker ;
+- pas de nouvelle table de jobs ;
+- `POST /v1/jobs` et l'idempotence existante restent le chemin public ;
+- `chart_calculation_id`, `timezone`, `location.latitude` et
+  `location.longitude` sont obligatoires ;
+- `birth_data` inline reste refuse.
+
+Matrice produit mise a jour :
+
+| Service | Niveau | Natal requis | Location requise | Slots publics | Sortie |
+|---|---|---:|---:|---:|---|
+| `horoscope_free_daily` | Free | Oui | Non | Non | `summary` + `advice` + `watch_point` |
+| `horoscope_basic_daily_natal_3_slots` | Basic | Oui | Non | 3 | `morning` / `afternoon` / `evening` |
+| `horoscope_premium_daily_local_2h_slots` | Premium | Oui | Oui | 12 | `best_slots` + `watch_slots` + `timeline[12]` + domaines |
+
+Premium V1 utilise `detail_level = premium_rich` : maximum de detail utile,
+pas payload illimite. Le profil porte `max_words_target = 2500` et
+`max_words_hard_limit = 3200`.
+
+Les creneaux Premium sont construits en heure locale depuis `timezone`, puis
+chaque `reference_local_time` est converti en `reference_datetime_utc`. Certains
+creneaux locaux peuvent donc correspondre a la veille ou au lendemain en UTC.
+
+Le `house_system_code` vient du referentiel de service
+`horoscope_services.json`. La valeur configuree pour Premium V1 est `placidus`.
+Elle ne doit pas etre une constante cachee dans le code metier.
+
+Guards Premium bloquants :
+
+- `timeline` publique exactement 12 entrees, ordonnees selon le profil horaire ;
+- labels publics horaires attendus ;
+- `local_chart` obligatoire par slot avec Ascendant, MC et maisons locales ;
+- `best_slots` et `watch_slots` non vides, evidences et sans chevauchement ;
+- aucun `slot_code` technique dans le texte public ;
+- si `location.label` est absent, ne pas inventer de ville.
 
 ## Perimetre V1
 

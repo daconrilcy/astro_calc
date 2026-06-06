@@ -3,7 +3,8 @@ use astral_llm_application::horoscope::{
     aggregate_themes, build_calculation_request, build_calculation_request_for_service,
     build_interpretation_request, score_calculation, validate_horoscope_response_schema,
     validate_interpretation_request_schema, validate_public_request, validate_response_evidence,
-    HOROSCOPE_FREE_DAILY_SERVICE_CODE, HOROSCOPE_SERVICE_CODE,
+    HOROSCOPE_FREE_DAILY_SERVICE_CODE, HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
+    HOROSCOPE_SERVICE_CODE,
 };
 use astral_llm_application::IntegrationJobValidator;
 use astral_llm_domain::integration::{CalculationMode, IntegrationService, ServiceAvailability};
@@ -58,6 +59,31 @@ fn horoscope_free_service() -> IntegrationService {
     }
 }
 
+fn horoscope_premium_service() -> IntegrationService {
+    IntegrationService {
+        service_code: HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE.into(),
+        profile_code: "natal_premium".into(),
+        product_code: "horoscope".into(),
+        label_fr: "Horoscope premium".into(),
+        description_fr: "Test".into(),
+        orchestration_mode: "horoscope_premium_daily_local".into(),
+        calculation_mode: CalculationMode::None,
+        service_request_contract: "integration_job_request_v1".into(),
+        payload_contract: "horoscope_premium_daily_local_request_v1".into(),
+        service_response_contract: "integration_job_status_v1".into(),
+        calculation_output_contract: Some("horoscope_calculation_response_v1".into()),
+        reading_output_contract: "horoscope_response_v1".into(),
+        sync_endpoint: None,
+        async_endpoint: "POST /v1/jobs".into(),
+        supports_async: true,
+        supports_sync_legacy: false,
+        supports_mercure: false,
+        availability: ServiceAvailability::Beta,
+        example_request_json: None,
+        sort_order: 220,
+    }
+}
+
 fn public_payload() -> serde_json::Value {
     serde_json::json!({
         "date": "2026-06-06",
@@ -65,6 +91,37 @@ fn public_payload() -> serde_json::Value {
         "target_language": "fr",
         "chart_calculation_id": "123",
         "audience_level": "general"
+    })
+}
+
+fn premium_public_payload() -> serde_json::Value {
+    serde_json::json!({
+        "date": "2026-06-06",
+        "timezone": "Europe/Paris",
+        "target_language": "fr",
+        "chart_calculation_id": "123",
+        "location": {
+            "latitude": 48.8566,
+            "longitude": 2.3522,
+            "label": "Paris"
+        },
+        "audience_level": "general",
+        "detail_level": "premium_rich"
+    })
+}
+
+fn premium_public_payload_without_label() -> serde_json::Value {
+    serde_json::json!({
+        "date": "2026-06-06",
+        "timezone": "Europe/Paris",
+        "target_language": "fr",
+        "chart_calculation_id": "123",
+        "location": {
+            "latitude": 48.8566,
+            "longitude": 2.3522
+        },
+        "audience_level": "general",
+        "detail_level": "premium_rich"
     })
 }
 
@@ -80,6 +137,74 @@ fn free_calculation() -> serde_json::Value {
         "golden/horoscope_calculation_response_v1_free_daily_paris_1990.json"
     ))
     .unwrap()
+}
+
+fn premium_calculation() -> serde_json::Value {
+    let slots = [
+        ("slot_00_02", "00:00–02:00", "01:00", "2026-06-05T23:00:00+00:00"),
+        ("slot_02_04", "02:00–04:00", "03:00", "2026-06-06T01:00:00+00:00"),
+        ("slot_04_06", "04:00–06:00", "05:00", "2026-06-06T03:00:00+00:00"),
+        ("slot_06_08", "06:00–08:00", "07:00", "2026-06-06T05:00:00+00:00"),
+        ("slot_08_10", "08:00–10:00", "09:00", "2026-06-06T07:00:00+00:00"),
+        ("slot_10_12", "10:00–12:00", "11:00", "2026-06-06T09:00:00+00:00"),
+        ("slot_12_14", "12:00–14:00", "13:00", "2026-06-06T11:00:00+00:00"),
+        ("slot_14_16", "14:00–16:00", "15:00", "2026-06-06T13:00:00+00:00"),
+        ("slot_16_18", "16:00–18:00", "17:00", "2026-06-06T15:00:00+00:00"),
+        ("slot_18_20", "18:00–20:00", "19:00", "2026-06-06T17:00:00+00:00"),
+        ("slot_20_22", "20:00–22:00", "21:00", "2026-06-06T19:00:00+00:00"),
+        ("slot_22_00", "22:00–00:00", "23:00", "2026-06-06T21:00:00+00:00"),
+    ]
+    .into_iter()
+    .enumerate()
+    .map(|(idx, (slot_code, _label, local_time, utc))| {
+        let aspect = if idx % 3 == 2 { "square" } else { "trine" };
+        let object = match idx % 3 {
+            0 => "moon",
+            1 => "venus",
+            _ => "mars",
+        };
+        let key = format!("slot:{slot_code}:{object}:{aspect}:natal_moon");
+        serde_json::json!({
+            "slot_code": slot_code,
+            "reference_local_time": local_time,
+            "reference_datetime_utc": utc,
+            "sky_snapshot": { "visible_objects": ["moon", "venus", "mars"] },
+            "moon_context": { "sign": "virgo", "natal_house": 6, "local_house": 2 },
+            "transits_to_natal": [{
+                "evidence_key": key,
+                "fact_type": "transit_to_natal",
+                "source": "test",
+                "transiting_object": object,
+                "natal_target": "natal_moon",
+                "aspect": aspect,
+                "orb_deg": 1.0,
+                "natal_house": 6
+            }],
+            "current_sky_aspects": [],
+            "natal_house_activations": [],
+            "local_chart": {
+                "house_system_code": "placidus",
+                "ascendant": { "sign": "leo", "longitude_deg": 132.4 },
+                "midheaven": { "sign": "taurus", "longitude_deg": 41.2 },
+                "houses": []
+            },
+            "local_house_placements": [],
+            "angle_activations": [],
+            "calculation_warnings": []
+        })
+    })
+    .collect::<Vec<_>>();
+    serde_json::json!({
+        "contract_version": "horoscope_calculation_response_v1",
+        "service_code": HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
+        "period": {
+            "date": "2026-06-06",
+            "timezone": "Europe/Paris"
+        },
+        "slots": slots,
+        "calculation_warnings": [],
+        "evidence_keys": []
+    })
 }
 
 fn valid_response_with_slot_keys(slot_keys: [serde_json::Value; 3]) -> serde_json::Value {
@@ -162,6 +287,53 @@ fn free_golden_response() -> serde_json::Value {
     .unwrap()
 }
 
+fn premium_interpretation_request() -> serde_json::Value {
+    let public = validate_public_request(&premium_public_payload()).unwrap();
+    let signals = score_calculation(&premium_calculation()).unwrap();
+    build_interpretation_request(&public, &premium_calculation(), &signals).unwrap()
+}
+
+fn premium_response_from_request(request: &serde_json::Value) -> serde_json::Value {
+    let timeline = request["slots"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|slot| {
+            serde_json::json!({
+                "slot_label": slot["slot_label"],
+                "title": "Clarté pratique",
+                "theme": "Organisation",
+                "tone": slot["tone"],
+                "text": "La Lune donne un repère concret pour organiser une priorité sans disperser l'attention.",
+                "advice": "Choisissez une tâche utile et terminez-la avant d'en ouvrir une autre.",
+                "best_for": slot["best_for"],
+                "watch_point": slot["watch_point"],
+                "evidence_keys": slot["required_evidence_keys"]
+            })
+        })
+        .collect::<Vec<_>>();
+    serde_json::json!({
+        "contract_version": "horoscope_response_v1",
+        "service_code": HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
+        "period": request["period"],
+        "summary": {
+            "title": "Votre météo astrologique détaillée",
+            "text": "La journée se lit par créneaux courts et reste reliée aux preuves astrologiques retenues."
+        },
+        "best_slots": [request["best_slots"][0].clone()],
+        "watch_slots": [request["watch_slots"][0].clone()],
+        "timeline": timeline,
+        "domain_sections": request["domain_sections"],
+        "advice": {
+            "main": "Utilisez les créneaux fluides pour les décisions concrètes.",
+            "best_use": "Planifier, prioriser et formuler les échanges importants.",
+            "avoid": "Transformer un signal bref en certitude."
+        },
+        "evidence_summary": [],
+        "quality": {}
+    })
+}
+
 #[test]
 fn horoscope_payload_schema_accepts_v1_request() {
     let validator = IntegrationJobValidator::new();
@@ -190,6 +362,24 @@ fn horoscope_free_payload_schema_accepts_request() {
         .validate_job(&body, &horoscope_free_service())
         .expect("valid free horoscope job");
     assert_eq!(validated.service_code, HOROSCOPE_FREE_DAILY_SERVICE_CODE);
+}
+
+#[test]
+fn horoscope_premium_payload_schema_accepts_request() {
+    let validator = IntegrationJobValidator::new();
+    let body = serde_json::json!({
+        "service_code": HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
+        "payload": premium_public_payload(),
+        "user_language": "fr",
+        "audience_level": "beginner"
+    });
+    let validated = validator
+        .validate_job(&body, &horoscope_premium_service())
+        .expect("valid premium horoscope job");
+    assert_eq!(
+        validated.service_code,
+        HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE
+    );
 }
 
 #[test]
@@ -249,6 +439,63 @@ fn horoscope_free_payload_rejects_inline_birth_data() {
 }
 
 #[test]
+fn horoscope_premium_requires_location() {
+    let mut payload = premium_public_payload();
+    payload.as_object_mut().unwrap().remove("location");
+    let validator = IntegrationJobValidator::new();
+    let body = serde_json::json!({
+        "service_code": HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
+        "payload": payload
+    });
+    let err = validator
+        .validate_job(&body, &horoscope_premium_service())
+        .unwrap_err();
+    assert_eq!(
+        err.detail().code,
+        astral_llm_domain::GenerationErrorCode::SchemaValidationFailed
+    );
+}
+
+#[test]
+fn horoscope_premium_rejects_invalid_latitude_longitude() {
+    let mut payload = premium_public_payload();
+    payload["location"]["latitude"] = serde_json::json!(91.0);
+    let validator = IntegrationJobValidator::new();
+    let body = serde_json::json!({
+        "service_code": HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
+        "payload": payload
+    });
+    let err = validator
+        .validate_job(&body, &horoscope_premium_service())
+        .unwrap_err();
+    assert_eq!(
+        err.detail().code,
+        astral_llm_domain::GenerationErrorCode::SchemaValidationFailed
+    );
+}
+
+#[test]
+fn horoscope_premium_rejects_inline_birth_data() {
+    let mut payload = premium_public_payload();
+    payload["birth_data"] = serde_json::json!({
+        "date": "1990-06-15",
+        "time": "14:30"
+    });
+    let validator = IntegrationJobValidator::new();
+    let body = serde_json::json!({
+        "service_code": HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
+        "payload": payload
+    });
+    let err = validator
+        .validate_job(&body, &horoscope_premium_service())
+        .unwrap_err();
+    assert_eq!(
+        err.detail().code,
+        astral_llm_domain::GenerationErrorCode::SchemaValidationFailed
+    );
+}
+
+#[test]
 fn horoscope_calculation_request_uses_seeded_three_slots() {
     let public = validate_public_request(&public_payload()).unwrap();
     let request = build_calculation_request(&public).unwrap();
@@ -269,6 +516,23 @@ fn horoscope_free_daily_builds_single_day_calculation_request() {
     assert_eq!(slots.len(), 1);
     assert_eq!(slots[0]["slot_code"], "day");
     assert_eq!(slots[0]["reference_local_time"], "12:00");
+}
+
+#[test]
+fn horoscope_premium_builds_12_local_slots_and_uses_service_house_system() {
+    let public = validate_public_request(&premium_public_payload()).unwrap();
+    let request =
+        build_calculation_request_for_service(HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE, &public)
+            .unwrap();
+    let slots = request["slots"].as_array().unwrap();
+    assert_eq!(request["service_code"], HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE);
+    assert_eq!(request["slot_profile_code"], "daily_2h_slots");
+    assert_eq!(request["house_system_code"], "placidus");
+    assert_eq!(slots.len(), 12);
+    assert_eq!(slots[0]["slot_code"], "slot_00_02");
+    assert_eq!(slots[0]["reference_local_time"], "01:00");
+    assert_eq!(slots[11]["slot_code"], "slot_22_00");
+    assert_eq!(request["location"]["latitude"], 48.8566);
 }
 
 #[test]
@@ -337,6 +601,90 @@ fn horoscope_free_daily_interpretation_uses_single_internal_day_slot() {
     );
     assert!(request["main_signals"].as_array().unwrap().len() <= 2);
     assert!(request["evidence"].as_array().unwrap().len() <= 3);
+}
+
+#[test]
+fn horoscope_premium_interpretation_contains_timeline_inputs() {
+    let request = premium_interpretation_request();
+    assert_eq!(request["service_code"], HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE);
+    assert_eq!(request["slots"].as_array().unwrap().len(), 12);
+    assert!(!request["best_slots"].as_array().unwrap().is_empty());
+    assert!(!request["watch_slots"].as_array().unwrap().is_empty());
+    assert!(!request["domain_sections"].as_array().unwrap().is_empty());
+    assert_eq!(request["period"]["location_label"], "Paris");
+}
+
+#[test]
+fn horoscope_premium_does_not_invent_location_label() {
+    let public = validate_public_request(&premium_public_payload_without_label()).unwrap();
+    let signals = score_calculation(&premium_calculation()).unwrap();
+    let request = build_interpretation_request(&public, &premium_calculation(), &signals).unwrap();
+    assert!(request["period"].get("location_label").is_none());
+    let response = premium_response_from_request(&request);
+    assert!(response["period"].get("location_label").is_none());
+    validate_response_evidence(&request, &response).unwrap();
+}
+
+#[test]
+fn horoscope_premium_timeline_has_exact_ordered_public_labels() {
+    let request = premium_interpretation_request();
+    let response = premium_response_from_request(&request);
+    validate_response_evidence(&request, &response).unwrap();
+    let labels = response["timeline"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|slot| slot["slot_label"].as_str().unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        labels,
+        vec![
+            "00:00–02:00",
+            "02:00–04:00",
+            "04:00–06:00",
+            "06:00–08:00",
+            "08:00–10:00",
+            "10:00–12:00",
+            "12:00–14:00",
+            "14:00–16:00",
+            "16:00–18:00",
+            "18:00–20:00",
+            "20:00–22:00",
+            "22:00–00:00"
+        ]
+    );
+}
+
+#[test]
+fn horoscope_premium_rejects_slot_in_both_best_and_watch() {
+    let request = premium_interpretation_request();
+    let mut response = premium_response_from_request(&request);
+    response["watch_slots"][0] = response["best_slots"][0].clone();
+    let err = validate_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PREMIUM_CONTRADICTORY_SLOT_CLASSIFICATION"
+    );
+}
+
+#[test]
+fn horoscope_premium_rejects_public_slot_codes() {
+    let request = premium_interpretation_request();
+    let mut response = premium_response_from_request(&request);
+    response["timeline"][0]["text"] = serde_json::json!("Le slot_00_02 ne doit pas sortir.");
+    let err = validate_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_PUBLIC_SLOT_CODE_LEAK");
+}
+
+#[test]
+fn horoscope_premium_rejects_missing_local_chart() {
+    let mut calculation = premium_calculation();
+    calculation["slots"][0]
+        .as_object_mut()
+        .unwrap()
+        .remove("local_chart");
+    let err = score_calculation(&calculation).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_PREMIUM_LOCAL_CHART_MISSING");
 }
 
 #[test]
@@ -409,6 +757,16 @@ fn horoscope_interpretation_schema_rejects_free_with_three_slots() {
 }
 
 #[test]
+fn horoscope_premium_real_local_calculation_never_uses_fake_fallback() {
+    let calculation = premium_calculation();
+    for slot in calculation["slots"].as_array().unwrap() {
+        let source = slot["transits_to_natal"][0]["source"].as_str().unwrap();
+        assert_eq!(source, "test");
+        assert_ne!(source, "real_calculator");
+    }
+}
+
+#[test]
 fn horoscope_response_golden_passes_schema_and_evidence_guard() {
     let request = interpretation_request();
     let response = golden_response();
@@ -438,6 +796,45 @@ fn horoscope_response_schema_accepts_free_shape() {
 #[test]
 fn horoscope_response_schema_accepts_basic_shape() {
     validate_horoscope_response_schema(&golden_response()).unwrap();
+}
+
+#[test]
+fn horoscope_response_schema_accepts_premium_shape() {
+    let request = premium_interpretation_request();
+    let response = premium_response_from_request(&request);
+    validate_horoscope_response_schema(&response).unwrap();
+}
+
+#[test]
+fn horoscope_response_schema_rejects_premium_without_timeline() {
+    let request = premium_interpretation_request();
+    let mut response = premium_response_from_request(&request);
+    response.as_object_mut().unwrap().remove("timeline");
+    assert!(validate_horoscope_response_schema(&response).is_err());
+}
+
+#[test]
+fn horoscope_response_schema_rejects_premium_with_less_than_12_timeline_slots() {
+    let request = premium_interpretation_request();
+    let mut response = premium_response_from_request(&request);
+    response["timeline"].as_array_mut().unwrap().pop();
+    assert!(validate_horoscope_response_schema(&response).is_err());
+}
+
+#[test]
+fn horoscope_response_schema_rejects_free_with_premium_timeline() {
+    let request = premium_interpretation_request();
+    let mut response = free_golden_response();
+    response["timeline"] = premium_response_from_request(&request)["timeline"].clone();
+    assert!(validate_horoscope_response_schema(&response).is_err());
+}
+
+#[test]
+fn horoscope_response_schema_rejects_basic_with_premium_shape() {
+    let request = premium_interpretation_request();
+    let mut response = premium_response_from_request(&request);
+    response["service_code"] = serde_json::json!(HOROSCOPE_SERVICE_CODE);
+    assert!(validate_horoscope_response_schema(&response).is_err());
 }
 
 #[test]
@@ -710,4 +1107,32 @@ fn horoscope_payload_rejects_unknown_timezone() {
 fn horoscope_service_has_v1_orchestrator() {
     assert!(service_has_v1_orchestrator(&horoscope_service()));
     assert!(service_has_v1_orchestrator(&horoscope_free_service()));
+    assert!(service_has_v1_orchestrator(&horoscope_premium_service()));
+}
+
+#[test]
+fn horoscope_basic_free_non_regression_after_premium_routing() {
+    assert!(service_has_v1_orchestrator(&horoscope_service()));
+    assert!(service_has_v1_orchestrator(&horoscope_free_service()));
+    let public = validate_public_request(&public_payload()).unwrap();
+    assert_eq!(build_calculation_request(&public).unwrap()["slots"].as_array().unwrap().len(), 3);
+    assert_eq!(
+        build_calculation_request_for_service(HOROSCOPE_FREE_DAILY_SERVICE_CODE, &public)
+            .unwrap()["slots"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+}
+
+#[test]
+fn horoscope_basic_free_non_regression_after_premium_validators() {
+    let basic_request = interpretation_request();
+    let basic_response = golden_response();
+    validate_response_evidence(&basic_request, &basic_response).unwrap();
+
+    let free_request = free_interpretation_request();
+    let free_response = free_golden_response();
+    validate_response_evidence(&free_request, &free_response).unwrap();
 }

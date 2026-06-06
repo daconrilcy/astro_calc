@@ -61,6 +61,64 @@
         },
         "quality": { "type": "object" }
       }
+    },
+    {
+      "type": "object",
+      "required": [
+        "contract_version",
+        "service_code",
+        "period",
+        "summary",
+        "best_slots",
+        "watch_slots",
+        "timeline",
+        "domain_sections",
+        "advice",
+        "evidence_summary",
+        "quality"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": { "const": "horoscope_response_v1" },
+        "service_code": { "const": "horoscope_premium_daily_local_2h_slots" },
+        "period": { "$ref": "#/definitions/period_with_location" },
+        "summary": { "$ref": "#/definitions/summary" },
+        "best_slots": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": { "$ref": "#/definitions/premium_slot_summary" }
+        },
+        "watch_slots": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": { "$ref": "#/definitions/premium_slot_summary" }
+        },
+        "timeline": {
+          "type": "array",
+          "minItems": 12,
+          "maxItems": 12,
+          "items": { "$ref": "#/definitions/premium_timeline_slot" }
+        },
+        "domain_sections": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/domain_section" }
+        },
+        "advice": {
+          "type": "object",
+          "required": ["main", "best_use", "avoid"],
+          "additionalProperties": false,
+          "properties": {
+            "main": { "type": "string", "minLength": 1 },
+            "best_use": { "type": "string", "minLength": 1 },
+            "avoid": { "type": "string", "minLength": 1 }
+          }
+        },
+        "evidence_summary": { "type": "array" },
+        "quality": { "type": "object" }
+      }
     }
   ],
   "definitions": {
@@ -71,6 +129,16 @@
       "properties": {
         "date": { "type": "string" },
         "timezone": { "type": "string" }
+      }
+    },
+    "period_with_location": {
+      "type": "object",
+      "required": ["date", "timezone"],
+      "additionalProperties": false,
+      "properties": {
+        "date": { "type": "string" },
+        "timezone": { "type": "string" },
+        "location_label": { "type": "string" }
       }
     },
     "summary": {
@@ -98,6 +166,67 @@
           "items": { "type": "string" }
         },
         "watch_point": { "type": "string" },
+        "evidence_keys": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "premium_slot_summary": {
+      "type": "object",
+      "required": ["slot_label", "title", "reason", "evidence_keys"],
+      "additionalProperties": false,
+      "properties": {
+        "slot_label": { "type": "string" },
+        "title": { "type": "string" },
+        "reason": { "type": "string" },
+        "best_for": { "type": "array", "items": { "type": "string" } },
+        "avoid": { "type": "array", "items": { "type": "string" } },
+        "evidence_keys": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "premium_timeline_slot": {
+      "type": "object",
+      "required": [
+        "slot_label",
+        "title",
+        "theme",
+        "tone",
+        "text",
+        "advice",
+        "evidence_keys"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "slot_label": { "type": "string" },
+        "title": { "type": "string" },
+        "theme": { "type": "string" },
+        "tone": { "type": "string" },
+        "text": { "type": "string" },
+        "advice": { "type": "string" },
+        "best_for": { "type": "array", "items": { "type": "string" } },
+        "watch_point": { "type": "string" },
+        "fallback_reason": { "type": "string" },
+        "evidence_keys": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "domain_section": {
+      "type": "object",
+      "required": ["domain", "title", "text", "evidence_keys"],
+      "additionalProperties": false,
+      "properties": {
+        "domain": { "type": "string" },
+        "title": { "type": "string" },
+        "text": { "type": "string" },
         "evidence_keys": {
           "type": "array",
           "minItems": 1,

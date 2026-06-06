@@ -5,7 +5,15 @@
     "product_level_code": "string",
     "shortlist_profile_code": "string",
     "time_slot_profile_code": "string",
-    "slot_mode": "string"
+    "slot_mode": "string",
+    "requires_natal_chart": "boolean",
+    "requires_location": "boolean",
+    "requires_timezone": "boolean",
+    "requires_inline_birth_data": "boolean",
+    "house_system_code": "string|null",
+    "detail_level": "string|null",
+    "max_words_target": "integer|null",
+    "max_words_hard_limit": "integer|null"
   },
   "data": [
     {
@@ -13,14 +21,45 @@
       "product_level_code": "basic",
       "shortlist_profile_code": "basic_daily_natal",
       "time_slot_profile_code": "daily_3_slots",
-      "slot_mode": "three_public_slots"
+      "slot_mode": "three_public_slots",
+      "requires_natal_chart": true,
+      "requires_location": false,
+      "requires_timezone": true,
+      "requires_inline_birth_data": false,
+      "house_system_code": null,
+      "detail_level": null,
+      "max_words_target": null,
+      "max_words_hard_limit": null
     },
     {
       "service_code": "horoscope_free_daily",
       "product_level_code": "free",
       "shortlist_profile_code": "free_daily_natal",
       "time_slot_profile_code": "daily_single_slot",
-      "slot_mode": "day_overview_only"
+      "slot_mode": "day_overview_only",
+      "requires_natal_chart": true,
+      "requires_location": false,
+      "requires_timezone": true,
+      "requires_inline_birth_data": false,
+      "house_system_code": null,
+      "detail_level": null,
+      "max_words_target": null,
+      "max_words_hard_limit": null
+    },
+    {
+      "service_code": "horoscope_premium_daily_local_2h_slots",
+      "product_level_code": "premium",
+      "shortlist_profile_code": "premium_daily_local",
+      "time_slot_profile_code": "daily_2h_slots",
+      "slot_mode": "local_two_hour_slots",
+      "requires_natal_chart": true,
+      "requires_location": true,
+      "requires_timezone": true,
+      "requires_inline_birth_data": false,
+      "house_system_code": "placidus",
+      "detail_level": "premium_rich",
+      "max_words_target": 2500,
+      "max_words_hard_limit": 3200
     }
   ]
 }

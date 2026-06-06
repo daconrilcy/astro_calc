@@ -354,6 +354,45 @@
         "audience_level": "beginner"
       },
       "sort_order": 210
+    },
+    {
+      "service_code": "horoscope_premium_daily_local_2h_slots",
+      "profile_code": "natal_premium",
+      "product_code": "horoscope",
+      "label_fr": "Horoscope premium quotidien local",
+      "description_fr": "Horoscope quotidien premium personnalise sur theme natal, localisation de reference et 12 creneaux locaux de 2 heures.",
+      "orchestration_mode": "horoscope_premium_daily_local",
+      "calculation_mode": "none",
+      "service_request_contract": "integration_job_request_v1",
+      "payload_contract": "horoscope_premium_daily_local_request_v1",
+      "service_response_contract": "integration_job_status_v1",
+      "calculation_output_contract": "horoscope_calculation_response_v1",
+      "reading_output_contract": "horoscope_response_v1",
+      "sync_endpoint": null,
+      "async_endpoint": "POST /v1/jobs",
+      "supports_async": true,
+      "supports_sync_legacy": false,
+      "supports_mercure": false,
+      "availability": "beta",
+      "example_request_json": {
+        "service_code": "horoscope_premium_daily_local_2h_slots",
+        "payload": {
+          "date": "2026-06-06",
+          "timezone": "Europe/Paris",
+          "target_language": "fr",
+          "chart_calculation_id": "123",
+          "location": {
+            "latitude": 48.8566,
+            "longitude": 2.3522,
+            "label": "Paris"
+          },
+          "audience_level": "general",
+          "detail_level": "premium_rich"
+        },
+        "user_language": "fr",
+        "audience_level": "beginner"
+      },
+      "sort_order": 220
     }
   ]
 }

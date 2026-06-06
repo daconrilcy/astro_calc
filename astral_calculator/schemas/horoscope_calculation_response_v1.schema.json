@@ -37,12 +37,47 @@
           "slots": { "minItems": 1, "maxItems": 1 }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "service_code": { "const": "horoscope_premium_daily_local_2h_slots" }
+        },
+        "required": ["service_code"]
+      },
+      "then": {
+        "properties": {
+          "slots": {
+            "minItems": 12,
+            "maxItems": 12,
+            "items": {
+              "required": [
+                "slot_code",
+                "reference_local_time",
+                "reference_datetime_utc",
+                "sky_snapshot",
+                "moon_context",
+                "transits_to_natal",
+                "current_sky_aspects",
+                "natal_house_activations",
+                "local_chart",
+                "local_house_placements",
+                "angle_activations"
+              ]
+            }
+          }
+        }
+      }
     }
   ],
   "properties": {
     "contract_version": { "const": "horoscope_calculation_response_v1" },
     "service_code": {
-      "enum": ["horoscope_basic_daily_natal_3_slots", "horoscope_free_daily"]
+      "enum": [
+        "horoscope_basic_daily_natal_3_slots",
+        "horoscope_free_daily",
+        "horoscope_premium_daily_local_2h_slots"
+      ]
     },
     "period": {
       "type": "object",
@@ -71,11 +106,16 @@
         "properties": {
           "slot_code": { "type": "string" },
           "reference_local_time": { "type": "string" },
+          "reference_datetime_utc": { "type": "string" },
           "sky_snapshot": { "type": "object" },
           "moon_context": { "type": "object" },
           "transits_to_natal": { "type": "array" },
           "current_sky_aspects": { "type": "array" },
-          "natal_house_activations": { "type": "array" }
+          "natal_house_activations": { "type": "array" },
+          "local_chart": { "type": "object" },
+          "local_house_placements": { "type": "array" },
+          "angle_activations": { "type": "array" },
+          "calculation_warnings": { "type": "array" }
         }
       }
     },

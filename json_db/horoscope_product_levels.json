@@ -5,6 +5,8 @@
     "label": "string"
   },
   "data": [
-    { "product_level_code": "basic", "label": "Basic" }
+    { "product_level_code": "free", "label": "Free" },
+    { "product_level_code": "basic", "label": "Basic" },
+    { "product_level_code": "premium", "label": "Premium" }
   ]
 }

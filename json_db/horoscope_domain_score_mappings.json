@@ -1,0 +1,42 @@
+{
+  "name": "horoscope_domain_score_mappings",
+  "structure": {
+    "service_code": "string",
+    "domain_code": "string",
+    "domain_title": "string",
+    "sort_order": "integer",
+    "unique_key": ["service_code", "domain_code"]
+  },
+  "data": [
+    {
+      "service_code": "horoscope_premium_daily_local_2h_slots",
+      "domain_code": "work",
+      "domain_title": "Travail et organisation",
+      "sort_order": 10
+    },
+    {
+      "service_code": "horoscope_premium_daily_local_2h_slots",
+      "domain_code": "relationships",
+      "domain_title": "Relations et échanges",
+      "sort_order": 20
+    },
+    {
+      "service_code": "horoscope_premium_daily_local_2h_slots",
+      "domain_code": "energy",
+      "domain_title": "Énergie et rythme",
+      "sort_order": 30
+    },
+    {
+      "service_code": "horoscope_premium_daily_local_2h_slots",
+      "domain_code": "emotional_balance",
+      "domain_title": "Équilibre émotionnel",
+      "sort_order": 40
+    },
+    {
+      "service_code": "horoscope_premium_daily_local_2h_slots",
+      "domain_code": "decisions",
+      "domain_title": "Décisions",
+      "sort_order": 50
+    }
+  ]
+}

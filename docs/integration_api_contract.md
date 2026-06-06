@@ -415,3 +415,62 @@ Erreurs possibles : `HOROSCOPE_PAYLOAD_INVALID`,
 `HOROSCOPE_EVIDENCE_MISMATCH`, `HOROSCOPE_RESPONSE_INVALID`,
 `HOROSCOPE_PUBLIC_SLOT_CODE_LEAK`, `HOROSCOPE_FRENCH_TYPOGRAPHY_FAILED`,
 `SERVICE_NOT_IMPLEMENTED`, `IDEMPOTENCY_CONFLICT`.
+
+### Service `horoscope_premium_daily_local_2h_slots`
+
+- `availability` : `beta`
+- `payload_contract` : `horoscope_premium_daily_local_request_v1`
+- `calculation_output_contract` : `horoscope_calculation_response_v1`
+- `reading_output_contract` : `horoscope_response_v1`
+- Endpoint : `POST /v1/jobs`
+
+Premium V1 est un horoscope quotidien local personnalise en 12 creneaux publics
+de 2 heures. Il requiert un theme natal existant, une timezone IANA et une
+localisation de reference. La localisation sert au calcul du ciel local,
+Ascendant, MC et maisons locales.
+
+Payload minimal :
+
+```json
+{
+  "service_code": "horoscope_premium_daily_local_2h_slots",
+  "payload": {
+    "date": "2026-06-06",
+    "timezone": "Europe/Paris",
+    "target_language": "fr",
+    "chart_calculation_id": "123",
+    "location": {
+      "latitude": 48.8566,
+      "longitude": 2.3522,
+      "label": "Paris"
+    },
+    "audience_level": "general",
+    "detail_level": "premium_rich"
+  },
+  "user_language": "fr",
+  "audience_level": "beginner"
+}
+```
+
+Regles publiques :
+
+- `chart_calculation_id`, `timezone`, `location.latitude` et
+  `location.longitude` sont obligatoires.
+- `birth_data` inline est refuse.
+- `location.label` est optionnel ; s'il est absent, la reponse ne doit pas
+  inventer de ville.
+- La reponse Premium contient exactement `timeline[12]`, ordonnee selon le
+  profil horaire, avec labels publics horaires.
+- `best_slots` et `watch_slots` sont non vides, evidences et sans
+  chevauchement.
+- Les textes publics ne doivent jamais exposer de `slot_code` technique.
+
+Erreurs possibles :
+
+`HOROSCOPE_NATAL_CHART_REQUIRED`, `HOROSCOPE_LOCATION_REQUIRED`,
+`HOROSCOPE_TIMEZONE_REQUIRED`, `HOROSCOPE_PAYLOAD_INVALID`,
+`HOROSCOPE_PREMIUM_LOCAL_CHART_MISSING`,
+`HOROSCOPE_PREMIUM_TIMELINE_MISSING`,
+`HOROSCOPE_PREMIUM_SLOT_EVIDENCE_MISSING`,
+`HOROSCOPE_PREMIUM_CONTRADICTORY_SLOT_CLASSIFICATION`,
+`HOROSCOPE_PUBLIC_SLOT_CODE_LEAK`, `HOROSCOPE_EVIDENCE_MISMATCH`.

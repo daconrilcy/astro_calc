@@ -36,12 +36,31 @@
           "slots": { "minItems": 1, "maxItems": 1 }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "service_code": { "const": "horoscope_premium_daily_local_2h_slots" }
+        },
+        "required": ["service_code"]
+      },
+      "then": {
+        "required": ["location", "slot_profile_code", "calculation_features"],
+        "properties": {
+          "slots": { "minItems": 12, "maxItems": 12 },
+          "slot_profile_code": { "const": "daily_2h_slots" }
+        }
+      }
     }
   ],
   "properties": {
     "contract_version": { "const": "horoscope_calculation_request_v1" },
     "service_code": {
-      "enum": ["horoscope_basic_daily_natal_3_slots", "horoscope_free_daily"]
+      "enum": [
+        "horoscope_basic_daily_natal_3_slots",
+        "horoscope_free_daily",
+        "horoscope_premium_daily_local_2h_slots"
+      ]
     },
     "chart_calculation_id": { "type": "string", "minLength": 1 },
     "period": {
@@ -53,10 +72,26 @@
         "timezone": { "type": "string", "minLength": 1 }
       }
     },
+    "location": {
+      "type": "object",
+      "required": ["latitude", "longitude"],
+      "additionalProperties": false,
+      "properties": {
+        "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
+        "longitude": { "type": "number", "minimum": -180, "maximum": 180 },
+        "label": { "type": "string" }
+      }
+    },
+    "slot_profile_code": { "type": "string" },
+    "house_system_code": { "type": "string" },
+    "calculation_features": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
     "slots": {
       "type": "array",
       "minItems": 1,
-      "maxItems": 3,
+      "maxItems": 12,
       "items": {
         "type": "object",
         "required": [

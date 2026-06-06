@@ -62,6 +62,11 @@ impl IntegrationJobValidator {
                 contracts_llm_dir(),
                 "horoscope_daily_natal_request_v1.schema.json",
             ),
+            (
+                "horoscope_premium_daily_local_request_v1",
+                contracts_llm_dir(),
+                "horoscope_premium_daily_local_request_v1.schema.json",
+            ),
         ] {
             let schema = load_schema(filename, dir);
             if let Ok(validator) = JSONSchema::compile(&schema) {

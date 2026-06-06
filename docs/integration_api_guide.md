@@ -117,6 +117,39 @@ Respecter `poll_after_ms`. Statut terminal `completed` inclut `result` (envelopp
 | `natal_basic` | birth → moteur complet → lecture basic | **active** (Phase 3) |
 | `natal_*_from_payload` | payload pré-calculé | planned |
 | `natal_light`, `natal_premium`, `natal_premium_plus` | full natal | planned (activation progressive) |
+| `horoscope_premium_daily_local_2h_slots` | horoscope quotidien local 12 créneaux | **beta** |
+
+### Horoscope Premium quotidien local
+
+Le service Premium utilise `POST /v1/jobs`, comme Free et Basic. Il requiert un
+theme natal deja calcule via `chart_calculation_id`, une timezone IANA et une
+localisation de reference. La timezone decoupe les 12 creneaux locaux ; la
+localisation sert au calcul du ciel local, de l'Ascendant, du MC et des maisons
+locales.
+
+```json
+{
+  "service_code": "horoscope_premium_daily_local_2h_slots",
+  "payload": {
+    "date": "2026-06-06",
+    "timezone": "Europe/Paris",
+    "target_language": "fr",
+    "chart_calculation_id": "123",
+    "location": {
+      "latitude": 48.8566,
+      "longitude": 2.3522,
+      "label": "Paris"
+    },
+    "detail_level": "premium_rich"
+  },
+  "user_language": "fr",
+  "audience_level": "beginner"
+}
+```
+
+Si `location.label` est absent, la reponse ne doit pas inventer de ville. La
+sortie Premium contient exactement 12 entrees de timeline, ordonnees selon le
+profil horaire public.
 
 ## Mercure (optionnel)
 

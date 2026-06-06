@@ -51,6 +51,126 @@
       "slot_label": "Aujourd’hui",
       "is_public": false,
       "sort_order": 1
+    },
+    {
+      "service_code": "horoscope_premium_daily_local_2h_slots",
+      "slot_code": "slot_00_02",
+      "start_local_time": "00:00",
+      "end_local_time": "02:00",
+      "reference_local_time": "01:00",
+      "slot_label": "00:00–02:00",
+      "is_public": true,
+      "sort_order": 1
+    },
+    {
+      "service_code": "horoscope_premium_daily_local_2h_slots",
+      "slot_code": "slot_02_04",
+      "start_local_time": "02:00",
+      "end_local_time": "04:00",
+      "reference_local_time": "03:00",
+      "slot_label": "02:00–04:00",
+      "is_public": true,
+      "sort_order": 2
+    },
+    {
+      "service_code": "horoscope_premium_daily_local_2h_slots",
+      "slot_code": "slot_04_06",
+      "start_local_time": "04:00",
+      "end_local_time": "06:00",
+      "reference_local_time": "05:00",
+      "slot_label": "04:00–06:00",
+      "is_public": true,
+      "sort_order": 3
+    },
+    {
+      "service_code": "horoscope_premium_daily_local_2h_slots",
+      "slot_code": "slot_06_08",
+      "start_local_time": "06:00",
+      "end_local_time": "08:00",
+      "reference_local_time": "07:00",
+      "slot_label": "06:00–08:00",
+      "is_public": true,
+      "sort_order": 4
+    },
+    {
+      "service_code": "horoscope_premium_daily_local_2h_slots",
+      "slot_code": "slot_08_10",
+      "start_local_time": "08:00",
+      "end_local_time": "10:00",
+      "reference_local_time": "09:00",
+      "slot_label": "08:00–10:00",
+      "is_public": true,
+      "sort_order": 5
+    },
+    {
+      "service_code": "horoscope_premium_daily_local_2h_slots",
+      "slot_code": "slot_10_12",
+      "start_local_time": "10:00",
+      "end_local_time": "12:00",
+      "reference_local_time": "11:00",
+      "slot_label": "10:00–12:00",
+      "is_public": true,
+      "sort_order": 6
+    },
+    {
+      "service_code": "horoscope_premium_daily_local_2h_slots",
+      "slot_code": "slot_12_14",
+      "start_local_time": "12:00",
+      "end_local_time": "14:00",
+      "reference_local_time": "13:00",
+      "slot_label": "12:00–14:00",
+      "is_public": true,
+      "sort_order": 7
+    },
+    {
+      "service_code": "horoscope_premium_daily_local_2h_slots",
+      "slot_code": "slot_14_16",
+      "start_local_time": "14:00",
+      "end_local_time": "16:00",
+      "reference_local_time": "15:00",
+      "slot_label": "14:00–16:00",
+      "is_public": true,
+      "sort_order": 8
+    },
+    {
+      "service_code": "horoscope_premium_daily_local_2h_slots",
+      "slot_code": "slot_16_18",
+      "start_local_time": "16:00",
+      "end_local_time": "18:00",
+      "reference_local_time": "17:00",
+      "slot_label": "16:00–18:00",
+      "is_public": true,
+      "sort_order": 9
+    },
+    {
+      "service_code": "horoscope_premium_daily_local_2h_slots",
+      "slot_code": "slot_18_20",
+      "start_local_time": "18:00",
+      "end_local_time": "20:00",
+      "reference_local_time": "19:00",
+      "slot_label": "18:00–20:00",
+      "is_public": true,
+      "sort_order": 10
+    },
+    {
+      "service_code": "horoscope_premium_daily_local_2h_slots",
+      "slot_code": "slot_20_22",
+      "start_local_time": "20:00",
+      "end_local_time": "22:00",
+      "reference_local_time": "21:00",
+      "slot_label": "20:00–22:00",
+      "is_public": true,
+      "sort_order": 11
+    },
+    {
+      "service_code": "horoscope_premium_daily_local_2h_slots",
+      "slot_code": "slot_22_00",
+      "start_local_time": "22:00",
+      "end_local_time": "00:00",
+      "reference_local_time": "23:00",
+      "slot_label": "22:00–00:00",
+      "is_public": true,
+      "sort_order": 12
     }
   ]
 }

@@ -3379,6 +3379,11 @@ Les services horoscope V1 (`horoscope_basic_daily_natal_3_slots` et
 pas le payload natal/basic existant et consomment un `chart_calculation_id` deja
 calcule.
 
+Le service Premium V1 `horoscope_premium_daily_local_2h_slots` est cadre dans le
+meme document. Il conserve la meme infrastructure async, ajoute une localisation
+obligatoire, 12 creneaux publics de 2 heures, `local_chart` par slot et des
+guards Premium dedies.
+
 Pour `horoscope_free_daily`, `day` est uniquement un slot technique de
 projection. Il ne constitue pas une section publique et ne doit jamais apparaitre
 dans la reponse utilisateur.
