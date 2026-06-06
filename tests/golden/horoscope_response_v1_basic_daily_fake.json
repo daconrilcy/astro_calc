@@ -1,0 +1,55 @@
+{
+  "contract_version": "horoscope_response_v1",
+  "service_code": "horoscope_basic_daily_natal_3_slots",
+  "period": {
+    "date": "2026-06-06",
+    "timezone": "Europe/Paris"
+  },
+  "summary": {
+    "title": "Une journee a ajuster avec precision",
+    "text": "La journee met l'accent sur les rythmes ordinaires, les reactions emotionnelles et la qualite du dialogue. Les preuves astrologiques retenues decrivent une progression simple : prendre soin du cadre le matin, poser des limites l'apres-midi, puis retrouver une parole plus souple le soir."
+  },
+  "slots": [
+    {
+      "slot_code": "morning",
+      "title": "Matin",
+      "text": "Le matin, les signaux du jour invitent a rester concret et nuance. La priorite est de relier l'elan du moment a ce qui peut etre ajuste sans precipitation.",
+      "advice": "Priorisez une action utile et mesurable.",
+      "evidence_keys": ["slot:morning:moon:natal_house:6"]
+    },
+    {
+      "slot_code": "afternoon",
+      "title": "Apres-midi",
+      "text": "L'apres-midi, les signaux du jour invitent a rester concret et nuance. La priorite est de relier l'elan du moment a ce qui peut etre ajuste sans precipitation.",
+      "advice": "Repondez lentement si une tension monte.",
+      "evidence_keys": ["slot:afternoon:mars:square:natal_moon"]
+    },
+    {
+      "slot_code": "evening",
+      "title": "Soir",
+      "text": "Le soir, les signaux du jour invitent a rester concret et nuance. La priorite est de relier l'elan du moment a ce qui peut etre ajuste sans precipitation.",
+      "advice": "Rouvrez le dialogue sur un point concret.",
+      "evidence_keys": ["slot:evening:venus:trine:natal_mercury"]
+    }
+  ],
+  "watch_points": ["Reactivite emotionnelle en milieu de journee"],
+  "opportunities": ["Conversation plus fluide en fin de journee"],
+  "evidence_summary": [
+    {
+      "evidence_key": "slot:afternoon:mars:square:natal_moon",
+      "theme_code": "emotional_boundaries"
+    },
+    {
+      "evidence_key": "slot:morning:moon:natal_house:6",
+      "theme_code": "daily_care"
+    },
+    {
+      "evidence_key": "slot:evening:venus:trine:natal_mercury",
+      "theme_code": "supportive_dialogue"
+    }
+  ],
+  "quality": {
+    "provider": "fake",
+    "evidence_guard": "passed"
+  }
+}

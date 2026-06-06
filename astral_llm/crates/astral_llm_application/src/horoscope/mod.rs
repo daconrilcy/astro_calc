@@ -1,9 +1,11 @@
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
+use std::sync::OnceLock;
 
 use astral_llm_domain::{GenerationError, GenerationErrorCode};
 use chrono::NaiveDate;
 use chrono_tz::Tz;
+use jsonschema::JSONSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -31,8 +33,13 @@ const SUPPORTED_OBJECTS_JSON: &str =
     include_str!("../../../../../json_db/horoscope_supported_objects.json");
 const SUPPORTED_ASPECTS_JSON: &str =
     include_str!("../../../../../json_db/horoscope_supported_aspects.json");
+const INTERPRETATION_REQUEST_SCHEMA_JSON: &str =
+    include_str!("../../../../../contracts/llm/horoscope_interpretation_request_v1.schema.json");
+const RESPONSE_SCHEMA_JSON: &str =
+    include_str!("../../../../../contracts/llm/horoscope_response_v1.schema.json");
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct HoroscopePublicRequest {
     pub date: String,
     pub timezone: String,
@@ -96,6 +103,7 @@ impl HoroscopeBasicDailyNatalOrchestrator {
         let signals = score_calculation(&calculation)?;
         let interpretation = build_interpretation_request(&public, &calculation, &signals)?;
         let response = fake_llm_response(&interpretation)?;
+        validate_horoscope_response_schema(&response)?;
         validate_response_evidence(&interpretation, &response)?;
 
         Ok(json!({
@@ -226,7 +234,7 @@ pub fn build_interpretation_request(
         .into_iter()
         .take(shortlist.max_dominant_themes)
         .collect::<Vec<_>>();
-    Ok(json!({
+    let request = json!({
         "contract_version": "horoscope_interpretation_request_v1",
         "service_code": HOROSCOPE_SERVICE_CODE,
         "period": calculation.get("period").cloned().unwrap_or_else(|| json!({
@@ -237,15 +245,17 @@ pub fn build_interpretation_request(
         "main_signals": main_signals,
         "dominant_themes": dominant_themes,
         "evidence": evidence
-    }))
+    });
+    validate_interpretation_request_schema(&request)?;
+    Ok(request)
 }
 
 pub fn validate_response_evidence(
     request: &Value,
     response: &Value,
 ) -> Result<(), GenerationError> {
-    if response.get("contract_version").and_then(|v| v.as_str())
-        != Some("horoscope_response_v1")
+    validate_horoscope_response_schema(response)?;
+    if response.get("contract_version").and_then(|v| v.as_str()) != Some("horoscope_response_v1")
         || response.get("service_code").and_then(|v| v.as_str()) != Some(HOROSCOPE_SERVICE_CODE)
     {
         return Err(horoscope_error("HOROSCOPE_RESPONSE_INVALID"));
@@ -744,6 +754,47 @@ fn rows(raw: &str) -> Result<Vec<Value>, GenerationError> {
         .and_then(|v| v.as_array())
         .cloned()
         .unwrap_or_default())
+}
+
+fn validate_interpretation_request_schema(value: &Value) -> Result<(), GenerationError> {
+    validate_schema(
+        interpretation_request_schema,
+        "HOROSCOPE_RESPONSE_INVALID",
+        value,
+    )
+}
+
+fn validate_horoscope_response_schema(value: &Value) -> Result<(), GenerationError> {
+    validate_schema(response_schema, "HOROSCOPE_RESPONSE_INVALID", value)
+}
+
+fn validate_schema(
+    schema: fn() -> &'static JSONSchema,
+    code: &str,
+    value: &Value,
+) -> Result<(), GenerationError> {
+    schema().validate(value).map_err(|errors| {
+        GenerationError::with_details(
+            GenerationErrorCode::SchemaValidationFailed,
+            code,
+            json!({ "errors": errors.map(|err| err.to_string()).collect::<Vec<_>>() }),
+        )
+    })
+}
+
+fn interpretation_request_schema() -> &'static JSONSchema {
+    static SCHEMA: OnceLock<JSONSchema> = OnceLock::new();
+    SCHEMA.get_or_init(|| compile_schema(INTERPRETATION_REQUEST_SCHEMA_JSON))
+}
+
+fn response_schema() -> &'static JSONSchema {
+    static SCHEMA: OnceLock<JSONSchema> = OnceLock::new();
+    SCHEMA.get_or_init(|| compile_schema(RESPONSE_SCHEMA_JSON))
+}
+
+fn compile_schema(raw: &str) -> JSONSchema {
+    let schema: Value = serde_json::from_str(raw).expect("horoscope schema json is valid");
+    JSONSchema::compile(&schema).expect("horoscope schema compiles")
 }
 
 fn collect_evidence_keys(value: &Value, out: &mut Vec<String>) {

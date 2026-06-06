@@ -48,6 +48,48 @@ fn calculation() -> serde_json::Value {
     .unwrap()
 }
 
+fn valid_response_with_slot_keys(slot_keys: [serde_json::Value; 3]) -> serde_json::Value {
+    serde_json::json!({
+        "contract_version": "horoscope_response_v1",
+        "service_code": HOROSCOPE_SERVICE_CODE,
+        "period": {
+            "date": "2026-06-06",
+            "timezone": "Europe/Paris"
+        },
+        "summary": {
+            "title": "Une journee a ajuster avec precision",
+            "text": "La journee met l'accent sur les rythmes ordinaires, les reactions emotionnelles et la qualite du dialogue."
+        },
+        "slots": [
+            {
+                "slot_code": "morning",
+                "title": "Matin",
+                "text": "Le matin invite a poser une action utile.",
+                "advice": "Priorisez une action mesurable.",
+                "evidence_keys": slot_keys[0]
+            },
+            {
+                "slot_code": "afternoon",
+                "title": "Apres-midi",
+                "text": "L'apres-midi demande de ralentir les reactions.",
+                "advice": "Repondez lentement si une tension monte.",
+                "evidence_keys": slot_keys[1]
+            },
+            {
+                "slot_code": "evening",
+                "title": "Soir",
+                "text": "Le soir aide a rouvrir une parole plus simple.",
+                "advice": "Rouvrez le dialogue sur un point concret.",
+                "evidence_keys": slot_keys[2]
+            }
+        ],
+        "watch_points": [],
+        "opportunities": [],
+        "evidence_summary": [],
+        "quality": {}
+    })
+}
+
 #[test]
 fn horoscope_payload_schema_accepts_v1_request() {
     let validator = IntegrationJobValidator::new();
@@ -81,6 +123,20 @@ fn horoscope_payload_requires_chart_calculation_id() {
     assert_eq!(
         err.detail().code,
         astral_llm_domain::GenerationErrorCode::SchemaValidationFailed
+    );
+}
+
+#[test]
+fn horoscope_payload_rejects_inline_birth_data() {
+    let mut payload = public_payload();
+    payload["birth_data"] = serde_json::json!({
+        "date": "1990-06-15",
+        "time": "14:30"
+    });
+    let err = validate_public_request(&payload).unwrap_err();
+    assert_eq!(
+        err.detail().code,
+        astral_llm_domain::GenerationErrorCode::InvalidInput
     );
 }
 
@@ -123,19 +179,39 @@ fn horoscope_interpretation_request_is_shortlisted_not_raw_dump() {
 }
 
 #[test]
+fn horoscope_interpretation_request_matches_golden() {
+    let public = validate_public_request(&public_payload()).unwrap();
+    let signals = score_calculation(&calculation()).unwrap();
+    let request = build_interpretation_request(&public, &calculation(), &signals).unwrap();
+    let golden: serde_json::Value = serde_json::from_str(include_str!(
+        "golden/horoscope_interpretation_request_v1_basic_daily_paris_1990.json"
+    ))
+    .unwrap();
+    assert_eq!(request, golden);
+}
+
+#[test]
+fn horoscope_response_golden_passes_schema_and_evidence_guard() {
+    let public = validate_public_request(&public_payload()).unwrap();
+    let signals = score_calculation(&calculation()).unwrap();
+    let request = build_interpretation_request(&public, &calculation(), &signals).unwrap();
+    let response: serde_json::Value = serde_json::from_str(include_str!(
+        "golden/horoscope_response_v1_basic_daily_fake.json"
+    ))
+    .unwrap();
+    validate_response_evidence(&request, &response).unwrap();
+}
+
+#[test]
 fn horoscope_evidence_guard_rejects_invented_key() {
     let public = validate_public_request(&public_payload()).unwrap();
     let signals = score_calculation(&calculation()).unwrap();
     let request = build_interpretation_request(&public, &calculation(), &signals).unwrap();
-    let response = serde_json::json!({
-        "contract_version": "horoscope_response_v1",
-        "service_code": HOROSCOPE_SERVICE_CODE,
-        "slots": [
-            { "evidence_keys": ["slot:morning:moon:natal_house:6"] },
-            { "evidence_keys": ["invented:key"] },
-            { "evidence_keys": ["slot:evening:venus:trine:natal_mercury"] }
-        ]
-    });
+    let response = valid_response_with_slot_keys([
+        serde_json::json!(["slot:morning:moon:natal_house:6"]),
+        serde_json::json!(["invented:key"]),
+        serde_json::json!(["slot:evening:venus:trine:natal_mercury"]),
+    ]);
     let err = validate_response_evidence(&request, &response).unwrap_err();
     assert_eq!(
         err.detail().code,
@@ -148,19 +224,15 @@ fn horoscope_evidence_guard_rejects_slot_without_evidence() {
     let public = validate_public_request(&public_payload()).unwrap();
     let signals = score_calculation(&calculation()).unwrap();
     let request = build_interpretation_request(&public, &calculation(), &signals).unwrap();
-    let response = serde_json::json!({
-        "contract_version": "horoscope_response_v1",
-        "service_code": HOROSCOPE_SERVICE_CODE,
-        "slots": [
-            { "evidence_keys": ["slot:morning:moon:natal_house:6"] },
-            { "evidence_keys": [] },
-            { "evidence_keys": ["slot:evening:venus:trine:natal_mercury"] }
-        ]
-    });
+    let response = valid_response_with_slot_keys([
+        serde_json::json!(["slot:morning:moon:natal_house:6"]),
+        serde_json::json!([]),
+        serde_json::json!(["slot:evening:venus:trine:natal_mercury"]),
+    ]);
     let err = validate_response_evidence(&request, &response).unwrap_err();
     assert_eq!(
         err.detail().code,
-        astral_llm_domain::GenerationErrorCode::PostSafetyValidationFailed
+        astral_llm_domain::GenerationErrorCode::SchemaValidationFailed
     );
 }
 
@@ -169,19 +241,36 @@ fn horoscope_evidence_guard_rejects_non_string_key() {
     let public = validate_public_request(&public_payload()).unwrap();
     let signals = score_calculation(&calculation()).unwrap();
     let request = build_interpretation_request(&public, &calculation(), &signals).unwrap();
+    let response = valid_response_with_slot_keys([
+        serde_json::json!(["slot:morning:moon:natal_house:6"]),
+        serde_json::json!([123]),
+        serde_json::json!(["slot:evening:venus:trine:natal_mercury"]),
+    ]);
+    let err = validate_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().code,
+        astral_llm_domain::GenerationErrorCode::SchemaValidationFailed
+    );
+}
+
+#[test]
+fn horoscope_evidence_guard_rejects_malformed_response_even_with_valid_keys() {
+    let public = validate_public_request(&public_payload()).unwrap();
+    let signals = score_calculation(&calculation()).unwrap();
+    let request = build_interpretation_request(&public, &calculation(), &signals).unwrap();
     let response = serde_json::json!({
         "contract_version": "horoscope_response_v1",
         "service_code": HOROSCOPE_SERVICE_CODE,
         "slots": [
             { "evidence_keys": ["slot:morning:moon:natal_house:6"] },
-            { "evidence_keys": [123] },
+            { "evidence_keys": ["slot:afternoon:mars:square:natal_moon"] },
             { "evidence_keys": ["slot:evening:venus:trine:natal_mercury"] }
         ]
     });
     let err = validate_response_evidence(&request, &response).unwrap_err();
     assert_eq!(
         err.detail().code,
-        astral_llm_domain::GenerationErrorCode::PostSafetyValidationFailed
+        astral_llm_domain::GenerationErrorCode::SchemaValidationFailed
     );
 }
 

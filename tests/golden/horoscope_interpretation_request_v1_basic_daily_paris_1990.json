@@ -1,0 +1,195 @@
+{
+  "contract_version": "horoscope_interpretation_request_v1",
+  "service_code": "horoscope_basic_daily_natal_3_slots",
+  "period": {
+    "date": "2026-06-06",
+    "timezone": "Europe/Paris"
+  },
+  "target_language": "fr",
+  "main_signals": [
+    {
+      "evidence_key": "slot:afternoon:mars:square:natal_moon",
+      "fact_type": "transit_to_natal",
+      "slot_id": "afternoon",
+      "source": "fake_calculator_v1",
+      "transiting_object": "mars",
+      "natal_target": "natal_moon",
+      "aspect": "square",
+      "orb_deg": 2.2,
+      "natal_house": null,
+      "theme_code": "emotional_boundaries",
+      "priority_score": 2.06,
+      "intensity": "high",
+      "tone": "tense",
+      "duration_class": "daily_slot",
+      "confidence_score": 0.86,
+      "human_label": "Preuve astrologique retenue pour l'horoscope quotidien",
+      "score_breakdown": {
+        "aspect_weight": 1.2,
+        "exactness_bonus": 0.0,
+        "house_weight": 1.0,
+        "natal_target_weight": 1.3,
+        "orb_weight": 1.1,
+        "theme_repetition_bonus": 0.0,
+        "transiting_object_weight": 1.2,
+        "weak_signal_penalty": 0.0
+      }
+    },
+    {
+      "evidence_key": "slot:morning:moon:natal_house:6",
+      "fact_type": "moon_natal_house_activation",
+      "slot_id": "morning",
+      "source": "fake_calculator_v1",
+      "transiting_object": "moon",
+      "natal_target": "natal_house_6",
+      "aspect": null,
+      "orb_deg": 0.8,
+      "natal_house": 6,
+      "theme_code": "daily_care",
+      "priority_score": 1.97,
+      "intensity": "high",
+      "tone": "mixed",
+      "duration_class": "daily_slot",
+      "confidence_score": 0.86,
+      "human_label": "Preuve astrologique retenue pour l'horoscope quotidien",
+      "score_breakdown": {
+        "aspect_weight": 1.0,
+        "exactness_bonus": 0.15,
+        "house_weight": 1.0,
+        "natal_target_weight": 1.0,
+        "orb_weight": 1.3,
+        "theme_repetition_bonus": 0.0,
+        "transiting_object_weight": 1.4,
+        "weak_signal_penalty": 0.0
+      }
+    },
+    {
+      "evidence_key": "slot:evening:venus:trine:natal_mercury",
+      "fact_type": "transit_to_natal",
+      "slot_id": "evening",
+      "source": "fake_calculator_v1",
+      "transiting_object": "venus",
+      "natal_target": "natal_mercury",
+      "aspect": "trine",
+      "orb_deg": 1.4,
+      "natal_house": null,
+      "theme_code": "supportive_dialogue",
+      "priority_score": 1.33,
+      "intensity": "medium",
+      "tone": "fluid",
+      "duration_class": "daily_slot",
+      "confidence_score": 0.86,
+      "human_label": "Preuve astrologique retenue pour l'horoscope quotidien",
+      "score_breakdown": {
+        "aspect_weight": 1.0,
+        "exactness_bonus": 0.0,
+        "house_weight": 1.0,
+        "natal_target_weight": 1.1,
+        "orb_weight": 1.1,
+        "theme_repetition_bonus": 0.0,
+        "transiting_object_weight": 1.1,
+        "weak_signal_penalty": 0.0
+      }
+    }
+  ],
+  "dominant_themes": [
+    {
+      "score": 2.06,
+      "theme_code": "emotional_boundaries"
+    },
+    {
+      "score": 1.97,
+      "theme_code": "daily_care"
+    },
+    {
+      "score": 1.33,
+      "theme_code": "supportive_dialogue"
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_key": "slot:afternoon:mars:square:natal_moon",
+      "fact_type": "transit_to_natal",
+      "slot_id": "afternoon",
+      "source": "fake_calculator_v1",
+      "transiting_object": "mars",
+      "natal_target": "natal_moon",
+      "aspect": "square",
+      "orb_deg": 2.2,
+      "natal_house": null,
+      "theme_code": "emotional_boundaries",
+      "priority_score": 2.06,
+      "intensity": "high",
+      "tone": "tense",
+      "duration_class": "daily_slot",
+      "confidence_score": 0.86,
+      "human_label": "Preuve astrologique retenue pour l'horoscope quotidien",
+      "score_breakdown": {
+        "aspect_weight": 1.2,
+        "exactness_bonus": 0.0,
+        "house_weight": 1.0,
+        "natal_target_weight": 1.3,
+        "orb_weight": 1.1,
+        "theme_repetition_bonus": 0.0,
+        "transiting_object_weight": 1.2,
+        "weak_signal_penalty": 0.0
+      }
+    },
+    {
+      "evidence_key": "slot:morning:moon:natal_house:6",
+      "fact_type": "moon_natal_house_activation",
+      "slot_id": "morning",
+      "source": "fake_calculator_v1",
+      "transiting_object": "moon",
+      "natal_target": "natal_house_6",
+      "aspect": null,
+      "orb_deg": 0.8,
+      "natal_house": 6,
+      "theme_code": "daily_care",
+      "priority_score": 1.97,
+      "intensity": "high",
+      "tone": "mixed",
+      "duration_class": "daily_slot",
+      "confidence_score": 0.86,
+      "human_label": "Preuve astrologique retenue pour l'horoscope quotidien",
+      "score_breakdown": {
+        "aspect_weight": 1.0,
+        "exactness_bonus": 0.15,
+        "house_weight": 1.0,
+        "natal_target_weight": 1.0,
+        "orb_weight": 1.3,
+        "theme_repetition_bonus": 0.0,
+        "transiting_object_weight": 1.4,
+        "weak_signal_penalty": 0.0
+      }
+    },
+    {
+      "evidence_key": "slot:evening:venus:trine:natal_mercury",
+      "fact_type": "transit_to_natal",
+      "slot_id": "evening",
+      "source": "fake_calculator_v1",
+      "transiting_object": "venus",
+      "natal_target": "natal_mercury",
+      "aspect": "trine",
+      "orb_deg": 1.4,
+      "natal_house": null,
+      "theme_code": "supportive_dialogue",
+      "priority_score": 1.33,
+      "intensity": "medium",
+      "tone": "fluid",
+      "duration_class": "daily_slot",
+      "confidence_score": 0.86,
+      "human_label": "Preuve astrologique retenue pour l'horoscope quotidien",
+      "score_breakdown": {
+        "aspect_weight": 1.0,
+        "exactness_bonus": 0.0,
+        "house_weight": 1.0,
+        "natal_target_weight": 1.1,
+        "orb_weight": 1.1,
+        "theme_repetition_bonus": 0.0,
+        "transiting_object_weight": 1.1,
+        "weak_signal_penalty": 0.0
+      }
+    }
+  ]
+}
