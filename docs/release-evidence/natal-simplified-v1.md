@@ -1,6 +1,6 @@
 # Natal simplifié — preuve de clôture (release evidence v1)
 
-**Statut : CLOSED**  
+**Statut : CLOSED WITH MONITORING**  
 **Produit :** natal simplifié moteur **v2.4** (`interpretation_profile_code` : `natal_simplified`)  
 **Date de clôture :** 2026-06-06  
 **Baseline git :** `381c8a1fcf5fe55f6e38464ea1702a6288951c2e` — `docs(natal_simplified): aligner doc sur certification E2E v2.4`
@@ -163,7 +163,8 @@ Test Rust dédié au rename : `llm_controls_block_ambiguous_and_allow_stable`, `
 
 | Référence | Statut |
 |-----------|--------|
-| [`docs/reviews/natal_simplified/INDEX.md`](../reviews/natal_simplified/INDEX.md) | REV-001…012 **closed** |
+| [`docs/reviews/natal_simplified/INDEX.md`](../reviews/natal_simplified/INDEX.md) | REV-001…016 **closed** |
+| [`docs/reviews/natal_simplified/REV-015-final-closure.md`](../reviews/natal_simplified/REV-015-final-closure.md) | Clôture finale V1 |
 | [`docs/reviews/natal_simplified/REV-GLOBAL-adversarial.md`](../reviews/natal_simplified/REV-GLOBAL-adversarial.md) | Gate OK après G-001…G-011 |
 | [`docs/reviews/natal_simplified/REV-012-doc-audit.md`](../reviews/natal_simplified/REV-012-doc-audit.md) | Doc produit alignée runtime |
 | [`docs/natal_simplified_reading_contract.md`](../natal_simplified_reading_contract.md) | Contrat produit |
@@ -189,6 +190,8 @@ Recette OpenAI (monitoring périodique) :
 ```
 
 Dernier smoke certifié : `output/natal_simplified_openai/2026-06-06T100348Z/` — **7/7**, P0=0, P1=0, ~87 s wall time.
+
+| Volet D | Logs Rust privacy run (contenu prompt/réponse) | **DEFERRED** | Audit manuel via artefacts E2E `-UseReal` ; doc Astral_llm § simplified |
 
 Exemples `run_id` (phase 2, OpenAI) :
 
@@ -222,9 +225,10 @@ Select-String -Path output\natal_simplified\calculator\complete_birth_data.json 
 | Champ | Valeur |
 |-------|--------|
 | Produit | Natal simplifié V1 (moteur v2.4) |
-| Statut | **CLOSED** |
-| Recette E2E | **24/24** (fake provider) |
-| Baseline git | `ba65f94` (+ smoke OpenAI REV-014 7/7) |
+| Statut | **CLOSED WITH MONITORING** |
+| Recette E2E | **24/24** (fake provider) ; OpenAI **7/7** (REV-014) |
+| Review finale | **REV-015** |
+| Baseline git | `931e810` (+ doc REV-015/016) |
 | Date | 2026-06-06 |
 
 Toute réouverture fonctionnelle requiert un nouveau numéro de release evidence et une mise à jour explicite de ce fichier.

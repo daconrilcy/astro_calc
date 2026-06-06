@@ -819,6 +819,16 @@ cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test s
 
 Recette E2E attendue : **12/12** calculateur, **7/7** lectures, **5/5** négatifs orchestration **400** (`test_natal_simplified_e2e.ps1`).
 
+**Monitoring qualité OpenAI** (hors gate CI fake) :
+
+```powershell
+.\scripts\test_natal_simplified_e2e.ps1 -UseReal -SubmitProfile -TimeoutSec 900
+```
+
+- Assertions : `Assert-SimplifiedStrictOpenAiQuality` (longueurs, whitelist `astro_basis`, regex anti-ASC/maisons, cas `ambiguous_core_identity`).
+- Artefacts horodatés : `output/natal_simplified_openai/{timestamp}/` (`quality_summary.json`, lectures JSON).
+- Privacy provider : `ASTRAL_LLM_ALLOW_CROSS_PROVIDER_FALLBACK=false` par défaut ; pas de journalisation Rust dédiée au contenu prompt/réponse simplified (audit manuel via artefacts E2E `-UseReal`).
+
 Golden fixtures :
 
 - `tests/golden/simplified_natal_calculation_stable_1990-06-15.json` — Soleil stable, chapitre `identity`

@@ -31,7 +31,8 @@ blocked_interpretation_fact_codes =
 excluded_feature_codes = excluded_features (calcul)
 
 profile_excluded_feature_codes =
-  ascendant, houses, sect, house_placements (choix produit natal_simplified)
+  chargées depuis astral_simplified_profile_feature_exclusions (DB, seed json_db/)
+  V1 natal_simplified : ascendant, houses, sect, house_placements (computed_scope_code null = global)
 
 allowed_limitation_mentions =
   blocked + excluded + profile_excluded + codes/affects des limitations
@@ -79,7 +80,25 @@ Ordre dans `single_pass_hardening.rs` :
 6. `SafetyGuard` (+ `reading_script_guard`)
 7. `ReadingQualityValidator` (non bloquant)
 
-Recette E2E : `test_natal_simplified_e2e.ps1` — **12/12** calculateur + **7/7** lectures + **5/5** négatifs orchestration **400** ; `-ForceFake` par défaut. OpenAI optionnel : `-UseReal`.
+Recette E2E : `test_natal_simplified_e2e.ps1` — **12/12** calculateur + **7/7** lectures + **5/5** négatifs orchestration **400** ; `-ForceFake` par défaut. OpenAI optionnel : `-UseReal -SubmitProfile -TimeoutSec 900`.
+
+### Gate qualité OpenAI (`-UseReal`)
+
+Activée par `Assert-SimplifiedStrictOpenAiQuality` dans `scripts/lib/simplified_natal_assertions.ps1` (via `test_natal_simplified_reading.ps1` quand `-UseReal` et pas `-NegativeOnly`). Échecs préfixés `strict:` dans la sortie E2E.
+
+| Sévérité | Contrôle |
+|----------|----------|
+| P0 | `astro_basis.fact_id` ∈ `allowed_astro_basis_fact_ids` ; pas de `ascendant` / `house` / `sect` dans basis |
+| P0 | Pas d'affirmation ASC ou maison numérotée (regex FR) |
+| P0 | Si `sun.sign` bloqué → chapitre `ambiguous_core_identity` avec vocabulaire d'incertitude |
+| P1 | Body chapitre 120–650 mots ; summary ≤75 mots, title ≤14 ; pas de `…` tronqué |
+| P1 | Apostrophes FR (`l impression`, `d un`, …) ; `interpretive_role` ∈ {core, supporting, nuance} |
+
+Recette certifiée REV-014 (2026-06-06) : **7/7** cas positifs, P0=0, P1=0. Artefacts : `output/natal_simplified_openai/2026-06-06T100348Z/`.
+
+```powershell
+.\scripts\test_natal_simplified_e2e.ps1 -UseReal -SubmitProfile -TimeoutSec 900
+```
 
 ## SafetyGuard vs prompt
 

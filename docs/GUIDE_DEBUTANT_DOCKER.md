@@ -418,9 +418,11 @@ Validation client : [`scripts/test_natal_premium_profile.ps1`](../scripts/test_n
 
 ```powershell
 docker compose up -d --build
-python scripts/import_json_db_to_postgres.py   # tables simplified + référentiel
+python scripts/import_json_db_to_postgres.py   # tables simplified + référentiel (incl. astral_simplified_profile_feature_exclusions)
 .\scripts\docker_bootstrap.ps1               # profils LLM dont natal_simplified
 ```
+
+> **Table exclusions profil** : `astral_simplified_profile_feature_exclusions` (seed `json_db/astral_simplified_profile_feature_exclusions.json`) alimente `llm_payload.profile_excluded_feature_codes` et `forbidden_interpretation_topics`. Si la table est vide pour `natal_simplified`, le calculateur renvoie une erreur runtime (`InvalidRuntimeTable`) — pas de fallback en constante Rust.
 
 Vérifier que les services répondent :
 
@@ -451,7 +453,7 @@ docker compose up -d --build astral_calculator_api   # après changement payload
 
 Résultat attendu : **12/12** calculateur (7 positifs + 5 négatifs **422**), **7/7** lectures positives, **5/5** négatifs orchestration **400** — phases 1, 2 et **2b** de la suite.
 
-> **Provider E2E** : la suite active **`-ForceFake`** par défaut (bascule `natal_prompter` → fake, sans OpenAI). Recette OpenAI optionnelle : `-UseReal -SubmitProfile` (facturée, peut échouer sporadiquement malgré les retries script).
+> **Provider E2E** : la suite active **`-ForceFake`** par défaut (bascule `natal_prompter` → fake, sans OpenAI). Recette OpenAI optionnelle : `-UseReal -SubmitProfile -TimeoutSec 900` (facturée ; active `Assert-SimplifiedStrictOpenAiQuality` — seuils body 120–650 mots, summary ≤75, title ≤14, whitelist `astro_basis`, cas équinoxe `ambiguous_core_identity`). Artefacts : `output/natal_simplified_openai/{timestamp}/` + `quality_summary.json`.
 
 Scripts complémentaires :
 

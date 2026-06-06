@@ -47,6 +47,8 @@ Smoke rapide : [`scripts/docker_simplified_natal_smoke.ps1`](../scripts/docker_s
 
 Suite E2E complète (**12** cas calculateur dont 5 négatifs **422** + **7** lectures positives + **5** négatifs orchestration **400**) : [`scripts/test_natal_simplified_e2e.ps1`](../scripts/test_natal_simplified_e2e.ps1).
 
+Recette OpenAI optionnelle (monitoring qualité, facturée) : `-UseReal -SubmitProfile -TimeoutSec 900` sur la même suite ; seuils `Assert-SimplifiedStrictOpenAiQuality` — voir [`docs/natal_simplified_forbidden_topics.md`](../docs/natal_simplified_forbidden_topics.md).
+
 Documentation métier : [`docs/natal_simplified_reading_contract.md`](../docs/natal_simplified_reading_contract.md), [`docs/natal_simplified_forbidden_topics.md`](../docs/natal_simplified_forbidden_topics.md).
 
 Guide débutant : [docs/GUIDE_DEBUTANT_DOCKER.md](../docs/GUIDE_DEBUTANT_DOCKER.md) §9.
