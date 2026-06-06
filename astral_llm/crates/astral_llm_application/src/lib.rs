@@ -22,6 +22,7 @@ pub mod chapter_quality_repair;
 pub mod domain_resolver;
 pub mod editorial_validation;
 pub mod domain_selector;
+pub mod french_typography;
 pub mod execution_audit;
 pub mod reading_plan;
 pub mod reading_script_guard;

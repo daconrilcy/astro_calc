@@ -64,6 +64,52 @@ pub fn count_sentences_fr(text: &str) -> usize {
     sentences
 }
 
+/// Découpe le texte en phrases (frontière après `.?!` suivis d'espaces).
+pub fn split_sentences_fr(text: &str) -> Vec<String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Vec::new();
+    }
+
+    let mut sentences = Vec::new();
+    let mut start = 0usize;
+    let mut i = 0;
+    while i < trimmed.len() {
+        let ch = match trimmed[i..].chars().next() {
+            Some(c) => c,
+            None => break,
+        };
+        if matches!(ch, '.' | '!' | '?') {
+            let mut j = i + ch.len_utf8();
+            let ws_start = j;
+            while j < trimmed.len() {
+                let next = match trimmed[j..].chars().next() {
+                    Some(c) => c,
+                    None => break,
+                };
+                if next.is_whitespace() {
+                    j += next.len_utf8();
+                } else {
+                    break;
+                }
+            }
+            if j > ws_start && j < trimmed.len() {
+                sentences.push(trimmed[start..j].trim().to_string());
+                start = j;
+                i = j;
+                continue;
+            }
+        }
+        i += ch.len_utf8();
+    }
+
+    let tail = trimmed[start..].trim();
+    if !tail.is_empty() {
+        sentences.push(tail.to_string());
+    }
+    sentences
+}
+
 pub fn validate_summary_ux(
     title: &str,
     short_text: &str,
@@ -113,6 +159,15 @@ fn summary_ux_error(violation: &str, details: serde_json::Value) -> GenerationEr
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn split_sentences_fr_handles_two_sentences() {
+        let parts = split_sentences_fr(
+            "Première phrase. Deuxième phrase plus longue, avec une virgule.",
+        );
+        assert_eq!(parts.len(), 2);
+        assert_eq!(parts[0], "Première phrase.");
+    }
 
     #[test]
     fn accepts_two_sentence_compact_summary() {

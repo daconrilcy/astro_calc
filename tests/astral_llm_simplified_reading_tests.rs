@@ -9,6 +9,10 @@ use astral_llm_application::{
     PromptCompiler, SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE, SIMPLIFIED_CHAPTER_IDENTITY,
     SIMPLIFIED_PAYLOAD_CONTRACT, SIMPLIFIED_PROFILE, SUN_SIGN_BLOCKED_CODE,
 };
+use astral_llm_application::french_typography::{french_elision_violations, restore_french_elisions};
+use astral_llm_application::simplified_reading_postprocess::{
+    build_compact_summary_from_body, normalize_simplified_interpretive_roles,
+};
 use astral_llm_application::prompt_compiler::PromptCompilationInput;
 use astral_llm_domain::{
     generation_request::AudienceLevel, PrivacyPolicy, SafetyPolicy,
@@ -207,5 +211,78 @@ fn golden_fixture_matches_simplified_payload_schema_keys() {
     assert_eq!(
         payload["payload_contract"].as_str(),
         Some(SIMPLIFIED_PAYLOAD_CONTRACT)
+    );
+}
+
+#[test]
+fn french_elision_restoration_fixes_llm_spacing_patterns() {
+    let (fixed, changed) = restore_french_elisions(
+        "l impression générale est celle d une personne qui n hésite pas. Ce n est pas figé.",
+    );
+    assert!(changed);
+    assert!(fixed.contains("l'impression"));
+    assert!(fixed.contains("d'une"));
+    assert!(fixed.contains("n'hésite"));
+    assert!(fixed.contains("n'est"));
+    assert!(french_elision_violations(&fixed).is_empty());
+}
+
+#[test]
+fn compact_summary_is_autonomous_without_ellipsis() {
+    let body = "Votre signature identitaire semble portée par un mélange vif de curiosité. \
+                Avec le Soleil en Gémeaux, l'impression générale est celle d'une personnalité mobile. \
+                Troisième phrase qui ne doit pas être incluse.";
+    let summary = build_compact_summary_from_body(body, "fr");
+    assert!(!summary.contains('…'));
+    assert!(summary.ends_with('.') || summary.ends_with('!') || summary.ends_with('?'));
+    assert!(!summary.contains("Troisième phrase"));
+}
+
+#[test]
+fn simplified_interpretive_roles_exclude_domain_score() {
+    use astral_llm_domain::generation_response::{
+        AstroBasisItem, ConfidenceLevel, NatalReadingResponse, QualityMetadata, ReadingChapter,
+        ReadingSummary,
+    };
+    use astral_llm_domain::output_contract::GenerationMode;
+
+    let mut reading = NatalReadingResponse {
+        schema_version: "natal_reading_v1".into(),
+        language: "fr".into(),
+        reading_type: "natal_prompter".into(),
+        summary: ReadingSummary {
+            title: "T".into(),
+            short_text: "S".into(),
+        },
+        chapters: vec![ReadingChapter {
+            code: SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE.into(),
+            title: "T".into(),
+            body: "B".into(),
+            astro_basis: vec![AstroBasisItem {
+                fact_id: Some("placement:saturn".into()),
+                label: None,
+                factor: "Saturne".into(),
+                interpretive_role: "domain_score".into(),
+            }],
+            confidence: ConfidenceLevel::Medium,
+            safety_flags: vec![],
+        }],
+        legal: astral_llm_domain::generation_response::LegalBlock {
+            disclaimer: String::new(),
+        },
+        quality: QualityMetadata {
+            used_provider: "fake".into(),
+            used_model: "fake".into(),
+            generation_mode: GenerationMode::SinglePass,
+            prompt_family: "natal_prompter".into(),
+            prompt_version: "v1".into(),
+            astro_contract_version: "natal_simplified_structured_v1".into(),
+            fallback_used: false,
+        },
+    };
+    assert_eq!(normalize_simplified_interpretive_roles(&mut reading), 1);
+    assert_eq!(
+        reading.chapters[0].astro_basis[0].interpretive_role,
+        "supporting"
     );
 }
