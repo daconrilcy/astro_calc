@@ -34,6 +34,24 @@ Pour `horoscope_free_daily`, `day` est uniquement un slot technique de
 projection. Il ne constitue pas une section publique et ne doit jamais apparaitre
 dans la reponse utilisateur.
 
+Status `horoscope_free_daily` V1 :
+
+- Validation completed.
+- Public response has no `slots`: PASS.
+- No public leakage of `day` / `slot:day`: PASS.
+- `advice` present: PASS.
+- `evidence_keys` present and non-empty: PASS.
+- `quality` present: PASS.
+- Basic horoscope non-regression: PASS.
+- Horoscope tests: PASS -- 45/45.
+- French typography: PASS under current rule set.
+
+Note : la normalisation de l'apostrophe typographique (`'` -> `’`) ne fait pas
+partie des regles bloquantes de typographie francaise en V1. Les controles
+actuels ciblent les elisions cassees comme `l impression` et les ponctuations
+invalides comme `Conseil:`. Ce point reste une amelioration editoriale future,
+pas un bloqueur V1.
+
 Roadmap produit indicative :
 
 - Free : daily natal synthetique, sans slots publics.

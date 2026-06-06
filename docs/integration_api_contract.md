@@ -345,6 +345,21 @@ Pour `horoscope_free_daily`, `day` est uniquement un slot technique de
 projection dans les payloads internes. Il ne constitue pas une section publique
 et ne doit jamais apparaitre dans la reponse utilisateur.
 
+Statut de validation V1 :
+
+- reponse publique sans `slots` : PASS ;
+- aucune fuite publique de `day` / `slot:day` : PASS ;
+- `advice` present : PASS ;
+- `evidence_keys` present et non vide : PASS ;
+- `quality` present : PASS ;
+- non-regression Basic : PASS ;
+- tests horoscope : PASS -- 45/45 ;
+- typographie francaise : PASS selon les regles actuelles.
+
+La normalisation de l'apostrophe typographique (`'` -> `’`) n'est pas une regle
+bloquante V1. Les controles actuels ciblent les elisions cassees (`l impression`)
+et les ponctuations invalides telles que `Conseil:`.
+
 Exemple `POST /v1/jobs` :
 
 ```json

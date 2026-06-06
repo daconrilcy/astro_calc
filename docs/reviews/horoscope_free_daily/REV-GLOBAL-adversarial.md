@@ -20,5 +20,25 @@
 
 ## Statut
 
-Implementation fake locale couverte par tests unitaires, tests contrats/catalogue/jobs et smokes HTTP Docker.
-Le catalogue expose `horoscope_free_daily` en `beta`.
+Validation completed.
+
+Checks:
+
+- Public response has no `slots`: PASS.
+- No public leakage of `day` / `slot:day`: PASS.
+- `advice` present: PASS.
+- `evidence_keys` present and non-empty: PASS.
+- `quality` present: PASS.
+- Basic horoscope non-regression: PASS.
+- Horoscope tests: PASS -- 45/45.
+- French typography: PASS under current rule set.
+
+Note:
+Typographic apostrophe normalization (`'` -> `’`) is not currently part of the
+blocking French typography rule. Current checks focus on broken elisions such as
+`l impression` and punctuation issues such as `Conseil:`. This can be tracked as
+a future editorial polish item, not a V1 blocker.
+
+Decision:
+`horoscope_free_daily` can remain in `beta` because all blocking structural,
+evidence, public-shape, non-regression and fake/real output checks pass.
