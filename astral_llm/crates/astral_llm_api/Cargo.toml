@@ -87,6 +87,11 @@ name = "integration_jobs_tests"
 path = "../../../tests/integration_jobs_tests.rs"
 harness = true
 
+[[test]]
+name = "horoscope_v1_tests"
+path = "../../../tests/horoscope_v1_tests.rs"
+harness = true
+
 [dependencies]
 astral_llm_application.workspace = true
 astral_llm_domain.workspace = true

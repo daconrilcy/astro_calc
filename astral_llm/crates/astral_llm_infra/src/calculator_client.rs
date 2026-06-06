@@ -35,6 +35,14 @@ impl CalculatorClient {
         self.post_json("/v1/calculations/natal", request).await
     }
 
+    pub async fn calculate_horoscope_daily_natal(
+        &self,
+        request: &Value,
+    ) -> Result<Value, GenerationError> {
+        self.post_json("/v1/calculations/horoscope/daily-natal", request)
+            .await
+    }
+
     async fn post_json(&self, path: &str, request: &Value) -> Result<Value, GenerationError> {
         let url = format!("{}{}", self.base_url, path);
         let mut builder = self.client.post(url).json(request);
@@ -64,7 +72,7 @@ impl CalculatorClient {
         if !status.is_success() {
             return Err(GenerationError::with_details(
                 GenerationErrorCode::InvalidInput,
-                "calculator rejected simplified natal request".to_string(),
+                "calculator rejected request".to_string(),
                 body,
             ));
         }

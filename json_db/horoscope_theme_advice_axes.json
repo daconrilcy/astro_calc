@@ -1,0 +1,12 @@
+{
+  "name": "horoscope_theme_advice_axes",
+  "structure": {
+    "theme_code": "string, primary key",
+    "advice_axis": "string"
+  },
+  "data": [
+    { "theme_code": "daily_care", "advice_axis": "routine" },
+    { "theme_code": "emotional_boundaries", "advice_axis": "boundaries" },
+    { "theme_code": "supportive_dialogue", "advice_axis": "dialogue" }
+  ]
+}

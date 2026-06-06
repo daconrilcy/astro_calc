@@ -1,0 +1,12 @@
+{
+  "name": "horoscope_transiting_object_weights",
+  "structure": {
+    "object_code": "string, primary key",
+    "weight": "number"
+  },
+  "data": [
+    { "object_code": "moon", "weight": 1.4 },
+    { "object_code": "venus", "weight": 1.1 },
+    { "object_code": "mars", "weight": 1.2 }
+  ]
+}

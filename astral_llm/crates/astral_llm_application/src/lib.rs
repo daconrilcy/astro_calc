@@ -18,6 +18,7 @@ pub mod evidence_diversity_validator;
 pub mod evidence_fact_parse;
 pub mod execution_audit;
 pub mod french_typography;
+pub mod horoscope;
 pub mod interpretation_profile_resolver;
 pub mod interpretive_evidence_builder;
 pub mod prior_chapter_usage;
@@ -113,4 +114,6 @@ pub use response_validator::ResponseValidator;
 pub use safety_guard::SafetyGuard;
 pub use safety_resolver::SafetyResolver;
 pub use schema_registry::SchemaRegistry;
-pub use unified_reading_orchestrator::{UnifiedReadingOrchestrator, UnifiedReadingResult};
+pub use unified_reading_orchestrator::{
+    UnifiedReadingOrchestrator, UnifiedReadingOutcome, UnifiedReadingResult,
+};

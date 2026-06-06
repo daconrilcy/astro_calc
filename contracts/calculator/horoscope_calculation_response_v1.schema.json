@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "horoscope_calculation_response_v1",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "service_code",
+    "period",
+    "slots",
+    "calculation_warnings",
+    "evidence_keys"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": { "const": "horoscope_calculation_response_v1" },
+    "service_code": { "const": "horoscope_basic_daily_natal_3_slots" },
+    "period": {
+      "type": "object",
+      "required": ["date", "timezone"],
+      "additionalProperties": false,
+      "properties": {
+        "date": { "type": "string" },
+        "timezone": { "type": "string" }
+      }
+    },
+    "slots": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "slot_code",
+          "reference_local_time",
+          "sky_snapshot",
+          "moon_context",
+          "transits_to_natal",
+          "current_sky_aspects",
+          "natal_house_activations"
+        ],
+        "properties": {
+          "slot_code": { "type": "string" },
+          "reference_local_time": { "type": "string" },
+          "sky_snapshot": { "type": "object" },
+          "moon_context": { "type": "object" },
+          "transits_to_natal": { "type": "array" },
+          "current_sky_aspects": { "type": "array" },
+          "natal_house_activations": { "type": "array" }
+        }
+      }
+    },
+    "calculation_warnings": { "type": "array" },
+    "evidence_keys": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

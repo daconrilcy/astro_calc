@@ -288,6 +288,39 @@
       "availability": "planned",
       "example_request_json": null,
       "sort_order": 130
+    },
+    {
+      "service_code": "horoscope_basic_daily_natal_3_slots",
+      "profile_code": "natal_basic",
+      "product_code": "horoscope",
+      "label_fr": "Horoscope basic quotidien natal",
+      "description_fr": "Horoscope quotidien personnalise sur theme natal, decoupe en matin, apres-midi et soir.",
+      "orchestration_mode": "horoscope_basic_daily_natal",
+      "calculation_mode": "none",
+      "service_request_contract": "integration_job_request_v1",
+      "payload_contract": "horoscope_basic_daily_natal_request_v1",
+      "service_response_contract": "integration_job_status_v1",
+      "calculation_output_contract": "horoscope_calculation_response_v1",
+      "reading_output_contract": "horoscope_response_v1",
+      "sync_endpoint": null,
+      "async_endpoint": "POST /v1/jobs",
+      "supports_async": true,
+      "supports_sync_legacy": false,
+      "supports_mercure": false,
+      "availability": "beta",
+      "example_request_json": {
+        "service_code": "horoscope_basic_daily_natal_3_slots",
+        "payload": {
+          "date": "2026-06-06",
+          "timezone": "Europe/Paris",
+          "target_language": "fr",
+          "chart_calculation_id": "123",
+          "audience_level": "general"
+        },
+        "user_language": "fr",
+        "audience_level": "beginner"
+      },
+      "sort_order": 200
     }
   ]
 }

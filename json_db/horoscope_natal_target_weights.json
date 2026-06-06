@@ -1,0 +1,12 @@
+{
+  "name": "horoscope_natal_target_weights",
+  "structure": {
+    "target_code": "string, primary key",
+    "weight": "number"
+  },
+  "data": [
+    { "target_code": "natal_moon", "weight": 1.3 },
+    { "target_code": "natal_mercury", "weight": 1.1 },
+    { "target_code": "natal_house_6", "weight": 1.0 }
+  ]
+}

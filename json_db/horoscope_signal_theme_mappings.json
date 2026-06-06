@@ -1,0 +1,33 @@
+{
+  "name": "horoscope_signal_theme_mappings",
+  "structure": {
+    "mapping_code": "string, primary key",
+    "match_object": "string",
+    "match_aspect": "string|null",
+    "match_natal_target": "string|null",
+    "theme_code": "string"
+  },
+  "data": [
+    {
+      "mapping_code": "moon_house_6_care",
+      "match_object": "moon",
+      "match_aspect": null,
+      "match_natal_target": "natal_house_6",
+      "theme_code": "daily_care"
+    },
+    {
+      "mapping_code": "mars_square_moon_boundaries",
+      "match_object": "mars",
+      "match_aspect": "square",
+      "match_natal_target": "natal_moon",
+      "theme_code": "emotional_boundaries"
+    },
+    {
+      "mapping_code": "venus_trine_mercury_dialogue",
+      "match_object": "venus",
+      "match_aspect": "trine",
+      "match_natal_target": "natal_mercury",
+      "theme_code": "supportive_dialogue"
+    }
+  ]
+}

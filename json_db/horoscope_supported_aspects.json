@@ -1,0 +1,12 @@
+{
+  "name": "horoscope_supported_aspects",
+  "structure": {
+    "aspect_code": "string, primary key",
+    "is_enabled_v1": "boolean"
+  },
+  "data": [
+    { "aspect_code": "conjunction", "is_enabled_v1": true },
+    { "aspect_code": "trine", "is_enabled_v1": true },
+    { "aspect_code": "square", "is_enabled_v1": true }
+  ]
+}

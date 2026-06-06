@@ -416,7 +416,10 @@ pub fn service_has_v1_orchestrator(service: &IntegrationService) -> bool {
             service.service_code == "natal_simplified"
         }
         astral_llm_domain::CalculationMode::FullNatal => service.service_code.starts_with("natal_"),
-        astral_llm_domain::CalculationMode::None => service.is_from_payload(),
+        astral_llm_domain::CalculationMode::None => {
+            service.is_from_payload()
+                || service.service_code == "horoscope_basic_daily_natal_3_slots"
+        }
     }
 }
 
@@ -482,10 +485,19 @@ fn service_mapping_notes(service: &IntegrationService) -> Vec<&'static str> {
             "payload = astro_engine_request_v1",
             "orchestration: calcul moteur puis mapping engine → generate_reading_request",
         ],
-        astral_llm_domain::CalculationMode::None => vec![
-            "payload = generate_reading_request_v1",
-            "interpretation_profile_code must match service profile_code",
-        ],
+        astral_llm_domain::CalculationMode::None => {
+            if service.service_code == "horoscope_basic_daily_natal_3_slots" {
+                vec![
+                    "payload = horoscope_basic_daily_natal_request_v1",
+                    "orchestration: calculator horoscope facts -> deterministic scoring -> fake horoscope response",
+                ]
+            } else {
+                vec![
+                    "payload = generate_reading_request_v1",
+                    "interpretation_profile_code must match service profile_code",
+                ]
+            }
+        }
     }
 }
 
@@ -499,6 +511,8 @@ fn service_validation_notes(service: &IntegrationService) -> Vec<String> {
             "payload.product_context.interpretation_profile_code must equal '{}'",
             service.profile_code
         ));
+    } else if service.service_code == "horoscope_basic_daily_natal_3_slots" {
+        notes.push("chart_calculation_id is required; inline birth_data is out of V1 scope".into());
     }
     notes
 }

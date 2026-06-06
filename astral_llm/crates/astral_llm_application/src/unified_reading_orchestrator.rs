@@ -7,6 +7,7 @@ use serde_json::Value;
 use uuid::Uuid;
 
 use crate::generate_reading_use_case::{GenerateReadingUseCase, UseCaseOutput};
+use crate::horoscope::{HoroscopeBasicDailyNatalOrchestrator, HOROSCOPE_SERVICE_CODE};
 use crate::integration_job_validator::ValidatedIntegrationJob;
 use crate::simplified_reading::{
     build_reading_request, validate_simplified_calculation_request, SIMPLIFIED_PROFILE,
@@ -15,9 +16,17 @@ use crate::simplified_reading::{
 #[derive(Debug, Clone)]
 pub struct UnifiedReadingResult {
     pub run_id: String,
-    pub calculation: Option<Value>,
-    pub reading: GenerateReadingResponse,
-    pub reading_completeness: Option<String>,
+    pub outcome: UnifiedReadingOutcome,
+}
+
+#[derive(Debug, Clone)]
+pub enum UnifiedReadingOutcome {
+    Reading {
+        calculation: Option<Value>,
+        reading: GenerateReadingResponse,
+        reading_completeness: Option<String>,
+    },
+    Json(Value),
 }
 
 pub struct UnifiedReadingOrchestrator<'a> {
@@ -38,6 +47,7 @@ impl<'a> UnifiedReadingOrchestrator<'a> {
         job: &ValidatedIntegrationJob,
     ) -> Result<UnifiedReadingResult, GenerationError> {
         match job.service_code.as_str() {
+            HOROSCOPE_SERVICE_CODE => self.run_horoscope(job).await,
             SIMPLIFIED_PROFILE => self.run_simplified(job).await,
             other if other.ends_with("_from_payload") => self.run_from_payload(job).await,
             other if other.starts_with("natal_") => self.run_full_natal(job).await,
@@ -47,6 +57,19 @@ impl<'a> UnifiedReadingOrchestrator<'a> {
                 Value::Null,
             )),
         }
+    }
+
+    async fn run_horoscope(
+        &self,
+        job: &ValidatedIntegrationJob,
+    ) -> Result<UnifiedReadingResult, GenerationError> {
+        let run_id = Uuid::new_v4().to_string();
+        let result =
+            HoroscopeBasicDailyNatalOrchestrator::execute(self.calculator, &job.payload).await?;
+        Ok(UnifiedReadingResult {
+            run_id,
+            outcome: UnifiedReadingOutcome::Json(result),
+        })
     }
 
     async fn run_simplified(
@@ -147,9 +170,11 @@ fn build_unified_result(
 ) -> UnifiedReadingResult {
     UnifiedReadingResult {
         run_id,
-        calculation,
-        reading: output.response,
-        reading_completeness,
+        outcome: UnifiedReadingOutcome::Reading {
+            calculation,
+            reading: output.response,
+            reading_completeness,
+        },
     }
 }
 

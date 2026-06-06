@@ -1,0 +1,38 @@
+{
+  "name": "horoscope_time_slot_profiles",
+  "structure": {
+    "service_code": "string",
+    "slot_code": "string",
+    "start_local_time": "string",
+    "end_local_time": "string",
+    "reference_local_time": "string",
+    "sort_order": "integer",
+    "unique_key": ["service_code", "slot_code"]
+  },
+  "data": [
+    {
+      "service_code": "horoscope_basic_daily_natal_3_slots",
+      "slot_code": "morning",
+      "start_local_time": "06:00",
+      "end_local_time": "12:00",
+      "reference_local_time": "09:00",
+      "sort_order": 10
+    },
+    {
+      "service_code": "horoscope_basic_daily_natal_3_slots",
+      "slot_code": "afternoon",
+      "start_local_time": "12:00",
+      "end_local_time": "18:00",
+      "reference_local_time": "15:00",
+      "sort_order": 20
+    },
+    {
+      "service_code": "horoscope_basic_daily_natal_3_slots",
+      "slot_code": "evening",
+      "start_local_time": "18:00",
+      "end_local_time": "00:00",
+      "reference_local_time": "21:00",
+      "sort_order": 30
+    }
+  ]
+}

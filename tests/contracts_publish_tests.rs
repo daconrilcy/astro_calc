@@ -98,6 +98,14 @@ fn calculator_schemas_match_published_contracts() {
             "llm_projection_natal_simplified_v1.schema.json",
             "llm_projection_natal_simplified_v1.schema.json",
         ),
+        (
+            "horoscope_calculation_request_v1.schema.json",
+            "horoscope_calculation_request_v1.schema.json",
+        ),
+        (
+            "horoscope_calculation_response_v1.schema.json",
+            "horoscope_calculation_response_v1.schema.json",
+        ),
     ];
 
     for (src, dst) in pairs {

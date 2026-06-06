@@ -10,15 +10,20 @@ use crate::engine::{
     build_engine_response, validate_and_resolve_request, validate_request_early,
     AstroEngineRequest, AstroEngineResponse, LLM_PROJECTION_CONTRACT_VERSION,
 };
-use crate::llm_projection::resolve_projection_profile;
 use crate::ephemeris::EphemerisEngine;
+use crate::horoscope::{
+    calculate_horoscope_daily_natal, HoroscopeCalculationRequest, HoroscopeCalculationResponse,
+};
 use crate::idempotency::{advisory_lock_key, idempotency_key, input_hash};
+use crate::llm_projection::resolve_projection_profile;
 use crate::models::ChartCalculationRow;
 use crate::payload::build_basic_payload_with_accidental_references;
 use crate::repositories::RuntimeRepository;
 use crate::signals::aggregate_basic_signals;
 
-use crate::simplified::{calculate_simplified_natal, AstroSimplifiedNatalRequest, AstroSimplifiedNatalResponse};
+use crate::simplified::{
+    calculate_simplified_natal, AstroSimplifiedNatalRequest, AstroSimplifiedNatalResponse,
+};
 
 use super::error::RuntimeError;
 use super::payload_freshness::{has_current_rulership_references, is_current_basic_payload};
@@ -95,7 +100,9 @@ where
         let house_system_label = house_system.name;
 
         let house_axes = self.repository.house_axis_references().await?;
-        let audit = self.calculate_natal_basic(resolved.natal_input.clone()).await?;
+        let audit = self
+            .calculate_natal_basic(resolved.natal_input.clone())
+            .await?;
 
         build_engine_response(
             &resolved,
@@ -114,13 +121,14 @@ where
         request: AstroSimplifiedNatalRequest,
         ephemeris_path: &std::path::Path,
     ) -> Result<AstroSimplifiedNatalResponse, RuntimeError> {
-        calculate_simplified_natal(
-            &self.repository,
-            &self.ephemeris,
-            ephemeris_path,
-            request,
-        )
-        .await
+        calculate_simplified_natal(&self.repository, &self.ephemeris, ephemeris_path, request).await
+    }
+
+    pub async fn calculate_horoscope_daily_natal(
+        &self,
+        request: HoroscopeCalculationRequest,
+    ) -> Result<HoroscopeCalculationResponse, RuntimeError> {
+        Ok(calculate_horoscope_daily_natal(request))
     }
 
     pub async fn calculate_natal_basic(

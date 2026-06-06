@@ -10,6 +10,7 @@ pub mod engine_env;
 pub use engine_env::engine_request_from_env;
 pub mod ephemeris;
 pub mod facts;
+pub mod horoscope;
 pub mod idempotency;
 pub mod llm_projection;
 pub mod models;

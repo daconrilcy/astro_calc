@@ -16,6 +16,8 @@ uuid.workspace = true
 astral_llm_infra.workspace = true
 regex.workspace = true
 reqwest.workspace = true
+chrono.workspace = true
+chrono-tz = "0.10"
 
 [dev-dependencies]
 serde_json.workspace = true

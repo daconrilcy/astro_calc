@@ -1,0 +1,17 @@
+{
+  "name": "horoscope_services",
+  "structure": {
+    "service_code": "string, primary key",
+    "product_level_code": "string",
+    "shortlist_profile_code": "string",
+    "time_slot_profile_code": "string"
+  },
+  "data": [
+    {
+      "service_code": "horoscope_basic_daily_natal_3_slots",
+      "product_level_code": "basic",
+      "shortlist_profile_code": "basic_daily_natal",
+      "time_slot_profile_code": "daily_3_slots"
+    }
+  ]
+}

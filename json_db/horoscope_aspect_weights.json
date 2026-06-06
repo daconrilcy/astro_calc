@@ -1,0 +1,13 @@
+{
+  "name": "horoscope_aspect_weights",
+  "structure": {
+    "aspect_code": "string, primary key",
+    "weight": "number",
+    "tone": "string"
+  },
+  "data": [
+    { "aspect_code": "conjunction", "weight": 1.1, "tone": "mixed" },
+    { "aspect_code": "trine", "weight": 1.0, "tone": "fluid" },
+    { "aspect_code": "square", "weight": 1.2, "tone": "tense" }
+  ]
+}

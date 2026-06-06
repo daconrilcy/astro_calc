@@ -675,3 +675,27 @@ brancher un service public `active`.
 11. Replay idempotent conserve la semantique existante.
 12. Service sans orchestrateur retourne `501` avant persistance.
 13. Smoke fake Docker passe.
+
+## Etat implementation V1 fake
+
+Implementation initiale :
+
+- service `horoscope_basic_daily_natal_3_slots` ajoute au catalogue en `beta` ;
+- contrats JSON ajoutes pour payload public, calculateur, payload LLM filtre et
+  reponse publique ;
+- referentiels JSON ajoutes pour slots, poids de scoring, mappings themes,
+  shortlist et bandes d'intensite ;
+- endpoint calculateur fake `/v1/calculations/horoscope/daily-natal` ;
+- module applicatif `astral_llm_application::horoscope` avec validation,
+  construction de requete calculateur, scoring deterministe, aggregation,
+  construction du payload LLM filtre et garde de preuves astrologiques ;
+- verification calculateur que `chart_calculation_id` pointe vers un calcul
+  natal termine dans `astral_chart_calculations` ;
+- validation stricte de timezone IANA et garde de preuves astrologiques
+  bloquant les cles inventees, non textuelles ou les slots sans preuve ;
+- orchestration async branchee via `POST /v1/jobs` et worker existant ;
+- prompts dedies ajoutes sous `astral_llm/prompts/horoscope_basic_daily_natal/v1/` ;
+- script smoke fake `scripts/test_horoscope_basic_daily_fake.ps1`.
+
+Limite assumee de cette etape : le redacteur V1 est le fake stable requis pour
+les tests, sans appel fournisseur OpenAI.

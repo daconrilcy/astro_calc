@@ -3371,3 +3371,9 @@ d'un autre service.
 
 Reviews : [`docs/reviews/integration_api/INDEX.md`](reviews/integration_api/INDEX.md).
 
+# Articulation horoscope
+
+Le service horoscope V1 (`horoscope_basic_daily_natal_3_slots`) est cadre dans
+[`HOROSCOPE_IMPLEMENTATION.md`](HOROSCOPE_IMPLEMENTATION.md). Il ne modifie pas
+le payload natal/basic existant et consomme un `chart_calculation_id` deja
+calcule.

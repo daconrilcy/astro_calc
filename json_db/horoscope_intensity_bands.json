@@ -1,0 +1,13 @@
+{
+  "name": "horoscope_intensity_bands",
+  "structure": {
+    "band_code": "string, primary key",
+    "min_score": "number",
+    "max_score": "number"
+  },
+  "data": [
+    { "band_code": "low", "min_score": 0.0, "max_score": 1.1 },
+    { "band_code": "medium", "min_score": 1.1, "max_score": 1.6 },
+    { "band_code": "high", "min_score": 1.6, "max_score": 9.9 }
+  ]
+}

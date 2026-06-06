@@ -6,6 +6,7 @@ use astral_llm_application::{
     job_error_from_reading, job_status_from_reading, unified_result_envelope,
     GenerateReadingUseCase, IntegrationJobValidator, PromptCompiler, ProviderCircuitBreaker,
     ProviderRouter, ResponseValidator, SchemaRegistry, UnifiedReadingOrchestrator,
+    UnifiedReadingOutcome,
 };
 use astral_llm_domain::GenerateReadingResponse;
 use astral_llm_infra::{
@@ -172,14 +173,45 @@ async fn main() {
         let outcome = orchestrator.execute(&validated).await;
         match outcome {
             Ok(result) => {
-                let envelope = unified_result_envelope(
-                    result.calculation,
-                    &result.reading,
-                    result.reading_completeness,
-                );
-                let status = job_status_from_reading(&result.reading);
                 let gen_run_id = Uuid::parse_str(&result.run_id).ok();
-                match &result.reading {
+                let (calculation, reading, reading_completeness) = match result.outcome {
+                    UnifiedReadingOutcome::Reading {
+                        calculation,
+                        reading,
+                        reading_completeness,
+                    } => (calculation, reading, reading_completeness),
+                    UnifiedReadingOutcome::Json(envelope) => {
+                        if let Err(err) =
+                            jobs.mark_completed(job.job_id, gen_run_id, &envelope).await
+                        {
+                            tracing::error!(
+                                run_id = %job.run_id,
+                                service = %job.service_code,
+                                error = %err,
+                                "job completion persistence failed"
+                            );
+                            continue;
+                        }
+                        publish_mercure_if_enabled(
+                            &mercure,
+                            &service,
+                            &job.tenant_id,
+                            &job.run_id,
+                            "completed",
+                        )
+                        .await;
+                        tracing::info!(
+                            run_id = %job.run_id,
+                            service = %job.service_code,
+                            status = "completed",
+                            "job finished"
+                        );
+                        continue;
+                    }
+                };
+                let envelope = unified_result_envelope(calculation, &reading, reading_completeness);
+                let status = job_status_from_reading(&reading);
+                match &reading {
                     GenerateReadingResponse::Success(_) => {
                         if let Err(err) =
                             jobs.mark_completed(job.job_id, gen_run_id, &envelope).await
@@ -202,7 +234,7 @@ async fn main() {
                         .await;
                     }
                     GenerateReadingResponse::SafetyRejected(_) => {
-                        let err = job_error_from_reading(&result.reading);
+                        let err = job_error_from_reading(&reading);
                         if let Err(persist_err) = jobs
                             .mark_safety_rejected(job.job_id, gen_run_id, &envelope, &err)
                             .await
@@ -225,7 +257,7 @@ async fn main() {
                         .await;
                     }
                     GenerateReadingResponse::Failed(_) => {
-                        let err = job_error_from_reading(&result.reading);
+                        let err = job_error_from_reading(&reading);
                         let retry = job.attempt_count < job.max_attempts;
                         let _ = jobs.mark_failed(job.job_id, &err, retry).await;
                         if !retry {

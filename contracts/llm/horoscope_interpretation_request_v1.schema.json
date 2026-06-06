@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "horoscope_interpretation_request_v1",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "service_code",
+    "period",
+    "target_language",
+    "main_signals",
+    "dominant_themes",
+    "evidence"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": { "const": "horoscope_interpretation_request_v1" },
+    "service_code": { "const": "horoscope_basic_daily_natal_3_slots" },
+    "period": {
+      "type": "object",
+      "required": ["date", "timezone"],
+      "properties": {
+        "date": { "type": "string" },
+        "timezone": { "type": "string" }
+      }
+    },
+    "target_language": { "type": "string" },
+    "main_signals": { "type": "array", "maxItems": 6 },
+    "dominant_themes": { "type": "array", "maxItems": 4 },
+    "evidence": { "type": "array", "maxItems": 8 }
+  }
+}

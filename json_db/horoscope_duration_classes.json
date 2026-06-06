@@ -1,0 +1,10 @@
+{
+  "name": "horoscope_duration_classes",
+  "structure": {
+    "duration_class": "string, primary key",
+    "label": "string"
+  },
+  "data": [
+    { "duration_class": "daily_slot", "label": "Daily slot" }
+  ]
+}

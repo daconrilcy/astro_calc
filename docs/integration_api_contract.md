@@ -253,3 +253,52 @@ Découverte : `GET /v1/contracts` sur `astral_llm_api`.
 ## Routes sync — hors contrat V1 intégration
 
 Les routes legacy sync documentées par service via `supports_sync_legacy` et `endpoints.submit_sync_legacy` ne font pas partie du contrat d'intégration async V1.
+## Service horoscope basic daily natal 3 slots
+
+- `service_code` : `horoscope_basic_daily_natal_3_slots`
+- `availability` : `beta`
+- `payload_contract` : `horoscope_basic_daily_natal_request_v1`
+- `calculation_output_contract` : `horoscope_calculation_response_v1`
+- `reading_output_contract` : `horoscope_response_v1`
+
+Exemple `POST /v1/jobs` :
+
+```json
+{
+  "service_code": "horoscope_basic_daily_natal_3_slots",
+  "payload": {
+    "date": "2026-06-06",
+    "timezone": "Europe/Paris",
+    "target_language": "fr",
+    "chart_calculation_id": "123",
+    "audience_level": "general"
+  },
+  "user_language": "fr",
+  "audience_level": "beginner"
+}
+```
+
+Exemple `GET /v1/jobs/{run_id}` complete :
+
+```json
+{
+  "run_id": "00000000-0000-0000-0000-000000000000",
+  "service_code": "horoscope_basic_daily_natal_3_slots",
+  "status": "completed",
+  "result": {
+    "calculation": {},
+    "interpretation_request": {},
+    "reading": {
+      "contract_version": "horoscope_response_v1",
+      "service_code": "horoscope_basic_daily_natal_3_slots"
+    }
+  }
+}
+```
+
+Erreurs possibles : `HOROSCOPE_PAYLOAD_INVALID`,
+`HOROSCOPE_NATAL_CHART_REQUIRED`, `HOROSCOPE_CALCULATOR_UNAVAILABLE`,
+`HOROSCOPE_CALCULATION_FAILED`, `HOROSCOPE_SCORING_FAILED`,
+`HOROSCOPE_NO_SIGNIFICANT_SIGNAL`, `HOROSCOPE_EVIDENCE_MISMATCH`,
+`HOROSCOPE_RESPONSE_INVALID`, `SERVICE_NOT_IMPLEMENTED`,
+`IDEMPOTENCY_CONFLICT`.

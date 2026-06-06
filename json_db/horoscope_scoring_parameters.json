@@ -1,0 +1,23 @@
+{
+  "name": "horoscope_scoring_parameters",
+  "structure": {
+    "service_code": "string, primary key",
+    "exact_orb_bonus_max_deg": "number",
+    "exactness_bonus": "number",
+    "default_house_weight": "number",
+    "default_confidence_score": "number",
+    "default_duration_class": "string",
+    "unknown_orb_weight": "number"
+  },
+  "data": [
+    {
+      "service_code": "horoscope_basic_daily_natal_3_slots",
+      "exact_orb_bonus_max_deg": 1.0,
+      "exactness_bonus": 0.15,
+      "default_house_weight": 1.0,
+      "default_confidence_score": 0.86,
+      "default_duration_class": "daily_slot",
+      "unknown_orb_weight": 0.7
+    }
+  ]
+}

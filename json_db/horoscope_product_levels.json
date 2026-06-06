@@ -1,0 +1,10 @@
+{
+  "name": "horoscope_product_levels",
+  "structure": {
+    "product_level_code": "string, primary key",
+    "label": "string"
+  },
+  "data": [
+    { "product_level_code": "basic", "label": "Basic" }
+  ]
+}
