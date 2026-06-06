@@ -34,11 +34,7 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\simplified_natal_assertions.ps1")
 Import-AstralDotEnv -RepoRoot $repoRoot
 
-if ([string]::IsNullOrWhiteSpace($CalculatorBase)) {
-    $hostName = if ($env:ASTRAL_CALCULATOR_HOST) { $env:ASTRAL_CALCULATOR_HOST } else { "127.0.0.1" }
-    $port = if ($env:ASTRAL_CALCULATOR_PORT) { $env:ASTRAL_CALCULATOR_PORT } else { "8080" }
-    $CalculatorBase = "http://${hostName}:$port"
-}
+$CalculatorBase = Resolve-AstralCalculatorBaseForHost -CalculatorBase $CalculatorBase
 
 if ([string]::IsNullOrWhiteSpace($OutputDir)) {
     $OutputDir = Join-Path $repoRoot "output\natal_simplified\calculator"

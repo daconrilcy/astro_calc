@@ -429,9 +429,9 @@ Invoke-RestMethod http://localhost:8080/health/ready
 Invoke-RestMethod http://localhost:8081/health/ready
 ```
 
-> **Docker vs `.env` hôte** : `docker-compose.yml` configure déjà `ASTRAL_CALCULATOR_HOST=astral_calculator_api` **dans le conteneur** LLM. Les scripts PowerShell peuvent afficher `ASTRAL_CALCULATOR_HOST/PORT non definis` — c'est normal si ces variables ne sont pas dans votre `.env` local ; l'orchestration Docker fonctionne quand même. En développement **hors Docker** (`cargo run`), définissez `ASTRAL_CALCULATOR_HOST=127.0.0.1` et `ASTRAL_CALCULATOR_PORT=8080` dans `.env`.
+> **Docker vs `.env` hôte** : `docker-compose.yml` configure `ASTRAL_CALCULATOR_HOST=astral_calculator_api` **dans le conteneur** LLM. Les scripts E2E détectent l'orchestration Docker (`http://127.0.0.1:8081`) et n'exigent pas ces variables dans votre `.env` local. En développement **hors Docker** (`cargo run`), définissez `ASTRAL_CALCULATOR_HOST=127.0.0.1` et `ASTRAL_CALCULATOR_PORT=8080` dans `.env`.
 
-> **Provider fake** : Compose force `ASTRAL_LLM_DEFAULT_PROVIDER=fake` dans le conteneur (tests sans OpenAI). Un `.env` local avec `openai` n'affecte pas Docker ; vérifiez avec `GET /v1/providers` (`default_provider: fake`).
+> **Provider** : Compose force `ASTRAL_LLM_DEFAULT_PROVIDER=fake` dans le conteneur. La valeur `openai` dans le `.env` hôte n'affecte pas Docker ; les scripts vérifient le runtime via `GET /v1/providers`.
 
 #### Étape 1 — Smoke rapide (1 cas, ~30 s)
 

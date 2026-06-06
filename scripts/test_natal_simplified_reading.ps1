@@ -34,16 +34,9 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\simplified_natal_assertions.ps1")
 Import-AstralDotEnv -RepoRoot $repoRoot
 
-if ([string]::IsNullOrWhiteSpace($LlmBase)) {
-    $hostName = if ($env:ASTRAL_LLM_HOST) { $env:ASTRAL_LLM_HOST } else { "127.0.0.1" }
-    $port = if ($env:ASTRAL_LLM_PORT) { $env:ASTRAL_LLM_PORT } else { "8081" }
-    $LlmBase = "http://${hostName}:$port"
-}
+$LlmBase = Resolve-AstralLlmBaseForHost -LlmBase $LlmBase
 
 if (-not $UseReal) {
-    if ($env:ASTRAL_LLM_DEFAULT_PROVIDER -and $env:ASTRAL_LLM_DEFAULT_PROVIDER -ne "fake") {
-        Write-Host "Info : ASTRAL_LLM_DEFAULT_PROVIDER=$($env:ASTRAL_LLM_DEFAULT_PROVIDER) - utilisez -UseReal pour OpenAI." -ForegroundColor Yellow
-    }
     if ($env:ASTRAL_LLM_ENABLE_FAKE -eq "false") {
         throw "ASTRAL_LLM_ENABLE_FAKE=false - activez fake ou passez -UseReal."
     }
@@ -54,8 +47,10 @@ if (-not $UseReal) {
     }
 }
 
-if ([string]::IsNullOrWhiteSpace($env:ASTRAL_CALCULATOR_HOST) -or [string]::IsNullOrWhiteSpace($env:ASTRAL_CALCULATOR_PORT)) {
-    Write-Host "Attention : ASTRAL_CALCULATOR_HOST/PORT non definis - le gateway LLM ne pourra pas orchestrer le calcul." -ForegroundColor Yellow
+$orchIssue = Test-AstralOrchestrationEnvIssue -LlmBase $LlmBase
+if ($orchIssue) {
+    Write-Host $orchIssue -ForegroundColor Red
+    exit 1
 }
 
 if ([string]::IsNullOrWhiteSpace($OutputDir)) {
@@ -87,9 +82,7 @@ if (-not $UseReal) {
     }
 }
 
-$calcHost = if ($env:ASTRAL_CALCULATOR_HOST) { $env:ASTRAL_CALCULATOR_HOST } else { "127.0.0.1" }
-$calcPort = if ($env:ASTRAL_CALCULATOR_PORT) { $env:ASTRAL_CALCULATOR_PORT } else { "8080" }
-$calcBaseForProbe = "http://${calcHost}:$calcPort"
+$calcBaseForProbe = Resolve-AstralCalculatorBaseForHost
 $calcHeaders = New-AstralAuthHeaders -Service calculator
 $catalogIssue = Test-SimplifiedCatalogReady -CalculatorBase $calcBaseForProbe -Headers $calcHeaders
 if ($catalogIssue) {

@@ -1,5 +1,56 @@
 # Assertions partagees pour les tests natal simplifie (calculateur + lecture).
 
+function Resolve-AstralCalculatorBaseForHost {
+    param([string]$CalculatorBase = "")
+
+    if (-not [string]::IsNullOrWhiteSpace($CalculatorBase)) {
+        return $CalculatorBase.TrimEnd('/')
+    }
+    $hostName = if ($env:ASTRAL_CALCULATOR_HOST) { $env:ASTRAL_CALCULATOR_HOST } else { "127.0.0.1" }
+    $port = if ($env:ASTRAL_CALCULATOR_PORT) { $env:ASTRAL_CALCULATOR_PORT } else { "8080" }
+    return "http://${hostName}:$port"
+}
+
+function Resolve-AstralLlmBaseForHost {
+    param([string]$LlmBase = "")
+
+    if (-not [string]::IsNullOrWhiteSpace($LlmBase)) {
+        return $LlmBase.TrimEnd('/')
+    }
+    $hostName = if ($env:ASTRAL_LLM_HOST) { $env:ASTRAL_LLM_HOST } else { "127.0.0.1" }
+    $port = if ($env:ASTRAL_LLM_PORT) { $env:ASTRAL_LLM_PORT } else { "8081" }
+    return "http://${hostName}:$port"
+}
+
+function Test-AstralLlmUsesDockerOrchestration {
+    param([string]$LlmBase)
+
+    try {
+        $uri = [Uri]$LlmBase.TrimEnd('/')
+    } catch {
+        return $false
+    }
+
+    $localHosts = @("127.0.0.1", "localhost", "::1")
+    $expectedPort = if ($env:ASTRAL_LLM_PORT) { [int]$env:ASTRAL_LLM_PORT } else { 8081 }
+    return ($uri.Host -in $localHosts) -and ($uri.Port -eq $expectedPort)
+}
+
+function Test-AstralOrchestrationEnvIssue {
+    param([string]$LlmBase)
+
+    if (Test-AstralLlmUsesDockerOrchestration -LlmBase $LlmBase) {
+        return $null
+    }
+    if (-not [string]::IsNullOrWhiteSpace($env:ASTRAL_CALCULATOR_HOST) -and -not [string]::IsNullOrWhiteSpace($env:ASTRAL_CALCULATOR_PORT)) {
+        return $null
+    }
+    return @"
+Orchestration LLM impossible sans ASTRAL_CALCULATOR_HOST/PORT dans .env (cargo run local).
+Definissez ASTRAL_CALCULATOR_HOST=127.0.0.1 et ASTRAL_CALCULATOR_PORT=8080, ou utilisez Docker Compose (http://127.0.0.1:8081).
+"@
+}
+
 function Get-SimplifiedWordCount {
     param([string]$Text)
     if ([string]::IsNullOrWhiteSpace($Text)) { return 0 }
