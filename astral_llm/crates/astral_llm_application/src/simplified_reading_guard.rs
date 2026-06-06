@@ -8,7 +8,9 @@ use astral_llm_domain::{
 };
 use astral_llm_infra::SharedCanonicalCatalog;
 
-use crate::simplified_reading::SIMPLIFIED_PROFILE;
+use crate::simplified_reading_postprocess::body_has_ambiguous_uncertainty_lexicon;
+
+use crate::simplified_reading::{SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE, SIMPLIFIED_PROFILE};
 
 const LUMINARY_FR: &[(&str, &str)] = &[
     ("sun", "soleil"),
@@ -122,6 +124,63 @@ pub fn profile_excluded_affirmation_violations(
     violations
 }
 
+pub fn ambiguous_core_identity_violations(
+    reading: &NatalReadingResponse,
+    sun_sign_blocked: bool,
+    language: &str,
+) -> Vec<String> {
+    if !sun_sign_blocked {
+        return Vec::new();
+    }
+
+    let mut violations = Vec::new();
+    let ambiguous = reading
+        .chapters
+        .iter()
+        .find(|ch| ch.code == SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE);
+
+    let Some(chapter) = ambiguous else {
+        violations.push(
+            "ambiguous_core_identity chapter required when sun.sign blocked".into(),
+        );
+        return violations;
+    };
+
+    if chapter.confidence != astral_llm_domain::generation_response::ConfidenceLevel::Low {
+        violations.push(format!(
+            "ambiguous_core_identity confidence must be low (got {:?})",
+            chapter.confidence
+        ));
+    }
+
+    for basis in &chapter.astro_basis {
+        if matches!(
+            basis.fact_id.as_deref(),
+            Some("placement:sun") | Some("placement:moon")
+        ) {
+            violations.push(format!(
+                "ambiguous_core_identity forbidden basis: {}",
+                basis.fact_id.as_deref().unwrap_or("?")
+            ));
+        }
+    }
+
+    if language.trim().eq_ignore_ascii_case("fr")
+        && !body_has_ambiguous_uncertainty_lexicon(&chapter.body)
+    {
+        violations.push(
+            "ambiguous_core_identity missing uncertainty wording (fr)".into(),
+        );
+    }
+
+    violations
+}
+
+pub fn violations_are_ambiguous_core_only(violations: &[String]) -> bool {
+    !violations.is_empty()
+        && violations.iter().all(|v| v.starts_with("ambiguous_core_identity"))
+}
+
 fn collect_reading_corpus(reading: &NatalReadingResponse) -> String {
     let mut parts = vec![
         reading.summary.title.clone(),
@@ -202,8 +261,8 @@ fn affirms_house_placement(corpus_lower: &str) -> bool {
 mod tests {
     use super::*;
     use astral_llm_domain::generation_response::{
-        ConfidenceLevel, LegalBlock, NatalReadingResponse, QualityMetadata, ReadingChapter,
-        ReadingSummary,
+        AstroBasisItem, ConfidenceLevel, LegalBlock, NatalReadingResponse, QualityMetadata,
+        ReadingChapter, ReadingSummary,
     };
     use astral_llm_domain::output_contract::GenerationMode;
     use std::sync::Arc;
@@ -305,5 +364,78 @@ mod tests {
         );
         let v = profile_excluded_affirmation_violations(&reading, &["houses".into()]);
         assert!(v.is_empty());
+    }
+
+    fn ambiguous_reading(confidence: ConfidenceLevel, body: &str) -> NatalReadingResponse {
+        NatalReadingResponse {
+            schema_version: "natal_reading_v1".into(),
+            language: "fr".into(),
+            reading_type: "natal_prompter".into(),
+            summary: ReadingSummary {
+                title: "T".into(),
+                short_text: "S".into(),
+            },
+            chapters: vec![ReadingChapter {
+                code: SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE.into(),
+                title: "Ambigu".into(),
+                body: body.into(),
+                astro_basis: vec![],
+                confidence,
+                safety_flags: vec![],
+            }],
+            legal: LegalBlock {
+                disclaimer: "Disclaimer".into(),
+            },
+            quality: QualityMetadata {
+                used_provider: "fake".into(),
+                used_model: "fake".into(),
+                generation_mode: GenerationMode::SinglePass,
+                prompt_family: "natal_prompter".into(),
+                prompt_version: "v1".into(),
+                astro_contract_version: "natal_simplified_structured_v1".into(),
+                fallback_used: false,
+            },
+        }
+    }
+
+    #[test]
+    fn ambiguous_violations_require_low_confidence() {
+        let reading = ambiguous_reading(ConfidenceLevel::High, "zone de changement solaire.");
+        let v = ambiguous_core_identity_violations(&reading, true, "fr");
+        assert!(v.iter().any(|s| s.contains("confidence must be low")));
+    }
+
+    #[test]
+    fn ambiguous_violations_empty_after_hardening_shape() {
+        let reading = ambiguous_reading(
+            ConfidenceLevel::Low,
+            "Le soleil reste incertain dans une zone de changement.",
+        );
+        let v = ambiguous_core_identity_violations(&reading, true, "fr");
+        assert!(v.is_empty());
+    }
+
+    #[test]
+    fn ambiguous_violations_detect_forbidden_basis() {
+        let mut reading = ambiguous_reading(ConfidenceLevel::Low, "zone de changement.");
+        reading.chapters[0].astro_basis = vec![AstroBasisItem {
+            fact_id: Some("placement:moon".into()),
+            label: None,
+            factor: "Lune".into(),
+            interpretive_role: "supporting".into(),
+        }];
+        let v = ambiguous_core_identity_violations(&reading, true, "fr");
+        assert!(v.iter().any(|s| s.contains("forbidden basis")));
+    }
+
+    #[test]
+    fn violations_are_ambiguous_core_only_detects_prefix() {
+        assert!(violations_are_ambiguous_core_only(&[
+            "ambiguous_core_identity confidence must be low (got High)".into()
+        ]));
+        assert!(!violations_are_ambiguous_core_only(&[
+            "ambiguous_core_identity confidence must be low".into(),
+            "blocked interpretive affirmation".into()
+        ]));
     }
 }

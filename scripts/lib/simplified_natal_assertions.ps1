@@ -643,7 +643,7 @@ function Assert-SimplifiedStrictOpenAiQuality {
         }
         foreach ($ch in @($Content.chapters)) {
             if ($ch.code -eq "ambiguous_core_identity") {
-                if ($ch.confidence -and $ch.confidence -notin @("medium", "low")) {
+                if ($ch.confidence -and $ch.confidence -ne "low") {
                     $failures.Add("ambiguous_core_identity confidence=$($ch.confidence)")
                 }
                 if ($ch.body -notmatch 'soleil|determin|certitude|changement|zone') {

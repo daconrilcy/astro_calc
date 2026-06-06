@@ -22,6 +22,8 @@ Ce document constitue le livrable de preuve pour la clôture produit **natal sim
 
 **Périmètre gelé** pour maintenance corrective : moteur `astral_calculator/src/simplified/*`, endpoints orchestrés, profil `natal_simplified`, pipeline `single_pass_hardening`, validateurs simplified, scripts E2E et assertions PS1 associées. Toute évolution fonctionnelle = nouveau cycle (CS / REV).
 
+**Maintenance v1.1.1 (2026-06-06)** — durcissement équinoxe OpenAI (REV-018…021) : 3 couches anti-variabilité (`harden_ambiguous_core`, guard ambiguous, prompt + fallback déterministe) ; périmètre gelé explicitement ouvert en **correctif** sur `simplified_reading_postprocess`, `simplified_reading_guard`, `single_pass_hardening`.
+
 ---
 
 ## Périmètre livré
@@ -163,7 +165,7 @@ Test Rust dédié au rename : `llm_controls_block_ambiguous_and_allow_stable`, `
 
 | Référence | Statut |
 |-----------|--------|
-| [`docs/reviews/natal_simplified/INDEX.md`](../reviews/natal_simplified/INDEX.md) | REV-001…016 **closed** |
+| [`docs/reviews/natal_simplified/INDEX.md`](../reviews/natal_simplified/INDEX.md) | REV-001…021 **closed** |
 | [`docs/reviews/natal_simplified/REV-015-final-closure.md`](../reviews/natal_simplified/REV-015-final-closure.md) | Clôture finale V1 |
 | [`docs/reviews/natal_simplified/REV-GLOBAL-adversarial.md`](../reviews/natal_simplified/REV-GLOBAL-adversarial.md) | Gate OK après G-001…G-011 |
 | [`docs/reviews/natal_simplified/REV-012-doc-audit.md`](../reviews/natal_simplified/REV-012-doc-audit.md) | Doc produit alignée runtime |
@@ -181,7 +183,7 @@ Test Rust dédié au rename : `llm_controls_block_ambiguous_and_allow_stable`, `
 |----|-------|--------|--------|
 | F-07 | Exclusions profil en constante Rust | **CLOSED** | Table `astral_simplified_profile_feature_exclusions`, REV-013, E2E 24/24 |
 | `reading_completeness` | Tolérance PS1 `simplified` | **CLOSED** | Runtime + PS1 = `partial` strict, REV-013 |
-| Qualité OpenAI | Variabilité provider | **CLOSED WITH MONITORING** | `-StrictOpenAiQuality` + REV-014 ; smoke **7/7** (2026-06-06) |
+| Qualité OpenAI | Variabilité provider | **CLOSED WITH MONITORING** | `-StrictOpenAiQuality` + REV-014 ; durcissement équinoxe REV-018…021 ; smoke **7/7** (2026-06-06T113454Z) |
 
 Recette OpenAI (monitoring périodique) :
 

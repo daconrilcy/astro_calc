@@ -11,7 +11,12 @@ use astral_llm_application::{
 };
 use astral_llm_application::french_typography::{french_elision_violations, restore_french_elisions};
 use astral_llm_application::simplified_reading_postprocess::{
-    build_compact_summary_from_body, normalize_simplified_interpretive_roles,
+    apply_simplified_body_fallback, build_compact_summary_from_body,
+    harden_ambiguous_core_identity_chapter, normalize_simplified_interpretive_roles,
+    simplified_deterministic_body,
+};
+use astral_llm_application::simplified_reading_guard::{
+    ambiguous_core_identity_violations, violations_are_ambiguous_core_only,
 };
 use astral_llm_application::prompt_compiler::PromptCompilationInput;
 use astral_llm_domain::{
@@ -285,4 +290,76 @@ fn simplified_interpretive_roles_exclude_domain_score() {
         reading.chapters[0].astro_basis[0].interpretive_role,
         "supporting"
     );
+}
+
+#[test]
+fn ambiguous_fallback_chain_repairs_non_conformant_equinox_reading() {
+    use astral_llm_domain::generation_response::{
+        AstroBasisItem, ConfidenceLevel, NatalReadingResponse, QualityMetadata, ReadingChapter,
+        ReadingSummary,
+    };
+    use astral_llm_domain::output_contract::GenerationMode;
+
+    let mut reading = NatalReadingResponse {
+        schema_version: "natal_reading_v1".into(),
+        language: "fr".into(),
+        reading_type: "natal_prompter".into(),
+        summary: ReadingSummary {
+            title: "Identité".into(),
+            short_text: "Résumé".into(),
+        },
+        chapters: vec![ReadingChapter {
+            code: "identity".into(),
+            title: "Identité".into(),
+            body: "Portrait general sans marqueur d incertitude solaire explicite.".into(),
+            astro_basis: vec![AstroBasisItem {
+                fact_id: Some("placement:sun".into()),
+                label: None,
+                factor: "Soleil".into(),
+                interpretive_role: "core".into(),
+            }],
+            confidence: ConfidenceLevel::High,
+            safety_flags: vec![],
+        }],
+        legal: astral_llm_domain::generation_response::LegalBlock {
+            disclaimer: String::new(),
+        },
+        quality: QualityMetadata {
+            used_provider: "openai".into(),
+            used_model: "gpt-4.1-mini".into(),
+            generation_mode: GenerationMode::SinglePass,
+            prompt_family: "natal_prompter".into(),
+            prompt_version: "v1".into(),
+            astro_contract_version: "natal_simplified_structured_v1".into(),
+            fallback_used: false,
+        },
+    };
+
+    let before = ambiguous_core_identity_violations(&reading, true, "fr");
+    assert!(!before.is_empty());
+    assert!(violations_are_ambiguous_core_only(&before));
+
+    apply_simplified_body_fallback(&mut reading, SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE);
+    let _ = harden_ambiguous_core_identity_chapter(&mut reading, true, "fr");
+
+    let expected = simplified_deterministic_body(SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE);
+    assert_eq!(reading.chapters[0].body, expected);
+    assert_eq!(reading.chapters[0].code, SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE);
+    assert_eq!(reading.chapters[0].confidence, ConfidenceLevel::Low);
+    assert!(reading.chapters[0].astro_basis.is_empty());
+
+    let after = ambiguous_core_identity_violations(&reading, true, "fr");
+    assert!(
+        after.is_empty(),
+        "fallback chain must clear ambiguous guard: {after:?}"
+    );
+}
+
+#[test]
+fn ambiguous_fallback_does_not_trigger_on_mixed_violations() {
+    let mixed = vec![
+        "ambiguous_core_identity confidence must be low (got High)".into(),
+        "affirms ascendant by zodiac sign while profile excludes ascendant".into(),
+    ];
+    assert!(!violations_are_ambiguous_core_only(&mixed));
 }

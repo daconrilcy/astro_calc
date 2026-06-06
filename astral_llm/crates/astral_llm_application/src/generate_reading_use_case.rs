@@ -37,10 +37,10 @@ use crate::response_validator::ResponseValidator;
 use crate::safety_guard::SafetyGuard;
 use crate::reading_quality_validator::ReadingQualityValidator;
 use crate::safety_resolver::SafetyResolver;
-use crate::simplified_reading::SIMPLIFIED_PROFILE;
+use crate::simplified_reading::{sun_sign_blocked, SIMPLIFIED_PROFILE};
 use crate::simplified_reading_guard::{
-    blocked_sign_affirmation_violations, profile_excluded_affirmation_violations,
-    validate_allowed_astro_basis_ids,
+    ambiguous_core_identity_violations, blocked_sign_affirmation_violations,
+    profile_excluded_affirmation_violations, validate_allowed_astro_basis_ids,
 };
 
 pub struct GenerateReadingUseCase {
@@ -383,6 +383,11 @@ impl GenerateReadingUseCase {
         violations.extend(profile_excluded_affirmation_violations(
             reading,
             &profile_excluded,
+        ));
+        violations.extend(ambiguous_core_identity_violations(
+            reading,
+            sun_sign_blocked(controls),
+            &request.product_context.user_language,
         ));
 
         if violations.is_empty() {

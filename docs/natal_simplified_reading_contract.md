@@ -90,10 +90,22 @@ Normalisation côté serveur (`evidence_fact_parse::normalize_chapter_astro_basi
 Si `sun.sign` ∈ `blocked_interpretation_fact_codes` :
 
 - Chapitre : **`ambiguous_core_identity`** (pas `identity`)
+- **`confidence`** : **`low`** (obligatoire — clamp serveur si le LLM dévie)
 - Consigne : expliquer la zone de changement possible entre signes, puis placements stables secondaires avec prudence
-- Interdit : affirmation d'un signe solaire déterministe
+- Interdit : affirmation d'un signe solaire déterministe ; `placement:sun` / `placement:moon` en `astro_basis`
 
 Profil : `chapter_types` inclut `identity` et `ambiguous_core_identity`.
+
+### Post-traitement serveur équinoxe
+
+Après génération LLM, le gateway applique `harden_ambiguous_core_identity_chapter` (si `sun.sign` bloqué) **avant** la régénération du summary compact :
+
+1. Corrige le code chapitre si nécessaire
+2. Force `confidence=low`
+3. Retire `placement:sun` et `placement:moon` du basis
+4. Préfixe la première phrase d'incertitude si le body ne contient pas le lexique PS1 (`soleil|determin|certitude|changement|zone`)
+
+Filet de sécurité : `ambiguous_core_identity_violations` + fallback body déterministe (`ambiguous_core_body_fallback`) si le durcissement ne suffit pas. Voir [`docs/natal_simplified_forbidden_topics.md`](natal_simplified_forbidden_topics.md).
 
 ## Réponse API orchestrée (`POST /v1/readings/natal/simplified`)
 

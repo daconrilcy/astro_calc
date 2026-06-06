@@ -783,14 +783,16 @@ Contrôles anti-hallucination :
 - Routing : si `sun.sign` bloqué → chapitre **`ambiguous_core_identity`**.
 - Scrub prompt : faits bloqués retirés du `data_payload` ; pas de `position_count` / `house_cusp_count` / `aspect_count` envoyés au LLM.
 - `forbidden_wording` (SafetyGuard) : reprend **uniquement** `blocked_interpretation_fact_codes`.
-- **`simplified_reading_postprocess`** : typographie FR, summary compact, normalisation rôles `astro_basis`, disclaimer, sanitisation script.
-- **`simplified_reading_guard`** (post-génération) : whitelist astro_basis, affirmations FR (« Soleil en Bélier »), ASC/maison si profil exclut.
+- **`simplified_reading_postprocess`** : typographie FR, summary compact, normalisation rôles `astro_basis`, disclaimer, sanitisation script, **durcissement équinoxe** (`harden_ambiguous_core_identity_chapter` → `confidence=low`, prune basis sun/moon, préfixe incertitude).
+- **`simplified_reading_guard`** (post-génération) : whitelist astro_basis, affirmations FR (« Soleil en Bélier »), ASC/maison si profil exclut, **`ambiguous_core_identity_violations`**.
 - **`SafetyGuard`** : patterns sensibles + `forbidden_wording` ; inclut **`reading_script_guard`** (rejet script inattendu en français).
 - Normalisation serveur : `mercury.sign` → `placement:mercury` via `normalize_chapter_astro_basis_fact_ids` avant validateurs.
 - `llm_payload.forbidden_interpretation_topics` : agrégat documentaire ; `forbidden_topics` = alias déprécié (miroir sortie calculateur).
 - `engine.domain_count` : fixé à **1** pour ce profil (`max_domains: 1`).
 
-Ordre validateurs (profil `natal_simplified`, `single_pass_hardening.rs`) : génération (+ retry script) → post-traitement serveur → fallback body → parse → `AstroBasisValidator` → `simplified_reading_guard` → `SafetyGuard` (+ script) → `ReadingQualityValidator` (non bloquant).
+Ordre validateurs (profil `natal_simplified`, `single_pass_hardening.rs`) : génération (+ retry script) → post-traitement serveur (incl. durcissement équinoxe) → fallback script → fallback body équinoxe (`ambiguous_core_body_fallback`) → parse → `AstroBasisValidator` → `simplified_reading_guard` (+ ambiguous) → `SafetyGuard` (+ script) → `ReadingQualityValidator` (non bloquant).
+
+Prompt profil (`task_fragment`) : couche 3 de prévention (confidence low, pas sun/moon en basis) — **le serveur reste source de vérité** via post-traitement et garde-fous.
 
 Réponse HTTP :
 

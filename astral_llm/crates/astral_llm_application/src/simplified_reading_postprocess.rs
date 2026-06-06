@@ -1,13 +1,17 @@
 use astral_llm_domain::{
     default_legal_disclaimer,
-    generation_response::{NatalReadingResponse, ReadingSummary},
+    generation_response::{NatalReadingResponse, ReadingChapter, ReadingSummary},
     GenerateReadingRequest,
 };
 
 use crate::french_typography::restore_french_elisions;
 use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
 use crate::reading_script_guard::sanitize_text_for_french_script;
-use crate::simplified_reading::{SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE, SIMPLIFIED_PROFILE};
+use astral_llm_domain::generation_response::ConfidenceLevel;
+
+use crate::simplified_reading::{
+    sun_sign_blocked, SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE, SIMPLIFIED_PROFILE,
+};
 use crate::summary_ux_rules::{count_words, split_sentences_fr, SummaryUxRules};
 
 pub const SCRIPT_REPAIR_INSTRUCTION: &str = "Réécrivez entièrement en français avec l'alphabet latin \
@@ -18,12 +22,30 @@ pub const SCRIPT_REPAIR_INSTRUCTION: &str = "Réécrivez entièrement en frança
 const SIMPLIFIED_INTERPRETIVE_ROLES: &[&str] = &["core", "supporting", "nuance"];
 
 #[derive(Debug, Clone, Default)]
+pub struct AmbiguousCoreHardeningAudit {
+    pub chapter_code_corrected: bool,
+    pub confidence_clamped: bool,
+    pub basis_pruned: usize,
+    pub uncertainty_prefix_applied: bool,
+}
+
+impl AmbiguousCoreHardeningAudit {
+    pub fn any_applied(&self) -> bool {
+        self.chapter_code_corrected
+            || self.confidence_clamped
+            || self.basis_pruned > 0
+            || self.uncertainty_prefix_applied
+    }
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct SimplifiedPostProcessAudit {
     pub sanitized_fields: Vec<String>,
     pub typography_fields: Vec<String>,
     pub summary_source: Option<String>,
     pub body_fallback_applied: bool,
     pub interpretive_roles_normalized: usize,
+    pub ambiguous_core_hardening: AmbiguousCoreHardeningAudit,
 }
 
 pub fn post_process_single_pass_reading(
@@ -47,6 +69,14 @@ pub fn post_process_single_pass_reading(
 
     if is_simplified {
         audit.interpretive_roles_normalized = normalize_simplified_interpretive_roles(reading);
+        let blocked = request
+            .astro_result
+            .data
+            .get("llm_controls")
+            .map(sun_sign_blocked)
+            .unwrap_or(false);
+        audit.ambiguous_core_hardening =
+            harden_ambiguous_core_identity_chapter(reading, blocked, language);
         reading.summary = build_simplified_summary(reading, language);
         audit.summary_source = Some("server_compact_from_chapter".into());
     }
@@ -58,9 +88,24 @@ pub fn apply_simplified_body_fallback(
     reading: &mut NatalReadingResponse,
     chapter_code: &str,
 ) {
+    let body = simplified_deterministic_body(chapter_code);
     if let Some(chapter) = reading.chapters.first_mut() {
-        chapter.body = simplified_deterministic_body(chapter_code);
+        chapter.code = chapter_code.to_string();
+        chapter.body = body;
+        return;
     }
+    reading.chapters.push(ReadingChapter {
+        code: chapter_code.to_string(),
+        title: if chapter_code == SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE {
+            "Identité — Soleil ambigu".into()
+        } else {
+            "Identité".into()
+        },
+        body,
+        astro_basis: vec![],
+        confidence: ConfidenceLevel::Low,
+        safety_flags: vec![],
+    });
 }
 
 pub fn build_simplified_summary(reading: &NatalReadingResponse, language: &str) -> ReadingSummary {
@@ -158,6 +203,71 @@ pub fn simplified_deterministic_body(chapter_code: &str) -> String {
          orientée vers la compréhension des expériences."
             .into()
     }
+}
+
+pub fn harden_ambiguous_core_identity_chapter(
+    reading: &mut NatalReadingResponse,
+    sun_sign_blocked: bool,
+    language: &str,
+) -> AmbiguousCoreHardeningAudit {
+    let mut audit = AmbiguousCoreHardeningAudit::default();
+    if !sun_sign_blocked {
+        return audit;
+    }
+    let chapter_idx = reading
+        .chapters
+        .iter()
+        .position(|ch| ch.code == SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE)
+        .unwrap_or(0);
+    let Some(chapter) = reading.chapters.get_mut(chapter_idx) else {
+        return audit;
+    };
+
+    if chapter.code != SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE {
+        chapter.code = SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE.into();
+        audit.chapter_code_corrected = true;
+    }
+    if chapter.confidence != ConfidenceLevel::Low {
+        chapter.confidence = ConfidenceLevel::Low;
+        audit.confidence_clamped = true;
+    }
+    let before = chapter.astro_basis.len();
+    chapter.astro_basis.retain(|basis| {
+        !matches!(
+            basis.fact_id.as_deref(),
+            Some("placement:sun") | Some("placement:moon")
+        )
+    });
+    audit.basis_pruned = before.saturating_sub(chapter.astro_basis.len());
+
+    if language.trim().eq_ignore_ascii_case("fr")
+        && !body_has_ambiguous_uncertainty_lexicon(&chapter.body)
+    {
+        let prefix = ambiguous_uncertainty_prefix_sentence();
+        chapter.body = format!("{} {}", prefix, chapter.body.trim());
+        audit.uncertainty_prefix_applied = true;
+    }
+
+    audit
+}
+
+pub fn body_has_ambiguous_uncertainty_lexicon(body: &str) -> bool {
+    let lower = body.to_lowercase();
+    ["soleil", "determin", "certitude", "changement", "zone"]
+        .iter()
+        .any(|token| lower.contains(token))
+}
+
+fn ambiguous_uncertainty_prefix_sentence() -> String {
+    let body = simplified_deterministic_body(SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE);
+    split_sentences_fr(&body)
+        .into_iter()
+        .next()
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| {
+            "Votre Soleil se situe dans une zone de changement possible entre deux signes."
+                .into()
+        })
 }
 
 pub fn normalize_simplified_interpretive_roles(reading: &mut NatalReadingResponse) -> usize {
@@ -282,6 +392,7 @@ mod tests {
     use super::*;
     use astral_llm_domain::generation_response::{
         AstroBasisItem, ConfidenceLevel, LegalBlock, QualityMetadata, ReadingChapter,
+        ReadingSummary,
     };
     use astral_llm_domain::output_contract::GenerationMode;
 
@@ -371,5 +482,136 @@ mod tests {
             crate::reading_script_guard::script_violations_for_reading("fr", &sample_reading(&body))
                 .is_empty()
         );
+    }
+
+    #[test]
+    fn harden_clamps_high_confidence_to_low() {
+        let mut reading = sample_reading("Corps sans lexique.");
+        reading.chapters[0].confidence = ConfidenceLevel::High;
+        let audit = harden_ambiguous_core_identity_chapter(&mut reading, true, "fr");
+        assert!(audit.confidence_clamped);
+        assert_eq!(reading.chapters[0].confidence, ConfidenceLevel::Low);
+    }
+
+    #[test]
+    fn harden_prunes_sun_and_moon_basis() {
+        let mut reading = sample_reading("Soleil ambigu et zone de changement.");
+        reading.chapters[0].astro_basis = vec![
+            AstroBasisItem {
+                fact_id: Some("placement:sun".into()),
+                label: None,
+                factor: "Soleil".into(),
+                interpretive_role: "core".into(),
+            },
+            AstroBasisItem {
+                fact_id: Some("placement:mercury".into()),
+                label: None,
+                factor: "Mercure".into(),
+                interpretive_role: "supporting".into(),
+            },
+        ];
+        let audit = harden_ambiguous_core_identity_chapter(&mut reading, true, "fr");
+        assert_eq!(audit.basis_pruned, 1);
+        assert_eq!(reading.chapters[0].astro_basis.len(), 1);
+        assert_eq!(
+            reading.chapters[0].astro_basis[0].fact_id.as_deref(),
+            Some("placement:mercury")
+        );
+    }
+
+    #[test]
+    fn harden_prefixes_body_without_uncertainty_lexicon() {
+        let mut reading = sample_reading("Portrait general sans reference astrologique explicite.");
+        let audit = harden_ambiguous_core_identity_chapter(&mut reading, true, "fr");
+        assert!(audit.uncertainty_prefix_applied);
+        assert!(reading.chapters[0].body.contains("zone de changement"));
+        assert!(body_has_ambiguous_uncertainty_lexicon(&reading.chapters[0].body));
+    }
+
+    #[test]
+    fn harden_prefix_is_idempotent_when_lexicon_present() {
+        let mut reading = sample_reading(
+            "Le soleil reste incertain dans une zone de changement sans certitude.",
+        );
+        let audit = harden_ambiguous_core_identity_chapter(&mut reading, true, "fr");
+        assert!(!audit.uncertainty_prefix_applied);
+    }
+
+    #[test]
+    fn harden_corrects_chapter_code_when_sun_blocked() {
+        let mut reading = sample_reading("Soleil ambigu dans une zone de changement.");
+        reading.chapters[0].code = "identity".into();
+        let audit = harden_ambiguous_core_identity_chapter(&mut reading, true, "fr");
+        assert!(audit.chapter_code_corrected);
+        assert_eq!(reading.chapters[0].code, SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE);
+    }
+
+    #[test]
+    fn harden_skips_stable_identity_case() {
+        let mut reading = sample_reading("Identite stable.");
+        reading.chapters[0].code = "identity".into();
+        reading.chapters[0].confidence = ConfidenceLevel::High;
+        let audit = harden_ambiguous_core_identity_chapter(&mut reading, false, "fr");
+        assert!(!audit.any_applied());
+        assert_eq!(reading.chapters[0].code, "identity");
+        assert_eq!(reading.chapters[0].confidence, ConfidenceLevel::High);
+    }
+
+    #[test]
+    fn harden_targets_ambiguous_chapter_not_only_first_index() {
+        let mut reading = NatalReadingResponse {
+            schema_version: "natal_reading_v1".into(),
+            language: "fr".into(),
+            reading_type: "natal_prompter".into(),
+            summary: ReadingSummary {
+                title: "T".into(),
+                short_text: "S".into(),
+            },
+            chapters: vec![
+                ReadingChapter {
+                    code: "identity".into(),
+                    title: "Brouillon".into(),
+                    body: "Brouillon.".into(),
+                    astro_basis: vec![],
+                    confidence: ConfidenceLevel::Medium,
+                    safety_flags: vec![],
+                },
+                ReadingChapter {
+                    code: SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE.into(),
+                    title: "Ambigu".into(),
+                    body: "Texte sans lexique d incertitude explicite.".into(),
+                    astro_basis: vec![],
+                    confidence: ConfidenceLevel::High,
+                    safety_flags: vec![],
+                },
+            ],
+            legal: LegalBlock {
+                disclaimer: String::new(),
+            },
+            quality: QualityMetadata {
+                used_provider: "fake".into(),
+                used_model: "fake".into(),
+                generation_mode: GenerationMode::SinglePass,
+                prompt_family: "natal_prompter".into(),
+                prompt_version: "v1".into(),
+                astro_contract_version: "natal_simplified_structured_v1".into(),
+                fallback_used: false,
+            },
+        };
+        let audit = harden_ambiguous_core_identity_chapter(&mut reading, true, "fr");
+        assert!(audit.confidence_clamped);
+        assert_eq!(reading.chapters[0].code, "identity");
+        assert_eq!(reading.chapters[1].confidence, ConfidenceLevel::Low);
+        assert!(body_has_ambiguous_uncertainty_lexicon(&reading.chapters[1].body));
+    }
+
+    #[test]
+    fn body_fallback_creates_chapter_when_missing() {
+        let mut reading = sample_reading("");
+        reading.chapters.clear();
+        apply_simplified_body_fallback(&mut reading, SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE);
+        assert_eq!(reading.chapters.len(), 1);
+        assert_eq!(reading.chapters[0].code, SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE);
+        assert!(reading.chapters[0].body.contains("zone de changement"));
     }
 }

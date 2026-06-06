@@ -6,9 +6,12 @@ use astral_llm_domain::{
 use crate::execution_audit::ExecutionAudit;
 use crate::generate_reading_use_case::GenerateReadingUseCase;
 use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
-use crate::reading_script_guard::violations_are_script_only;
+use crate::reading_script_guard::{
+    violations_are_script_only,
+};
 use crate::safety_guard::SafetyGuard;
-use crate::simplified_reading::SIMPLIFIED_PROFILE;
+use crate::simplified_reading::{SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE, SIMPLIFIED_PROFILE};
+use crate::simplified_reading_guard::violations_are_ambiguous_core_only;
 use crate::simplified_reading_postprocess::{
     apply_simplified_body_fallback, post_process_single_pass_reading, SCRIPT_REPAIR_INSTRUCTION,
 };
@@ -75,6 +78,26 @@ impl GenerateReadingUseCase {
                     )),
                 });
             }
+            if post_audit.ambiguous_core_hardening.any_applied() {
+                let h = &post_audit.ambiguous_core_hardening;
+                audit.push_step(astral_llm_domain::GenerationStepRecord {
+                    step_type: "ambiguous_core_hardening".into(),
+                    chapter_code: Some(chapter_code.to_string()),
+                    provider: reading.quality.used_provider.clone(),
+                    model: reading.quality.used_model.clone(),
+                    status: astral_llm_domain::ChapterGenerationStatus::Repaired,
+                    input_tokens: None,
+                    output_tokens: None,
+                    latency_ms: None,
+                    error_code: Some(format!(
+                        "code_corrected={} confidence_clamped={} basis_pruned={} prefix={}",
+                        h.chapter_code_corrected,
+                        h.confidence_clamped,
+                        h.basis_pruned,
+                        h.uncertainty_prefix_applied
+                    )),
+                });
+            }
 
             match self.validate_single_pass_output(request, &reading, safety_policy, is_simplified)
             {
@@ -115,6 +138,34 @@ impl GenerateReadingUseCase {
                         audit.push_step(astral_llm_domain::GenerationStepRecord {
                             step_type: "script_body_fallback".into(),
                             chapter_code: Some(chapter_code.to_string()),
+                            provider: reading.quality.used_provider.clone(),
+                            model: reading.quality.used_model.clone(),
+                            status: astral_llm_domain::ChapterGenerationStatus::Repaired,
+                            input_tokens: None,
+                            output_tokens: None,
+                            latency_ms: None,
+                            error_code: None,
+                        });
+                        return Ok(reading);
+                    }
+                    last_violations = violations;
+                    break;
+                }
+                Err(violations) if violations_are_ambiguous_core_only(&violations) && is_simplified =>
+                {
+                    apply_simplified_body_fallback(
+                        &mut reading,
+                        SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE,
+                    );
+                    let _ = post_process_single_pass_reading(&mut reading, request, interpretation);
+                    if self
+                        .validate_single_pass_output(request, &reading, safety_policy, true)
+                        .is_ok()
+                    {
+                        reading.quality.fallback_used = true;
+                        audit.push_step(astral_llm_domain::GenerationStepRecord {
+                            step_type: "ambiguous_core_body_fallback".into(),
+                            chapter_code: Some(SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE.to_string()),
                             provider: reading.quality.used_provider.clone(),
                             model: reading.quality.used_model.clone(),
                             status: astral_llm_domain::ChapterGenerationStatus::Repaired,

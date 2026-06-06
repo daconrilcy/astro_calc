@@ -64,21 +64,32 @@ allowed_limitation_mentions =
 
 | Module | Rôle |
 |--------|------|
-| `simplified_reading_postprocess` | Typographie FR, summary compact, rôles interpretatifs, disclaimer, sanitisation script |
+| `simplified_reading_postprocess` | Typographie FR, summary compact, rôles interpretatifs, disclaimer, sanitisation script, **durcissement équinoxe** (`harden_ambiguous_core_identity_chapter`) |
 | `AstroBasisValidator` | Existence des `fact_id` dans les faits normalisés |
-| `simplified_reading_guard` | Whitelist `astro_basis.fact_id` ; affirmations FR signes bloqués ; ASC / maison numérotée si profil exclut |
+| `simplified_reading_guard` | Whitelist `astro_basis.fact_id` ; affirmations FR signes bloqués ; ASC / maison numérotée si profil exclut ; **violations ambiguous_core** |
 | `SafetyGuard` | Patterns médical / légal / financier ; `forbidden_wording` (codes techniques bloqués) ; appelle `reading_script_guard` en `fr` |
 | `reading_script_guard` | Rejet caractères hors Latin étendu en `fr` — **invoqué par** `SafetyGuard` |
+
+### Durcissement équinoxe (`sun.sign` bloqué) — 3 couches
+
+Décision produit : `confidence` clampée à **`low`** (pas `medium`).
+
+| Couche | Mécanisme | Fichier |
+|--------|-----------|---------|
+| 1 — Post-traitement | Corrige code chapitre → `ambiguous_core_identity` ; force `confidence=low` ; retire `placement:sun` / `placement:moon` du basis ; préfixe incertitude si lexique absent (aligné PS1) | `simplified_reading_postprocess.rs` |
+| 2 — Garde + fallback | `ambiguous_core_identity_violations` ; si violations ambiguous-only → `apply_simplified_body_fallback` + re-postprocess → `fallback_used=true` | `simplified_reading_guard.rs`, `single_pass_hardening.rs` |
+| 3 — Prompt | `task_fragment` profil : confidence low obligatoire, pas sun/moon en basis, phrase d'ouverture exemple | `natal_simplified.json` |
 
 Ordre dans `single_pass_hardening.rs` :
 
 1. Génération LLM (+ retry script si `max_script_repair_attempts` > 1)
-2. Post-traitement serveur : disclaimer, typographie FR, rôles interpretatifs, summary compact, sanitisation script
-3. Fallback body déterministe si script persiste
-4. `AstroBasisValidator`
-5. `simplified_reading_guard`
-6. `SafetyGuard` (+ `reading_script_guard`)
-7. `ReadingQualityValidator` (non bloquant)
+2. Post-traitement serveur : disclaimer, typographie FR, rôles interpretatifs, **durcissement équinoxe**, summary compact, sanitisation script
+3. Fallback body déterministe si script persiste (`script_body_fallback`)
+4. Fallback body déterministe équinoxe si violations ambiguous-only (`ambiguous_core_body_fallback`)
+5. `AstroBasisValidator`
+6. `simplified_reading_guard` (+ `ambiguous_core_identity_violations`)
+7. `SafetyGuard` (+ `reading_script_guard`)
+8. `ReadingQualityValidator` (non bloquant)
 
 Recette E2E : `test_natal_simplified_e2e.ps1` — **12/12** calculateur + **7/7** lectures + **5/5** négatifs orchestration **400** ; `-ForceFake` par défaut. OpenAI optionnel : `-UseReal -SubmitProfile -TimeoutSec 900`.
 
@@ -90,7 +101,7 @@ Activée par `Assert-SimplifiedStrictOpenAiQuality` dans `scripts/lib/simplified
 |----------|----------|
 | P0 | `astro_basis.fact_id` ∈ `allowed_astro_basis_fact_ids` ; pas de `ascendant` / `house` / `sect` dans basis |
 | P0 | Pas d'affirmation ASC ou maison numérotée (regex FR) |
-| P0 | Si `sun.sign` bloqué → chapitre `ambiguous_core_identity` avec vocabulaire d'incertitude |
+| P0 | Si `sun.sign` bloqué → chapitre `ambiguous_core_identity` avec vocabulaire d'incertitude et **`confidence=low`** |
 | P1 | Body chapitre 120–650 mots ; summary ≤75 mots, title ≤14 ; pas de `…` tronqué |
 | P1 | Apostrophes FR (`l impression`, `d un`, …) ; `interpretive_role` ∈ {core, supporting, nuance} |
 

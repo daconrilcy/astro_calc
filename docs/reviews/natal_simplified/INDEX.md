@@ -19,3 +19,8 @@
 | REV-015 | Clôture finale V1 | closed | REV-015-final-closure.md |
 | REV-016 | Audit doc post-risques | closed | REV-016-doc-audit.md |
 | REV-017 | Post-corrections mineures | closed | REV-017-minor-fixes-findings.md |
+| REV-018 | Durcissement équinoxe couche 1 (postprocess) | closed | REV-018-ambiguous-postprocess-findings.md |
+| REV-019 | Durcissement équinoxe couche 2 (guard + fallback) | closed | REV-019-ambiguous-guard-fallback-findings.md |
+| REV-020 | Durcissement équinoxe couche 3 (prompt + smoke OpenAI) | closed | REV-020-ambiguous-prompt-findings.md |
+| REV-021 | Audit doc durcissement équinoxe | closed | REV-021-ambiguous-doc-audit.md |
+| REV-022 | Adversariale post-écarts | closed | REV-022-adversarial-gap-closure-findings.md |
