@@ -49,6 +49,7 @@
     "excluded_feature_codes": ["ascendant", "houses", "sect", "house_placements"],
     "profile_excluded_feature_codes": ["ascendant", "houses", "sect", "house_placements"],
     "allowed_limitation_mentions": ["sun.sign", "moon.sign", "ascendant", "houses", "sect", "house_placements", "birth_time_missing"],
+    "forbidden_interpretation_topics": ["ascendant", "house_placements", "houses", "moon.sign", "sect", "sun.sign"],
     "forbidden_topics": ["ascendant", "house_placements", "houses", "moon.sign", "sect", "sun.sign"]
   }
 }

@@ -261,9 +261,46 @@ fn llm_controls_block_ambiguous_and_allow_stable() {
         .llm_payload
         .allowed_limitation_mentions
         .contains(&"moon.sign".to_string()));
+    let topics = response
+        .llm_payload
+        .forbidden_interpretation_topics
+        .as_ref()
+        .expect("forbidden_interpretation_topics");
+    assert!(topics.contains(&"moon.sign".to_string()));
+    assert_eq!(
+        response.llm_payload.forbidden_topics.as_ref(),
+        Some(topics)
+    );
+    let serialized = serde_json::to_value(&response.llm_payload).expect("serialize");
+    assert!(serialized
+        .get("forbidden_interpretation_topics")
+        .is_some());
+    assert!(serialized.get("forbidden_topics").is_some());
     let payload = response.simplified_payload.payload;
     assert!(payload["planets"]["sun"].is_object());
     assert!(payload["planets"]["moon"].is_null() || payload["planets"].get("moon").is_none());
+}
+
+#[test]
+fn llm_controls_deserializes_legacy_forbidden_topics_alias() {
+    use astral_calculator::simplified::LlmPayloadControls;
+
+    let legacy = json!({
+        "profile_code": "natal_simplified",
+        "allowed_fact_codes": ["sun.sign"],
+        "allowed_astro_basis_fact_ids": ["placement:sun"],
+        "blocked_interpretation_fact_codes": [],
+        "excluded_feature_codes": ["ascendant"],
+        "profile_excluded_feature_codes": ["ascendant"],
+        "allowed_limitation_mentions": ["ascendant"],
+        "forbidden_topics": ["ascendant", "sun.sign"]
+    });
+    let controls: LlmPayloadControls =
+        serde_json::from_value(legacy).expect("legacy alias deserializes");
+    assert_eq!(
+        controls.forbidden_interpretation_topics,
+        Some(vec!["ascendant".into(), "sun.sign".into()])
+    );
 }
 
 #[test]

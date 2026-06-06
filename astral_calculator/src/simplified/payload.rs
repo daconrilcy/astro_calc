@@ -142,11 +142,12 @@ fn build_llm_controls(
         }
     }
 
-    let mut forbidden_topics = blocked_interpretation_fact_codes.clone();
-    forbidden_topics.extend(excluded_feature_codes.clone());
-    forbidden_topics.extend(profile_excluded_feature_codes.clone());
-    forbidden_topics.sort();
-    forbidden_topics.dedup();
+    let mut forbidden_interpretation_topics = blocked_interpretation_fact_codes.clone();
+    forbidden_interpretation_topics.extend(excluded_feature_codes.clone());
+    forbidden_interpretation_topics.extend(profile_excluded_feature_codes.clone());
+    forbidden_interpretation_topics.sort();
+    forbidden_interpretation_topics.dedup();
+    let forbidden_mirror = forbidden_interpretation_topics.clone();
 
     LlmPayloadControls {
         profile_code: "natal_simplified".to_string(),
@@ -156,7 +157,8 @@ fn build_llm_controls(
         excluded_feature_codes,
         profile_excluded_feature_codes,
         allowed_limitation_mentions,
-        forbidden_topics: Some(forbidden_topics),
+        forbidden_interpretation_topics: Some(forbidden_interpretation_topics),
+        forbidden_topics: Some(forbidden_mirror),
     }
 }
 

@@ -3220,7 +3220,7 @@ Repository : `load_simplified_catalog()` dans `simplified/repository.rs`.
 | `excluded_feature_codes` | Non calculé (scope / limitations) |
 | `profile_excluded_feature_codes` | Calculé mais exclu du profil simplified |
 | `allowed_limitation_mentions` | Limitations mentionnables en UX |
-| `forbidden_topics` | Agrégat documentaire (prompt interne) |
+| `forbidden_interpretation_topics` | Agrégat documentaire (prompt interne) ; `forbidden_topics` reste un alias déprécié en sortie |
 
 Implémentation : `astral_calculator/src/simplified/payload.rs` (`build_llm_controls`).
 

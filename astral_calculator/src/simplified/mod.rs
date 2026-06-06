@@ -14,7 +14,7 @@ pub use request::{
     AstroSimplifiedNatalRequest, SIMPLIFIED_REQUEST_CONTRACT_VERSION, SimplifiedLocationRequest,
 };
 pub use response::{
-    AstroSimplifiedNatalResponse, SIMPLIFIED_RESPONSE_CONTRACT_VERSION,
+    AstroSimplifiedNatalResponse, LlmPayloadControls, SIMPLIFIED_RESPONSE_CONTRACT_VERSION,
 };
 
 #[cfg(any(test, feature = "test-utils"))]

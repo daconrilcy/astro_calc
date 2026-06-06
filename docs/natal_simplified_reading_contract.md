@@ -70,6 +70,8 @@ Le prompt impose : **utiliser exclusivement** `allowed_astro_basis_fact_ids` pou
 
 Normalisation côté serveur (`evidence_fact_parse::normalize_chapter_astro_basis_fact_ids`) : `mercury.sign` → `placement:mercury` **après** parsing LLM, **avant** les validateurs, puis whitelist stricte.
 
+`llm_payload.forbidden_interpretation_topics` remplace le nom ambigu `forbidden_topics` (alias déprécié encore émis en miroir pour compat lecture).
+
 ## Routing chapitre — Soleil ambigu
 
 Si `sun.sign` ∈ `blocked_interpretation_fact_codes` :

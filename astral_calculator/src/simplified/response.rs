@@ -76,7 +76,19 @@ pub struct LlmPayloadControls {
     pub excluded_feature_codes: Vec<String>,
     pub profile_excluded_feature_codes: Vec<String>,
     pub allowed_limitation_mentions: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    /// Agrégat dérivé (prompt / doc) — non consommé directement par SafetyGuard.
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        alias = "forbidden_topics",
+        rename = "forbidden_interpretation_topics"
+    )]
+    pub forbidden_interpretation_topics: Option<Vec<String>>,
+    /// Miroir déprécié de `forbidden_interpretation_topics` (compat lecture clients legacy).
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        skip_deserializing,
+        rename = "forbidden_topics"
+    )]
     pub forbidden_topics: Option<Vec<String>>,
 }
 

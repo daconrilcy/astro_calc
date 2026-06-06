@@ -10,7 +10,8 @@
 | `excluded_feature_codes` | Features absentes du **calcul** (effet des limitations / scope) |
 | `profile_excluded_feature_codes` | Features **calculées mais exclues du profil** (ASC, maisons, secte, placements en maison) |
 | `allowed_limitation_mentions` | Sujets autorisés pour expliquer une limite (codes limitation + features + faits bloqués) |
-| `forbidden_topics` | Agrégat dérivé (prompt / doc) — **non consommé** directement par SafetyGuard |
+| `forbidden_interpretation_topics` | Agrégat dérivé (prompt / doc) — **non consommé** directement par SafetyGuard |
+| `forbidden_topics` | **Déprécié** — miroir de `forbidden_interpretation_topics` (compat lecture clients legacy) |
 
 Invariant : `blocked_interpretation_fact_codes ∩ allowed_fact_codes = ∅` et `blocked ∩ allowed_astro_basis_fact_ids = ∅`.
 

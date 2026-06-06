@@ -23,6 +23,16 @@
     "excluded_feature_codes": { "type": "array", "items": { "type": "string" } },
     "profile_excluded_feature_codes": { "type": "array", "items": { "type": "string" } },
     "allowed_limitation_mentions": { "type": "array", "items": { "type": "string" } },
-    "forbidden_topics": { "type": "array", "items": { "type": "string" } }
+    "forbidden_interpretation_topics": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Agrégat dérivé des sujets d'interprétation exclus (prompt / doc)."
+    },
+    "forbidden_topics": {
+      "type": "array",
+      "items": { "type": "string" },
+      "deprecated": true,
+      "description": "Alias déprécié de forbidden_interpretation_topics (compat lecture)."
+    }
   }
 }
