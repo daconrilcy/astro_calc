@@ -70,7 +70,20 @@ Le prompt impose : **utiliser exclusivement** `allowed_astro_basis_fact_ids` pou
 
 Normalisation côté serveur (`evidence_fact_parse::normalize_chapter_astro_basis_fact_ids`) : `mercury.sign` → `placement:mercury` **après** parsing LLM, **avant** les validateurs, puis whitelist stricte.
 
-`llm_payload.forbidden_interpretation_topics` remplace le nom ambigu `forbidden_topics` (alias déprécié encore émis en miroir pour compat lecture).
+`llm_payload.forbidden_interpretation_topics` remplace le nom ambigu `forbidden_topics` (alias déprécié encore émis en miroir pour compat lecture). Détail sémantique : [`natal_simplified_forbidden_topics.md`](natal_simplified_forbidden_topics.md).
+
+### Champs `llm_payload` (réponse calculateur)
+
+| Champ | Rôle |
+|-------|------|
+| `allowed_fact_codes` | Affirmations rédactionnelles autorisées (`mercury.sign`) |
+| `allowed_astro_basis_fact_ids` | IDs autorisés pour `astro_basis.fact_id` (`placement:mercury`) |
+| `blocked_interpretation_fact_codes` | Faits ambigus — pas d'affirmation interprétative |
+| `excluded_feature_codes` | Non calculé (scope / limitations) |
+| `profile_excluded_feature_codes` | Calculé mais exclu du profil simplified |
+| `allowed_limitation_mentions` | Limitations mentionnables en UX |
+| `forbidden_interpretation_topics` | Agrégat dérivé (prompt / doc) — non consommé par SafetyGuard |
+| `forbidden_topics` | **Déprécié** — miroir de `forbidden_interpretation_topics` |
 
 ## Routing chapitre — Soleil ambigu
 
@@ -115,7 +128,7 @@ Retournée uniquement lorsque le calculateur a répondu **200** et que la géné
 | `POST /v1/calculations/natal/simplified` | **422** | `VALIDATION_FAILED` | Non (error_response_v1) |
 | `POST /v1/readings/natal/simplified` | **400** | `INVALID_INPUT` | Non (error_response_v1) |
 
-Recette E2E : 5 cas négatifs partagés — **422** en phase calculateur, **400** en phase orchestration lecture.
+Recette E2E : **12/12** calculateur (7 positifs + 5 négatifs **422**), **7/7** lectures positives, **5/5** négatifs orchestration **400** (`test_natal_simplified_e2e.ps1` phases 1, 2 et 2b).
 
 ### Codes HTTP — orchestration (succès et post-génération)
 
@@ -179,6 +192,21 @@ Avant envoi au LLM, le gateway retire du `data_payload` :
 
 - Faits / `planets` correspondant aux `blocked_interpretation_fact_codes`
 - Compteurs `position_count`, `house_cusp_count`, `aspect_count` (évite inférence maisons/aspects sans fait autorisé)
+
+## Post-traitement serveur (profil `natal_simplified`, `single_pass`)
+
+Après génération LLM, avant validation finale (`simplified_reading_postprocess.rs`) :
+
+| Étape | Effet |
+|-------|--------|
+| Disclaimer | Injection canonique `legal.disclaimer` |
+| Typographie FR | Restauration élisions (`l impression` → `l'impression`) via `french_typography.rs` |
+| Rôles `astro_basis` | Normalisation vers `core` / `supporting` / `nuance` (`domain_score` → `supporting`) |
+| Summary | `summary.short_text` = 1–2 phrases complètes extraites du body (max 75 mots), **sans** troncature `…` |
+| Sanitisation script | Retrait caractères hors alphabet latin FR (`reading_script_guard`) |
+| Fallback body | Texte déterministe si contamination script persiste après retries |
+
+OpenAPI : `contracts/calculator/openapi.yaml` (422 calculateur), `contracts/llm/openapi.yaml` (400 entrée / 422 `safety_rejected` orchestration).
 
 ## Hiérarchie scopes
 

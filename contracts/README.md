@@ -41,6 +41,8 @@ Voir [integration/engine_to_reading_mapping.md](integration/engine_to_reading_ma
 
 Orchestration one-shot : `POST /v1/readings/natal/simplified` (LLM API, birth → calcul → lecture).
 
+Champs `llm_payload` : `forbidden_interpretation_topics` (canonique) ; `forbidden_topics` = alias déprécié en sortie calculateur.
+
 Smoke rapide : [`scripts/docker_simplified_natal_smoke.ps1`](../scripts/docker_simplified_natal_smoke.ps1).
 
 Suite E2E complète (**12** cas calculateur dont 5 négatifs **422** + **7** lectures positives + **5** négatifs orchestration **400**) : [`scripts/test_natal_simplified_e2e.ps1`](../scripts/test_natal_simplified_e2e.ps1).

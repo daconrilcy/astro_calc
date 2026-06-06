@@ -445,18 +445,20 @@ Invoke-RestMethod http://localhost:8081/health/ready
 
 ```powershell
 docker compose up -d --build astral_llm_api   # après changement Rust LLM
+docker compose up -d --build astral_calculator_api   # après changement payload calculateur (llm_payload, schémas)
 .\scripts\test_natal_simplified_e2e.ps1
 ```
 
-Résultat attendu : **12/12** calculateur (7 positifs + 5 négatifs **422** sur `POST /v1/calculations/natal/simplified`), **7/7** lectures positives orchestrées, **5/5** lectures négatives **400** `INVALID_INPUT` sur `POST /v1/readings/natal/simplified` (sans enveloppe `{ calculation, reading }`).
+Résultat attendu : **12/12** calculateur (7 positifs + 5 négatifs **422**), **7/7** lectures positives, **5/5** négatifs orchestration **400** — phases 1, 2 et **2b** de la suite.
 
 > **Provider E2E** : la suite active **`-ForceFake`** par défaut (bascule `natal_prompter` → fake, sans OpenAI). Recette OpenAI optionnelle : `-UseReal -SubmitProfile` (facturée, peut échouer sporadiquement malgré les retries script).
 
 Scripts complémentaires :
 
 ```powershell
-.\scripts\test_natal_simplified_calculator.ps1          # calculateur seul
-.\scripts\test_natal_simplified_reading.ps1 -ForceFake  # lectures fake explicite
+.\scripts\test_natal_simplified_calculator.ps1          # calculateur seul (422 négatifs)
+.\scripts\test_natal_simplified_reading.ps1 -ForceFake  # lectures fake (7 positifs)
+.\scripts\test_natal_simplified_reading.ps1 -NegativeOnly  # négatifs orchestration 400 seuls
 .\scripts\test_natal_simplified_e2e.ps1 -Case date_only
 .\scripts\test_natal_simplified_e2e.ps1 -NoSaveOutputs
 .\scripts\test_natal_simplified_reading.ps1 -UseReal -SubmitProfile -TimeoutSec 900  # OpenAI facturé
@@ -483,7 +485,7 @@ Invoke-RestMethod -Method Post -Uri "http://localhost:8081/v1/readings/natal/sim
   -Headers $headers -Body $body -ContentType "application/json"
 ```
 
-Réponse attendue : `reading_completeness: partial`, `reading.status: success`, chapitre `identity` (ou `ambiguous_core_identity` si Soleil ambigu), `calculation.computed_scope` selon l'entrée. En cas de rejet garde post-génération : HTTP **422**, enveloppe orchestrée avec `calculation` + `reading.status: safety_rejected` + `violations`.
+Réponse attendue : `reading_completeness: partial`, `reading.status: success`, chapitre `identity` (ou `ambiguous_core_identity` si Soleil ambigu), `calculation.computed_scope` selon l'entrée. Dans `calculation.llm_payload`, le champ canonique des sujets d'interprétation exclus est **`forbidden_interpretation_topics`** (`forbidden_topics` = alias déprécié). En cas de rejet garde post-génération : HTTP **422**, enveloppe orchestrée avec `calculation` + `reading.status: safety_rejected` + `violations`.
 
 Erreurs entrée sur l'orchestration (contrat, format date, lieu incomplet, heure sans timezone) : HTTP **400** `INVALID_INPUT`, sans enveloppe orchestrée. Sur le calculateur seul (`POST /v1/calculations/natal/simplified`), les mêmes erreurs métier renvoient **422** `VALIDATION_FAILED`.
 

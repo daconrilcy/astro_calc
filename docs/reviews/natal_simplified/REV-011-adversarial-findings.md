@@ -20,7 +20,7 @@ Date : 2026-06-05
 
 | ID | Severite | Finding | Raison |
 |----|----------|---------|--------|
-| F-04 | P1 | `forbidden_topics` non consomme | Documente ; garde FR couvre le risque interpretatif |
+| F-04 | P1 | `forbidden_topics` non consomme | **Fermé** — renommé `forbidden_interpretation_topics` + miroir déprécié |
 | F-07 | P1 | `PROFILE_INTERPRETATION_EXCLUDED` en dur | Migration DB produit a planifier |
 | F-08 | P2 | Schema projection vs embed | Artefact standalone ; embed `astro_simplified_natal_response_v1` fait foi |
 | F-13 | P2 | Cas negatifs reading incomplets | Partiellement couvert calculateur ; reading partage validateur entree |

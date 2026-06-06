@@ -63,22 +63,23 @@ allowed_limitation_mentions =
 
 | Module | Rôle |
 |--------|------|
+| `simplified_reading_postprocess` | Typographie FR, summary compact, rôles interpretatifs, disclaimer, sanitisation script |
+| `AstroBasisValidator` | Existence des `fact_id` dans les faits normalisés |
 | `simplified_reading_guard` | Whitelist `astro_basis.fact_id` ; affirmations FR signes bloqués ; ASC / maison numérotée si profil exclut |
 | `SafetyGuard` | Patterns médical / légal / financier ; `forbidden_wording` (codes techniques bloqués) ; appelle `reading_script_guard` en `fr` |
-| `reading_script_guard` | Rejet caractères hors Latin étendu en `fr` (ex. devanagari, bengali) — **invoqué par** `SafetyGuard`, pas en chaîne séparée |
-| `AstroBasisValidator` | Existence des `fact_id` dans les faits normalisés |
+| `reading_script_guard` | Rejet caractères hors Latin étendu en `fr` — **invoqué par** `SafetyGuard` |
 
-Ordre dans `generate_reading_use_case` (profil `natal_simplified`, mode `single_pass`) — voir `single_pass_hardening.rs` :
+Ordre dans `single_pass_hardening.rs` :
 
-1. Génération (+ retry script si `max_script_repair_attempts` > 1)
-2. Post-traitement serveur : disclaimer, summary, sanitisation script
+1. Génération LLM (+ retry script si `max_script_repair_attempts` > 1)
+2. Post-traitement serveur : disclaimer, typographie FR, rôles interpretatifs, summary compact, sanitisation script
 3. Fallback body déterministe si script persiste
 4. `AstroBasisValidator`
 5. `simplified_reading_guard`
 6. `SafetyGuard` (+ `reading_script_guard`)
 7. `ReadingQualityValidator` (non bloquant)
 
-Recette E2E : `test_natal_simplified_e2e.ps1` force le provider **fake** par défaut (`-ForceFake`). OpenAI réel : `-UseReal` (recette optionnelle, non bloquante CI).
+Recette E2E : `test_natal_simplified_e2e.ps1` — **12/12** calculateur + **7/7** lectures + **5/5** négatifs orchestration **400** ; `-ForceFake` par défaut. OpenAI optionnel : `-UseReal`.
 
 ## SafetyGuard vs prompt
 
@@ -100,8 +101,11 @@ Hors `allowed_fact_codes` par défaut. Projection indicative uniquement ; pas d'
 | Commande | Couverture |
 |----------|------------|
 | `cargo test -p astral_llm_application simplified_reading_guard` | Whitelist, signes bloqués FR |
+| `cargo test -p astral_llm_application french_typography` | Élisions FR manquantes |
+| `cargo test -p astral_llm_application simplified_reading_postprocess` | Summary compact, rôles, fallback |
+| `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests` | `forbidden_interpretation_topics` + alias legacy |
 | `cargo test -p astral_llm_api --test astral_llm_simplified_reading_tests` | Prompt, routing chapitre, golden |
-| `.\scripts\test_natal_simplified_e2e.ps1` | 12 calculateur + 7 lectures |
+| `.\scripts\test_natal_simplified_e2e.ps1` | 12 calculateur + 7 lectures + 5 négatifs **400** |
 
 Fixtures golden :
 

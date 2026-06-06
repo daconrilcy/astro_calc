@@ -3229,7 +3229,7 @@ Implémentation : `astral_calculator/src/simplified/payload.rs` (`build_llm_cont
 Pipeline `single_pass` durci (`single_pass_hardening.rs`) :
 
 1. Génération LLM (+ retry si violation script-only, max = `quality.max_script_repair_attempts` du profil DB)
-2. Post-traitement serveur (`simplified_reading_postprocess.rs`) : disclaimer canonique, summary dérivé du chapitre, sanitisation script
+2. Post-traitement serveur (`simplified_reading_postprocess.rs`) : disclaimer canonique, typographie FR (`french_typography.rs`), rôles interpretatifs normalisés, summary compact (1–2 phrases, sans `…`), sanitisation script
 3. Fallback body déterministe si script persiste (`ambiguous_core_identity` / `identity`)
 4. Parse + `normalize_chapter_astro_basis_fact_ids` + `AstroBasisValidator`
 5. `simplified_reading_guard` — whitelist astro_basis, affirmations FR, profil ASC/maisons
@@ -3243,6 +3243,7 @@ E2E recette : `test_natal_simplified_e2e.ps1` active `-ForceFake` par défaut (p
 Autres modules :
 
 - `simplified_reading.rs` — validation entrée orchestration, scrub payload prompt (faits bloqués, compteurs angular)
+- `french_typography.rs` — restauration élisions FR (`l impression` → `l'impression`)
 - `reading_script_guard.rs` — détection + `sanitize_text_for_french_script`
 
 Note : `profile_excluded_feature_codes` est encore émis via constante Rust `PROFILE_INTERPRETATION_EXCLUDED` dans `payload.rs` (migration DB planifiée, cf. REV-011 F-07).
@@ -3255,8 +3256,10 @@ Note : `profile_excluded_feature_codes` est encore émis via constante Rust `PRO
 | `cargo test -p astral_calculator_api --test astral_calculator_api_tests` | Route HTTP calculateur |
 | `cargo test -p astral_llm_api --test astral_llm_simplified_reading_tests` | Prompt, routing, golden |
 | `cargo test -p astral_llm_application reading_script_guard` | Sanitisation + détection script |
-| `cargo test -p astral_llm_application simplified_reading_postprocess` | Summary serveur + fallback body |
-| `.\scripts\test_natal_simplified_e2e.ps1` | Suite complète (**12** calculateur + **7** lectures) |
+| `cargo test -p astral_llm_application french_typography` | Élisions FR |
+| `cargo test -p astral_llm_application simplified_reading_postprocess` | Summary compact + fallback body |
+| `.\scripts\test_natal_simplified_e2e.ps1` | **12** calculateur + **7** lectures + **5** négatifs **400** |
+| `.\scripts\test_natal_simplified_reading.ps1 -NegativeOnly` | Négatifs orchestration seuls |
 | `.\scripts\docker_simplified_natal_smoke.ps1` | Smoke rapide `date_only` |
 
 Golden : `tests/golden/simplified_natal_calculation_stable_1990-06-15.json`, `tests/golden/simplified_natal_calculation_equinox_1990-03-21.json`.
