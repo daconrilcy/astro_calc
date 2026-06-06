@@ -154,6 +154,8 @@ Test Rust dédié au rename : `llm_controls_block_ambiguous_and_allow_stable`, `
 | `671c43f` | docs(natal_simplified): aligner OpenAPI et E2E sur 422/400 |
 | `adc050a` | refactor(natal_simplified): renommer forbidden_interpretation_topics |
 | `381c8a1` | docs(natal_simplified): aligner doc sur certification E2E v2.4 |
+| `c30648d` | docs(natal_simplified): clôture V1 avec preuve E2E et gate llm_payload |
+| `ba65f94` | feat(natal_simplified): fermer risques résiduels F-07 et reading_completeness |
 
 ---
 
@@ -178,15 +180,23 @@ Test Rust dédié au rename : `llm_controls_block_ambiguous_and_allow_stable`, `
 |----|-------|--------|--------|
 | F-07 | Exclusions profil en constante Rust | **CLOSED** | Table `astral_simplified_profile_feature_exclusions`, REV-013, E2E 24/24 |
 | `reading_completeness` | Tolérance PS1 `simplified` | **CLOSED** | Runtime + PS1 = `partial` strict, REV-013 |
-| Qualité OpenAI | Variabilité provider | **CLOSED WITH MONITORING** (pending smoke) | `-StrictOpenAiQuality` + REV-014 ; smoke `-UseReal` 7/7 à exécuter |
+| Qualité OpenAI | Variabilité provider | **CLOSED WITH MONITORING** | `-StrictOpenAiQuality` + REV-014 ; smoke **7/7** (2026-06-06) |
 
-Recette OpenAI (clôture monitoring) :
+Recette OpenAI (monitoring périodique) :
 
 ```powershell
 .\scripts\test_natal_simplified_e2e.ps1 -UseReal -SubmitProfile -TimeoutSec 900
 ```
 
-Artefacts : `output/natal_simplified_openai/{timestamp}/` + `quality_summary.json`.
+Dernier smoke certifié : `output/natal_simplified_openai/2026-06-06T100348Z/` — **7/7**, P0=0, P1=0, ~87 s wall time.
+
+Exemples `run_id` (phase 2, OpenAI) :
+
+| Cas | `run_id` | Mots |
+|-----|----------|------|
+| `date_only` | `1d1082a1-7d4e-4b96-94ea-989f7ad4ae15` | 263 |
+| `complete_birth_data` | `1006bb48-8baa-4e0b-b362-753555469437` | 319 |
+| `date_only_equinox_window` | `6bbc98b7-9f38-4c3e-bb79-f2e03d45447f` | 250 |
 
 ---
 
@@ -214,7 +224,7 @@ Select-String -Path output\natal_simplified\calculator\complete_birth_data.json 
 | Produit | Natal simplifié V1 (moteur v2.4) |
 | Statut | **CLOSED** |
 | Recette E2E | **24/24** (fake provider) |
-| Baseline git | `381c8a1` (+ gate E2E `forbidden_interpretation_topics` dans `simplified_natal_assertions.ps1`) |
+| Baseline git | `ba65f94` (+ smoke OpenAI REV-014 7/7) |
 | Date | 2026-06-06 |
 
 Toute réouverture fonctionnelle requiert un nouveau numéro de release evidence et une mise à jour explicite de ce fichier.
