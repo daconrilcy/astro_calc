@@ -138,7 +138,7 @@ try {
             & (Join-Path $repoRoot "scripts\test_integration_jobs_e2e.ps1") -LlmBase $LlmUrl
         }
         Invoke-Step "Horoscope basic daily fake smoke" {
-            & (Join-Path $repoRoot "scripts\test_horoscope_basic_daily_fake.ps1") -BaseUrl $LlmUrl
+            & (Join-Path $repoRoot "scripts\test_horoscope_basic_daily_fake.ps1") -BaseUrl $LlmUrl -CalculatorUrl $CalculatorUrl
         }
     }
 
