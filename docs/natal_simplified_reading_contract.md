@@ -106,7 +106,16 @@ Retournée uniquement lorsque le calculateur a répondu **200** et que la géné
 
 `reading` est un `GenerateReadingResponse` tagué (`status`). En succès, `reading.reading` est le `NatalReadingResponse` (chapitres, summary, legal, quality).
 
-### Codes HTTP — orchestration
+### Codes HTTP — matrice entrée invalide
+
+| Endpoint | HTTP | Code métier | Enveloppe `{ calculation, reading }` |
+|----------|------|-------------|----------------------------------------|
+| `POST /v1/calculations/natal/simplified` | **422** | `VALIDATION_FAILED` | Non (error_response_v1) |
+| `POST /v1/readings/natal/simplified` | **400** | `INVALID_INPUT` | Non (error_response_v1) |
+
+Recette E2E : 5 cas négatifs partagés — **422** en phase calculateur, **400** en phase orchestration lecture.
+
+### Codes HTTP — orchestration (succès et post-génération)
 
 | Situation | HTTP | Corps |
 |-----------|------|-------|

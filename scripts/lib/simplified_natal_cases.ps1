@@ -141,55 +141,65 @@ function Get-SimplifiedNatalNegativeCases {
 
     return @(
         [ordered]@{
-            Label           = "invalid_date"
-            Description     = "Date invalide - 422"
-            Request         = [ordered]@{
+            Label                       = "invalid_date"
+            Description                 = "Format date invalide — 422 calculateur / 400 orchestration"
+            Request                     = [ordered]@{
                 request_contract_version = $contract
                 birth                    = [ordered]@{ date = "not-a-date" }
             }
-            ExpectedStatus  = 422
+            ExpectedStatus              = 422
+            ExpectedOrchestrationStatus = 400
+            ExpectedErrorCode           = "INVALID_INPUT"
         },
         [ordered]@{
-            Label           = "invalid_calendar_date"
-            Description     = "Date calendaire impossible - 422"
-            Request         = [ordered]@{
+            Label                       = "invalid_calendar_date"
+            Description                 = "Date calendaire impossible — 422 calculateur / 400 orchestration"
+            Request                     = [ordered]@{
                 request_contract_version = $contract
                 birth                    = [ordered]@{ date = "2024-02-30" }
             }
-            ExpectedStatus  = 422
+            ExpectedStatus              = 422
+            ExpectedOrchestrationStatus = 400
+            ExpectedErrorCode           = "INVALID_INPUT"
         },
         [ordered]@{
-            Label           = "time_without_timezone"
-            Description     = "Heure sans timezone - 422 metier"
-            Request         = [ordered]@{
+            Label                       = "time_without_timezone"
+            Description                 = "Heure sans timezone — 422 calculateur / 400 orchestration"
+            Request                     = [ordered]@{
                 request_contract_version = $contract
                 birth                    = [ordered]@{
                     date = "1990-06-15"
                     time = "14:30:00"
                 }
             }
-            ExpectedStatus  = 422
+            ExpectedStatus              = 422
+            ExpectedOrchestrationStatus = 400
+            ExpectedErrorCode           = "INVALID_INPUT"
         },
         [ordered]@{
-            Label           = "invalid_latitude"
-            Description     = "Latitude hors bornes - 422"
-            Request         = [ordered]@{
+            Label                       = "invalid_latitude"
+            Description                 = "Latitude hors bornes — 422 calculateur / 400 orchestration"
+            Request                     = [ordered]@{
                 request_contract_version = $contract
                 birth                    = [ordered]@{
                     date     = "1990-06-15"
                     location = @{ latitude = 91.0; longitude = 2.3522 }
                 }
             }
-            ExpectedStatus  = 422
+            ExpectedStatus              = 422
+            ExpectedOrchestrationStatus = 400
+            ExpectedErrorCode           = "INVALID_INPUT"
         },
         [ordered]@{
-            Label           = "wrong_contract_version"
-            Description     = "Contrat request obsolete - 422"
-            Request         = [ordered]@{
+            Label                       = "wrong_contract_version"
+            Description                 = "Contrat request obsolete — 422 calculateur / 400 orchestration"
+            Request                     = [ordered]@{
                 request_contract_version = "astro_simplified_natal_request_v0"
                 birth                    = [ordered]@{ date = "1990-06-15" }
             }
-            ExpectedStatus  = 422
+            ExpectedStatus              = 422
+            ExpectedOrchestrationStatus = 400
+            ExpectedErrorCode           = "INVALID_INPUT"
         }
     )
 }

@@ -60,7 +60,7 @@ paths:
         "200":
           description: Payload valide
         "422":
-          description: error_response_v1
+          description: error_response_v1 — `VALIDATION_FAILED` (payload ou schema invalide)
   /v1/calculations/natal:
     post:
       summary: Calcul natal
@@ -81,7 +81,7 @@ paths:
               schema:
                 $ref: "./astro_engine_response_v1.schema.json"
         "422":
-          description: error_response_v1
+          description: error_response_v1 — `VALIDATION_FAILED` ou `CALCULATION_FAILED`
   /v1/calculations/natal/simplified:
     post:
       summary: Calcul natal simplifie (donnees incompletes)
@@ -102,7 +102,10 @@ paths:
               schema:
                 $ref: "./astro_simplified_natal_response_v1.schema.json"
         "422":
-          description: error_response_v1
+          description: |
+            error_response_v1 — entree invalide (`VALIDATION_FAILED`) : contrat obsolete, format date,
+            date calendaire impossible, coordonnees hors bornes, heure sans timezone, JSON invalide.
+            Le calculateur n'utilise pas HTTP 400 pour ces erreurs metier.
   /openapi.yaml:
     get:
       summary: Cette specification OpenAPI

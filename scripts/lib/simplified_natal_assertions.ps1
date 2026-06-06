@@ -475,6 +475,43 @@ function Write-SimplifiedTestBanner {
     if ($LlmBase) { Write-Host "LLM         : $LlmBase" }
 }
 
+function Assert-SimplifiedOrchestrationRejected {
+    param(
+        $Result,
+        $Case
+    )
+
+    $failures = [System.Collections.Generic.List[string]]::new()
+    $expectedStatus = if ($Case.ExpectedOrchestrationStatus) { $Case.ExpectedOrchestrationStatus } else { 400 }
+
+    if ($Result.StatusCode -ne $expectedStatus) {
+        $failures.Add("HTTP $($Result.StatusCode) attendu $expectedStatus")
+    }
+
+    $body = $Result.Body
+    if ($null -eq $body) {
+        $failures.Add("corps JSON absent")
+        return @($failures)
+    }
+
+    if ($body.calculation -or $body.reading -or $body.reading_completeness) {
+        $failures.Add("enveloppe orchestrée interdite sur erreur entrée (calculation/reading/reading_completeness)")
+    }
+
+    if ($body.status -ne "failed") {
+        $failures.Add("status attendu failed, recu $($body.status)")
+    }
+
+    if ($Case.ExpectedErrorCode) {
+        $code = $body.error.code
+        if ($code -ne $Case.ExpectedErrorCode) {
+            $failures.Add("error.code=$code attendu $($Case.ExpectedErrorCode)")
+        }
+    }
+
+    return @($failures)
+}
+
 function Write-SimplifiedCaseResult {
     param(
         [string]$Label,

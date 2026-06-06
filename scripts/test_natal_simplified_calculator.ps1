@@ -3,7 +3,7 @@
     Tests HTTP reels — POST /v1/calculations/natal/simplified (tous les cas positifs + negatifs).
 
 .DESCRIPTION
-    Valide la matrice input_precision / computed_scope, llm_payload, limitations et erreurs 422.
+    Valide la matrice input_precision / computed_scope, llm_payload, limitations et erreurs 422 (calculateur seul).
     Necessite calculateur demarre, PostgreSQL pret, ephemerides SWE.
 
 .EXAMPLE

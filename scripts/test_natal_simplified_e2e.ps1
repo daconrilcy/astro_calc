@@ -4,7 +4,8 @@
 
 .DESCRIPTION
     Enchaine test_natal_simplified_calculator.ps1 puis test_natal_simplified_reading.ps1.
-    Couvre les 6 niveaux input_precision, le cas equinoxe ambigu, et les erreurs 422.
+    Couvre les 6 niveaux input_precision, le cas equinoxe ambigu, les erreurs 422 (calculateur seul)
+    et les erreurs 400 (orchestration lecture sur entrees invalides).
     Par defaut, enregistre les reponses JSON dans output\natal_simplified\ (calculator\, reading\, e2e_summary.json).
 
 .EXAMPLE
@@ -50,7 +51,7 @@ if ($saveOutputs) {
 }
 
 Write-Host "=== Natal simplifie - suite E2E ===" -ForegroundColor Cyan
-Write-Host "Cas : matrice input_precision (6) + equinoxe + negatifs 422"
+Write-Host "Cas : matrice input_precision (6) + equinoxe + negatifs (422 calculateur, 400 orchestration)"
 Write-Host ""
 
 $commonArgs = @{
@@ -102,6 +103,28 @@ if (-not $SkipReading) {
     }
 
     & (Join-Path $PSScriptRoot "test_natal_simplified_reading.ps1") @readingArgs
+    if ($null -ne $LASTEXITCODE -and $LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+    Write-Host ""
+    Write-Host "--- Phase 2b/2 : lecture orchestration (negatifs 400) ---" -ForegroundColor Cyan
+    $negativeReadingArgs = @{
+        Case = $Case
+        WaitReadySec = $WaitReadySec
+        TimeoutSec = $TimeoutSec
+        NegativeOnly = $true
+    }
+    if ($saveOutputs) {
+        $negativeReadingArgs.SaveOutputs = $true
+        $negativeReadingArgs.OutputDir = $readOutputDir
+    }
+    if ($LlmBase) { $negativeReadingArgs.LlmBase = $LlmBase }
+    if ($UseReal) {
+        $negativeReadingArgs.UseReal = $true
+    } elseif ($ForceFake -or -not $UseReal) {
+        $negativeReadingArgs.ForceFake = $true
+    }
+
+    & (Join-Path $PSScriptRoot "test_natal_simplified_reading.ps1") @negativeReadingArgs
     if ($null -ne $LASTEXITCODE -and $LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 

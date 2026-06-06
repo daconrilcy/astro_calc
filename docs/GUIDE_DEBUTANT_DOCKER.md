@@ -448,7 +448,7 @@ docker compose up -d --build astral_llm_api   # après changement Rust LLM
 .\scripts\test_natal_simplified_e2e.ps1
 ```
 
-Résultat attendu : **12/12** calculateur (7 positifs + 5 négatifs 422, dont `2024-02-30`) et **7/7** lectures orchestrées.
+Résultat attendu : **12/12** calculateur (7 positifs + 5 négatifs **422** sur `POST /v1/calculations/natal/simplified`), **7/7** lectures positives orchestrées, **5/5** lectures négatives **400** `INVALID_INPUT` sur `POST /v1/readings/natal/simplified` (sans enveloppe `{ calculation, reading }`).
 
 > **Provider E2E** : la suite active **`-ForceFake`** par défaut (bascule `natal_prompter` → fake, sans OpenAI). Recette OpenAI optionnelle : `-UseReal -SubmitProfile` (facturée, peut échouer sporadiquement malgré les retries script).
 
@@ -868,15 +868,20 @@ En Docker Compose, définissez **les deux clés** dans `.env` avant le premier `
 
 ### Codes d'erreur HTTP courants
 
-| Code HTTP | Code métier | Situation |
-|-----------|-------------|-----------|
-| 401 | `UNAUTHORIZED` | Clé API manquante ou invalide |
-| 400 | `INVALID_INPUT` | Payload requête invalide |
-| 422 | `VALIDATION_FAILED` | JSON ou schéma rejeté |
-| 409 | `CALCULATION_IN_PROGRESS` | Idempotency : calcul déjà en cours (calculateur) |
-| 429 | `TOO_MANY_REQUESTS` | Rate limit ou concurrence |
-| 503 | `SERVICE_NOT_READY` | Readiness échouée |
-| 504 | `PROVIDER_TIMEOUT` | Timeout LLM provider |
+| Code HTTP | Code métier | Calculateur (`:8080`) | Gateway LLM (`:8081`) |
+|-----------|-------------|------------------------|------------------------|
+| 401 | `UNAUTHORIZED` | Clé API manquante ou invalide | Idem |
+| 400 | `INVALID_INPUT` | *(non utilisé pour validation métier)* | Entrée invalide **avant** génération (orchestration simplified, `generate`) |
+| 422 | `VALIDATION_FAILED` | Payload / schéma / règles métier rejetés (natal simplified inclus) | `safety_rejected` post-génération (enveloppe `{ calculation, reading }` pour simplified) |
+| 409 | `CALCULATION_IN_PROGRESS` | Idempotency calculateur | — |
+| 429 | `TOO_MANY_REQUESTS` | — | Rate limit ou concurrence |
+| 503 | `SERVICE_NOT_READY` | DB / éphémérides | DB / profils / prompts |
+| 504 | `PROVIDER_TIMEOUT` | — | Timeout LLM provider |
+
+**Natal simplifié — même payload invalide, code HTTP selon l'endpoint :**
+
+- `POST /v1/calculations/natal/simplified` → **422** `VALIDATION_FAILED`
+- `POST /v1/readings/natal/simplified` → **400** `INVALID_INPUT` (sans enveloppe orchestrée)
 
 Les erreurs **métier de génération** (échec LLM après acceptation de la requête) utilisent plutôt `generate_reading_response_v1` avec `status: failed`.
 

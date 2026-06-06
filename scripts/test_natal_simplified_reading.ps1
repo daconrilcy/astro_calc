@@ -5,8 +5,10 @@
 .DESCRIPTION
     Execute tous les cas positifs via le gateway LLM. Par defaut la suite E2E active -ForceFake (deterministe, sans OpenAI). Passez -UseReal pour une recette OpenAI optionnelle.
     Valide reading_completeness, structure natal_reading_v1, llm_controls et anti-degraded.
+    Les cas negatifs attendent HTTP 400 INVALID_INPUT sans enveloppe orchestrée.
 
 .EXAMPLE
+    .\scripts\test_natal_simplified_reading.ps1 -NegativeOnly
     .\scripts\test_natal_simplified_reading.ps1
 
 .EXAMPLE
@@ -24,6 +26,8 @@ param(
     [switch]$UseReal,
     [switch]$ForceFake,
     [switch]$SubmitProfile,
+    [switch]$PositiveOnly,
+    [switch]$NegativeOnly,
     [switch]$SaveOutputs,
     [string]$OutputDir = "",
     [int]$MinWordsPerChapter = 30,
@@ -78,7 +82,10 @@ if ($SubmitProfile) {
     & (Join-Path $repoRoot "scripts\manage_natal_interpretation_profiles.ps1") -Submit -Path $profilePath
 }
 
-$cases = Select-SimplifiedNatalCases -Labels $Case -Kind positive
+$casesKind = "positive"
+if ($PositiveOnly) { $casesKind = "positive" }
+if ($NegativeOnly) { $casesKind = "negative" }
+$cases = Select-SimplifiedNatalCases -Labels $Case -Kind $casesKind
 
 Write-SimplifiedTestBanner -Title "Test lecture natal simplifiee (orchestration)" -CalculatorBase "(via LLM)" -LlmBase $LlmBase
 
@@ -112,6 +119,23 @@ foreach ($testCase in $cases) {
 
     $uri = "$($LlmBase.TrimEnd('/'))/v1/readings/natal/simplified"
     $result = Invoke-AstralHttpWithStatus -Method Post -Uri $uri -Headers $headers -Body $body -TimeoutSec $TimeoutSec
+
+    if ($testCase.ExpectedOrchestrationStatus) {
+        if ($SaveOutputs) {
+            $outPath = Join-Path $OutputDir "$($testCase.Label).error.json"
+            $payload = if ($null -ne $result.Body) { $result.Body } else { [ordered]@{ status_code = $result.StatusCode; raw = $result.Raw } }
+            $payload | ConvertTo-Json -Depth 40 | Set-Content -LiteralPath $outPath -Encoding utf8
+        }
+        $caseFailures = Assert-SimplifiedOrchestrationRejected -Result $result -Case $testCase
+        if ($caseFailures.Count -eq 0) {
+            $passed++
+            Write-SimplifiedCaseResult -Label "$($testCase.Label) ($($testCase.Description))" -Passed $true
+        } else {
+            $failed++
+            Write-SimplifiedCaseResult -Label "$($testCase.Label)" -Passed $false -Failures $caseFailures
+        }
+        continue
+    }
 
     $apiResponse = $result.Body
     $hasSimplifiedEnvelope = ($null -ne $apiResponse) -and ($null -ne $apiResponse.calculation) -and ($null -ne $apiResponse.reading)
