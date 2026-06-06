@@ -204,6 +204,20 @@ function Assert-SimplifiedCalculatorResponse {
         $failures.Add("llm_payload.profile_code=$($Response.llm_payload.profile_code)")
     }
 
+    if ($null -eq $Response.llm_payload.forbidden_interpretation_topics) {
+        $failures.Add("llm_payload.forbidden_interpretation_topics absent (rebuild astral_calculator_api)")
+    }
+    if ($null -eq $Response.llm_payload.forbidden_topics) {
+        $failures.Add("llm_payload.forbidden_topics mirror absent")
+    }
+    if ($null -ne $Response.llm_payload.forbidden_interpretation_topics -and $null -ne $Response.llm_payload.forbidden_topics) {
+        $canonical = @($Response.llm_payload.forbidden_interpretation_topics) | Sort-Object
+        $legacy = @($Response.llm_payload.forbidden_topics) | Sort-Object
+        if (($canonical -join ",") -ne ($legacy -join ",")) {
+            $failures.Add("forbidden_interpretation_topics != forbidden_topics mirror")
+        }
+    }
+
     foreach ($fact in @($Response.facts)) {
         $code = "$($fact.object_code).sign"
         $basis = "placement:$($fact.object_code)"
