@@ -107,6 +107,23 @@ function New-E2EHoroscopePublicPayload {
     }
 }
 
+function New-E2EHoroscopePremiumPublicPayload {
+    param([Parameter(Mandatory = $true)][string]$ChartCalculationId)
+    return [ordered]@{
+        date = "2026-06-06"
+        timezone = "Europe/Paris"
+        target_language = "fr"
+        chart_calculation_id = $ChartCalculationId
+        location = [ordered]@{
+            latitude = 48.8566
+            longitude = 2.3522
+            label = "Paris"
+        }
+        audience_level = "general"
+        detail_level = "premium_rich"
+    }
+}
+
 function Invoke-E2ENatalCalculation {
     param(
         [Parameter(Mandatory = $true)][string]$RepoRoot,

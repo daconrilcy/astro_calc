@@ -3392,6 +3392,15 @@ ne peuvent citer que les preuves planifiees pour ce creneau. Le paquet
 `evidence` conserve toutes les preuves requises par les slots meme lorsque
 `main_signals` reste borne a 24.
 
+Suite de validation dediee : `scripts/test_horoscope_premium_daily_all.ps1`
+regroupe les tests Rust du service, les contrats, les checks integration et le
+smoke HTTP fake Premium. Elle est appelee par
+`scripts/docker_update_integration_stack.ps1` pendant les smokes Docker.
+Le test E2E reel Docker dedie est
+`tests/e2e_real/04_horoscope_premium_daily.e2e.ps1` ; il couvre catalogue,
+contrat, schema, job async Premium, calcul local `timeline[12]`, `local_chart`,
+`best_slots` / `watch_slots` et absence de fuite `slot_`.
+
 Pour `horoscope_free_daily`, `day` est uniquement un slot technique de
 projection. Il ne constitue pas une section publique et ne doit jamais apparaitre
 dans la reponse utilisateur.

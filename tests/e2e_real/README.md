@@ -39,7 +39,11 @@ Manques couverts par ce dossier :
   generation sync, validation de lecture, lecture natal simplifie sync.
 - `03_integration_catalog_services.e2e.ps1` : catalogue public et jobs async
   pour chaque service `active` ou `beta`.
-- `run_real_e2e.ps1` : lance les trois scripts dans l'ordre et produit un
+- `04_horoscope_premium_daily.e2e.ps1` : service async
+  `horoscope_premium_daily_local_2h_slots`, avec verification du contrat, du
+  payload Premium local, de `timeline[12]`, de `local_chart` et des slots
+  `best/watch`.
+- `run_real_e2e.ps1` : lance les scripts dans l'ordre et produit un
   rapport Markdown sous `output/e2e_real_reports/` par defaut.
 
 ## Diagnostics

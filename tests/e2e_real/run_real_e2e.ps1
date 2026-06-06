@@ -111,6 +111,16 @@ $scripts = @(
             ReadyTimeoutSec = $ReadyTimeoutSec
             PollTimeoutSec = $PollTimeoutSec
         }
+    },
+    @{
+        Path = Join-Path $PSScriptRoot "04_horoscope_premium_daily.e2e.ps1"
+        Name = "Horoscope premium daily"
+        Args = @{
+            CalculatorUrl = $CalculatorUrl
+            LlmUrl = $LlmUrl
+            ReadyTimeoutSec = $ReadyTimeoutSec
+            PollTimeoutSec = $PollTimeoutSec
+        }
     }
 )
 

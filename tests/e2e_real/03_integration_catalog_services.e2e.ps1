@@ -22,6 +22,10 @@ function New-ServicePayload {
         return New-E2EHoroscopePublicPayload -ChartCalculationId $ChartCalculationId
     }
 
+    if ($Service.service_code -eq "horoscope_premium_daily_local_2h_slots") {
+        return New-E2EHoroscopePremiumPublicPayload -ChartCalculationId $ChartCalculationId
+    }
+
     if ($Service.calculation_mode -eq "simplified_natal") {
         return New-E2ESimplifiedNatalRequest
     }
@@ -74,6 +78,13 @@ foreach ($service in $services) {
     if ($service.service_code -eq "horoscope_basic_daily_natal_3_slots") {
         if ($status.result.reading.contract_version -ne "horoscope_response_v1") {
             throw "Horoscope service returned unexpected reading contract"
+        }
+    } elseif ($service.service_code -eq "horoscope_premium_daily_local_2h_slots") {
+        if ($status.result.reading.contract_version -ne "horoscope_response_v1") {
+            throw "Premium horoscope service returned unexpected reading contract"
+        }
+        if (-not $status.result.reading.timeline -or $status.result.reading.timeline.Count -ne 12) {
+            throw "Premium horoscope service must return timeline[12]"
         }
     } elseif ($service.service_code -like "*_from_payload") {
         if ($status.result.reading.status -ne "success") {

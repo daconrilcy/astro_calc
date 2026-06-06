@@ -140,6 +140,9 @@ try {
         Invoke-Step "Horoscope free daily full test suite" {
             & (Join-Path $repoRoot "scripts\test_horoscope_free_daily_all.ps1") -BaseUrl $LlmUrl -CalculatorUrl $CalculatorUrl
         }
+        Invoke-Step "Horoscope premium daily full test suite" {
+            & (Join-Path $repoRoot "scripts\test_horoscope_premium_daily_all.ps1") -BaseUrl $LlmUrl -CalculatorUrl $CalculatorUrl
+        }
     }
 
     Write-Host "`nDocker integration stack is ready." -ForegroundColor Green
