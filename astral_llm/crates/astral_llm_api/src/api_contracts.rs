@@ -13,7 +13,12 @@ pub fn contracts_index() -> Value {
             "generate_reading_response_v1": "/v1/schemas/generate_reading_response_v1",
             "natal_reading_v1": "/v1/schemas/natal_reading_v1",
             "chapter_provider_v1": "/v1/schemas/chapter_provider_v1",
-            "summary_provider_v1": "/v1/schemas/summary_provider_v1"
+            "summary_provider_v1": "/v1/schemas/summary_provider_v1",
+            "integration_job_request_v1": "/v1/schemas/integration_job_request_v1",
+            "integration_job_response_v1": "/v1/schemas/integration_job_response_v1",
+            "integration_job_status_v1": "/v1/schemas/integration_job_status_v1",
+            "integration_service_v1": "/v1/schemas/integration_service_v1",
+            "integration_service_contract_v1": "/v1/schemas/integration_service_contract_v1"
         },
         "openapi": "/openapi.yaml"
     })
@@ -26,10 +31,25 @@ pub fn load_published_schema(version: &str) -> Option<Value> {
         "summary_provider_v1" => "summary_provider_v1.schema.json",
         "chapter_provider_v1" => "chapter_provider_v1.schema.json",
         "natal_reading_v1" => "natal_reading_v1.schema.json",
+        "integration_job_request_v1" => "integration_job_request_v1.schema.json",
+        "integration_job_response_v1" => "integration_job_response_v1.schema.json",
+        "integration_job_status_v1" => "integration_job_status_v1.schema.json",
+        "integration_service_v1" => "integration_service_v1.schema.json",
+        "integration_service_contract_v1" => "integration_service_contract_v1.schema.json",
+        "astro_simplified_natal_request_v1" => {
+            "../calculator/astro_simplified_natal_request_v1.schema.json"
+        }
+        "astro_engine_request_v1" => "../calculator/astro_engine_request_v1.schema.json",
         _ => return None,
     };
 
-    let path = contracts_llm_dir().join(filename);
+    let path = if filename.starts_with("../calculator/") {
+        contracts_llm_dir()
+            .join("..")
+            .join(filename.trim_start_matches("../"))
+    } else {
+        contracts_llm_dir().join(filename)
+    };
     let raw = fs::read_to_string(path).ok()?;
     serde_json::from_str(&raw).ok()
 }
@@ -57,7 +77,10 @@ pub fn contracts_llm_dir() -> PathBuf {
     PathBuf::from("contracts/llm")
 }
 
-pub fn service_not_ready(message: impl Into<String>, details: Value) -> (axum::http::StatusCode, axum::Json<Value>) {
+pub fn service_not_ready(
+    message: impl Into<String>,
+    details: Value,
+) -> (axum::http::StatusCode, axum::Json<Value>) {
     (
         axum::http::StatusCode::SERVICE_UNAVAILABLE,
         axum::Json(json!({

@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "integration_service_contract_v1",
+  "description": "Detail contrat GET /v1/services/{service_code}/contract.",
+  "type": "object",
+  "required": ["service_code", "contracts", "schema_links", "validation_notes"],
+  "properties": {
+    "service_code": { "type": "string" },
+    "profile_code": { "type": "string" },
+    "contracts": {
+      "type": "object",
+      "properties": {
+        "service_request": { "type": "string" },
+        "payload": { "type": "string" },
+        "service_response": { "type": "string" },
+        "calculation_output": { "type": ["string", "null"] },
+        "reading_output": { "type": "string" }
+      }
+    },
+    "schema_links": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "example_request": {},
+    "mapping_notes": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "validation_notes": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

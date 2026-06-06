@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "integration_job_status_v1",
+  "description": "Reponse GET /v1/jobs/{run_id}.",
+  "type": "object",
+  "required": ["run_id", "service_code", "status", "submitted_at"],
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "service_code": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "running",
+        "completed",
+        "failed",
+        "safety_rejected",
+        "cancelled",
+        "expired"
+      ]
+    },
+    "submitted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "started_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "poll_after_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "result": {
+      "description": "Enveloppe unifiee { calculation?, reading, reading_completeness? } si terminal success."
+    },
+    "error": {
+      "type": ["object", "null"],
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" }
+      }
+    }
+  }
+}

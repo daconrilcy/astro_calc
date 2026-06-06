@@ -3,6 +3,7 @@
 pub mod api_contracts;
 pub mod api_error;
 pub mod auth;
+pub mod integration_routes;
 pub mod rate_limit;
 pub mod routes;
 pub mod state;

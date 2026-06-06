@@ -9,8 +9,8 @@ use astral_llm_api::{
 
 use astral_llm_application::{
     build_capability_registry_with_db, build_fallback_policy, build_providers,
-    GenerateReadingUseCase, PromptCompiler, ProviderCircuitBreaker, ProviderRouter,
-    ResponseValidator, SchemaRegistry,
+    GenerateReadingUseCase, IntegrationJobValidator, PromptCompiler, ProviderCircuitBreaker,
+    ProviderRouter, ResponseValidator, SchemaRegistry,
 };
 use astral_llm_infra::{
     bootstrap_domains, bootstrap_product_policies, bootstrap_safety_patterns,
@@ -54,19 +54,21 @@ async fn main() {
 
     let mut db_models = Vec::new();
     let mut active_providers = Vec::new();
-    let persistence = if config.enable_persistence {
+    let mut persistence = None;
+    let mut job_persistence = None;
+    if config.enable_persistence {
         if let Some(database_url) = &config.database_url {
             let pool = PgPoolOptions::new()
                 .max_connections(5)
                 .connect(database_url)
                 .await
                 .expect("database connection");
-            let persistence = RunPersistence::new(pool.clone());
+            let run_persistence = RunPersistence::new(pool.clone());
             if config.db_auto_migrate {
-                persistence.ensure_schema().await.expect("schema");
+                run_persistence.ensure_schema().await.expect("schema");
             } else {
                 tracing::info!("db auto-migrate disabled; verifying schema");
-                persistence
+                run_persistence
                     .verify_schema()
                     .await
                     .expect("expected PostgreSQL schema missing; apply SQL migrations before boot");
@@ -76,14 +78,14 @@ async fn main() {
             catalog = Arc::new(loaded);
             active_providers = load_active_provider_codes(&pool).await;
             db_models = load_model_capabilities(&pool).await;
-            Some(Arc::new(persistence))
+            persistence = Some(Arc::new(run_persistence));
+            job_persistence = Some(Arc::new(astral_llm_infra::JobPersistence::new(pool)));
         } else {
             tracing::warn!("persistence enabled but DATABASE_URL missing");
-            None
         }
-    } else {
-        None
-    };
+    }
+    let persistence = persistence;
+    let job_persistence = job_persistence;
 
     let capability_registry = if db_models.is_empty() {
         astral_llm_application::build_capability_registry()
@@ -135,11 +137,15 @@ async fn main() {
     )
     .ok();
 
+    let integration_job_validator = Arc::new(IntegrationJobValidator::new());
+
     let state = AppState {
         use_case,
         schema_registry,
         config: config.clone(),
         persistence,
+        job_persistence,
+        integration_job_validator: Some(integration_job_validator),
         concurrency_limit: new_semaphore(config.max_concurrent_requests),
         api_key_limiter: new_api_key_limiter(&config),
         interpretation_profile_count: catalog.interpretation_profiles.len(),
@@ -157,14 +163,21 @@ async fn main() {
             StatusCode::GATEWAY_TIMEOUT,
             timeout,
         ))
-        .layer(middleware::from_fn_with_state(state.clone(), concurrency_limit))
-        .layer(middleware::from_fn_with_state(state.clone(), api_key_rate_limit))
-        .layer(middleware::from_fn_with_state(state.clone(), require_api_key))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            concurrency_limit,
+        ))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            api_key_rate_limit,
+        ))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            require_api_key,
+        ))
         .layer(TraceLayer::new_for_http());
 
-    let listener = TcpListener::bind(bind_addr)
-        .await
-        .expect("bind");
+    let listener = TcpListener::bind(bind_addr).await.expect("bind");
     tracing::info!(addr = %bind_addr, "astral_llm_api listening");
     axum::serve(listener, app).await.expect("server");
 }

@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "integration_job_response_v1",
+  "description": "Reponse POST /v1/jobs (202 JOB_ACCEPTED ou 200 replay idempotent terminal).",
+  "type": "object",
+  "required": ["run_id", "status", "service_code", "poll_url"],
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["queued", "running", "completed", "failed", "safety_rejected"]
+    },
+    "service_code": {
+      "type": "string"
+    },
+    "poll_url": {
+      "type": "string"
+    },
+    "poll_after_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "mercure_subscribe_url": {
+      "type": ["string", "null"]
+    },
+    "result": {
+      "description": "Present uniquement sur replay 200 terminal completed."
+    },
+    "error": {
+      "type": ["object", "null"]
+    }
+  }
+}

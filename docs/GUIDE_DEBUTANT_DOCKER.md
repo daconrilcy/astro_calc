@@ -1065,4 +1065,32 @@ Pour certifier une lecture Premium Plus de bout en bout (hors Docker ou avec sta
 
 ---
 
-*Dernière mise à jour : juin 2026 — stack Docker Compose V1 + natal simplifié v2.4 (`POST /v1/readings/natal/simplified`).*
+## 19. API d'intégration async (jobs)
+
+Mode recommandé pour applications externes : catalogue + jobs async.
+
+```powershell
+# Après docker compose up et import référentiel
+.\scripts\manage_integration_services.ps1 -Submit
+docker compose up -d astral_llm_worker
+
+# Smoke E2E (natal_simplified, provider fake)
+.\scripts\test_integration_jobs_e2e.ps1
+```
+
+Endpoints :
+
+| Méthode | URL | Rôle |
+|---------|-----|------|
+| GET | `/v1/services` | Catalogue services actifs |
+| GET | `/v1/services/{code}/contract` | Contrat payload métier |
+| POST | `/v1/jobs` | Soumettre un job (`Idempotency-Key` requis) |
+| GET | `/v1/jobs/{run_id}` | Poll statut (`queued` → `running` → `completed`) |
+
+Documentation : [`integration_api_guide.md`](integration_api_guide.md), contrat normatif [`integration_api_contract.md`](integration_api_contract.md).
+
+Mercure (optionnel) : hub sur `http://localhost:3000`, topic `tenants/{tenant_id}/jobs/{run_id}`.
+
+---
+
+*Dernière mise à jour : juin 2026 — stack Docker Compose V1 + API intégration jobs + natal simplifié v2.4.*

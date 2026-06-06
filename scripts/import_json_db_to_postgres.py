@@ -29,6 +29,9 @@ METADATA_KEYS = {
     "schema_version",
     "resolution_order",
 }
+EXTERNAL_FOREIGN_KEY_TARGETS = {
+    ("llm_interpretation_profiles", ("profile_code",)),
+}
 
 
 def read_env(path: Path) -> dict[str, str]:
@@ -538,6 +541,9 @@ def build_sql(json_dir: Path, schema: str) -> tuple[str, int, int, int, int]:
         ):
             target_def = table_defs.get(target_name)
             if not target_def:
+                if (target_name, target_columns) in EXTERNAL_FOREIGN_KEY_TARGETS:
+                    foreign_keys.append((source_name, source_columns, target_name, target_columns))
+                    continue
                 skipped_foreign_keys += 1
                 continue
             if any(column not in target_def["columns"] for column in target_columns):

@@ -1,0 +1,255 @@
+# Contrat API d'intégration — v1
+
+Spécification normative de l'API d'intégration métier (`astral_llm_api`). Les schémas JSON associés sont publiés sous `contracts/llm/integration_*_v1.schema.json`.
+
+## Périmètre V1
+
+| Opération | Endpoint |
+|-----------|----------|
+| Découvrir les services | `GET /v1/services` |
+| Détail contrat d'un service | `GET /v1/services/{code}/contract` |
+| Soumettre un job async | `POST /v1/jobs` |
+| Suivre un job | `GET /v1/jobs/{run_id}` |
+| Notification push (optionnel) | Mercure — Phase 4 |
+
+**Hors V1** : routes sync génériques (`POST /v1/readings/natal/{profile}`, `POST /v1/services/{code}/generate-sync`).
+
+Les endpoints historiques (`POST /v1/calculations/*`, `POST /v1/readings/generate`, `POST /v1/readings/natal/simplified`, `GET /v1/runs/{id}`) restent disponibles sans changement de contrat.
+
+## Enveloppe job vs payload métier
+
+L'enveloppe `integration_job_request_v1` **ne connaît pas** la forme des payloads métier. Le champ `payload` est un objet JSON **opaque** dans le schéma d'enveloppe (`type: object`, sans `$ref` vers contrats calculateur/LLM).
+
+```json
+{
+  "service_code": "natal_simplified",
+  "payload": {},
+  "user_language": "fr",
+  "audience_level": "beginner",
+  "astrologer_profile": {}
+}
+```
+
+Validation en **deux temps** :
+
+1. Enveloppe → `integration_job_request_v1` → **400** `INVALID_INPUT`
+2. `payload` → `payload_contract` du service (catalogue `llm_integration_services`) → **422** `PAYLOAD_VALIDATION_FAILED`
+
+Pour les services `*_from_payload`, une **gate applicative** supplémentaire exige que `payload.product_context.interpretation_profile_code` soit égal au `profile_code` catalogue du service → **422** `PAYLOAD_VALIDATION_FAILED` si mismatch.
+
+Le contrat métier exact est documenté via `GET /v1/services/{code}/contract`.
+
+## Machine d'état — `queued` partout
+
+**Règle stricte V1** : le statut initial et la sémantique publique utilisent **`queued`** uniquement. Pas de `pending` en DB, worker, API ni tests E2E.
+
+| Statut | Terminal ? | Description |
+|--------|------------|-------------|
+| `queued` | non | Job accepté, en attente de traitement worker |
+| `running` | non | Worker en cours d'exécution |
+| `completed` | oui | Succès — `result` disponible au poll |
+| `failed` | oui | Échec technique ou métier retryable/terminal |
+| `safety_rejected` | oui | Garde sécurité — `result` partiel possible |
+| `cancelled` | oui | Réservé V1 (non émis) |
+| `expired` | oui | Réservé schéma (non émis en V1) |
+
+## Identifiants
+
+```text
+llm_jobs.run_id              = identifiant public d'intégration (POST/GET /v1/jobs)
+llm_jobs.generation_run_id   = FK optionnelle → llm_generation_runs(id)
+```
+
+- `GET /v1/runs/{id}` = audit LLM interne (`generation_run_id`)
+- `GET /v1/jobs/{run_id}` = job d'intégration
+- L'égalité `run_id == generation_run_id` peut survenir en pratique mais **n'est pas contractuelle**
+
+## Idempotence
+
+Header **`Idempotency-Key` obligatoire** lorsque la persistance stricte est active (`ASTRAL_LLM_ENABLE_PERSISTENCE=true` en production/intégration).
+
+Contrainte DB : `UNIQUE (tenant_id, idempotency_key)` — une clé est **unique par tenant, tous services confondus** (sémantique Stripe-like).
+
+| Cas | HTTP | Corps |
+|-----|------|-------|
+| Nouvelle clé | **202** | `run_id`, `status: queued`, `poll_url` |
+| Même clé + même hash + `queued`/`running` | **202** | même `run_id`, statut courant |
+| Même clé + même hash + terminal `completed` | **200** | statut + **`result` inclus** |
+| Même clé + hash différent | **409** | `IDEMPOTENCY_CONFLICT` |
+| Même clé + **autre `service_code`** | **409** | `IDEMPOTENCY_CONFLICT` |
+| Même clé + même hash + **autre `api_key_id`** | **409** | `IDEMPOTENCY_CONFLICT` |
+
+**Replay terminal (figé V1)** : pas de variante 202 sans résultat pour un job `completed`. Paramètre `include_result=false` reporté.
+
+### Exemple cross-service → 409
+
+```http
+POST /v1/jobs
+Idempotency-Key: order-12345
+Content-Type: application/json
+```
+
+```json
+{
+  "service_code": "natal_simplified",
+  "payload": { "request_contract_version": "astro_simplified_natal_request_v1", "birth": { "date": "1990-06-15" } },
+  "user_language": "fr",
+  "audience_level": "beginner"
+}
+```
+
+→ **202** `{ "run_id": "aaa-111-...", "status": "queued", ... }`
+
+```http
+POST /v1/jobs
+Idempotency-Key: order-12345
+```
+
+```json
+{
+  "service_code": "natal_basic_from_payload",
+  "payload": { "...": "..." },
+  "user_language": "fr",
+  "audience_level": "beginner"
+}
+```
+
+→ **409**
+
+```json
+{
+  "error": {
+    "code": "IDEMPOTENCY_CONFLICT",
+    "message": "Idempotency-Key already used for a different service or payload"
+  }
+}
+```
+
+**Conséquence** : une clé = une soumission logique unique par tenant. Deux services différents → deux clés distinctes.
+
+Ownership replay : la contrainte reste tenant-wide, mais seul le même
+fingerprint `api_key_id` peut rejouer un job existant. Une autre clé API du
+même tenant qui réutilise la même `Idempotency-Key` reçoit **409** au lieu du
+résultat.
+
+## Hashing
+
+### Objet logique job (`idempotency_payload_hash`)
+
+Champs inclus (minimum) :
+
+```text
+service_code
+payload
+user_language
+audience_level
+astrologer_profile
+```
+
+Deux soumissions avec le même `payload` métier mais des options de génération différentes → hash différent → pas de replay involontaire.
+
+### Algorithme (canonique)
+
+```text
+1. Construire l'objet logique (idem ci-dessus pour idempotence)
+2. Canonicaliser JSON : clés triées récursivement, encodage UTF-8 stable
+3. Exclure champs volatils côté client (timestamps, request_id optionnel)
+4. Exclure Idempotency-Key du corps hashé (header HTTP uniquement)
+5. SHA-256(hex) du JSON canonique
+```
+
+- `idempotency_payload_hash` : objet logique job
+- `request_payload_hash` : corps complet soumis (audit/debug)
+
+Implémentation : `astral_llm_infra::canonical_json_hash`.
+
+## Matrice HTTP — POST /v1/jobs
+
+| Code | Code erreur / sémantique | Exemple |
+|------|--------------------------|---------|
+| **202** | `JOB_ACCEPTED` — nouveau job ou replay en cours | `{ "run_id": "...", "status": "queued", "poll_url": "/v1/jobs/..." }` |
+| **200** | Replay idempotent `completed` | `{ "run_id": "...", "status": "completed", "result": { ... } }` |
+| **400** | `INVALID_INPUT` — enveloppe | `{ "error": { "code": "INVALID_INPUT", "message": "service_code is required" } }` |
+| **400** | `IDEMPOTENCY_KEY_REQUIRED` | `{ "error": { "code": "IDEMPOTENCY_KEY_REQUIRED", "message": "..." } }` |
+| **401** | `UNAUTHORIZED` | `{ "error": { "code": "UNAUTHORIZED", "message": "..." } }` |
+| **403** | `FORBIDDEN` | `{ "error": { "code": "FORBIDDEN", "message": "..." } }` |
+| **404** | `SERVICE_NOT_FOUND` — inconnu ou `availability` ∉ {active, beta} | `{ "error": { "code": "SERVICE_NOT_FOUND", "message": "..." } }` |
+| **409** | `IDEMPOTENCY_CONFLICT` | voir exemple cross-service |
+| **422** | `PAYLOAD_VALIDATION_FAILED` | `{ "error": { "code": "PAYLOAD_VALIDATION_FAILED", "message": "...", "details": { "errors": [...] } } }` |
+| **429** | `RATE_LIMITED` | `{ "error": { "code": "RATE_LIMITED", "message": "..." } }` |
+| **501** | `SERVICE_NOT_IMPLEMENTED` — active/beta mais orchestrateur absent (temporaire) | `{ "error": { "code": "SERVICE_NOT_IMPLEMENTED", "message": "..." } }` |
+| **503** | `SERVICE_UNAVAILABLE` — persistance indisponible | `{ "error": { "code": "SERVICE_UNAVAILABLE", "message": "..." } }` |
+
+### GET /v1/jobs/{run_id}
+
+| Code | Description |
+|------|-------------|
+| **200** | `integration_job_status_v1` — inclut `result` si `completed` |
+| **401** | Non authentifié |
+| **404** | Job inexistant, non autorisé (ownership tenant + api_key_id), ou expiré/purgé |
+
+Ownership : même `tenant_id` (header `X-Tenant-Id`, défaut `default`) et même fingerprint `api_key_id` qu'à la soumission.
+
+## 404 vs 501
+
+```text
+availability ∈ {planned, disabled, deprecated}
+  et GET /v1/services sans ?include=planned
+  → service non listé ; POST /v1/jobs → 404 SERVICE_NOT_FOUND
+
+availability ∈ {active, beta}
+  mais orchestrateur/worker pas encore implémenté
+  → POST /v1/jobs → 501 SERVICE_NOT_IMPLEMENTED avant mise en file
+```
+
+Phase 2 pilote : seul `natal_simplified` exécutable ; autres profils `planned` → **404**.
+
+## Rétention
+
+```text
+Jobs terminaux (completed / failed / safety_rejected) :
+  result_json conservé jusqu'à expires_at (TTL configurable)
+  purge complète après TTL
+  GET /v1/jobs/{run_id} après purge → 404 JOB_NOT_FOUND
+
+Statut expired : réservé schéma, non émis en V1
+(pas de 200 status=expired)
+```
+
+## Mercure (Phase 4)
+
+Topic : `tenants/{tenant_id}/jobs/{run_id}`
+
+Événement minimal :
+
+```json
+{
+  "run_id": "uuid",
+  "status": "completed",
+  "poll_url": "/v1/jobs/uuid"
+}
+```
+
+Le corps complet du résultat reste accessible via poll HTTP. `supports_mercure: true` dans le catalogue pour les services éligibles.
+
+## Schémas publiés
+
+| Schéma | Rôle |
+|--------|------|
+| `integration_job_request_v1` | Enveloppe soumission |
+| `integration_job_response_v1` | Réponse submit (202) |
+| `integration_job_status_v1` | Poll + replay 200 |
+| `integration_service_v1` | Item catalogue |
+| `integration_service_contract_v1` | Détail contrat service |
+
+Découverte : `GET /v1/contracts` sur `astral_llm_api`.
+
+## Auth et tenancy
+
+- Auth : `Authorization: Bearer <key>` ou `X-API-Key` si `ASTRAL_LLM_API_KEY` configuré
+- `X-Tenant-Id` : identifiant tenant (défaut `default`)
+- Dev sans auth : `api_key_id` fixe `key:dev-local`
+
+## Routes sync — hors contrat V1 intégration
+
+Les routes legacy sync documentées par service via `supports_sync_legacy` et `endpoints.submit_sync_legacy` ne font pas partie du contrat d'intégration async V1.

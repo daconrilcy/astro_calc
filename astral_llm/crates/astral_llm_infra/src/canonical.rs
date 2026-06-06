@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::collections::HashMap;
 
 use astral_llm_domain::{
+    integration::IntegrationService,
     interpretation_profile::{InterpretationProfile, InterpretationProfileDocument},
     model_capability::ProviderModelRef,
     ProductGenerationPolicy, ProviderKind, ServiceLimits,
@@ -12,8 +13,8 @@ use crate::evidence_canonical::{bootstrap_evidence_catalog, EvidenceCanonicalCat
 use crate::i18n_canonical::{
     bootstrap_aspect_type_labels, bootstrap_astro_basis_roles, bootstrap_element_balance_labels,
     bootstrap_extra_object_sign_labels, bootstrap_house_axis_labels, bootstrap_house_theme_labels,
-    bootstrap_modality_balance_labels,
-    bootstrap_sect_labels, bootstrap_writing_locales, I18nLabelPair, WritingLocale,
+    bootstrap_modality_balance_labels, bootstrap_sect_labels, bootstrap_writing_locales,
+    I18nLabelPair, WritingLocale,
 };
 
 /// Referentiel canonique charge depuis PostgreSQL (tables `llm_*`).
@@ -38,6 +39,8 @@ pub struct CanonicalCatalog {
     pub house_axis_labels: HashMap<(String, String), I18nLabelPair>,
     /// profile_code -> profil actif
     pub interpretation_profiles: HashMap<String, InterpretationProfile>,
+    /// service_code -> service integration catalogue
+    pub integration_services: HashMap<String, IntegrationService>,
 }
 
 #[derive(Debug, Clone)]
@@ -165,6 +168,7 @@ pub async fn load_canonical_catalog(pool: &sqlx::PgPool) -> CanonicalCatalog {
     }
 
     load_interpretation_profiles_from_db(pool, &mut catalog).await;
+    load_integration_services_from_db(pool, &mut catalog).await;
     load_evidence_from_db(pool, &mut catalog).await;
     load_chapter_exclusions_from_db(pool, &mut catalog).await;
     apply_profile_evidence_to_catalog(&mut catalog);
@@ -180,15 +184,18 @@ pub async fn load_canonical_catalog(pool: &sqlx::PgPool) -> CanonicalCatalog {
 }
 
 async fn load_chapter_exclusions_from_db(pool: &sqlx::PgPool, catalog: &mut CanonicalCatalog) {
-    let Ok(rows) = sqlx::query_as::<_, (
-        String,
-        String,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-        bool,
-        Vec<String>,
-    )>(
+    let Ok(rows) = sqlx::query_as::<
+        _,
+        (
+            String,
+            String,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+            bool,
+            Vec<String>,
+        ),
+    >(
         "SELECT rule_code, chapter_code, kind_code, object_code, fact_id_contains, \
          global_filler_only, global_filler_allow_contains \
          FROM llm_chapter_evidence_exclusions WHERE is_active = true",
@@ -204,7 +211,15 @@ async fn load_chapter_exclusions_from_db(pool: &sqlx::PgPool, catalog: &mut Cano
     catalog.evidence.chapter_exclusions = rows
         .into_iter()
         .map(
-            |(rule_code, chapter_code, kind_code, object_code, fact_id_contains, global_filler_only, allow)| {
+            |(
+                rule_code,
+                chapter_code,
+                kind_code,
+                object_code,
+                fact_id_contains,
+                global_filler_only,
+                allow,
+            )| {
                 astral_llm_domain::ChapterEvidenceExclusion {
                     rule_code,
                     chapter_code,
@@ -220,31 +235,23 @@ async fn load_chapter_exclusions_from_db(pool: &sqlx::PgPool, catalog: &mut Cano
 }
 
 async fn load_evidence_from_db(pool: &sqlx::PgPool, catalog: &mut CanonicalCatalog) {
-    if catalog.interpretation_profiles.contains_key("natal_premium") {
+    if catalog
+        .interpretation_profiles
+        .contains_key("natal_premium")
+    {
         return;
     }
-    if let Ok(row) = sqlx::query_as::<_, (
-        String,
-        i32,
-        i32,
-        i32,
-        f32,
-        bool,
-        i32,
-        i32,
-        i32,
-        i32,
-        i32,
-    )>(
-        "SELECT product_code, min_evidence_per_chapter, min_distinct_kind_families, \
+    if let Ok(row) =
+        sqlx::query_as::<_, (String, i32, i32, i32, f32, bool, i32, i32, i32, i32, i32)>(
+            "SELECT product_code, min_evidence_per_chapter, min_distinct_kind_families, \
          min_non_placement_if_available, max_core_overlap_ratio, domain_score_counts_in_minimum, \
          max_core_evidence, max_supporting_evidence, max_nuance_evidence, max_avoid_repeating, \
          COALESCE(max_supporting_semantic_chapters, 3) \
          FROM llm_premium_evidence_policies \
          WHERE is_active = true AND product_code = 'natal_premium'",
-    )
-    .fetch_optional(pool)
-    .await
+        )
+        .fetch_optional(pool)
+        .await
     {
         if let Some(r) = row {
             catalog.evidence.premium_policy = astral_llm_domain::PremiumEvidencePolicy {
@@ -324,7 +331,10 @@ pub fn enrich_catalog_from_bootstrap(catalog: &mut CanonicalCatalog) {
     if catalog.aspect_type_labels.is_empty() {
         catalog.aspect_type_labels = bootstrap_aspect_type_labels();
     }
-    bootstrap_extra_object_sign_labels(&mut catalog.astro_object_labels, &mut catalog.zodiac_sign_labels);
+    bootstrap_extra_object_sign_labels(
+        &mut catalog.astro_object_labels,
+        &mut catalog.zodiac_sign_labels,
+    );
     if catalog.element_balance_labels.is_empty() {
         catalog.element_balance_labels = bootstrap_element_balance_labels();
     }
@@ -357,10 +367,7 @@ fn apply_profile_evidence_to_catalog(catalog: &mut CanonicalCatalog) {
     }
 }
 
-async fn load_interpretation_profiles_from_db(
-    pool: &sqlx::PgPool,
-    catalog: &mut CanonicalCatalog,
-) {
+async fn load_interpretation_profiles_from_db(pool: &sqlx::PgPool, catalog: &mut CanonicalCatalog) {
     let Ok(rows) = sqlx::query_as::<_, (String, String, String, serde_json::Value)>(
         "SELECT profile_code, product_code, schema_version, profile_json \
          FROM llm_interpretation_profiles WHERE is_active = true",
@@ -401,12 +408,14 @@ async fn load_i18n_from_db(pool: &sqlx::PgPool, catalog: &mut CanonicalCatalog) 
     {
         catalog.writing_locales = rows
             .into_iter()
-            .map(|(locale_code, iso_639_1, display_name, prompt_instruction)| WritingLocale {
-                locale_code,
-                iso_639_1,
-                display_name,
-                prompt_instruction,
-            })
+            .map(
+                |(locale_code, iso_639_1, display_name, prompt_instruction)| WritingLocale {
+                    locale_code,
+                    iso_639_1,
+                    display_name,
+                    prompt_instruction,
+                },
+            )
             .collect();
     }
 
@@ -591,12 +600,20 @@ impl CanonicalCatalog {
             .map(String::as_str)
     }
 
-    pub fn element_balance_label(&self, locale: &str, element_code: &str) -> Option<&I18nLabelPair> {
+    pub fn element_balance_label(
+        &self,
+        locale: &str,
+        element_code: &str,
+    ) -> Option<&I18nLabelPair> {
         self.element_balance_labels
             .get(&(locale.to_string(), element_code.to_string()))
     }
 
-    pub fn modality_balance_label(&self, locale: &str, modality_code: &str) -> Option<&I18nLabelPair> {
+    pub fn modality_balance_label(
+        &self,
+        locale: &str,
+        modality_code: &str,
+    ) -> Option<&I18nLabelPair> {
         self.modality_balance_labels
             .get(&(locale.to_string(), modality_code.to_string()))
     }
@@ -613,7 +630,9 @@ impl CanonicalCatalog {
 
     pub fn house_axis_label(&self, locale: &str, axis_code: &str) -> Option<&I18nLabelPair> {
         for loc in locale_fallback_chain(locale) {
-            if let Some(pair) = self.house_axis_labels.get(&(loc.to_string(), axis_code.to_string()))
+            if let Some(pair) = self
+                .house_axis_labels
+                .get(&(loc.to_string(), axis_code.to_string()))
             {
                 return Some(pair);
             }
@@ -641,9 +660,36 @@ impl CanonicalCatalog {
     pub fn interpretation_profile(&self, profile_code: &str) -> Option<&InterpretationProfile> {
         self.interpretation_profiles.get(profile_code)
     }
+
+    pub fn integration_service(&self, service_code: &str) -> Option<&IntegrationService> {
+        self.integration_services.get(service_code)
+    }
+
+    pub fn list_integration_services(&self, include_planned: bool) -> Vec<&IntegrationService> {
+        let mut services: Vec<_> = self
+            .integration_services
+            .values()
+            .filter(|s| s.availability.is_public_listed(include_planned))
+            .collect();
+        services.sort_by_key(|s| (s.sort_order, s.service_code.clone()));
+        services
+    }
 }
 
-fn insert_label(map: &mut HashMap<(String, String), String>, locale: &str, code: &str, label: &str) {
+async fn load_integration_services_from_db(pool: &sqlx::PgPool, catalog: &mut CanonicalCatalog) {
+    let services = crate::integration_service::load_integration_services(pool).await;
+    catalog.integration_services = services
+        .into_iter()
+        .map(|s| (s.service_code.clone(), s))
+        .collect();
+}
+
+fn insert_label(
+    map: &mut HashMap<(String, String), String>,
+    locale: &str,
+    code: &str,
+    label: &str,
+) {
     map.insert((locale.into(), code.into()), label.into());
 }
 
@@ -743,11 +789,9 @@ async fn attach_product_allowed_models(pool: &sqlx::PgPool, catalog: &mut Canoni
             continue;
         };
         let reference = ProviderModelRef::new(provider_kind, model);
-        if !policy
-            .allowed_models
-            .iter()
-            .any(|m| m.provider == reference.provider && m.model.eq_ignore_ascii_case(&reference.model))
-        {
+        if !policy.allowed_models.iter().any(|m| {
+            m.provider == reference.provider && m.model.eq_ignore_ascii_case(&reference.model)
+        }) {
             policy.allowed_models.push(reference);
         }
     }

@@ -134,6 +134,94 @@ paths:
       responses:
         "200":
           description: Enregistrement audit
+  /v1/services:
+    get:
+      summary: Catalogue services d integration (active + beta)
+      parameters:
+        - name: include
+          in: query
+          schema:
+            type: string
+            enum: [planned]
+      responses:
+        "200":
+          description: Liste integration_service_v1
+  /v1/services/{service_code}/contract:
+    get:
+      summary: Contrat detaille d un service
+      parameters:
+        - name: service_code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: integration_service_contract_v1
+        "404":
+          description: SERVICE_NOT_FOUND
+  /v1/jobs:
+    post:
+      summary: Soumettre un job async d integration
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: X-Tenant-Id
+          in: header
+          schema:
+            type: string
+            default: default
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./integration_job_request_v1.schema.json"
+      responses:
+        "202":
+          description: JOB_ACCEPTED — status queued
+          content:
+            application/json:
+              schema:
+                $ref: "./integration_job_response_v1.schema.json"
+        "200":
+          description: Replay idempotent completed avec result
+          content:
+            application/json:
+              schema:
+                $ref: "./integration_job_status_v1.schema.json"
+        "409":
+          description: IDEMPOTENCY_CONFLICT
+        "422":
+          description: PAYLOAD_VALIDATION_FAILED
+  /v1/jobs/{run_id}:
+    get:
+      summary: Statut d un job d integration
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: X-Tenant-Id
+          in: header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: integration_job_status_v1
+        "404":
+          description: JOB_NOT_FOUND
   /openapi.yaml:
     get:
       summary: Cette specification OpenAPI

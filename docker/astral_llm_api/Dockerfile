@@ -10,12 +10,13 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     cp /app/target/release/astral_llm_api /tmp/astral_llm_api
 
 FROM debian:bookworm-slim
+WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /tmp/astral_llm_api /usr/local/bin/astral_llm_api
 COPY astral_llm/prompts /app/prompts
-COPY contracts/llm /app/contracts/llm
+COPY contracts /app/contracts
 ENV ASTRAL_LLM_PROMPTS_DIR=/app/prompts
 ENV ASTRAL_LLM_CONTRACTS_DIR=/app/contracts/llm
 EXPOSE 8081

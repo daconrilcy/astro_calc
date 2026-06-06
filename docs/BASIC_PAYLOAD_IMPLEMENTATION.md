@@ -3271,3 +3271,95 @@ Golden : `tests/golden/simplified_natal_calculation_stable_1990-06-15.json`, `te
 Revue adversariale : [`docs/reviews/natal_simplified/REV-011-adversarial-findings.md`](reviews/natal_simplified/REV-011-adversarial-findings.md).
 
 Guide débutant pas à pas : [`docs/GUIDE_DEBUTANT_DOCKER.md`](GUIDE_DEBUTANT_DOCKER.md) §9 (tutoriel natal simplifié).
+
+---
+
+## API d'intégration externe (V1)
+
+Orchestration async pour applications tierces via `astral_llm_api` + worker dédié.
+
+### Tables
+
+| Table | Rôle |
+|-------|------|
+| `llm_integration_services` | Catalogue services (`availability`, `payload_contract`, `supports_*`) |
+| `llm_jobs` | Jobs async (`run_id` public, FK optionnelle `generation_run_id` → `llm_generation_runs`) |
+
+Seed : `json_db/llm_integration_services.json`. Import : `python scripts/import_json_db_to_postgres.py` puis `.\scripts\manage_integration_services.ps1 -Submit`.
+
+Durcissement Docker/import :
+
+- `scripts/import_json_db_to_postgres.py` accepte les FK vers
+  `llm_interpretation_profiles`, table runtime migrée par `astral_llm_api` /
+  `astral_llm_worker` et donc absente de `json_db`.
+- `scripts/manage_integration_services.ps1 -Submit` rend le schéma catalogue
+  idempotent quand la table a été créée par l'import JSON : ajout de
+  `updated_at`, index `availability`, et contrainte primaire/unique
+  `service_code` si absente.
+- Les images `astral_llm_api` et `astral_llm_worker` copient tout `contracts/`
+  et définissent `WORKDIR /app`, car les validateurs chargent aussi les
+  contrats calculateur via chemins relatifs (`contracts/calculator/...`).
+- Le smoke `scripts/test_integration_jobs_e2e.ps1` charge `.env`, envoie les
+  headers `Authorization` / `X-API-Key`, vérifie `contracts.payload`, attend
+  jusqu'à 300 s, et couvre le replay idempotent cross-service en `409`.
+- `scripts/docker_update_integration_stack.ps1` automatise le cycle complet :
+  `docker compose up -d --build`, import `json_db`, soumission catalogue,
+  restart LLM API/worker, readiness HTTP, catalogue public et smoke jobs E2E.
+  Options utiles : `-SkipBuild`, `-SkipImport`, `-SkipCatalogueSubmit`,
+  `-SkipSmoke`, `-RunRustChecks`.
+
+### Endpoints
+
+- `GET /v1/services`, `GET /v1/services/{code}/contract`
+- `POST /v1/jobs` (header `Idempotency-Key`, statut initial **`queued`**)
+- `GET /v1/jobs/{run_id}`
+
+Contrat : [`docs/integration_api_contract.md`](integration_api_contract.md).
+
+`POST /v1/jobs` refuse un service `active` / `beta` sans orchestrateur V1 avant
+persistance (`501 SERVICE_NOT_IMPLEMENTED`). Le replay idempotent est
+tenant-wide mais limité au même fingerprint `api_key_id` ; une autre clé API du
+même tenant reçoit `409 IDEMPOTENCY_CONFLICT`.
+Le précontrôle d'idempotence s'exécute avant la validation détaillée du payload
+si la clé existe déjà, afin de ne pas masquer un conflit par un `422` de schéma
+d'un autre service.
+
+### Code Rust
+
+| Module | Crate | Rôle |
+|--------|-------|------|
+| `integration_routes.rs` | `astral_llm_api` | Routes HTTP catalogue + jobs |
+| `integration_job_validator.rs` | `astral_llm_application` | Enveloppe → payload → gate from_payload |
+| `unified_reading_orchestrator.rs` | `astral_llm_application` | simplified / full natal / from_payload |
+| `engine_reading.rs` | `astral_llm_application` | Mapping moteur → `generate_reading_request_v1` |
+| `job_persistence.rs` | `astral_llm_infra` | Persistance + idempotence tenant-wide |
+| `canonical_json_hash.rs` | `astral_llm_infra` | Hash SHA-256 JSON canonique |
+| `mercure_publisher.rs` | `astral_llm_infra` | Notifications push optionnelles |
+| `main.rs` | `astral_llm_worker` | Poll `llm_jobs` SKIP LOCKED |
+
+### Rétention jobs
+
+- `llm_jobs.expires_at` est calculé depuis `ASTRAL_LLM_IDEMPOTENCY_TTL_HOURS`
+  en heures réelles (`min = 1h`), sans arrondi implicite en semaines.
+- Les jobs terminaux expirés (`completed`, `failed`, `safety_rejected`,
+  `cancelled`, `expired`) sont purgés physiquement par le worker et avant les
+  accès HTTP jobs (`POST /v1/jobs`, `GET /v1/jobs/{run_id}`).
+- Les jobs non terminaux expirés ne sont pas supprimés par cette purge ; ils
+  restent gérés par la récupération `running` stale / file worker.
+- `llm_jobs.generation_run_id` est un lien audit optionnel : le worker ne le
+  renseigne que si la ligne existe dans `llm_generation_runs`. En mode Docker
+  fake, un job peut donc terminer correctement sans ligne d'audit génération.
+  Les erreurs SQL de persistance terminale sont loggées et ne produisent plus
+  un faux log `job finished`.
+
+### Tests
+
+| Commande | Périmètre |
+|----------|-----------|
+| `cargo test -p astral_llm_api --test integration_services_tests` | Schémas + seed catalogue |
+| `cargo test -p astral_llm_api --test integration_jobs_tests` | Validator, hashing, golden engine |
+| `.\scripts\test_integration_jobs_e2e.ps1` | E2E natal_simplified async |
+| `.\scripts\test_natal_from_birth_e2e.ps1` | E2E full natal (`natal_basic`) |
+
+Reviews : [`docs/reviews/integration_api/INDEX.md`](reviews/integration_api/INDEX.md).
+

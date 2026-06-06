@@ -29,6 +29,25 @@ Smoke E2E fake : [`scripts/docker_compose_smoke.ps1`](../scripts/docker_compose_
 
 Voir [integration/engine_to_reading_mapping.md](integration/engine_to_reading_mapping.md).
 
+## Mode intégration async V1 (API externe)
+
+Catalogue + jobs async pour applications tierces :
+
+1. `GET /v1/services` — catalogue (`active` + `beta`, `?include=planned` optionnel)
+2. `GET /v1/services/{code}/contract` — contrat payload métier
+3. `POST /v1/jobs` + header `Idempotency-Key` — soumission async (`status: queued`)
+4. `GET /v1/jobs/{run_id}` — poll jusqu'à statut terminal
+
+Contrat normatif : [`docs/integration_api_contract.md`](../docs/integration_api_contract.md). Guide : [`docs/integration_api_guide.md`](../docs/integration_api_guide.md).
+
+Smoke E2E : [`scripts/test_integration_jobs_e2e.ps1`](../scripts/test_integration_jobs_e2e.ps1) (natal_simplified + worker). Full natal : [`scripts/test_natal_from_birth_e2e.ps1`](../scripts/test_natal_from_birth_e2e.ps1).
+
+Bootstrap catalogue en base : `.\scripts\manage_integration_services.ps1 -Submit` (après import profils).
+
+Worker Docker : service `astral_llm_worker`. Mercure optionnel : `http://localhost:3000` (topic `tenants/{tenant_id}/jobs/{run_id}`).
+
+Schémas : `integration_*_v1.schema.json` dans `contracts/llm/`.
+
 ### Mode futur — orchestration interne (hors perimetre V1)
 
 `POST /v1/natal/readings/from-birth` — non implemente.

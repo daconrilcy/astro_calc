@@ -1,0 +1,19 @@
+[package]
+name = "astral_llm_worker"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "astral_llm_worker"
+path = "src/main.rs"
+
+[dependencies]
+astral_llm_application.workspace = true
+astral_llm_domain.workspace = true
+astral_llm_infra.workspace = true
+astral_llm_providers.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+uuid.workspace = true

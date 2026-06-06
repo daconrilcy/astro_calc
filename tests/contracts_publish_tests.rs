@@ -7,9 +7,34 @@ use astral_llm_domain::{GenerateReadingRequest, GenerateReadingResponse};
 use schemars::schema_for;
 use sha2::{Digest, Sha256};
 
+#[test]
+fn integration_schemas_exist_in_contracts_dir() {
+    let root = repo_root();
+    let dir = root.join("contracts/llm");
+    let files = [
+        "integration_job_request_v1.schema.json",
+        "integration_job_response_v1.schema.json",
+        "integration_job_status_v1.schema.json",
+        "integration_service_v1.schema.json",
+        "integration_service_contract_v1.schema.json",
+    ];
+    for file in files {
+        let path = dir.join(file);
+        assert!(
+            path.exists(),
+            "missing integration schema: {}",
+            path.display()
+        );
+        let _: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&path).expect("read")).expect("json");
+    }
+}
+
 fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("..").join("..").join("..")
+        .join("..")
+        .join("..")
+        .join("..")
         .canonicalize()
         .expect("repo root")
 }
@@ -41,14 +66,38 @@ fn calculator_schemas_match_published_contracts() {
     let published_dir = root.join("contracts/calculator");
 
     let pairs = [
-        ("astro_engine_request_v1.schema.json", "astro_engine_request_v1.schema.json"),
-        ("astro_engine_response_v1.schema.json", "astro_engine_response_v1.schema.json"),
-        ("natal_structured_v13.schema.json", "natal_structured_v13.schema.json"),
-        ("llm_projection_natal_v1.schema.json", "llm_projection_natal_v1.schema.json"),
-        ("astro_simplified_natal_request_v1.schema.json", "astro_simplified_natal_request_v1.schema.json"),
-        ("astro_simplified_natal_response_v1.schema.json", "astro_simplified_natal_response_v1.schema.json"),
-        ("natal_simplified_structured_v1.schema.json", "natal_simplified_structured_v1.schema.json"),
-        ("llm_projection_natal_simplified_v1.schema.json", "llm_projection_natal_simplified_v1.schema.json"),
+        (
+            "astro_engine_request_v1.schema.json",
+            "astro_engine_request_v1.schema.json",
+        ),
+        (
+            "astro_engine_response_v1.schema.json",
+            "astro_engine_response_v1.schema.json",
+        ),
+        (
+            "natal_structured_v13.schema.json",
+            "natal_structured_v13.schema.json",
+        ),
+        (
+            "llm_projection_natal_v1.schema.json",
+            "llm_projection_natal_v1.schema.json",
+        ),
+        (
+            "astro_simplified_natal_request_v1.schema.json",
+            "astro_simplified_natal_request_v1.schema.json",
+        ),
+        (
+            "astro_simplified_natal_response_v1.schema.json",
+            "astro_simplified_natal_response_v1.schema.json",
+        ),
+        (
+            "natal_simplified_structured_v1.schema.json",
+            "natal_simplified_structured_v1.schema.json",
+        ),
+        (
+            "llm_projection_natal_simplified_v1.schema.json",
+            "llm_projection_natal_simplified_v1.schema.json",
+        ),
     ];
 
     for (src, dst) in pairs {
@@ -62,8 +111,14 @@ fn llm_schemas_match_published_contracts() {
     let published = root.join("contracts/llm");
 
     let expected: HashMap<&str, &str> = HashMap::from([
-        ("generate_reading_request_v1.schema.json", "generate_reading_request_v1"),
-        ("generate_reading_response_v1.schema.json", "generate_reading_response_v1"),
+        (
+            "generate_reading_request_v1.schema.json",
+            "generate_reading_request_v1",
+        ),
+        (
+            "generate_reading_response_v1.schema.json",
+            "generate_reading_response_v1",
+        ),
         ("natal_reading_v1.schema.json", "natal_reading_v1"),
         ("chapter_provider_v1.schema.json", "chapter_provider_v1"),
         ("summary_provider_v1.schema.json", "summary_provider_v1"),
@@ -143,4 +198,3 @@ fn export_llm_schemas() {
         eprintln!("exported {}", path.display());
     }
 }
-

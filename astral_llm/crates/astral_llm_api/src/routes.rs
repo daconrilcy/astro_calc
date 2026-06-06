@@ -26,8 +26,13 @@ use uuid::Uuid;
 use crate::api_contracts::{
     contracts_index, load_published_schema, openapi_bytes, readiness_details, service_not_ready,
 };
-use crate::api_error::{error_response, from_generation_error, map_generation_error_status, too_many_requests};
-use crate::rate_limit::{rate_limit_key_id_from_headers, try_acquire_premium_addon, RateLimitReason};
+use crate::api_error::{
+    error_response, from_generation_error, map_generation_error_status, too_many_requests,
+};
+use crate::integration_routes::{get_job_status, get_service_contract, list_services, submit_job};
+use crate::rate_limit::{
+    rate_limit_key_id_from_headers, try_acquire_premium_addon, RateLimitReason,
+};
 use crate::state::AppState;
 
 pub fn router(state: AppState) -> Router {
@@ -38,11 +43,21 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/contracts", get(list_contracts))
         .route("/openapi.yaml", get(openapi_spec))
         .route("/v1/readings/generate", post(generate_reading))
-        .route("/v1/readings/natal/simplified", post(generate_simplified_natal_reading))
+        .route(
+            "/v1/readings/natal/simplified",
+            post(generate_simplified_natal_reading),
+        )
         .route("/v1/readings/validate", post(validate_reading))
         .route("/v1/runs/{run_id}", get(get_run_audit))
         .route("/v1/providers", get(list_providers))
         .route("/v1/schemas/{schema_version}", get(get_schema))
+        .route("/v1/services", get(list_services))
+        .route(
+            "/v1/services/{service_code}/contract",
+            get(get_service_contract),
+        )
+        .route("/v1/jobs", post(submit_job))
+        .route("/v1/jobs/{run_id}", get(get_job_status))
         .with_state(state)
 }
 
@@ -52,12 +67,8 @@ async fn health_live() -> impl IntoResponse {
 
 async fn health_ready(State(state): State<AppState>) -> Response {
     let pool = state.persistence.as_ref().map(|p| p.pool());
-    let (ready, details) = readiness_details(
-        &state.config,
-        pool,
-        state.interpretation_profile_count,
-    )
-    .await;
+    let (ready, details) =
+        readiness_details(&state.config, pool, state.interpretation_profile_count).await;
 
     if ready {
         Json(json!({
@@ -83,12 +94,7 @@ async fn openapi_spec() -> Response {
             bytes,
         )
             .into_response(),
-        Err(message) => error_response(
-            StatusCode::NOT_FOUND,
-            "INTERNAL_ERROR",
-            message,
-            None,
-        ),
+        Err(message) => error_response(StatusCode::NOT_FOUND, "INTERNAL_ERROR", message, None),
     }
 }
 
@@ -189,10 +195,7 @@ async fn generate_reading(
         state.config.limits.default_request_timeout_ms,
     );
     let trace = GenerationTraceContext::from_request(&run_id, &request);
-    trace.started(
-        &engine,
-        request.response_contract.generation_mode.as_str(),
-    );
+    trace.started(&engine, request.response_contract.generation_mode.as_str());
 
     let output = state
         .use_case
@@ -297,14 +300,11 @@ async fn generate_simplified_natal_reading(
         Err(err) => return from_generation_error(err),
     };
 
-    let mut reading_request = match build_reading_request(
-        &calculation,
-        &body.user_language,
-        body.audience_level,
-    ) {
-        Ok(value) => value,
-        Err(err) => return from_generation_error(err),
-    };
+    let mut reading_request =
+        match build_reading_request(&calculation, &body.user_language, body.audience_level) {
+            Ok(value) => value,
+            Err(err) => return from_generation_error(err),
+        };
 
     if let Err(err) = state.use_case.prepare_request(&mut reading_request) {
         return from_generation_error(err);
@@ -363,8 +363,7 @@ fn map_response(response: GenerateReadingResponse) -> Response {
         GenerateReadingResponse::Failed(failed) => {
             let status = map_generation_error_status(&failed.error.code);
             (
-                StatusCode::from_u16(status.as_u16())
-                    .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+                StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
                 Json(response),
             )
                 .into_response()
@@ -619,7 +618,11 @@ fn build_run_record(
         provider_used,
         model_requested: engine.model.clone(),
         model_used,
-        generation_mode: request.response_contract.generation_mode.as_str().to_string(),
+        generation_mode: request
+            .response_contract
+            .generation_mode
+            .as_str()
+            .to_string(),
         fallback_used,
         selected_domains,
         status,

@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "integration_service_v1",
+  "description": "Item catalogue GET /v1/services (public minimal).",
+  "type": "object",
+  "required": [
+    "service_code",
+    "label_fr",
+    "description_fr",
+    "availability",
+    "interpretation_profile_code",
+    "orchestration_mode",
+    "calculation_mode",
+    "supports_async",
+    "supports_sync_legacy",
+    "supports_mercure",
+    "contracts",
+    "endpoints"
+  ],
+  "properties": {
+    "service_code": { "type": "string" },
+    "label_fr": { "type": "string" },
+    "description_fr": { "type": "string" },
+    "availability": {
+      "type": "string",
+      "enum": ["active", "beta", "planned", "deprecated", "disabled"]
+    },
+    "interpretation_profile_code": { "type": "string" },
+    "generation_mode": { "type": ["string", "null"] },
+    "orchestration_mode": { "type": "string" },
+    "calculation_mode": {
+      "type": "string",
+      "enum": ["none", "simplified_natal", "full_natal"]
+    },
+    "quality_tier": { "type": ["string", "null"] },
+    "async_recommended": { "type": "boolean" },
+    "supports_async": { "type": "boolean" },
+    "supports_sync_legacy": { "type": "boolean" },
+    "supports_mercure": { "type": "boolean" },
+    "contracts": {
+      "type": "object",
+      "properties": {
+        "service_request": { "type": "string" },
+        "payload": { "type": "string" },
+        "service_response": { "type": "string" },
+        "calculation_output": { "type": ["string", "null"] },
+        "reading_output": { "type": "string" }
+      }
+    },
+    "endpoints": {
+      "type": "object",
+      "properties": {
+        "submit_async": { "type": "string" },
+        "contract_detail": { "type": "string" },
+        "submit_sync_legacy": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

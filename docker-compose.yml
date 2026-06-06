@@ -73,6 +73,7 @@ services:
       ASTRAL_LLM_DEFAULT_PROVIDER: fake
       ASTRAL_LLM_DEFAULT_MODEL: fake-model
       ASTRAL_LLM_ENABLE_FAKE: "true"
+      ASTRAL_LLM_DB_AUTO_MIGRATE: "true"
     networks:
       - astral_net
     ports:
@@ -80,6 +81,53 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+  astral_llm_worker:
+    build:
+      context: .
+      dockerfile: docker/astral_llm_worker/Dockerfile
+    container_name: astral_llm_worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      ASTRAL_LLM_ENABLE_PERSISTENCE: "true"
+      ASTRAL_LLM_DB_AUTO_MIGRATE: "true"
+      ASTRAL_LLM_PROMPTS_DIR: /app/prompts
+      ASTRAL_LLM_CONTRACTS_DIR: /app/contracts/llm
+      ASTRAL_CALCULATOR_HOST: astral_calculator_api
+      ASTRAL_CALCULATOR_PORT: "8080"
+      ASTRAL_LLM_DEFAULT_PROVIDER: fake
+      ASTRAL_LLM_DEFAULT_MODEL: fake-model
+      ASTRAL_LLM_ENABLE_FAKE: "true"
+      ASTRAL_LLM_MERCURE_URL: http://mercure/.well-known/mercure
+      ASTRAL_LLM_MERCURE_PUBLISHER_JWT: ${MERCURE_PUBLISHER_JWT_KEY:-!ChangeThisMercureHubJWTSecretKey!}
+    networks:
+      - astral_net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      astral_calculator_api:
+        condition: service_started
+      astral_llm_api:
+        condition: service_started
+
+  mercure:
+    image: dunglas/mercure:v0.16
+    container_name: astral_mercure
+    restart: unless-stopped
+    environment:
+      SERVER_NAME: ":80"
+      MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_PUBLISHER_JWT_KEY:-!ChangeThisMercureHubJWTSecretKey!}
+      MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_SUBSCRIBER_JWT_KEY:-!ChangeThisMercureHubJWTSecretKey!}
+      MERCURE_EXTRA_DIRECTIVES: |
+        cors_origins *
+        anonymous
+    networks:
+      - astral_net
+    ports:
+      - "3000:80"
 
 networks:
   astral_net:

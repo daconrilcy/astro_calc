@@ -1,10 +1,4 @@
-use axum::{
-    body::Body,
-    extract::State,
-    http::Request,
-    middleware::Next,
-    response::Response,
-};
+use axum::{body::Body, extract::State, http::Request, middleware::Next, response::Response};
 
 use crate::api_error::unauthorized;
 use crate::state::AppState;
@@ -19,13 +13,12 @@ pub async fn require_api_key(
     }
 
     let expected = state.config.api_key.as_deref().unwrap_or("");
-    let token = bearer_token(request.headers().get("authorization"))
-        .or_else(|| {
-            request
-                .headers()
-                .get("x-api-key")
-                .and_then(|v| v.to_str().ok())
-        });
+    let token = bearer_token(request.headers().get("authorization")).or_else(|| {
+        request
+            .headers()
+            .get("x-api-key")
+            .and_then(|v| v.to_str().ok())
+    });
 
     let authorized = token.is_some_and(|t| constant_time_eq(t, expected));
 
@@ -65,6 +58,7 @@ fn is_public_path(path: &str) -> bool {
         path,
         "/health" | "/health/live" | "/health/ready" | "/v1/contracts" | "/openapi.yaml"
     ) || path.starts_with("/v1/schemas/")
+        || path.starts_with("/v1/services")
 }
 
 #[cfg(test)]

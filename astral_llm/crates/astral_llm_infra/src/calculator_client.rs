@@ -27,10 +27,21 @@ impl CalculatorClient {
         &self,
         request: &Value,
     ) -> Result<Value, GenerationError> {
-        let url = format!("{}/v1/calculations/natal/simplified", self.base_url);
+        self.post_json("/v1/calculations/natal/simplified", request)
+            .await
+    }
+
+    pub async fn calculate_natal(&self, request: &Value) -> Result<Value, GenerationError> {
+        self.post_json("/v1/calculations/natal", request).await
+    }
+
+    async fn post_json(&self, path: &str, request: &Value) -> Result<Value, GenerationError> {
+        let url = format!("{}{}", self.base_url, path);
         let mut builder = self.client.post(url).json(request);
         if let Some(key) = &self.api_key {
-            builder = builder.header("X-API-Key", key).header("Authorization", format!("Bearer {key}"));
+            builder = builder
+                .header("X-API-Key", key)
+                .header("Authorization", format!("Bearer {key}"));
         }
 
         let response = builder.send().await.map_err(|err| {

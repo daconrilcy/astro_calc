@@ -227,6 +227,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "astral_llm_worker"
+version = "0.1.0"
+dependencies = [
+ "astral_llm_application",
+ "astral_llm_domain",
+ "astral_llm_infra",
+ "astral_llm_providers",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "async-trait"
 version = "0.1.89"
 source = "registry+https://github.com/rust-lang/crates.io-index"

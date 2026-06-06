@@ -14,7 +14,12 @@
     "generate_reading_response": "generate_reading_response_v1",
     "natal_reading": "natal_reading_v1",
     "chapter_provider": "chapter_provider_v1",
-    "summary_provider": "summary_provider_v1"
+    "summary_provider": "summary_provider_v1",
+    "integration_job_request": "integration_job_request_v1",
+    "integration_job_response": "integration_job_response_v1",
+    "integration_job_status": "integration_job_status_v1",
+    "integration_service": "integration_service_v1",
+    "integration_service_contract": "integration_service_contract_v1"
   },
   "integration": {
     "engine_to_reading_mapping": "v1",

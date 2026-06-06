@@ -1,0 +1,157 @@
+# Guide intégrateur — API d'intégration
+
+Guide pratique pour connecter une application externe à `astral_llm_api`. Contrat normatif : [integration_api_contract.md](integration_api_contract.md).
+
+## Démarrage rapide (Docker local)
+
+```powershell
+docker compose up -d --build
+python scripts/import_json_db_to_postgres.py
+.\scripts\manage_integration_services.ps1 -Submit
+docker compose up -d astral_llm_worker
+```
+
+- Calculateur : `http://localhost:8080`
+- LLM API : `http://localhost:8081`
+- Worker : traite les jobs `queued` en arrière-plan
+
+Smoke intégration : `.\scripts\test_integration_jobs_e2e.ps1`
+
+## Flux recommandé
+
+```mermaid
+sequenceDiagram
+    participant App as Application
+    participant API as astral_llm_api
+    participant W as astral_llm_worker
+
+    App->>API: GET /v1/services
+    API-->>App: catalogue (active + beta)
+    App->>API: GET /v1/services/natal_simplified/contract
+    API-->>App: payload_contract + exemple
+    App->>API: POST /v1/jobs + Idempotency-Key
+    API-->>App: 202 queued + run_id
+    loop Poll
+        App->>API: GET /v1/jobs/{run_id}
+        API-->>App: status queued/running/completed
+    end
+    W->>API: claim job (interne)
+    W-->>API: mark completed + result
+```
+
+## 1. Découvrir les services
+
+```http
+GET /v1/services
+```
+
+Liste les services `active` et `beta`. Ajouter `?include=planned` pour voir la feuille de route.
+
+Champs utiles : `service_code`, `availability`, `calculation_mode`, `supports_async`, `supports_mercure`, `contracts.payload`.
+
+## 2. Lire le contrat métier
+
+```http
+GET /v1/services/natal_simplified/contract
+```
+
+Retourne `payload_contract`, liens schémas, `example_request`, notes de validation.
+
+## 3. Soumettre un job
+
+```http
+POST /v1/jobs
+Idempotency-Key: my-unique-key-001
+X-Tenant-Id: acme-corp
+Content-Type: application/json
+```
+
+```json
+{
+  "service_code": "natal_simplified",
+  "payload": {
+    "request_contract_version": "astro_simplified_natal_request_v1",
+    "birth": {
+      "date": "1990-06-15",
+      "time": "14:30",
+      "timezone": "Europe/Paris",
+      "location": { "latitude": 48.8566, "longitude": 2.3522 }
+    }
+  },
+  "user_language": "fr",
+  "audience_level": "beginner"
+}
+```
+
+Réponse **202** :
+
+```json
+{
+  "run_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "queued",
+  "service_code": "natal_simplified",
+  "poll_url": "/v1/jobs/550e8400-e29b-41d4-a716-446655440000",
+  "poll_after_ms": 2000
+}
+```
+
+## 4. Suivre le job
+
+```http
+GET /v1/jobs/550e8400-e29b-41d4-a716-446655440000
+```
+
+Respecter `poll_after_ms`. Statut terminal `completed` inclut `result` (enveloppe calcul + lecture).
+
+## Idempotence — bonnes pratiques
+
+- Une clé par intention métier (commande, panier, etc.)
+- **Ne jamais réutiliser** la même clé pour un autre `service_code`
+- Replay `completed` → **200** avec `result` (pas besoin de re-poller)
+
+## Services disponibles (V1)
+
+| service_code | Mode | Statut catalogue |
+|--------------|------|------------------|
+| `natal_simplified` | birth → calcul simplifié → lecture | **active** |
+| `natal_basic` | birth → moteur complet → lecture basic | **active** (Phase 3) |
+| `natal_*_from_payload` | payload pré-calculé | planned |
+| `natal_light`, `natal_premium`, `natal_premium_plus` | full natal | planned (activation progressive) |
+
+## Mercure (optionnel)
+
+Si `supports_mercure: true` sur le service, s'abonner au topic :
+
+```text
+tenants/{tenant_id}/jobs/{run_id}
+```
+
+Hub local Docker : `http://localhost:3000/.well-known/mercure`
+
+## Legacy vs intégration
+
+| Besoin | Route |
+|--------|-------|
+| Orchestration manuelle calcul + lecture | `POST /v1/calculations/natal` puis `POST /v1/readings/generate` |
+| Sync one-shot simplified | `POST /v1/readings/natal/simplified` |
+| **Intégration async certifiée** | `POST /v1/jobs` |
+
+Voir [contracts/README.md](../contracts/README.md) pour la matrice complète.
+
+## Scripts utiles
+
+| Script | Rôle |
+|--------|------|
+| `manage_integration_services.ps1 -List` | Catalogue en base |
+| `test_integration_jobs_e2e.ps1` | E2E natal_simplified async |
+| `test_natal_from_birth_e2e.ps1` | E2E full natal via jobs |
+
+## Erreurs fréquentes
+
+| Symptôme | Cause | Action |
+|----------|-------|--------|
+| 404 SERVICE_NOT_FOUND | Service `planned` ou code invalide | `GET /v1/services?include=planned` |
+| 409 IDEMPOTENCY_CONFLICT | Clé réutilisée autre service/payload | Nouvelle clé |
+| 422 PAYLOAD_VALIDATION_FAILED | Payload ≠ contrat ou gate profil | `GET .../contract` |
+| Job reste `queued` | Worker arrêté | `docker compose up -d astral_llm_worker` |
+| 404 JOB_NOT_FOUND au poll | Mauvais tenant ou clé API | Mêmes headers qu'à la soumission |

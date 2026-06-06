@@ -8,6 +8,7 @@ members = [
     "astral_llm/crates/astral_llm_providers",
     "astral_llm/crates/astral_llm_infra",
     "astral_llm/crates/astral_llm_api",
+    "astral_llm/crates/astral_llm_worker",
 ]
 
 [workspace.package]

@@ -114,6 +114,12 @@ impl RunPersistence {
             include_str!("../sql/llm_interpretation_profiles.sql"),
         )
         .await?;
+        execute_sql_script(
+            &self.pool,
+            include_str!("../sql/llm_integration_services.sql"),
+        )
+        .await?;
+        execute_sql_script(&self.pool, include_str!("../sql/llm_jobs.sql")).await?;
         Ok(())
     }
 
@@ -126,6 +132,12 @@ impl RunPersistence {
             .execute(&self.pool)
             .await?;
         sqlx::query("SELECT 1 FROM llm_generation_steps LIMIT 0")
+            .execute(&self.pool)
+            .await?;
+        sqlx::query("SELECT 1 FROM llm_integration_services LIMIT 0")
+            .execute(&self.pool)
+            .await?;
+        sqlx::query("SELECT 1 FROM llm_jobs LIMIT 0")
             .execute(&self.pool)
             .await?;
         Ok(())

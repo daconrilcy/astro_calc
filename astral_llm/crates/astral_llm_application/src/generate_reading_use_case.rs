@@ -2,11 +2,11 @@ use std::time::Duration;
 
 use astral_llm_domain::{
     contract_versions::GenerationRunContractVersions,
-    model_usage_tier::ModelRouteContext,
     generation_response::{
         GenerateReadingResponse, GenerationFailedResponse, SafetyRejectedResponse,
         StructuredReadingResponse,
     },
+    model_usage_tier::ModelRouteContext,
     output_contract::GenerationMode,
     EngineDefaults, GenerateReadingRequest, GenerationError, GenerationErrorCode, PrivacyPolicy,
     ProviderKind, SafetyMode, ServiceLimits,
@@ -24,18 +24,18 @@ use crate::engine_defaults::{
     resolve_service_engine_defaults, resolve_subtask_engine, ResolvedEngineParams,
 };
 use crate::execution_audit::ExecutionAudit;
-use crate::reasoning_generation::{
-    apply_reasoning_output_reserve, effective_temperature, resolve_reasoning_effort,
-};
 use crate::interpretation_profile_resolver::InterpretationProfileResolver;
 use crate::prompt_compiler::{PromptCompilationInput, PromptCompiler};
 use crate::prompt_trace;
 use crate::provider_router::ProviderRouter;
 use crate::provider_schema_compiler::ProviderSchemaCompiler;
+use crate::reading_quality_validator::ReadingQualityValidator;
+use crate::reasoning_generation::{
+    apply_reasoning_output_reserve, effective_temperature, resolve_reasoning_effort,
+};
 use crate::request_validator::RequestValidator;
 use crate::response_validator::ResponseValidator;
 use crate::safety_guard::SafetyGuard;
-use crate::reading_quality_validator::ReadingQualityValidator;
 use crate::safety_resolver::SafetyResolver;
 use crate::simplified_reading::{sun_sign_blocked, SIMPLIFIED_PROFILE};
 use crate::simplified_reading_guard::{
@@ -80,6 +80,10 @@ impl GenerateReadingUseCase {
     }
 
     /// Normalise la requete (shim legacy + `generation_mode` depuis le profil) avant idempotence / rate limit.
+    pub fn catalog(&self) -> &SharedCanonicalCatalog {
+        &self.catalog
+    }
+
     pub fn prepare_request(
         &self,
         request: &mut GenerateReadingRequest,
@@ -148,12 +152,14 @@ impl GenerateReadingUseCase {
         let registry = self.router.capability_registry();
         drop_unsupported_reasoning(&mut engine, registry);
         drop_unsupported_temperature(&mut engine, registry);
-        self.router.capability_registry().validate_engine_for_context(
-            ModelRouteContext::PrimaryReading,
-            &engine.provider,
-            &engine.model,
-            engine.allow_oracle_benchmark,
-        )?;
+        self.router
+            .capability_registry()
+            .validate_engine_for_context(
+                ModelRouteContext::PrimaryReading,
+                &engine.provider,
+                &engine.model,
+                engine.allow_oracle_benchmark,
+            )?;
 
         let validated = InterpretationProfileResolver::validate_product(
             &request,
@@ -164,35 +170,34 @@ impl GenerateReadingUseCase {
         let product_policy = &validated.policy;
         let interpretation = validated.interpretation.as_ref();
 
-        self.router.capability_registry().validate_request_capabilities(
-            ModelRouteContext::PrimaryReading,
-            &engine.provider,
-            &engine.model,
-            engine.reasoning_effort,
-            true,
-        )?;
+        self.router
+            .capability_registry()
+            .validate_request_capabilities(
+                ModelRouteContext::PrimaryReading,
+                &engine.provider,
+                &engine.model,
+                engine.reasoning_effort,
+                true,
+            )?;
 
         if matches!(
             request.response_contract.generation_mode,
             GenerationMode::ChapterOrchestrated
         ) {
-            let summary_engine = resolve_subtask_engine(
-                &engine,
-                &request.engine,
-                Some(&validated.policy),
-            );
-            self.router.capability_registry().validate_request_capabilities(
-                ModelRouteContext::Subtask,
-                &summary_engine.provider,
-                &summary_engine.model,
-                engine.reasoning_effort,
-                true,
-            )?;
+            let summary_engine =
+                resolve_subtask_engine(&engine, &request.engine, Some(&validated.policy));
+            self.router
+                .capability_registry()
+                .validate_request_capabilities(
+                    ModelRouteContext::Subtask,
+                    &summary_engine.provider,
+                    &summary_engine.model,
+                    engine.reasoning_effort,
+                    true,
+                )?;
         }
 
-        if !self.privacy_policy.allow_external_provider
-            && engine.provider != ProviderKind::Fake
-        {
+        if !self.privacy_policy.allow_external_provider && engine.provider != ProviderKind::Fake {
             return Err(GenerationError::new(
                 GenerationErrorCode::PolicyViolation,
                 "external LLM providers are disabled by privacy policy",
@@ -206,18 +211,22 @@ impl GenerateReadingUseCase {
             &request.product_context.user_language,
         )?;
 
-        let product_default =
-            SafetyResolver::product_default_for(&request.product_context.product_code, interpretation);
+        let product_default = SafetyResolver::product_default_for(
+            &request.product_context.product_code,
+            interpretation,
+        );
         let safety_policy =
             SafetyResolver::resolve(&product_default, request.safety_policy.as_ref());
 
-        SafetyGuard::validate_request(&request, &safety_policy, &self.catalog).map_err(|violations| {
-            GenerationError::with_details(
-                GenerationErrorCode::SafetyRejected,
-                "request failed safety validation",
-                serde_json::json!({ "violations": violations, "category": "request_safety" }),
-            )
-        })?;
+        SafetyGuard::validate_request(&request, &safety_policy, &self.catalog).map_err(
+            |violations| {
+                GenerationError::with_details(
+                    GenerationErrorCode::SafetyRejected,
+                    "request failed safety validation",
+                    serde_json::json!({ "violations": violations, "category": "request_safety" }),
+                )
+            },
+        )?;
 
         if self
             .validator
@@ -286,7 +295,11 @@ impl GenerateReadingUseCase {
             request.response_contract.generation_mode,
             GenerationMode::ChapterOrchestrated
         ) {
-            AstroBasisValidator::validate_chapters(&reading.chapters, &astro_facts, product_policy)?;
+            AstroBasisValidator::validate_chapters(
+                &reading.chapters,
+                &astro_facts,
+                product_policy,
+            )?;
         }
 
         if request
