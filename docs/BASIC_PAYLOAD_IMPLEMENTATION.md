@@ -3377,3 +3377,25 @@ Le service horoscope V1 (`horoscope_basic_daily_natal_3_slots`) est cadre dans
 [`HOROSCOPE_IMPLEMENTATION.md`](HOROSCOPE_IMPLEMENTATION.md). Il ne modifie pas
 le payload natal/basic existant et consomme un `chart_calculation_id` deja
 calcule.
+
+## E2E reels Docker dedies (2026-06-06)
+
+Les tests HTTP reels pour une application Docker deja demarree sont regroupes
+dans `tests/e2e_real/`.
+
+- `01_calculator_services.e2e.ps1` couvre les services calculateur publics :
+  contrats, schemas, validation, natal complet, natal simplifie et horoscope
+  daily-natal.
+- `02_llm_sync_services.e2e.ps1` couvre les endpoints LLM synchrones :
+  contrats, providers, schemas, generation, validation et lecture natal
+  simplifiee orchestree.
+- `03_integration_catalog_services.e2e.ps1` lit `GET /v1/services`, selectionne
+  tous les services `active` / `beta`, puis soumet un job reel Docker pour
+  chacun. La suite echoue si un nouveau service propose n'a pas de constructeur
+  E2E explicite.
+- `run_real_e2e.ps1` lance toute la suite :
+  `.\tests\e2e_real\run_real_e2e.ps1`. Chaque execution produit un rapport
+  Markdown dans `output/e2e_real_reports/` par defaut, ou au chemin fourni via
+  `-ReportPath`. Le runner cree aussi un dossier de diagnostics avec transcript
+  PowerShell et, en cas d'echec, les derniers logs Docker du worker, des API et
+  de PostgreSQL.
