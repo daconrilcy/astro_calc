@@ -164,7 +164,7 @@ foreach ($testCase in $cases) {
         $apiResponse | ConvertTo-Json -Depth 40 | Set-Content -LiteralPath $outPath -Encoding utf8
     }
 
-    $caseFailures = Assert-SimplifiedReadingResponse -ApiResponse $apiResponse -Case $testCase -MinWordsPerChapter $MinWordsPerChapter
+    $caseFailures = Assert-SimplifiedReadingResponse -ApiResponse $apiResponse -Case $testCase -MinWordsPerChapter $MinWordsPerChapter -StrictOpenAiQuality:($UseReal -and -not $NegativeOnly)
     if ($caseFailures.Count -eq 0) {
         $passed++
         $content = Get-SimplifiedReadingContent -ApiResponse $apiResponse

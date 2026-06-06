@@ -14,3 +14,6 @@
 | REV-010 | CS-010 | closed | REV-010-findings.md |
 | REV-011 | CS-011 | closed | REV-011-findings.md |
 | REV-012 | Doc finale | closed | REV-012-doc-audit.md |
+| REV-013 | Post-PR1 F-07 + partial | closed | REV-013-post-pr1-findings.md |
+| REV-014 | Post-PR2 OpenAI | pending | REV-014-post-pr2-openai-findings.md |
+| REV-016 | Audit doc post-risques | partial | REV-016-doc-audit.md |

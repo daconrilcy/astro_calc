@@ -77,7 +77,8 @@
         "recommended_profile_code": { "const": "natal_simplified" },
         "reading_completeness": {
           "type": "string",
-          "enum": ["partial", "simplified"]
+          "enum": ["partial", "simplified"],
+          "description": "V1 runtime always emits partial. simplified is reserved for forward compatibility and is not emitted."
         }
       }
     }

@@ -20,7 +20,7 @@ Deux niveaux d'exclusion distincts dans `llm_payload` :
 | Champ | Signification |
 |-------|---------------|
 | `excluded_feature_codes` | Features **non calculées** (effet de `limitations` / scope) |
-| `profile_excluded_feature_codes` | Features **calculées mais non utilisées** par le profil `natal_simplified` (`ascendant`, `houses`, `sect`, `house_placements`) |
+| `profile_excluded_feature_codes` | Features **calculées mais non utilisées** par le profil `natal_simplified` — chargées depuis `astral_simplified_profile_feature_exclusions` (V1 : `ascendant`, `houses`, `sect`, `house_placements` pour tout scope) |
 
 Cas typique `complete_birth_data` : `computed_scope = angular_chart`, `excluded_feature_codes = []`, mais `profile_excluded_feature_codes` contient toujours ASC/maisons. La lecture doit expliquer que c'est un **choix de niveau produit**, pas une donnée manquante.
 
@@ -170,7 +170,7 @@ Utiliser : interprétation simplifiée, lecture partielle, lecture indicative, p
 
 Ne **pas** exposer : dégradée, `degraded`, `minimum_reading_level: degraded`.
 
-Contrat technique API : `reading_completeness: partial` (V1 — valeur émise par `reading_hint` calculateur).
+Contrat technique API : `reading_completeness: partial` (V1 — seule valeur émise par `reading_hint` calculateur). La valeur schema `simplified` est **réservée** (forward-compat) et **n'est pas émise** en V1 ; les assertions E2E exigent strictement `partial`.
 
 ## Entrée API — lieu calculatoire
 

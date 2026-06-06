@@ -173,8 +173,8 @@ function Assert-SimplifiedCalculatorResponse {
     if ($Response.reading_hint.recommended_profile_code -ne "natal_simplified") {
         $failures.Add("recommended_profile_code=$($Response.reading_hint.recommended_profile_code)")
     }
-    if ($Response.reading_hint.reading_completeness -notin @("partial", "simplified")) {
-        $failures.Add("reading_completeness=$($Response.reading_hint.reading_completeness)")
+    if ($Response.reading_hint.reading_completeness -ne "partial") {
+        $failures.Add("reading_completeness=$($Response.reading_hint.reading_completeness) attendu=partial")
     }
 
     $limitationCodes = @($Response.limitations | ForEach-Object { $_.code })
@@ -300,7 +300,8 @@ function Assert-SimplifiedReadingResponse {
     param(
         $ApiResponse,
         $Case,
-        [int]$MinWordsPerChapter = 30
+        [int]$MinWordsPerChapter = 30,
+        [switch]$StrictOpenAiQuality
     )
 
     $failures = [System.Collections.Generic.List[string]]::new()
@@ -310,8 +311,8 @@ function Assert-SimplifiedReadingResponse {
         return ,$failures
     }
 
-    if ($ApiResponse.reading_completeness -notin @("partial", "simplified")) {
-        $failures.Add("reading_completeness=$($ApiResponse.reading_completeness)")
+    if ($ApiResponse.reading_completeness -ne "partial") {
+        $failures.Add("reading_completeness=$($ApiResponse.reading_completeness) attendu=partial")
     }
     if (-not $ApiResponse.run_id) {
         $failures.Add("run_id manquant")
@@ -415,6 +416,119 @@ function Assert-SimplifiedReadingResponse {
 
     if ($content.legal -and -not $content.legal.disclaimer) {
         $failures.Add("disclaimer legal manquant")
+    }
+
+    if ($StrictOpenAiQuality) {
+        $strictFailures = Assert-SimplifiedStrictOpenAiQuality -ApiResponse $ApiResponse -Content $content
+        foreach ($f in $strictFailures) { $failures.Add("strict: $f") }
+    }
+
+    return ,$failures
+}
+
+function Assert-SimplifiedStrictOpenAiQuality {
+    param(
+        $ApiResponse,
+        $Content
+    )
+
+    $failures = [System.Collections.Generic.List[string]]::new()
+    $allowedBasis = @($ApiResponse.calculation.llm_payload.allowed_astro_basis_fact_ids)
+    $blockedFacts = @($ApiResponse.calculation.llm_payload.blocked_interpretation_fact_codes)
+
+    foreach ($ch in @($Content.chapters)) {
+        $bodyWords = Get-SimplifiedWordCount -Text $ch.body
+        if ($bodyWords -lt 120) {
+            $failures.Add("$($ch.code) body mots=$bodyWords min=120 (OpenAI)")
+        }
+        if ($bodyWords -gt 650) {
+            $failures.Add("$($ch.code) body mots=$bodyWords max=650 (OpenAI)")
+        }
+        foreach ($basis in @($ch.astro_basis)) {
+            if (-not $basis.fact_id) { continue }
+            if ($allowedBasis -notcontains $basis.fact_id) {
+                $failures.Add("astro_basis.fact_id hors whitelist: $($basis.fact_id)")
+            }
+            if ($basis.fact_id -match 'ascendant|house|sect') {
+                $failures.Add("astro_basis interdit (asc/house/sect): $($basis.fact_id)")
+            }
+        }
+        if ($ch.interpretive_role -and $ch.interpretive_role -notin @("core", "supporting", "nuance")) {
+            $failures.Add("$($ch.code) interpretive_role=$($ch.interpretive_role)")
+        }
+    }
+
+    if ($Content.summary) {
+        $st = [string]$Content.summary.short_text
+        if ($st -match '\.\.\.|…') {
+            $failures.Add("summary tronque avec suspension")
+        }
+        $summaryWords = Get-SimplifiedWordCount -Text $st
+        if ($summaryWords -gt 75) {
+            $failures.Add("summary mots=$summaryWords max=75")
+        }
+        $titleWords = Get-SimplifiedWordCount -Text $Content.summary.title
+        if ($titleWords -lt 1) {
+            $failures.Add("summary title vide")
+        }
+        if ($titleWords -gt 14) {
+            $failures.Add("summary title mots=$titleWords max=14")
+        }
+    }
+
+    $allText = @()
+    foreach ($ch in @($Content.chapters)) {
+        $allText += $ch.body
+        $allText += $ch.title
+    }
+    if ($Content.summary) {
+        $allText += $Content.summary.short_text
+        $allText += $Content.summary.title
+    }
+    if ($Content.legal -and $Content.legal.disclaimer) {
+        $allText += $Content.legal.disclaimer
+    }
+    $joined = ($allText -join " ")
+
+    if ($joined -match '\bl impression\b|\bd un\b|\bd une\b|\bl un\b|\bl une\b|\bqu il\b|\bqu elle\b|\bqu on\b') {
+        $failures.Add("apostrophe FR cassee detectee")
+    }
+
+    $lower = $joined.ToLowerInvariant()
+    $affirmativePatterns = @(
+        'ascendant (en|est|du |de la |:)\s*(b[eé]lier|taureau|g[eé]meaux|cancer|lion|vierge|balance|scorpion|sagittaire|capricorne|verseau|poissons)',
+        'votre ascendant (indique|montre|reveal|signifie)',
+        'dans votre maison\s+\d',
+        'maison\s+(1|2|3|4|5|6|7|8|9|10|11|12|i{1,3}|iv|v|vi|vii|viii|ix|x|xi|xii)\s',
+        'maison\s+(i{1,3}|iv|v|vi|vii|viii|ix|x|xi|xii)\s+(montre|indique|signifie)'
+    )
+    foreach ($pat in $affirmativePatterns) {
+        if ($lower -match $pat) {
+            $failures.Add("interpretation affirmative interdite: $pat")
+            break
+        }
+    }
+
+    if ($blockedFacts -contains "sun.sign") {
+        $codes = @($Content.chapters | ForEach-Object { $_.code })
+        if ($codes -notcontains "ambiguous_core_identity") {
+            $failures.Add("sun.sign bloque mais chapitre ambiguous_core_identity absent")
+        }
+        foreach ($ch in @($Content.chapters)) {
+            if ($ch.code -eq "ambiguous_core_identity") {
+                if ($ch.confidence -and $ch.confidence -notin @("medium", "low")) {
+                    $failures.Add("ambiguous_core_identity confidence=$($ch.confidence)")
+                }
+                if ($ch.body -notmatch 'soleil|determin|certitude|changement|zone') {
+                    $failures.Add("ambiguous_core_identity ne mentionne pas l incertitude solaire")
+                }
+                foreach ($basis in @($ch.astro_basis)) {
+                    if ($basis.fact_id -in @("placement:sun", "placement:moon")) {
+                        $failures.Add("ambiguous_core_identity basis interdit: $($basis.fact_id)")
+                    }
+                }
+            }
+        }
     }
 
     return ,$failures

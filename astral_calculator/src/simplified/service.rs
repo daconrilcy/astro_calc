@@ -1,13 +1,14 @@
 use std::path::Path;
 
+use super::catalog::SimplifiedCatalog;
 use super::facts::{
     collect_declared_sign_facts, collect_window_sign_facts, CollectedSignFacts,
 };
 use super::payload::build_response;
-use super::repository::load_simplified_catalog;
+use super::repository::{load_profile_feature_exclusions, load_simplified_catalog};
 use super::request::AstroSimplifiedNatalRequest;
 use super::resolve::{build_uncertainty_window, declared_datetime_utc, validate_and_resolve};
-use super::response::AstroSimplifiedNatalResponse;
+use super::response::{AstroSimplifiedNatalResponse, RECOMMENDED_SIMPLIFIED_PROFILE_CODE};
 use crate::aspects::detect_aspects;
 use crate::domain::{CalculatedChartFacts, NatalChartInput, ObjectPositionFact};
 use crate::ephemeris::EphemerisEngine;
@@ -29,7 +30,20 @@ pub async fn calculate_simplified_natal<E: EphemerisEngine>(
     }
 
     let catalog = load_simplified_catalog(repository.pool()).await?;
+    let profile_feature_exclusions = load_profile_feature_exclusions(repository.pool()).await?;
     let resolved = validate_and_resolve(&request, &catalog)?;
+    if SimplifiedCatalog::profile_feature_exclusions_for(
+        &profile_feature_exclusions,
+        RECOMMENDED_SIMPLIFIED_PROFILE_CODE,
+        &resolved.computed_scope,
+    )
+    .is_empty()
+    {
+        return Err(RuntimeError::InvalidRuntimeTable(
+            "missing active astral_simplified_profile_feature_exclusions for natal_simplified"
+                .into(),
+        ));
+    }
 
     let reference_version_id = repository.default_reference_version_id().await?;
     let zodiacal_id = repository
@@ -124,6 +138,7 @@ pub async fn calculate_simplified_natal<E: EphemerisEngine>(
     Ok(build_response(
         &resolved,
         &catalog,
+        &profile_feature_exclusions,
         collected,
         angular_facts.as_ref(),
     ))

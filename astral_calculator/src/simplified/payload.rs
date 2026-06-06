@@ -1,18 +1,19 @@
 use serde_json::{json, Value};
 
-use super::catalog::SimplifiedCatalog;
+use super::catalog::{ProfileFeatureExclusion, SimplifiedCatalog};
 use super::facts::{CollectedSignFacts, RELIABILITY_DECLARED, RELIABILITY_STABLE};
 use super::resolve::ResolvedSimplifiedInput;
 use super::response::{
     AstroSimplifiedNatalResponse, InputPrecisionResponse, LimitationResponse, LlmPayloadControls,
-    ReadingHintResponse, SIMPLIFIED_PAYLOAD_CONTRACT,
-    SIMPLIFIED_RESPONSE_CONTRACT_VERSION, SimplifiedPayloadEnvelope,
+    ReadingHintResponse, RECOMMENDED_SIMPLIFIED_PROFILE_CODE, READING_COMPLETENESS_V1,
+    SIMPLIFIED_PAYLOAD_CONTRACT, SIMPLIFIED_RESPONSE_CONTRACT_VERSION, SimplifiedPayloadEnvelope,
 };
 use crate::domain::CalculatedChartFacts;
 
 pub fn build_response(
     resolved: &ResolvedSimplifiedInput,
     catalog: &SimplifiedCatalog,
+    profile_feature_exclusions: &[ProfileFeatureExclusion],
     collected: CollectedSignFacts,
     angular_facts: Option<&CalculatedChartFacts>,
 ) -> AstroSimplifiedNatalResponse {
@@ -27,7 +28,12 @@ pub fn build_response(
         })
         .collect();
 
-    let llm_controls = build_llm_controls(resolved, catalog, &collected);
+    let llm_controls = build_llm_controls(
+        resolved,
+        catalog,
+        profile_feature_exclusions,
+        &collected,
+    );
 
     AstroSimplifiedNatalResponse {
         response_contract_version: SIMPLIFIED_RESPONSE_CONTRACT_VERSION.to_string(),
@@ -50,8 +56,8 @@ pub fn build_response(
         },
         llm_payload: llm_controls,
         reading_hint: ReadingHintResponse {
-            recommended_profile_code: "natal_simplified".to_string(),
-            reading_completeness: "partial".to_string(),
+            recommended_profile_code: RECOMMENDED_SIMPLIFIED_PROFILE_CODE.to_string(),
+            reading_completeness: READING_COMPLETENESS_V1.to_string(),
         },
     }
 }
@@ -92,12 +98,10 @@ fn build_simplified_payload(
     payload
 }
 
-const PROFILE_INTERPRETATION_EXCLUDED: &[&str] =
-    &["ascendant", "houses", "sect", "house_placements"];
-
 fn build_llm_controls(
     resolved: &ResolvedSimplifiedInput,
     catalog: &SimplifiedCatalog,
+    profile_feature_exclusions: &[ProfileFeatureExclusion],
     collected: &CollectedSignFacts,
 ) -> LlmPayloadControls {
     let allowed_fact_codes: Vec<String> = collected
@@ -121,10 +125,11 @@ fn build_llm_controls(
         .collect();
 
     let excluded_feature_codes = resolved.excluded_features.clone();
-    let profile_excluded_feature_codes: Vec<String> = PROFILE_INTERPRETATION_EXCLUDED
-        .iter()
-        .map(|s| (*s).to_string())
-        .collect();
+    let profile_excluded_feature_codes = SimplifiedCatalog::profile_feature_exclusions_for(
+        profile_feature_exclusions,
+        RECOMMENDED_SIMPLIFIED_PROFILE_CODE,
+        &resolved.computed_scope,
+    );
 
     let mut allowed_limitation_mentions = blocked_interpretation_fact_codes.clone();
     for feature in &excluded_feature_codes {
@@ -150,7 +155,7 @@ fn build_llm_controls(
     let forbidden_mirror = forbidden_interpretation_topics.clone();
 
     LlmPayloadControls {
-        profile_code: "natal_simplified".to_string(),
+        profile_code: RECOMMENDED_SIMPLIFIED_PROFILE_CODE.to_string(),
         allowed_fact_codes,
         allowed_astro_basis_fact_ids,
         blocked_interpretation_fact_codes,

@@ -3218,13 +3218,17 @@ Repository : `load_simplified_catalog()` dans `simplified/repository.rs`.
 | `allowed_astro_basis_fact_ids` | IDs autorisés pour `astro_basis.fact_id` (`placement:mercury`) |
 | `blocked_interpretation_fact_codes` | Faits ambigus — pas d'affirmation interprétative |
 | `excluded_feature_codes` | Non calculé (scope / limitations) |
-| `profile_excluded_feature_codes` | Calculé mais exclu du profil simplified |
+| `profile_excluded_feature_codes` | Calculé mais exclu du profil `natal_simplified` — source canonique : table `astral_simplified_profile_feature_exclusions` (seed `json_db/`, loader `load_profile_feature_exclusions`) |
 | `allowed_limitation_mentions` | Limitations mentionnables en UX |
 | `forbidden_interpretation_topics` | Agrégat documentaire (prompt interne) ; `forbidden_topics` reste un alias déprécié en sortie |
 
-Implémentation : `astral_calculator/src/simplified/payload.rs` (`build_llm_controls`).
+Implémentation : `astral_calculator/src/simplified/payload.rs` (`build_llm_controls`), exclusions profil via `SimplifiedCatalog::profile_feature_exclusions_for` (DB, pas de constante Rust).
 
-### Garde-fous lecture (LLM)
+### Données canoniques exclusions profil (F-07)
+
+Table **`astral_simplified_profile_feature_exclusions`** : `profile_code`, `computed_scope_code` (nullable = exclusion globale profil), `feature_code`, `exclusion_kind`, `sort_order`. Seed V1 : 4 lignes `natal_simplified` / `profile_interpretation_excluded`. Import : `python scripts/import_json_db_to_postgres.py`.
+
+Distinct de **`astral_simplified_calculation_policies`** (fenêtre d'incertitude, échantillonnage) : les exclusions sont une règle **profil d'interprétation**, pas une policy de calcul.
 
 Pipeline `single_pass` durci (`single_pass_hardening.rs`) :
 
@@ -3246,7 +3250,7 @@ Autres modules :
 - `french_typography.rs` — restauration élisions FR (`l impression` → `l'impression`)
 - `reading_script_guard.rs` — détection + `sanitize_text_for_french_script`
 
-Note : `profile_excluded_feature_codes` est encore émis via constante Rust `PROFILE_INTERPRETATION_EXCLUDED` dans `payload.rs` (migration DB planifiée, cf. REV-011 F-07).
+Note : ~~constante Rust `PROFILE_INTERPRETATION_EXCLUDED`~~ **F-07 closed** — table `astral_simplified_profile_feature_exclusions` (REV-013).
 
 ### Tests et E2E
 

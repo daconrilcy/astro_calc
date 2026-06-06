@@ -172,15 +172,25 @@ Test Rust dédié au rename : `llm_controls_block_ambiguous_and_allow_stable`, `
 
 ---
 
-## Risques résiduels (non bloquants clôture)
+## Risques résiduels — statut post-PR1 (2026-06-06)
 
-| ID | Sujet | Mitigation / suite |
-|----|-------|-------------------|
-| F-07 | `PROFILE_INTERPRETATION_EXCLUDED` encore constante Rust | Migration DB planifiée ; documenté REV-012 |
-| Qualité rédaction OpenAI | Gates simplified non bloquantes | `forbidden_wording`, retry script, post-traitement serveur |
-| `reading_completeness` | Runtime n’émet que `partial` | Assertions PS1 tolèrent `partial \| simplified` (forward-compat) |
+| ID | Sujet | Statut | Preuve |
+|----|-------|--------|--------|
+| F-07 | Exclusions profil en constante Rust | **CLOSED** | Table `astral_simplified_profile_feature_exclusions`, REV-013, E2E 24/24 |
+| `reading_completeness` | Tolérance PS1 `simplified` | **CLOSED** | Runtime + PS1 = `partial` strict, REV-013 |
+| Qualité OpenAI | Variabilité provider | **CLOSED WITH MONITORING** (pending smoke) | `-StrictOpenAiQuality` + REV-014 ; smoke `-UseReal` 7/7 à exécuter |
+
+Recette OpenAI (clôture monitoring) :
+
+```powershell
+.\scripts\test_natal_simplified_e2e.ps1 -UseReal -SubmitProfile -TimeoutSec 900
+```
+
+Artefacts : `output/natal_simplified_openai/{timestamp}/` + `quality_summary.json`.
 
 ---
+
+## Risques résiduels (historique v1 initiale)
 
 ## Revalidation rapide
 

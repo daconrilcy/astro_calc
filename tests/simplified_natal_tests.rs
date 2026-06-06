@@ -2,8 +2,8 @@ use astral_calculator::simplified::{
     build_response, build_uncertainty_window, dedupe_preserve_order, sample_points_utc,
     validate_and_resolve, AmbiguousSignFactResponse, AstroSimplifiedNatalRequest,
     CalculationScope, CollectedSignFacts, InputPrecisionLevel, LimitationCode,
-    ReliabilityLevel, SignFactResponse, SimplifiedCatalog, SimplifiedLocationRequest,
-    SimplifiedPolicy, RELIABILITY_AMBIGUOUS, RELIABILITY_STABLE,
+    ProfileFeatureExclusion, ReliabilityLevel, SignFactResponse, SimplifiedCatalog,
+    SimplifiedLocationRequest, SimplifiedPolicy, RELIABILITY_AMBIGUOUS, RELIABILITY_STABLE,
 };
 use chrono::{Duration, TimeZone, Utc};
 use serde_json::json;
@@ -102,6 +102,39 @@ fn test_catalog() -> SimplifiedCatalog {
             },
         ],
     }
+}
+
+fn test_profile_feature_exclusions() -> Vec<ProfileFeatureExclusion> {
+    vec![
+        ProfileFeatureExclusion {
+            profile_code: "natal_simplified".into(),
+            computed_scope_code: None,
+            feature_code: "ascendant".into(),
+            exclusion_kind: "profile_interpretation_excluded".into(),
+            sort_order: 10,
+        },
+        ProfileFeatureExclusion {
+            profile_code: "natal_simplified".into(),
+            computed_scope_code: None,
+            feature_code: "houses".into(),
+            exclusion_kind: "profile_interpretation_excluded".into(),
+            sort_order: 20,
+        },
+        ProfileFeatureExclusion {
+            profile_code: "natal_simplified".into(),
+            computed_scope_code: None,
+            feature_code: "sect".into(),
+            exclusion_kind: "profile_interpretation_excluded".into(),
+            sort_order: 30,
+        },
+        ProfileFeatureExclusion {
+            profile_code: "natal_simplified".into(),
+            computed_scope_code: None,
+            feature_code: "house_placements".into(),
+            exclusion_kind: "profile_interpretation_excluded".into(),
+            sort_order: 40,
+        },
+    ]
 }
 
 fn base_request() -> AstroSimplifiedNatalRequest {
@@ -243,7 +276,13 @@ fn llm_controls_block_ambiguous_and_allow_stable() {
         }],
         cusp_warnings: vec![],
     };
-    let response = build_response(&resolved, &catalog, collected, None);
+    let response = build_response(
+        &resolved,
+        &catalog,
+        &test_profile_feature_exclusions(),
+        collected,
+        None,
+    );
     assert!(response.llm_payload.allowed_fact_codes.contains(&"sun.sign".to_string()));
     assert!(response
         .llm_payload

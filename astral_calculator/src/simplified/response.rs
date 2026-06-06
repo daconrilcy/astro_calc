@@ -97,3 +97,6 @@ pub struct ReadingHintResponse {
     pub recommended_profile_code: String,
     pub reading_completeness: String,
 }
+
+pub const RECOMMENDED_SIMPLIFIED_PROFILE_CODE: &str = "natal_simplified";
+pub const READING_COMPLETENESS_V1: &str = "partial";

@@ -50,6 +50,15 @@ pub struct InputPrecisionLevel {
     pub code: String,
 }
 
+#[derive(Debug, Clone, Deserialize, FromRow)]
+pub struct ProfileFeatureExclusion {
+    pub profile_code: String,
+    pub computed_scope_code: Option<String>,
+    pub feature_code: String,
+    pub exclusion_kind: String,
+    pub sort_order: i32,
+}
+
 impl SimplifiedCatalog {
     pub fn limitation(&self, code: &str) -> Option<&LimitationCode> {
         self.limitation_codes.iter().find(|entry| entry.code == code)
@@ -83,5 +92,28 @@ impl SimplifiedCatalog {
                     .collect()
             })
             .unwrap_or_default()
+    }
+
+    /// Exclusions profil actives : lignes globales (`computed_scope_code` null) + lignes scope-spécifiques.
+    pub fn profile_feature_exclusions_for(
+        exclusions: &[ProfileFeatureExclusion],
+        profile_code: &str,
+        computed_scope: &str,
+    ) -> Vec<String> {
+        let mut out = Vec::new();
+        for row in exclusions {
+            if row.profile_code != profile_code {
+                continue;
+            }
+            let scope_matches = row
+                .computed_scope_code
+                .as_ref()
+                .map(|scope| scope == computed_scope)
+                .unwrap_or(true);
+            if scope_matches && !out.iter().any(|existing| existing == &row.feature_code) {
+                out.push(row.feature_code.clone());
+            }
+        }
+        out
     }
 }

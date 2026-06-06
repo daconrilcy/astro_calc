@@ -18,7 +18,10 @@ pub use response::{
 };
 
 #[cfg(any(test, feature = "test-utils"))]
-pub use catalog::{CalculationScope, InputPrecisionLevel, LimitationCode, ReliabilityLevel, SimplifiedPolicy};
+pub use catalog::{
+    CalculationScope, InputPrecisionLevel, LimitationCode, ProfileFeatureExclusion,
+    ReliabilityLevel, SimplifiedPolicy,
+};
 #[cfg(any(test, feature = "test-utils"))]
 pub use ephemeris_calc::dedupe_preserve_order;
 #[cfg(any(test, feature = "test-utils"))]

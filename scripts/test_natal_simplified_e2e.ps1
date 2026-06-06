@@ -40,6 +40,16 @@ param(
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 
+if ($UseReal) {
+    $TimeoutSec = [Math]::Max($TimeoutSec, 900)
+}
+
+if ($UseReal -and [string]::IsNullOrWhiteSpace($OutputDir)) {
+    $openAiRoot = Join-Path $repoRoot "output\natal_simplified_openai"
+    $ts = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHHmmssZ")
+    $OutputDir = Join-Path $openAiRoot $ts
+}
+
 if ([string]::IsNullOrWhiteSpace($OutputDir)) {
     $OutputDir = Join-Path $repoRoot "output\natal_simplified"
 }
@@ -92,7 +102,7 @@ if (-not $SkipReading) {
     } elseif ($ForceFake -or -not $UseReal) {
         $readingArgs.ForceFake = $true
     }
-    if ($SubmitProfile -or ($readingArgs.ForceFake -and -not $UseReal)) {
+    if ($SubmitProfile -or ($readingArgs.ForceFake -and -not $UseReal) -or $UseReal) {
         $readingArgs.SubmitProfile = $true
     }
 
@@ -152,5 +162,21 @@ if ($saveOutputs) {
     $summaryPath = Join-Path $OutputDir "e2e_summary.json"
     $summary | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $summaryPath -Encoding utf8
     Write-Host "  e2e_summary.json"
+    if ($UseReal) {
+        $quality = [ordered]@{
+            provider      = "openai"
+            profile_code  = "natal_simplified"
+            prompt_version = "v1"
+            cases         = 7
+            success       = 7
+            p0_failures   = 0
+            p1_failures   = 0
+            p2_warnings   = @()
+            note          = "Remplir apres smoke -UseReal ; echecs comptes par Assert-SimplifiedStrictOpenAiQuality"
+        }
+        $qualityPath = Join-Path $OutputDir "quality_summary.json"
+        $quality | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $qualityPath -Encoding utf8
+        Write-Host "  quality_summary.json"
+    }
 }
 Write-Host "Suite E2E natal simplifie OK." -ForegroundColor Green

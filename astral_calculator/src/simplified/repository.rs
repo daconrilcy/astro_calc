@@ -90,3 +90,19 @@ pub async fn load_simplified_catalog(pool: &PgPool) -> Result<SimplifiedCatalog,
         input_precision_levels,
     })
 }
+
+pub async fn load_profile_feature_exclusions(
+    pool: &PgPool,
+) -> Result<Vec<super::catalog::ProfileFeatureExclusion>, RuntimeError> {
+    sqlx::query_as::<_, super::catalog::ProfileFeatureExclusion>(
+        r#"
+        SELECT profile_code, computed_scope_code, feature_code, exclusion_kind, sort_order
+        FROM astral_simplified_profile_feature_exclusions
+        WHERE is_active = true
+        ORDER BY sort_order, id
+        "#,
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(map_catalog_db_error)
+}

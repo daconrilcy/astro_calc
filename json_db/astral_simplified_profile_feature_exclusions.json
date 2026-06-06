@@ -1,0 +1,73 @@
+{
+  "name": "astral_simplified_profile_feature_exclusions",
+  "structure": {
+    "id": "integer, primary key",
+    "profile_code": "string",
+    "computed_scope_code": "string|null",
+    "feature_code": "string",
+    "exclusion_kind": "string",
+    "reason": "string",
+    "sort_order": "integer",
+    "is_active": "boolean",
+    "constraints": {
+      "unique_key": [
+        "profile_code",
+        "computed_scope_code",
+        "feature_code",
+        "exclusion_kind"
+      ],
+      "checks": [
+        {
+          "name": "feature_code_allowed",
+          "expression": "feature_code IN ('ascendant', 'houses', 'sect', 'house_placements')"
+        },
+        {
+          "name": "exclusion_kind_allowed",
+          "expression": "exclusion_kind IN ('profile_interpretation_excluded')"
+        }
+      ]
+    }
+  },
+  "data": [
+    {
+      "id": 1,
+      "profile_code": "natal_simplified",
+      "computed_scope_code": null,
+      "feature_code": "ascendant",
+      "exclusion_kind": "profile_interpretation_excluded",
+      "reason": "Profil simplified : l'Ascendant n'est pas interprété même s'il est calculé (angular_chart).",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": 2,
+      "profile_code": "natal_simplified",
+      "computed_scope_code": null,
+      "feature_code": "houses",
+      "exclusion_kind": "profile_interpretation_excluded",
+      "reason": "Profil simplified : les maisons ne sont pas interprétées.",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": 3,
+      "profile_code": "natal_simplified",
+      "computed_scope_code": null,
+      "feature_code": "sect",
+      "exclusion_kind": "profile_interpretation_excluded",
+      "reason": "Profil simplified : la secte diurne/nocturne n'est pas interprétée.",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": 4,
+      "profile_code": "natal_simplified",
+      "computed_scope_code": null,
+      "feature_code": "house_placements",
+      "exclusion_kind": "profile_interpretation_excluded",
+      "reason": "Profil simplified : les placements en maison ne sont pas interprétés.",
+      "sort_order": 40,
+      "is_active": true
+    }
+  ]
+}

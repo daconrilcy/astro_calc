@@ -5,6 +5,7 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "contract_version",
     "profile_code",
     "allowed_fact_codes",
     "allowed_astro_basis_fact_ids",
@@ -14,6 +15,7 @@
     "allowed_limitation_mentions"
   ],
   "properties": {
+    "contract_version": { "const": "llm_projection_natal_simplified_v1" },
     "profile_code": { "const": "natal_simplified" },
     "allowed_fact_codes": { "type": "array", "items": { "type": "string" } },
     "allowed_astro_basis_fact_ids": { "type": "array", "items": { "type": "string" } },
