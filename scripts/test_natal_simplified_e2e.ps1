@@ -26,6 +26,7 @@ param(
     [switch]$SkipReading,
     [switch]$SkipCalculator,
     [switch]$UseReal,
+    [switch]$ForceFake,
     [switch]$SubmitProfile,
     [switch]$NoSaveOutputs,
     [string]$OutputDir = "",
@@ -85,8 +86,14 @@ if (-not $SkipReading) {
         $readingArgs.OutputDir = $readOutputDir
     }
     if ($LlmBase) { $readingArgs.LlmBase = $LlmBase }
-    if ($UseReal) { $readingArgs.UseReal = $true }
-    if ($SubmitProfile) { $readingArgs.SubmitProfile = $true }
+    if ($UseReal) {
+        $readingArgs.UseReal = $true
+    } elseif ($ForceFake -or -not $UseReal) {
+        $readingArgs.ForceFake = $true
+    }
+    if ($SubmitProfile -or ($readingArgs.ForceFake -and -not $UseReal)) {
+        $readingArgs.SubmitProfile = $true
+    }
 
     if ($Bootstrap) {
         Write-Host "Restart astral_llm_api (ASTRAL_CALCULATOR_HOST Docker)..." -ForegroundColor Cyan

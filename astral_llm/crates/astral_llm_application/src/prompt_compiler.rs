@@ -34,6 +34,7 @@ pub struct PromptCompilationInput<'a> {
     pub chapter_evidence_pack: Option<&'a ChapterEvidencePack>,
     pub catalog: &'a SharedCanonicalCatalog,
     pub interpretation: Option<&'a ResolvedInterpretationContext>,
+    pub repair_instruction: Option<&'a str>,
 }
 
 pub struct PromptCompiler {
@@ -68,6 +69,12 @@ impl PromptCompiler {
                     task.push_str("\n\n");
                     task.push_str(&prompt_constraints_block(controls));
                 }
+            }
+        }
+        if let Some(repair) = input.repair_instruction {
+            if !repair.trim().is_empty() {
+                task.push_str("\n\nREPAIR INSTRUCTION (mandatory):\n");
+                task.push_str(repair.trim());
             }
         }
         let inject_legacy_structure = input.chapter_evidence_pack.is_some()

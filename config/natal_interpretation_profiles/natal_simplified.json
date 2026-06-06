@@ -25,10 +25,11 @@
     "max_repeated_trigrams": 4,
     "min_astro_basis_refs_per_chapter": 0,
     "min_interpretive_astro_basis_refs_per_chapter": 0,
-    "require_disclaimer": true
+    "require_disclaimer": true,
+    "max_script_repair_attempts": 2
   },
   "evidence": {
     "enabled": false
   },
-  "task_fragment": "Produisez une interprétation astrologique simplifiée et honnête en un seul passage. Pour astro_basis.fact_id, utilisez exclusivement allowed_astro_basis_fact_ids — jamais allowed_fact_codes (ex. mercury.sign). N'affirmez jamais l'Ascendant, les maisons, la secte ni un placement en maison lorsque le profil les exclut. N'affirmez jamais un signe lunaire ou solaire déterministe si le payload le bloque. Si sun.sign est bloqué, utilisez le chapitre ambiguous_core_identity. Mentionnez les limitations lorsque allowed_limitation_mentions l'autorise. Utilisez un ton accessible ; parlez d'interprétation partielle ou indicative, jamais de lecture dégradée."
+  "task_fragment": "Produisez une interprétation astrologique simplifiée et honnête en un seul passage. Rédigez exclusivement en français avec l'alphabet latin (accents autorisés) ; aucun caractère d'un autre système d'écriture. Pour astro_basis.fact_id, utilisez exclusivement allowed_astro_basis_fact_ids — jamais allowed_fact_codes (ex. mercury.sign). N'affirmez jamais l'Ascendant, les maisons, la secte ni un placement en maison lorsque le profil les exclut. N'affirmez jamais un signe lunaire ou solaire déterministe si le payload le bloque. Si sun.sign est bloqué, utilisez le chapitre ambiguous_core_identity. Mentionnez les limitations lorsque allowed_limitation_mentions l'autorise. Utilisez un ton accessible ; parlez d'interprétation partielle ou indicative, jamais de lecture dégradée."
 }

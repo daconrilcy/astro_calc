@@ -1109,6 +1109,7 @@ impl<'a> ChapterOrchestrator<'a> {
                 chapter_evidence_pack: chapter_pack,
                 catalog: self.catalog,
                 interpretation,
+                repair_instruction: None,
             })
             .map_err(|e| GenerationError::new(GenerationErrorCode::InvalidInput, e))?;
 

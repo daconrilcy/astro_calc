@@ -85,6 +85,9 @@ pub struct InterpretationQualityConfig {
     pub min_interpretive_astro_basis_refs_per_chapter: u8,
     #[serde(default = "default_true")]
     pub require_disclaimer: bool,
+    /// Nombre total de tentatives de génération single_pass (1 = sans retry).
+    #[serde(default = "default_max_script_repair_attempts")]
+    pub max_script_repair_attempts: u8,
     #[serde(default)]
     pub min_astro_basis_refs_synthesis: Option<u8>,
     #[serde(default)]
@@ -95,6 +98,10 @@ pub struct InterpretationQualityConfig {
 
 fn default_true() -> bool {
     true
+}
+
+fn default_max_script_repair_attempts() -> u8 {
+    1
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
@@ -160,6 +167,10 @@ impl InterpretationProfile {
 
     pub fn require_disclaimer(&self) -> bool {
         self.document.quality.require_disclaimer
+    }
+
+    pub fn max_script_repair_attempts(&self) -> u8 {
+        self.document.quality.max_script_repair_attempts.max(1)
     }
 
     pub fn default_domain_count(&self) -> u8 {

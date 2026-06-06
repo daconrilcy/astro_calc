@@ -67,13 +67,17 @@ allowed_limitation_mentions =
 | `reading_script_guard` | Rejet caractères hors Latin étendu en `fr` (ex. devanagari, bengali) — **invoqué par** `SafetyGuard`, pas en chaîne séparée |
 | `AstroBasisValidator` | Existence des `fact_id` dans les faits normalisés |
 
-Ordre dans `generate_reading_use_case` (profil `natal_simplified`, mode `single_pass`) :
+Ordre dans `generate_reading_use_case` (profil `natal_simplified`, mode `single_pass`) — voir `single_pass_hardening.rs` :
 
-1. Parse JSON LLM + normalisation `astro_basis.fact_id` (`normalize_chapter_astro_basis_fact_ids`)
-2. `AstroBasisValidator` (existence des `fact_id` dans les faits normalisés)
-3. `simplified_reading_guard` (whitelist + affirmations FR + profil ASC/maisons)
-4. `SafetyGuard` — inclut `reading_script_guard` (script inattendu en `fr`) + patterns sensibles + `forbidden_wording`
-5. `ReadingQualityValidator` — gate **non bloquante** pour ce profil (`quality.blocking_gate: false`)
+1. Génération (+ retry script si `max_script_repair_attempts` > 1)
+2. Post-traitement serveur : disclaimer, summary, sanitisation script
+3. Fallback body déterministe si script persiste
+4. `AstroBasisValidator`
+5. `simplified_reading_guard`
+6. `SafetyGuard` (+ `reading_script_guard`)
+7. `ReadingQualityValidator` (non bloquant)
+
+Recette E2E : `test_natal_simplified_e2e.ps1` force le provider **fake** par défaut (`-ForceFake`). OpenAI réel : `-UseReal` (recette optionnelle, non bloquante CI).
 
 ## SafetyGuard vs prompt
 

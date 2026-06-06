@@ -27,6 +27,8 @@ pub mod reading_plan;
 pub mod reading_script_guard;
 pub mod reasoning_generation;
 pub mod simplified_reading_guard;
+pub mod simplified_reading_postprocess;
+pub mod single_pass_hardening;
 pub mod simplified_reading;
 pub use simplified_reading::{
     build_reading_request, merge_simplified_forbidden_wording, prompt_constraints_block,

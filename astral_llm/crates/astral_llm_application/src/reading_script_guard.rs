@@ -64,6 +64,40 @@ fn is_latin_extended_for_french(ch: char) -> bool {
     ('\u{00C0}'..='\u{024F}').contains(&ch)
 }
 
+/// Retire les caractères hors alphabet français autorisé.
+pub fn sanitize_text_for_french_script(text: &str) -> (String, bool) {
+    let mut changed = false;
+    let mut out = String::with_capacity(text.len());
+    for ch in text.chars() {
+        if ch.is_whitespace()
+            || ch.is_ascii_digit()
+            || is_french_punctuation(ch)
+            || ch.is_ascii()
+            || is_latin_extended_for_french(ch)
+        {
+            out.push(ch);
+        } else {
+            changed = true;
+        }
+    }
+    let collapsed = collapse_whitespace(&out);
+    if collapsed != text {
+        changed = true;
+    }
+    (collapsed, changed)
+}
+
+fn collapse_whitespace(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+pub fn violations_are_script_only(violations: &[String]) -> bool {
+    !violations.is_empty()
+        && violations
+            .iter()
+            .all(|v| v.contains("unexpected script in"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -103,6 +137,22 @@ mod tests {
                 fallback_used: false,
             },
         }
+    }
+
+    #[test]
+    fn sanitize_strips_devanagari() {
+        let (clean, changed) = sanitize_text_for_french_script("fondée avec संकेत.");
+        assert!(changed);
+        assert!(!clean.contains('\u{0938}'));
+        assert!(clean.contains("fondée"));
+    }
+
+    #[test]
+    fn violations_are_script_only_detects_script_errors() {
+        assert!(violations_are_script_only(&[
+            "unexpected script in chapters[0].body (language=fr): 'स' U+0938".into()
+        ]));
+        assert!(!violations_are_script_only(&["medical advice detected".into()]));
     }
 
     #[test]

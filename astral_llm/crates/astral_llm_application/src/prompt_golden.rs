@@ -110,6 +110,7 @@ pub fn assert_compiled_prompt_is_safe(prompts_root: &std::path::Path) -> Result<
             chapter_evidence_pack: None,
             catalog: &catalog,
             interpretation: None,
+            repair_instruction: None,
         })
         .map_err(|e| format!("compile failed: {e}"))?;
 
@@ -238,6 +239,7 @@ pub fn assert_premium_plus_prompt_structure(prompts_root: &std::path::Path) -> R
             chapter_evidence_pack: Some(&pack),
             catalog: &catalog,
             interpretation: Some(&ctx),
+            repair_instruction: None,
         })
         .map_err(|e| format!("compile failed: {e}"))?;
 
@@ -402,6 +404,7 @@ pub fn assert_premium_compact_prompt_structure(prompts_root: &std::path::Path) -
             chapter_evidence_pack: Some(&pack),
             catalog: &catalog,
             interpretation: Some(&ctx),
+            repair_instruction: None,
         })
         .map_err(|e| format!("compile failed: {e}"))?;
     ChapterWritingGuidance::append_upstream_directives(

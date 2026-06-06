@@ -450,13 +450,13 @@ docker compose up -d --build astral_llm_api   # après changement Rust LLM
 
 Résultat attendu : **12/12** calculateur (7 positifs + 5 négatifs 422, dont `2024-02-30`) et **7/7** lectures orchestrées.
 
-> **Provider** : Docker Compose force `fake` dans le conteneur ; les scripts peuvent afficher un avertissement si `.env` local pointe vers `openai`. Avec le modèle produit (`gpt-5.4-mini`), des échecs sporadiques (contamination script, timeout) sont possibles — les gardes `reading_script_guard` et `simplified_reading_guard` rejettent alors en **422** avec détail dans `reading.violations`.
+> **Provider E2E** : la suite active **`-ForceFake`** par défaut (bascule `natal_prompter` → fake, sans OpenAI). Recette OpenAI optionnelle : `-UseReal -SubmitProfile` (facturée, peut échouer sporadiquement malgré les retries script).
 
 Scripts complémentaires :
 
 ```powershell
 .\scripts\test_natal_simplified_calculator.ps1          # calculateur seul
-.\scripts\test_natal_simplified_reading.ps1             # lectures seules (fake)
+.\scripts\test_natal_simplified_reading.ps1 -ForceFake  # lectures fake explicite
 .\scripts\test_natal_simplified_e2e.ps1 -Case date_only
 .\scripts\test_natal_simplified_e2e.ps1 -NoSaveOutputs
 .\scripts\test_natal_simplified_reading.ps1 -UseReal -SubmitProfile -TimeoutSec 900  # OpenAI facturé

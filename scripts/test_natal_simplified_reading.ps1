@@ -3,11 +3,14 @@
     Tests HTTP reels — POST /v1/readings/natal/simplified (orchestration calcul + lecture).
 
 .DESCRIPTION
-    Execute tous les cas positifs via le gateway LLM (provider fake par defaut).
+    Execute tous les cas positifs via le gateway LLM. Par defaut la suite E2E active -ForceFake (deterministe, sans OpenAI). Passez -UseReal pour une recette OpenAI optionnelle.
     Valide reading_completeness, structure natal_reading_v1, llm_controls et anti-degraded.
 
 .EXAMPLE
     .\scripts\test_natal_simplified_reading.ps1
+
+.EXAMPLE
+    .\scripts\test_natal_simplified_reading.ps1 -ForceFake
 
 .EXAMPLE
     .\scripts\test_natal_simplified_reading.ps1 -UseReal -TimeoutSec 900
@@ -19,6 +22,7 @@ param(
     [string]$LlmBase = "",
     [string[]]$Case = @(),
     [switch]$UseReal,
+    [switch]$ForceFake,
     [switch]$SubmitProfile,
     [switch]$SaveOutputs,
     [string]$OutputDir = "",
@@ -32,8 +36,16 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\astral_http_auth.ps1")
 . (Join-Path $PSScriptRoot "lib\simplified_natal_cases.ps1")
 . (Join-Path $PSScriptRoot "lib\simplified_natal_assertions.ps1")
+. (Join-Path $PSScriptRoot "lib\simplified_e2e_llm_provider.ps1")
 Import-AstralDotEnv -RepoRoot $repoRoot
 
+$fakeProviderArmed = $false
+if ($ForceFake -and -not $UseReal) {
+    Enable-SimplifiedE2eFakeLlmProvider -RepoRoot $repoRoot
+    $fakeProviderArmed = $true
+}
+
+try {
 $LlmBase = Resolve-AstralLlmBaseForHost -LlmBase $LlmBase
 
 if (-not $UseReal) {
@@ -147,3 +159,8 @@ Write-Host ""
 Write-Host "Resultat : $passed OK, $failed FAIL sur $($cases.Count) cas" -ForegroundColor $(if ($failed -eq 0) { "Green" } else { "Red" })
 if ($failed -gt 0) { exit 1 }
 Write-Host "Reading simplified OK." -ForegroundColor Green
+} finally {
+    if ($fakeProviderArmed) {
+        Restore-SimplifiedE2eLlmProvider -RepoRoot $repoRoot
+    }
+}

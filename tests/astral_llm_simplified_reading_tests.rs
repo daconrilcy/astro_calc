@@ -176,6 +176,7 @@ fn compiled_simplified_prompt_injects_constraints_and_data_controls() {
             chapter_evidence_pack: None,
             catalog: &catalog,
             interpretation: Some(&ctx),
+            repair_instruction: None,
         })
         .expect("compile");
 

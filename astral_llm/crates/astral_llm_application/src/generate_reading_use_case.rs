@@ -2,7 +2,6 @@ use std::time::Duration;
 
 use astral_llm_domain::{
     contract_versions::GenerationRunContractVersions,
-    default_legal_disclaimer,
     model_usage_tier::ModelRouteContext,
     generation_response::{
         GenerateReadingResponse, GenerationFailedResponse, SafetyRejectedResponse,
@@ -50,7 +49,7 @@ pub struct GenerateReadingUseCase {
     validator: ResponseValidator,
     engine_defaults: EngineDefaults,
     limits: ServiceLimits,
-    catalog: SharedCanonicalCatalog,
+    pub(super) catalog: SharedCanonicalCatalog,
     privacy_policy: PrivacyPolicy,
 }
 
@@ -268,7 +267,7 @@ impl GenerateReadingUseCase {
                     interpretation,
                 );
                 audit.selected_domains = domains.clone();
-                self.generate_single_pass(
+                self.generate_single_pass_hardened(
                     &request,
                     &engine,
                     &safety_policy,
@@ -277,6 +276,7 @@ impl GenerateReadingUseCase {
                     product_policy,
                     interpretation,
                     run_id,
+                    audit,
                 )
                 .await?
             }
@@ -294,29 +294,38 @@ impl GenerateReadingUseCase {
             .interpretation_profile_code
             .as_deref()
             == Some(SIMPLIFIED_PROFILE)
+            && matches!(
+                request.response_contract.generation_mode,
+                GenerationMode::ChapterOrchestrated
+            )
         {
             self.validate_simplified_reading(&request, &reading)?;
         }
 
-        SafetyGuard::validate_response(
-            &reading,
-            &safety_policy,
-            &request.astrologer_profile.forbidden_wording,
-            &self.catalog,
-        )
-        .map_err(|violations| {
-            GenerationError::with_details(
-                GenerationErrorCode::PostSafetyValidationFailed,
-                "generated content failed safety validation",
-                serde_json::json!({ "violations": violations }),
+        if !matches!(
+            request.response_contract.generation_mode,
+            GenerationMode::SinglePass
+        ) {
+            SafetyGuard::validate_response(
+                &reading,
+                &safety_policy,
+                &request.astrologer_profile.forbidden_wording,
+                &self.catalog,
             )
-        })?;
+            .map_err(|violations| {
+                GenerationError::with_details(
+                    GenerationErrorCode::PostSafetyValidationFailed,
+                    "generated content failed safety validation",
+                    serde_json::json!({ "violations": violations }),
+                )
+            })?;
+        }
 
         ReadingQualityValidator::validate_for_product(&request, &reading, interpretation)?;
         Ok(reading)
     }
 
-    fn validate_simplified_reading(
+    pub(super) fn validate_simplified_reading(
         &self,
         request: &GenerateReadingRequest,
         reading: &astral_llm_domain::NatalReadingResponse,
@@ -387,7 +396,7 @@ impl GenerateReadingUseCase {
         }
     }
 
-    async fn generate_single_pass(
+    pub(super) async fn generate_single_pass(
         &self,
         request: &GenerateReadingRequest,
         engine: &ResolvedEngineParams,
@@ -399,6 +408,7 @@ impl GenerateReadingUseCase {
             &crate::interpretation_profile_resolver::ResolvedInterpretationContext,
         >,
         run_id: &str,
+        repair_instruction: Option<&str>,
     ) -> Result<astral_llm_domain::NatalReadingResponse, GenerationError> {
         let chapter_code = request
             .response_contract
@@ -417,6 +427,7 @@ impl GenerateReadingUseCase {
                 chapter_evidence_pack: None,
                 catalog: &self.catalog,
                 interpretation,
+                repair_instruction,
             })
             .map_err(|e| GenerationError::new(GenerationErrorCode::InvalidInput, e))?;
 
@@ -499,13 +510,6 @@ impl GenerateReadingUseCase {
             crate::evidence_fact_parse::normalize_chapter_astro_basis_fact_ids(
                 chapter,
                 astro_facts,
-            );
-        }
-
-        if request.response_contract.include_legal_disclaimer {
-            reading.legal.disclaimer = default_legal_disclaimer(
-                &request.product_context.user_language,
-                true,
             );
         }
 
