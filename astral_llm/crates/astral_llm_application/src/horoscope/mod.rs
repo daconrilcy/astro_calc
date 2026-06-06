@@ -11,7 +11,9 @@ use jsonschema::JSONSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-pub const HOROSCOPE_SERVICE_CODE: &str = "horoscope_basic_daily_natal_3_slots";
+pub const HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE: &str = "horoscope_basic_daily_natal_3_slots";
+pub const HOROSCOPE_FREE_DAILY_SERVICE_CODE: &str = "horoscope_free_daily";
+pub const HOROSCOPE_SERVICE_CODE: &str = HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE;
 
 const TIME_SLOTS_JSON: &str =
     include_str!("../../../../../json_db/horoscope_time_slot_profiles.json");
@@ -60,6 +62,8 @@ pub struct SlotProfile {
     pub start_local_time: String,
     pub end_local_time: String,
     pub reference_local_time: String,
+    pub slot_label: Option<String>,
+    pub is_public: Option<bool>,
     pub sort_order: i32,
 }
 
@@ -102,14 +106,45 @@ pub struct SlotInterpretationPlan {
 }
 
 pub struct HoroscopeBasicDailyNatalOrchestrator;
+pub struct HoroscopeFreeDailyOrchestrator;
+pub struct HoroscopeDailyNatalOrchestrator;
 
 impl HoroscopeBasicDailyNatalOrchestrator {
     pub async fn execute(
         calculator: &astral_llm_infra::CalculatorClient,
         payload: &Value,
     ) -> Result<serde_json::Value, GenerationError> {
+        HoroscopeDailyNatalOrchestrator::execute(
+            HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE,
+            calculator,
+            payload,
+        )
+        .await
+    }
+}
+
+impl HoroscopeFreeDailyOrchestrator {
+    pub async fn execute(
+        calculator: &astral_llm_infra::CalculatorClient,
+        payload: &Value,
+    ) -> Result<serde_json::Value, GenerationError> {
+        HoroscopeDailyNatalOrchestrator::execute(
+            HOROSCOPE_FREE_DAILY_SERVICE_CODE,
+            calculator,
+            payload,
+        )
+        .await
+    }
+}
+
+impl HoroscopeDailyNatalOrchestrator {
+    pub async fn execute(
+        service_code: &str,
+        calculator: &astral_llm_infra::CalculatorClient,
+        payload: &Value,
+    ) -> Result<serde_json::Value, GenerationError> {
         let public = validate_public_request(payload)?;
-        let calculation_request = build_calculation_request(&public)?;
+        let calculation_request = build_calculation_request_for_service(service_code, &public)?;
         let calculation = calculator
             .calculate_horoscope_daily_natal(&calculation_request)
             .await
@@ -167,10 +202,18 @@ pub fn validate_public_request(payload: &Value) -> Result<HoroscopePublicRequest
 pub fn build_calculation_request(
     request: &HoroscopePublicRequest,
 ) -> Result<serde_json::Value, GenerationError> {
-    let slots = slot_profiles()?;
+    build_calculation_request_for_service(HOROSCOPE_SERVICE_CODE, request)
+}
+
+pub fn build_calculation_request_for_service(
+    service_code: &str,
+    request: &HoroscopePublicRequest,
+) -> Result<serde_json::Value, GenerationError> {
+    validate_supported_service_code(service_code)?;
+    let slots = slot_profiles(service_code)?;
     Ok(json!({
         "contract_version": "horoscope_calculation_request_v1",
-        "service_code": HOROSCOPE_SERVICE_CODE,
+        "service_code": service_code,
         "chart_calculation_id": request.chart_calculation_id,
         "period": {
             "date": request.date,
@@ -186,7 +229,8 @@ pub fn build_calculation_request(
 }
 
 pub fn score_calculation(calculation: &Value) -> Result<Vec<ScoredSignal>, GenerationError> {
-    let refs = ReferenceData::load()?;
+    let service_code = service_code_from_value(calculation)?;
+    let refs = ReferenceData::load(service_code)?;
     let mut out = Vec::new();
     let slots = calculation
         .get("slots")
@@ -233,7 +277,8 @@ pub fn build_interpretation_request(
     calculation: &Value,
     signals: &[ScoredSignal],
 ) -> Result<Value, GenerationError> {
-    let refs = ReferenceData::load()?;
+    let service_code = service_code_from_value(calculation)?;
+    let refs = ReferenceData::load(service_code)?;
     let shortlist = refs.shortlist.clone();
     let slot_plans = build_slot_plans(&refs, calculation, signals)?;
     let selected_keys = slot_plans
@@ -276,7 +321,7 @@ pub fn build_interpretation_request(
     let top = main_signals.first();
     let request = json!({
         "contract_version": "horoscope_interpretation_request_v1",
-        "service_code": HOROSCOPE_SERVICE_CODE,
+        "service_code": service_code,
         "period": calculation.get("period").cloned().unwrap_or_else(|| json!({
             "date": public.date,
             "timezone": public.timezone
@@ -303,8 +348,12 @@ pub fn validate_response_evidence(
     response: &Value,
 ) -> Result<(), GenerationError> {
     validate_horoscope_response_schema(response)?;
+    let service_code = request
+        .get("service_code")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| horoscope_error("HOROSCOPE_RESPONSE_INVALID"))?;
     if response.get("contract_version").and_then(|v| v.as_str()) != Some("horoscope_response_v1")
-        || response.get("service_code").and_then(|v| v.as_str()) != Some(HOROSCOPE_SERVICE_CODE)
+        || response.get("service_code").and_then(|v| v.as_str()) != Some(service_code)
     {
         return Err(horoscope_error("HOROSCOPE_RESPONSE_INVALID"));
     }
@@ -320,6 +369,12 @@ pub fn validate_response_evidence(
         .and_then(|v| v.as_array())
         .ok_or_else(|| horoscope_error("HOROSCOPE_RESPONSE_INVALID"))?;
     if allowed.is_empty() {
+        return Err(horoscope_error("HOROSCOPE_RESPONSE_INVALID"));
+    }
+    if service_code == HOROSCOPE_FREE_DAILY_SERVICE_CODE {
+        return validate_free_response_evidence(request, response, &allowed);
+    }
+    if service_code != HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE {
         return Err(horoscope_error("HOROSCOPE_RESPONSE_INVALID"));
     }
     let slots = response
@@ -403,6 +458,13 @@ pub fn validate_response_evidence(
 }
 
 fn fake_writer_response(request: &Value) -> Result<Value, GenerationError> {
+    let service_code = request
+        .get("service_code")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| horoscope_error("HOROSCOPE_RESPONSE_INVALID"))?;
+    if service_code == HOROSCOPE_FREE_DAILY_SERVICE_CODE {
+        return fake_writer_free_response(request);
+    }
     let period = request
         .get("period")
         .cloned()
@@ -421,7 +483,7 @@ fn fake_writer_response(request: &Value) -> Result<Value, GenerationError> {
         .collect::<Result<Vec<_>, _>>()?;
     Ok(json!({
         "contract_version": "horoscope_response_v1",
-        "service_code": HOROSCOPE_SERVICE_CODE,
+        "service_code": HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE,
         "period": period,
         "summary": {
             "title": "Une journée à ajuster avec précision",
@@ -439,6 +501,93 @@ fn fake_writer_response(request: &Value) -> Result<Value, GenerationError> {
             "evidence_guard": "passed",
             "evidence_coverage": 1.0,
             "slot_diversity_passed": true,
+            "french_typography_passed": true,
+            "generic_language_passed": true
+        }
+    }))
+}
+
+fn validate_free_response_evidence(
+    request: &Value,
+    response: &Value,
+    allowed: &HashSet<&str>,
+) -> Result<(), GenerationError> {
+    if response.get("slots").is_some() {
+        return Err(horoscope_error("HOROSCOPE_RESPONSE_INVALID"));
+    }
+    let request_slots = request
+        .get("slots")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| horoscope_error("HOROSCOPE_RESPONSE_INVALID"))?;
+    if request_slots.len() != 1
+        || request_slots[0].get("slot_code").and_then(|v| v.as_str()) != Some("day")
+    {
+        return Err(horoscope_error("HOROSCOPE_RESPONSE_INVALID"));
+    }
+    let evidence_keys = response
+        .get("evidence_keys")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| horoscope_error("HOROSCOPE_RESPONSE_INVALID"))?;
+    if evidence_keys.is_empty() {
+        return Err(quality_error(
+            "HOROSCOPE_EVIDENCE_MISMATCH",
+            json!({ "reason": "free_without_evidence" }),
+        ));
+    }
+    validate_slot_evidence_alignment(&request_slots[0], evidence_keys)?;
+
+    let mut cited = Vec::new();
+    collect_evidence_keys(response, &mut cited);
+    let invented = cited
+        .into_iter()
+        .filter(|key| !allowed.contains(key.as_str()))
+        .collect::<Vec<_>>();
+    if !invented.is_empty() {
+        return Err(GenerationError::with_details(
+            GenerationErrorCode::PostSafetyValidationFailed,
+            "HOROSCOPE_EVIDENCE_MISMATCH",
+            json!({ "invented_evidence_keys": invented }),
+        ));
+    }
+
+    let public_text = free_public_text(response);
+    validate_public_text_no_technical_codes(&public_text)?;
+    validate_free_text_quality(&public_text, response)?;
+    validate_astrological_reference("day", &public_text, &request_slots[0])?;
+    Ok(())
+}
+
+fn fake_writer_free_response(request: &Value) -> Result<Value, GenerationError> {
+    let period = request
+        .get("period")
+        .cloned()
+        .ok_or_else(|| horoscope_error("HOROSCOPE_RESPONSE_INVALID"))?;
+    let slot = request
+        .get("slots")
+        .and_then(|v| v.as_array())
+        .and_then(|items| items.first())
+        .ok_or_else(|| horoscope_error("HOROSCOPE_RESPONSE_INVALID"))?;
+    let evidence_keys = slot
+        .get("required_evidence_keys")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    Ok(json!({
+        "contract_version": "horoscope_response_v1",
+        "service_code": HOROSCOPE_FREE_DAILY_SERVICE_CODE,
+        "period": period,
+        "summary": {
+            "title": "Votre tendance du jour",
+            "text": "La Lune met l'accent sur l'organisation, les priorités simples et les gestes utiles. La journée gagne à rester concrète : choisir une tâche mesurable, clarifier ce qui doit vraiment avancer, puis éviter de multiplier les intentions. Cette lecture reste volontairement synthétique, avec une preuve astrologique centrale plutôt qu'un découpage horaire."
+        },
+        "advice": "Choisissez une action vérifiable et avancez étape par étape.",
+        "watch_point": "Ne cherchez pas à tout régler en même temps.",
+        "evidence_keys": evidence_keys,
+        "quality": {
+            "provider": "fake",
+            "evidence_guard": "passed",
+            "evidence_coverage": 1.0,
+            "slot_diversity_passed": "not_applicable",
             "french_typography_passed": true,
             "generic_language_passed": true
         }
@@ -550,6 +699,7 @@ fn build_slot_plans(
             .get("slot_code")
             .and_then(|v| v.as_str())
             .ok_or_else(|| horoscope_error("HOROSCOPE_CALCULATION_FAILED"))?;
+        let public_label = refs.slot_label(slot_code);
         let mut slot_signals = signals
             .iter()
             .filter(|signal| {
@@ -569,7 +719,7 @@ fn build_slot_plans(
         if slot_signals.is_empty() {
             plans.push(SlotInterpretationPlan {
                 slot_code: slot_code.to_string(),
-                slot_label: slot_label(slot_code).to_string(),
+                slot_label: public_label,
                 specificity: "fallback".into(),
                 theme_code: None,
                 tone: None,
@@ -594,7 +744,7 @@ fn build_slot_plans(
             .collect::<Vec<_>>();
         plans.push(SlotInterpretationPlan {
             slot_code: slot_code.to_string(),
-            slot_label: slot_label(slot_code).to_string(),
+            slot_label: public_label,
             specificity: "specific".into(),
             theme_code: Some(primary.theme_code.clone()),
             tone: Some(
@@ -612,7 +762,12 @@ fn build_slot_plans(
             fallback_reason: None,
         });
     }
-    if plans.len() != 3 {
+    let expected = if refs.service_code == HOROSCOPE_FREE_DAILY_SERVICE_CODE {
+        1
+    } else {
+        3
+    };
+    if plans.len() != expected {
         return Err(horoscope_error("HOROSCOPE_CALCULATION_FAILED"));
     }
     Ok(plans)
@@ -683,6 +838,8 @@ fn render_fake_slot(slot: &Value) -> Result<Value, GenerationError> {
 
 #[derive(Clone)]
 struct ReferenceData {
+    service_code: String,
+    slot_profiles: Vec<SlotProfile>,
     object_weights: HashMap<String, f64>,
     target_weights: HashMap<String, f64>,
     aspect_weights: HashMap<String, f64>,
@@ -750,9 +907,12 @@ struct ScoringParameters {
 }
 
 impl ReferenceData {
-    fn load() -> Result<Self, GenerationError> {
+    fn load(service_code: &str) -> Result<Self, GenerationError> {
+        validate_supported_service_code(service_code)?;
         let aspect_rows = rows(ASPECT_WEIGHTS_JSON)?;
         let refs = Self {
+            service_code: service_code.to_string(),
+            slot_profiles: slot_profiles(service_code)?,
             object_weights: weight_map(OBJECT_WEIGHTS_JSON, "object_code")?,
             target_weights: weight_map(TARGET_WEIGHTS_JSON, "target_code")?,
             supported_objects: enabled_codes(SUPPORTED_OBJECTS_JSON, "object_code")?,
@@ -817,8 +977,8 @@ impl ReferenceData {
                 .filter_map(|row| row.get("duration_class")?.as_str().map(str::to_string))
                 .collect(),
             advice_axes: advice_axes()?,
-            scoring: scoring_parameters()?,
-            shortlist: shortlist_profile()?,
+            scoring: scoring_parameters(service_code)?,
+            shortlist: shortlist_profile(service_code)?,
         };
         refs.validate()?;
         Ok(refs)
@@ -885,14 +1045,20 @@ impl ReferenceData {
         }
         Ok(())
     }
+
+    fn slot_label(&self, slot_code: &str) -> String {
+        self.slot_profiles
+            .iter()
+            .find(|slot| slot.slot_code == slot_code)
+            .and_then(|slot| slot.slot_label.clone())
+            .unwrap_or_else(|| slot_label(slot_code).to_string())
+    }
 }
 
-fn slot_profiles() -> Result<Vec<SlotProfile>, GenerationError> {
+fn slot_profiles(service_code: &str) -> Result<Vec<SlotProfile>, GenerationError> {
     let mut slots = rows(TIME_SLOTS_JSON)?
         .into_iter()
-        .filter(|row| {
-            row.get("service_code").and_then(|v| v.as_str()) == Some(HOROSCOPE_SERVICE_CODE)
-        })
+        .filter(|row| row.get("service_code").and_then(|v| v.as_str()) == Some(service_code))
         .map(serde_json::from_value)
         .collect::<Result<Vec<SlotProfile>, _>>()
         .map_err(|err| GenerationError::new(GenerationErrorCode::InvalidInput, err.to_string()))?;
@@ -900,12 +1066,10 @@ fn slot_profiles() -> Result<Vec<SlotProfile>, GenerationError> {
     Ok(slots)
 }
 
-fn shortlist_profile() -> Result<ShortlistProfile, GenerationError> {
+fn shortlist_profile(service_code: &str) -> Result<ShortlistProfile, GenerationError> {
     let row = rows(SHORTLIST_JSON)?
         .into_iter()
-        .find(|row| {
-            row.get("service_code").and_then(|v| v.as_str()) == Some(HOROSCOPE_SERVICE_CODE)
-        })
+        .find(|row| row.get("service_code").and_then(|v| v.as_str()) == Some(service_code))
         .ok_or_else(|| horoscope_error("HOROSCOPE_SCORING_FAILED"))?;
     Ok(ShortlistProfile {
         max_main_signals: row
@@ -971,11 +1135,17 @@ fn advice_axes() -> Result<HashMap<String, ThemeAdviceAxis>, GenerationError> {
         .collect())
 }
 
-fn scoring_parameters() -> Result<ScoringParameters, GenerationError> {
-    let row = rows(SCORING_PARAMETERS_JSON)?
-        .into_iter()
-        .find(|row| {
-            row.get("service_code").and_then(|v| v.as_str()) == Some(HOROSCOPE_SERVICE_CODE)
+fn scoring_parameters(service_code: &str) -> Result<ScoringParameters, GenerationError> {
+    let scoring_rows = rows(SCORING_PARAMETERS_JSON)?;
+    let row = scoring_rows
+        .iter()
+        .find(|row| row.get("service_code").and_then(|v| v.as_str()) == Some(service_code))
+        .cloned()
+        .or_else(|| {
+            scoring_rows.into_iter().find(|row| {
+                row.get("service_code").and_then(|v| v.as_str())
+                    == Some(HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE)
+            })
         })
         .ok_or_else(|| horoscope_error("HOROSCOPE_SCORING_FAILED"))?;
     Ok(ScoringParameters {
@@ -1121,9 +1291,11 @@ fn validate_public_slot_text(slot: &Value) -> Result<(), GenerationError> {
         "[morning]",
         "[afternoon]",
         "[evening]",
+        "[day]",
         "slot:morning",
         "slot:afternoon",
         "slot:evening",
+        "slot:day",
     ] {
         if public_text.contains(forbidden) {
             return Err(quality_error(
@@ -1149,6 +1321,87 @@ fn validate_public_slot_text(slot: &Value) -> Result<(), GenerationError> {
         || public_text.contains("Repondez")
         || public_text.contains("Conseil:")
         || !french_elision_violations(&public_text).is_empty()
+    {
+        return Err(quality_error(
+            "HOROSCOPE_FRENCH_TYPOGRAPHY_FAILED",
+            json!({ "reason": "known_french_typography_violation" }),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_public_text_no_technical_codes(public_text: &str) -> Result<(), GenerationError> {
+    let lower = public_text.to_lowercase();
+    for forbidden in [
+        "[morning]",
+        "[afternoon]",
+        "[evening]",
+        "[day]",
+        "slot:morning",
+        "slot:afternoon",
+        "slot:evening",
+        "slot:day",
+        "slot technique",
+        "slot_code",
+    ] {
+        if lower.contains(forbidden) {
+            return Err(quality_error(
+                "HOROSCOPE_PUBLIC_SLOT_CODE_LEAK",
+                json!({ "forbidden": forbidden }),
+            ));
+        }
+    }
+    if normalized_text(public_text)
+        .split_whitespace()
+        .any(|token| token == "day")
+    {
+        return Err(quality_error(
+            "HOROSCOPE_PUBLIC_SLOT_CODE_LEAK",
+            json!({ "forbidden": "day" }),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_free_text_quality(public_text: &str, response: &Value) -> Result<(), GenerationError> {
+    for key in ["advice", "watch_point"] {
+        if response
+            .get(key)
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .trim()
+            .is_empty()
+        {
+            return Err(quality_error(
+                "HOROSCOPE_RESPONSE_INVALID",
+                json!({ "reason": format!("missing_{key}") }),
+            ));
+        }
+    }
+    validate_public_text_no_technical_codes(public_text)?;
+    let word_count = public_text.split_whitespace().count();
+    if !(40..=190).contains(&word_count) {
+        return Err(quality_error(
+            "HOROSCOPE_FREE_LENGTH_INVALID",
+            json!({ "word_count": word_count }),
+        ));
+    }
+    for generic in [
+        "les signaux du jour invitent",
+        "rester concret et nuance",
+        "l'elan du moment",
+        "l’énergie du moment",
+    ] {
+        if public_text.to_lowercase().contains(generic) {
+            return Err(quality_error(
+                "HOROSCOPE_SLOT_TOO_GENERIC",
+                json!({ "forbidden": generic }),
+            ));
+        }
+    }
+    if public_text.contains("Conseil:")
+        || public_text.contains("Repondez")
+        || !french_elision_violations(public_text).is_empty()
     {
         return Err(quality_error(
             "HOROSCOPE_FRENCH_TYPOGRAPHY_FAILED",
@@ -1324,7 +1577,7 @@ fn rows(raw: &str) -> Result<Vec<Value>, GenerationError> {
         .unwrap_or_default())
 }
 
-fn validate_interpretation_request_schema(value: &Value) -> Result<(), GenerationError> {
+pub fn validate_interpretation_request_schema(value: &Value) -> Result<(), GenerationError> {
     validate_schema(
         interpretation_request_schema,
         "HOROSCOPE_RESPONSE_INVALID",
@@ -1332,7 +1585,7 @@ fn validate_interpretation_request_schema(value: &Value) -> Result<(), Generatio
     )
 }
 
-fn validate_horoscope_response_schema(value: &Value) -> Result<(), GenerationError> {
+pub fn validate_horoscope_response_schema(value: &Value) -> Result<(), GenerationError> {
     validate_schema(response_schema, "HOROSCOPE_RESPONSE_INVALID", value)
 }
 
@@ -1382,6 +1635,44 @@ fn collect_evidence_keys(value: &Value, out: &mut Vec<String>) {
         }
         _ => {}
     }
+}
+
+fn free_public_text(response: &Value) -> String {
+    let mut out = String::new();
+    if let Some(summary) = response.get("summary") {
+        for key in ["title", "text"] {
+            if let Some(value) = summary.get(key).and_then(|v| v.as_str()) {
+                out.push_str(value);
+                out.push('\n');
+            }
+        }
+    }
+    for key in ["advice", "watch_point"] {
+        if let Some(value) = response.get(key).and_then(|v| v.as_str()) {
+            out.push_str(value);
+            out.push('\n');
+        }
+    }
+    out
+}
+
+fn service_code_from_value(value: &Value) -> Result<&str, GenerationError> {
+    let service_code = value
+        .get("service_code")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| horoscope_error("HOROSCOPE_CALCULATION_FAILED"))?;
+    validate_supported_service_code(service_code)?;
+    Ok(service_code)
+}
+
+fn validate_supported_service_code(service_code: &str) -> Result<(), GenerationError> {
+    if matches!(
+        service_code,
+        HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE | HOROSCOPE_FREE_DAILY_SERVICE_CODE
+    ) {
+        return Ok(());
+    }
+    Err(horoscope_error("HOROSCOPE_SERVICE_NOT_IMPLEMENTED"))
 }
 
 fn fact_string(fact: &Value, key: &str) -> Result<String, GenerationError> {

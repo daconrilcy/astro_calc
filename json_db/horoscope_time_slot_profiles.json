@@ -6,6 +6,8 @@
     "start_local_time": "string",
     "end_local_time": "string",
     "reference_local_time": "string",
+    "slot_label": "string",
+    "is_public": "boolean",
     "sort_order": "integer",
     "unique_key": ["service_code", "slot_code"]
   },
@@ -16,6 +18,8 @@
       "start_local_time": "06:00",
       "end_local_time": "12:00",
       "reference_local_time": "09:00",
+      "slot_label": "Matin",
+      "is_public": true,
       "sort_order": 10
     },
     {
@@ -24,6 +28,8 @@
       "start_local_time": "12:00",
       "end_local_time": "18:00",
       "reference_local_time": "15:00",
+      "slot_label": "Après-midi",
+      "is_public": true,
       "sort_order": 20
     },
     {
@@ -32,7 +38,19 @@
       "start_local_time": "18:00",
       "end_local_time": "00:00",
       "reference_local_time": "21:00",
+      "slot_label": "Soir",
+      "is_public": true,
       "sort_order": 30
+    },
+    {
+      "service_code": "horoscope_free_daily",
+      "slot_code": "day",
+      "start_local_time": "00:00",
+      "end_local_time": "23:59",
+      "reference_local_time": "12:00",
+      "slot_label": "Aujourd’hui",
+      "is_public": false,
+      "sort_order": 1
     }
   ]
 }

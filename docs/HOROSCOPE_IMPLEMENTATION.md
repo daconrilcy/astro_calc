@@ -8,21 +8,35 @@ que possible. Dans les contrats JSON, conserver le terme technique `evidence`.
 
 ## Decision V1
 
-Service V1 retenu :
+Services V1 retenus :
 
 ```text
 horoscope_basic_daily_natal_3_slots
+horoscope_free_daily
 ```
 
-Free et Premium sont hors perimetre d'implementation V1. Leurs contrats peuvent
-etre anticipes uniquement si cela ne retarde pas la V1 Basic.
+`horoscope_free_daily` est une projection Free synthetique du meme socle
+horoscope quotidien natal. Malgre son nom court, il requiert un theme natal via
+`chart_calculation_id`. Une future version non natale devra utiliser un
+`service_code` distinct, par exemple `horoscope_free_daily_general`.
 
 La V1 Basic est un horoscope quotidien personnalise sur theme natal, decoupe en
 3 moments de journee : matin, apres-midi, soir.
 
+Matrice produit :
+
+| Service | Niveau | Natal requis | Slots internes | Slots publics | Sortie |
+|---|---|---:|---:|---:|---|
+| `horoscope_free_daily` | Free | Oui | 1 `day` | Non | `summary` + `advice` + `watch_point` |
+| `horoscope_basic_daily_natal_3_slots` | Basic | Oui | 3 | Oui | `morning` / `afternoon` / `evening` |
+
+Pour `horoscope_free_daily`, `day` est uniquement un slot technique de
+projection. Il ne constitue pas une section publique et ne doit jamais apparaitre
+dans la reponse utilisateur.
+
 Roadmap produit indicative :
 
-- Free : daily general, hors V1 technique si Basic reste priorise.
+- Free : daily natal synthetique, sans slots publics.
 - Basic : daily natal 3 slots, V1 retenue.
 - Premium : local 2h slots, future story.
 
@@ -33,7 +47,8 @@ Inclus V1 :
 - horoscope quotidien uniquement ;
 - theme natal requis ;
 - `chart_calculation_id` obligatoire pour recuperer le theme natal ;
-- 3 moments : matin, apres-midi, soir ;
+- Free : tendance generale courte, sans slots publics ;
+- Basic : 3 moments, matin, apres-midi, soir ;
 - date interpretee dans la timezone utilisateur ;
 - influence lunaire prioritaire ;
 - transits majeurs uniquement ;
@@ -44,7 +59,7 @@ Inclus V1 :
 
 Hors perimetre V1 :
 
-- Free daily general ;
+- Free daily general non natal ;
 - Premium 2h slots ;
 - ciel local du moment ;
 - Ascendant du moment ;

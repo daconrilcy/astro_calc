@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-pub const HOROSCOPE_SERVICE_CODE: &str = "horoscope_basic_daily_natal_3_slots";
+pub const HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE: &str = "horoscope_basic_daily_natal_3_slots";
+pub const HOROSCOPE_FREE_DAILY_SERVICE_CODE: &str = "horoscope_free_daily";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct HoroscopeCalculationRequest {
@@ -61,6 +62,7 @@ pub struct HoroscopeTransitFact {
 pub fn calculate_horoscope_daily_natal(
     request: HoroscopeCalculationRequest,
 ) -> HoroscopeCalculationResponse {
+    let service_code = request.service_code.clone();
     let slots = request
         .slots
         .iter()
@@ -74,7 +76,7 @@ pub fn calculate_horoscope_daily_natal(
 
     HoroscopeCalculationResponse {
         contract_version: "horoscope_calculation_response_v1".into(),
-        service_code: HOROSCOPE_SERVICE_CODE.into(),
+        service_code,
         period: request.period,
         slots,
         calculation_warnings: Vec::new(),
@@ -84,6 +86,19 @@ pub fn calculate_horoscope_daily_natal(
 
 fn fake_slot(slot: &HoroscopeCalculationSlotRequest) -> HoroscopeCalculationSlot {
     let (moon_sign, facts) = match slot.slot_code.as_str() {
+        "day" => (
+            "virgo",
+            vec![HoroscopeTransitFact {
+                evidence_key: "slot:day:moon:natal_house:6".into(),
+                fact_type: "moon_natal_house_activation".into(),
+                source: "fake_calculator_v1".into(),
+                transiting_object: "moon".into(),
+                natal_target: Some("natal_house_6".into()),
+                aspect: None,
+                orb_deg: Some(0.8),
+                natal_house: Some(6),
+            }],
+        ),
         "morning" => (
             "virgo",
             vec![HoroscopeTransitFact {

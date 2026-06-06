@@ -18,6 +18,15 @@
       "max_evidence": 8,
       "max_required_evidence_per_slot": 2,
       "min_priority_score": 0.5
+    },
+    {
+      "service_code": "horoscope_free_daily",
+      "max_main_signals": 2,
+      "max_main_signals_per_slot": 2,
+      "max_dominant_themes": 2,
+      "max_evidence": 3,
+      "max_required_evidence_per_slot": 2,
+      "min_priority_score": 0.5
     }
   ]
 }

@@ -11,9 +11,39 @@
     "evidence_keys"
   ],
   "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "service_code": { "const": "horoscope_basic_daily_natal_3_slots" }
+        },
+        "required": ["service_code"]
+      },
+      "then": {
+        "properties": {
+          "slots": { "minItems": 3, "maxItems": 3 }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "service_code": { "const": "horoscope_free_daily" }
+        },
+        "required": ["service_code"]
+      },
+      "then": {
+        "properties": {
+          "slots": { "minItems": 1, "maxItems": 1 }
+        }
+      }
+    }
+  ],
   "properties": {
     "contract_version": { "const": "horoscope_calculation_response_v1" },
-    "service_code": { "const": "horoscope_basic_daily_natal_3_slots" },
+    "service_code": {
+      "enum": ["horoscope_basic_daily_natal_3_slots", "horoscope_free_daily"]
+    },
     "period": {
       "type": "object",
       "required": ["date", "timezone"],
@@ -25,7 +55,8 @@
     },
     "slots": {
       "type": "array",
-      "minItems": 3,
+      "minItems": 1,
+      "maxItems": 3,
       "items": {
         "type": "object",
         "required": [

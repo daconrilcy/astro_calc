@@ -328,3 +328,75 @@ Erreurs possibles : `HOROSCOPE_PAYLOAD_INVALID`,
 `HOROSCOPE_PUBLIC_SLOT_CODE_LEAK`, `HOROSCOPE_FRENCH_TYPOGRAPHY_FAILED`,
 `SERVICE_NOT_IMPLEMENTED`,
 `IDEMPOTENCY_CONFLICT`.
+
+## Service horoscope free daily
+
+- `service_code` : `horoscope_free_daily`
+- `availability` : `beta`
+- `payload_contract` : `horoscope_daily_natal_request_v1`
+- `calculation_output_contract` : `horoscope_calculation_response_v1`
+- `reading_output_contract` : `horoscope_response_v1`
+
+`horoscope_free_daily` est personnalise natal en V1 : `chart_calculation_id` est
+obligatoire et `birth_data` inline est refuse. Ce service n'est pas un horoscope
+general par signe.
+
+Pour `horoscope_free_daily`, `day` est uniquement un slot technique de
+projection dans les payloads internes. Il ne constitue pas une section publique
+et ne doit jamais apparaitre dans la reponse utilisateur.
+
+Exemple `POST /v1/jobs` :
+
+```json
+{
+  "service_code": "horoscope_free_daily",
+  "payload": {
+    "date": "2026-06-06",
+    "timezone": "Europe/Paris",
+    "target_language": "fr",
+    "chart_calculation_id": "123",
+    "audience_level": "general"
+  },
+  "user_language": "fr",
+  "audience_level": "beginner"
+}
+```
+
+Exemple `GET /v1/jobs/{run_id}` complete :
+
+```json
+{
+  "run_id": "00000000-0000-0000-0000-000000000000",
+  "service_code": "horoscope_free_daily",
+  "status": "completed",
+  "result": {
+    "calculation": {},
+    "interpretation_request": {},
+    "reading": {
+      "contract_version": "horoscope_response_v1",
+      "service_code": "horoscope_free_daily",
+      "summary": {
+        "title": "Votre tendance du jour",
+        "text": "Texte court de tendance generale, relie a une preuve astrologique fournie."
+      },
+      "advice": "Conseil court et concret.",
+      "watch_point": "Point de vigilance court.",
+      "evidence_keys": ["slot:day:moon:natal_house:6"],
+      "quality": {
+        "evidence_coverage": 1.0,
+        "slot_diversity_passed": "not_applicable",
+        "french_typography_passed": true,
+        "generic_language_passed": true
+      }
+    }
+  }
+}
+```
+
+Erreurs possibles : `HOROSCOPE_PAYLOAD_INVALID`,
+`HOROSCOPE_NATAL_CHART_REQUIRED`, `HOROSCOPE_NATAL_CHART_NOT_FOUND`,
+`HOROSCOPE_CALCULATOR_UNAVAILABLE`, `HOROSCOPE_CALCULATION_FAILED`,
+`HOROSCOPE_SCORING_FAILED`, `HOROSCOPE_NO_SIGNIFICANT_SIGNAL`,
+`HOROSCOPE_EVIDENCE_MISMATCH`, `HOROSCOPE_RESPONSE_INVALID`,
+`HOROSCOPE_PUBLIC_SLOT_CODE_LEAK`, `HOROSCOPE_FRENCH_TYPOGRAPHY_FAILED`,
+`SERVICE_NOT_IMPLEMENTED`, `IDEMPOTENCY_CONFLICT`.

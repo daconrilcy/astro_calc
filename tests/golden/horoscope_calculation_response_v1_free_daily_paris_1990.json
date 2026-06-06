@@ -1,0 +1,51 @@
+{
+  "contract_version": "horoscope_calculation_response_v1",
+  "service_code": "horoscope_free_daily",
+  "period": {
+    "date": "2026-06-06",
+    "timezone": "Europe/Paris"
+  },
+  "slots": [
+    {
+      "slot_code": "day",
+      "reference_local_time": "12:00",
+      "sky_snapshot": {
+        "reference_local_time": "12:00",
+        "visible_objects": ["moon", "venus", "mars"],
+        "zodiacal_reference_system": "tropical"
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "priority": "primary"
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "slot:day:moon:natal_house:6",
+          "fact_type": "moon_natal_house_activation",
+          "source": "fake_calculator_v1",
+          "transiting_object": "moon",
+          "natal_target": "natal_house_6",
+          "aspect": null,
+          "orb_deg": 0.8,
+          "natal_house": 6
+        }
+      ],
+      "current_sky_aspects": [
+        {
+          "transiting_object": "moon",
+          "aspect": "conjunction",
+          "target": "day_tone",
+          "orb_deg": 1.0
+        }
+      ],
+      "natal_house_activations": [
+        {
+          "house": 6,
+          "activation": "routine"
+        }
+      ]
+    }
+  ],
+  "calculation_warnings": [],
+  "evidence_keys": ["slot:day:moon:natal_house:6"]
+}

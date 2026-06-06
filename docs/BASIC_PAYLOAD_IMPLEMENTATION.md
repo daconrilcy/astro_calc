@@ -3373,10 +3373,15 @@ Reviews : [`docs/reviews/integration_api/INDEX.md`](reviews/integration_api/INDE
 
 # Articulation horoscope
 
-Le service horoscope V1 (`horoscope_basic_daily_natal_3_slots`) est cadre dans
-[`HOROSCOPE_IMPLEMENTATION.md`](HOROSCOPE_IMPLEMENTATION.md). Il ne modifie pas
-le payload natal/basic existant et consomme un `chart_calculation_id` deja
+Les services horoscope V1 (`horoscope_basic_daily_natal_3_slots` et
+`horoscope_free_daily`) sont cadres dans
+[`HOROSCOPE_IMPLEMENTATION.md`](HOROSCOPE_IMPLEMENTATION.md). Ils ne modifient
+pas le payload natal/basic existant et consomment un `chart_calculation_id` deja
 calcule.
+
+Pour `horoscope_free_daily`, `day` est uniquement un slot technique de
+projection. Il ne constitue pas une section publique et ne doit jamais apparaitre
+dans la reponse utilisateur.
 
 Le plan de refactor slot-based et les reviews adversariales sont suivis dans
 [`docs/reviews/horoscope_v1/`](reviews/horoscope_v1/INDEX.md).

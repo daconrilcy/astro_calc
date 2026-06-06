@@ -1,7 +1,9 @@
 use astral_llm_api::integration_routes::service_has_v1_orchestrator;
 use astral_llm_application::horoscope::{
-    aggregate_themes, build_calculation_request, build_interpretation_request, score_calculation,
-    validate_public_request, validate_response_evidence, HOROSCOPE_SERVICE_CODE,
+    aggregate_themes, build_calculation_request, build_calculation_request_for_service,
+    build_interpretation_request, score_calculation, validate_horoscope_response_schema,
+    validate_interpretation_request_schema, validate_public_request, validate_response_evidence,
+    HOROSCOPE_FREE_DAILY_SERVICE_CODE, HOROSCOPE_SERVICE_CODE,
 };
 use astral_llm_application::IntegrationJobValidator;
 use astral_llm_domain::integration::{CalculationMode, IntegrationService, ServiceAvailability};
@@ -31,6 +33,31 @@ fn horoscope_service() -> IntegrationService {
     }
 }
 
+fn horoscope_free_service() -> IntegrationService {
+    IntegrationService {
+        service_code: HOROSCOPE_FREE_DAILY_SERVICE_CODE.into(),
+        profile_code: "natal_basic".into(),
+        product_code: "horoscope".into(),
+        label_fr: "Horoscope free".into(),
+        description_fr: "Test".into(),
+        orchestration_mode: "horoscope_daily_natal".into(),
+        calculation_mode: CalculationMode::None,
+        service_request_contract: "integration_job_request_v1".into(),
+        payload_contract: "horoscope_daily_natal_request_v1".into(),
+        service_response_contract: "integration_job_status_v1".into(),
+        calculation_output_contract: Some("horoscope_calculation_response_v1".into()),
+        reading_output_contract: "horoscope_response_v1".into(),
+        sync_endpoint: None,
+        async_endpoint: "POST /v1/jobs".into(),
+        supports_async: true,
+        supports_sync_legacy: false,
+        supports_mercure: false,
+        availability: ServiceAvailability::Beta,
+        example_request_json: None,
+        sort_order: 210,
+    }
+}
+
 fn public_payload() -> serde_json::Value {
     serde_json::json!({
         "date": "2026-06-06",
@@ -44,6 +71,13 @@ fn public_payload() -> serde_json::Value {
 fn calculation() -> serde_json::Value {
     serde_json::from_str(include_str!(
         "golden/horoscope_calculation_response_v1_basic_daily_paris_1990.json"
+    ))
+    .unwrap()
+}
+
+fn free_calculation() -> serde_json::Value {
+    serde_json::from_str(include_str!(
+        "golden/horoscope_calculation_response_v1_free_daily_paris_1990.json"
     ))
     .unwrap()
 }
@@ -115,6 +149,19 @@ fn golden_response() -> serde_json::Value {
     .unwrap()
 }
 
+fn free_interpretation_request() -> serde_json::Value {
+    let public = validate_public_request(&public_payload()).unwrap();
+    let signals = score_calculation(&free_calculation()).unwrap();
+    build_interpretation_request(&public, &free_calculation(), &signals).unwrap()
+}
+
+fn free_golden_response() -> serde_json::Value {
+    serde_json::from_str(include_str!(
+        "golden/horoscope_response_v1_free_daily_fake.json"
+    ))
+    .unwrap()
+}
+
 #[test]
 fn horoscope_payload_schema_accepts_v1_request() {
     let validator = IntegrationJobValidator::new();
@@ -128,6 +175,21 @@ fn horoscope_payload_schema_accepts_v1_request() {
         .validate_job(&body, &horoscope_service())
         .expect("valid horoscope job");
     assert_eq!(validated.service_code, HOROSCOPE_SERVICE_CODE);
+}
+
+#[test]
+fn horoscope_free_payload_schema_accepts_request() {
+    let validator = IntegrationJobValidator::new();
+    let body = serde_json::json!({
+        "service_code": HOROSCOPE_FREE_DAILY_SERVICE_CODE,
+        "payload": public_payload(),
+        "user_language": "fr",
+        "audience_level": "beginner"
+    });
+    let validated = validator
+        .validate_job(&body, &horoscope_free_service())
+        .expect("valid free horoscope job");
+    assert_eq!(validated.service_code, HOROSCOPE_FREE_DAILY_SERVICE_CODE);
 }
 
 #[test]
@@ -166,6 +228,27 @@ fn horoscope_payload_rejects_inline_birth_data() {
 }
 
 #[test]
+fn horoscope_free_payload_rejects_inline_birth_data() {
+    let mut payload = public_payload();
+    payload["birth_data"] = serde_json::json!({
+        "date": "1990-06-15",
+        "time": "14:30"
+    });
+    let validator = IntegrationJobValidator::new();
+    let body = serde_json::json!({
+        "service_code": HOROSCOPE_FREE_DAILY_SERVICE_CODE,
+        "payload": payload
+    });
+    let err = validator
+        .validate_job(&body, &horoscope_free_service())
+        .unwrap_err();
+    assert_eq!(
+        err.detail().code,
+        astral_llm_domain::GenerationErrorCode::SchemaValidationFailed
+    );
+}
+
+#[test]
 fn horoscope_calculation_request_uses_seeded_three_slots() {
     let public = validate_public_request(&public_payload()).unwrap();
     let request = build_calculation_request(&public).unwrap();
@@ -174,6 +257,26 @@ fn horoscope_calculation_request_uses_seeded_three_slots() {
     assert_eq!(slots[0]["slot_code"], "morning");
     assert_eq!(slots[0]["reference_local_time"], "09:00");
     assert_eq!(slots[2]["slot_code"], "evening");
+}
+
+#[test]
+fn horoscope_free_daily_builds_single_day_calculation_request() {
+    let public = validate_public_request(&public_payload()).unwrap();
+    let request =
+        build_calculation_request_for_service(HOROSCOPE_FREE_DAILY_SERVICE_CODE, &public).unwrap();
+    let slots = request["slots"].as_array().unwrap();
+    assert_eq!(request["service_code"], HOROSCOPE_FREE_DAILY_SERVICE_CODE);
+    assert_eq!(slots.len(), 1);
+    assert_eq!(slots[0]["slot_code"], "day");
+    assert_eq!(slots[0]["reference_local_time"], "12:00");
+}
+
+#[test]
+fn horoscope_unknown_service_code_is_rejected_before_calculation_request() {
+    let public = validate_public_request(&public_payload()).unwrap();
+    let err = build_calculation_request_for_service("horoscope_free_daily_general", &public)
+        .expect_err("unknown horoscope service must not be silently routed");
+    assert_eq!(err.detail().message, "HOROSCOPE_SERVICE_NOT_IMPLEMENTED");
 }
 
 #[test]
@@ -218,6 +321,22 @@ fn horoscope_interpretation_request_contains_slot_shortlists() {
     );
     assert_eq!(slots[1]["slot_label"], "Après-midi");
     assert_eq!(slots[2]["advice_axis"], "reopen_simple_dialogue");
+}
+
+#[test]
+fn horoscope_free_daily_interpretation_uses_single_internal_day_slot() {
+    let request = free_interpretation_request();
+    let slots = request["slots"].as_array().unwrap();
+    assert_eq!(request["service_code"], HOROSCOPE_FREE_DAILY_SERVICE_CODE);
+    assert_eq!(slots.len(), 1);
+    assert_eq!(slots[0]["slot_code"], "day");
+    assert_eq!(slots[0]["slot_label"], "Aujourd’hui");
+    assert_eq!(
+        slots[0]["required_evidence_keys"],
+        serde_json::json!(["slot:day:moon:natal_house:6"])
+    );
+    assert!(request["main_signals"].as_array().unwrap().len() <= 2);
+    assert!(request["evidence"].as_array().unwrap().len() <= 3);
 }
 
 #[test]
@@ -266,10 +385,91 @@ fn horoscope_interpretation_request_matches_golden() {
 }
 
 #[test]
+fn horoscope_free_interpretation_request_matches_golden() {
+    let request = free_interpretation_request();
+    let golden: serde_json::Value = serde_json::from_str(include_str!(
+        "golden/horoscope_interpretation_request_v1_free_daily_paris_1990.json"
+    ))
+    .unwrap();
+    assert_eq!(request, golden);
+}
+
+#[test]
+fn horoscope_interpretation_schema_rejects_basic_with_single_slot() {
+    let mut request = free_interpretation_request();
+    request["service_code"] = serde_json::json!(HOROSCOPE_SERVICE_CODE);
+    assert!(validate_interpretation_request_schema(&request).is_err());
+}
+
+#[test]
+fn horoscope_interpretation_schema_rejects_free_with_three_slots() {
+    let mut request = interpretation_request();
+    request["service_code"] = serde_json::json!(HOROSCOPE_FREE_DAILY_SERVICE_CODE);
+    assert!(validate_interpretation_request_schema(&request).is_err());
+}
+
+#[test]
 fn horoscope_response_golden_passes_schema_and_evidence_guard() {
     let request = interpretation_request();
     let response = golden_response();
     validate_response_evidence(&request, &response).unwrap();
+}
+
+#[test]
+fn horoscope_free_daily_response_golden_has_no_public_slots() {
+    let request = free_interpretation_request();
+    let response = free_golden_response();
+    validate_response_evidence(&request, &response).unwrap();
+    assert!(response.get("slots").is_none());
+    assert!(response.get("summary").is_some());
+    assert!(response.get("advice").is_some());
+    assert!(response.get("watch_point").is_some());
+    assert_eq!(
+        response["evidence_keys"],
+        serde_json::json!(["slot:day:moon:natal_house:6"])
+    );
+}
+
+#[test]
+fn horoscope_response_schema_accepts_free_shape() {
+    validate_horoscope_response_schema(&free_golden_response()).unwrap();
+}
+
+#[test]
+fn horoscope_response_schema_accepts_basic_shape() {
+    validate_horoscope_response_schema(&golden_response()).unwrap();
+}
+
+#[test]
+fn horoscope_response_schema_rejects_free_with_public_slots() {
+    let mut response = free_golden_response();
+    response["slots"] = serde_json::json!([]);
+    assert!(validate_horoscope_response_schema(&response).is_err());
+}
+
+#[test]
+fn horoscope_response_schema_rejects_basic_without_three_slots() {
+    let mut response = golden_response();
+    response.as_object_mut().unwrap().remove("slots");
+    assert!(validate_horoscope_response_schema(&response).is_err());
+}
+
+#[test]
+fn horoscope_basic_daily_does_not_use_free_summary_shape() {
+    let response = golden_response();
+    assert!(response.get("advice").is_none());
+    assert!(response.get("watch_point").is_none());
+    assert!(response.get("evidence_keys").is_none());
+    assert_eq!(response["slots"].as_array().unwrap().len(), 3);
+}
+
+#[test]
+fn horoscope_free_daily_does_not_use_basic_slots_shape() {
+    let response = free_golden_response();
+    assert!(response.get("slots").is_none());
+    assert!(response.get("watch_points").is_none());
+    assert!(response.get("opportunities").is_none());
+    assert!(response.get("evidence_summary").is_none());
 }
 
 #[test]
@@ -312,6 +512,28 @@ fn horoscope_rejects_public_slot_codes_in_markdown() {
     let request = interpretation_request();
     let mut response = golden_response();
     response["slots"][0]["title"] = serde_json::json!("Matin [morning]");
+    let err = validate_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_PUBLIC_SLOT_CODE_LEAK");
+}
+
+#[test]
+fn horoscope_free_daily_rejects_public_slot_code_day() {
+    let request = free_interpretation_request();
+    let mut response = free_golden_response();
+    response["summary"]["text"] = serde_json::json!(
+        "La Lune soutient l'organisation, mais le slot:day ne doit jamais être visible."
+    );
+    let err = validate_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_PUBLIC_SLOT_CODE_LEAK");
+}
+
+#[test]
+fn horoscope_free_daily_rejects_public_word_day() {
+    let request = free_interpretation_request();
+    let mut response = free_golden_response();
+    response["summary"]["text"] = serde_json::json!(
+        "La Lune soutient l'organisation, mais le code day ne doit jamais être visible dans la lecture publique."
+    );
     let err = validate_response_evidence(&request, &response).unwrap_err();
     assert_eq!(err.detail().message, "HOROSCOPE_PUBLIC_SLOT_CODE_LEAK");
 }
@@ -396,6 +618,18 @@ fn horoscope_evidence_guard_rejects_invented_key() {
 }
 
 #[test]
+fn horoscope_free_daily_evidence_guard_rejects_invented_key() {
+    let request = free_interpretation_request();
+    let mut response = free_golden_response();
+    response["evidence_keys"] = serde_json::json!(["invented:key"]);
+    let err = validate_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().code,
+        astral_llm_domain::GenerationErrorCode::PostSafetyValidationFailed
+    );
+}
+
+#[test]
 fn horoscope_evidence_guard_rejects_slot_without_evidence() {
     let public = validate_public_request(&public_payload()).unwrap();
     let signals = score_calculation(&calculation()).unwrap();
@@ -464,4 +698,5 @@ fn horoscope_payload_rejects_unknown_timezone() {
 #[test]
 fn horoscope_service_has_v1_orchestrator() {
     assert!(service_has_v1_orchestrator(&horoscope_service()));
+    assert!(service_has_v1_orchestrator(&horoscope_free_service()));
 }
