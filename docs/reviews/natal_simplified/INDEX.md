@@ -18,3 +18,4 @@
 | REV-014 | Post-PR2 OpenAI | closed | REV-014-post-pr2-openai-findings.md |
 | REV-015 | Clôture finale V1 | closed | REV-015-final-closure.md |
 | REV-016 | Audit doc post-risques | closed | REV-016-doc-audit.md |
+| REV-017 | Post-corrections mineures | closed | REV-017-minor-fixes-findings.md |

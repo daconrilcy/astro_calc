@@ -39,6 +39,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\simplified_natal_assertions.ps1")
 
 if ($UseReal) {
     $TimeoutSec = [Math]::Max($TimeoutSec, 900)
@@ -56,6 +57,9 @@ if ([string]::IsNullOrWhiteSpace($OutputDir)) {
 $calcOutputDir = Join-Path $OutputDir "calculator"
 $readOutputDir = Join-Path $OutputDir "reading"
 $saveOutputs = -not $NoSaveOutputs
+if ($saveOutputs -or $UseReal) {
+    New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
+}
 if ($saveOutputs) {
     New-Item -ItemType Directory -Force -Path $calcOutputDir, $readOutputDir | Out-Null
 }
@@ -97,8 +101,11 @@ if (-not $SkipReading) {
         $readingArgs.OutputDir = $readOutputDir
     }
     if ($LlmBase) { $readingArgs.LlmBase = $LlmBase }
+    $qualityMetricsPath = $null
     if ($UseReal) {
         $readingArgs.UseReal = $true
+        $qualityMetricsPath = Join-Path $OutputDir "quality_metrics.raw.json"
+        $readingArgs.QualityMetricsPath = $qualityMetricsPath
     } elseif ($ForceFake -or -not $UseReal) {
         $readingArgs.ForceFake = $true
     }
@@ -162,21 +169,19 @@ if ($saveOutputs) {
     $summaryPath = Join-Path $OutputDir "e2e_summary.json"
     $summary | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $summaryPath -Encoding utf8
     Write-Host "  e2e_summary.json"
-    if ($UseReal) {
-        $quality = [ordered]@{
-            provider      = "openai"
-            profile_code  = "natal_simplified"
-            prompt_version = "v1"
-            cases         = 7
-            success       = 7
-            p0_failures   = 0
-            p1_failures   = 0
-            p2_warnings   = @()
-            note          = "Remplir apres smoke -UseReal ; echecs comptes par Assert-SimplifiedStrictOpenAiQuality"
+}
+if ($UseReal -and $qualityMetricsPath) {
+    $qualityPath = Join-Path $OutputDir "quality_summary.json"
+    if (Test-Path -LiteralPath $qualityMetricsPath) {
+        $rawMetrics = Get-Content -LiteralPath $qualityMetricsPath -Raw | ConvertFrom-Json
+        Export-SimplifiedQualitySummary -Metrics $rawMetrics -OutputPath $qualityPath | Out-Null
+        if (-not $saveOutputs) {
+            Write-Host "Artefacts qualite : $OutputDir" -ForegroundColor Cyan
         }
-        $qualityPath = Join-Path $OutputDir "quality_summary.json"
-        $quality | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $qualityPath -Encoding utf8
+        Write-Host "  quality_metrics.raw.json"
         Write-Host "  quality_summary.json"
+    } else {
+        Write-Warning "quality_metrics.raw.json absent — quality_summary.json non genere"
     }
 }
 Write-Host "Suite E2E natal simplifie OK." -ForegroundColor Green

@@ -99,7 +99,7 @@ paths:
         "200":
           description: |
             Enveloppe orchestrée : `calculation`, `reading` (`GenerateReadingResponse`),
-            `run_id`, `reading_completeness`.
+            `run_id`, `reading_completeness` (V1 runtime : toujours `partial` ; `simplified` réservé, non émis).
         "400":
           description: |
             error_response_v1 — validation gateway ou rejet calculateur **avant** generation

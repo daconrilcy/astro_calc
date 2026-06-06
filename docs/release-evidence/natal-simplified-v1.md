@@ -201,6 +201,19 @@ Exemples `run_id` (phase 2, OpenAI) :
 | `complete_birth_data` | `1006bb48-8baa-4e0b-b362-753555469437` | 319 |
 | `date_only_equinox_window` | `6bbc98b7-9f38-4c3e-bb79-f2e03d45447f` | 250 |
 
+### Règles de réouverture du risque OpenAI
+
+Réévaluer le statut **CLOSED WITH MONITORING** (nouveau cycle REV / release evidence) si l’un des seuils suivants est atteint sur des runs **OpenAI réels** (`-UseReal`, hors fake CI) :
+
+| Signal | Seuil |
+|--------|--------|
+| `safety_rejected` | **2** occurrences sur **20** runs positifs consécutifs |
+| Hallucination P0 confirmée | **1** (ASC/maison affirmatif, `astro_basis` hors whitelist, signe bloqué affirmé) |
+| Contamination langue / script | **1** confirmée |
+| Retours utilisateurs qualifiés négatifs | **3** sur le même type de défaut |
+
+Artefacts de preuve : `output/natal_simplified_openai/{timestamp}/` + `quality_summary.json` (compteurs P0/P1, warnings P2, `gate_passed`, `model` depuis `GET /v1/providers`).
+
 ---
 
 ## Risques résiduels (historique v1 initiale)

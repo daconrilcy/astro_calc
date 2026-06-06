@@ -41,9 +41,11 @@ Mise à jour : 2026-06-05 (post-certification E2E + finitions qualité + contrat
 
 | ID | Sujet | Statut |
 |----|-------|--------|
-| F-07 | `PROFILE_INTERPRETATION_EXCLUDED` en constante Rust | Migration DB à planifier — documenté |
+| F-07 | `PROFILE_INTERPRETATION_EXCLUDED` en constante Rust | **Fermé** — table `astral_simplified_profile_feature_exclusions` (REV-013) |
 | F-04 | `forbidden_topics` ambigu pour consommateurs API | **Fermé** — rename + alias compat |
 | — | Client calculateur LLM mappe rejet calculateur en `InvalidInput` (400) | Comportement implémenté, doc orchestration |
-| — | Assertions PS1 acceptent `reading_completeness ∈ { partial, simplified }` | Tolérance forward-compat ; runtime n'émet que `partial` |
+| — | Tolérance PS1 `reading_completeness ∈ { partial, simplified }` | **Fermé** — PS1 strict `partial` uniquement (REV-013) |
+
+> Post-risques résiduels : voir [`REV-016-doc-audit.md`](REV-016-doc-audit.md) et [`REV-015-final-closure.md`](REV-015-final-closure.md).
 
 Gate REV-012 : **OK** — documentation produit alignée sur le code et la recette E2E certifiée (double run verte 2026-06-05).

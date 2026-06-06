@@ -419,11 +419,131 @@ function Assert-SimplifiedReadingResponse {
     }
 
     if ($StrictOpenAiQuality) {
-        $strictFailures = Assert-SimplifiedStrictOpenAiQuality -ApiResponse $ApiResponse -Content $content
-        foreach ($f in $strictFailures) { $failures.Add("strict: $f") }
+        $script:SimplifiedLastStrictWarnings = @()
+        $strict = Assert-SimplifiedStrictOpenAiQuality -ApiResponse $ApiResponse -Content $content
+        foreach ($f in @($strict.Failures)) { $failures.Add("strict: $f") }
+        if ($strict.Warnings) {
+            $script:SimplifiedLastStrictWarnings = @($strict.Warnings)
+        }
     }
 
     return ,$failures
+}
+
+function Get-SimplifiedOpenAiFailureSeverity {
+    param([string]$Message)
+
+    $m = [string]$Message
+    if ($m -match '(?i)^summary mots=|^summary title mots=|^summary tronque|body mots=\d+ (min=120|max=650)|title mots=|apostrophe FR|interpretive_role=|disclaimer legal manquant') {
+        return "p1"
+    }
+    return "p0"
+}
+
+function Resolve-SimplifiedOpenAiModelFromCatalog {
+    param(
+        [string]$LlmBase,
+        $Headers
+    )
+
+    try {
+        $providers = Invoke-RestMethod -Method Get -Uri "$($LlmBase.TrimEnd('/'))/v1/providers" -Headers $Headers -TimeoutSec 10
+        if ([string]$providers.default_provider -eq "openai" -and -not [string]::IsNullOrWhiteSpace([string]$providers.default_model)) {
+            return [string]$providers.default_model
+        }
+        foreach ($row in @($providers.models)) {
+            if ([string]$row.provider -eq "openai") {
+                return [string]$row.model
+            }
+        }
+    } catch {
+        return $null
+    }
+    return $null
+}
+
+function New-SimplifiedOpenAiQualityMetrics {
+    param(
+        [string]$LlmBase,
+        $Headers
+    )
+
+    return [ordered]@{
+        generated_at_utc = (Get-Date).ToUniversalTime().ToString("o")
+        provider         = "openai"
+        model            = (Resolve-SimplifiedOpenAiModelFromCatalog -LlmBase $LlmBase -Headers $Headers)
+        profile_code     = "natal_simplified"
+        prompt_version   = "v1"
+        cases            = @()
+        p0_failures      = @()
+        p1_failures      = @()
+        p2_warnings      = @()
+    }
+}
+
+function Add-SimplifiedOpenAiQualityCaseResult {
+    param(
+        $Metrics,
+        [string]$Label,
+        [string]$RunId,
+        [bool]$Success,
+        [string[]]$Failures,
+        [string[]]$Warnings
+    )
+
+    $Metrics.cases += [ordered]@{
+        label   = $Label
+        run_id  = $RunId
+        success = $Success
+    }
+
+    foreach ($f in @($Failures)) {
+        $plain = if ($f -like "strict: *") { $f.Substring(8) } else { $f }
+        $entry = [ordered]@{ case = $Label; message = $f }
+        if ((Get-SimplifiedOpenAiFailureSeverity -Message $plain) -eq "p1") {
+            $Metrics.p1_failures += $entry
+        } else {
+            $Metrics.p0_failures += $entry
+        }
+    }
+
+    foreach ($w in @($Warnings)) {
+        $Metrics.p2_warnings += [ordered]@{ case = $Label; message = $w }
+    }
+}
+
+function Export-SimplifiedQualitySummary {
+    param(
+        $Metrics,
+        [string]$OutputPath
+    )
+
+    $cases = @($Metrics.cases)
+    $p0Details = @($Metrics.p0_failures)
+    $p1Details = @($Metrics.p1_failures)
+    $p2Warnings = @($Metrics.p2_warnings)
+    $caseCount = $cases.Count
+    $successCount = @($cases | Where-Object { $_.success }).Count
+    $p0Count = $p0Details.Count
+    $p1Count = $p1Details.Count
+    $summary = [ordered]@{
+        generated_at_utc = (Get-Date).ToUniversalTime().ToString("o")
+        provider         = $Metrics.provider
+        model            = $Metrics.model
+        profile_code     = $Metrics.profile_code
+        prompt_version   = $Metrics.prompt_version
+        cases            = $caseCount
+        success          = $successCount
+        p0_failures      = $p0Count
+        p1_failures      = $p1Count
+        p2_warnings      = $p2Warnings
+        gate_passed      = ($p0Count -eq 0 -and $p1Count -eq 0 -and $successCount -eq $caseCount -and $caseCount -gt 0)
+        case_runs        = $cases
+        p0_details       = $p0Details
+        p1_details       = $p1Details
+    }
+    $summary | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $OutputPath -Encoding utf8
+    return $summary
 }
 
 function Assert-SimplifiedStrictOpenAiQuality {
@@ -433,6 +553,7 @@ function Assert-SimplifiedStrictOpenAiQuality {
     )
 
     $failures = [System.Collections.Generic.List[string]]::new()
+    $warnings = [System.Collections.Generic.List[string]]::new()
     $allowedBasis = @($ApiResponse.calculation.llm_payload.allowed_astro_basis_fact_ids)
     $blockedFacts = @($ApiResponse.calculation.llm_payload.blocked_interpretation_fact_codes)
 
@@ -440,9 +561,13 @@ function Assert-SimplifiedStrictOpenAiQuality {
         $bodyWords = Get-SimplifiedWordCount -Text $ch.body
         if ($bodyWords -lt 120) {
             $failures.Add("$($ch.code) body mots=$bodyWords min=120 (OpenAI)")
+        } elseif ($bodyWords -lt 150) {
+            $warnings.Add("$($ch.code) body mots=$bodyWords proche minimum OpenAI (P2)")
         }
         if ($bodyWords -gt 650) {
             $failures.Add("$($ch.code) body mots=$bodyWords max=650 (OpenAI)")
+        } elseif ($bodyWords -gt 580) {
+            $warnings.Add("$($ch.code) body mots=$bodyWords proche maximum OpenAI (P2)")
         }
         foreach ($basis in @($ch.astro_basis)) {
             if (-not $basis.fact_id) { continue }
@@ -466,6 +591,8 @@ function Assert-SimplifiedStrictOpenAiQuality {
         $summaryWords = Get-SimplifiedWordCount -Text $st
         if ($summaryWords -gt 75) {
             $failures.Add("summary mots=$summaryWords max=75")
+        } elseif ($summaryWords -gt 60) {
+            $warnings.Add("summary mots=$summaryWords proche maximum OpenAI (P2)")
         }
         $titleWords = Get-SimplifiedWordCount -Text $Content.summary.title
         if ($titleWords -lt 1) {
@@ -531,7 +658,10 @@ function Assert-SimplifiedStrictOpenAiQuality {
         }
     }
 
-    return ,$failures
+    return [ordered]@{
+        Failures = ,@($failures)
+        Warnings = ,@($warnings)
+    }
 }
 
 function Test-SimplifiedCatalogReady {

@@ -78,7 +78,8 @@
         "reading_completeness": {
           "type": "string",
           "enum": ["partial", "simplified"],
-          "description": "V1 runtime always emits partial. simplified is reserved for forward compatibility and is not emitted."
+          "description": "V1 runtime always emits partial. simplified is reserved for forward compatibility and is not emitted.",
+          "x-deprecated-enum-values": ["simplified"]
         }
       }
     }

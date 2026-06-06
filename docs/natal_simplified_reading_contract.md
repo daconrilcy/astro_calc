@@ -170,7 +170,9 @@ Utiliser : interprétation simplifiée, lecture partielle, lecture indicative, p
 
 Ne **pas** exposer : dégradée, `degraded`, `minimum_reading_level: degraded`.
 
-Contrat technique API : `reading_completeness: partial` (V1 — seule valeur émise par `reading_hint` calculateur). La valeur schema `simplified` est **réservée** (forward-compat) et **n'est pas émise** en V1 ; les assertions E2E exigent strictement `partial`.
+Validation gateway (`validate_simplified_calculation_request`) ou rejet calculateur **avant** génération → réponse **400** `INVALID_INPUT`, **sans** enveloppe `{ calculation, reading }` :
+
+Contrat technique API : `reading_completeness: partial` (V1 — seule valeur émise par `reading_hint` calculateur). La valeur schema `simplified` est **réservée** (forward-compat, `x-deprecated-enum-values` dans le schéma JSON) et **n'est pas émise** en V1 ; les assertions E2E exigent strictement `partial`.
 
 ## Entrée API — lieu calculatoire
 

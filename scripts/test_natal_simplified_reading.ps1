@@ -30,6 +30,7 @@ param(
     [switch]$NegativeOnly,
     [switch]$SaveOutputs,
     [string]$OutputDir = "",
+    [string]$QualityMetricsPath = "",
     [int]$MinWordsPerChapter = 30,
     [int]$WaitReadySec = 120,
     [int]$TimeoutSec = 180
@@ -111,8 +112,13 @@ if ($catalogIssue) {
 
 $passed = 0
 $failed = 0
+$qualityMetrics = $null
+if ($UseReal -and -not $NegativeOnly -and -not [string]::IsNullOrWhiteSpace($QualityMetricsPath)) {
+    $qualityMetrics = New-SimplifiedOpenAiQualityMetrics -LlmBase $LlmBase -Headers $headers
+}
 
 foreach ($testCase in $cases) {
+    $script:SimplifiedLastStrictWarnings = @()
     $body = $testCase.Request | ConvertTo-Json -Depth 20 | ConvertFrom-Json
     $body | Add-Member -NotePropertyName user_language -NotePropertyValue "fr" -Force
     $body | Add-Member -NotePropertyName audience_level -NotePropertyValue "beginner" -Force
@@ -152,6 +158,15 @@ foreach ($testCase in $cases) {
         if ($apiResponse.error.code -eq "CALCULATOR_UNAVAILABLE") {
             $msg += " (verifier ASTRAL_CALCULATOR_HOST/PORT et calculateur up)"
         }
+        if ($qualityMetrics) {
+            Add-SimplifiedOpenAiQualityCaseResult `
+                -Metrics $qualityMetrics `
+                -Label $testCase.Label `
+                -RunId "" `
+                -Success $false `
+                -Failures @($msg) `
+                -Warnings @()
+        }
         Write-SimplifiedCaseResult -Label "$($testCase.Label)" -Passed $false -Failures @($msg)
         continue
     }
@@ -165,6 +180,19 @@ foreach ($testCase in $cases) {
     }
 
     $caseFailures = Assert-SimplifiedReadingResponse -ApiResponse $apiResponse -Case $testCase -MinWordsPerChapter $MinWordsPerChapter -StrictOpenAiQuality:($UseReal -and -not $NegativeOnly)
+    if ($qualityMetrics) {
+        $strictWarnings = @()
+        if ($script:SimplifiedLastStrictWarnings) {
+            $strictWarnings = @($script:SimplifiedLastStrictWarnings)
+        }
+        Add-SimplifiedOpenAiQualityCaseResult `
+            -Metrics $qualityMetrics `
+            -Label $testCase.Label `
+            -RunId ([string]$apiResponse.run_id) `
+            -Success ($caseFailures.Count -eq 0) `
+            -Failures @($caseFailures) `
+            -Warnings $strictWarnings
+    }
     if ($caseFailures.Count -eq 0) {
         $passed++
         $content = Get-SimplifiedReadingContent -ApiResponse $apiResponse
@@ -181,6 +209,10 @@ foreach ($testCase in $cases) {
 
 Write-Host ""
 Write-Host "Resultat : $passed OK, $failed FAIL sur $($cases.Count) cas" -ForegroundColor $(if ($failed -eq 0) { "Green" } else { "Red" })
+if ($qualityMetrics) {
+    $qualityMetrics.generated_at_utc = (Get-Date).ToUniversalTime().ToString("o")
+    $qualityMetrics | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $QualityMetricsPath -Encoding utf8
+}
 if ($failed -gt 0) { exit 1 }
 Write-Host "Reading simplified OK." -ForegroundColor Green
 } finally {
