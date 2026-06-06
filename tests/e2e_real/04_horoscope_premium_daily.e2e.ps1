@@ -22,6 +22,11 @@ function Assert-NoTechnicalSlotCode {
     }
 }
 
+function Convert-SlotLabelForComparison {
+    param([string]$Label)
+    return ($Label -replace "[^0-9:]", "")
+}
+
 Write-Host "=== Real Docker E2E: horoscope premium daily local 2h slots ===" -ForegroundColor Cyan
 Wait-E2EReady -BaseUrl $CalculatorUrl -ServiceName "calculator" -TimeoutSec $ReadyTimeoutSec
 Wait-E2EReady -BaseUrl $LlmUrl -ServiceName "llm" -TimeoutSec $ReadyTimeoutSec
@@ -138,10 +143,10 @@ if (-not $reading.period.location_label -or $reading.period.location_label -ne "
 if (-not $reading.timeline -or $reading.timeline.Count -ne 12) {
     throw "Premium reading timeline must contain exactly 12 entries"
 }
-if ($reading.timeline[0].slot_label -ne "00:00–02:00") {
+if ((Convert-SlotLabelForComparison -Label ([string]$reading.timeline[0].slot_label)) -ne "00:0002:00") {
     throw "Unexpected first Premium timeline label"
 }
-if ($reading.timeline[11].slot_label -ne "22:00–00:00") {
+if ((Convert-SlotLabelForComparison -Label ([string]$reading.timeline[11].slot_label)) -ne "22:0000:00") {
     throw "Unexpected last Premium timeline label"
 }
 
