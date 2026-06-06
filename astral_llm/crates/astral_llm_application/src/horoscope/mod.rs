@@ -270,12 +270,11 @@ pub fn build_calculation_request_for_service(
         )
         .expect("location serializes");
         out["slot_profile_code"] = json!("daily_2h_slots");
-        out["house_system_code"] = json!(
-            refs.service_profile
-                .house_system_code
-                .as_deref()
-                .ok_or_else(|| horoscope_error("HOROSCOPE_SCORING_FAILED"))?
-        );
+        out["house_system_code"] = json!(refs
+            .service_profile
+            .house_system_code
+            .as_deref()
+            .ok_or_else(|| horoscope_error("HOROSCOPE_SCORING_FAILED"))?);
         out["calculation_features"] = json!([
             "sky_snapshot",
             "moon_context",
@@ -372,29 +371,48 @@ pub fn build_interpretation_request(
         .flat_map(|slot| slot.required_evidence_keys.iter())
         .cloned()
         .collect::<HashSet<_>>();
-    let mut filtered = signals
+    let mut selected_signals = signals
         .iter()
         .filter(|signal| signal.priority_score >= shortlist.min_priority_score)
         .filter(|signal| selected_keys.contains(&signal.evidence_key))
         .cloned()
         .collect::<Vec<_>>();
-    filtered.sort_by(|a, b| {
+    selected_signals.sort_by(|a, b| {
         b.priority_score
             .partial_cmp(&a.priority_score)
             .unwrap_or(Ordering::Equal)
             .then_with(|| a.evidence_key.cmp(&b.evidence_key))
     });
-    filtered.truncate(shortlist.max_main_signals);
-    let main_signals = if filtered.is_empty() {
+    if selected_signals.is_empty() {
         return Err(horoscope_error("HOROSCOPE_NO_SIGNIFICANT_SIGNAL"));
-    } else {
-        filtered
-    };
-    let evidence = main_signals
+    }
+    let mut main_signals = selected_signals.clone();
+    main_signals.truncate(shortlist.max_main_signals);
+    let evidence = selected_signals
         .iter()
         .take(shortlist.max_evidence)
         .map(|signal| serde_json::to_value(signal).expect("signal serializes"))
         .collect::<Vec<_>>();
+    build_interpretation_request_from_signals(
+        public,
+        calculation,
+        &refs,
+        slot_plans,
+        main_signals,
+        evidence,
+    )
+}
+
+fn build_interpretation_request_from_signals(
+    public: &HoroscopePublicRequest,
+    calculation: &Value,
+    refs: &ReferenceData,
+    slot_plans: Vec<SlotInterpretationPlan>,
+    main_signals: Vec<ScoredSignal>,
+    evidence: Vec<Value>,
+) -> Result<Value, GenerationError> {
+    let service_code = service_code_from_value(calculation)?;
+    let shortlist = refs.shortlist.clone();
     let dominant_themes = aggregate_themes(&main_signals)
         .into_iter()
         .take(shortlist.max_dominant_themes)
@@ -468,11 +486,15 @@ fn build_watch_slots(request: &Value) -> Vec<Value> {
 }
 
 fn premium_ranked_slots(request: &Value, watch: bool) -> Vec<Value> {
-    request
+    let slots = request
         .get("slots")
         .and_then(|v| v.as_array())
         .into_iter()
         .flatten()
+        .collect::<Vec<_>>();
+    let mut ranked = slots
+        .iter()
+        .copied()
         .filter(|slot| {
             let tone = slot.get("tone").and_then(|v| v.as_str()).unwrap_or("");
             if watch {
@@ -482,26 +504,37 @@ fn premium_ranked_slots(request: &Value, watch: bool) -> Vec<Value> {
             }
         })
         .take(3)
-        .map(|slot| {
-            let label = slot.get("slot_label").cloned().unwrap_or_else(|| json!("Moment"));
-            let evidence_keys = slot
-                .get("required_evidence_keys")
-                .cloned()
-                .unwrap_or_else(|| json!([]));
-            json!({
-                "slot_label": label,
-                "title": if watch { "Créneau de vigilance" } else { "Créneau favorable" },
-                "reason": if watch {
-                    "La tension du signal principal invite à ralentir les réponses."
-                } else {
-                    "La tonalité du signal principal favorise une action simple et utile."
-                },
-                "best_for": slot.get("best_for").cloned().unwrap_or_else(|| json!([])),
-                "avoid": if watch { json!(["réponse impulsive"]) } else { json!([]) },
-                "evidence_keys": evidence_keys
-            })
-        })
+        .collect::<Vec<_>>();
+    if ranked.is_empty() {
+        ranked = slots.iter().rev().copied().take(3).collect();
+    }
+    ranked
+        .into_iter()
+        .map(|slot| premium_slot_summary(slot, watch))
         .collect()
+}
+
+fn premium_slot_summary(slot: &Value, watch: bool) -> Value {
+    let label = slot
+        .get("slot_label")
+        .cloned()
+        .unwrap_or_else(|| json!("Moment"));
+    let evidence_keys = slot
+        .get("required_evidence_keys")
+        .cloned()
+        .unwrap_or_else(|| json!([]));
+    json!({
+        "slot_label": label,
+        "title": if watch { "Créneau de vigilance" } else { "Créneau favorable" },
+        "reason": if watch {
+            "La tension du signal principal invite à ralentir les réponses."
+        } else {
+            "La tonalité du signal principal favorise une action simple et utile."
+        },
+        "best_for": slot.get("best_for").cloned().unwrap_or_else(|| json!([])),
+        "avoid": if watch { json!(["réponse impulsive"]) } else { json!([]) },
+        "evidence_keys": evidence_keys
+    })
 }
 
 fn build_domain_sections(request: &Value) -> Vec<Value> {
@@ -698,6 +731,27 @@ fn validate_premium_calculation_local_chart(
                 json!({ "reason": "ascendant_midheaven_or_houses_missing" }),
             ));
         }
+        if !local_chart
+            .get("ascendant")
+            .and_then(|v| v.as_object())
+            .is_some_and(|angle| angle.contains_key("sign") && angle.contains_key("longitude_deg"))
+            || !local_chart
+                .get("midheaven")
+                .and_then(|v| v.as_object())
+                .is_some_and(|angle| {
+                    angle.contains_key("sign") && angle.contains_key("longitude_deg")
+                })
+            || local_chart
+                .get("houses")
+                .and_then(|v| v.as_array())
+                .map(|houses| houses.len() != 12)
+                .unwrap_or(true)
+        {
+            return Err(quality_error(
+                "HOROSCOPE_PREMIUM_LOCAL_CHART_MISSING",
+                json!({ "reason": "local_chart_shape_invalid" }),
+            ));
+        }
     }
     Ok(())
 }
@@ -848,10 +902,12 @@ fn fake_writer_premium_response(request: &Value) -> Result<Value, GenerationErro
         .and_then(|v| v.as_array())
         .into_iter()
         .flatten()
-        .map(|item| json!({
-            "evidence_key": item.get("evidence_key").cloned().unwrap_or(Value::Null),
-            "theme_code": item.get("theme_code").cloned().unwrap_or(Value::Null)
-        }))
+        .map(|item| {
+            json!({
+                "evidence_key": item.get("evidence_key").cloned().unwrap_or(Value::Null),
+                "theme_code": item.get("theme_code").cloned().unwrap_or(Value::Null)
+            })
+        })
         .collect::<Vec<_>>();
 
     Ok(json!({
@@ -1000,6 +1056,10 @@ fn validate_premium_response_evidence(
         validate_slot_evidence_alignment(request_slot, keys)?;
     }
 
+    let request_by_label = request_slots
+        .iter()
+        .filter_map(|slot| Some((slot.get("slot_label")?.as_str()?, slot)))
+        .collect::<HashMap<_, _>>();
     let best = response
         .get("best_slots")
         .and_then(|v| v.as_array())
@@ -1009,11 +1069,19 @@ fn validate_premium_response_evidence(
         .and_then(|v| v.as_array())
         .ok_or_else(|| quality_error("HOROSCOPE_PREMIUM_WATCH_SLOTS_MISSING", Value::Null))?;
     if best.is_empty() {
-        return Err(quality_error("HOROSCOPE_PREMIUM_BEST_SLOTS_MISSING", Value::Null));
+        return Err(quality_error(
+            "HOROSCOPE_PREMIUM_BEST_SLOTS_MISSING",
+            Value::Null,
+        ));
     }
     if watch.is_empty() {
-        return Err(quality_error("HOROSCOPE_PREMIUM_WATCH_SLOTS_MISSING", Value::Null));
+        return Err(quality_error(
+            "HOROSCOPE_PREMIUM_WATCH_SLOTS_MISSING",
+            Value::Null,
+        ));
     }
+    validate_premium_slot_summaries(best, &request_by_label, "best_slots")?;
+    validate_premium_slot_summaries(watch, &request_by_label, "watch_slots")?;
     let best_labels = best
         .iter()
         .filter_map(|slot| slot.get("slot_label").and_then(|v| v.as_str()))
@@ -1055,6 +1123,68 @@ fn validate_premium_response_evidence(
             json!({ "invented_evidence_keys": invented }),
         ))
     }
+}
+
+fn validate_premium_slot_summaries(
+    slots: &[Value],
+    request_by_label: &HashMap<&str, &Value>,
+    field: &str,
+) -> Result<(), GenerationError> {
+    let mut seen = HashSet::new();
+    for slot in slots {
+        let label = slot
+            .get("slot_label")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| horoscope_error("HOROSCOPE_RESPONSE_INVALID"))?;
+        if !seen.insert(label) {
+            return Err(quality_error(
+                "HOROSCOPE_PREMIUM_DUPLICATED_SLOT_CLASSIFICATION",
+                json!({ "field": field, "slot_label": label }),
+            ));
+        }
+        let request_slot = request_by_label.get(label).ok_or_else(|| {
+            quality_error(
+                "HOROSCOPE_PREMIUM_UNKNOWN_SLOT_CLASSIFICATION",
+                json!({ "field": field, "slot_label": label }),
+            )
+        })?;
+        let keys = slot
+            .get("evidence_keys")
+            .and_then(|v| v.as_array())
+            .ok_or_else(|| quality_error("HOROSCOPE_PREMIUM_SLOT_EVIDENCE_MISSING", Value::Null))?;
+        if keys.is_empty() {
+            return Err(quality_error(
+                "HOROSCOPE_PREMIUM_SLOT_EVIDENCE_MISSING",
+                json!({ "field": field, "slot_label": label }),
+            ));
+        }
+        validate_slot_evidence_alignment(request_slot, keys)?;
+        validate_premium_summary_public_text(slot)?;
+    }
+    Ok(())
+}
+
+fn validate_premium_summary_public_text(slot: &Value) -> Result<(), GenerationError> {
+    let mut public_text = String::new();
+    for key in ["slot_label", "title", "reason"] {
+        if let Some(value) = slot.get(key).and_then(|v| v.as_str()) {
+            public_text.push_str(value);
+            public_text.push('\n');
+        }
+    }
+    for key in ["best_for", "avoid"] {
+        for value in slot
+            .get(key)
+            .and_then(|v| v.as_array())
+            .into_iter()
+            .flatten()
+            .filter_map(|v| v.as_str())
+        {
+            public_text.push_str(value);
+            public_text.push('\n');
+        }
+    }
+    validate_public_text_no_technical_codes(&public_text)
 }
 
 fn fake_writer_free_response(request: &Value) -> Result<Value, GenerationError> {

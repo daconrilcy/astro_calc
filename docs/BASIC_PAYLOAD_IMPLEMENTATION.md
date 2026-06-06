@@ -3384,6 +3384,14 @@ meme document. Il conserve la meme infrastructure async, ajoute une localisation
 obligatoire, 12 creneaux publics de 2 heures, `local_chart` par slot et des
 guards Premium dedies.
 
+Correctif review adversariale Premium : le schema calculateur publie accepte
+desormais les 12 slots Premium au niveau commun `slots.maxItems`; le guard
+Premium verifie que `local_chart` contient Ascendant, MC et 12 maisons ; les
+`best_slots` / `watch_slots` doivent referencer un label de timeline connu et
+ne peuvent citer que les preuves planifiees pour ce creneau. Le paquet
+`evidence` conserve toutes les preuves requises par les slots meme lorsque
+`main_signals` reste borne a 24.
+
 Pour `horoscope_free_daily`, `day` est uniquement un slot technique de
 projection. Il ne constitue pas une section publique et ne doit jamais apparaitre
 dans la reponse utilisateur.
