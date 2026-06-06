@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use astral_llm_domain::{
     contract_versions::GenerationRunContractVersions,
+    default_legal_disclaimer,
     model_usage_tier::ModelRouteContext,
     generation_response::{
         GenerateReadingResponse, GenerationFailedResponse, SafetyRejectedResponse,
@@ -498,6 +499,13 @@ impl GenerateReadingUseCase {
             crate::evidence_fact_parse::normalize_chapter_astro_basis_fact_ids(
                 chapter,
                 astro_facts,
+            );
+        }
+
+        if request.response_contract.include_legal_disclaimer {
+            reading.legal.disclaimer = default_legal_disclaimer(
+                &request.product_context.user_language,
+                true,
             );
         }
 
