@@ -578,7 +578,7 @@ fn fake_writer_free_response(request: &Value) -> Result<Value, GenerationError> 
         "period": period,
         "summary": {
             "title": "Votre tendance du jour",
-            "text": "La Lune met l'accent sur l'organisation, les priorités simples et les gestes utiles. La journée gagne à rester concrète : choisir une tâche mesurable, clarifier ce qui doit vraiment avancer, puis éviter de multiplier les intentions. Cette lecture reste volontairement synthétique, avec une preuve astrologique centrale plutôt qu'un découpage horaire."
+            "text": "La Lune met l'accent sur l'organisation, les priorités simples et les gestes utiles. La journée gagne à rester concrète : choisir une tâche mesurable, clarifier ce qui doit vraiment avancer, puis éviter de multiplier les intentions."
         },
         "advice": "Choisissez une action vérifiable et avancez étape par étape.",
         "watch_point": "Ne cherchez pas à tout régler en même temps.",
@@ -1309,6 +1309,9 @@ fn validate_public_slot_text(slot: &Value) -> Result<(), GenerationError> {
         "rester concret et nuance",
         "l'elan du moment",
         "l’énergie du moment",
+        "lecture reste volontairement synthétique",
+        "preuve astrologique centrale",
+        "découpage horaire",
     ] {
         if public_text.to_lowercase().contains(generic) {
             return Err(quality_error(
@@ -1391,8 +1394,13 @@ fn validate_free_text_quality(public_text: &str, response: &Value) -> Result<(),
         "rester concret et nuance",
         "l'elan du moment",
         "l’énergie du moment",
+        "lecture reste volontairement synthétique",
+        "preuve astrologique centrale",
+        "découpage horaire",
     ] {
-        if public_text.to_lowercase().contains(generic) {
+        let lower = public_text.to_lowercase();
+        let normalized = normalized_text(public_text);
+        if lower.contains(generic) || normalized.contains(generic) {
             return Err(quality_error(
                 "HOROSCOPE_SLOT_TOO_GENERIC",
                 json!({ "forbidden": generic }),

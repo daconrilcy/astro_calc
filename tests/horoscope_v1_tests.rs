@@ -539,6 +539,17 @@ fn horoscope_free_daily_rejects_public_word_day() {
 }
 
 #[test]
+fn horoscope_free_daily_rejects_technical_editorial_explanation() {
+    let request = free_interpretation_request();
+    let mut response = free_golden_response();
+    response["summary"]["text"] = serde_json::json!(
+        "La Lune soutient l'organisation. Cette lecture reste volontairement synthétique, avec une preuve astrologique centrale plutôt qu'un découpage horaire."
+    );
+    let err = validate_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_SLOT_TOO_GENERIC");
+}
+
+#[test]
 fn horoscope_applies_french_typography() {
     let request = interpretation_request();
     let response = golden_response();
