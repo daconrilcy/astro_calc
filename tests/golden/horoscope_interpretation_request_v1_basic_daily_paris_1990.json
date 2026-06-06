@@ -6,6 +6,64 @@
     "timezone": "Europe/Paris"
   },
   "target_language": "fr",
+  "day_overview": {
+    "dominant_theme": "emotional_boundaries",
+    "tone": "tense",
+    "intensity": "high",
+    "summary_hint": "Introduire la tonalite generale sans recopier ce texte dans chaque slot.",
+    "evidence_keys": [
+      "slot:afternoon:mars:square:natal_moon",
+      "slot:morning:moon:natal_house:6",
+      "slot:evening:venus:trine:natal_mercury"
+    ]
+  },
+  "slots": [
+    {
+      "slot_code": "morning",
+      "slot_label": "Matin",
+      "specificity": "specific",
+      "theme_code": "daily_care",
+      "tone": "focused",
+      "intensity": "high",
+      "main_signal_keys": ["slot:morning:moon:natal_house:6"],
+      "required_evidence_keys": ["slot:morning:moon:natal_house:6"],
+      "advice_axis": "prioritize_concrete_action",
+      "avoid_axis": "scattered_effort",
+      "watch_point": "avoid_opening_too_many_topics",
+      "best_for": ["organization", "routine"],
+      "fallback_reason": null
+    },
+    {
+      "slot_code": "afternoon",
+      "slot_label": "Après-midi",
+      "specificity": "specific",
+      "theme_code": "emotional_boundaries",
+      "tone": "careful",
+      "intensity": "high",
+      "main_signal_keys": ["slot:afternoon:mars:square:natal_moon"],
+      "required_evidence_keys": ["slot:afternoon:mars:square:natal_moon"],
+      "advice_axis": "slow_down_reactive_answers",
+      "avoid_axis": "answering_under_tension",
+      "watch_point": "avoid_answering_before_the_emotion_settles",
+      "best_for": ["reformulation", "boundaries"],
+      "fallback_reason": null
+    },
+    {
+      "slot_code": "evening",
+      "slot_label": "Soir",
+      "specificity": "specific",
+      "theme_code": "supportive_dialogue",
+      "tone": "softer",
+      "intensity": "medium",
+      "main_signal_keys": ["slot:evening:venus:trine:natal_mercury"],
+      "required_evidence_keys": ["slot:evening:venus:trine:natal_mercury"],
+      "advice_axis": "reopen_simple_dialogue",
+      "avoid_axis": "overexplaining_the_whole_story",
+      "watch_point": "avoid_reopening_every_subject_at_once",
+      "best_for": ["dialogue", "repair"],
+      "fallback_reason": null
+    }
+  ],
   "main_signals": [
     {
       "evidence_key": "slot:afternoon:mars:square:natal_moon",

@@ -7,6 +7,8 @@
     "service_code",
     "period",
     "target_language",
+    "day_overview",
+    "slots",
     "main_signals",
     "dominant_themes",
     "evidence"
@@ -24,6 +26,73 @@
       }
     },
     "target_language": { "type": "string" },
+    "day_overview": {
+      "type": "object",
+      "required": ["dominant_theme", "tone", "intensity", "summary_hint", "evidence_keys"],
+      "additionalProperties": false,
+      "properties": {
+        "dominant_theme": { "type": "string" },
+        "tone": { "type": "string" },
+        "intensity": { "type": "string" },
+        "summary_hint": { "type": "string" },
+        "evidence_keys": {
+          "type": "array",
+          "maxItems": 3,
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "slots": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "slot_code",
+          "slot_label",
+          "specificity",
+          "theme_code",
+          "tone",
+          "intensity",
+          "main_signal_keys",
+          "required_evidence_keys",
+          "advice_axis",
+          "avoid_axis",
+          "watch_point",
+          "best_for",
+          "fallback_reason"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "slot_code": { "type": "string" },
+          "slot_label": { "type": "string" },
+          "specificity": { "enum": ["specific", "shared", "fallback"] },
+          "theme_code": { "type": ["string", "null"] },
+          "tone": { "type": ["string", "null"] },
+          "intensity": { "type": ["string", "null"] },
+          "main_signal_keys": {
+            "type": "array",
+            "maxItems": 2,
+            "items": { "type": "string" }
+          },
+          "required_evidence_keys": {
+            "type": "array",
+            "maxItems": 2,
+            "items": { "type": "string" }
+          },
+          "advice_axis": { "type": ["string", "null"] },
+          "avoid_axis": { "type": ["string", "null"] },
+          "watch_point": { "type": ["string", "null"] },
+          "best_for": {
+            "type": "array",
+            "maxItems": 3,
+            "items": { "type": "string" }
+          },
+          "fallback_reason": { "type": ["string", "null"] }
+        }
+      }
+    },
     "main_signals": { "type": "array", "maxItems": 6 },
     "dominant_themes": { "type": "array", "maxItems": 4 },
     "evidence": { "type": "array", "maxItems": 8 }

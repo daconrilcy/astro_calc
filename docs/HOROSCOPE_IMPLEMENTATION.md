@@ -699,3 +699,27 @@ Implementation initiale :
 
 Limite assumee de cette etape : le redacteur V1 est le fake stable requis pour
 les tests, sans appel fournisseur OpenAI.
+
+## Etat refactor slot-based V1
+
+Refactor V1 applique :
+
+- `horoscope_interpretation_request_v1` porte maintenant `day_overview` et
+  `slots[]` ; pour `horoscope_basic_daily_natal_3_slots`, `slots[]` pilote la
+  redaction des trois moments.
+- Chaque slot porte `specificity`, `theme_code`, `tone`, `intensity`,
+  `main_signal_keys`, `required_evidence_keys`, `advice_axis`, `avoid_axis`,
+  `watch_point`, `best_for` et `fallback_reason`.
+- Le fake writer produit trois textes differencies, relies aux evidence du slot
+  et typographiquement francais.
+- Le validateur rejette les repetitions, la copie de `day_overview`, les
+  formulations generiques, les references astrologiques absentes, les conseils
+  ou `best_for` dupliques, les fuites de codes techniques et les incoherences
+  evidence / slot.
+- `horoscope_response_v1` est enrichi de champs compatibles par slot :
+  `theme`, `tone`, `best_for`, `watch_point`, et de flags qualite.
+- Le service reste en `beta` tant que les validations fake, goldens, guards et
+  reviews adversariales cadrent le perimetre.
+
+Plan et reviews :
+[`docs/reviews/horoscope_v1/INDEX.md`](reviews/horoscope_v1/INDEX.md).

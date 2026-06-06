@@ -2,6 +2,8 @@ use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::sync::OnceLock;
 
+use crate::french_typography::french_elision_violations;
+
 use astral_llm_domain::{GenerationError, GenerationErrorCode};
 use chrono::NaiveDate;
 use chrono_tz::Tz;
@@ -22,6 +24,8 @@ const ASPECT_WEIGHTS_JSON: &str =
 const ORB_BANDS_JSON: &str = include_str!("../../../../../json_db/horoscope_orb_weight_bands.json");
 const THEME_MAPPINGS_JSON: &str =
     include_str!("../../../../../json_db/horoscope_signal_theme_mappings.json");
+const THEME_ADVICE_AXES_JSON: &str =
+    include_str!("../../../../../json_db/horoscope_theme_advice_axes.json");
 const SHORTLIST_JSON: &str =
     include_str!("../../../../../json_db/horoscope_shortlist_profiles.json");
 const INTENSITY_JSON: &str = include_str!("../../../../../json_db/horoscope_intensity_bands.json");
@@ -80,6 +84,23 @@ pub struct ScoredSignal {
     pub score_breakdown: Value,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SlotInterpretationPlan {
+    pub slot_code: String,
+    pub slot_label: String,
+    pub specificity: String,
+    pub theme_code: Option<String>,
+    pub tone: Option<String>,
+    pub intensity: Option<String>,
+    pub main_signal_keys: Vec<String>,
+    pub required_evidence_keys: Vec<String>,
+    pub advice_axis: Option<String>,
+    pub avoid_axis: Option<String>,
+    pub watch_point: Option<String>,
+    pub best_for: Vec<String>,
+    pub fallback_reason: Option<String>,
+}
+
 pub struct HoroscopeBasicDailyNatalOrchestrator;
 
 impl HoroscopeBasicDailyNatalOrchestrator {
@@ -102,7 +123,7 @@ impl HoroscopeBasicDailyNatalOrchestrator {
 
         let signals = score_calculation(&calculation)?;
         let interpretation = build_interpretation_request(&public, &calculation, &signals)?;
-        let response = fake_llm_response(&interpretation)?;
+        let response = fake_writer_response(&interpretation)?;
         validate_horoscope_response_schema(&response)?;
         validate_response_evidence(&interpretation, &response)?;
 
@@ -213,13 +234,26 @@ pub fn build_interpretation_request(
     signals: &[ScoredSignal],
 ) -> Result<Value, GenerationError> {
     let refs = ReferenceData::load()?;
-    let shortlist = refs.shortlist;
-    let filtered = signals
+    let shortlist = refs.shortlist.clone();
+    let slot_plans = build_slot_plans(&refs, calculation, signals)?;
+    let selected_keys = slot_plans
+        .iter()
+        .flat_map(|slot| slot.required_evidence_keys.iter())
+        .cloned()
+        .collect::<HashSet<_>>();
+    let mut filtered = signals
         .iter()
         .filter(|signal| signal.priority_score >= shortlist.min_priority_score)
-        .take(shortlist.max_main_signals)
+        .filter(|signal| selected_keys.contains(&signal.evidence_key))
         .cloned()
         .collect::<Vec<_>>();
+    filtered.sort_by(|a, b| {
+        b.priority_score
+            .partial_cmp(&a.priority_score)
+            .unwrap_or(Ordering::Equal)
+            .then_with(|| a.evidence_key.cmp(&b.evidence_key))
+    });
+    filtered.truncate(shortlist.max_main_signals);
     let main_signals = if filtered.is_empty() {
         return Err(horoscope_error("HOROSCOPE_NO_SIGNIFICANT_SIGNAL"));
     } else {
@@ -234,6 +268,12 @@ pub fn build_interpretation_request(
         .into_iter()
         .take(shortlist.max_dominant_themes)
         .collect::<Vec<_>>();
+    let overview_evidence = main_signals
+        .iter()
+        .take(3)
+        .map(|signal| signal.evidence_key.clone())
+        .collect::<Vec<_>>();
+    let top = main_signals.first();
     let request = json!({
         "contract_version": "horoscope_interpretation_request_v1",
         "service_code": HOROSCOPE_SERVICE_CODE,
@@ -242,6 +282,14 @@ pub fn build_interpretation_request(
             "timezone": public.timezone
         })),
         "target_language": public.target_language,
+        "day_overview": {
+            "dominant_theme": top.map(|signal| signal.theme_code.as_str()).unwrap_or("daily_focus"),
+            "tone": top.map(|signal| signal.tone.as_str()).unwrap_or("mixed"),
+            "intensity": top.map(|signal| signal.intensity.as_str()).unwrap_or("medium"),
+            "summary_hint": "Introduire la tonalite generale sans recopier ce texte dans chaque slot.",
+            "evidence_keys": overview_evidence
+        },
+        "slots": slot_plans,
         "main_signals": main_signals,
         "dominant_themes": dominant_themes,
         "evidence": evidence
@@ -267,6 +315,10 @@ pub fn validate_response_evidence(
         .flatten()
         .filter_map(|item| item.get("evidence_key").and_then(|v| v.as_str()))
         .collect::<HashSet<_>>();
+    let request_slots = request
+        .get("slots")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| horoscope_error("HOROSCOPE_RESPONSE_INVALID"))?;
     if allowed.is_empty() {
         return Err(horoscope_error("HOROSCOPE_RESPONSE_INVALID"));
     }
@@ -277,7 +329,15 @@ pub fn validate_response_evidence(
     if slots.len() != 3 {
         return Err(horoscope_error("HOROSCOPE_RESPONSE_INVALID"));
     }
+    validate_day_overview_not_copied(request, slots)?;
+    let mut texts = Vec::new();
+    let mut advices = Vec::new();
+    let mut best_for_sets = Vec::new();
     for slot in slots {
+        let slot_code = slot
+            .get("slot_code")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| horoscope_error("HOROSCOPE_RESPONSE_INVALID"))?;
         let keys = slot
             .get("evidence_keys")
             .and_then(|v| v.as_array())
@@ -296,7 +356,35 @@ pub fn validate_response_evidence(
                 json!({ "reason": "non_string_evidence_key" }),
             ));
         }
+        let request_slot = request_slots
+            .iter()
+            .find(|item| item.get("slot_code").and_then(|v| v.as_str()) == Some(slot_code))
+            .ok_or_else(|| horoscope_error("HOROSCOPE_RESPONSE_INVALID"))?;
+        validate_slot_specificity(request_slot)?;
+        validate_slot_evidence_alignment(request_slot, keys)?;
+        validate_public_slot_text(slot)?;
+        let text = slot.get("text").and_then(|v| v.as_str()).unwrap_or("");
+        validate_astrological_reference(slot_code, text, request_slot)?;
+        texts.push(text.to_string());
+        advices.push(
+            slot.get("advice")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string(),
+        );
+        best_for_sets.push(
+            slot.get("best_for")
+                .and_then(|v| v.as_array())
+                .into_iter()
+                .flatten()
+                .filter_map(|v| v.as_str())
+                .map(str::to_string)
+                .collect::<Vec<_>>(),
+        );
     }
+    validate_slot_diversity(&texts)?;
+    validate_distinct_strings(&advices, "HOROSCOPE_SLOT_ADVICE_DUPLICATED")?;
+    validate_distinct_best_for(&best_for_sets)?;
     let mut cited = Vec::new();
     collect_evidence_keys(response, &mut cited);
     let invented = cited
@@ -314,7 +402,7 @@ pub fn validate_response_evidence(
     }
 }
 
-fn fake_llm_response(request: &Value) -> Result<Value, GenerationError> {
+fn fake_writer_response(request: &Value) -> Result<Value, GenerationError> {
     let period = request
         .get("period")
         .cloned()
@@ -323,59 +411,36 @@ fn fake_llm_response(request: &Value) -> Result<Value, GenerationError> {
         .get("evidence")
         .and_then(|v| v.as_array())
         .ok_or_else(|| horoscope_error("HOROSCOPE_RESPONSE_INVALID"))?;
-    let by_slot = |slot: &str| {
-        evidence
-            .iter()
-            .filter(|item| item.get("slot_id").and_then(|v| v.as_str()) == Some(slot))
-            .filter_map(|item| item.get("evidence_key").and_then(|v| v.as_str()))
-            .map(str::to_string)
-            .collect::<Vec<_>>()
-    };
-    let slot_text = |label: &str| {
-        format!(
-            "{label}, les signaux du jour invitent a rester concret et nuance. La priorite est de relier l'elan du moment a ce qui peut etre ajuste sans precipitation."
-        )
-    };
+    let slots = request
+        .get("slots")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| horoscope_error("HOROSCOPE_RESPONSE_INVALID"))?;
+    let rendered_slots = slots
+        .iter()
+        .map(render_fake_slot)
+        .collect::<Result<Vec<_>, _>>()?;
     Ok(json!({
         "contract_version": "horoscope_response_v1",
         "service_code": HOROSCOPE_SERVICE_CODE,
         "period": period,
         "summary": {
-            "title": "Une journee a ajuster avec precision",
-            "text": "La journee met l'accent sur les rythmes ordinaires, les reactions emotionnelles et la qualite du dialogue. Les preuves astrologiques retenues decrivent une progression simple : prendre soin du cadre le matin, poser des limites l'apres-midi, puis retrouver une parole plus souple le soir."
+            "title": "Une journée à ajuster avec précision",
+            "text": "La journée avance en trois temps distincts : organiser le cadre, ralentir les réactions, puis rouvrir une parole plus souple. Les preuves astrologiques retenues dessinent une progression concrète sans transformer le climat du jour en promesse événementielle."
         },
-        "slots": [
-            {
-                "slot_code": "morning",
-                "title": "Matin",
-                "text": slot_text("Le matin"),
-                "advice": "Priorisez une action utile et mesurable.",
-                "evidence_keys": by_slot("morning")
-            },
-            {
-                "slot_code": "afternoon",
-                "title": "Apres-midi",
-                "text": slot_text("L'apres-midi"),
-                "advice": "Repondez lentement si une tension monte.",
-                "evidence_keys": by_slot("afternoon")
-            },
-            {
-                "slot_code": "evening",
-                "title": "Soir",
-                "text": slot_text("Le soir"),
-                "advice": "Rouvrez le dialogue sur un point concret.",
-                "evidence_keys": by_slot("evening")
-            }
-        ],
-        "watch_points": ["Reactivite emotionnelle en milieu de journee"],
-        "opportunities": ["Conversation plus fluide en fin de journee"],
+        "slots": rendered_slots,
+        "watch_points": ["Réactivité émotionnelle en milieu de journée"],
+        "opportunities": ["Conversation plus fluide en fin de journée"],
         "evidence_summary": evidence.iter().map(|item| json!({
             "evidence_key": item.get("evidence_key").cloned().unwrap_or(Value::Null),
             "theme_code": item.get("theme_code").cloned().unwrap_or(Value::Null)
         })).collect::<Vec<_>>(),
         "quality": {
             "provider": "fake",
-            "evidence_guard": "passed"
+            "evidence_guard": "passed",
+            "evidence_coverage": 1.0,
+            "slot_diversity_passed": true,
+            "french_typography_passed": true,
+            "generic_language_passed": true
         }
     }))
 }
@@ -470,6 +535,152 @@ fn score_fact(
     })
 }
 
+fn build_slot_plans(
+    refs: &ReferenceData,
+    calculation: &Value,
+    signals: &[ScoredSignal],
+) -> Result<Vec<SlotInterpretationPlan>, GenerationError> {
+    let slots = calculation
+        .get("slots")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| horoscope_error("HOROSCOPE_CALCULATION_FAILED"))?;
+    let mut plans = Vec::new();
+    for slot in slots {
+        let slot_code = slot
+            .get("slot_code")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| horoscope_error("HOROSCOPE_CALCULATION_FAILED"))?;
+        let mut slot_signals = signals
+            .iter()
+            .filter(|signal| {
+                signal.slot_id == slot_code
+                    && signal.priority_score >= refs.shortlist.min_priority_score
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        slot_signals.sort_by(|a, b| {
+            b.priority_score
+                .partial_cmp(&a.priority_score)
+                .unwrap_or(Ordering::Equal)
+                .then_with(|| a.evidence_key.cmp(&b.evidence_key))
+        });
+        slot_signals.truncate(refs.shortlist.max_main_signals_per_slot);
+
+        if slot_signals.is_empty() {
+            plans.push(SlotInterpretationPlan {
+                slot_code: slot_code.to_string(),
+                slot_label: slot_label(slot_code).to_string(),
+                specificity: "fallback".into(),
+                theme_code: None,
+                tone: None,
+                intensity: None,
+                main_signal_keys: Vec::new(),
+                required_evidence_keys: Vec::new(),
+                advice_axis: None,
+                avoid_axis: None,
+                watch_point: None,
+                best_for: Vec::new(),
+                fallback_reason: Some("no_slot_specific_signal_above_threshold".into()),
+            });
+            continue;
+        }
+
+        let primary = &slot_signals[0];
+        let axis = refs.advice_axis(&primary.theme_code);
+        let evidence_keys = slot_signals
+            .iter()
+            .take(refs.shortlist.max_required_evidence_per_slot)
+            .map(|signal| signal.evidence_key.clone())
+            .collect::<Vec<_>>();
+        plans.push(SlotInterpretationPlan {
+            slot_code: slot_code.to_string(),
+            slot_label: slot_label(slot_code).to_string(),
+            specificity: "specific".into(),
+            theme_code: Some(primary.theme_code.clone()),
+            tone: Some(
+                axis.tone_hint
+                    .clone()
+                    .unwrap_or_else(|| primary.tone.clone()),
+            ),
+            intensity: Some(primary.intensity.clone()),
+            main_signal_keys: evidence_keys.clone(),
+            required_evidence_keys: evidence_keys,
+            advice_axis: Some(axis.advice_axis.clone()),
+            avoid_axis: axis.avoid_axis.clone(),
+            watch_point: axis.watch_point.clone(),
+            best_for: axis.best_for.clone(),
+            fallback_reason: None,
+        });
+    }
+    if plans.len() != 3 {
+        return Err(horoscope_error("HOROSCOPE_CALCULATION_FAILED"));
+    }
+    Ok(plans)
+}
+
+fn render_fake_slot(slot: &Value) -> Result<Value, GenerationError> {
+    let slot_code = slot
+        .get("slot_code")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| horoscope_error("HOROSCOPE_RESPONSE_INVALID"))?;
+    let title = slot
+        .get("slot_label")
+        .and_then(|v| v.as_str())
+        .unwrap_or_else(|| slot_label(slot_code));
+    let theme_code = slot
+        .get("theme_code")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let tone = slot.get("tone").and_then(|v| v.as_str()).unwrap_or("mixed");
+    let evidence_keys = slot
+        .get("required_evidence_keys")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    let best_for = slot
+        .get("best_for")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    let watch_point = slot
+        .get("watch_point")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let (theme, text, advice) = match slot_code {
+        "morning" => (
+            "Organisation",
+            "La Lune met l'accent sur l'organisation et les gestes utiles. C'est un bon moment pour clarifier une priorité concrète, ranger une tâche ou reprendre un point simple sans ouvrir trop de sujets à la fois.",
+            "Choisissez une action vérifiable et terminez-la avant de passer à la suivante.",
+        ),
+        "afternoon" => (
+            "Limites émotionnelles",
+            "Un contact tendu entre Mars et la Lune natale peut rendre l'après-midi plus réactif. Ce créneau demande de ralentir les réponses, surtout si une discussion devient imprécise ou chargée.",
+            "Si une tension monte, reformulez d'abord ce que vous avez compris avant de répondre.",
+        ),
+        "evening" => (
+            "Dialogue",
+            "Vénus soutient Mercure natal et adoucit le climat relationnel du soir. L'enjeu n'est pas de tout résoudre, mais de rouvrir un échange simple, concret et moins défensif.",
+            "Revenez sur un point précis plutôt que sur toute l'histoire.",
+        ),
+        _ => (
+            "Repère du jour",
+            "Le climat astrologique du slot donne un repère simple pour ajuster le rythme sans surinterpréter la journée.",
+            "Gardez une action courte, observable et reliée au moment.",
+        ),
+    };
+    Ok(json!({
+        "slot_code": slot_code,
+        "title": title,
+        "theme": if theme_code.is_empty() { theme } else { theme },
+        "tone": tone,
+        "text": text,
+        "advice": advice,
+        "best_for": best_for,
+        "watch_point": watch_point,
+        "evidence_keys": evidence_keys
+    }))
+}
+
 #[derive(Clone)]
 struct ReferenceData {
     object_weights: HashMap<String, f64>,
@@ -482,6 +693,7 @@ struct ReferenceData {
     theme_mappings: Vec<ThemeMapping>,
     intensity_bands: Vec<IntensityBand>,
     duration_classes: HashSet<String>,
+    advice_axes: HashMap<String, ThemeAdviceAxis>,
     scoring: ScoringParameters,
     shortlist: ShortlistProfile,
 }
@@ -511,9 +723,20 @@ struct ThemeMapping {
 #[derive(Clone)]
 struct ShortlistProfile {
     max_main_signals: usize,
+    max_main_signals_per_slot: usize,
     max_dominant_themes: usize,
     max_evidence: usize,
+    max_required_evidence_per_slot: usize,
     min_priority_score: f64,
+}
+
+#[derive(Clone)]
+struct ThemeAdviceAxis {
+    advice_axis: String,
+    avoid_axis: Option<String>,
+    best_for: Vec<String>,
+    watch_point: Option<String>,
+    tone_hint: Option<String>,
 }
 
 #[derive(Clone)]
@@ -593,6 +816,7 @@ impl ReferenceData {
                 .into_iter()
                 .filter_map(|row| row.get("duration_class")?.as_str().map(str::to_string))
                 .collect(),
+            advice_axes: advice_axes()?,
             scoring: scoring_parameters()?,
             shortlist: shortlist_profile()?,
         };
@@ -639,6 +863,19 @@ impl ReferenceData {
             .unwrap_or_else(|| "daily_focus".into())
     }
 
+    fn advice_axis(&self, theme_code: &str) -> ThemeAdviceAxis {
+        self.advice_axes
+            .get(theme_code)
+            .cloned()
+            .unwrap_or_else(|| ThemeAdviceAxis {
+                advice_axis: "observe_before_acting".into(),
+                avoid_axis: Some("overgeneralizing_the_day".into()),
+                best_for: vec!["orientation".into()],
+                watch_point: Some("avoid_turning_a_small_signal_into_a_prediction".into()),
+                tone_hint: Some("measured".into()),
+            })
+    }
+
     fn validate(&self) -> Result<(), GenerationError> {
         if !self
             .duration_classes
@@ -675,6 +912,10 @@ fn shortlist_profile() -> Result<ShortlistProfile, GenerationError> {
             .get("max_main_signals")
             .and_then(|v| v.as_u64())
             .unwrap_or(6) as usize,
+        max_main_signals_per_slot: row
+            .get("max_main_signals_per_slot")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(2) as usize,
         max_dominant_themes: row
             .get("max_dominant_themes")
             .and_then(|v| v.as_u64())
@@ -683,11 +924,51 @@ fn shortlist_profile() -> Result<ShortlistProfile, GenerationError> {
             .get("max_evidence")
             .and_then(|v| v.as_u64())
             .unwrap_or(8) as usize,
+        max_required_evidence_per_slot: row
+            .get("max_required_evidence_per_slot")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(2) as usize,
         min_priority_score: row
             .get("min_priority_score")
             .and_then(|v| v.as_f64())
             .unwrap_or(0.5),
     })
+}
+
+fn advice_axes() -> Result<HashMap<String, ThemeAdviceAxis>, GenerationError> {
+    Ok(rows(THEME_ADVICE_AXES_JSON)?
+        .into_iter()
+        .filter_map(|row| {
+            let theme_code = row.get("theme_code")?.as_str()?.to_string();
+            let best_for = row
+                .get("best_for")
+                .and_then(|v| v.as_array())
+                .into_iter()
+                .flatten()
+                .filter_map(|v| v.as_str())
+                .map(str::to_string)
+                .collect::<Vec<_>>();
+            Some((
+                theme_code,
+                ThemeAdviceAxis {
+                    advice_axis: row.get("advice_axis")?.as_str()?.to_string(),
+                    avoid_axis: row
+                        .get("avoid_axis")
+                        .and_then(|v| v.as_str())
+                        .map(str::to_string),
+                    best_for,
+                    watch_point: row
+                        .get("watch_point")
+                        .and_then(|v| v.as_str())
+                        .map(str::to_string),
+                    tone_hint: row
+                        .get("tone_hint")
+                        .and_then(|v| v.as_str())
+                        .map(str::to_string),
+                },
+            ))
+        })
+        .collect())
 }
 
 fn scoring_parameters() -> Result<ScoringParameters, GenerationError> {
@@ -744,6 +1025,293 @@ fn enabled_codes(raw: &str, key: &str) -> Result<HashSet<String>, GenerationErro
         .filter(|row| row.get("is_enabled_v1").and_then(|v| v.as_bool()) == Some(true))
         .filter_map(|row| row.get(key)?.as_str().map(str::to_string))
         .collect())
+}
+
+fn validate_slot_specificity(slot: &Value) -> Result<(), GenerationError> {
+    let specificity = slot
+        .get("specificity")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| horoscope_error("HOROSCOPE_RESPONSE_INVALID"))?;
+    let required = slot
+        .get("required_evidence_keys")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| horoscope_error("HOROSCOPE_RESPONSE_INVALID"))?;
+    let fallback_reason = slot.get("fallback_reason").and_then(|v| v.as_str());
+    match specificity {
+        "specific" => {
+            if required.is_empty() {
+                return Err(quality_error(
+                    "HOROSCOPE_SLOT_EVIDENCE_MISSING",
+                    json!({ "reason": "specific_without_required_evidence" }),
+                ));
+            }
+        }
+        "shared" => {
+            if required.is_empty() {
+                return Err(quality_error(
+                    "HOROSCOPE_SLOT_EVIDENCE_MISSING",
+                    json!({ "reason": "shared_without_required_evidence" }),
+                ));
+            }
+            let has_differentiator = ["tone", "intensity", "advice_axis", "watch_point"]
+                .iter()
+                .any(|key| slot.get(*key).and_then(|v| v.as_str()).is_some())
+                || slot
+                    .get("best_for")
+                    .and_then(|v| v.as_array())
+                    .map(|items| !items.is_empty())
+                    .unwrap_or(false);
+            if !has_differentiator {
+                return Err(quality_error(
+                    "HOROSCOPE_SLOT_THEME_DUPLICATED",
+                    json!({ "reason": "shared_without_differentiator" }),
+                ));
+            }
+        }
+        "fallback" => {
+            if !required.is_empty() || fallback_reason.unwrap_or("").trim().is_empty() {
+                return Err(quality_error(
+                    "HOROSCOPE_SLOT_FALLBACK_INVALID",
+                    json!({ "reason": "fallback_requires_empty_evidence_and_reason" }),
+                ));
+            }
+        }
+        _ => return Err(horoscope_error("HOROSCOPE_RESPONSE_INVALID")),
+    }
+    Ok(())
+}
+
+fn validate_slot_evidence_alignment(
+    request_slot: &Value,
+    response_keys: &[Value],
+) -> Result<(), GenerationError> {
+    let required = request_slot
+        .get("required_evidence_keys")
+        .and_then(|v| v.as_array())
+        .into_iter()
+        .flatten()
+        .filter_map(|v| v.as_str())
+        .collect::<HashSet<_>>();
+    let specificity = request_slot
+        .get("specificity")
+        .and_then(|v| v.as_str())
+        .unwrap_or("specific");
+    if specificity != "fallback" {
+        for key in response_keys.iter().filter_map(|v| v.as_str()) {
+            if !required.contains(key) {
+                return Err(quality_error(
+                    "HOROSCOPE_EVIDENCE_MISMATCH",
+                    json!({ "reason": "slot_uses_unplanned_evidence", "evidence_key": key }),
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_public_slot_text(slot: &Value) -> Result<(), GenerationError> {
+    let mut public_text = String::new();
+    for key in ["title", "theme", "tone", "text", "advice", "watch_point"] {
+        if let Some(value) = slot.get(key).and_then(|v| v.as_str()) {
+            public_text.push_str(value);
+            public_text.push('\n');
+        }
+    }
+    for forbidden in [
+        "[morning]",
+        "[afternoon]",
+        "[evening]",
+        "slot:morning",
+        "slot:afternoon",
+        "slot:evening",
+    ] {
+        if public_text.contains(forbidden) {
+            return Err(quality_error(
+                "HOROSCOPE_PUBLIC_SLOT_CODE_LEAK",
+                json!({ "forbidden": forbidden }),
+            ));
+        }
+    }
+    for generic in [
+        "les signaux du jour invitent",
+        "rester concret et nuance",
+        "l'elan du moment",
+        "l’énergie du moment",
+    ] {
+        if public_text.to_lowercase().contains(generic) {
+            return Err(quality_error(
+                "HOROSCOPE_SLOT_TOO_GENERIC",
+                json!({ "forbidden": generic }),
+            ));
+        }
+    }
+    if public_text.contains("Apres-midi")
+        || public_text.contains("Repondez")
+        || public_text.contains("Conseil:")
+        || !french_elision_violations(&public_text).is_empty()
+    {
+        return Err(quality_error(
+            "HOROSCOPE_FRENCH_TYPOGRAPHY_FAILED",
+            json!({ "reason": "known_french_typography_violation" }),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_astrological_reference(
+    slot_code: &str,
+    text: &str,
+    request_slot: &Value,
+) -> Result<(), GenerationError> {
+    if request_slot.get("specificity").and_then(|v| v.as_str()) == Some("fallback") {
+        return Ok(());
+    }
+    let lower = text.to_lowercase();
+    let has_astro = [
+        "lune",
+        "mars",
+        "vénus",
+        "venus",
+        "mercure",
+        "aspect",
+        "maison",
+        "transit",
+        "astrologique",
+        "natal",
+    ]
+    .iter()
+    .any(|needle| lower.contains(needle));
+    if has_astro {
+        Ok(())
+    } else {
+        Err(quality_error(
+            "HOROSCOPE_SLOT_ASTRO_REFERENCE_MISSING",
+            json!({ "slot_code": slot_code }),
+        ))
+    }
+}
+
+fn validate_day_overview_not_copied(
+    request: &Value,
+    response_slots: &[Value],
+) -> Result<(), GenerationError> {
+    let overview = request
+        .get("day_overview")
+        .and_then(|v| v.get("summary_hint"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim();
+    if overview.is_empty() {
+        return Ok(());
+    }
+    for slot in response_slots {
+        let text = slot.get("text").and_then(|v| v.as_str()).unwrap_or("");
+        if normalized_text(text).contains(&normalized_text(overview)) {
+            return Err(quality_error(
+                "HOROSCOPE_SLOT_REPETITION_FAILED",
+                json!({ "reason": "day_overview_copied_into_slot" }),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn validate_slot_diversity(texts: &[String]) -> Result<(), GenerationError> {
+    for i in 0..texts.len() {
+        for j in (i + 1)..texts.len() {
+            let a = meaningful_words(&texts[i]);
+            let b = meaningful_words(&texts[j]);
+            let shared = a.intersection(&b).count();
+            let denom = a.len().min(b.len()).max(1);
+            if shared as f64 / denom as f64 > 0.60 {
+                return Err(quality_error(
+                    "HOROSCOPE_SLOT_REPETITION_FAILED",
+                    json!({ "reason": "slot_word_overlap_too_high" }),
+                ));
+            }
+            if first_words(&texts[i], 3) == first_words(&texts[j], 3) {
+                return Err(quality_error(
+                    "HOROSCOPE_SLOT_REPETITION_FAILED",
+                    json!({ "reason": "same_opening_trigram" }),
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_distinct_strings(items: &[String], code: &str) -> Result<(), GenerationError> {
+    let normalized = items
+        .iter()
+        .map(|item| normalized_text(item))
+        .filter(|item| !item.is_empty())
+        .collect::<Vec<_>>();
+    let unique = normalized.iter().collect::<HashSet<_>>();
+    if unique.len() != normalized.len() {
+        return Err(quality_error(code, json!({ "reason": "duplicate_text" })));
+    }
+    Ok(())
+}
+
+fn validate_distinct_best_for(items: &[Vec<String>]) -> Result<(), GenerationError> {
+    let normalized = items
+        .iter()
+        .map(|set| {
+            let mut values = set
+                .iter()
+                .map(|value| normalized_text(value))
+                .collect::<Vec<_>>();
+            values.sort();
+            values.join("|")
+        })
+        .filter(|value| !value.is_empty())
+        .collect::<Vec<_>>();
+    let unique = normalized.iter().collect::<HashSet<_>>();
+    if unique.len() != normalized.len() {
+        return Err(quality_error(
+            "HOROSCOPE_SLOT_THEME_DUPLICATED",
+            json!({ "reason": "best_for_duplicated" }),
+        ));
+    }
+    Ok(())
+}
+
+fn meaningful_words(text: &str) -> HashSet<String> {
+    let stopwords = [
+        "le", "la", "les", "un", "une", "des", "de", "du", "et", "ou", "a", "à", "ce", "c", "est",
+        "sur", "pour", "plus", "dans", "avec", "sans", "du", "au", "aux", "en",
+    ]
+    .into_iter()
+    .collect::<HashSet<_>>();
+    normalized_text(text)
+        .split_whitespace()
+        .filter(|word| word.len() > 2 && !stopwords.contains(*word))
+        .map(str::to_string)
+        .collect()
+}
+
+fn first_words(text: &str, count: usize) -> Vec<String> {
+    normalized_text(text)
+        .split_whitespace()
+        .take(count)
+        .map(str::to_string)
+        .collect()
+}
+
+fn normalized_text(text: &str) -> String {
+    text.to_lowercase()
+        .chars()
+        .map(|ch| {
+            if ch.is_alphanumeric() || ch.is_whitespace() {
+                ch
+            } else {
+                ' '
+            }
+        })
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn rows(raw: &str) -> Result<Vec<Value>, GenerationError> {
@@ -827,10 +1395,27 @@ fn horoscope_error(code: &str) -> GenerationError {
     GenerationError::with_details(GenerationErrorCode::InvalidInput, code, Value::Null)
 }
 
+fn quality_error(code: &str, details: Value) -> GenerationError {
+    GenerationError::with_details(
+        GenerationErrorCode::PostSafetyValidationFailed,
+        code,
+        details,
+    )
+}
+
 fn default_audience() -> String {
     "general".into()
 }
 
 fn round2(value: f64) -> f64 {
     (value * 100.0).round() / 100.0
+}
+
+fn slot_label(slot_code: &str) -> &'static str {
+    match slot_code {
+        "morning" => "Matin",
+        "afternoon" => "Après-midi",
+        "evening" => "Soir",
+        _ => "Moment",
+    }
 }

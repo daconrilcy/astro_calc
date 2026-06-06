@@ -64,22 +64,34 @@ fn valid_response_with_slot_keys(slot_keys: [serde_json::Value; 3]) -> serde_jso
             {
                 "slot_code": "morning",
                 "title": "Matin",
-                "text": "Le matin invite a poser une action utile.",
-                "advice": "Priorisez une action mesurable.",
+                "theme": "Organisation",
+                "tone": "focused",
+                "text": "La Lune met l'accent sur l'organisation du matin.",
+                "advice": "Choisissez une action vérifiable.",
+                "best_for": ["organization", "routine"],
+                "watch_point": "avoid_opening_too_many_topics",
                 "evidence_keys": slot_keys[0]
             },
             {
                 "slot_code": "afternoon",
-                "title": "Apres-midi",
-                "text": "L'apres-midi demande de ralentir les reactions.",
-                "advice": "Repondez lentement si une tension monte.",
+                "title": "Après-midi",
+                "theme": "Limites émotionnelles",
+                "tone": "careful",
+                "text": "Mars forme un aspect tendu avec la Lune natale.",
+                "advice": "Reformulez avant de répondre.",
+                "best_for": ["reformulation", "boundaries"],
+                "watch_point": "avoid_answering_before_the_emotion_settles",
                 "evidence_keys": slot_keys[1]
             },
             {
                 "slot_code": "evening",
                 "title": "Soir",
-                "text": "Le soir aide a rouvrir une parole plus simple.",
-                "advice": "Rouvrez le dialogue sur un point concret.",
+                "theme": "Dialogue",
+                "tone": "softer",
+                "text": "Vénus soutient Mercure natal et adoucit le dialogue.",
+                "advice": "Revenez sur un point précis.",
+                "best_for": ["dialogue", "repair"],
+                "watch_point": "avoid_reopening_every_subject_at_once",
                 "evidence_keys": slot_keys[2]
             }
         ],
@@ -88,6 +100,19 @@ fn valid_response_with_slot_keys(slot_keys: [serde_json::Value; 3]) -> serde_jso
         "evidence_summary": [],
         "quality": {}
     })
+}
+
+fn interpretation_request() -> serde_json::Value {
+    let public = validate_public_request(&public_payload()).unwrap();
+    let signals = score_calculation(&calculation()).unwrap();
+    build_interpretation_request(&public, &calculation(), &signals).unwrap()
+}
+
+fn golden_response() -> serde_json::Value {
+    serde_json::from_str(include_str!(
+        "golden/horoscope_response_v1_basic_daily_fake.json"
+    ))
+    .unwrap()
 }
 
 #[test]
@@ -174,8 +199,58 @@ fn horoscope_interpretation_request_is_shortlisted_not_raw_dump() {
     let request = build_interpretation_request(&public, &calculation(), &signals).unwrap();
     assert!(request.get("raw_transits").is_none());
     assert!(request.get("all_transits").is_none());
+    assert!(request.get("debug_aspects").is_none());
     assert!(request["main_signals"].as_array().unwrap().len() <= 6);
     assert!(request["evidence"].as_array().unwrap().len() <= 8);
+}
+
+#[test]
+fn horoscope_interpretation_request_contains_slot_shortlists() {
+    let request = interpretation_request();
+    let slots = request["slots"].as_array().unwrap();
+    assert_eq!(slots.len(), 3);
+    assert_eq!(slots[0]["slot_code"], "morning");
+    assert_eq!(slots[0]["slot_label"], "Matin");
+    assert_eq!(slots[0]["specificity"], "specific");
+    assert_eq!(
+        slots[0]["required_evidence_keys"],
+        serde_json::json!(["slot:morning:moon:natal_house:6"])
+    );
+    assert_eq!(slots[1]["slot_label"], "Après-midi");
+    assert_eq!(slots[2]["advice_axis"], "reopen_simple_dialogue");
+}
+
+#[test]
+fn horoscope_each_slot_has_required_evidence() {
+    let request = interpretation_request();
+    let evidence = request["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|item| item["evidence_key"].as_str())
+        .collect::<std::collections::HashSet<_>>();
+    for slot in request["slots"].as_array().unwrap() {
+        assert_eq!(slot["specificity"], "specific");
+        let keys = slot["required_evidence_keys"].as_array().unwrap();
+        assert!(!keys.is_empty());
+        for key in keys {
+            assert!(evidence.contains(key.as_str().unwrap()));
+        }
+    }
+}
+
+#[test]
+fn horoscope_interpretation_request_does_not_contain_raw_transit_dump() {
+    let request = interpretation_request();
+    assert!(request.get("raw_transits").is_none());
+    assert!(request.get("all_transits").is_none());
+    assert!(request.get("debug_aspects").is_none());
+    assert_eq!(request["slots"].as_array().unwrap().len(), 3);
+    assert!(request["slots"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|slot| slot["main_signal_keys"].as_array().unwrap().len() <= 2));
 }
 
 #[test]
@@ -192,14 +267,115 @@ fn horoscope_interpretation_request_matches_golden() {
 
 #[test]
 fn horoscope_response_golden_passes_schema_and_evidence_guard() {
-    let public = validate_public_request(&public_payload()).unwrap();
-    let signals = score_calculation(&calculation()).unwrap();
-    let request = build_interpretation_request(&public, &calculation(), &signals).unwrap();
-    let response: serde_json::Value = serde_json::from_str(include_str!(
-        "golden/horoscope_response_v1_basic_daily_fake.json"
-    ))
-    .unwrap();
+    let request = interpretation_request();
+    let response = golden_response();
     validate_response_evidence(&request, &response).unwrap();
+}
+
+#[test]
+fn horoscope_rejects_repeated_slot_bodies() {
+    let request = interpretation_request();
+    let mut response = golden_response();
+    let repeated = response["slots"][0]["text"].clone();
+    response["slots"][1]["text"] = repeated.clone();
+    response["slots"][2]["text"] = repeated;
+    let err = validate_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().code,
+        astral_llm_domain::GenerationErrorCode::PostSafetyValidationFailed
+    );
+    assert_eq!(err.detail().message, "HOROSCOPE_SLOT_REPETITION_FAILED");
+}
+
+#[test]
+fn horoscope_rejects_day_overview_copied_into_slots() {
+    let request = interpretation_request();
+    let mut response = golden_response();
+    response["slots"][0]["text"] = request["day_overview"]["summary_hint"].clone();
+    let err = validate_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_SLOT_REPETITION_FAILED");
+}
+
+#[test]
+fn horoscope_rejects_generic_signal_wording() {
+    let request = interpretation_request();
+    let mut response = golden_response();
+    response["slots"][0]["text"] = serde_json::json!(
+        "La Lune est presente, mais les signaux du jour invitent a rester concret et nuance."
+    );
+    let err = validate_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_SLOT_TOO_GENERIC");
+}
+
+#[test]
+fn horoscope_rejects_public_slot_codes_in_markdown() {
+    let request = interpretation_request();
+    let mut response = golden_response();
+    response["slots"][0]["title"] = serde_json::json!("Matin [morning]");
+    let err = validate_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_PUBLIC_SLOT_CODE_LEAK");
+}
+
+#[test]
+fn horoscope_applies_french_typography() {
+    let request = interpretation_request();
+    let response = golden_response();
+    validate_response_evidence(&request, &response).unwrap();
+    assert_eq!(response["slots"][1]["title"], "Après-midi");
+    assert!(response["summary"]["title"]
+        .as_str()
+        .unwrap()
+        .contains("journée"));
+}
+
+#[test]
+fn horoscope_requires_distinct_advice_axes() {
+    let request = interpretation_request();
+    let slots = request["slots"].as_array().unwrap();
+    let axes = slots
+        .iter()
+        .filter_map(|slot| slot["advice_axis"].as_str())
+        .collect::<std::collections::HashSet<_>>();
+    assert_eq!(axes.len(), 3);
+}
+
+#[test]
+fn horoscope_fake_writer_uses_slot_specific_evidence() {
+    let request = interpretation_request();
+    let response = golden_response();
+    let slots = response["slots"].as_array().unwrap();
+    for response_slot in slots {
+        let slot_code = response_slot["slot_code"].as_str().unwrap();
+        let request_slot = request["slots"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|slot| slot["slot_code"].as_str() == Some(slot_code))
+            .unwrap();
+        assert_eq!(
+            response_slot["evidence_keys"],
+            request_slot["required_evidence_keys"]
+        );
+    }
+}
+
+#[test]
+fn horoscope_response_quality_flags_are_set() {
+    let response = golden_response();
+    assert_eq!(response["quality"]["evidence_coverage"], 1.0);
+    assert_eq!(response["quality"]["slot_diversity_passed"], true);
+    assert_eq!(response["quality"]["french_typography_passed"], true);
+    assert_eq!(response["quality"]["generic_language_passed"], true);
+}
+
+#[test]
+fn horoscope_slot_without_evidence_requires_fallback_reason() {
+    let mut request = interpretation_request();
+    request["slots"][0]["specificity"] = serde_json::json!("fallback");
+    request["slots"][0]["fallback_reason"] = serde_json::Value::Null;
+    let response = golden_response();
+    let err = validate_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_SLOT_FALLBACK_INVALID");
 }
 
 #[test]

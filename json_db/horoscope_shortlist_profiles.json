@@ -3,16 +3,20 @@
   "structure": {
     "service_code": "string, primary key",
     "max_main_signals": "integer",
+    "max_main_signals_per_slot": "integer",
     "max_dominant_themes": "integer",
     "max_evidence": "integer",
+    "max_required_evidence_per_slot": "integer",
     "min_priority_score": "number"
   },
   "data": [
     {
       "service_code": "horoscope_basic_daily_natal_3_slots",
       "max_main_signals": 6,
+      "max_main_signals_per_slot": 2,
       "max_dominant_themes": 4,
       "max_evidence": 8,
+      "max_required_evidence_per_slot": 2,
       "min_priority_score": 0.5
     }
   ]

@@ -290,7 +290,30 @@ Exemple `GET /v1/jobs/{run_id}` complete :
     "interpretation_request": {},
     "reading": {
       "contract_version": "horoscope_response_v1",
-      "service_code": "horoscope_basic_daily_natal_3_slots"
+      "service_code": "horoscope_basic_daily_natal_3_slots",
+      "summary": {
+        "title": "Une journée à ajuster avec précision",
+        "text": "Résumé court de la tonalité générale."
+      },
+      "slots": [
+        {
+          "slot_code": "morning",
+          "title": "Matin",
+          "theme": "Organisation",
+          "tone": "focused",
+          "text": "Texte public du matin rédigé depuis les preuves du slot.",
+          "advice": "Conseil distinct du matin.",
+          "best_for": ["organization", "routine"],
+          "watch_point": "avoid_opening_too_many_topics",
+          "evidence_keys": ["slot:morning:moon:natal_house:6"]
+        }
+      ],
+      "quality": {
+        "evidence_coverage": 1.0,
+        "slot_diversity_passed": true,
+        "french_typography_passed": true,
+        "generic_language_passed": true
+      }
     }
   }
 }
@@ -300,5 +323,8 @@ Erreurs possibles : `HOROSCOPE_PAYLOAD_INVALID`,
 `HOROSCOPE_NATAL_CHART_REQUIRED`, `HOROSCOPE_CALCULATOR_UNAVAILABLE`,
 `HOROSCOPE_CALCULATION_FAILED`, `HOROSCOPE_SCORING_FAILED`,
 `HOROSCOPE_NO_SIGNIFICANT_SIGNAL`, `HOROSCOPE_EVIDENCE_MISMATCH`,
-`HOROSCOPE_RESPONSE_INVALID`, `SERVICE_NOT_IMPLEMENTED`,
+`HOROSCOPE_RESPONSE_INVALID`, `HOROSCOPE_SLOT_REPETITION_FAILED`,
+`HOROSCOPE_SLOT_TOO_GENERIC`, `HOROSCOPE_SLOT_ASTRO_REFERENCE_MISSING`,
+`HOROSCOPE_PUBLIC_SLOT_CODE_LEAK`, `HOROSCOPE_FRENCH_TYPOGRAPHY_FAILED`,
+`SERVICE_NOT_IMPLEMENTED`,
 `IDEMPOTENCY_CONFLICT`.

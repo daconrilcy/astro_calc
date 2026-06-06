@@ -2,7 +2,7 @@ param(
     [string]$BaseUrl = "http://127.0.0.1:8081",
     [string]$CalculatorUrl = "http://127.0.0.1:8080",
     [string]$ApiKey = "",
-    [string]$IdempotencyKey = "horoscope-basic-daily-fake"
+    [string]$IdempotencyKey = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -14,6 +14,9 @@ $headers = New-AstralAuthHeaders -Service llm
 if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
     $headers["Authorization"] = "Bearer $ApiKey"
     $headers["X-API-Key"] = $ApiKey
+}
+if ([string]::IsNullOrWhiteSpace($IdempotencyKey)) {
+    $IdempotencyKey = "horoscope-basic-daily-slot-based-fake-$([guid]::NewGuid().ToString('N'))"
 }
 $headers["Idempotency-Key"] = $IdempotencyKey
 $calcHeaders = New-AstralAuthHeaders -Service calculator
@@ -56,6 +59,27 @@ for ($i = 0; $i -lt 30; $i++) {
     if ($status.status -eq "completed") {
         if ($status.result.reading.contract_version -ne "horoscope_response_v1") {
             throw "Unexpected horoscope contract version"
+        }
+        if (-not $status.result.interpretation_request.day_overview) {
+            throw "Missing horoscope day_overview in interpretation request"
+        }
+        if (-not $status.result.interpretation_request.slots -or $status.result.interpretation_request.slots.Count -ne 3) {
+            throw "Missing slot-based horoscope interpretation request"
+        }
+        foreach ($slot in $status.result.interpretation_request.slots) {
+            if (-not $slot.required_evidence_keys -or $slot.required_evidence_keys.Count -lt 1) {
+                throw "Slot $($slot.slot_code) missing required_evidence_keys"
+            }
+        }
+        $readingSlots = $status.result.reading.slots
+        if (-not $readingSlots -or $readingSlots.Count -ne 3) {
+            throw "Unexpected horoscope reading slot count"
+        }
+        if ($readingSlots[1].title -ne "Après-midi") {
+            throw "French slot label was not preserved"
+        }
+        if (($readingSlots | ForEach-Object { $_.text }) -match "les signaux du jour invitent") {
+            throw "Generic horoscope wording leaked into fake reading"
         }
         $status | ConvertTo-Json -Depth 20
         exit 0

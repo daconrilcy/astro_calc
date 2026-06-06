@@ -2,11 +2,40 @@
   "name": "horoscope_theme_advice_axes",
   "structure": {
     "theme_code": "string, primary key",
-    "advice_axis": "string"
+    "advice_axis": "string",
+    "avoid_axis": "string",
+    "best_for": "array<string>",
+    "watch_point": "string",
+    "tone_hint": "string",
+    "sort_order": "integer"
   },
   "data": [
-    { "theme_code": "daily_care", "advice_axis": "routine" },
-    { "theme_code": "emotional_boundaries", "advice_axis": "boundaries" },
-    { "theme_code": "supportive_dialogue", "advice_axis": "dialogue" }
+    {
+      "theme_code": "daily_care",
+      "advice_axis": "prioritize_concrete_action",
+      "avoid_axis": "scattered_effort",
+      "best_for": ["organization", "routine"],
+      "watch_point": "avoid_opening_too_many_topics",
+      "tone_hint": "focused",
+      "sort_order": 10
+    },
+    {
+      "theme_code": "emotional_boundaries",
+      "advice_axis": "slow_down_reactive_answers",
+      "avoid_axis": "answering_under_tension",
+      "best_for": ["reformulation", "boundaries"],
+      "watch_point": "avoid_answering_before_the_emotion_settles",
+      "tone_hint": "careful",
+      "sort_order": 20
+    },
+    {
+      "theme_code": "supportive_dialogue",
+      "advice_axis": "reopen_simple_dialogue",
+      "avoid_axis": "overexplaining_the_whole_story",
+      "best_for": ["dialogue", "repair"],
+      "watch_point": "avoid_reopening_every_subject_at_once",
+      "tone_hint": "softer",
+      "sort_order": 30
+    }
   ]
 }

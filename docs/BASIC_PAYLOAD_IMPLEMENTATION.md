@@ -3378,6 +3378,9 @@ Le service horoscope V1 (`horoscope_basic_daily_natal_3_slots`) est cadre dans
 le payload natal/basic existant et consomme un `chart_calculation_id` deja
 calcule.
 
+Le plan de refactor slot-based et les reviews adversariales sont suivis dans
+[`docs/reviews/horoscope_v1/`](reviews/horoscope_v1/INDEX.md).
+
 ## E2E reels Docker dedies (2026-06-06)
 
 Les tests HTTP reels pour une application Docker deja demarree sont regroupes
@@ -3399,3 +3402,8 @@ dans `tests/e2e_real/`.
   `-ReportPath`. Le runner cree aussi un dossier de diagnostics avec transcript
   PowerShell et, en cas d'echec, les derniers logs Docker du worker, des API et
   de PostgreSQL.
+
+Script de consultation manuelle :
+`.\scripts\show_real_horoscope_text.ps1` soumet un vrai job
+`horoscope_basic_daily_natal_3_slots` sur Docker, attend le resultat, affiche les
+textes des slots et ecrit un JSON + un Markdown dans `output/horoscope_real/`.
