@@ -17,6 +17,14 @@ astral_calculator`, `cargo run -p astral_llm_api`, `cargo test -p astral_llm_api
 Ce document decrit l'implementation actuelle du payload moteur route par
 `product_code = "basic"` dans le binaire Rust `astral_calculator`.
 
+## Note horoscope
+
+Le cadrage du futur module horoscope est documente dans
+[`docs/HOROSCOPE_IMPLEMENTATION.md`](HOROSCOPE_IMPLEMENTATION.md). Les
+developpements horoscope doivent s'y referer pour l'architecture, les contrats,
+le scoring, l'orchestration async et les railguards. Ce document Basic ne porte
+que l'articulation historique avec le payload moteur natal/basic.
+
 ## Objectif
 
 Etat courant au 2026-06-04 : le moteur Rust reste dans le perimetre du calcul
