@@ -42,7 +42,9 @@ Manques couverts par ce dossier :
 - `04_horoscope_premium_daily.e2e.ps1` : service async
   `horoscope_premium_daily_local_2h_slots`, avec verification du contrat, du
   payload Premium local, de `timeline[12]`, de `local_chart` et des slots
-  `best/watch`.
+  `best/watch`. Le script produit aussi un JSON complet et un Markdown lisible
+  du texte reellement genere dans `output/horoscope_premium_daily_real/` par
+  defaut, ou dans le dossier fourni via `-OutputDir`.
 - `run_real_e2e.ps1` : lance les scripts dans l'ordre et produit un
   rapport Markdown sous `output/e2e_real_reports/` par defaut.
 

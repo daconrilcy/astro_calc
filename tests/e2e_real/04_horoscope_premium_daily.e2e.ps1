@@ -2,7 +2,8 @@ param(
     [string]$CalculatorUrl = "http://127.0.0.1:8080",
     [string]$LlmUrl = "http://127.0.0.1:8081",
     [int]$ReadyTimeoutSec = 90,
-    [int]$PollTimeoutSec = 300
+    [int]$PollTimeoutSec = 300,
+    [string]$OutputDir = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -11,6 +12,10 @@ $repoRoot = Initialize-E2E
 $calcHeaders = New-AstralAuthHeaders -Service calculator
 $llmHeaders = New-AstralAuthHeaders -Service llm
 $serviceCode = "horoscope_premium_daily_local_2h_slots"
+if ([string]::IsNullOrWhiteSpace($OutputDir)) {
+    $OutputDir = Join-Path $repoRoot "output\horoscope_premium_daily_real"
+}
+New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 
 function Assert-NoTechnicalSlotCode {
     param(
@@ -27,7 +32,166 @@ function Convert-SlotLabelForComparison {
     return ($Label -replace "[^0-9:]", "")
 }
 
+function Add-MarkdownLine {
+    param(
+        [Parameter(Mandatory = $true)]$Lines,
+        [string]$Line = ""
+    )
+    $Lines.Add((Repair-TextEncoding -Text $Line)) | Out-Null
+}
+
+function Repair-TextEncoding {
+    param([string]$Text)
+    if ([string]::IsNullOrEmpty($Text)) {
+        return $Text
+    }
+    try {
+        $needsRepair = $false
+        foreach ($char in $Text.ToCharArray()) {
+            $code = [int][char]$char
+            if ($code -in @(0x00C3, 0x00C2, 0x00E2)) {
+                $needsRepair = $true
+                break
+            }
+        }
+        if (-not $needsRepair) {
+            return $Text
+        }
+        $bytes = New-Object System.Collections.Generic.List[byte]
+        foreach ($char in $Text.ToCharArray()) {
+            $code = [int][char]$char
+            if ($code -gt 255) {
+                return $Text
+            }
+            $bytes.Add([byte]$code) | Out-Null
+        }
+        return [System.Text.Encoding]::UTF8.GetString($bytes.ToArray())
+    } catch {
+        return $Text
+    }
+}
+
+function Convert-PremiumReadingToMarkdown {
+    param(
+        [Parameter(Mandatory = $true)]$Status,
+        [Parameter(Mandatory = $true)]$Reading
+    )
+
+    $lines = New-Object System.Collections.Generic.List[string]
+    Add-MarkdownLine $lines "# Horoscope Premium Daily real E2E"
+    Add-MarkdownLine $lines
+    Add-MarkdownLine $lines "- run_id: $($Status.run_id)"
+    Add-MarkdownLine $lines "- service_code: $($Reading.service_code)"
+    Add-MarkdownLine $lines "- contract_version: $($Reading.contract_version)"
+    Add-MarkdownLine $lines "- period: $($Reading.period.date) / $($Reading.period.timezone)"
+    if ($Reading.period.location_label) {
+        Add-MarkdownLine $lines "- location_label: $($Reading.period.location_label)"
+    }
+    Add-MarkdownLine $lines "- generated_at: $((Get-Date).ToString("s"))"
+    Add-MarkdownLine $lines
+
+    Add-MarkdownLine $lines "## Summary"
+    Add-MarkdownLine $lines
+    Add-MarkdownLine $lines "### $($Reading.summary.title)"
+    Add-MarkdownLine $lines
+    Add-MarkdownLine $lines ([string]$Reading.summary.text)
+    Add-MarkdownLine $lines
+
+    Add-MarkdownLine $lines "## Best slots"
+    Add-MarkdownLine $lines
+    foreach ($slot in @($Reading.best_slots)) {
+        Add-MarkdownLine $lines "### $($slot.slot_label) - $($slot.title)"
+        Add-MarkdownLine $lines
+        Add-MarkdownLine $lines ([string]$slot.reason)
+        if ($slot.best_for) {
+            Add-MarkdownLine $lines
+            Add-MarkdownLine $lines "- best_for: $(@($slot.best_for) -join ', ')"
+        }
+        if ($slot.evidence_keys) {
+            Add-MarkdownLine $lines "- evidence_keys: $(@($slot.evidence_keys) -join ', ')"
+        }
+        Add-MarkdownLine $lines
+    }
+
+    Add-MarkdownLine $lines "## Watch slots"
+    Add-MarkdownLine $lines
+    foreach ($slot in @($Reading.watch_slots)) {
+        Add-MarkdownLine $lines "### $($slot.slot_label) - $($slot.title)"
+        Add-MarkdownLine $lines
+        Add-MarkdownLine $lines ([string]$slot.reason)
+        if ($slot.avoid) {
+            Add-MarkdownLine $lines
+            Add-MarkdownLine $lines "- avoid: $(@($slot.avoid) -join ', ')"
+        }
+        if ($slot.evidence_keys) {
+            Add-MarkdownLine $lines "- evidence_keys: $(@($slot.evidence_keys) -join ', ')"
+        }
+        Add-MarkdownLine $lines
+    }
+
+    Add-MarkdownLine $lines "## Timeline"
+    Add-MarkdownLine $lines
+    foreach ($slot in @($Reading.timeline)) {
+        Add-MarkdownLine $lines "### $($slot.slot_label) - $($slot.title)"
+        Add-MarkdownLine $lines
+        Add-MarkdownLine $lines "- theme: $($slot.theme)"
+        Add-MarkdownLine $lines "- tone: $($slot.tone)"
+        if ($slot.best_for) {
+            Add-MarkdownLine $lines "- best_for: $(@($slot.best_for) -join ', ')"
+        }
+        if ($slot.watch_point) {
+            Add-MarkdownLine $lines "- watch_point: $($slot.watch_point)"
+        }
+        if ($slot.evidence_keys) {
+            Add-MarkdownLine $lines "- evidence_keys: $(@($slot.evidence_keys) -join ', ')"
+        }
+        Add-MarkdownLine $lines
+        Add-MarkdownLine $lines ([string]$slot.text)
+        Add-MarkdownLine $lines
+        Add-MarkdownLine $lines "**Advice:** $($slot.advice)"
+        Add-MarkdownLine $lines
+    }
+
+    Add-MarkdownLine $lines "## Domain sections"
+    Add-MarkdownLine $lines
+    foreach ($section in @($Reading.domain_sections)) {
+        Add-MarkdownLine $lines "### $($section.title)"
+        Add-MarkdownLine $lines
+        Add-MarkdownLine $lines "- domain: $($section.domain)"
+        if ($section.evidence_keys) {
+            Add-MarkdownLine $lines "- evidence_keys: $(@($section.evidence_keys) -join ', ')"
+        }
+        Add-MarkdownLine $lines
+        Add-MarkdownLine $lines ([string]$section.text)
+        Add-MarkdownLine $lines
+    }
+
+    Add-MarkdownLine $lines "## Advice"
+    Add-MarkdownLine $lines
+    Add-MarkdownLine $lines "- main: $($Reading.advice.main)"
+    Add-MarkdownLine $lines "- best_use: $($Reading.advice.best_use)"
+    Add-MarkdownLine $lines "- avoid: $($Reading.advice.avoid)"
+    Add-MarkdownLine $lines
+
+    Add-MarkdownLine $lines "## Evidence summary"
+    Add-MarkdownLine $lines
+    foreach ($evidence in @($Reading.evidence_summary)) {
+        Add-MarkdownLine $lines "- $($evidence.evidence_key) -> $($evidence.theme_code)"
+    }
+    Add-MarkdownLine $lines
+
+    Add-MarkdownLine $lines "## Quality"
+    Add-MarkdownLine $lines
+    foreach ($property in $Reading.quality.PSObject.Properties) {
+        Add-MarkdownLine $lines "- $($property.Name): $($property.Value)"
+    }
+    Add-MarkdownLine $lines
+
+    return ($lines -join [Environment]::NewLine)
+}
+
 Write-Host "=== Real Docker E2E: horoscope premium daily local 2h slots ===" -ForegroundColor Cyan
+Write-Host "Output: $OutputDir"
 Wait-E2EReady -BaseUrl $CalculatorUrl -ServiceName "calculator" -TimeoutSec $ReadyTimeoutSec
 Wait-E2EReady -BaseUrl $LlmUrl -ServiceName "llm" -TimeoutSec $ReadyTimeoutSec
 
@@ -176,5 +340,16 @@ if (-not $reading.domain_sections -or $reading.domain_sections.Count -lt 1) {
     throw "Premium reading missing domain_sections"
 }
 Write-Host "OK Premium reading shape and guards"
+
+$stamp = Get-Date -Format "yyyyMMdd_HHmmss"
+$jsonPath = Join-Path $OutputDir "horoscope_premium_daily_real_$stamp.json"
+$mdPath = Join-Path $OutputDir "horoscope_premium_daily_real_$stamp.md"
+$statusJson = Repair-TextEncoding -Text ($status | ConvertTo-Json -Depth 100)
+$statusJson | Set-Content -LiteralPath $jsonPath -Encoding UTF8
+$markdown = Convert-PremiumReadingToMarkdown -Status $status -Reading $reading
+$markdown | Set-Content -LiteralPath $mdPath -Encoding UTF8
+Write-Host "OK Premium real output document"
+Write-Host "JSON: $jsonPath"
+Write-Host "MD:   $mdPath"
 
 Write-Host "=== Horoscope Premium Daily real E2E PASSED ===" -ForegroundColor Green
