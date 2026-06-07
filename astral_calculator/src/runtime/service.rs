@@ -12,7 +12,9 @@ use crate::engine::{
 };
 use crate::ephemeris::EphemerisEngine;
 use crate::horoscope::{
-    calculate_horoscope_daily_natal, HoroscopeCalculationRequest, HoroscopeCalculationResponse,
+    calculate_horoscope_daily_natal, calculate_horoscope_period_natal, HoroscopeCalculationRequest,
+    HoroscopeCalculationResponse, HoroscopePeriodCalculationRequest,
+    HoroscopePeriodCalculationResponse,
 };
 use crate::idempotency::{advisory_lock_key, idempotency_key, input_hash};
 use crate::llm_projection::resolve_projection_profile;
@@ -129,6 +131,13 @@ where
         request: HoroscopeCalculationRequest,
     ) -> Result<HoroscopeCalculationResponse, RuntimeError> {
         Ok(calculate_horoscope_daily_natal(request))
+    }
+
+    pub async fn calculate_horoscope_period_natal(
+        &self,
+        request: HoroscopePeriodCalculationRequest,
+    ) -> Result<HoroscopePeriodCalculationResponse, RuntimeError> {
+        Ok(calculate_horoscope_period_natal(request))
     }
 
     pub async fn calculate_natal_basic(

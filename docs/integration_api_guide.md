@@ -118,6 +118,7 @@ Respecter `poll_after_ms`. Statut terminal `completed` inclut `result` (envelopp
 | `natal_*_from_payload` | payload pré-calculé | planned |
 | `natal_light`, `natal_premium`, `natal_premium_plus` | full natal | planned (activation progressive) |
 | `horoscope_premium_daily_local_2h_slots` | horoscope quotidien local 12 créneaux | **beta** |
+| `horoscope_basic_next_7_days_natal` | horoscope Basic des 7 prochains jours | **beta** |
 
 ### Horoscope Premium quotidien local
 
@@ -151,6 +152,31 @@ Si `location.label` est absent, la reponse ne doit pas inventer de ville. La
 sortie Premium contient exactement 12 entrees de timeline, ordonnees selon le
 profil horaire public.
 
+### Horoscope Basic 7 prochains jours
+
+Le service period utilise `POST /v1/jobs`. Il requiert un theme natal deja
+calcule via `chart_calculation_id`, une timezone IANA et une `anchor_date`
+interpretee comme date civile locale.
+
+```json
+{
+  "service_code": "horoscope_basic_next_7_days_natal",
+  "payload": {
+    "anchor_date": "2026-06-07",
+    "timezone": "Europe/Paris",
+    "target_language": "fr",
+    "chart_calculation_id": "123",
+    "audience_level": "general"
+  }
+}
+```
+
+La sortie `horoscope_period_response_v1` contient une vue de periode :
+`week_overview`, `key_days`, `best_days`, `watch_days`, `daily_timeline[7]`,
+`domain_sections`, `advice`, `evidence_summary` et `quality`. Le payload public
+ne fournit pas `period_profile_code`, `detail_profile_code` ou
+`scan_profile_code`; ces profils viennent du catalogue service.
+
 ## Mercure (optionnel)
 
 Si `supports_mercure: true` sur le service, s'abonner au topic :
@@ -178,6 +204,8 @@ Voir [contracts/README.md](../contracts/README.md) pour la matrice complète.
 | `manage_integration_services.ps1 -List` | Catalogue en base |
 | `test_integration_jobs_e2e.ps1` | E2E natal_simplified async |
 | `test_natal_from_birth_e2e.ps1` | E2E full natal via jobs |
+| `test_horoscope_period_all.ps1` | Suite fake + contrats horoscope period |
+| `test_horoscope_basic_next_7_days_real_e2e.ps1` | E2E reel optionnel horoscope period |
 
 ## Erreurs fréquentes
 

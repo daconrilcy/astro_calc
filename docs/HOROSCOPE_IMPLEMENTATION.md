@@ -89,6 +89,53 @@ Premium V1 utilise `detail_level = premium_rich` : maximum de detail utile,
 pas payload illimite. Le profil porte `max_words_target = 2500` et
 `max_words_hard_limit = 3200`.
 
+## Decision Period V1
+
+Service Period V1 retenu :
+
+```text
+horoscope_basic_next_7_days_natal
+```
+
+Ce service est un horoscope de periode, pas une concatenation de sept
+horoscopes quotidiens. Le terme contractuel est `period`.
+
+Configuration service :
+
+```text
+period_profile_code = next_7_days
+detail_profile_code = basic_standard
+scan_profile_code = daily_noon_7_days
+```
+
+`astral_time_window` est la source canonique de resolution temporelle. Le module
+horoscope ne recode pas `next_7_days`, `end_exclusive`, la timezone, l'anchor
+policy ou les jours inclus. L'orchestrateur LLM consomme une fenetre resolue,
+construit un `scan_plan`, appelle le calculateur, puis construit les
+`period_events`, le scoring, la projection et la reponse publique.
+
+Payload public V1 :
+
+- `anchor_date` obligatoire, interpretee comme date civile locale dans
+  `timezone` ;
+- `timezone`, `target_language`, `chart_calculation_id` obligatoires ;
+- pas de `birth_data` inline ;
+- le payload public ne peut pas surcharger `period_profile_code`,
+  `detail_profile_code` ou `scan_profile_code`.
+
+Contrats dedies :
+
+- `horoscope_period_natal_request_v1` ;
+- `horoscope_period_calculation_request_v1` ;
+- `horoscope_period_calculation_response_v1` ;
+- `horoscope_period_interpretation_request_v1` ;
+- `horoscope_period_response_v1`.
+
+La reponse publique contient `week_overview`, `key_days`, `best_days`,
+`watch_days`, `daily_timeline[7]`, `domain_sections`, `advice`,
+`evidence_summary` et `quality`. Un meme jour peut etre `key_day` et aussi
+`best_day` ou `watch_day`, mais jamais `best_day` et `watch_day` en meme temps.
+
 Les creneaux Premium sont construits en heure locale depuis `timezone`, puis
 chaque `reference_local_time` est converti en `reference_datetime_utc`. Certains
 creneaux locaux peuvent donc correspondre a la veille ou au lendemain en UTC.

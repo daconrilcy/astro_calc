@@ -1,0 +1,139 @@
+{
+  "contract_version": "horoscope_period_response_v1",
+  "service_code": "horoscope_basic_next_7_days_natal",
+  "period_resolution": {
+    "period_profile_code": "next_7_days",
+    "anchor_date": "2026-06-07",
+    "timezone": "Europe/Paris",
+    "start_datetime_local": "2026-06-07T00:00:00",
+    "end_datetime_local": "2026-06-14T00:00:00",
+    "start_datetime_utc": "2026-06-06T22:00:00+00:00",
+    "end_datetime_utc": "2026-06-13T22:00:00+00:00",
+    "end_exclusive": true,
+    "duration_days": 7,
+    "included_dates": [
+      "2026-06-07",
+      "2026-06-08",
+      "2026-06-09",
+      "2026-06-10",
+      "2026-06-11",
+      "2026-06-12",
+      "2026-06-13"
+    ],
+    "included_days": []
+  },
+  "week_overview": {
+    "title": "Vos 7 prochains jours",
+    "text": "La période se lit comme une progression continue : d'abord clarifier les priorités, puis ajuster les échanges et terminer sur une intégration plus posée.",
+    "trajectory": "Une trajectoire globale relie les jours clés, les appuis et les moments de vigilance."
+  },
+  "key_days": [
+    {
+      "date": "2026-06-07",
+      "title": "Jour clé",
+      "reason": "Dimanche 07/06 ressort par le theme organization.",
+      "evidence_keys": ["period:2026-06-07:2026-06-07:noon:moon:natal_house:6"]
+    }
+  ],
+  "best_days": [
+    {
+      "date": "2026-06-07",
+      "title": "Jour favorable",
+      "reason": "Dimanche 07/06 ressort par le theme organization.",
+      "evidence_keys": ["period:2026-06-07:2026-06-07:noon:moon:natal_house:6"]
+    }
+  ],
+  "watch_days": [
+    {
+      "date": "2026-06-09",
+      "title": "Jour de vigilance",
+      "reason": "Mardi 09/06 ressort par le theme energy.",
+      "evidence_keys": ["period:2026-06-09:2026-06-09:noon:mars:square:natal_moon"]
+    }
+  ],
+  "daily_timeline": [
+    {
+      "date": "2026-06-07",
+      "day_label": "Dimanche 07/06",
+      "theme": "organization",
+      "tone": "focused",
+      "text": "Dimanche 07/06 marque une etape courte autour de organization. L'objectif est de garder le fil de la semaine sans traiter cette journee comme une lecture isolee.",
+      "advice": "Restez concret sur organization et gardez une marge d'ajustement.",
+      "evidence_keys": ["period:2026-06-07:2026-06-07:noon:moon:natal_house:6"]
+    },
+    {
+      "date": "2026-06-08",
+      "day_label": "Lundi 08/06",
+      "theme": "relationship",
+      "tone": "supportive",
+      "text": "Lundi 08/06 marque une etape courte autour de relationship. L'objectif est de garder le fil de la semaine sans traiter cette journee comme une lecture isolee.",
+      "advice": "Restez concret sur relationship et gardez une marge d'ajustement.",
+      "evidence_keys": ["period:2026-06-08:2026-06-08:noon:venus:trine:natal_moon"]
+    },
+    {
+      "date": "2026-06-09",
+      "day_label": "Mardi 09/06",
+      "theme": "energy",
+      "tone": "careful",
+      "text": "Mardi 09/06 marque une etape courte autour de energy. L'objectif est de garder le fil de la semaine sans traiter cette journee comme une lecture isolee.",
+      "advice": "Restez concret sur energy et gardez une marge d'ajustement.",
+      "evidence_keys": ["period:2026-06-09:2026-06-09:noon:mars:square:natal_moon"]
+    },
+    {
+      "date": "2026-06-10",
+      "day_label": "Mercredi 10/06",
+      "theme": "communication",
+      "tone": "supportive",
+      "text": "Mercredi 10/06 marque une etape courte autour de communication. L'objectif est de garder le fil de la semaine sans traiter cette journee comme une lecture isolee.",
+      "advice": "Restez concret sur communication et gardez une marge d'ajustement.",
+      "evidence_keys": ["period:2026-06-10:2026-06-10:noon:mercury:trine:natal_moon"]
+    },
+    {
+      "date": "2026-06-11",
+      "day_label": "Jeudi 11/06",
+      "theme": "organization",
+      "tone": "focused",
+      "text": "Jeudi 11/06 marque une etape courte autour de organization. L'objectif est de garder le fil de la semaine sans traiter cette journee comme une lecture isolee.",
+      "advice": "Restez concret sur organization et gardez une marge d'ajustement.",
+      "evidence_keys": ["period:2026-06-11:2026-06-11:noon:moon:natal_house:6"]
+    },
+    {
+      "date": "2026-06-12",
+      "day_label": "Vendredi 12/06",
+      "theme": "relationship",
+      "tone": "supportive",
+      "text": "Vendredi 12/06 marque une etape courte autour de relationship. L'objectif est de garder le fil de la semaine sans traiter cette journee comme une lecture isolee.",
+      "advice": "Restez concret sur relationship et gardez une marge d'ajustement.",
+      "evidence_keys": ["period:2026-06-12:2026-06-12:noon:venus:trine:natal_moon"]
+    },
+    {
+      "date": "2026-06-13",
+      "day_label": "Samedi 13/06",
+      "theme": "energy",
+      "tone": "careful",
+      "text": "Samedi 13/06 marque une etape courte autour de energy. L'objectif est de garder le fil de la semaine sans traiter cette journee comme une lecture isolee.",
+      "advice": "Restez concret sur energy et gardez une marge d'ajustement.",
+      "evidence_keys": ["period:2026-06-13:2026-06-13:noon:mars:square:natal_moon"]
+    }
+  ],
+  "domain_sections": [
+    {
+      "domain": "organisation",
+      "title": "Organisation",
+      "text": "Installer une progression simple plutôt que multiplier les priorités.",
+      "evidence_keys": ["period:2026-06-07:2026-06-07:noon:moon:natal_house:6"]
+    }
+  ],
+  "advice": {
+    "main": "Avancez par étapes courtes et gardez une trace de ce qui évolue d'un jour à l'autre.",
+    "best_use": "Planifier, prioriser et consolider les échanges importants.",
+    "avoid": "Transformer un signal quotidien en certitude définitive."
+  },
+  "evidence_summary": [],
+  "quality": {
+    "daily_timeline_count": 7,
+    "evidence_guard_passed": true,
+    "best_watch_overlap_passed": true,
+    "period_contract": "basic_next_7_days"
+  }
+}

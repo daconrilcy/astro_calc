@@ -11,6 +11,9 @@
     "requires_timezone": "boolean",
     "requires_inline_birth_data": "boolean",
     "house_system_code": "string|null",
+    "period_profile_code": "string|null, FK -> astral_time_period_profiles.period_profile_code",
+    "detail_profile_code": "string|null, FK -> horoscope_detail_profiles.detail_profile_code",
+    "scan_profile_code": "string|null, FK -> horoscope_scan_profiles.scan_profile_code",
     "detail_level": "string|null",
     "max_words_target": "integer|null",
     "max_words_hard_limit": "integer|null"
@@ -27,6 +30,9 @@
       "requires_timezone": true,
       "requires_inline_birth_data": false,
       "house_system_code": null,
+      "period_profile_code": null,
+      "detail_profile_code": null,
+      "scan_profile_code": null,
       "detail_level": null,
       "max_words_target": null,
       "max_words_hard_limit": null
@@ -42,6 +48,9 @@
       "requires_timezone": true,
       "requires_inline_birth_data": false,
       "house_system_code": null,
+      "period_profile_code": null,
+      "detail_profile_code": null,
+      "scan_profile_code": null,
       "detail_level": null,
       "max_words_target": null,
       "max_words_hard_limit": null
@@ -57,9 +66,30 @@
       "requires_timezone": true,
       "requires_inline_birth_data": false,
       "house_system_code": "placidus",
+      "period_profile_code": null,
+      "detail_profile_code": null,
+      "scan_profile_code": null,
       "detail_level": "premium_rich",
       "max_words_target": 2500,
       "max_words_hard_limit": 3200
+    },
+    {
+      "service_code": "horoscope_basic_next_7_days_natal",
+      "product_level_code": "basic",
+      "shortlist_profile_code": "basic_daily_natal",
+      "time_slot_profile_code": null,
+      "slot_mode": "period_daily_timeline",
+      "requires_natal_chart": true,
+      "requires_location": false,
+      "requires_timezone": true,
+      "requires_inline_birth_data": false,
+      "house_system_code": null,
+      "period_profile_code": "next_7_days",
+      "detail_profile_code": "basic_standard",
+      "scan_profile_code": "daily_noon_7_days",
+      "detail_level": "basic_standard",
+      "max_words_target": 1200,
+      "max_words_hard_limit": 1500
     }
   ]
 }

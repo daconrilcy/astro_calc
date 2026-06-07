@@ -421,6 +421,7 @@ pub fn service_has_v1_orchestrator(service: &IntegrationService) -> bool {
                 || service.service_code == "horoscope_basic_daily_natal_3_slots"
                 || service.service_code == "horoscope_free_daily"
                 || service.service_code == "horoscope_premium_daily_local_2h_slots"
+                || service.service_code == "horoscope_basic_next_7_days_natal"
         }
     }
 }
@@ -503,6 +504,11 @@ fn service_mapping_notes(service: &IntegrationService) -> Vec<&'static str> {
                     "payload = horoscope_premium_daily_local_request_v1",
                     "orchestration: calculator local horoscope facts -> deterministic premium scoring -> structured premium fake horoscope response",
                 ]
+            } else if service.service_code == "horoscope_basic_next_7_days_natal" {
+                vec![
+                    "payload = horoscope_period_natal_request_v1",
+                    "orchestration: time window resolver -> scan plan -> calculator period facts -> deterministic period scoring -> structured period fake horoscope response",
+                ]
             } else {
                 vec![
                     "payload = generate_reading_request_v1",
@@ -526,10 +532,14 @@ fn service_validation_notes(service: &IntegrationService) -> Vec<String> {
     } else if service.service_code == "horoscope_basic_daily_natal_3_slots"
         || service.service_code == "horoscope_free_daily"
         || service.service_code == "horoscope_premium_daily_local_2h_slots"
+        || service.service_code == "horoscope_basic_next_7_days_natal"
     {
         notes.push("chart_calculation_id is required; inline birth_data is out of V1 scope".into());
         if service.service_code == "horoscope_premium_daily_local_2h_slots" {
-            notes.push("location.latitude and location.longitude are required for local chart calculation".into());
+            notes.push(
+                "location.latitude and location.longitude are required for local chart calculation"
+                    .into(),
+            );
         }
     }
     notes

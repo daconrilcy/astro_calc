@@ -44,3 +44,4 @@ astral_llm_domain = { path = "astral_llm/crates/astral_llm_domain" }
 astral_llm_application = { path = "astral_llm/crates/astral_llm_application" }
 astral_llm_providers = { path = "astral_llm/crates/astral_llm_providers" }
 astral_llm_infra = { path = "astral_llm/crates/astral_llm_infra" }
+astral_time_window = { path = "astral_time_window" }

@@ -2,7 +2,9 @@ use astral_calculator::config::{ephemeris_path_from_env, runtime_options_from_en
 use astral_calculator::db::connect_from_env;
 use astral_calculator::engine::AstroEngineRequest;
 use astral_calculator::ephemeris::SwissEphemerisEngine;
-use astral_calculator::horoscope::HoroscopeCalculationRequest;
+use astral_calculator::horoscope::{
+    HoroscopeCalculationRequest, HoroscopePeriodCalculationRequest,
+};
 use astral_calculator::runtime::ChartCalculationRuntimeService;
 use astral_calculator::simplified::AstroSimplifiedNatalRequest;
 use axum::{
@@ -47,6 +49,10 @@ pub fn router(state: AppState) -> Router {
         .route(
             "/v1/calculations/horoscope/daily-natal",
             post(calculate_horoscope_daily_natal),
+        )
+        .route(
+            "/v1/calculations/horoscope/period/natal",
+            post(calculate_horoscope_period_natal),
         )
         .route("/openapi.yaml", get(openapi_spec))
         .with_state(state)
@@ -306,6 +312,73 @@ async fn calculate_horoscope_daily_natal(
                 error!(?errors, "horoscope response failed schema validation");
                 return internal_error(
                     "Engine produced a response that does not match horoscope_calculation_response_v1.",
+                );
+            }
+            Json(response).into_response()
+        }
+        Err(err) => map_runtime_error(err),
+    }
+}
+
+async fn calculate_horoscope_period_natal(
+    State(state): State<AppState>,
+    body: Result<Json<Value>, axum::extract::rejection::JsonRejection>,
+) -> Response {
+    if let Err(details) = ensure_ready(&state.pool).await {
+        return service_not_ready("Calculator is not ready.", details);
+    }
+
+    let Json(payload) = match body {
+        Ok(value) => value,
+        Err(rejection) => return json_rejection(rejection),
+    };
+
+    if let Err(errors) = state
+        .schema_registry
+        .validate("horoscope_period_calculation_request_v1", &payload)
+    {
+        return validation_failed(
+            "Request does not match horoscope_period_calculation_request_v1.",
+            Some(json!({ "errors": errors })),
+        );
+    }
+
+    let request: HoroscopePeriodCalculationRequest = match serde_json::from_value(payload) {
+        Ok(value) => value,
+        Err(err) => {
+            return validation_failed(
+                "Request does not match horoscope_period_calculation_request_v1.",
+                Some(json!({ "errors": [err.to_string()] })),
+            )
+        }
+    };
+
+    if let Err(response) =
+        ensure_horoscope_natal_chart_ready(&state.pool, &request.chart_calculation_id).await
+    {
+        return response;
+    }
+
+    match state
+        .service
+        .calculate_horoscope_period_natal(request)
+        .await
+    {
+        Ok(response) => {
+            let value = match serde_json::to_value(&response) {
+                Ok(v) => v,
+                Err(err) => return internal_error(format!("serialization failed: {err}")),
+            };
+            if let Err(errors) = state
+                .schema_registry
+                .validate("horoscope_period_calculation_response_v1", &value)
+            {
+                error!(
+                    ?errors,
+                    "horoscope period response failed schema validation"
+                );
+                return internal_error(
+                    "Engine produced a response that does not match horoscope_period_calculation_response_v1.",
                 );
             }
             Json(response).into_response()

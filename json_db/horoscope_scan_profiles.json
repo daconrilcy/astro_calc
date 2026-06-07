@@ -1,0 +1,22 @@
+{
+  "name": "horoscope_scan_profiles",
+  "structure": {
+    "scan_profile_code": "string, primary key",
+    "granularity": "string",
+    "reference_time_local": "string",
+    "expected_snapshots_per_day": "integer",
+    "is_enabled": "boolean",
+    "sort_order": "integer",
+    "unique_key": ["scan_profile_code"]
+  },
+  "data": [
+    {
+      "scan_profile_code": "daily_noon_7_days",
+      "granularity": "daily_noon",
+      "reference_time_local": "12:00",
+      "expected_snapshots_per_day": 1,
+      "is_enabled": true,
+      "sort_order": 10
+    }
+  ]
+}

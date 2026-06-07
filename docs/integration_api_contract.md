@@ -474,3 +474,55 @@ Erreurs possibles :
 `HOROSCOPE_PREMIUM_SLOT_EVIDENCE_MISSING`,
 `HOROSCOPE_PREMIUM_CONTRADICTORY_SLOT_CLASSIFICATION`,
 `HOROSCOPE_PUBLIC_SLOT_CODE_LEAK`, `HOROSCOPE_EVIDENCE_MISMATCH`.
+
+### Service `horoscope_basic_next_7_days_natal`
+
+- `availability` : `beta`
+- `payload_contract` : `horoscope_period_natal_request_v1`
+- `calculation_output_contract` : `horoscope_period_calculation_response_v1`
+- `reading_output_contract` : `horoscope_period_response_v1`
+- Endpoint : `POST /v1/jobs`
+
+Ce service est un horoscope de periode Basic personnalise sur theme natal. Il
+utilise `period_profile_code = next_7_days`, `detail_profile_code =
+basic_standard` et `scan_profile_code = daily_noon_7_days` depuis le catalogue.
+Le payload public ne peut pas surcharger ces profils.
+
+Payload minimal :
+
+```json
+{
+  "service_code": "horoscope_basic_next_7_days_natal",
+  "payload": {
+    "anchor_date": "2026-06-07",
+    "timezone": "Europe/Paris",
+    "target_language": "fr",
+    "chart_calculation_id": "123",
+    "audience_level": "general"
+  }
+}
+```
+
+Regles publiques :
+
+- `anchor_date` est une date civile locale interpretee dans `timezone`.
+- `chart_calculation_id`, `anchor_date`, `timezone` et `target_language` sont
+  obligatoires.
+- `birth_data` inline est refuse.
+- La fenetre est resolue par `astral_time_window`.
+- La reponse contient exactement `daily_timeline[7]`, alignee sur
+  `period_resolution.included_dates`.
+- `best_days` et `watch_days` ne peuvent pas se chevaucher.
+
+Erreurs possibles :
+
+`HOROSCOPE_PERIOD_PROFILE_UNSUPPORTED`,
+`HOROSCOPE_PERIOD_ANCHOR_DATE_REQUIRED`,
+`HOROSCOPE_PERIOD_TIMEZONE_REQUIRED`,
+`HOROSCOPE_PERIOD_NATAL_CHART_REQUIRED`,
+`HOROSCOPE_PERIOD_SCAN_PLAN_INVALID`,
+`HOROSCOPE_PERIOD_CALCULATION_FAILED`,
+`HOROSCOPE_PERIOD_EVENT_OUTSIDE_WINDOW`,
+`HOROSCOPE_PERIOD_TECHNICAL_CODE_LEAK`,
+`HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH`,
+`HOROSCOPE_PERIOD_EVIDENCE_MISSING`.

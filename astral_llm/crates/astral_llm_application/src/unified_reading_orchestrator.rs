@@ -9,7 +9,8 @@ use uuid::Uuid;
 use crate::generate_reading_use_case::{GenerateReadingUseCase, UseCaseOutput};
 use crate::horoscope::{
     HoroscopeBasicDailyNatalOrchestrator, HoroscopeFreeDailyOrchestrator,
-    HoroscopePremiumDailyLocalOrchestrator, HOROSCOPE_FREE_DAILY_SERVICE_CODE,
+    HoroscopePeriodNatalOrchestrator, HoroscopePremiumDailyLocalOrchestrator,
+    HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE, HOROSCOPE_FREE_DAILY_SERVICE_CODE,
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE, HOROSCOPE_SERVICE_CODE,
 };
 use crate::integration_job_validator::ValidatedIntegrationJob;
@@ -56,6 +57,7 @@ impl<'a> UnifiedReadingOrchestrator<'a> {
             HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE => {
                 self.run_premium_horoscope(job).await
             }
+            HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE => self.run_period_horoscope(job).await,
             SIMPLIFIED_PROFILE => self.run_simplified(job).await,
             other if other.ends_with("_from_payload") => self.run_from_payload(job).await,
             other if other.starts_with("natal_") => self.run_full_natal(job).await,
@@ -99,6 +101,19 @@ impl<'a> UnifiedReadingOrchestrator<'a> {
         let run_id = Uuid::new_v4().to_string();
         let result =
             HoroscopePremiumDailyLocalOrchestrator::execute(self.calculator, &job.payload).await?;
+        Ok(UnifiedReadingResult {
+            run_id,
+            outcome: UnifiedReadingOutcome::Json(result),
+        })
+    }
+
+    async fn run_period_horoscope(
+        &self,
+        job: &ValidatedIntegrationJob,
+    ) -> Result<UnifiedReadingResult, GenerationError> {
+        let run_id = Uuid::new_v4().to_string();
+        let result =
+            HoroscopePeriodNatalOrchestrator::execute(self.calculator, &job.payload).await?;
         Ok(UnifiedReadingResult {
             run_id,
             outcome: UnifiedReadingOutcome::Json(result),

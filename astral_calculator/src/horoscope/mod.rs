@@ -4,6 +4,8 @@ pub const HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE: &str = "horoscope_basic_dail
 pub const HOROSCOPE_FREE_DAILY_SERVICE_CODE: &str = "horoscope_free_daily";
 pub const HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE: &str =
     "horoscope_premium_daily_local_2h_slots";
+pub const HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE: &str =
+    "horoscope_basic_next_7_days_natal";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct HoroscopeCalculationRequest {
@@ -87,6 +89,57 @@ pub struct HoroscopeTransitFact {
     pub natal_house: Option<i32>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct HoroscopePeriodCalculationRequest {
+    pub contract_version: String,
+    pub service_code: String,
+    pub chart_calculation_id: String,
+    pub period_resolution: serde_json::Value,
+    pub scan_plan: HoroscopeScanPlan,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct HoroscopeScanPlan {
+    pub scan_profile_code: String,
+    pub granularity: String,
+    pub snapshot_count: i32,
+    pub snapshots: Vec<HoroscopeSnapshotRequest>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct HoroscopeSnapshotRequest {
+    pub snapshot_key: String,
+    pub date: String,
+    pub reference_time_local: String,
+    pub reference_datetime_local: String,
+    pub reference_datetime_utc: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct HoroscopePeriodCalculationResponse {
+    pub contract_version: String,
+    pub service_code: String,
+    pub period_resolution: serde_json::Value,
+    pub scan_plan: HoroscopeScanPlan,
+    pub snapshots: Vec<HoroscopePeriodSnapshot>,
+    pub calculation_warnings: Vec<String>,
+    pub evidence_keys: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct HoroscopePeriodSnapshot {
+    pub snapshot_key: String,
+    pub date: String,
+    pub reference_datetime_utc: String,
+    pub sky_snapshot: serde_json::Value,
+    pub moon_context: serde_json::Value,
+    pub transits_to_natal: Vec<HoroscopeTransitFact>,
+    pub current_sky_aspects: Vec<serde_json::Value>,
+    pub natal_house_activations: Vec<serde_json::Value>,
+    #[serde(default)]
+    pub calculation_warnings: Vec<String>,
+}
+
 pub fn calculate_horoscope_daily_natal(
     request: HoroscopeCalculationRequest,
 ) -> HoroscopeCalculationResponse {
@@ -110,6 +163,142 @@ pub fn calculate_horoscope_daily_natal(
         slots,
         calculation_warnings: Vec::new(),
         evidence_keys,
+    }
+}
+
+pub fn calculate_horoscope_period_natal(
+    request: HoroscopePeriodCalculationRequest,
+) -> HoroscopePeriodCalculationResponse {
+    let snapshots = request
+        .scan_plan
+        .snapshots
+        .iter()
+        .enumerate()
+        .map(fake_period_snapshot)
+        .collect::<Vec<_>>();
+    let evidence_keys = snapshots
+        .iter()
+        .flat_map(|snapshot| snapshot.transits_to_natal.iter())
+        .map(|fact| fact.evidence_key.clone())
+        .collect::<Vec<_>>();
+
+    HoroscopePeriodCalculationResponse {
+        contract_version: "horoscope_period_calculation_response_v1".into(),
+        service_code: request.service_code,
+        period_resolution: request.period_resolution,
+        scan_plan: request.scan_plan,
+        snapshots,
+        calculation_warnings: Vec::new(),
+        evidence_keys,
+    }
+}
+
+fn fake_period_snapshot(
+    (index, snapshot): (usize, &HoroscopeSnapshotRequest),
+) -> HoroscopePeriodSnapshot {
+    let themes = [
+        ("organization", "focused", "moon", None, None, Some(6)),
+        (
+            "relationship",
+            "soft",
+            "venus",
+            Some("trine"),
+            Some("natal_mercury"),
+            None,
+        ),
+        (
+            "energy",
+            "careful",
+            "mars",
+            Some("square"),
+            Some("natal_moon"),
+            None,
+        ),
+        (
+            "clarity",
+            "steady",
+            "sun",
+            Some("trine"),
+            Some("natal_saturn"),
+            None,
+        ),
+        (
+            "communication",
+            "mobile",
+            "mercury",
+            Some("conjunction"),
+            Some("natal_venus"),
+            None,
+        ),
+        ("routine", "focused", "moon", None, None, Some(2)),
+        (
+            "integration",
+            "constructive",
+            "jupiter",
+            Some("trine"),
+            Some("natal_sun"),
+            None,
+        ),
+    ];
+    let (theme, tone, object, aspect, target, house) = themes[index % themes.len()];
+    let evidence_key = match (aspect, target, house) {
+        (_, _, Some(house)) => format!(
+            "period:{}:{}:moon:natal_house:{}",
+            snapshot.date, snapshot.snapshot_key, house
+        ),
+        (Some(aspect), Some(target), _) => format!(
+            "period:{}:{}:{}:{}:{}",
+            snapshot.date, snapshot.snapshot_key, object, aspect, target
+        ),
+        _ => format!("period:{}:{}:sky", snapshot.date, snapshot.snapshot_key),
+    };
+
+    HoroscopePeriodSnapshot {
+        snapshot_key: snapshot.snapshot_key.clone(),
+        date: snapshot.date.clone(),
+        reference_datetime_utc: snapshot.reference_datetime_utc.clone(),
+        sky_snapshot: serde_json::json!({
+            "reference_datetime_utc": snapshot.reference_datetime_utc,
+            "visible_objects": ["sun", "moon", "mercury", "venus", "mars", "jupiter"],
+            "zodiacal_reference_system": "tropical"
+        }),
+        moon_context: serde_json::json!({
+            "moon_sign": match index % 4 {
+                0 => "virgo",
+                1 => "libra",
+                2 => "scorpio",
+                _ => "sagittarius",
+            },
+            "natal_house": house.unwrap_or(((index % 12) + 1) as i32),
+            "priority": "period_basic",
+            "theme_code": theme,
+            "tone": tone
+        }),
+        transits_to_natal: vec![HoroscopeTransitFact {
+            evidence_key,
+            fact_type: if house.is_some() {
+                "moon_house_by_day".into()
+            } else {
+                "transit_to_natal".into()
+            },
+            source: "fake_period_calculator_v1".into(),
+            transiting_object: object.into(),
+            natal_target: target.map(str::to_string),
+            aspect: aspect.map(str::to_string),
+            orb_deg: Some(0.6 + (index as f64 * 0.2)),
+            natal_house: house,
+        }],
+        current_sky_aspects: vec![serde_json::json!({
+            "transiting_object": object,
+            "aspect": aspect.unwrap_or("context"),
+            "target": "period_tone",
+            "orb_deg": 1.0
+        })],
+        natal_house_activations: vec![serde_json::json!({
+            "house": house.unwrap_or(((index % 12) + 1) as i32),
+            "activation": theme
+        })],
+        calculation_warnings: Vec::new(),
     }
 }
 
@@ -212,9 +401,12 @@ fn fake_premium_slot(
     slot: &HoroscopeCalculationSlotRequest,
     index: usize,
 ) -> HoroscopeCalculationSlot {
-    let reference_datetime_utc =
-        reference_datetime_utc(&request.period.date, &request.period.timezone, &slot.reference_local_time)
-            .unwrap_or_else(|| "1970-01-01T00:00:00Z".to_string());
+    let reference_datetime_utc = reference_datetime_utc(
+        &request.period.date,
+        &request.period.timezone,
+        &slot.reference_local_time,
+    )
+    .unwrap_or_else(|| "1970-01-01T00:00:00Z".to_string());
     let house_system_code = request
         .house_system_code
         .as_deref()

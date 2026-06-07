@@ -25,6 +25,9 @@ developpements horoscope doivent s'y referer pour l'architecture, les contrats,
 le scoring, l'orchestration async et les railguards. Ce document Basic ne porte
 que l'articulation historique avec le payload moteur natal/basic.
 
+Le service period `horoscope_basic_next_7_days_natal` est egalement documente
+dans `docs/HOROSCOPE_IMPLEMENTATION.md`; ce fichier ne duplique pas son contrat.
+
 ## Objectif
 
 Etat courant au 2026-06-04 : le moteur Rust reste dans le perimetre du calcul

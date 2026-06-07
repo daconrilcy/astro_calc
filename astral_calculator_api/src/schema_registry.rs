@@ -20,13 +20,31 @@ impl SchemaRegistry {
         };
 
         let mappings = [
-            ("astro_engine_request_v1", "astro_engine_request_v1.schema.json"),
-            ("astro_engine_response_v1", "astro_engine_response_v1.schema.json"),
+            (
+                "astro_engine_request_v1",
+                "astro_engine_request_v1.schema.json",
+            ),
+            (
+                "astro_engine_response_v1",
+                "astro_engine_response_v1.schema.json",
+            ),
             ("natal_structured_v13", "natal_structured_v13.schema.json"),
-            ("llm_projection_natal_v1", "llm_projection_natal_v1.schema.json"),
-            ("astro_simplified_natal_request_v1", "astro_simplified_natal_request_v1.schema.json"),
-            ("astro_simplified_natal_response_v1", "astro_simplified_natal_response_v1.schema.json"),
-            ("natal_simplified_structured_v1", "natal_simplified_structured_v1.schema.json"),
+            (
+                "llm_projection_natal_v1",
+                "llm_projection_natal_v1.schema.json",
+            ),
+            (
+                "astro_simplified_natal_request_v1",
+                "astro_simplified_natal_request_v1.schema.json",
+            ),
+            (
+                "astro_simplified_natal_response_v1",
+                "astro_simplified_natal_response_v1.schema.json",
+            ),
+            (
+                "natal_simplified_structured_v1",
+                "natal_simplified_structured_v1.schema.json",
+            ),
             (
                 "llm_projection_natal_simplified_v1",
                 "llm_projection_natal_simplified_v1.schema.json",
@@ -38,6 +56,14 @@ impl SchemaRegistry {
             (
                 "horoscope_calculation_response_v1",
                 "horoscope_calculation_response_v1.schema.json",
+            ),
+            (
+                "horoscope_period_calculation_request_v1",
+                "horoscope_period_calculation_request_v1.schema.json",
+            ),
+            (
+                "horoscope_period_calculation_response_v1",
+                "horoscope_period_calculation_response_v1.schema.json",
             ),
         ];
 

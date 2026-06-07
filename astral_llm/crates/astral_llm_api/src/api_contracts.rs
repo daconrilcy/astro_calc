@@ -23,6 +23,8 @@ pub fn contracts_index() -> Value {
             "horoscope_daily_natal_request_v1": "/v1/schemas/horoscope_daily_natal_request_v1",
             "horoscope_basic_daily_natal_request_v1": "/v1/schemas/horoscope_basic_daily_natal_request_v1",
             "horoscope_premium_daily_local_request_v1": "/v1/schemas/horoscope_premium_daily_local_request_v1",
+            "horoscope_period_natal_request_v1": "/v1/schemas/horoscope_period_natal_request_v1",
+            "horoscope_period_response_v1": "/v1/schemas/horoscope_period_response_v1",
             "horoscope_response_v1": "/v1/schemas/horoscope_response_v1"
         },
         "openapi": "/openapi.yaml"
@@ -48,6 +50,11 @@ pub fn load_published_schema(version: &str) -> Option<Value> {
         "horoscope_premium_daily_local_request_v1" => {
             "horoscope_premium_daily_local_request_v1.schema.json"
         }
+        "horoscope_period_natal_request_v1" => "horoscope_period_natal_request_v1.schema.json",
+        "horoscope_period_interpretation_request_v1" => {
+            "horoscope_period_interpretation_request_v1.schema.json"
+        }
+        "horoscope_period_response_v1" => "horoscope_period_response_v1.schema.json",
         "horoscope_response_v1" => "horoscope_response_v1.schema.json",
         "horoscope_interpretation_request_v1" => "horoscope_interpretation_request_v1.schema.json",
         "horoscope_calculation_request_v1" => {
@@ -55,6 +62,12 @@ pub fn load_published_schema(version: &str) -> Option<Value> {
         }
         "horoscope_calculation_response_v1" => {
             "../calculator/horoscope_calculation_response_v1.schema.json"
+        }
+        "horoscope_period_calculation_request_v1" => {
+            "../calculator/horoscope_period_calculation_request_v1.schema.json"
+        }
+        "horoscope_period_calculation_response_v1" => {
+            "../calculator/horoscope_period_calculation_response_v1.schema.json"
         }
         "astro_simplified_natal_request_v1" => {
             "../calculator/astro_simplified_natal_request_v1.schema.json"

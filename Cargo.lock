@@ -166,6 +166,7 @@ dependencies = [
  "astral_llm_domain",
  "astral_llm_infra",
  "astral_llm_providers",
+ "astral_time_window",
  "chrono",
  "chrono-tz",
  "jsonschema",

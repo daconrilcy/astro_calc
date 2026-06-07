@@ -16,7 +16,8 @@ param(
     [switch]$SkipImport,
     [switch]$SkipCatalogueSubmit,
     [switch]$SkipSmoke,
-    [switch]$RunRustChecks
+    [switch]$RunRustChecks,
+    [switch]$RunRealHoroscopePeriodE2E
 )
 
 $ErrorActionPreference = "Stop"
@@ -145,6 +146,14 @@ try {
         }
         Invoke-Step "Horoscope premium daily full test suite" {
             & (Join-Path $repoRoot "scripts\test_horoscope_premium_daily_all.ps1") -BaseUrl $LlmUrl -CalculatorUrl $CalculatorUrl
+        }
+        Invoke-Step "Horoscope period full test suite" {
+            & (Join-Path $repoRoot "scripts\test_horoscope_period_all.ps1") -BaseUrl $LlmUrl -CalculatorUrl $CalculatorUrl
+        }
+        if ($RunRealHoroscopePeriodE2E) {
+            Invoke-Step "Horoscope period real E2E" {
+                & (Join-Path $repoRoot "scripts\test_horoscope_basic_next_7_days_real_e2e.ps1") -BaseUrl $LlmUrl -CalculatorUrl $CalculatorUrl
+            }
         }
     }
 
