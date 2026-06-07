@@ -402,7 +402,25 @@ if (($bestThemes | Sort-Object -Unique).Count -ne $bestThemes.Count) {
 
 $forbiddenPublicPattern = "period:|natal_|fake_|theme_code|evidence_key|snapshot|transit_exact|transit_active|moon_house_by_day|organization|relationship|energy|clarity|integration|\bfocused\b|\bfocus\b|\bsupportive\b|\bcareful\b|\bactive\b|\bmixed\b|\bfluid\b|\btense\b"
 $forbiddenGuidancePattern = "Personnaliser ce signal|Relier ce signal|Relier ce domaine|rester sur un conseil générique|donne le relief principal|en prose utilisateur|summary_hint|advice_hint|personalization_hint|natal_focus_hint"
+$forbiddenMetaPersonalizationPattern = "plus personnel que générique|conseil générique|ce qui rend le conseil|cette nuance reste liée|avec un écho personnel autour de|secteur personnel activé|adaptez le geste au secteur personnel|la lecture relie|zones personnelles déjà mises en évidence|zones personnelles|zones natales activées|secteurs personnels|thème natal comme fil directeur|le point d'appui concerne"
 $brokenSentencePattern = "(?im)(\b(et|à|de|pour|avec|sans|dans|sur|vers|la|le|les|des|du|au|aux|un|une|ce|cet|cette)\s*[.!?]\s*$|\b(à|de)\s+(la|l')\s*[.!?]\s*$)"
+function Test-BadFrenchColonSpacing {
+    param([AllowEmptyString()][string]$Text)
+    for ($i = 0; $i -lt $Text.Length; $i++) {
+        if ($Text[$i] -ne ':') {
+            continue
+        }
+        $before = if ($i -gt 0) { $Text[$i - 1] } else { [char]0 }
+        $after = if ($i + 1 -lt $Text.Length) { $Text[$i + 1] } else { [char]0 }
+        if ([char]::IsDigit($before) -and [char]::IsDigit($after)) {
+            continue
+        }
+        if (($i -gt 0 -and -not [char]::IsWhiteSpace($before)) -or ($i + 1 -lt $Text.Length -and -not [char]::IsWhiteSpace($after))) {
+            return $true
+        }
+    }
+    return $false
+}
 function Assert-PublicPeriodTextQuality {
     param(
         [Parameter(Mandatory=$true)][AllowEmptyString()][string]$Text,
@@ -414,8 +432,14 @@ function Assert-PublicPeriodTextQuality {
     if ($Text -match $forbiddenGuidancePattern) {
         throw "Internal writer guidance leaked in ${Label}: $Text"
     }
+    if ($Text -match $forbiddenMetaPersonalizationPattern) {
+        throw "Meta personalization language leaked in ${Label}: $Text"
+    }
     if ($Text -match $brokenSentencePattern) {
         throw "Broken sentence detected in ${Label}: $Text"
+    }
+    if (Test-BadFrenchColonSpacing -Text $Text) {
+        throw "French typography colon spacing failed in ${Label}: $Text"
     }
 }
 $toneLabelsPath = Join-Path $repoRoot "json_db\horoscope_tone_labels.json"

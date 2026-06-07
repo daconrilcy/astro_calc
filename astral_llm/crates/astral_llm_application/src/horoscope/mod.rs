@@ -1467,8 +1467,8 @@ fn fake_period_writer_response(request: &Value) -> Result<Value, GenerationError
         "period_resolution": request["period_resolution"],
         "week_overview": {
             "title": "Vos 7 prochains jours",
-            "text": "La période se lit comme une progression continue : d'abord clarifier les priorités, puis ajuster les échanges et terminer sur une intégration plus posée.",
-            "trajectory": "Une trajectoire globale relie les jours clés, les appuis et les zones natales activées."
+            "text": "La période se lit comme une progression continue : d'abord clarifier les priorités dans les relations directes, puis ajuster les échanges et terminer sur une intégration plus posée.",
+            "trajectory": "Une trajectoire globale relie les jours clés, les besoins émotionnels et les choix à consolider."
         },
         "key_days": request["key_days"],
         "best_days": request["best_days"],
@@ -1552,8 +1552,8 @@ fn sanitize_period_week_overview(value: Option<&Value>) -> Value {
         .unwrap_or("Clarifier, ajuster, puis consolider.");
     json!({
         "title": sanitize_period_public_string(value.and_then(|v| v.get("title")).and_then(Value::as_str).unwrap_or("Vue d'ensemble")),
-        "text": sanitize_period_public_string(&ensure_period_personalization_text(text, "La synthèse reste reliée aux zones natales activées cette semaine.")),
-        "trajectory": sanitize_period_public_string(&ensure_period_personalization_text(trajectory, "Le fil de semaine tient compte du thème natal."))
+        "text": sanitize_period_public_string(&ensure_period_personalization_text(text, "Les priorités de la semaine prennent appui sur le thème natal sans perdre leur rythme concret.")),
+        "trajectory": sanitize_period_public_string(&ensure_period_personalization_text(trajectory, "Le mouvement relie les échanges, les appuis émotionnels et les choix à consolider."))
     })
 }
 
@@ -1656,7 +1656,7 @@ fn sanitize_period_daily_timeline(value: Option<&Value>, request: &Value) -> Val
                 "day_label": sanitize_period_public_string(generated.and_then(|day| day.get("day_label")).and_then(Value::as_str).or_else(|| plan.get("day_label").and_then(Value::as_str)).unwrap_or("Jour")),
                 "theme": sanitize_period_public_string(generated.and_then(|day| day.get("theme")).and_then(Value::as_str).unwrap_or(theme)),
                 "tone": generated.and_then(|day| day.get("tone")).and_then(Value::as_str).unwrap_or("concentré"),
-                "text": sanitize_period_public_string(&generated.and_then(|day| day.get("text")).and_then(Value::as_str).map(|text| ensure_period_personalization_text(text, &period_public_personalization_sentence(plan))).unwrap_or(fallback_text)),
+                "text": sanitize_period_public_string(&generated.and_then(|day| day.get("text")).and_then(Value::as_str).map(|text| ensure_period_personalization_text(text, &period_public_interpretive_sentence(plan))).unwrap_or(fallback_text)),
                 "advice": sanitize_period_public_string(generated.and_then(|day| day.get("advice")).and_then(Value::as_str).unwrap_or(&fallback_advice)),
                 "evidence_keys": string_array_value(plan.get("evidence_keys")).unwrap_or_else(|| json!([]))
             })
@@ -1692,7 +1692,7 @@ fn sanitize_period_domain_sections(value: Option<&Value>, request: &Value) -> Va
                 json!({
                     "domain": sanitize_period_public_string(section.get("domain").and_then(Value::as_str).unwrap_or("organisation")),
                     "title": sanitize_period_public_string(section.get("title").and_then(Value::as_str).unwrap_or("Organisation")),
-                    "text": sanitize_period_public_string(&section.get("text").and_then(Value::as_str).map(|text| ensure_period_personalization_text(text, &period_public_domain_personalization_sentence(&section))).unwrap_or_else(|| period_public_domain_text(&section))),
+                    "text": sanitize_period_public_string(&section.get("text").and_then(Value::as_str).map(|text| ensure_period_personalization_text(text, &period_public_domain_interpretive_sentence(&section))).unwrap_or_else(|| period_public_domain_text(&section))),
                     "evidence_keys": string_array_value(section.get("evidence_keys")).unwrap_or_else(|| json!([]))
                 })
             })
@@ -1719,28 +1719,46 @@ fn period_public_day_text(day: &Value, index: usize) -> String {
         .or_else(|| day.get("theme").and_then(Value::as_str))
         .unwrap_or("priorité");
     let focus = period_public_focus_text(day);
-    let movement = match index {
-        0 => "Il s'agit moins de tout contrôler que de poser un premier repère clair.",
-        1 => "Le bon réflexe consiste à préserver le fil installé la veille sans répondre dans la précipitation.",
-        2 => "Une action courte et assumée vaut mieux qu'une dispersion de petits ajustements.",
-        3 => "Ce moment aide à reconnaître ce qui mérite vraiment votre attention.",
-        4 => "La journée gagne à rester simple, avec des mots utiles et des choix lisibles.",
-        5 => "L'appui principal vient d'une priorité réaliste, tenue sans rigidité.",
-        _ => "La fin de période invite à consolider ce qui a déjà trouvé sa place.",
-    };
-    format!(
-        "{day_label} met l'accent sur {theme}, avec un écho personnel autour de {focus}. {movement}"
-    )
+    match period_style_code(day) {
+        "relation" => format!(
+            "{day_label} adoucit le thème {theme} en repartant de {focus}. Une attente ou une parole simple peut détendre l'échange sans chercher un accord de façade."
+        ),
+        "action" => format!(
+            "{day_label} donne du relief au thème {theme}. En partant de {focus}, une action courte vaut mieux qu'une série de réponses dispersées."
+        ),
+        "clarity" => format!(
+            "{day_label} aide à nommer ce qui compte dans le thème {theme}. Avec {focus}, le tri devient plus simple et les choix gagnent en lisibilité."
+        ),
+        "communication" => format!(
+            "{day_label} remet le thème {theme} dans les mots justes. En partant de {focus}, une formulation directe peut éviter plusieurs malentendus."
+        ),
+        "integration" => format!(
+            "{day_label} invite à relier le thème {theme} à ce qui a déjà été compris. En partant de {focus}, il devient plus simple de consolider sans ouvrir trop de nouveaux fronts."
+        ),
+        _ => match index {
+            0 => format!(
+                "{day_label} ouvre la période sur le thème {theme}. À travers {focus}, il s'agit surtout de remettre de l'ordre dans ce qui circule déjà, sans tout contrôler."
+            ),
+            5 => format!(
+                "{day_label} ramène le thème {theme} vers une priorité réaliste. En partant de {focus}, il devient plus facile de choisir ce qui mérite d'être tenu jusqu'au bout."
+            ),
+            _ => format!(
+                "{day_label} recentre le thème {theme}. Avec {focus}, le plus utile consiste à poser un repère clair avant d'élargir le mouvement."
+            ),
+        },
+    }
 }
 
 fn period_public_day_advice(day: &Value) -> String {
-    let theme = day
-        .get("theme_label")
-        .and_then(Value::as_str)
-        .or_else(|| day.get("theme").and_then(Value::as_str))
-        .unwrap_or("cette priorité");
     let focus = period_public_focus_text(day);
-    format!("Choisissez une seule priorité liée à {focus}, puis traitez {theme} par un geste concret et mesuré.")
+    match period_style_code(day) {
+        "relation" => format!("Privilégiez un geste relationnel simple autour de {focus}, sans chercher à traiter tous les sujets."),
+        "action" => format!("Transformez cette priorité en une action vérifiable, puis laissez le reste en attente."),
+        "clarity" => format!("Nommez ce qui compte vraiment pour {focus}, même si la décision reste progressive."),
+        "communication" => format!("Formulez une demande courte et vérifiable, puis écoutez la réponse sans surinterpréter."),
+        "integration" => format!("Reliez ce travail d'intégration à une habitude déjà solide et consolidez-la avant d'ajouter autre chose."),
+        _ => format!("Posez une priorité claire liée à {focus}, puis avancez par un geste mesuré."),
+    }
 }
 
 fn period_public_domain_text(section: &Value) -> String {
@@ -1751,20 +1769,39 @@ fn period_public_domain_text(section: &Value) -> String {
         .unwrap_or("Ce domaine");
     let focus = period_public_focus_text(section);
     format!(
-        "{domain} devient un terrain d'observation concret cette semaine. La nuance personnelle passe par {focus}, ce qui permet de lire les priorités sans les transformer en consignes rigides."
+        "{domain} devient un terrain concret cette semaine. Avec {focus}, la bonne échelle consiste à choisir une priorité lisible, agir sans raideur et garder le fil entre les journées."
     )
 }
 
 fn period_public_personalization_sentence(item: &Value) -> String {
+    period_public_interpretive_sentence(item)
+}
+
+fn period_public_interpretive_sentence(item: &Value) -> String {
     let focus = period_public_focus_text(item);
-    format!(
-        "Cette nuance reste liée à {focus}, ce qui rend le conseil plus personnel que générique."
-    )
+    format!("L'appui personnel vient de {focus}, à utiliser comme repère concret plutôt que comme explication abstraite.")
 }
 
 fn period_public_domain_personalization_sentence(item: &Value) -> String {
+    period_public_domain_interpretive_sentence(item)
+}
+
+fn period_public_domain_interpretive_sentence(item: &Value) -> String {
     let focus = period_public_focus_text(item);
-    format!("Dans ce domaine, la lecture reste ancrée dans {focus}.")
+    format!("Dans ce domaine, {focus} aide à choisir le bon niveau d'engagement.")
+}
+
+fn period_style_code(item: &Value) -> &str {
+    item.get("style_variant_code")
+        .and_then(Value::as_str)
+        .unwrap_or_else(|| match item.get("theme_code").and_then(Value::as_str) {
+            Some("relationship") => "relation",
+            Some("energy") => "action",
+            Some("clarity") => "clarity",
+            Some("communication") => "communication",
+            Some("integration") => "integration",
+            _ => "anchor",
+        })
 }
 
 fn period_public_focus_text(item: &Value) -> String {
@@ -1959,7 +1996,7 @@ fn ensure_period_response_minimum_words(request: &Value, response: &mut Value) {
     if let Some(text) = response.pointer_mut("/week_overview/text") {
         append_period_value_sentence(
             text,
-            "La lecture relie les choix de la semaine aux zones personnelles déjà mises en évidence dans le thème natal.",
+            "La semaine gagne en cohérence quand chaque décision reste reliée aux priorités du thème natal et au rythme déjà engagé.",
         );
     }
     if period_public_word_count(response) >= limits.target_min {
@@ -1986,7 +2023,7 @@ fn ensure_period_response_minimum_words(request: &Value, response: &mut Value) {
                 if let Some(advice) = day.get_mut("advice") {
                     append_period_value_sentence(
                         advice,
-                        "Gardez une formulation simple, mais adaptez le geste au secteur personnel activé.",
+                        "Gardez un geste simple et choisissez une seule suite concrète.",
                     );
                 }
             }
@@ -2040,11 +2077,11 @@ fn trim_period_response_to_hard_limit(
 
     response["week_overview"] = json!({
         "title": "Vos 7 prochains jours",
-        "text": "La semaine garde le thème natal comme fil directeur et met l'accent sur les secteurs personnels les plus activés.",
+        "text": "Vos 7 prochains jours avancent par étapes : remettre de l'ordre, retrouver un appui plus simple, puis consolider ce qui devient clair dans le thème natal.",
         "trajectory": "Le mouvement va des appuis initiaux vers une consolidation plus consciente."
     });
     response["advice"] = json!({
-        "main": "Avancez par étapes et adaptez chaque choix au secteur natal activé.",
+        "main": "Avancez par étapes et gardez une priorité concrète par journée.",
         "best_use": "Utiliser les jours favorables pour poser un geste clair et personnel.",
         "avoid": "Transformer un signal de période en certitude rigide."
     });
@@ -2108,11 +2145,11 @@ fn trim_period_response_to_hard_limit(
 fn trim_period_response_aggressively(request: &Value, response: &mut Value) {
     response["week_overview"] = json!({
         "title": "Vos 7 prochains jours",
-        "text": "Le thème natal sert de repère central pour lire les appuis de la semaine.",
+        "text": "La semaine avance en reliant les échanges, les choix concrets et les priorités du thème natal.",
         "trajectory": "La période progresse vers des choix plus posés et personnels."
     });
     response["advice"] = json!({
-        "main": "Avancez par étapes, avec attention au secteur natal activé.",
+        "main": "Avancez par étapes, avec une priorité concrète à la fois.",
         "best_use": "Choisir un geste utile sur les jours favorables.",
         "avoid": "Forcer une conclusion trop rapide."
     });
@@ -2961,6 +2998,41 @@ fn validate_period_public_text(public_text: &str) -> Result<(), GenerationError>
             json!({ "fragment": fragment }),
         ));
     }
+    if let Some(fragment) = period_lowercase_sentence_start(public_text) {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_BROKEN_SENTENCE",
+            json!({ "fragment": fragment }),
+        ));
+    }
+    for forbidden in [
+        "plus personnel que générique",
+        "conseil générique",
+        "ce qui rend le conseil",
+        "cette nuance reste liée",
+        "avec un écho personnel autour de",
+        "secteur personnel activé",
+        "adaptez le geste au secteur personnel",
+        "la lecture relie",
+        "zones personnelles déjà mises en évidence",
+        "zones personnelles",
+        "zones natales activées",
+        "secteurs personnels",
+        "thème natal comme fil directeur",
+        "le point d'appui concerne",
+    ] {
+        if lower.contains(forbidden) {
+            return Err(quality_error(
+                "HOROSCOPE_PERIOD_META_PERSONALIZATION_LEAK",
+                json!({ "forbidden": forbidden }),
+            ));
+        }
+    }
+    if period_has_bad_french_colon_spacing(public_text) {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_FRENCH_TYPOGRAPHY_FAILED",
+            json!({ "reason": "colon_spacing" }),
+        ));
+    }
     for forbidden in [
         "slot:",
         "slot_",
@@ -3010,6 +3082,28 @@ fn validate_period_public_text(public_text: &str) -> Result<(), GenerationError>
     Ok(())
 }
 
+fn period_has_bad_french_colon_spacing(public_text: &str) -> bool {
+    let chars = public_text.chars().collect::<Vec<_>>();
+    for (index, ch) in chars.iter().enumerate() {
+        if *ch != ':' {
+            continue;
+        }
+        let before = index.checked_sub(1).and_then(|idx| chars.get(idx)).copied();
+        let after = chars.get(index + 1).copied();
+        if before.map(|ch| ch.is_ascii_digit()).unwrap_or(false)
+            && after.map(|ch| ch.is_ascii_digit()).unwrap_or(false)
+        {
+            continue;
+        }
+        if before.map(|ch| !ch.is_whitespace()).unwrap_or(false)
+            || after.map(|ch| !ch.is_whitespace()).unwrap_or(false)
+        {
+            return true;
+        }
+    }
+    false
+}
+
 fn contains_period_theme_instruction(lower: &str) -> bool {
     lower
         .split(['.', '!', '?', '\n'])
@@ -3033,6 +3127,16 @@ fn period_broken_sentence_fragment(public_text: &str) -> Option<String> {
             .join(" ");
         if period_is_broken_sentence_tail(&tail) {
             return Some(tail);
+        }
+    }
+    None
+}
+
+fn period_lowercase_sentence_start(public_text: &str) -> Option<String> {
+    let lower = public_text.to_lowercase();
+    for marker in [". votre", ". vos"] {
+        if let Some(index) = lower.find(marker) {
+            return Some(public_text[index..].chars().take(32).collect::<String>());
         }
     }
     None
@@ -3067,11 +3171,13 @@ fn validate_period_public_personalization(response: &Value) -> Result<(), Genera
             .as_str()
             .unwrap_or("")
     );
-    if count_normalized_phrase(&week_text, "thème natal comme fil directeur") > 1 {
-        return Err(quality_error(
-            "HOROSCOPE_PERIOD_OVERVIEW_REPETITION",
-            json!({ "phrase": "thème natal comme fil directeur" }),
-        ));
+    for phrase in ["thème natal comme fil directeur", "relations directes"] {
+        if count_normalized_phrase(&week_text, phrase) > 1 {
+            return Err(quality_error(
+                "HOROSCOPE_PERIOD_OVERVIEW_REPETITION",
+                json!({ "phrase": phrase }),
+            ));
+        }
     }
     if !period_text_has_personalization(&week_text) {
         return Err(quality_error(
@@ -3134,6 +3240,9 @@ fn validate_period_repeated_vocabulary(public_text: &str) -> Result<(), Generati
         "clarifier",
         "ajuster",
         "intégrer",
+        "met l'accent",
+        "choisissez une seule priorité",
+        "le point d'appui concerne",
     ] {
         let count = lower.matches(phrase).count();
         if count > 2 {

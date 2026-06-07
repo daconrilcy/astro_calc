@@ -192,6 +192,15 @@ Durcissement real E2E period :
   `HOROSCOPE_PERIOD_BROKEN_SENTENCE` bloquent aussi les phrases tronquees par
   post-traitement ; le prompt reel doit parler d'indications internes de
   personnalisation sans demander au provider de recopier les noms de champs ;
+- la prose publique ne doit pas decrire le processus de personnalisation :
+  formulations comme `plus personnel que generique`, `conseil generique`,
+  `cette nuance reste liee`, `avec un echo personnel autour de`,
+  `secteur personnel active`, `la lecture relie`, `zones personnelles`,
+  `zones natales activees`, `theme natal comme fil directeur` ou
+  `le point d'appui concerne` sont bloquees par
+  `HOROSCOPE_PERIOD_META_PERSONALIZATION_LEAK` ; les deux-points
+  publics doivent respecter l'espacement francais via
+  `HOROSCOPE_PERIOD_FRENCH_TYPOGRAPHY_FAILED` ;
 - `domain_sections` contient 2 a 4 domaines distincts selectionnes par score de
   theme, et les `daily_plans` portent un `style_variant_code` avec termes a
   eviter depuis `horoscope_period_style_variants` ;

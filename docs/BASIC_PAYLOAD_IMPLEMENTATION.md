@@ -50,6 +50,10 @@ Les hints internes de personnalisation period (`summary_hint`, `advice_hint`,
 `personalization_hint`, `natal_focus_hint`) ne sont pas du texte public : les
 post-traitements les transforment en prose utilisateur et les guards refusent
 toute fuite d'instruction interne ou phrase tronquee.
+La sortie period publique refuse aussi le meta-discours de personnalisation
+(`conseil generique`, `cette nuance reste liee`, `la lecture relie`,
+`zones natales activees`, `le point d'appui concerne`, etc.) et les deux-points
+sans espacement francais.
 
 ## Objectif
 

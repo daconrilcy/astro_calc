@@ -232,6 +232,14 @@ fn period_response_from_request(request: &serde_json::Value) -> serde_json::Valu
         .enumerate()
         .map(|(index, day)| {
             let theme = day["theme_label"].as_str().unwrap_or("organisation");
+            let focus = match theme {
+                "relations" => "les relations directes",
+                "énergie" => "la manière d'agir",
+                "communication" => "la manière de communiquer",
+                "clarté" => "la manière de penser",
+                "intégration" => "les habitudes à consolider",
+                _ => "la responsabilité concrète",
+            };
             serde_json::json!({
                 "date": day["date"],
                 "day_label": day["day_label"],
@@ -242,8 +250,8 @@ fn period_response_from_request(request: &serde_json::Value) -> serde_json::Valu
                     "active" => "dynamique",
                     _ => "concentré",
                 },
-                "text": format!("Cette journée numéro {} s'inscrit dans une progression de période, garde un lien clair avec {} et s'ancre dans une zone personnelle du thème natal.", index + 1, theme),
-                "advice": format!("Choisir une priorité liée à {} et la traiter sans isoler la journée du reste de la période.", theme),
+                "text": format!("Cette journée numéro {} s'inscrit dans une progression de période, garde un lien clair avec {} et appuie {}.", index + 1, theme, focus),
+                "advice": format!("Choisir une priorité liée à {} et la traiter sans isoler {} du reste de la période.", theme, focus),
                 "evidence_keys": day["evidence_keys"]
             })
         })
@@ -254,8 +262,8 @@ fn period_response_from_request(request: &serde_json::Value) -> serde_json::Valu
         "period_resolution": request["period_resolution"],
         "week_overview": {
             "title": "Vos 7 prochains jours",
-            "text": "La semaine suit une trajectoire globale lisible, avec des appuis, des jours clés et des zones natales activées.",
-            "trajectory": "Relier la progression au thème natal, puis consolider."
+            "text": "La semaine suit une trajectoire globale lisible, avec des appuis, des jours clés et une attention portée aux relations directes.",
+            "trajectory": "La progression aide à consolider la responsabilité concrète et le rythme de travail."
         },
         "key_days": request["key_days"],
         "best_days": request["best_days"],
@@ -265,7 +273,7 @@ fn period_response_from_request(request: &serde_json::Value) -> serde_json::Valu
         "domain_sections": request["domain_sections"].as_array().unwrap().iter().map(|section| serde_json::json!({
             "domain": section["domain"],
             "title": section["title"],
-            "text": "Ce domaine reste relié à une zone personnelle du thème natal, avec une formulation lisible pour l'utilisateur et une priorité concrète pour la semaine.",
+            "text": "Ce domaine reste relié aux relations directes et à la responsabilité concrète, avec un geste précis pour la semaine.",
             "evidence_keys": section["evidence_keys"]
         })).collect::<Vec<_>>(),
         "advice": {
@@ -973,6 +981,17 @@ fn horoscope_period_rejects_broken_sentences() {
 }
 
 #[test]
+fn horoscope_period_rejects_lowercase_sentence_start_after_period() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response["daily_timeline"][0]["text"] = serde_json::json!(
+        "Cette journée garde un lien clair avec les relations directes. votre manière d'avancer doit rester lisible."
+    );
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_BROKEN_SENTENCE");
+}
+
+#[test]
 fn horoscope_period_public_text_does_not_contain_writer_instructions() {
     let request = period_interpretation_request();
     let response = period_response_from_request(&request);
@@ -1017,11 +1036,98 @@ fn horoscope_period_week_overview_is_not_repetitive() {
     let request = period_interpretation_request();
     let mut response = period_response_from_request(&request);
     response["week_overview"]["text"] =
-        serde_json::json!("Le thème natal comme fil directeur donne une lecture personnelle.");
+        serde_json::json!("Les relations directes donnent une lecture personnelle.");
     response["week_overview"]["trajectory"] =
-        serde_json::json!("Le thème natal comme fil directeur soutient la progression.");
+        serde_json::json!("Les relations directes soutiennent la progression.");
     let err = validate_period_response_evidence(&request, &response).unwrap_err();
     assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_OVERVIEW_REPETITION");
+}
+
+#[test]
+fn horoscope_period_rejects_meta_personalization_language() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response["daily_timeline"][0]["text"] = serde_json::json!(
+        "Cette nuance reste liée au thème natal, ce qui rend le conseil plus personnel que générique."
+    );
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_META_PERSONALIZATION_LEAK"
+    );
+}
+
+#[test]
+fn horoscope_period_daily_text_uses_distinct_sentence_patterns() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    for (index, day) in response["daily_timeline"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .take(3)
+        .enumerate()
+    {
+        day["text"] = serde_json::json!(format!(
+            "Ce jour met l'accent sur organisation avec une priorité reliée au thème natal numéro {}.",
+            index + 1
+        ));
+    }
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_REPETITIVE_DAILY_TEXT"
+    );
+}
+
+#[test]
+fn horoscope_period_week_overview_does_not_mention_the_reading_process() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response["week_overview"]["text"] = serde_json::json!(
+        "La lecture relie les choix de la semaine aux zones natales activées dans le thème natal."
+    );
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_META_PERSONALIZATION_LEAK"
+    );
+}
+
+#[test]
+fn horoscope_period_advice_is_not_repeated_template() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    for (index, day) in response["daily_timeline"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .take(3)
+        .enumerate()
+    {
+        day["advice"] = serde_json::json!(format!(
+            "Choisissez une seule priorité liée au thème natal et avancez sans multiplier les sujets numéro {}.",
+            index + 1
+        ));
+    }
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_REPETITIVE_DAILY_TEXT"
+    );
+}
+
+#[test]
+fn horoscope_period_french_typography_colon_spacing() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response["week_overview"]["text"] =
+        serde_json::json!("La semaine avance clairement: le thème natal reste présent.");
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_FRENCH_TYPOGRAPHY_FAILED"
+    );
 }
 
 #[test]
