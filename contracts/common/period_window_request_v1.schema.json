@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://astral-calculation.local/contracts/common/period_window_request_v1.schema.json",
+  "title": "Period Window Request v1",
+  "description": "Resolve a product period profile into a concrete local time window.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["period_profile_code", "anchor_date", "timezone"],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "period_profile_code": { "const": "custom_date_range" }
+        },
+        "required": ["period_profile_code"]
+      },
+      "then": {
+        "required": ["custom_start_date", "custom_end_date"]
+      }
+    }
+  ],
+  "properties": {
+    "period_profile_code": {
+      "type": "string",
+      "minLength": 1
+    },
+    "anchor_date": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "timezone": {
+      "type": "string",
+      "minLength": 1
+    },
+    "custom_start_date": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "custom_end_date": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    }
+  }
+}

@@ -3434,3 +3434,32 @@ Script de consultation manuelle :
 `.\scripts\show_real_horoscope_text.ps1` soumet un vrai job
 `horoscope_basic_daily_natal_3_slots` sur Docker, attend le resultat, affiche les
 textes des slots et ecrit un JSON + un Markdown dans `output/horoscope_real/`.
+
+## Utilitaire fenetre temporelle (2026-06-07)
+
+La crate workspace `astral_time_window` fournit le module partageable
+`time_window` pour transformer une intention produit en fenetre locale concrete
+a fin exclusive.
+
+- Types publics : `PeriodWindowRequest`, `ResolvedPeriodWindow`,
+  `PeriodProfileDefinition`, `PeriodWindowResolver`, `PeriodWindowError`.
+- Source canonique des profils : `json_db/astral_time_period_profiles.json`
+  (`day`, `next_7_days`, `next_14_days`, semaines ISO et `custom_date_range`).
+- La crate ne lit pas PostgreSQL directement : les definitions sont injectees
+  dans le resolver par la couche appelante apres chargement DB ou fixture.
+- Contrats publics : `contracts/common/period_window_request_v1.schema.json` et
+  `contracts/common/period_window_response_v1.schema.json`, references dans
+  `contracts/versions.json`.
+- Sortie normalisee : `start_datetime_local`, `end_datetime_local`, `timezone`,
+  `duration_days`, `end_exclusive = true`, avec `included_days` pour les profils
+  semaine/workweek.
+
+Regles principales : `next_N_days` inclut la date d'ancrage et termine a J+N a
+00:00 locale ; les semaines utilisent le lundi ISO ; `custom_date_range` recoit
+des dates inclusives et retourne une fin exclusive au lendemain de
+`custom_end_date`.
+
+Tests : `cargo test -p astral_time_window` ou
+`.\scripts\test_time_window_service.ps1`. Le script est aussi appele par
+`.\scripts\docker_update_integration_stack.ps1` dans la phase smoke, sauf avec
+`-SkipSmoke`.

@@ -134,6 +134,9 @@ try {
     }
 
     if (-not $SkipSmoke) {
+        Invoke-Step "Time window utility service smoke" {
+            & (Join-Path $repoRoot "scripts\test_time_window_service.ps1")
+        }
         Invoke-Step "Integration jobs E2E smoke" {
             & (Join-Path $repoRoot "scripts\test_integration_jobs_e2e.ps1") -LlmBase $LlmUrl
         }

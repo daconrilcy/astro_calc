@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://astral-calculation.local/contracts/common/period_window_response_v1.schema.json",
+  "title": "Period Window Response v1",
+  "description": "Concrete local time window resolved from a product period profile.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "start_datetime_local",
+    "end_datetime_local",
+    "timezone",
+    "duration_days",
+    "end_exclusive"
+  ],
+  "properties": {
+    "start_datetime_local": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}$"
+    },
+    "end_datetime_local": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}$"
+    },
+    "timezone": {
+      "type": "string",
+      "minLength": 1
+    },
+    "duration_days": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "end_exclusive": {
+      "const": true
+    },
+    "included_days": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "monday",
+          "tuesday",
+          "wednesday",
+          "thursday",
+          "friday",
+          "saturday",
+          "sunday"
+        ]
+      },
+      "uniqueItems": true
+    }
+  }
+}

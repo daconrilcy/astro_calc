@@ -1,0 +1,78 @@
+{
+  "name": "astral_time_period_profiles",
+  "structure": {
+    "period_profile_code": "string",
+    "resolution_strategy": "string",
+    "duration_days": "integer",
+    "week_offset": "integer",
+    "included_days": "array",
+    "is_enabled": "boolean",
+    "sort_order": "integer",
+    "unique_key": ["period_profile_code"]
+  },
+  "data": [
+    {
+      "period_profile_code": "day",
+      "resolution_strategy": "anchor_day",
+      "duration_days": 1,
+      "week_offset": null,
+      "included_days": [],
+      "is_enabled": true,
+      "sort_order": 10
+    },
+    {
+      "period_profile_code": "next_7_days",
+      "resolution_strategy": "anchor_forward_days",
+      "duration_days": 7,
+      "week_offset": null,
+      "included_days": [],
+      "is_enabled": true,
+      "sort_order": 20
+    },
+    {
+      "period_profile_code": "next_14_days",
+      "resolution_strategy": "anchor_forward_days",
+      "duration_days": 14,
+      "week_offset": null,
+      "included_days": [],
+      "is_enabled": true,
+      "sort_order": 30
+    },
+    {
+      "period_profile_code": "current_week_monday_sunday",
+      "resolution_strategy": "iso_week",
+      "duration_days": 7,
+      "week_offset": 0,
+      "included_days": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
+      "is_enabled": true,
+      "sort_order": 40
+    },
+    {
+      "period_profile_code": "current_workweek_monday_friday",
+      "resolution_strategy": "iso_workweek",
+      "duration_days": 5,
+      "week_offset": 0,
+      "included_days": ["monday", "tuesday", "wednesday", "thursday", "friday"],
+      "is_enabled": true,
+      "sort_order": 50
+    },
+    {
+      "period_profile_code": "next_workweek_monday_friday",
+      "resolution_strategy": "iso_workweek",
+      "duration_days": 5,
+      "week_offset": 1,
+      "included_days": ["monday", "tuesday", "wednesday", "thursday", "friday"],
+      "is_enabled": true,
+      "sort_order": 60
+    },
+    {
+      "period_profile_code": "custom_date_range",
+      "resolution_strategy": "custom_date_range",
+      "duration_days": null,
+      "week_offset": null,
+      "included_days": [],
+      "is_enabled": true,
+      "sort_order": 70
+    }
+  ]
+}

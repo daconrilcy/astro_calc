@@ -1,0 +1,18 @@
+[package]
+name = "astral_time_window"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+chrono.workspace = true
+chrono-tz = "0.10"
+serde.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+jsonschema.workspace = true
+serde_json.workspace = true
+
+[[test]]
+name = "time_window_tests"
+path = "../tests/time_window_tests.rs"
