@@ -242,7 +242,7 @@ fn period_response_from_request(request: &serde_json::Value) -> serde_json::Valu
                     "active" => "dynamique",
                     _ => "concentré",
                 },
-                "text": format!("Cette journée numéro {} s'inscrit dans une progression de période et garde un lien clair avec {}.", index + 1, theme),
+                "text": format!("Cette journée numéro {} s'inscrit dans une progression de période, garde un lien clair avec {} et s'ancre dans le thème natal.", index + 1, theme),
                 "advice": day["advice_hint"],
                 "evidence_keys": day["evidence_keys"]
             })
@@ -254,17 +254,18 @@ fn period_response_from_request(request: &serde_json::Value) -> serde_json::Valu
         "period_resolution": request["period_resolution"],
         "week_overview": {
             "title": "Vos 7 prochains jours",
-            "text": "La semaine suit une trajectoire globale lisible, avec des appuis, des jours clés et quelques points de vigilance.",
-            "trajectory": "Clarifier, ajuster, consolider."
+            "text": "La semaine suit une trajectoire globale lisible, avec des appuis, des jours clés et des zones natales activées.",
+            "trajectory": "Relier la progression au thème natal, puis consolider."
         },
         "key_days": request["key_days"],
         "best_days": request["best_days"],
         "watch_days": request["watch_days"],
+        "watch_summary": request["watch_summary_plan"],
         "daily_timeline": timeline,
         "domain_sections": request["domain_sections"].as_array().unwrap().iter().map(|section| serde_json::json!({
             "domain": section["domain"],
             "title": section["title"],
-            "text": section["focus"],
+            "text": format!("{} {}", section["focus"].as_str().unwrap(), section["natal_focus_hint"].as_str().unwrap()),
             "evidence_keys": section["evidence_keys"]
         })).collect::<Vec<_>>(),
         "advice": {
@@ -958,6 +959,182 @@ fn horoscope_period_watch_days_created_from_valid_tension_event() {
 }
 
 #[test]
+fn horoscope_period_event_scores_are_discriminating() {
+    let request = period_interpretation_request();
+    let scores = request["period_events"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|event| event["score"].as_f64())
+        .map(|score| format!("{score:.2}"))
+        .collect::<std::collections::HashSet<_>>();
+    assert!(
+        scores.len() > 1,
+        "period event scores should not be flattened to a single value"
+    );
+    for event in request["period_events"].as_array().unwrap() {
+        let score = event["score"].as_f64().unwrap();
+        assert!(score > 0.0 && score <= 1.0);
+    }
+}
+
+#[test]
+fn horoscope_period_event_scores_are_sorted_desc() {
+    let request = period_interpretation_request();
+    let scores = request["period_events"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|event| event["score"].as_f64())
+        .collect::<Vec<_>>();
+    for window in scores.windows(2) {
+        assert!(
+            window[0] >= window[1],
+            "period events must be sorted by score desc: {scores:?}"
+        );
+    }
+}
+
+#[test]
+fn horoscope_period_key_days_respect_score_threshold_and_max_two() {
+    let request = period_interpretation_request();
+    let key_days = request["key_days"].as_array().unwrap();
+    assert!(key_days.len() <= 2);
+    let events = request["period_events"].as_array().unwrap();
+    let top_score = events[0]["score"].as_f64().unwrap();
+    for day in key_days {
+        let date = day["date"].as_str().unwrap();
+        let score = events
+            .iter()
+            .find(|event| event["date"].as_str() == Some(date))
+            .unwrap()["score"]
+            .as_f64()
+            .unwrap();
+        assert!(score >= 0.60);
+        assert!(score >= top_score - 0.08);
+    }
+}
+
+#[test]
+fn horoscope_period_key_days_empty_when_no_clear_peak() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let mut calculation = period_calculation();
+    let objects = [
+        ("venus", "natal_moon"),
+        ("mars", "natal_mercury"),
+        ("mercury", "natal_mars"),
+        ("jupiter", "natal_saturn"),
+        ("sun", "natal_venus"),
+        ("saturn", "natal_saturn"),
+        ("moon", "natal_moon"),
+    ];
+    for (index, snapshot) in calculation["snapshots"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .enumerate()
+    {
+        let date = snapshot["date"].as_str().unwrap().to_string();
+        let snapshot_key = snapshot["snapshot_key"].as_str().unwrap().to_string();
+        let (object, target) = objects[index % objects.len()];
+        let fact = &mut snapshot["transits_to_natal"][0];
+        fact["fact_type"] = serde_json::json!("transit_context");
+        fact["aspect"] = serde_json::Value::Null;
+        fact["orb_deg"] = serde_json::Value::Null;
+        fact["transiting_object"] = serde_json::json!(object);
+        fact["natal_target"] = serde_json::json!(target);
+        fact["evidence_key"] = serde_json::json!(format!(
+            "period:{}:{}:{}:context:{}",
+            date, snapshot_key, object, target
+        ));
+    }
+    let request = build_period_interpretation_request(&public, &calculation).unwrap();
+    assert!(request["key_days"].as_array().unwrap().is_empty());
+}
+
+#[test]
+fn horoscope_period_key_days_use_theme_rarity_as_tiebreaker() {
+    let request = period_interpretation_request();
+    let key_days = request["key_days"].as_array().unwrap();
+    assert!(key_days.len() <= 2);
+    let themes = key_days
+        .iter()
+        .filter_map(|day| {
+            let key = day["evidence_keys"][0].as_str()?;
+            request["period_events"]
+                .as_array()?
+                .iter()
+                .find(|event| event["evidence_keys"][0].as_str() == Some(key))?["theme_code"]
+                .as_str()
+        })
+        .collect::<Vec<_>>();
+    assert!(themes.len() <= 2);
+}
+
+#[test]
+fn horoscope_period_events_expose_aspect_for_tension_selection() {
+    let request = period_interpretation_request();
+    let mars_event = request["period_events"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|event| {
+            event["evidence_keys"][0]
+                .as_str()
+                .unwrap()
+                .contains(":mars:square:")
+        })
+        .unwrap();
+    assert_eq!(mars_event["aspect"], "square");
+    assert_eq!(mars_event["tone"], "careful");
+}
+
+#[test]
+fn horoscope_period_rejects_calculation_without_events() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let mut calculation = period_calculation();
+    for snapshot in calculation["snapshots"].as_array_mut().unwrap() {
+        snapshot["transits_to_natal"] = serde_json::json!([]);
+    }
+    let err = build_period_interpretation_request(&public, &calculation).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_EVIDENCE_MISSING");
+}
+
+#[test]
+fn horoscope_period_no_tension_has_empty_watch_days_and_none_summary() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let mut calculation = period_calculation();
+    for snapshot in calculation["snapshots"].as_array_mut().unwrap() {
+        let date = snapshot["date"].as_str().unwrap().to_string();
+        let snapshot_key = snapshot["snapshot_key"].as_str().unwrap().to_string();
+        let fact = &mut snapshot["transits_to_natal"][0];
+        if fact["fact_type"] == "transit_to_natal" {
+            let object = fact["transiting_object"].as_str().unwrap().to_string();
+            fact["aspect"] = serde_json::json!("trine");
+            fact["evidence_key"] = serde_json::json!(format!(
+                "period:{}:{}:{}:trine:natal_moon",
+                date, snapshot_key, object
+            ));
+        }
+    }
+    let request = build_period_interpretation_request(&public, &calculation).unwrap();
+    let watch_days = request["watch_days"].as_array().unwrap();
+    assert!(watch_days.is_empty());
+    assert_eq!(request["watch_summary_plan"]["status"], "none");
+    assert_eq!(
+        request["watch_summary_plan"]["text"],
+        "Aucun point de vigilance particulier ne ressort cette semaine."
+    );
+}
+
+#[test]
+fn horoscope_period_valid_tension_has_watch_day_and_active_summary() {
+    let request = period_interpretation_request();
+    assert!(!request["watch_days"].as_array().unwrap().is_empty());
+    assert_eq!(request["watch_summary_plan"]["status"], "active");
+}
+
+#[test]
 fn horoscope_period_best_days_do_not_overlap_watch_days_after_tension_selection() {
     let request = period_interpretation_request();
     let best = request["best_days"]
@@ -974,6 +1151,200 @@ fn horoscope_period_best_days_do_not_overlap_watch_days_after_tension_selection(
     {
         assert!(!best.contains(date), "watch day {date} overlaps best_days");
     }
+}
+
+#[test]
+fn horoscope_period_best_days_use_distinct_themes() {
+    let request = period_interpretation_request();
+    let mut themes = std::collections::HashSet::new();
+    for day in request["best_days"].as_array().unwrap() {
+        let key = day["evidence_keys"][0].as_str().unwrap();
+        let theme = request["period_events"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|event| event["evidence_keys"][0].as_str() == Some(key))
+            .unwrap()["theme_code"]
+            .as_str()
+            .unwrap();
+        assert!(themes.insert(theme.to_string()));
+    }
+}
+
+#[test]
+fn horoscope_period_best_days_do_not_duplicate_key_days() {
+    let request = period_interpretation_request();
+    let key_dates = request["key_days"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|day| day["date"].as_str())
+        .collect::<std::collections::HashSet<_>>();
+    for date in request["best_days"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|day| day["date"].as_str())
+    {
+        assert!(!key_dates.contains(date));
+    }
+}
+
+#[test]
+fn horoscope_period_response_rejects_best_day_overlapping_key_day() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    if response["key_days"].as_array().unwrap().is_empty() {
+        response["key_days"] = serde_json::json!([{
+            "date": "2026-06-07",
+            "title": "Jour clé",
+            "reason": "Dimanche 07/06 ressort par le thème organisation.",
+            "evidence_keys": ["period:2026-06-07:2026-06-07:noon:moon:natal_house:7"],
+            "fallback_reason": null
+        }]);
+    }
+    response["best_days"][0]["date"] = response["key_days"][0]["date"].clone();
+    response["best_days"][0]["evidence_keys"] = response["key_days"][0]["evidence_keys"].clone();
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_KEY_DAYS_MISSING");
+}
+
+#[test]
+fn horoscope_period_daily_plans_have_diverse_internal_tones() {
+    let request = period_interpretation_request();
+    let tones = request["daily_plans"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|day| day["tone"].as_str())
+        .collect::<std::collections::HashSet<_>>();
+    assert!(tones.len() >= 2, "expected diversified internal tones");
+    assert!(tones.contains("supportive"));
+    assert!(tones.contains("careful"));
+}
+
+#[test]
+fn horoscope_period_evidence_contains_natal_personalization_hints() {
+    let request = period_interpretation_request();
+    for item in request["evidence"].as_array().unwrap() {
+        assert!(!item["natal_focus_label"].as_str().unwrap().is_empty());
+        assert!(!item["natal_focus_hint"].as_str().unwrap().is_empty());
+        assert!(!item["personalization_hint"].as_str().unwrap().is_empty());
+    }
+}
+
+#[test]
+fn horoscope_period_domain_sections_cover_two_to_four_scored_themes() {
+    let request = period_interpretation_request();
+    let domains = request["domain_sections"].as_array().unwrap();
+    assert!((2..=4).contains(&domains.len()));
+    let mut seen = std::collections::HashSet::new();
+    for section in domains {
+        assert!(seen.insert(section["domain"].as_str().unwrap().to_string()));
+        assert!(!section["personalization_hint"].as_str().unwrap().is_empty());
+    }
+}
+
+#[test]
+fn horoscope_period_response_rejects_duplicate_domain_sections() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response["domain_sections"][1]["domain"] = response["domain_sections"][0]["domain"].clone();
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_EVIDENCE_MISSING");
+}
+
+#[test]
+fn horoscope_period_day_markers_use_null_fallback_reason_without_fallback() {
+    let request = period_interpretation_request();
+    for marker in request["key_days"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .chain(request["best_days"].as_array().unwrap())
+        .chain(request["watch_days"].as_array().unwrap())
+    {
+        assert_ne!(marker["fallback_reason"], "");
+        if marker["title"] != "Jour de vigilance douce" {
+            assert!(marker["fallback_reason"].is_null());
+        }
+    }
+}
+
+#[test]
+fn horoscope_period_response_rejects_empty_fallback_reason() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response["key_days"][0]["fallback_reason"] = serde_json::json!("");
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_EVIDENCE_MISSING");
+}
+
+#[test]
+fn horoscope_period_public_response_requires_natal_personalization() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    for (index, day) in response["daily_timeline"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .enumerate()
+    {
+        day["text"] = serde_json::json!(format!(
+            "Cette journée avance dans une progression générale numéro {}.",
+            index + 1
+        ));
+    }
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_EVIDENCE_MISSING");
+}
+
+#[test]
+fn horoscope_period_rejects_repeated_period_vocabulary() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    for day in response["daily_timeline"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .take(3)
+    {
+        day["text"] = serde_json::json!(
+            "Restez concret dans cette journée, avec une nuance reliée au thème natal."
+        );
+    }
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_REPETITIVE_DAILY_TEXT"
+    );
+}
+
+#[test]
+fn horoscope_period_context_facts_do_not_expose_high_orb() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let mut calculation = period_calculation();
+    calculation["snapshots"][1]["transits_to_natal"][0]["fact_type"] =
+        serde_json::json!("transit_context");
+    calculation["snapshots"][1]["transits_to_natal"][0]["aspect"] = serde_json::Value::Null;
+    calculation["snapshots"][1]["transits_to_natal"][0]["orb_deg"] = serde_json::json!(8.4);
+    calculation["snapshots"][1]["transits_to_natal"][0]["evidence_key"] =
+        serde_json::json!("period:2026-06-08:2026-06-08:noon:venus:context:natal_moon");
+    let request = build_period_interpretation_request(&public, &calculation).unwrap();
+    let evidence = request["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|item| item["fact_type"] == "transit_context")
+        .unwrap();
+    assert!(evidence["orb_deg"].is_null());
+    let event = request["period_events"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|item| item["evidence_keys"][0] == evidence["evidence_key"])
+        .unwrap();
+    assert!(event["score"].as_f64().unwrap() < 0.7);
 }
 
 #[test]

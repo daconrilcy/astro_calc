@@ -309,17 +309,41 @@ foreach ($evidence in @($interpretation.evidence)) {
     [void]$allowedEvidenceKeys.Add([string]$evidence.evidence_key)
 }
 
+$internalTones = @($interpretation.daily_plans | ForEach-Object { [string]$_.tone } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique)
+if ($internalTones.Count -lt 2) {
+    throw "Real period interpretation should expose at least two distinct internal daily tones, got: $($internalTones -join ', ')"
+}
+
 $validTensionDates = New-Object System.Collections.Generic.HashSet[string]
+$eventScores = @()
+$previousScore = $null
 foreach ($event in @($interpretation.period_events)) {
     $tone = [string]$event.tone
     $aspect = [string]$event.aspect
     $date = [string]$event.date
+    $score = [double]$event.score
+    if ($score -le 0.0 -or $score -gt 1.0) {
+        throw "Period event score out of range for $date`: $score"
+    }
+    if ($null -ne $previousScore -and $score -gt $previousScore) {
+        throw "Period events are not sorted by score desc: $score after $previousScore"
+    }
+    $previousScore = $score
+    $eventScores += ([Math]::Round($score, 2))
     if ($tone -eq "careful" -or $aspect -in @("square", "opposition")) {
         [void]$validTensionDates.Add($date)
     }
 }
+if (($eventScores | Sort-Object -Unique).Count -lt 2) {
+    throw "Period event scores are not discriminating: $($eventScores -join ', ')"
+}
 foreach ($snapshot in @($calculation.snapshots)) {
     foreach ($fact in @($snapshot.transits_to_natal)) {
+        $aspectValue = [string]$fact.aspect
+        $isContextFact = $fact.fact_type -in @("transit_context", "moon_house_by_day") -or [string]::IsNullOrWhiteSpace($aspectValue)
+        if ($isContextFact -and $null -ne $fact.orb_deg) {
+            throw "Context period fact exposes orb_deg: $($snapshot.date) $($fact.fact_type) $($fact.transiting_object) orb=$($fact.orb_deg)"
+        }
         if ($fact.fact_type -eq "transit_to_natal" -and -not [string]::IsNullOrWhiteSpace([string]$fact.aspect)) {
             $orb = [double]$fact.orb_deg
             if ($orb -gt 6.0) {
@@ -330,11 +354,26 @@ foreach ($snapshot in @($calculation.snapshots)) {
             }
         }
     }
+    foreach ($skyAspect in @($snapshot.current_sky_aspects)) {
+        if ([string]$skyAspect.aspect -eq "context" -and $null -ne $skyAspect.orb_deg) {
+            throw "Context current_sky_aspects entry exposes orb_deg: $($snapshot.date) orb=$($skyAspect.orb_deg)"
+        }
+    }
+}
+$readingWatchDays = @($reading.watch_days)
+$watchSummaryStatus = [string]$reading.watch_summary.status
+if ($validTensionDates.Count -eq 0) {
+    if ($readingWatchDays.Count -ne 0 -or $watchSummaryStatus -ne "none") {
+        throw "No valid period tension should expose empty watch_days and watch_summary.status=none"
+    }
 }
 if ($validTensionDates.Count -gt 0) {
-    $watchDates = @($reading.watch_days | ForEach-Object { [string]$_.date })
+    $watchDates = @($readingWatchDays | ForEach-Object { [string]$_.date })
     if ($watchDates.Count -lt 1) {
         throw "Valid period tension exists but reading.watch_days is empty"
+    }
+    if ($watchSummaryStatus -ne "active") {
+        throw "Valid period tension must expose watch_summary.status=active"
     }
     foreach ($date in $validTensionDates) {
         if ($watchDates -contains $date) {
@@ -345,6 +384,20 @@ if ($validTensionDates.Count -gt 0) {
             break
         }
     }
+}
+if (@($reading.key_days).Count -gt 2) {
+    throw "Real period key_days must contain at most 2 entries"
+}
+$keyDates = @($reading.key_days | ForEach-Object { [string]$_.date })
+$bestDatesForOverlap = @($reading.best_days | ForEach-Object { [string]$_.date })
+foreach ($date in $bestDatesForOverlap) {
+    if ($keyDates -contains $date) {
+        throw "Real period best_days must not duplicate key_days date $date"
+    }
+}
+$bestThemes = @($reading.best_days | ForEach-Object { [string]$_.title })
+if (($bestThemes | Sort-Object -Unique).Count -ne $bestThemes.Count) {
+    throw "Real period best_days should use distinct qualitative titles/themes"
 }
 
 $forbiddenPublicPattern = "period:|natal_|fake_|theme_code|evidence_key|snapshot|transit_exact|transit_active|moon_house_by_day|organization|relationship|energy|clarity|integration|\bfocused\b|\bfocus\b|\bsupportive\b|\bcareful\b|\bactive\b|\bmixed\b|\bfluid\b|\btense\b"
@@ -368,11 +421,13 @@ $allPublicText = @(
     $reading.week_overview.title,
     $reading.week_overview.text,
     $reading.week_overview.trajectory,
+    $reading.watch_summary.text,
     $reading.advice.main,
     $reading.advice.best_use,
     $reading.advice.avoid
 )
 $seenTexts = @{}
+$personalizedDayCount = 0
 foreach ($day in $reading.daily_timeline) {
     if (-not $day.evidence_keys -or @($day.evidence_keys).Count -lt 1) {
         throw "Real period reading day $($day.date) missing evidence"
@@ -387,6 +442,9 @@ foreach ($day in $reading.daily_timeline) {
     if ($public -match $forbiddenPublicPattern -or $public -match "slot_|slot:|raw_transits") {
         throw "Technical code leaked in real period reading: $public"
     }
+    if ($public -match "thème natal|zone natale|maison|sensibilité|besoins émotionnels|communiquer|penser|attachement|agir|responsabilité|limites|relations directes|besoin de sens|habitudes|rythme de travail") {
+        $personalizedDayCount += 1
+    }
     $allPublicText += $public
     $normalized = ($day.text -replace "\s+", " ").Trim().ToLowerInvariant()
     if ($seenTexts.ContainsKey($normalized)) {
@@ -394,11 +452,21 @@ foreach ($day in $reading.daily_timeline) {
     }
     $seenTexts[$normalized] = $true
 }
+if ($personalizedDayCount -lt 4) {
+    throw "Real period reading must personalize at least 4 daily_timeline entries, got $personalizedDayCount"
+}
 
 $domainEvidenceSets = @()
+$domainCount = @($reading.domain_sections).Count
+if ($domainCount -lt 2 -or $domainCount -gt 4) {
+    throw "Real period reading domain_sections must contain 2 to 4 entries, got $domainCount"
+}
 foreach ($section in @($reading.domain_sections)) {
     if (-not $section.evidence_keys -or @($section.evidence_keys).Count -lt 1) {
         throw "Domain section $($section.domain) missing evidence"
+    }
+    if ("$($section.domain) $($section.title) $($section.text)" -notmatch "thème natal|zone natale|maison|sensibilité|besoins émotionnels|communiquer|penser|attachement|agir|responsabilité|limites|relations directes|besoin de sens|habitudes|rythme de travail") {
+        throw "Domain section $($section.domain) missing natal personalization"
     }
     $domainEvidenceSets += ((@($section.evidence_keys) | Sort-Object) -join "|")
     $allPublicText += "$($section.domain) $($section.title) $($section.text)"
@@ -407,7 +475,15 @@ if (($domainEvidenceSets | Sort-Object -Unique).Count -lt [Math]::Min(2, @($read
     throw "Domain sections reuse the same evidence set"
 }
 foreach ($marker in @($reading.key_days) + @($reading.best_days) + @($reading.watch_days)) {
+    if ($marker.PSObject.Properties.Name -contains "fallback_reason" -and $marker.fallback_reason -eq "") {
+        throw "Period marker exposes empty fallback_reason for $($marker.date)"
+    }
     $allPublicText += "$($marker.title) $($marker.reason)"
+}
+foreach ($marker in @($interpretation.key_days) + @($interpretation.best_days) + @($interpretation.watch_days)) {
+    if ($marker.PSObject.Properties.Name -contains "fallback_reason" -and $marker.fallback_reason -eq "") {
+        throw "Period interpretation marker exposes empty fallback_reason for $($marker.date)"
+    }
 }
 foreach ($evidence in @($reading.evidence_summary)) {
     if (-not $includedDates.Contains([string]$evidence.date)) {
@@ -421,6 +497,12 @@ foreach ($evidence in @($reading.evidence_summary)) {
 $joinedPublicText = ($allPublicText -join "`n")
 if ($joinedPublicText -match $forbiddenPublicPattern -or $joinedPublicText -match "slot_|slot:|raw_transits") {
     throw "Technical code leaked in public period response"
+}
+foreach ($phrase in @("restez concret", "gardez une marge", "clarifier", "ajuster", "intégrer")) {
+    $matches = [regex]::Matches($joinedPublicText.ToLowerInvariant(), [regex]::Escape($phrase)).Count
+    if ($matches -gt 2) {
+        throw "Repeated period vocabulary '$phrase' appears $matches times"
+    }
 }
 $wordCount = @($joinedPublicText -split "\s+" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }).Count
 if ($wordCount -lt $targetWordsMin -or $wordCount -gt $hardLimitWords) {

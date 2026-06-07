@@ -330,6 +330,7 @@ fn real_period_snapshot(
     let valid_aspect = nearest_aspect.filter(|(_, orb)| *orb <= period_max_major_aspect_orb_deg());
     let (aspect, orb) =
         valid_aspect.unwrap_or(("context", nearest_aspect.map(|(_, orb)| orb).unwrap_or(0.0)));
+    let is_context_signal = object == "moon" || valid_aspect.is_none();
     let natal_house = if object == "moon" {
         transit
             .and_then(|position| position.house_number)
@@ -402,19 +403,23 @@ fn real_period_snapshot(
             } else {
                 Some(natal_target)
             },
-            aspect: if object == "moon" || valid_aspect.is_none() {
+            aspect: if is_context_signal {
                 None
             } else {
                 Some(aspect.into())
             },
-            orb_deg: Some(round1(orb)),
+            orb_deg: if is_context_signal {
+                None
+            } else {
+                Some(round1(orb))
+            },
             natal_house,
         }],
         current_sky_aspects: vec![serde_json::json!({
             "transiting_object": object,
-            "aspect": if object == "moon" || valid_aspect.is_none() { "context" } else { aspect },
+            "aspect": if is_context_signal { "context" } else { aspect },
             "target": "period_tone",
-            "orb_deg": round1(orb),
+            "orb_deg": if is_context_signal { serde_json::Value::Null } else { serde_json::json!(round1(orb)) },
             "source": source
         })],
         natal_house_activations: vec![serde_json::json!({

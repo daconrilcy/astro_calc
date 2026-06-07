@@ -36,7 +36,16 @@ provider. Les aspects period nommes sont bornes par le referentiel
 `horoscope_orb_weight_bands`; un aspect trop large devient un fait de contexte
 non aspecte. En E2E reel, la longueur publique respecte les bornes
 `target_words_min`, `target_words_max` et `hard_limit_words` du profil
-`basic_standard`.
+`basic_standard`, avec post-traitement de complementation ou condensation avant
+rejet. Le payload period interne utilise des scores discriminants, des tonalites
+diversifiees par evenement, des `key_days` limites aux pics nets, des
+`best_days` qualitativement distincts, des `watch_days` uniquement lorsqu'une
+vraie tension existe, et `watch_summary.status = "none"` quand aucun point de
+vigilance ne ressort. Les preuves period portent des hints de personnalisation
+natale issus de `horoscope_natal_focus_labels`, les domaines publics couvrent 2
+a 4 themes scores, les `daily_plans` portent une variation lexicale, les faits
+de contexte ont des orbes nulles et `fallback_reason: null` hors fallback
+explicite.
 
 ## Objectif
 

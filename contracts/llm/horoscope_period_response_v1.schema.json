@@ -10,6 +10,7 @@
     "key_days",
     "best_days",
     "watch_days",
+    "watch_summary",
     "daily_timeline",
     "domain_sections",
     "advice",
@@ -31,16 +32,17 @@
         "trajectory": { "type": "string" }
       }
     },
-    "key_days": { "type": "array", "maxItems": 3, "items": { "$ref": "#/definitions/day_marker" } },
+    "key_days": { "type": "array", "maxItems": 2, "items": { "$ref": "#/definitions/day_marker" } },
     "best_days": { "type": "array", "maxItems": 2, "items": { "$ref": "#/definitions/day_marker" } },
     "watch_days": { "type": "array", "maxItems": 2, "items": { "$ref": "#/definitions/day_marker" } },
+    "watch_summary": { "$ref": "#/definitions/watch_summary" },
     "daily_timeline": {
       "type": "array",
       "minItems": 7,
       "maxItems": 7,
       "items": { "$ref": "#/definitions/timeline_day" }
     },
-    "domain_sections": { "type": "array", "items": { "$ref": "#/definitions/domain_section" } },
+    "domain_sections": { "type": "array", "minItems": 2, "maxItems": 4, "items": { "$ref": "#/definitions/domain_section" } },
     "advice": {
       "type": "object",
       "required": ["main", "best_use", "avoid"],
@@ -118,6 +120,16 @@
       "properties": {
         "domain": { "type": "string" },
         "title": { "type": "string" },
+        "text": { "type": "string" },
+        "evidence_keys": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "watch_summary": {
+      "type": "object",
+      "required": ["status", "text", "evidence_keys"],
+      "additionalProperties": false,
+      "properties": {
+        "status": { "type": "string", "enum": ["active", "none"] },
         "text": { "type": "string" },
         "evidence_keys": { "type": "array", "items": { "type": "string" } }
       }

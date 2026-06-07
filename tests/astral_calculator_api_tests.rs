@@ -191,7 +191,7 @@ fn horoscope_period_calculator_rejects_wide_major_aspect_orbs() {
     let venus_fact = response.snapshots[1].transits_to_natal.first().unwrap();
     assert_ne!(venus_fact.fact_type, "transit_to_natal");
     assert!(venus_fact.aspect.is_none());
-    assert!(venus_fact.orb_deg.unwrap() > 6.0);
+    assert!(venus_fact.orb_deg.is_none());
 }
 
 #[test]
@@ -233,7 +233,9 @@ fn horoscope_period_calculator_outputs_context_fact_when_no_valid_aspect() {
     let venus_fact = venus_snapshot.transits_to_natal.first().unwrap();
     assert_eq!(venus_fact.fact_type, "transit_context");
     assert!(venus_fact.evidence_key.contains(":context:"));
+    assert!(venus_fact.orb_deg.is_none());
     assert_eq!(venus_snapshot.current_sky_aspects[0]["aspect"], "context");
+    assert!(venus_snapshot.current_sky_aspects[0]["orb_deg"].is_null());
 }
 
 #[test]

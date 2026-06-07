@@ -41,6 +41,10 @@ const ORB_BANDS_JSON: &str = include_str!("../../../../../json_db/horoscope_orb_
 const TONE_LABELS_JSON: &str = include_str!("../../../../../json_db/horoscope_tone_labels.json");
 const DETAIL_PROFILES_JSON: &str =
     include_str!("../../../../../json_db/horoscope_detail_profiles.json");
+const NATAL_FOCUS_LABELS_JSON: &str =
+    include_str!("../../../../../json_db/horoscope_natal_focus_labels.json");
+const PERIOD_STYLE_VARIANTS_JSON: &str =
+    include_str!("../../../../../json_db/horoscope_period_style_variants.json");
 const THEME_MAPPINGS_JSON: &str =
     include_str!("../../../../../json_db/horoscope_signal_theme_mappings.json");
 const THEME_ADVICE_AXES_JSON: &str =
@@ -760,25 +764,18 @@ pub fn build_period_interpretation_request(
     }
     let events = build_period_events(&evidence, &period_resolution)?;
     let daily_plans = build_daily_plans(&included_dates, &events)?;
-    let key_days = build_period_day_markers(&daily_plans, 3, "Jour clé");
-    let best_days = build_period_day_markers(
-        &daily_plans
-            .iter()
-            .filter(|day| day.get("tone").and_then(|v| v.as_str()) != Some("careful"))
-            .cloned()
-            .collect::<Vec<_>>(),
-        2,
-        "Jour favorable",
-    );
-    let watch_days = build_period_day_markers(
-        &daily_plans
-            .iter()
-            .filter(|day| day.get("tone").and_then(|v| v.as_str()) == Some("careful"))
-            .cloned()
-            .collect::<Vec<_>>(),
-        2,
-        "Jour de vigilance",
-    );
+    let key_days = build_period_key_day_markers(&events);
+    let key_dates = key_days
+        .iter()
+        .filter_map(|day| day.get("date").and_then(Value::as_str).map(str::to_string))
+        .collect::<HashSet<_>>();
+    let watch_days = build_period_watch_day_markers(&events);
+    let watch_dates = watch_days
+        .iter()
+        .filter_map(|day| day.get("date").and_then(Value::as_str).map(str::to_string))
+        .collect::<HashSet<_>>();
+    let best_days = build_period_best_day_markers(&events, &watch_dates, &key_dates);
+    let watch_summary_plan = build_period_watch_summary_plan(&watch_days);
     let request = json!({
         "contract_version": "horoscope_period_interpretation_request_v1",
         "service_code": HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE,
@@ -796,6 +793,7 @@ pub fn build_period_interpretation_request(
         "key_days": key_days,
         "best_days": best_days,
         "watch_days": watch_days,
+        "watch_summary_plan": watch_summary_plan,
         "daily_plans": daily_plans,
         "domain_sections": build_period_domain_sections(&evidence),
         "evidence": evidence.into_iter().take(20).collect::<Vec<_>>()
@@ -838,12 +836,20 @@ fn period_evidence_from_snapshots(snapshots: &[Value]) -> Result<Vec<Value>, Gen
                 "sun" => "clarity",
                 _ => "organization",
             };
-            let tone = match aspect {
-                Some("square") | Some("opposition") => "careful",
-                Some("trine") | Some("sextile") => "supportive",
-                Some("conjunction") => "active",
-                _ => "focused",
+            let tone = period_internal_tone(theme, fact_type, aspect);
+            let public_orb = if aspect.is_some() {
+                fact.get("orb_deg").cloned().unwrap_or(Value::Null)
+            } else {
+                Value::Null
             };
+            let natal_focus_code = period_natal_focus_code(fact);
+            let natal_focus = period_natal_focus(&natal_focus_code);
+            let human_label = format!(
+                "{} met en avant le thème {} en touchant {}",
+                period_object_public_label(object),
+                period_theme_public_label(theme),
+                natal_focus.label
+            );
             out.push(json!({
                 "evidence_key": key,
                 "date": date,
@@ -852,15 +858,18 @@ fn period_evidence_from_snapshots(snapshots: &[Value]) -> Result<Vec<Value>, Gen
                 "transiting_object": object,
                 "natal_target": fact.get("natal_target").cloned().unwrap_or(Value::Null),
                 "aspect": fact.get("aspect").cloned().unwrap_or(Value::Null),
-                "orb_deg": fact.get("orb_deg").cloned().unwrap_or(Value::Null),
+                "orb_deg": public_orb,
                 "natal_house": fact.get("natal_house").cloned().unwrap_or(Value::Null),
                 "theme_code": theme,
                 "tone": tone,
-                "human_label": format!(
-                    "{} met en avant le thème {}",
-                    period_object_public_label(object),
-                    period_theme_public_label(theme)
-                )
+                "natal_focus_code": natal_focus_code,
+                "natal_focus_label": natal_focus.label,
+                "natal_focus_hint": natal_focus.hint,
+                "personalization_hint": format!(
+                    "Personnaliser ce signal par {} plutôt que rester sur un conseil générique.",
+                    natal_focus.label
+                ),
+                "human_label": human_label
             }));
         }
     }
@@ -877,6 +886,13 @@ fn build_period_events(
         .flatten()
         .filter_map(|value| value.as_str())
         .collect::<HashSet<_>>();
+    let theme_counts = evidence
+        .iter()
+        .filter_map(|item| item.get("theme_code").and_then(Value::as_str))
+        .fold(HashMap::<&str, usize>::new(), |mut counts, theme| {
+            *counts.entry(theme).or_default() += 1;
+            counts
+        });
     let mut out = Vec::new();
     for item in evidence {
         let date = item["date"]
@@ -886,22 +902,40 @@ fn build_period_events(
             return Err(horoscope_error("HOROSCOPE_PERIOD_EVENT_OUTSIDE_WINDOW"));
         }
         let evidence_key = item["evidence_key"].as_str().unwrap_or("");
+        let event_type = if item["fact_type"].as_str() == Some("moon_house_by_day") {
+            "moon_house_by_day"
+        } else if item["fact_type"].as_str() == Some("transit_to_natal")
+            && item.get("orb_deg").and_then(|v| v.as_f64()).unwrap_or(9.0) <= 1.0
+        {
+            "transit_exact"
+        } else if item["fact_type"].as_str() == Some("transit_context") {
+            "transit_context"
+        } else {
+            "transit_active"
+        };
+        let theme_code = item["theme_code"].as_str().unwrap_or("organization");
+        let score = period_event_score(
+            item,
+            event_type,
+            *theme_counts.get(theme_code).unwrap_or(&1),
+        );
         out.push(json!({
             "event_key": format!("event:{evidence_key}"),
-            "event_type": if item["fact_type"].as_str() == Some("moon_house_by_day") {
-                "moon_house_by_day"
-            } else if item.get("orb_deg").and_then(|v| v.as_f64()).unwrap_or(9.0) <= 1.0 {
-                "transit_exact"
-            } else {
-                "transit_active"
-            },
+            "event_type": event_type,
             "date": date,
             "theme_code": item["theme_code"],
             "tone": item["tone"],
-            "score": 1.0,
+            "aspect": item.get("aspect").cloned().unwrap_or(Value::Null),
+            "score": score,
+            "natal_focus_hint": item.get("natal_focus_hint").cloned().unwrap_or(Value::Null),
+            "personalization_hint": item.get("personalization_hint").cloned().unwrap_or(Value::Null),
             "evidence_keys": [evidence_key]
         }));
     }
+    if out.is_empty() {
+        return Err(horoscope_error("HOROSCOPE_PERIOD_EVIDENCE_MISSING"));
+    }
+    out.sort_by(period_event_sort);
     Ok(out)
 }
 
@@ -920,63 +954,317 @@ fn build_daily_plans(
         let theme_label = period_theme_public_label(theme);
         let tone = event["tone"].as_str().unwrap_or("focused");
         let evidence_keys = event["evidence_keys"].clone();
+        let style = period_style_variant_for_theme(theme);
+        let personalization_hint = event
+            .get("personalization_hint")
+            .and_then(Value::as_str)
+            .unwrap_or_else(|| period_event_personalization_hint(event));
+        let natal_focus_hint = event
+            .get("natal_focus_hint")
+            .and_then(Value::as_str)
+            .unwrap_or(personalization_hint);
         out.push(json!({
             "date": date,
             "day_label": public_day_label(date),
             "theme_code": theme,
             "theme_label": theme_label,
             "tone": tone,
-            "summary_hint": format!("Le {date}, le thème {theme_label} donne le relief principal de la journée."),
-            "advice_hint": format!("Restez concret sur {theme_label} et gardez une marge d'ajustement."),
+            "summary_hint": format!("Le {date}, le thème {theme_label} donne le relief principal de la journée; {personalization_hint}"),
+            "advice_hint": period_advice_hint(theme, natal_focus_hint),
+            "style_variant_code": style.code,
+            "avoid_terms": style.avoid_terms,
+            "natal_focus_hint": natal_focus_hint,
+            "personalization_hint": personalization_hint,
             "evidence_keys": evidence_keys
         }));
     }
     Ok(out)
 }
 
-fn build_period_day_markers(days: &[Value], limit: usize, title: &str) -> Vec<Value> {
-    days.iter()
+fn period_internal_tone(theme: &str, fact_type: &str, aspect: Option<&str>) -> &'static str {
+    match aspect {
+        Some("square") | Some("opposition") => "careful",
+        Some("trine") | Some("sextile") => "supportive",
+        Some("conjunction") => "active",
+        _ => match (theme, fact_type) {
+            ("relationship", _) => "supportive",
+            ("energy", _) | ("communication", _) => "active",
+            ("integration", _) => "mixed",
+            ("clarity", _) | ("organization", _) | ("routine", _) => "focused",
+            _ => "focused",
+        },
+    }
+}
+
+fn period_event_score(item: &Value, event_type: &str, theme_count: usize) -> f64 {
+    let orb = item.get("orb_deg").and_then(Value::as_f64);
+    let base = match event_type {
+        "transit_exact" => 0.98 - orb.unwrap_or(1.0).min(1.0) * 0.08,
+        "transit_active" => 0.90 - orb.unwrap_or(6.0).min(6.0) * 0.025,
+        "moon_house_by_day" => {
+            0.60 + item
+                .get("natal_house")
+                .and_then(Value::as_i64)
+                .map_or(0.0, |_| 0.05)
+        }
+        "transit_context" => 0.45 + context_object_bonus(item["transiting_object"].as_str()),
+        _ => 0.50,
+    };
+    let repetition_bonus = ((theme_count.saturating_sub(1)).min(3) as f64) * 0.03;
+    round2((base + repetition_bonus).min(1.0))
+}
+
+fn context_object_bonus(object: Option<&str>) -> f64 {
+    match object {
+        Some("sun") | Some("jupiter") => 0.12,
+        Some("venus") | Some("mars") | Some("mercury") => 0.08,
+        Some("moon") => 0.05,
+        _ => 0.0,
+    }
+}
+
+fn period_event_sort(left: &Value, right: &Value) -> std::cmp::Ordering {
+    let left_score = left.get("score").and_then(Value::as_f64).unwrap_or(0.0);
+    let right_score = right.get("score").and_then(Value::as_f64).unwrap_or(0.0);
+    right_score
+        .partial_cmp(&left_score)
+        .unwrap_or(std::cmp::Ordering::Equal)
+        .then_with(|| {
+            left.get("date")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .cmp(right.get("date").and_then(Value::as_str).unwrap_or(""))
+        })
+}
+
+fn is_period_watch_event(event: &Value) -> bool {
+    let tone = event.get("tone").and_then(Value::as_str);
+    let aspect = event.get("aspect").and_then(Value::as_str);
+    tone == Some("careful") || matches!(aspect, Some("square") | Some("opposition"))
+}
+
+fn build_period_key_day_markers(events: &[Value]) -> Vec<Value> {
+    let Some(top_score) = events.first().and_then(|event| event["score"].as_f64()) else {
+        return Vec::new();
+    };
+    let min_score = top_score - 0.08;
+    let theme_counts = period_theme_counts(events);
+    let mut candidates = events
+        .iter()
+        .filter(|event| {
+            let score = event["score"].as_f64().unwrap_or(0.0);
+            score >= 0.60 && score >= min_score
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    candidates.sort_by(|left, right| {
+        let left_score = left["score"].as_f64().unwrap_or(0.0);
+        let right_score = right["score"].as_f64().unwrap_or(0.0);
+        right_score
+            .partial_cmp(&left_score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| {
+                let left_theme = left["theme_code"].as_str().unwrap_or("");
+                let right_theme = right["theme_code"].as_str().unwrap_or("");
+                theme_counts
+                    .get(left_theme)
+                    .unwrap_or(&usize::MAX)
+                    .cmp(theme_counts.get(right_theme).unwrap_or(&usize::MAX))
+            })
+            .then_with(|| {
+                left["date"]
+                    .as_str()
+                    .unwrap_or("")
+                    .cmp(right["date"].as_str().unwrap_or(""))
+            })
+    });
+    build_period_day_markers_from_events(&candidates, 2, "Jour clé", None, None)
+}
+
+fn build_period_day_markers_from_events(
+    events: &[Value],
+    limit: usize,
+    title: &str,
+    exclude_dates: Option<&HashSet<String>>,
+    fallback_reason: Option<&str>,
+) -> Vec<Value> {
+    let mut seen_dates = HashSet::new();
+    events
+        .iter()
+        .filter(|event| {
+            let date = event.get("date").and_then(Value::as_str).unwrap_or("");
+            !exclude_dates.map_or(false, |dates| dates.contains(date))
+                && seen_dates.insert(date.to_string())
+        })
         .take(limit)
-        .map(|day| {
+        .map(|event| {
+            let date = event.get("date").and_then(Value::as_str).unwrap_or("");
+            let theme = event
+                .get("theme_code")
+                .and_then(Value::as_str)
+                .unwrap_or("principal");
             json!({
-                "date": day["date"],
+                "date": event["date"],
                 "title": title,
                 "reason": format!(
                     "{} ressort par le thème {}.",
-                    day["day_label"].as_str().unwrap_or("Ce jour"),
-                    period_theme_public_label(day["theme_code"].as_str().unwrap_or("principal"))
+                    public_day_label(date),
+                    period_theme_public_label(theme)
                 ),
-                "evidence_keys": day["evidence_keys"],
-                "fallback_reason": ""
+                "evidence_keys": event["evidence_keys"],
+                "fallback_reason": fallback_reason.map_or(Value::Null, |reason| json!(reason))
             })
         })
         .collect()
 }
 
-fn build_period_domain_sections(evidence: &[Value]) -> Vec<Value> {
-    let first_key = evidence
-        .first()
-        .and_then(|item| item["evidence_key"].as_str())
-        .unwrap_or("period:fallback");
-    let second_key = evidence
+fn build_period_best_day_markers(
+    events: &[Value],
+    watch_dates: &HashSet<String>,
+    key_dates: &HashSet<String>,
+) -> Vec<Value> {
+    let mut used_themes = HashSet::new();
+    let mut out = Vec::new();
+    for event in events {
+        let date = event["date"].as_str().unwrap_or("");
+        let theme = event["theme_code"].as_str().unwrap_or("");
+        if watch_dates.contains(date)
+            || key_dates.contains(date)
+            || is_period_watch_event(event)
+            || !used_themes.insert(theme.to_string())
+        {
+            continue;
+        }
+        out.push(build_period_marker(
+            event,
+            period_best_day_title(theme),
+            None,
+        ));
+        if out.len() == 2 {
+            break;
+        }
+    }
+    out
+}
+
+fn build_period_watch_day_markers(events: &[Value]) -> Vec<Value> {
+    let tension_candidates = events
         .iter()
-        .skip(1)
-        .find_map(|item| item["evidence_key"].as_str())
-        .unwrap_or(first_key);
-    vec![
-        json!({
-            "domain": "organisation",
-            "title": "Organisation",
-            "focus": "Installer une progression simple plutôt que multiplier les priorités.",
-            "evidence_keys": [first_key]
-        }),
-        json!({
-            "domain": "relations",
-            "title": "Relations",
-            "focus": "Garder des échanges courts, précis et réparateurs.",
-            "evidence_keys": [second_key]
-        }),
-    ]
+        .filter(|event| is_period_watch_event(event))
+        .cloned()
+        .collect::<Vec<_>>();
+    build_period_day_markers_from_events(&tension_candidates, 2, "Jour de vigilance", None, None)
+}
+
+fn build_period_watch_summary_plan(watch_days: &[Value]) -> Value {
+    if watch_days.is_empty() {
+        return json!({
+            "status": "none",
+            "text": "Aucun point de vigilance particulier ne ressort cette semaine.",
+            "evidence_keys": []
+        });
+    }
+    json!({
+        "status": "active",
+        "text": "Un point de vigilance ressort et mérite une attention mesurée.",
+        "evidence_keys": watch_days
+            .iter()
+            .flat_map(|day| day["evidence_keys"].as_array().into_iter().flatten())
+            .filter_map(Value::as_str)
+            .collect::<Vec<_>>()
+    })
+}
+
+fn build_period_marker(event: &Value, title: &str, fallback_reason: Option<&str>) -> Value {
+    let date = event.get("date").and_then(Value::as_str).unwrap_or("");
+    let theme = event
+        .get("theme_code")
+        .and_then(Value::as_str)
+        .unwrap_or("principal");
+    json!({
+        "date": event["date"],
+        "title": title,
+        "reason": format!(
+            "{} ressort par le thème {}.",
+            public_day_label(date),
+            period_theme_public_label(theme)
+        ),
+        "evidence_keys": event["evidence_keys"],
+        "fallback_reason": fallback_reason.map_or(Value::Null, |reason| json!(reason))
+    })
+}
+
+fn period_best_day_title(theme: &str) -> &'static str {
+    match theme {
+        "relationship" => "Meilleur jour relationnel",
+        "clarity" => "Jour de clarté",
+        "energy" | "communication" => "Meilleur jour d'action",
+        "integration" => "Jour d'intégration",
+        "organization" | "routine" => "Jour le plus structurant",
+        _ => "Jour favorable",
+    }
+}
+
+fn period_theme_counts(events: &[Value]) -> HashMap<&str, usize> {
+    events
+        .iter()
+        .filter_map(|event| event["theme_code"].as_str())
+        .fold(HashMap::new(), |mut counts, theme| {
+            *counts.entry(theme).or_default() += 1;
+            counts
+        })
+}
+
+fn build_period_domain_sections(evidence: &[Value]) -> Vec<Value> {
+    let mut by_theme: HashMap<String, Vec<&Value>> = HashMap::new();
+    for item in evidence {
+        let theme = item["theme_code"].as_str().unwrap_or("organization");
+        by_theme.entry(theme.to_string()).or_default().push(item);
+    }
+    let mut themes = by_theme
+        .into_iter()
+        .map(|(theme, items)| {
+            let score = items.len() as f64
+                + items
+                    .iter()
+                    .filter_map(|item| item.get("orb_deg").and_then(Value::as_f64))
+                    .map(|orb| (6.0 - orb).max(0.0) / 10.0)
+                    .sum::<f64>();
+            (theme, items, score)
+        })
+        .collect::<Vec<_>>();
+    themes.sort_by(|left, right| {
+        right
+            .2
+            .partial_cmp(&left.2)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| left.0.cmp(&right.0))
+    });
+    themes
+        .into_iter()
+        .take(4)
+        .map(|(theme, items, _)| {
+            let first = items.first().copied().unwrap_or(&Value::Null);
+            let evidence_keys = items
+                .iter()
+                .filter_map(|item| item["evidence_key"].as_str())
+                .take(3)
+                .collect::<Vec<_>>();
+            let label = period_theme_public_label(&theme);
+            let natal_hint = first["natal_focus_hint"]
+                .as_str()
+                .unwrap_or("Relier ce domaine à une zone personnelle du thème natal.");
+            let personalization = first["personalization_hint"].as_str().unwrap_or(natal_hint);
+            json!({
+                "domain": label,
+                "title": period_domain_title(&theme),
+                "focus": period_domain_focus(&theme, personalization),
+                "natal_focus_hint": natal_hint,
+                "personalization_hint": personalization,
+                "evidence_keys": evidence_keys
+            })
+        })
+        .collect::<Vec<_>>()
 }
 
 async fn period_writer_response(
@@ -1130,7 +1418,7 @@ fn period_writer_messages(request: &Value) -> Result<Vec<PromptMessage>, Generat
         PromptMessage {
             role: PromptRole::User,
             content: format!(
-                "Construis horoscope_period_response_v1 pour cette requête d'interprétation. Utilise les libellés français déjà présents, pas les codes internes. Développe week_overview, advice, domain_sections et les 7 entrées daily_timeline afin d'atteindre {} à {} mots publics. Requête JSON:\n{compact}",
+                "Construis horoscope_period_response_v1 pour cette requête d'interprétation. Utilise les libellés français déjà présents, pas les codes internes. Développe week_overview, watch_summary, advice, domain_sections et les 7 entrées daily_timeline afin d'atteindre {} à {} mots publics. Exploite explicitement personalization_hint et natal_focus_hint: au moins 4 jours, chaque domaine et la vue d'ensemble doivent contenir une nuance natale lisible. Respecte les avoid_terms des daily_plans pour éviter les répétitions. Requête JSON:\n{compact}",
                 limits.target_min, limits.target_max
             ),
         },
@@ -1162,7 +1450,11 @@ fn fake_period_writer_response(request: &Value) -> Result<Value, GenerationError
                 "day_label": day["day_label"],
                 "theme": theme_label,
                 "tone": period_tone_public_label(day["tone"].as_str().unwrap_or("focused")),
-                "text": text,
+                "text": format!(
+                    "{} {}",
+                    text,
+                    day["personalization_hint"].as_str().unwrap_or("Cette nuance reste reliée au thème natal.")
+                ),
                 "advice": day["advice_hint"],
                 "evidence_keys": day["evidence_keys"]
             })
@@ -1176,7 +1468,11 @@ fn fake_period_writer_response(request: &Value) -> Result<Value, GenerationError
             json!({
                 "domain": section["domain"],
                 "title": section["title"],
-                "text": section["focus"],
+                "text": format!(
+                    "{} {}",
+                    section["focus"].as_str().unwrap_or("Domaine de période."),
+                    section["natal_focus_hint"].as_str().unwrap_or("Cette lecture reste reliée au thème natal.")
+                ),
                 "evidence_keys": section["evidence_keys"]
             })
         })
@@ -1188,11 +1484,12 @@ fn fake_period_writer_response(request: &Value) -> Result<Value, GenerationError
         "week_overview": {
             "title": "Vos 7 prochains jours",
             "text": "La période se lit comme une progression continue : d'abord clarifier les priorités, puis ajuster les échanges et terminer sur une intégration plus posée.",
-            "trajectory": "Une trajectoire globale relie les jours clés, les appuis et les moments de vigilance."
+            "trajectory": "Une trajectoire globale relie les jours clés, les appuis et les zones natales activées."
         },
         "key_days": request["key_days"],
         "best_days": request["best_days"],
         "watch_days": request["watch_days"],
+        "watch_summary": request["watch_summary_plan"],
         "daily_timeline": daily_timeline,
         "domain_sections": domain_sections,
         "advice": {
@@ -1225,17 +1522,20 @@ fn repair_period_response_shape(request: &Value, response: &mut Value) {
 
     response["week_overview"] = sanitize_period_week_overview(response.get("week_overview"));
     response["advice"] = sanitize_period_advice(response.get("advice"));
-    response["key_days"] = sanitize_period_markers(response.get("key_days"), &request["key_days"]);
-    response["best_days"] =
-        sanitize_period_markers(response.get("best_days"), &request["best_days"]);
-    response["watch_days"] =
-        sanitize_period_markers(response.get("watch_days"), &request["watch_days"]);
+    response["key_days"] = sanitize_period_markers(None, &request["key_days"]);
+    response["best_days"] = sanitize_period_markers(None, &request["best_days"]);
+    response["watch_days"] = sanitize_period_markers(None, &request["watch_days"]);
+    response["watch_summary"] = sanitize_period_watch_summary(
+        response.get("watch_summary"),
+        &request["watch_summary_plan"],
+    );
     response["daily_timeline"] =
         sanitize_period_daily_timeline(response.get("daily_timeline"), request);
     response["domain_sections"] =
         sanitize_period_domain_sections(response.get("domain_sections"), request);
     response["evidence_summary"] =
         sanitize_period_evidence_summary(response.get("evidence_summary"), request);
+    ensure_period_response_minimum_words(request, response);
 
     let provider = response["quality"]["provider"]
         .as_str()
@@ -1260,18 +1560,43 @@ fn repair_period_response_shape(request: &Value, response: &mut Value) {
 }
 
 fn sanitize_period_week_overview(value: Option<&Value>) -> Value {
+    let text = value.and_then(|v| v.get("text")).and_then(Value::as_str).unwrap_or("La période se lit comme une progression continue, avec des jours d'appui, des ajustements concrets et une consolidation finale.");
+    let trajectory = value
+        .and_then(|v| v.get("trajectory"))
+        .and_then(Value::as_str)
+        .unwrap_or("Clarifier, ajuster, puis consolider.");
     json!({
-        "title": value.and_then(|v| v.get("title")).and_then(Value::as_str).unwrap_or("Vue d'ensemble"),
-        "text": value.and_then(|v| v.get("text")).and_then(Value::as_str).unwrap_or("La période se lit comme une progression continue, avec des jours d'appui, des ajustements concrets et une consolidation finale."),
-        "trajectory": value.and_then(|v| v.get("trajectory")).and_then(Value::as_str).unwrap_or("Clarifier, ajuster, puis consolider.")
+        "title": sanitize_period_public_string(value.and_then(|v| v.get("title")).and_then(Value::as_str).unwrap_or("Vue d'ensemble")),
+        "text": sanitize_period_public_string(&ensure_period_personalization_text(text, "La synthèse reste reliée aux zones natales activées cette semaine.")),
+        "trajectory": sanitize_period_public_string(&ensure_period_personalization_text(trajectory, "Le fil de semaine tient compte du thème natal."))
     })
 }
 
 fn sanitize_period_advice(value: Option<&Value>) -> Value {
     json!({
-        "main": value.and_then(|v| v.get("main")).and_then(Value::as_str).unwrap_or("Gardez une progression simple et reliez les décisions d'un jour à l'autre."),
-        "best_use": value.and_then(|v| v.get("best_use")).and_then(Value::as_str).unwrap_or("Utiliser les appuis de la semaine pour organiser, dialoguer et consolider."),
-        "avoid": value.and_then(|v| v.get("avoid")).and_then(Value::as_str).unwrap_or("Éviter de transformer un signal quotidien en certitude définitive.")
+        "main": sanitize_period_public_string(value.and_then(|v| v.get("main")).and_then(Value::as_str).unwrap_or("Gardez une progression simple et reliez les décisions d'un jour à l'autre.")),
+        "best_use": sanitize_period_public_string(value.and_then(|v| v.get("best_use")).and_then(Value::as_str).unwrap_or("Utiliser les appuis de la semaine pour organiser, dialoguer et consolider.")),
+        "avoid": sanitize_period_public_string(value.and_then(|v| v.get("avoid")).and_then(Value::as_str).unwrap_or("Éviter de transformer un signal quotidien en certitude définitive."))
+    })
+}
+
+fn sanitize_period_watch_summary(value: Option<&Value>, fallback: &Value) -> Value {
+    let status = fallback
+        .get("status")
+        .and_then(Value::as_str)
+        .unwrap_or("none");
+    let fallback_text = fallback
+        .get("text")
+        .and_then(Value::as_str)
+        .unwrap_or("Aucun point de vigilance particulier ne ressort cette semaine.");
+    json!({
+        "status": status,
+        "text": sanitize_period_public_string(value
+            .and_then(|item| item.get("text"))
+            .and_then(Value::as_str)
+            .filter(|text| !text.trim().is_empty())
+            .unwrap_or(fallback_text)),
+        "evidence_keys": string_array_value(fallback.get("evidence_keys")).unwrap_or_else(|| json!([]))
     })
 }
 
@@ -1293,12 +1618,28 @@ fn sanitize_period_markers(value: Option<&Value>, fallback: &Value) -> Value {
             .map(|item| {
                 let date = item.get("date").and_then(Value::as_str).unwrap_or("");
                 let fallback_item = fallback_by_date.get(date);
+                let fallback_reason = item
+                    .get("fallback_reason")
+                    .filter(|value| !value.is_null())
+                    .and_then(Value::as_str)
+                    .filter(|reason| !reason.trim().is_empty())
+                    .map_or_else(
+                        || {
+                            fallback_item
+                                .and_then(|fallback| fallback.get("fallback_reason"))
+                                .filter(|value| !value.is_null())
+                                .and_then(Value::as_str)
+                                .filter(|reason| !reason.trim().is_empty())
+                                .map_or(Value::Null, |reason| json!(reason))
+                        },
+                        |reason| json!(reason),
+                    );
                 json!({
                     "date": date,
-                    "title": item.get("title").and_then(Value::as_str).unwrap_or("Jour"),
-                    "reason": item.get("reason").and_then(Value::as_str).unwrap_or("Ce jour ressort dans la trajectoire de la période."),
+                    "title": sanitize_period_public_string(item.get("title").and_then(Value::as_str).unwrap_or("Jour")),
+                    "reason": sanitize_period_public_string(item.get("reason").and_then(Value::as_str).unwrap_or("Ce jour ressort dans la trajectoire de la période.")),
                     "evidence_keys": string_array_value(item.get("evidence_keys")).or_else(|| fallback_item.and_then(|fallback| string_array_value(fallback.get("evidence_keys")))).unwrap_or_else(|| json!([])),
-                    "fallback_reason": item.get("fallback_reason").and_then(Value::as_str).unwrap_or("")
+                    "fallback_reason": fallback_reason
                 })
             })
             .collect(),
@@ -1323,13 +1664,17 @@ fn sanitize_period_daily_timeline(value: Option<&Value>, request: &Value) -> Val
                 .get("theme_label")
                 .and_then(Value::as_str)
                 .unwrap_or("priorité");
+            let personalization = plan
+                .get("personalization_hint")
+                .and_then(Value::as_str)
+                .unwrap_or("Cette nuance reste reliée au thème natal.");
             json!({
                 "date": date,
-                "day_label": generated.and_then(|day| day.get("day_label")).and_then(Value::as_str).or_else(|| plan.get("day_label").and_then(Value::as_str)).unwrap_or("Jour"),
-                "theme": generated.and_then(|day| day.get("theme")).and_then(Value::as_str).unwrap_or(theme),
+                "day_label": sanitize_period_public_string(generated.and_then(|day| day.get("day_label")).and_then(Value::as_str).or_else(|| plan.get("day_label").and_then(Value::as_str)).unwrap_or("Jour")),
+                "theme": sanitize_period_public_string(generated.and_then(|day| day.get("theme")).and_then(Value::as_str).unwrap_or(theme)),
                 "tone": generated.and_then(|day| day.get("tone")).and_then(Value::as_str).unwrap_or("concentré"),
-                "text": generated.and_then(|day| day.get("text")).and_then(Value::as_str).or_else(|| plan.get("summary_hint").and_then(Value::as_str)).unwrap_or("Cette journée s'inscrit dans la progression de la période."),
-                "advice": generated.and_then(|day| day.get("advice")).and_then(Value::as_str).or_else(|| plan.get("advice_hint").and_then(Value::as_str)).unwrap_or("Gardez une action courte et concrète."),
+                "text": sanitize_period_public_string(&generated.and_then(|day| day.get("text")).and_then(Value::as_str).or_else(|| plan.get("summary_hint").and_then(Value::as_str)).map(|text| ensure_period_personalization_text(text, personalization)).unwrap_or_else(|| ensure_period_personalization_text("Cette journée s'inscrit dans la progression de la période.", personalization))),
+                "advice": sanitize_period_public_string(generated.and_then(|day| day.get("advice")).and_then(Value::as_str).or_else(|| plan.get("advice_hint").and_then(Value::as_str)).unwrap_or("Gardez une action courte et concrète.")),
                 "evidence_keys": string_array_value(plan.get("evidence_keys")).unwrap_or_else(|| json!([]))
             })
         })
@@ -1362,14 +1707,120 @@ fn sanitize_period_domain_sections(value: Option<&Value>, request: &Value) -> Va
             .into_iter()
             .map(|section| {
                 json!({
-                    "domain": section.get("domain").and_then(Value::as_str).unwrap_or("organisation"),
-                    "title": section.get("title").and_then(Value::as_str).unwrap_or("Organisation"),
-                    "text": section.get("text").and_then(Value::as_str).unwrap_or("Installer une progression simple plutôt que multiplier les priorités."),
+                    "domain": sanitize_period_public_string(section.get("domain").and_then(Value::as_str).unwrap_or("organisation")),
+                    "title": sanitize_period_public_string(section.get("title").and_then(Value::as_str).unwrap_or("Organisation")),
+                    "text": sanitize_period_public_string(&ensure_period_personalization_text(
+                        section.get("text").and_then(Value::as_str).unwrap_or("Installer une progression simple plutôt que multiplier les priorités."),
+                        section.get("natal_focus_hint").and_then(Value::as_str).or_else(|| section.get("personalization_hint").and_then(Value::as_str)).unwrap_or("Cette lecture reste reliée au thème natal.")
+                    )),
                     "evidence_keys": string_array_value(section.get("evidence_keys")).unwrap_or_else(|| json!([]))
                 })
             })
             .collect(),
     )
+}
+
+fn ensure_period_personalization_text(text: &str, personalization: &str) -> String {
+    if period_text_has_personalization(text) {
+        text.to_string()
+    } else {
+        format!("{text} {personalization}")
+    }
+}
+
+fn sanitize_period_public_string(text: &str) -> String {
+    let mut sanitized = text.to_string();
+    for (from, to) in [
+        ("natal_focus_hint", "nuance natale"),
+        ("personalization_hint", "nuance personnelle"),
+        ("theme_code", "thème"),
+        ("evidence_key", "preuve"),
+        ("moon_house_by_day", "passage lunaire"),
+        ("transit_exact", "signal précis"),
+        ("transit_active", "signal actif"),
+        ("fake_period_calculator_v1", "calculateur de période"),
+        ("fake_period_writer_v1", "rédaction de période"),
+        ("natal_moon", "sensibilité natale"),
+        ("natal_mercury", "pensée natale"),
+        ("natal_venus", "attachement natal"),
+        ("natal_mars", "élan natal"),
+        ("natal_saturn", "responsabilité natale"),
+        ("natal_", "natal "),
+        ("period:", "signal de période "),
+        ("slot:", "moment "),
+        ("slot_", "moment "),
+        ("snapshot", "repère"),
+        ("raw_transits", "signaux astrologiques"),
+    ] {
+        sanitized = replace_ascii_case_insensitive(&sanitized, from, to);
+    }
+    for (from, to) in [
+        ("organization", "organisation"),
+        ("relationship", "relations"),
+        ("energy", "énergie"),
+        ("clarity", "clarté"),
+        ("integration", "intégration"),
+        ("focused", "concentré"),
+        ("focus", "attention"),
+        ("supportive", "soutenant"),
+        ("careful", "vigilant"),
+        ("active", "dynamique"),
+        ("mixed", "nuancé"),
+        ("fluid", "fluide"),
+        ("tense", "sous tension"),
+    ] {
+        sanitized = replace_ascii_token_case_insensitive(&sanitized, from, to);
+    }
+    sanitized
+}
+
+fn replace_ascii_case_insensitive(text: &str, from: &str, to: &str) -> String {
+    if from.is_empty() {
+        return text.to_string();
+    }
+    let lower_text = text.to_lowercase();
+    let lower_from = from.to_lowercase();
+    let mut output = String::with_capacity(text.len());
+    let mut cursor = 0;
+    while let Some(relative) = lower_text[cursor..].find(&lower_from) {
+        let start = cursor + relative;
+        output.push_str(&text[cursor..start]);
+        output.push_str(to);
+        cursor = start + from.len();
+    }
+    output.push_str(&text[cursor..]);
+    output
+}
+
+fn replace_ascii_token_case_insensitive(text: &str, from: &str, to: &str) -> String {
+    if from.is_empty() {
+        return text.to_string();
+    }
+    let lower_text = text.to_lowercase();
+    let lower_from = from.to_lowercase();
+    let mut output = String::with_capacity(text.len());
+    let mut cursor = 0;
+    while let Some(relative) = lower_text[cursor..].find(&lower_from) {
+        let start = cursor + relative;
+        let end = start + from.len();
+        let before = text[..start].chars().next_back();
+        let after = text[end..].chars().next();
+        let is_token = before
+            .map(|ch| !ch.is_ascii_alphanumeric() && ch != '_')
+            .unwrap_or(true)
+            && after
+                .map(|ch| !ch.is_ascii_alphanumeric() && ch != '_')
+                .unwrap_or(true);
+        output.push_str(&text[cursor..start]);
+        if is_token {
+            output.push_str(to);
+        } else {
+            output.push_str(&text[start..end]);
+        }
+        cursor = end;
+    }
+    output.push_str(&text[cursor..]);
+    output
 }
 
 fn sanitize_period_evidence_summary(value: Option<&Value>, request: &Value) -> Value {
@@ -1397,11 +1848,393 @@ fn sanitize_period_evidence_summary(value: Option<&Value>, request: &Value) -> V
                 json!({
                     "date": item.get("date").and_then(Value::as_str).unwrap_or(""),
                     "evidence_key": item.get("evidence_key").and_then(Value::as_str).unwrap_or(""),
-                    "label": item.get("label").and_then(Value::as_str).unwrap_or("Signal de période")
+                    "label": sanitize_period_public_string(item.get("label").and_then(Value::as_str).unwrap_or("Signal de période"))
                 })
             })
             .collect(),
     )
+}
+
+fn ensure_period_response_minimum_words(request: &Value, response: &mut Value) {
+    let limits = period_basic_word_limits();
+    trim_period_response_to_hard_limit(request, response, &limits);
+    let current_words = period_public_word_count(response);
+    if current_words >= limits.target_min && current_words <= limits.hard_limit {
+        return;
+    }
+    if current_words > limits.hard_limit {
+        trim_period_response_aggressively(request, response);
+        let compact_words = period_public_word_count(response);
+        if compact_words >= limits.target_min && compact_words <= limits.hard_limit {
+            return;
+        }
+        if compact_words > limits.hard_limit {
+            return;
+        }
+    }
+
+    if let Some(text) = response.pointer_mut("/week_overview/text") {
+        append_period_value_sentence(
+            text,
+            "La lecture garde donc le thème natal comme fil directeur, en reliant les choix de la semaine aux zones personnelles déjà mises en évidence.",
+        );
+    }
+    if period_public_word_count(response) >= limits.target_min {
+        return;
+    }
+
+    let plans = request["daily_plans"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    if let Some(days) = response["daily_timeline"].as_array_mut() {
+        for day in days {
+            let date = day.get("date").and_then(Value::as_str).unwrap_or("");
+            let plan = plans
+                .iter()
+                .find(|plan| plan.get("date").and_then(Value::as_str) == Some(date));
+            if let Some(plan) = plan {
+                let personalization = plan
+                    .get("personalization_hint")
+                    .and_then(Value::as_str)
+                    .unwrap_or("Cette nuance reste reliée au thème natal.");
+                let natal_focus = plan
+                    .get("natal_focus_hint")
+                    .and_then(Value::as_str)
+                    .unwrap_or("Relier ce signal au thème natal.");
+                if let Some(text) = day.get_mut("text") {
+                    append_period_value_sentence(text, personalization);
+                    append_period_value_sentence(text, natal_focus);
+                }
+                if let Some(advice) = day.get_mut("advice") {
+                    append_period_value_sentence(
+                        advice,
+                        "Gardez une formulation simple, mais adaptez le geste au secteur personnel activé.",
+                    );
+                }
+            }
+        }
+    }
+    if period_public_word_count(response) >= limits.target_min {
+        return;
+    }
+
+    let sections = request["domain_sections"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    if let Some(domain_sections) = response["domain_sections"].as_array_mut() {
+        for section in domain_sections {
+            let domain = section.get("domain").and_then(Value::as_str).unwrap_or("");
+            let plan = sections
+                .iter()
+                .find(|plan| plan.get("domain").and_then(Value::as_str) == Some(domain));
+            if let Some(plan) = plan {
+                let personalization = plan
+                    .get("personalization_hint")
+                    .and_then(Value::as_str)
+                    .unwrap_or("Cette lecture reste reliée au thème natal.");
+                let natal_focus = plan
+                    .get("natal_focus_hint")
+                    .and_then(Value::as_str)
+                    .unwrap_or("Relier ce domaine au thème natal.");
+                if let Some(text) = section.get_mut("text") {
+                    append_period_value_sentence(text, personalization);
+                    append_period_value_sentence(text, natal_focus);
+                }
+            }
+        }
+    }
+    if period_public_word_count(response) >= limits.target_min {
+        return;
+    }
+
+    if let Some(main) = response.pointer_mut("/advice/main") {
+        append_period_value_sentence(
+            main,
+            "Utilisez ces repères comme une synthèse personnelle de période, pas comme une liste de journées isolées.",
+        );
+    }
+    fill_period_response_to_minimum(request, response, &limits);
+}
+
+fn trim_period_response_to_hard_limit(
+    request: &Value,
+    response: &mut Value,
+    limits: &PeriodWordLimits,
+) {
+    if period_public_word_count(response) <= limits.hard_limit {
+        return;
+    }
+
+    response["week_overview"] = json!({
+        "title": "Vos 7 prochains jours",
+        "text": "La semaine garde le thème natal comme fil directeur et met l'accent sur les secteurs personnels les plus activés.",
+        "trajectory": "Le mouvement va des appuis initiaux vers une consolidation plus consciente."
+    });
+    response["advice"] = json!({
+        "main": "Avancez par étapes et adaptez chaque choix au secteur natal activé.",
+        "best_use": "Utiliser les jours favorables pour poser un geste clair et personnel.",
+        "avoid": "Transformer un signal de période en certitude rigide."
+    });
+
+    let plans = request["daily_plans"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    if let Some(days) = response["daily_timeline"].as_array_mut() {
+        for day in days {
+            let date = day.get("date").and_then(Value::as_str).unwrap_or("");
+            let plan = plans
+                .iter()
+                .find(|plan| plan.get("date").and_then(Value::as_str) == Some(date));
+            if let Some(plan) = plan {
+                let summary = plan
+                    .get("summary_hint")
+                    .and_then(Value::as_str)
+                    .unwrap_or("Cette journée s'inscrit dans la progression de la période.");
+                let personalization = plan
+                    .get("personalization_hint")
+                    .and_then(Value::as_str)
+                    .unwrap_or("Cette nuance reste reliée au thème natal.");
+                day["text"] = json!(sanitize_period_public_string(&compact_period_words(
+                    &ensure_period_personalization_text(summary, personalization),
+                    42,
+                )));
+                day["advice"] = json!(sanitize_period_public_string(&compact_period_words(
+                    plan.get("advice_hint")
+                        .and_then(Value::as_str)
+                        .unwrap_or("Gardez une action courte et personnelle."),
+                    24,
+                )));
+            }
+        }
+    }
+
+    let sections = request["domain_sections"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    if let Some(domain_sections) = response["domain_sections"].as_array_mut() {
+        if domain_sections.len() > 3 {
+            domain_sections.truncate(3);
+        }
+        for section in domain_sections {
+            let domain = section.get("domain").and_then(Value::as_str).unwrap_or("");
+            let plan = sections
+                .iter()
+                .find(|plan| plan.get("domain").and_then(Value::as_str) == Some(domain));
+            if let Some(plan) = plan {
+                let focus = plan
+                    .get("focus")
+                    .and_then(Value::as_str)
+                    .unwrap_or("Domaine de période.");
+                let personalization = plan
+                    .get("personalization_hint")
+                    .and_then(Value::as_str)
+                    .unwrap_or("Cette lecture reste reliée au thème natal.");
+                section["text"] = json!(sanitize_period_public_string(&compact_period_words(
+                    &ensure_period_personalization_text(focus, personalization),
+                    46,
+                )));
+            }
+        }
+    }
+
+    if response["evidence_summary"]
+        .as_array()
+        .map(|items| items.len() > 4)
+        .unwrap_or(false)
+    {
+        if let Some(items) = response["evidence_summary"].as_array_mut() {
+            items.truncate(4);
+        }
+    }
+}
+
+fn trim_period_response_aggressively(request: &Value, response: &mut Value) {
+    response["week_overview"] = json!({
+        "title": "Vos 7 prochains jours",
+        "text": "Le thème natal sert de repère central pour lire les appuis de la semaine.",
+        "trajectory": "La période progresse vers des choix plus posés et personnels."
+    });
+    response["advice"] = json!({
+        "main": "Avancez par étapes, avec attention au secteur natal activé.",
+        "best_use": "Choisir un geste utile sur les jours favorables.",
+        "avoid": "Forcer une conclusion trop rapide."
+    });
+
+    let plans = request["daily_plans"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    if let Some(days) = response["daily_timeline"].as_array_mut() {
+        for day in days {
+            let date = day.get("date").and_then(Value::as_str).unwrap_or("");
+            if let Some(plan) = plans
+                .iter()
+                .find(|plan| plan.get("date").and_then(Value::as_str) == Some(date))
+            {
+                let summary = plan
+                    .get("summary_hint")
+                    .and_then(Value::as_str)
+                    .unwrap_or("Cette journée s'inscrit dans la progression de la période.");
+                let personalization = plan
+                    .get("personalization_hint")
+                    .and_then(Value::as_str)
+                    .unwrap_or("Cette nuance reste reliée au thème natal.");
+                day["text"] = json!(sanitize_period_public_string(&compact_period_words(
+                    &ensure_period_personalization_text(summary, personalization),
+                    30,
+                )));
+                day["advice"] = json!(sanitize_period_public_string(&compact_period_words(
+                    plan.get("advice_hint")
+                        .and_then(Value::as_str)
+                        .unwrap_or("Gardez une action courte."),
+                    14,
+                )));
+            }
+        }
+    }
+
+    let sections = request["domain_sections"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    if let Some(domain_sections) = response["domain_sections"].as_array_mut() {
+        if domain_sections.len() > 2 {
+            domain_sections.truncate(2);
+        }
+        for section in domain_sections {
+            let domain = section.get("domain").and_then(Value::as_str).unwrap_or("");
+            if let Some(plan) = sections
+                .iter()
+                .find(|plan| plan.get("domain").and_then(Value::as_str) == Some(domain))
+            {
+                let focus = plan
+                    .get("focus")
+                    .and_then(Value::as_str)
+                    .unwrap_or("Domaine de période.");
+                let personalization = plan
+                    .get("personalization_hint")
+                    .and_then(Value::as_str)
+                    .unwrap_or("Cette lecture reste reliée au thème natal.");
+                section["text"] = json!(sanitize_period_public_string(&compact_period_words(
+                    &ensure_period_personalization_text(focus, personalization),
+                    34,
+                )));
+            }
+        }
+    }
+
+    for field in ["key_days", "best_days", "watch_days"] {
+        if let Some(markers) = response[field].as_array_mut() {
+            for marker in markers {
+                if let Some(reason) = marker.get("reason").and_then(Value::as_str) {
+                    marker["reason"] = json!(sanitize_period_public_string(&compact_period_words(
+                        reason, 14,
+                    )));
+                }
+            }
+        }
+    }
+
+    if let Some(items) = response["evidence_summary"].as_array_mut() {
+        if items.len() > 2 {
+            items.truncate(2);
+        }
+        for item in items {
+            if let Some(label) = item.get("label").and_then(Value::as_str) {
+                item["label"] = json!(sanitize_period_public_string(&compact_period_words(
+                    label, 18,
+                )));
+            }
+        }
+    }
+}
+
+fn fill_period_response_to_minimum(
+    request: &Value,
+    response: &mut Value,
+    limits: &PeriodWordLimits,
+) {
+    if period_public_word_count(response) >= limits.target_min
+        || period_public_word_count(response) > limits.hard_limit
+    {
+        return;
+    }
+    let plans = request["daily_plans"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    if let Some(days) = response["daily_timeline"].as_array_mut() {
+        for day in days {
+            let date = day.get("date").and_then(Value::as_str).unwrap_or("");
+            if let Some(plan) = plans
+                .iter()
+                .find(|plan| plan.get("date").and_then(Value::as_str) == Some(date))
+            {
+                let theme = plan
+                    .get("theme_label")
+                    .and_then(Value::as_str)
+                    .unwrap_or("ce thème");
+                let personalization = plan
+                    .get("personalization_hint")
+                    .and_then(Value::as_str)
+                    .unwrap_or("Cette nuance reste reliée au thème natal.");
+                if let Some(text) = day.get_mut("text") {
+                    append_period_value_sentence(
+                        text,
+                        &format!(
+                            "Pour {theme}, cette indication précise la façon de choisir un rythme personnel sans isoler la journée du reste de la période."
+                        ),
+                    );
+                    append_period_value_sentence(text, personalization);
+                }
+            }
+        }
+    }
+}
+
+fn compact_period_words(text: &str, max_words: usize) -> String {
+    let words = text.split_whitespace().collect::<Vec<_>>();
+    if words.len() <= max_words {
+        return text.to_string();
+    }
+    let mut compact = words
+        .into_iter()
+        .take(max_words)
+        .collect::<Vec<_>>()
+        .join(" ");
+    if !compact.ends_with('.') {
+        compact.push('.');
+    }
+    compact
+}
+
+fn append_period_value_sentence(value: &mut Value, sentence: &str) {
+    if let Some(text) = value.as_str() {
+        let mut updated = text.to_string();
+        append_period_sentence(&mut updated, sentence);
+        *value = json!(updated);
+    }
+}
+
+fn append_period_sentence(text: &mut String, sentence: &str) {
+    if sentence.trim().is_empty() || text.contains(sentence) {
+        return;
+    }
+    if !text.trim().is_empty() && !text.ends_with(' ') {
+        text.push(' ');
+    }
+    text.push_str(sentence.trim());
+}
+
+fn period_public_word_count(response: &Value) -> usize {
+    let mut public_text = String::new();
+    collect_period_daily_public_text(response, &mut public_text);
+    collect_period_public_text(response, &mut public_text);
+    public_text.split_whitespace().count()
 }
 
 fn string_array_value(value: Option<&Value>) -> Option<Value> {
@@ -1438,18 +2271,19 @@ pub fn validate_period_provider_public_payload(response: &Value) -> Result<(), G
         }
     }
 
-    require_period_public_marker_array(response, "key_days", true)?;
+    require_period_public_marker_array(response, "key_days", false)?;
     require_period_public_marker_array(response, "best_days", true)?;
     require_period_public_marker_array(response, "watch_days", false)?;
+    require_period_watch_summary(response)?;
 
     let domains = response
         .get("domain_sections")
         .and_then(Value::as_array)
         .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_EVIDENCE_MISSING"))?;
-    if domains.is_empty() {
+    if !(2..=4).contains(&domains.len()) {
         return Err(quality_error(
             "HOROSCOPE_PERIOD_EVIDENCE_MISSING",
-            json!({ "field": "domain_sections" }),
+            json!({ "field": "domain_sections", "count": domains.len() }),
         ));
     }
     for section in domains {
@@ -1473,6 +2307,21 @@ pub fn validate_period_provider_public_payload(response: &Value) -> Result<(), G
         require_period_public_string_in(item, "evidence_key", "evidence_summary")?;
         require_period_public_string_in(item, "label", "evidence_summary")?;
     }
+    Ok(())
+}
+
+fn require_period_watch_summary(response: &Value) -> Result<(), GenerationError> {
+    let summary = response
+        .get("watch_summary")
+        .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_RESPONSE_INVALID"))?;
+    let status = summary.get("status").and_then(Value::as_str).unwrap_or("");
+    if status != "active" && status != "none" {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_RESPONSE_INVALID",
+            json!({ "field": "watch_summary.status" }),
+        ));
+    }
+    require_period_public_string_in(summary, "text", "watch_summary")?;
     Ok(())
 }
 
@@ -1627,14 +2476,48 @@ pub fn validate_period_response_evidence(
     validate_period_day_markers(request, response, "key_days", &included, &evidence)?;
     validate_period_day_markers(request, response, "best_days", &included, &evidence)?;
     validate_period_day_markers(request, response, "watch_days", &included, &evidence)?;
+    validate_period_watch_summary(response, &evidence)?;
     validate_period_domain_sections(response, &evidence)?;
     validate_period_evidence_summary(response, &included, &evidence)?;
-    validate_best_watch_no_overlap(response)?;
+    validate_period_marker_date_overlaps(response)?;
     validate_period_public_text(&public_text)?;
     validate_period_public_tones(response)?;
     validate_period_public_word_count(response, &public_text)?;
+    validate_period_public_personalization(response)?;
+    validate_period_repeated_vocabulary(&public_text)?;
     validate_period_not_seven_daily(response)?;
     Ok(())
+}
+
+fn validate_period_watch_summary(
+    response: &Value,
+    evidence: &HashSet<&str>,
+) -> Result<(), GenerationError> {
+    let summary = &response["watch_summary"];
+    let status = summary["status"]
+        .as_str()
+        .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_RESPONSE_INVALID"))?;
+    let watch_count = response["watch_days"].as_array().map(Vec::len).unwrap_or(0);
+    if (status == "none" && watch_count > 0) || (status == "active" && watch_count == 0) {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_BEST_WATCH_MISSING",
+            json!({ "status": status, "watch_count": watch_count }),
+        ));
+    }
+    if status == "none" {
+        if summary["evidence_keys"]
+            .as_array()
+            .map(|keys| !keys.is_empty())
+            .unwrap_or(false)
+        {
+            return Err(quality_error(
+                "HOROSCOPE_PERIOD_EVIDENCE_MISSING",
+                json!({ "field": "watch_summary.evidence_keys" }),
+            ));
+        }
+        return Ok(());
+    }
+    validate_period_evidence_keys(evidence, summary["evidence_keys"].as_array())
 }
 
 fn validate_period_day_markers(
@@ -1652,6 +2535,17 @@ fn validate_period_day_markers(
             return Err(quality_error(
                 "HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH",
                 json!({ "field": field, "date": date }),
+            ));
+        }
+        if marker
+            .get("fallback_reason")
+            .and_then(Value::as_str)
+            .map(|reason| reason.trim().is_empty())
+            .unwrap_or(false)
+        {
+            return Err(quality_error(
+                "HOROSCOPE_PERIOD_EVIDENCE_MISSING",
+                json!({ "field": field, "date": date, "reason": "empty_fallback_reason" }),
             ));
         }
         let keys = marker["evidence_keys"].as_array();
@@ -1701,13 +2595,27 @@ fn validate_period_evidence_keys(
     Ok(())
 }
 
-fn validate_best_watch_no_overlap(response: &Value) -> Result<(), GenerationError> {
+fn validate_period_marker_date_overlaps(response: &Value) -> Result<(), GenerationError> {
+    let key = response["key_days"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|item| item["date"].as_str())
+        .collect::<HashSet<_>>();
     let best = response["best_days"]
         .as_array()
         .into_iter()
         .flatten()
         .filter_map(|item| item["date"].as_str())
         .collect::<HashSet<_>>();
+    for date in &best {
+        if key.contains(date) {
+            return Err(quality_error(
+                "HOROSCOPE_PERIOD_KEY_DAYS_MISSING",
+                json!({ "reason": "best_day_overlaps_key_day", "overlap_date": date }),
+            ));
+        }
+    }
     for date in response["watch_days"]
         .as_array()
         .into_iter()
@@ -1731,14 +2639,22 @@ fn validate_period_domain_sections(
     let sections = response["domain_sections"]
         .as_array()
         .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_EVIDENCE_MISSING"))?;
-    if sections.len() < 2 {
+    if !(2..=4).contains(&sections.len()) {
         return Err(quality_error(
             "HOROSCOPE_PERIOD_EVIDENCE_MISSING",
-            json!({ "field": "domain_sections" }),
+            json!({ "field": "domain_sections", "count": sections.len() }),
         ));
     }
     let mut section_evidence_sets = HashSet::new();
+    let mut section_domains = HashSet::new();
     for section in sections {
+        let domain = section.get("domain").and_then(Value::as_str).unwrap_or("");
+        if !section_domains.insert(domain.to_lowercase()) {
+            return Err(quality_error(
+                "HOROSCOPE_PERIOD_EVIDENCE_MISSING",
+                json!({ "field": "domain_sections", "reason": "duplicate_domain", "domain": domain }),
+            ));
+        }
         validate_period_evidence_keys(evidence, section["evidence_keys"].as_array())?;
         let joined = section["evidence_keys"]
             .as_array()
@@ -1871,6 +2787,100 @@ fn validate_period_public_text(public_text: &str) -> Result<(), GenerationError>
     Ok(())
 }
 
+fn validate_period_public_personalization(response: &Value) -> Result<(), GenerationError> {
+    let mut count = 0;
+    for day in response["daily_timeline"].as_array().into_iter().flatten() {
+        if period_text_has_personalization(day["text"].as_str().unwrap_or("")) {
+            count += 1;
+        }
+    }
+    let week_text = format!(
+        "{} {}",
+        response["week_overview"]["text"].as_str().unwrap_or(""),
+        response["week_overview"]["trajectory"]
+            .as_str()
+            .unwrap_or("")
+    );
+    if !period_text_has_personalization(&week_text) {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_EVIDENCE_MISSING",
+            json!({ "reason": "week_overview_missing_natal_personalization" }),
+        ));
+    }
+    for section in response["domain_sections"].as_array().into_iter().flatten() {
+        if !period_text_has_personalization(section["text"].as_str().unwrap_or("")) {
+            return Err(quality_error(
+                "HOROSCOPE_PERIOD_EVIDENCE_MISSING",
+                json!({ "reason": "domain_section_missing_natal_personalization" }),
+            ));
+        }
+    }
+    if count < 4 {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_EVIDENCE_MISSING",
+            json!({ "reason": "daily_timeline_missing_natal_personalization", "count": count }),
+        ));
+    }
+    Ok(())
+}
+
+fn period_text_has_personalization(text: &str) -> bool {
+    let lower = text.to_lowercase();
+    [
+        "thème natal",
+        "zone natale",
+        "zones natales",
+        "maison",
+        "sensibilité",
+        "besoins émotionnels",
+        "communiquer",
+        "penser",
+        "attachement",
+        "plaisir",
+        "agir",
+        "énergie",
+        "responsabilité",
+        "limites",
+        "relations directes",
+        "besoin de sens",
+        "habitudes",
+        "rythme de travail",
+    ]
+    .iter()
+    .any(|needle| lower.contains(needle))
+}
+
+fn validate_period_repeated_vocabulary(public_text: &str) -> Result<(), GenerationError> {
+    let lower = public_text.to_lowercase();
+    for phrase in [
+        "restez concret",
+        "gardez une marge",
+        "clarifier",
+        "ajuster",
+        "intégrer",
+    ] {
+        let count = lower.matches(phrase).count();
+        if count > 2 {
+            return Err(quality_error(
+                "HOROSCOPE_PERIOD_REPETITIVE_DAILY_TEXT",
+                json!({ "phrase": phrase, "count": count }),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn collect_period_daily_public_text(response: &Value, public_text: &mut String) {
+    for day in response["daily_timeline"].as_array().into_iter().flatten() {
+        for key in ["day_label", "theme", "tone", "text", "advice"] {
+            if let Some(value) = day.get(key).and_then(|value| value.as_str()) {
+                public_text.push_str(value);
+                public_text.push('\n');
+            }
+        }
+    }
+}
+
 fn contains_ascii_token(text: &str, token: &str) -> bool {
     text.match_indices(token).any(|(idx, _)| {
         let before = text[..idx].chars().next_back();
@@ -1889,6 +2899,7 @@ fn collect_period_public_text(response: &Value, public_text: &mut String) {
         "/week_overview/title",
         "/week_overview/text",
         "/week_overview/trajectory",
+        "/watch_summary/text",
         "/advice/main",
         "/advice/best_use",
         "/advice/avoid",
@@ -1940,6 +2951,169 @@ fn period_theme_public_label(theme_code: &str) -> &'static str {
         "routine" => "routine",
         _ => "priorité principale",
     }
+}
+
+fn period_domain_title(theme_code: &str) -> &'static str {
+    match theme_code {
+        "organization" | "routine" => "Organisation",
+        "relationship" => "Relations",
+        "energy" => "Énergie",
+        "clarity" => "Clarté",
+        "communication" => "Communication",
+        "integration" => "Intégration",
+        _ => "Priorité",
+    }
+}
+
+fn period_domain_focus(theme_code: &str, personalization: &str) -> String {
+    let focus = match theme_code {
+        "relationship" => "Observer la qualité du lien, les attentes implicites et la manière de répondre sans suradapter.",
+        "energy" => "Canaliser l'élan dans des choix courts, assumés et compatibles avec le rythme personnel.",
+        "communication" => "Privilégier les messages utiles, les décisions formulées clairement et les échanges qui font avancer.",
+        "clarity" => "Mettre en lumière ce qui compte vraiment avant de conclure ou de promettre.",
+        "integration" => "Relier les avancées de la semaine à une base plus mature et plus stable.",
+        "routine" => "Rendre les habitudes plus soutenables sans rigidifier toute la semaine.",
+        _ => "Installer des repères simples et hiérarchiser ce qui mérite vraiment de l'attention.",
+    };
+    format!("{focus} {personalization}")
+}
+
+#[derive(Clone)]
+struct PeriodNatalFocus {
+    label: String,
+    hint: String,
+}
+
+fn period_natal_focus_code(fact: &Value) -> String {
+    if let Some(target) = fact.get("natal_target").and_then(Value::as_str) {
+        if !target.trim().is_empty() {
+            return target.to_string();
+        }
+    }
+    if let Some(house) = fact.get("natal_house").and_then(Value::as_i64) {
+        if (1..=12).contains(&house) {
+            return format!("natal_house_{house}");
+        }
+    }
+    "natal_house_6".to_string()
+}
+
+fn period_natal_focus(code: &str) -> PeriodNatalFocus {
+    period_natal_focus_labels()
+        .get(code)
+        .cloned()
+        .unwrap_or_else(|| PeriodNatalFocus {
+            label: "une zone personnelle de votre thème natal".to_string(),
+            hint: "Relier ce signal à une priorité personnelle concrète, sans jargon technique."
+                .to_string(),
+        })
+}
+
+fn period_natal_focus_labels() -> &'static HashMap<String, PeriodNatalFocus> {
+    static LABELS: OnceLock<HashMap<String, PeriodNatalFocus>> = OnceLock::new();
+    LABELS.get_or_init(|| {
+        serde_json::from_str::<Value>(NATAL_FOCUS_LABELS_JSON)
+            .ok()
+            .and_then(|value| value.get("data").and_then(Value::as_array).cloned())
+            .into_iter()
+            .flatten()
+            .filter(|row| {
+                row.get("is_active")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(true)
+            })
+            .filter_map(|row| {
+                Some((
+                    row.get("focus_code")?.as_str()?.to_string(),
+                    PeriodNatalFocus {
+                        label: row.get("label_fr")?.as_str()?.to_string(),
+                        hint: row.get("hint_fr")?.as_str()?.to_string(),
+                    },
+                ))
+            })
+            .collect()
+    })
+}
+
+#[derive(Clone)]
+struct PeriodStyleVariant {
+    code: String,
+    avoid_terms: Value,
+}
+
+fn period_style_variant_for_theme(theme: &str) -> PeriodStyleVariant {
+    let code = match theme {
+        "relationship" => "relation",
+        "energy" => "action",
+        "communication" => "communication",
+        "clarity" => "clarity",
+        "integration" => "integration",
+        "routine" => "perspective",
+        _ => "anchor",
+    };
+    period_style_variants()
+        .get(code)
+        .cloned()
+        .unwrap_or_else(|| PeriodStyleVariant {
+            code: code.to_string(),
+            avoid_terms: json!(["restez concret", "gardez une marge"]),
+        })
+}
+
+fn period_style_variants() -> &'static HashMap<String, PeriodStyleVariant> {
+    static VARIANTS: OnceLock<HashMap<String, PeriodStyleVariant>> = OnceLock::new();
+    VARIANTS.get_or_init(|| {
+        serde_json::from_str::<Value>(PERIOD_STYLE_VARIANTS_JSON)
+            .ok()
+            .and_then(|value| value.get("data").and_then(Value::as_array).cloned())
+            .into_iter()
+            .flatten()
+            .filter(|row| {
+                row.get("is_active")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(true)
+            })
+            .filter_map(|row| {
+                let code = row.get("style_variant_code")?.as_str()?.to_string();
+                Some((
+                    code.clone(),
+                    PeriodStyleVariant {
+                        code,
+                        avoid_terms: row.get("avoid_terms").cloned().unwrap_or_else(|| json!([])),
+                    },
+                ))
+            })
+            .collect()
+    })
+}
+
+fn period_event_personalization_hint(event: &Value) -> &str {
+    event["theme_code"].as_str().map_or(
+        "Relier ce signal à une priorité personnelle concrète.",
+        |theme| match theme {
+            "relationship" => "Nuancer ce jour par votre manière personnelle de chercher du lien et de répondre aux attentes.",
+            "energy" => "Nuancer ce jour par votre manière personnelle d'agir, de décider et de doser l'effort.",
+            "communication" => "Nuancer ce jour par votre manière personnelle de penser, parler et arbitrer rapidement.",
+            "clarity" => "Nuancer ce jour par ce qui vous aide à reconnaître ce qui a vraiment de la valeur.",
+            "integration" => "Nuancer ce jour par votre rapport aux limites utiles, au temps et à la consolidation.",
+            _ => "Nuancer ce jour par la maison natale activée et par vos repères personnels.",
+        },
+    )
+}
+
+fn period_advice_hint(theme: &str, natal_focus_hint: &str) -> String {
+    let advice = match theme {
+        "relationship" => {
+            "Cherchez une réponse relationnelle précise plutôt qu'un accord de façade."
+        }
+        "energy" => "Choisissez une action courte, assumée et proportionnée.",
+        "communication" => "Formulez le message utile avant d'élargir la discussion.",
+        "clarity" => "Nommez ce qui compte avant de décider.",
+        "integration" => "Reliez ce qui avance à une limite ou un engagement réaliste.",
+        "routine" => "Allégez une habitude avant d'en ajouter une autre.",
+        _ => "Hiérarchisez une priorité et laissez le reste au second plan.",
+    };
+    format!("{advice} {natal_focus_hint}")
 }
 
 fn period_tone_public_label(tone_code: &str) -> String {

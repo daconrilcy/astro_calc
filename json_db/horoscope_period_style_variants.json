@@ -1,0 +1,61 @@
+{
+  "name": "horoscope_period_style_variants",
+  "structure": {
+    "style_variant_code": "string, primary key",
+    "guidance_fr": "string",
+    "avoid_terms": "jsonb",
+    "is_active": "boolean",
+    "sort_order": "integer"
+  },
+  "data": [
+    {
+      "style_variant_code": "anchor",
+      "guidance_fr": "Formuler avec un vocabulaire d'ancrage, de repères et de priorités nettes.",
+      "avoid_terms": ["restez concret", "gardez une marge"],
+      "is_active": true,
+      "sort_order": 10
+    },
+    {
+      "style_variant_code": "relation",
+      "guidance_fr": "Formuler avec un vocabulaire de lien, d'écoute et de réponse juste.",
+      "avoid_terms": ["ajuster", "clarifier"],
+      "is_active": true,
+      "sort_order": 20
+    },
+    {
+      "style_variant_code": "action",
+      "guidance_fr": "Formuler avec un vocabulaire d'élan ciblé, de décision et de canalisation.",
+      "avoid_terms": ["intégrer", "restez concret"],
+      "is_active": true,
+      "sort_order": 30
+    },
+    {
+      "style_variant_code": "clarity",
+      "guidance_fr": "Formuler avec un vocabulaire de discernement, de choix assumé et de mise au point.",
+      "avoid_terms": ["gardez une marge", "ajuster"],
+      "is_active": true,
+      "sort_order": 40
+    },
+    {
+      "style_variant_code": "communication",
+      "guidance_fr": "Formuler avec un vocabulaire d'échange précis, de message utile et de formulation courte.",
+      "avoid_terms": ["clarifier", "intégrer"],
+      "is_active": true,
+      "sort_order": 50
+    },
+    {
+      "style_variant_code": "perspective",
+      "guidance_fr": "Formuler avec un vocabulaire de recul, de synthèse et de consolidation.",
+      "avoid_terms": ["restez concret", "ajuster"],
+      "is_active": true,
+      "sort_order": 60
+    },
+    {
+      "style_variant_code": "integration",
+      "guidance_fr": "Formuler avec un vocabulaire de cohérence, de maturité et de stabilisation.",
+      "avoid_terms": ["gardez une marge", "clarifier"],
+      "is_active": true,
+      "sort_order": 70
+    }
+  ]
+}

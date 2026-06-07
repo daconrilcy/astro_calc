@@ -132,9 +132,10 @@ Contrats dedies :
 - `horoscope_period_response_v1`.
 
 La reponse publique contient `week_overview`, `key_days`, `best_days`,
-`watch_days`, `daily_timeline[7]`, `domain_sections`, `advice`,
+`watch_days`, `watch_summary`, `daily_timeline[7]`, `domain_sections`, `advice`,
 `evidence_summary` et `quality`. Un meme jour peut etre `key_day` et aussi
-`best_day` ou `watch_day`, mais jamais `best_day` et `watch_day` en meme temps.
+`watch_day`, mais `best_days` est construit hors `watch_days` et hors
+`key_days`.
 
 Durcissement real E2E period :
 
@@ -154,17 +155,42 @@ Durcissement real E2E period :
   le label attendu du `daily_plan` correspondant ;
 - le service period Basic reel respecte les bornes du profil
   `basic_standard` dans `horoscope_detail_profiles` : cible 800-1200 mots
-  publics, rejet sous `target_words_min` et au-dessus de `hard_limit_words` ;
+  publics, avec post-traitement deterministe pour completer ou condenser la
+  reponse avant rejet sous `target_words_min` ou au-dessus de
+  `hard_limit_words` ;
 - les aspects period nommes sont limites a la bande maximale du referentiel
   `horoscope_orb_weight_bands` ; au-dela, le calculateur produit un fait de
   contexte non aspecte (`transit_context`) plutot qu'un aspect large ;
-- `watch_days` est construit depuis les evenements de vigilance credibles
-  (`careful`, `square`, `opposition`) et reste sans chevauchement avec
-  `best_days` ;
+- les `period_events` portent un score deterministe discriminant, trie par score
+  decroissant puis date croissante, avec bonus limite de repetition de theme ;
+- `key_days` est limite a deux entrees maximum et ne remonte que les pics nets
+  (`score >= 0.60` et proche du meilleur score), avec rarete de theme comme
+  departage ;
+- `best_days` est limite a deux entrees, hors `key_days`/`watch_days`, avec des
+  themes distincts et des titres qualitatifs (`Jour de clarte`, `Jour le plus
+  structurant`, etc.) ;
+- `watch_days` est construit uniquement depuis les evenements de vigilance
+  credibles (`careful`, `square`, `opposition`) et peut etre vide ; dans ce cas,
+  `watch_summary.status = "none"` annonce qu'aucun point de vigilance
+  particulier ne ressort ;
+- les marqueurs `key_days`, `best_days` et `watch_days` utilisent
+  `fallback_reason: null` hors fallback explicite, jamais une chaine vide ;
+- les faits de contexte (`transit_context`, `moon_house_by_day`, aspect
+  `context`) n'exposent pas d'`orb_deg`; seuls les aspects nommes valides
+  conservent une orbe, bornee a 6 degres ;
+- les preuves period portent des hints de personnalisation natale
+  (`natal_focus_label`, `natal_focus_hint`, `personalization_hint`) issus des
+  referentiels `horoscope_natal_focus_labels`; la lecture publique doit utiliser
+  une nuance natale dans la vue d'ensemble, chaque domaine et au moins quatre
+  jours ;
+- `domain_sections` contient 2 a 4 domaines distincts selectionnes par score de
+  theme, et les `daily_plans` portent un `style_variant_code` avec termes a
+  eviter depuis `horoscope_period_style_variants` ;
 - `scripts/test_horoscope_basic_next_7_days_real_e2e.ps1` echoue si le
   calculateur ou le writer reste fake, si la timeline est repetitive ou si les
   sections de domaine reutilisent toutes la meme preuve, si un tone public
-  n'est pas reference en DB ou si la longueur publique sort des bornes Basic.
+  n'est pas reference en DB, si la personnalisation natale est absente ou si la
+  longueur publique sort des bornes Basic.
 
 Les creneaux Premium sont construits en heure locale depuis `timezone`, puis
 chaque `reference_local_time` est converti en `reference_datetime_utc`. Certains

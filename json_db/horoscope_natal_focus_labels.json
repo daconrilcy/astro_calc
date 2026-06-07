@@ -1,0 +1,131 @@
+{
+  "name": "horoscope_natal_focus_labels",
+  "structure": {
+    "focus_code": "string, primary key",
+    "label_fr": "string",
+    "hint_fr": "string",
+    "is_active": "boolean",
+    "sort_order": "integer"
+  },
+  "data": [
+    {
+      "focus_code": "natal_moon",
+      "label_fr": "votre sensibilité et vos besoins émotionnels",
+      "hint_fr": "Relier ce signal à la manière de se sentir en sécurité, de réagir et de chercher du réconfort.",
+      "is_active": true,
+      "sort_order": 10
+    },
+    {
+      "focus_code": "natal_mercury",
+      "label_fr": "votre manière de penser et de communiquer",
+      "hint_fr": "Relier ce signal aux mots, aux décisions rapides, aux échanges et à la clarté mentale.",
+      "is_active": true,
+      "sort_order": 20
+    },
+    {
+      "focus_code": "natal_venus",
+      "label_fr": "votre rapport à l'attachement, au plaisir et à la valeur",
+      "hint_fr": "Relier ce signal aux préférences, aux liens, à l'harmonie et à ce qui compte vraiment.",
+      "is_active": true,
+      "sort_order": 30
+    },
+    {
+      "focus_code": "natal_mars",
+      "label_fr": "votre façon d'agir, de défendre vos choix et de mobiliser l'énergie",
+      "hint_fr": "Relier ce signal à l'action, aux limites, à l'affirmation et à la gestion de l'effort.",
+      "is_active": true,
+      "sort_order": 40
+    },
+    {
+      "focus_code": "natal_saturn",
+      "label_fr": "votre rapport à la responsabilité, au temps et aux limites",
+      "hint_fr": "Relier ce signal à la consolidation, aux engagements, aux contraintes utiles et à la maturité.",
+      "is_active": true,
+      "sort_order": 50
+    },
+    {
+      "focus_code": "natal_house_1",
+      "label_fr": "votre manière de vous affirmer",
+      "hint_fr": "Relier ce signal à l'élan personnel, à l'image de soi et à l'initiative.",
+      "is_active": true,
+      "sort_order": 101
+    },
+    {
+      "focus_code": "natal_house_2",
+      "label_fr": "vos ressources, vos appuis et votre sécurité concrète",
+      "hint_fr": "Relier ce signal aux moyens disponibles, à la valeur personnelle et aux priorités matérielles.",
+      "is_active": true,
+      "sort_order": 102
+    },
+    {
+      "focus_code": "natal_house_3",
+      "label_fr": "vos échanges, vos apprentissages et vos décisions courtes",
+      "hint_fr": "Relier ce signal aux messages, aux déplacements, aux proches et à la circulation des idées.",
+      "is_active": true,
+      "sort_order": 103
+    },
+    {
+      "focus_code": "natal_house_4",
+      "label_fr": "vos bases intimes, familiales ou émotionnelles",
+      "hint_fr": "Relier ce signal au foyer, aux racines, à la récupération et au sentiment d'ancrage.",
+      "is_active": true,
+      "sort_order": 104
+    },
+    {
+      "focus_code": "natal_house_5",
+      "label_fr": "votre créativité, votre plaisir et votre expression personnelle",
+      "hint_fr": "Relier ce signal à l'élan créatif, à la joie, aux envies et à ce qui demande à s'exprimer.",
+      "is_active": true,
+      "sort_order": 105
+    },
+    {
+      "focus_code": "natal_house_6",
+      "label_fr": "vos habitudes, votre rythme de travail et votre équilibre quotidien",
+      "hint_fr": "Relier ce signal aux routines, à l'organisation, à la santé pratique et aux tâches utiles.",
+      "is_active": true,
+      "sort_order": 106
+    },
+    {
+      "focus_code": "natal_house_7",
+      "label_fr": "vos relations directes et votre manière de composer avec l'autre",
+      "hint_fr": "Relier ce signal aux alliances, aux ajustements relationnels, aux demandes explicites et au face-à-face.",
+      "is_active": true,
+      "sort_order": 107
+    },
+    {
+      "focus_code": "natal_house_8",
+      "label_fr": "vos transformations, vos attachements profonds et vos partages sensibles",
+      "hint_fr": "Relier ce signal à la confiance, aux ressources partagées, aux transitions et aux zones plus intenses.",
+      "is_active": true,
+      "sort_order": 108
+    },
+    {
+      "focus_code": "natal_house_9",
+      "label_fr": "votre vision, vos apprentissages larges et votre besoin de sens",
+      "hint_fr": "Relier ce signal aux convictions, aux horizons, aux projets de formation et à la prise de recul.",
+      "is_active": true,
+      "sort_order": 109
+    },
+    {
+      "focus_code": "natal_house_10",
+      "label_fr": "votre trajectoire professionnelle et votre place visible",
+      "hint_fr": "Relier ce signal aux responsabilités publiques, aux objectifs, à la réputation et au cap à tenir.",
+      "is_active": true,
+      "sort_order": 110
+    },
+    {
+      "focus_code": "natal_house_11",
+      "label_fr": "vos projets collectifs, vos soutiens et vos réseaux",
+      "hint_fr": "Relier ce signal aux groupes, aux alliances élargies, aux projets partagés et aux perspectives d'avenir.",
+      "is_active": true,
+      "sort_order": 111
+    },
+    {
+      "focus_code": "natal_house_12",
+      "label_fr": "vos besoins de retrait, d'intégration et de repos intérieur",
+      "hint_fr": "Relier ce signal au recul, à la récupération, aux processus discrets et à ce qui se prépare en coulisse.",
+      "is_active": true,
+      "sort_order": 112
+    }
+  ]
+}
