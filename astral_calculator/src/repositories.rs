@@ -858,6 +858,30 @@ impl RuntimeRepository {
         .collect())
     }
 
+    pub async fn natal_input_for_calculation(
+        &self,
+        chart_calculation_id: i32,
+    ) -> Result<NatalChartInput, RuntimeError> {
+        let row = sqlx::query_scalar::<_, serde_json::Value>(
+            r#"
+            SELECT input_data_json
+            FROM astral_chart_calculations
+            WHERE id = $1
+              AND chart_type = 'natal'
+              AND status = 'completed'
+            "#,
+        )
+        .bind(chart_calculation_id)
+        .fetch_optional(&self.pool)
+        .await?;
+        let Some(value) = row else {
+            return Err(RuntimeError::InvalidEngineRequest(
+                "completed natal calculation input not found".to_string(),
+            ));
+        };
+        Ok(serde_json::from_value(value)?)
+    }
+
     pub async fn active_signals(
         &self,
         chart_calculation_id: i32,

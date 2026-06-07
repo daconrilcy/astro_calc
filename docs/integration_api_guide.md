@@ -177,6 +177,11 @@ La sortie `horoscope_period_response_v1` contient une vue de periode :
 ne fournit pas `period_profile_code`, `detail_profile_code` ou
 `scan_profile_code`; ces profils viennent du catalogue service.
 
+Les sorties period exposent des dates UTC normalisees (`+00:00` ou `Z`) et des
+libelles publics francais. Les codes internes (`theme_code`, `period:`,
+`natal_`, `transit_exact`, `transit_active`, etc.) restent dans les payloads
+internes ou les champs de preuve, pas dans les textes publics.
+
 ## Mercure (optionnel)
 
 Si `supports_mercure: true` sur le service, s'abonner au topic :

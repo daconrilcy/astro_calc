@@ -510,9 +510,14 @@ Regles publiques :
   obligatoires.
 - `birth_data` inline est refuse.
 - La fenetre est resolue par `astral_time_window`.
+- Les champs `start_datetime_utc`, `end_datetime_utc` et
+  `reference_datetime_utc` sont normalises en UTC reel (`+00:00` ou `Z`).
 - La reponse contient exactement `daily_timeline[7]`, alignee sur
   `period_resolution.included_dates`.
 - `best_days` et `watch_days` ne peuvent pas se chevaucher.
+- En E2E reel, le calculateur ne doit pas retourner de source `fake_*`, le
+  writer ne doit pas utiliser le provider `fake`, et le texte public ne doit pas
+  exposer les codes internes (`theme_code`, `period:`, `natal_`, `transit_*`).
 
 Erreurs possibles :
 

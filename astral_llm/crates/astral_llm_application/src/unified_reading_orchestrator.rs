@@ -113,7 +113,8 @@ impl<'a> UnifiedReadingOrchestrator<'a> {
     ) -> Result<UnifiedReadingResult, GenerationError> {
         let run_id = Uuid::new_v4().to_string();
         let result =
-            HoroscopePeriodNatalOrchestrator::execute(self.calculator, &job.payload).await?;
+            HoroscopePeriodNatalOrchestrator::execute(self.calculator, self.use_case, &job.payload)
+                .await?;
         Ok(UnifiedReadingResult {
             run_id,
             outcome: UnifiedReadingOutcome::Json(result),

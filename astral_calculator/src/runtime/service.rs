@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
 use crate::domain::{
@@ -12,7 +12,8 @@ use crate::engine::{
 };
 use crate::ephemeris::EphemerisEngine;
 use crate::horoscope::{
-    calculate_horoscope_daily_natal, calculate_horoscope_period_natal, HoroscopeCalculationRequest,
+    calculate_horoscope_daily_natal, calculate_horoscope_period_natal_from_transits,
+    normalize_horoscope_period_request_utc, HoroscopeCalculationRequest,
     HoroscopeCalculationResponse, HoroscopePeriodCalculationRequest,
     HoroscopePeriodCalculationResponse,
 };
@@ -137,7 +138,72 @@ where
         &self,
         request: HoroscopePeriodCalculationRequest,
     ) -> Result<HoroscopePeriodCalculationResponse, RuntimeError> {
-        Ok(calculate_horoscope_period_natal(request))
+        let request = normalize_horoscope_period_request_utc(request).map_err(|err| {
+            RuntimeError::InvalidEngineRequest(format!(
+                "invalid horoscope period UTC normalization: {err}"
+            ))
+        })?;
+        let chart_calculation_id = request.chart_calculation_id.parse::<i32>().map_err(|_| {
+            RuntimeError::InvalidEngineRequest(
+                "horoscope period chart_calculation_id must be an integer".to_string(),
+            )
+        })?;
+        let natal_positions = self
+            .repository
+            .positions_for_payload(chart_calculation_id)
+            .await?;
+        if natal_positions.is_empty() {
+            return Err(RuntimeError::InvalidEngineRequest(
+                "horoscope period requires persisted natal positions".to_string(),
+            ));
+        }
+        let natal_input = self
+            .repository
+            .natal_input_for_calculation(chart_calculation_id)
+            .await?;
+        let chart_objects = self
+            .repository
+            .active_chart_objects(natal_input.reference_version_id)
+            .await?;
+        let aspect_definitions = self.repository.aspect_definitions().await?;
+        let house_system = self
+            .repository
+            .house_system(natal_input.house_system_id)
+            .await?;
+        let references = CalculationReferenceData {
+            signs: self.repository.sign_references().await?,
+            houses: self.repository.house_references().await?,
+            motion_states: self.repository.motion_state_references().await?,
+            horizon_positions: self.repository.horizon_position_references().await?,
+            angle_points: self.repository.angle_point_references().await?,
+        };
+        let mut transit_snapshots = Vec::new();
+        for snapshot in &request.scan_plan.snapshots {
+            let reference_datetime_utc =
+                DateTime::parse_from_rfc3339(&snapshot.reference_datetime_utc)
+                    .map_err(|err| {
+                        RuntimeError::InvalidEngineRequest(format!(
+                            "invalid horoscope period snapshot UTC: {err}"
+                        ))
+                    })?
+                    .with_timezone(&Utc);
+            let mut transit_input = natal_input.clone();
+            transit_input.birth_datetime_utc = reference_datetime_utc;
+            transit_input.product_code = Some("horoscope_period_transit".to_string());
+            let facts = self.ephemeris.calculate_natal(
+                &transit_input,
+                &chart_objects,
+                &aspect_definitions,
+                &house_system,
+                &references,
+            )?;
+            transit_snapshots.push((snapshot.snapshot_key.clone(), facts.positions));
+        }
+        Ok(calculate_horoscope_period_natal_from_transits(
+            request,
+            &natal_positions,
+            &transit_snapshots,
+        ))
     }
 
     pub async fn calculate_natal_basic(

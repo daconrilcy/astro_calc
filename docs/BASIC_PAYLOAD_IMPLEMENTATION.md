@@ -27,6 +27,9 @@ que l'articulation historique avec le payload moteur natal/basic.
 
 Le service period `horoscope_basic_next_7_days_natal` est egalement documente
 dans `docs/HOROSCOPE_IMPLEMENTATION.md`; ce fichier ne duplique pas son contrat.
+Depuis le durcissement real E2E, ce service exige des champs UTC normalises,
+refuse les sources/provider fake dans le script reel et expose des libelles
+publics francais au lieu des `theme_code` internes.
 
 ## Objectif
 

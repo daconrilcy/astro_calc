@@ -136,6 +136,21 @@ La reponse publique contient `week_overview`, `key_days`, `best_days`,
 `evidence_summary` et `quality`. Un meme jour peut etre `key_day` et aussi
 `best_day` ou `watch_day`, mais jamais `best_day` et `watch_day` en meme temps.
 
+Durcissement real E2E period :
+
+- les champs `*_utc` period sont normalises en UTC reel (`+00:00` ou `Z`) ;
+- l'endpoint calculateur period recupere l'input natal complet et les positions
+  natales persistees du `chart_calculation_id`, puis recalcule les positions de
+  transit de chaque snapshot via l'`EphemerisEngine` existant ;
+- le writer period passe par le provider LLM configure lorsque le provider par
+  defaut n'est pas `fake`; le fake writer reste reserve aux smokes rapides ;
+- les textes publics utilisent des libelles francais (`theme_label`) et ne
+  doivent pas exposer `theme_code`, `evidence_key`, `period:`, `natal_`,
+  `transit_exact`, `transit_active` ou `moon_house_by_day` ;
+- `scripts/test_horoscope_basic_next_7_days_real_e2e.ps1` echoue si le
+  calculateur ou le writer reste fake, si la timeline est repetitive ou si les
+  sections de domaine reutilisent toutes la meme preuve.
+
 Les creneaux Premium sont construits en heure locale depuis `timezone`, puis
 chaque `reference_local_time` est converti en `reference_datetime_utc`. Certains
 creneaux locaux peuvent donc correspondre a la veille ou au lendemain en UTC.

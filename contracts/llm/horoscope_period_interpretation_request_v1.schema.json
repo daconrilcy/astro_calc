@@ -132,12 +132,13 @@
     },
     "daily_plan": {
       "type": "object",
-      "required": ["date", "day_label", "theme_code", "tone", "summary_hint", "advice_hint", "evidence_keys"],
+      "required": ["date", "day_label", "theme_code", "theme_label", "tone", "summary_hint", "advice_hint", "evidence_keys"],
       "additionalProperties": false,
       "properties": {
         "date": { "type": "string" },
         "day_label": { "type": "string" },
         "theme_code": { "type": "string" },
+        "theme_label": { "type": "string" },
         "tone": { "type": "string" },
         "summary_hint": { "type": "string" },
         "advice_hint": { "type": "string" },

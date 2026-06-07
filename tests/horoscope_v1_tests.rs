@@ -228,13 +228,15 @@ fn period_response_from_request(request: &serde_json::Value) -> serde_json::Valu
         .as_array()
         .unwrap()
         .iter()
-        .map(|day| {
+        .enumerate()
+        .map(|(index, day)| {
+            let theme = day["theme_label"].as_str().unwrap_or("organisation");
             serde_json::json!({
                 "date": day["date"],
                 "day_label": day["day_label"],
-                "theme": day["theme_code"],
+                "theme": theme,
                 "tone": day["tone"],
-                "text": "Cette journée s'inscrit dans une progression de période et ne fonctionne pas comme un horoscope quotidien autonome.",
+                "text": format!("Cette journée numéro {} s'inscrit dans une progression de période et garde un lien clair avec {}.", index + 1, theme),
                 "advice": day["advice_hint"],
                 "evidence_keys": day["evidence_keys"]
             })
@@ -769,6 +771,47 @@ fn horoscope_period_rejects_day_in_both_best_and_watch() {
     response["watch_days"][0]["date"] = response["best_days"][0]["date"].clone();
     let err = validate_period_response_evidence(&request, &response).unwrap_err();
     assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_BEST_WATCH_MISSING");
+}
+
+#[test]
+fn horoscope_period_response_rejects_public_theme_codes() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response["daily_timeline"][0]["text"] =
+        serde_json::json!("Le thème organization ne doit jamais sortir tel quel.");
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_TECHNICAL_CODE_LEAK");
+}
+
+#[test]
+fn horoscope_period_response_rejects_repetitive_timeline() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    let repeated = response["daily_timeline"][0]["text"].clone();
+    for day in response["daily_timeline"].as_array_mut().unwrap() {
+        day["text"] = repeated.clone();
+    }
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_REPETITIVE_DAILY_TEXT"
+    );
+}
+
+#[test]
+fn horoscope_period_utc_fields_are_normalized_to_utc_offset() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_calculation_request(&public).unwrap();
+    assert!(request["period_resolution"]["start_datetime_utc"]
+        .as_str()
+        .unwrap()
+        .ends_with("+00:00"));
+    for snapshot in request["scan_plan"]["snapshots"].as_array().unwrap() {
+        assert!(snapshot["reference_datetime_utc"]
+            .as_str()
+            .unwrap()
+            .ends_with("+00:00"));
+    }
 }
 
 #[test]

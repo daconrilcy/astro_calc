@@ -11,5 +11,6 @@ Service : `horoscope_basic_next_7_days_natal`.
 | `REV-005-writer-response-guards.md` | closed |
 | `REV-006-async-e2e-scripts-idempotency-and-daily-non-regression.md` | closed |
 | `REV-007-real-e2e-horoscope-period.md` | documented |
+| `REV-008-real-period-hardening.md` | closed |
 | `REV-DOC-horoscope-period-alignment.md` | closed |
 | `REV-FINAL-horoscope-period.md` | closed |

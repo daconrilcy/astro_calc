@@ -84,6 +84,10 @@ impl GenerateReadingUseCase {
         &self.catalog
     }
 
+    pub fn engine_defaults(&self) -> &EngineDefaults {
+        &self.engine_defaults
+    }
+
     pub fn prepare_request(
         &self,
         request: &mut GenerateReadingRequest,
