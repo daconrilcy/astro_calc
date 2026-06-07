@@ -46,6 +46,10 @@ natale issus de `horoscope_natal_focus_labels`, les domaines publics couvrent 2
 a 4 themes scores, les `daily_plans` portent une variation lexicale, les faits
 de contexte ont des orbes nulles et `fallback_reason: null` hors fallback
 explicite.
+Les hints internes de personnalisation period (`summary_hint`, `advice_hint`,
+`personalization_hint`, `natal_focus_hint`) ne sont pas du texte public : les
+post-traitements les transforment en prose utilisateur et les guards refusent
+toute fuite d'instruction interne ou phrase tronquee.
 
 ## Objectif
 

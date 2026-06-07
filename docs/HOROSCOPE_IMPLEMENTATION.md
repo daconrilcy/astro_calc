@@ -183,6 +183,15 @@ Durcissement real E2E period :
   referentiels `horoscope_natal_focus_labels`; la lecture publique doit utiliser
   une nuance natale dans la vue d'ensemble, chaque domaine et au moins quatre
   jours ;
+- ces hints restent strictement internes : le texte public ne doit jamais
+  recopier des consignes comme `Personnaliser ce signal`, `Relier ce signal`,
+  `plutot que rester sur un conseil generique`, `donne le relief principal`,
+  `summary_hint`, `advice_hint`, `personalization_hint` ou
+  `natal_focus_hint` ; les guards dedies
+  `HOROSCOPE_PERIOD_INTERNAL_GUIDANCE_LEAK` et
+  `HOROSCOPE_PERIOD_BROKEN_SENTENCE` bloquent aussi les phrases tronquees par
+  post-traitement ; le prompt reel doit parler d'indications internes de
+  personnalisation sans demander au provider de recopier les noms de champs ;
 - `domain_sections` contient 2 a 4 domaines distincts selectionnes par score de
   theme, et les `daily_plans` portent un `style_variant_code` avec termes a
   eviter depuis `horoscope_period_style_variants` ;

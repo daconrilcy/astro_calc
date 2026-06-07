@@ -401,6 +401,23 @@ if (($bestThemes | Sort-Object -Unique).Count -ne $bestThemes.Count) {
 }
 
 $forbiddenPublicPattern = "period:|natal_|fake_|theme_code|evidence_key|snapshot|transit_exact|transit_active|moon_house_by_day|organization|relationship|energy|clarity|integration|\bfocused\b|\bfocus\b|\bsupportive\b|\bcareful\b|\bactive\b|\bmixed\b|\bfluid\b|\btense\b"
+$forbiddenGuidancePattern = "Personnaliser ce signal|Relier ce signal|Relier ce domaine|rester sur un conseil générique|donne le relief principal|en prose utilisateur|summary_hint|advice_hint|personalization_hint|natal_focus_hint"
+$brokenSentencePattern = "(?im)(\b(et|à|de|pour|avec|sans|dans|sur|vers|la|le|les|des|du|au|aux|un|une|ce|cet|cette)\s*[.!?]\s*$|\b(à|de)\s+(la|l')\s*[.!?]\s*$)"
+function Assert-PublicPeriodTextQuality {
+    param(
+        [Parameter(Mandatory=$true)][AllowEmptyString()][string]$Text,
+        [Parameter(Mandatory=$true)][string]$Label
+    )
+    if ($Text -match $forbiddenPublicPattern -or $Text -match "slot_|slot:|raw_transits") {
+        throw "Technical code leaked in ${Label}: $Text"
+    }
+    if ($Text -match $forbiddenGuidancePattern) {
+        throw "Internal writer guidance leaked in ${Label}: $Text"
+    }
+    if ($Text -match $brokenSentencePattern) {
+        throw "Broken sentence detected in ${Label}: $Text"
+    }
+}
 $toneLabelsPath = Join-Path $repoRoot "json_db\horoscope_tone_labels.json"
 $toneLabelsDoc = Get-Content -LiteralPath $toneLabelsPath -Raw | ConvertFrom-Json
 $allowedPublicTones = New-Object System.Collections.Generic.HashSet[string]
@@ -439,9 +456,11 @@ foreach ($day in $reading.daily_timeline) {
         throw "Real period reading day $($day.date) exposes tone outside horoscope_tone_labels: $($day.tone)"
     }
     $public = "$($day.day_label) $($day.theme) $($day.tone) $($day.text) $($day.advice)"
-    if ($public -match $forbiddenPublicPattern -or $public -match "slot_|slot:|raw_transits") {
-        throw "Technical code leaked in real period reading: $public"
-    }
+    Assert-PublicPeriodTextQuality -Text ([string]$day.day_label) -Label "daily_timeline[$($day.date)].day_label"
+    Assert-PublicPeriodTextQuality -Text ([string]$day.theme) -Label "daily_timeline[$($day.date)].theme"
+    Assert-PublicPeriodTextQuality -Text ([string]$day.tone) -Label "daily_timeline[$($day.date)].tone"
+    Assert-PublicPeriodTextQuality -Text ([string]$day.text) -Label "daily_timeline[$($day.date)].text"
+    Assert-PublicPeriodTextQuality -Text ([string]$day.advice) -Label "daily_timeline[$($day.date)].advice"
     if ($public -match "thème natal|zone natale|maison|sensibilité|besoins émotionnels|communiquer|penser|attachement|agir|responsabilité|limites|relations directes|besoin de sens|habitudes|rythme de travail") {
         $personalizedDayCount += 1
     }
@@ -468,6 +487,9 @@ foreach ($section in @($reading.domain_sections)) {
     if ("$($section.domain) $($section.title) $($section.text)" -notmatch "thème natal|zone natale|maison|sensibilité|besoins émotionnels|communiquer|penser|attachement|agir|responsabilité|limites|relations directes|besoin de sens|habitudes|rythme de travail") {
         throw "Domain section $($section.domain) missing natal personalization"
     }
+    Assert-PublicPeriodTextQuality -Text ([string]$section.domain) -Label "domain_sections[$($section.domain)].domain"
+    Assert-PublicPeriodTextQuality -Text ([string]$section.title) -Label "domain_sections[$($section.domain)].title"
+    Assert-PublicPeriodTextQuality -Text ([string]$section.text) -Label "domain_sections[$($section.domain)].text"
     $domainEvidenceSets += ((@($section.evidence_keys) | Sort-Object) -join "|")
     $allPublicText += "$($section.domain) $($section.title) $($section.text)"
 }
@@ -478,6 +500,8 @@ foreach ($marker in @($reading.key_days) + @($reading.best_days) + @($reading.wa
     if ($marker.PSObject.Properties.Name -contains "fallback_reason" -and $marker.fallback_reason -eq "") {
         throw "Period marker exposes empty fallback_reason for $($marker.date)"
     }
+    Assert-PublicPeriodTextQuality -Text ([string]$marker.title) -Label "period marker $($marker.date).title"
+    Assert-PublicPeriodTextQuality -Text ([string]$marker.reason) -Label "period marker $($marker.date).reason"
     $allPublicText += "$($marker.title) $($marker.reason)"
 }
 foreach ($marker in @($interpretation.key_days) + @($interpretation.best_days) + @($interpretation.watch_days)) {
@@ -492,11 +516,22 @@ foreach ($evidence in @($reading.evidence_summary)) {
     if (-not $allowedEvidenceKeys.Contains([string]$evidence.evidence_key)) {
         throw "Evidence summary invented evidence_key: $($evidence.evidence_key)"
     }
+    Assert-PublicPeriodTextQuality -Text ([string]$evidence.label) -Label "evidence_summary[$($evidence.evidence_key)].label"
     $allPublicText += "$($evidence.label)"
 }
 $joinedPublicText = ($allPublicText -join "`n")
-if ($joinedPublicText -match $forbiddenPublicPattern -or $joinedPublicText -match "slot_|slot:|raw_transits") {
-    throw "Technical code leaked in public period response"
+Assert-PublicPeriodTextQuality -Text ([string]$reading.week_overview.title) -Label "week_overview.title"
+Assert-PublicPeriodTextQuality -Text ([string]$reading.week_overview.text) -Label "week_overview.text"
+Assert-PublicPeriodTextQuality -Text ([string]$reading.week_overview.trajectory) -Label "week_overview.trajectory"
+Assert-PublicPeriodTextQuality -Text ([string]$reading.watch_summary.text) -Label "watch_summary.text"
+Assert-PublicPeriodTextQuality -Text ([string]$reading.advice.main) -Label "advice.main"
+Assert-PublicPeriodTextQuality -Text ([string]$reading.advice.best_use) -Label "advice.best_use"
+Assert-PublicPeriodTextQuality -Text ([string]$reading.advice.avoid) -Label "advice.avoid"
+Assert-PublicPeriodTextQuality -Text $joinedPublicText -Label "public period response"
+$overviewText = "$($reading.week_overview.text) $($reading.week_overview.trajectory)"
+$overviewRepetition = [regex]::Matches($overviewText.ToLowerInvariant(), [regex]::Escape("thème natal comme fil directeur")).Count
+if ($overviewRepetition -gt 1) {
+    throw "Week overview repeats 'thème natal comme fil directeur' $overviewRepetition times"
 }
 foreach ($phrase in @("restez concret", "gardez une marge", "clarifier", "ajuster", "intégrer")) {
     $matches = [regex]::Matches($joinedPublicText.ToLowerInvariant(), [regex]::Escape($phrase)).Count

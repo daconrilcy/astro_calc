@@ -969,7 +969,7 @@ fn build_daily_plans(
             "theme_code": theme,
             "theme_label": theme_label,
             "tone": tone,
-            "summary_hint": format!("Le {date}, le thème {theme_label} donne le relief principal de la journée; {personalization_hint}"),
+            "summary_hint": format!("Synthèse journalière centrée sur {theme_label} avec une nuance natale lisible."),
             "advice_hint": period_advice_hint(theme, natal_focus_hint),
             "style_variant_code": style.code,
             "avoid_terms": style.avoid_terms,
@@ -1418,7 +1418,7 @@ fn period_writer_messages(request: &Value) -> Result<Vec<PromptMessage>, Generat
         PromptMessage {
             role: PromptRole::User,
             content: format!(
-                "Construis horoscope_period_response_v1 pour cette requête d'interprétation. Utilise les libellés français déjà présents, pas les codes internes. Développe week_overview, watch_summary, advice, domain_sections et les 7 entrées daily_timeline afin d'atteindre {} à {} mots publics. Exploite explicitement personalization_hint et natal_focus_hint: au moins 4 jours, chaque domaine et la vue d'ensemble doivent contenir une nuance natale lisible. Respecte les avoid_terms des daily_plans pour éviter les répétitions. Requête JSON:\n{compact}",
+                "Construis horoscope_period_response_v1 pour cette requête d'interprétation. Utilise les libellés français déjà présents, pas les codes internes. Développe week_overview, watch_summary, advice, domain_sections et les 7 entrées daily_timeline afin d'atteindre {} à {} mots publics. Utilise les indications internes de personnalisation natale pour écrire une nuance lisible dans au moins 4 jours, chaque domaine et la vue d'ensemble, sans recopier les noms de champs ni les consignes internes. Respecte les avoid_terms des daily_plans pour éviter les répétitions. Requête JSON:\n{compact}",
                 limits.target_min, limits.target_max
             ),
         },
@@ -1436,26 +1436,14 @@ fn fake_period_writer_response(request: &Value) -> Result<Value, GenerationError
             let theme_label = day["theme_label"]
                 .as_str()
                 .unwrap_or_else(|| period_theme_public_label(theme));
-            let text = match index {
-                0 => format!("{} ouvre la période sur {theme_label}, avec une priorité simple à poser avant d'élargir le mouvement.", day["day_label"].as_str().unwrap_or("Ce jour")),
-                1 => format!("{} aide à ajuster {theme_label} sans perdre le fil installé en début de semaine.", day["day_label"].as_str().unwrap_or("Ce jour")),
-                2 => format!("{} demande plus de tri autour de {theme_label}; mieux vaut choisir une action nette qu'accumuler les réponses rapides.", day["day_label"].as_str().unwrap_or("Ce jour")),
-                3 => format!("{} donne un point d'appui pour clarifier {theme_label} et consolider ce qui tient déjà.", day["day_label"].as_str().unwrap_or("Ce jour")),
-                4 => format!("{} remet {theme_label} au centre des échanges, avec intérêt pour les formulations courtes et précises.", day["day_label"].as_str().unwrap_or("Ce jour")),
-                5 => format!("{} ramène {theme_label} vers des choix pratiques, utiles pour préparer la fin de période.", day["day_label"].as_str().unwrap_or("Ce jour")),
-                _ => format!("{} referme la période sur {theme_label}, en reliant les appuis et les vigilances des jours précédents.", day["day_label"].as_str().unwrap_or("Ce jour")),
-            };
+            let text = period_public_day_text(day, index);
             json!({
                 "date": day["date"],
                 "day_label": day["day_label"],
                 "theme": theme_label,
                 "tone": period_tone_public_label(day["tone"].as_str().unwrap_or("focused")),
-                "text": format!(
-                    "{} {}",
-                    text,
-                    day["personalization_hint"].as_str().unwrap_or("Cette nuance reste reliée au thème natal.")
-                ),
-                "advice": day["advice_hint"],
+                "text": text,
+                "advice": period_public_day_advice(day),
                 "evidence_keys": day["evidence_keys"]
             })
         })
@@ -1468,11 +1456,7 @@ fn fake_period_writer_response(request: &Value) -> Result<Value, GenerationError
             json!({
                 "domain": section["domain"],
                 "title": section["title"],
-                "text": format!(
-                    "{} {}",
-                    section["focus"].as_str().unwrap_or("Domaine de période."),
-                    section["natal_focus_hint"].as_str().unwrap_or("Cette lecture reste reliée au thème natal.")
-                ),
+                "text": period_public_domain_text(section),
                 "evidence_keys": section["evidence_keys"]
             })
         })
@@ -1536,6 +1520,7 @@ fn repair_period_response_shape(request: &Value, response: &mut Value) {
     response["evidence_summary"] =
         sanitize_period_evidence_summary(response.get("evidence_summary"), request);
     ensure_period_response_minimum_words(request, response);
+    normalize_period_week_overview_repetition(response);
 
     let provider = response["quality"]["provider"]
         .as_str()
@@ -1664,17 +1649,15 @@ fn sanitize_period_daily_timeline(value: Option<&Value>, request: &Value) -> Val
                 .get("theme_label")
                 .and_then(Value::as_str)
                 .unwrap_or("priorité");
-            let personalization = plan
-                .get("personalization_hint")
-                .and_then(Value::as_str)
-                .unwrap_or("Cette nuance reste reliée au thème natal.");
+            let fallback_text = period_public_day_text(plan, 0);
+            let fallback_advice = period_public_day_advice(plan);
             json!({
                 "date": date,
                 "day_label": sanitize_period_public_string(generated.and_then(|day| day.get("day_label")).and_then(Value::as_str).or_else(|| plan.get("day_label").and_then(Value::as_str)).unwrap_or("Jour")),
                 "theme": sanitize_period_public_string(generated.and_then(|day| day.get("theme")).and_then(Value::as_str).unwrap_or(theme)),
                 "tone": generated.and_then(|day| day.get("tone")).and_then(Value::as_str).unwrap_or("concentré"),
-                "text": sanitize_period_public_string(&generated.and_then(|day| day.get("text")).and_then(Value::as_str).or_else(|| plan.get("summary_hint").and_then(Value::as_str)).map(|text| ensure_period_personalization_text(text, personalization)).unwrap_or_else(|| ensure_period_personalization_text("Cette journée s'inscrit dans la progression de la période.", personalization))),
-                "advice": sanitize_period_public_string(generated.and_then(|day| day.get("advice")).and_then(Value::as_str).or_else(|| plan.get("advice_hint").and_then(Value::as_str)).unwrap_or("Gardez une action courte et concrète.")),
+                "text": sanitize_period_public_string(&generated.and_then(|day| day.get("text")).and_then(Value::as_str).map(|text| ensure_period_personalization_text(text, &period_public_personalization_sentence(plan))).unwrap_or(fallback_text)),
+                "advice": sanitize_period_public_string(generated.and_then(|day| day.get("advice")).and_then(Value::as_str).unwrap_or(&fallback_advice)),
                 "evidence_keys": string_array_value(plan.get("evidence_keys")).unwrap_or_else(|| json!([]))
             })
         })
@@ -1692,7 +1675,7 @@ fn sanitize_period_domain_sections(value: Option<&Value>, request: &Value) -> Va
             json!({
                 "domain": section["domain"],
                 "title": section["title"],
-                "text": section["focus"],
+                "text": period_public_domain_text(section),
                 "evidence_keys": section["evidence_keys"]
             })
         })
@@ -1709,10 +1692,7 @@ fn sanitize_period_domain_sections(value: Option<&Value>, request: &Value) -> Va
                 json!({
                     "domain": sanitize_period_public_string(section.get("domain").and_then(Value::as_str).unwrap_or("organisation")),
                     "title": sanitize_period_public_string(section.get("title").and_then(Value::as_str).unwrap_or("Organisation")),
-                    "text": sanitize_period_public_string(&ensure_period_personalization_text(
-                        section.get("text").and_then(Value::as_str).unwrap_or("Installer une progression simple plutôt que multiplier les priorités."),
-                        section.get("natal_focus_hint").and_then(Value::as_str).or_else(|| section.get("personalization_hint").and_then(Value::as_str)).unwrap_or("Cette lecture reste reliée au thème natal.")
-                    )),
+                    "text": sanitize_period_public_string(&section.get("text").and_then(Value::as_str).map(|text| ensure_period_personalization_text(text, &period_public_domain_personalization_sentence(&section))).unwrap_or_else(|| period_public_domain_text(&section))),
                     "evidence_keys": string_array_value(section.get("evidence_keys")).unwrap_or_else(|| json!([]))
                 })
             })
@@ -1726,6 +1706,109 @@ fn ensure_period_personalization_text(text: &str, personalization: &str) -> Stri
     } else {
         format!("{text} {personalization}")
     }
+}
+
+fn period_public_day_text(day: &Value, index: usize) -> String {
+    let day_label = day
+        .get("day_label")
+        .and_then(Value::as_str)
+        .unwrap_or("Ce jour");
+    let theme = day
+        .get("theme_label")
+        .and_then(Value::as_str)
+        .or_else(|| day.get("theme").and_then(Value::as_str))
+        .unwrap_or("priorité");
+    let focus = period_public_focus_text(day);
+    let movement = match index {
+        0 => "Il s'agit moins de tout contrôler que de poser un premier repère clair.",
+        1 => "Le bon réflexe consiste à préserver le fil installé la veille sans répondre dans la précipitation.",
+        2 => "Une action courte et assumée vaut mieux qu'une dispersion de petits ajustements.",
+        3 => "Ce moment aide à reconnaître ce qui mérite vraiment votre attention.",
+        4 => "La journée gagne à rester simple, avec des mots utiles et des choix lisibles.",
+        5 => "L'appui principal vient d'une priorité réaliste, tenue sans rigidité.",
+        _ => "La fin de période invite à consolider ce qui a déjà trouvé sa place.",
+    };
+    format!(
+        "{day_label} met l'accent sur {theme}, avec un écho personnel autour de {focus}. {movement}"
+    )
+}
+
+fn period_public_day_advice(day: &Value) -> String {
+    let theme = day
+        .get("theme_label")
+        .and_then(Value::as_str)
+        .or_else(|| day.get("theme").and_then(Value::as_str))
+        .unwrap_or("cette priorité");
+    let focus = period_public_focus_text(day);
+    format!("Choisissez une seule priorité liée à {focus}, puis traitez {theme} par un geste concret et mesuré.")
+}
+
+fn period_public_domain_text(section: &Value) -> String {
+    let domain = section
+        .get("title")
+        .and_then(Value::as_str)
+        .or_else(|| section.get("domain").and_then(Value::as_str))
+        .unwrap_or("Ce domaine");
+    let focus = period_public_focus_text(section);
+    format!(
+        "{domain} devient un terrain d'observation concret cette semaine. La nuance personnelle passe par {focus}, ce qui permet de lire les priorités sans les transformer en consignes rigides."
+    )
+}
+
+fn period_public_personalization_sentence(item: &Value) -> String {
+    let focus = period_public_focus_text(item);
+    format!(
+        "Cette nuance reste liée à {focus}, ce qui rend le conseil plus personnel que générique."
+    )
+}
+
+fn period_public_domain_personalization_sentence(item: &Value) -> String {
+    let focus = period_public_focus_text(item);
+    format!("Dans ce domaine, la lecture reste ancrée dans {focus}.")
+}
+
+fn period_public_focus_text(item: &Value) -> String {
+    for key in [
+        "personalization_hint",
+        "natal_focus_label",
+        "natal_focus_hint",
+    ] {
+        if let Some(raw) = item.get(key).and_then(Value::as_str) {
+            let cleaned = period_public_focus_from_hint(raw);
+            if !cleaned.trim().is_empty() {
+                return cleaned;
+            }
+        }
+    }
+    "une zone personnelle de votre thème natal".to_string()
+}
+
+fn period_public_focus_from_hint(raw: &str) -> String {
+    let mut text = raw.trim().to_string();
+    for prefix in [
+        "Personnaliser ce signal par ",
+        "Personnaliser ce signal avec ",
+        "Relier ce signal à ",
+        "Relier ce signal aux ",
+        "Relier ce signal au ",
+        "Relier ce domaine à ",
+    ] {
+        if let Some(rest) = text.strip_prefix(prefix) {
+            text = rest.to_string();
+            break;
+        }
+    }
+    for suffix in [
+        " plutôt que rester sur un conseil générique.",
+        " plutôt que rester sur un conseil générique",
+        ", sans jargon technique.",
+        " sans jargon technique.",
+    ] {
+        if let Some(rest) = text.strip_suffix(suffix) {
+            text = rest.to_string();
+        }
+    }
+    text
 }
 
 fn sanitize_period_public_string(text: &str) -> String {
@@ -1876,7 +1959,7 @@ fn ensure_period_response_minimum_words(request: &Value, response: &mut Value) {
     if let Some(text) = response.pointer_mut("/week_overview/text") {
         append_period_value_sentence(
             text,
-            "La lecture garde donc le thème natal comme fil directeur, en reliant les choix de la semaine aux zones personnelles déjà mises en évidence.",
+            "La lecture relie les choix de la semaine aux zones personnelles déjà mises en évidence dans le thème natal.",
         );
     }
     if period_public_word_count(response) >= limits.target_min {
@@ -1894,17 +1977,11 @@ fn ensure_period_response_minimum_words(request: &Value, response: &mut Value) {
                 .iter()
                 .find(|plan| plan.get("date").and_then(Value::as_str) == Some(date));
             if let Some(plan) = plan {
-                let personalization = plan
-                    .get("personalization_hint")
-                    .and_then(Value::as_str)
-                    .unwrap_or("Cette nuance reste reliée au thème natal.");
-                let natal_focus = plan
-                    .get("natal_focus_hint")
-                    .and_then(Value::as_str)
-                    .unwrap_or("Relier ce signal au thème natal.");
                 if let Some(text) = day.get_mut("text") {
-                    append_period_value_sentence(text, personalization);
-                    append_period_value_sentence(text, natal_focus);
+                    append_period_value_sentence(
+                        text,
+                        &period_public_personalization_sentence(plan),
+                    );
                 }
                 if let Some(advice) = day.get_mut("advice") {
                     append_period_value_sentence(
@@ -1930,17 +2007,11 @@ fn ensure_period_response_minimum_words(request: &Value, response: &mut Value) {
                 .iter()
                 .find(|plan| plan.get("domain").and_then(Value::as_str) == Some(domain));
             if let Some(plan) = plan {
-                let personalization = plan
-                    .get("personalization_hint")
-                    .and_then(Value::as_str)
-                    .unwrap_or("Cette lecture reste reliée au thème natal.");
-                let natal_focus = plan
-                    .get("natal_focus_hint")
-                    .and_then(Value::as_str)
-                    .unwrap_or("Relier ce domaine au thème natal.");
                 if let Some(text) = section.get_mut("text") {
-                    append_period_value_sentence(text, personalization);
-                    append_period_value_sentence(text, natal_focus);
+                    append_period_value_sentence(
+                        text,
+                        &period_public_domain_personalization_sentence(plan),
+                    );
                 }
             }
         }
@@ -1989,22 +2060,12 @@ fn trim_period_response_to_hard_limit(
                 .iter()
                 .find(|plan| plan.get("date").and_then(Value::as_str) == Some(date));
             if let Some(plan) = plan {
-                let summary = plan
-                    .get("summary_hint")
-                    .and_then(Value::as_str)
-                    .unwrap_or("Cette journée s'inscrit dans la progression de la période.");
-                let personalization = plan
-                    .get("personalization_hint")
-                    .and_then(Value::as_str)
-                    .unwrap_or("Cette nuance reste reliée au thème natal.");
                 day["text"] = json!(sanitize_period_public_string(&compact_period_words(
-                    &ensure_period_personalization_text(summary, personalization),
+                    &period_public_day_text(plan, 0),
                     42,
                 )));
                 day["advice"] = json!(sanitize_period_public_string(&compact_period_words(
-                    plan.get("advice_hint")
-                        .and_then(Value::as_str)
-                        .unwrap_or("Gardez une action courte et personnelle."),
+                    &period_public_day_advice(plan),
                     24,
                 )));
             }
@@ -2025,16 +2086,8 @@ fn trim_period_response_to_hard_limit(
                 .iter()
                 .find(|plan| plan.get("domain").and_then(Value::as_str) == Some(domain));
             if let Some(plan) = plan {
-                let focus = plan
-                    .get("focus")
-                    .and_then(Value::as_str)
-                    .unwrap_or("Domaine de période.");
-                let personalization = plan
-                    .get("personalization_hint")
-                    .and_then(Value::as_str)
-                    .unwrap_or("Cette lecture reste reliée au thème natal.");
                 section["text"] = json!(sanitize_period_public_string(&compact_period_words(
-                    &ensure_period_personalization_text(focus, personalization),
+                    &period_public_domain_text(plan),
                     46,
                 )));
             }
@@ -2075,22 +2128,12 @@ fn trim_period_response_aggressively(request: &Value, response: &mut Value) {
                 .iter()
                 .find(|plan| plan.get("date").and_then(Value::as_str) == Some(date))
             {
-                let summary = plan
-                    .get("summary_hint")
-                    .and_then(Value::as_str)
-                    .unwrap_or("Cette journée s'inscrit dans la progression de la période.");
-                let personalization = plan
-                    .get("personalization_hint")
-                    .and_then(Value::as_str)
-                    .unwrap_or("Cette nuance reste reliée au thème natal.");
                 day["text"] = json!(sanitize_period_public_string(&compact_period_words(
-                    &ensure_period_personalization_text(summary, personalization),
+                    &period_public_day_text(plan, 0),
                     30,
                 )));
                 day["advice"] = json!(sanitize_period_public_string(&compact_period_words(
-                    plan.get("advice_hint")
-                        .and_then(Value::as_str)
-                        .unwrap_or("Gardez une action courte."),
+                    &period_public_day_advice(plan),
                     14,
                 )));
             }
@@ -2111,16 +2154,8 @@ fn trim_period_response_aggressively(request: &Value, response: &mut Value) {
                 .iter()
                 .find(|plan| plan.get("domain").and_then(Value::as_str) == Some(domain))
             {
-                let focus = plan
-                    .get("focus")
-                    .and_then(Value::as_str)
-                    .unwrap_or("Domaine de période.");
-                let personalization = plan
-                    .get("personalization_hint")
-                    .and_then(Value::as_str)
-                    .unwrap_or("Cette lecture reste reliée au thème natal.");
                 section["text"] = json!(sanitize_period_public_string(&compact_period_words(
-                    &ensure_period_personalization_text(focus, personalization),
+                    &period_public_domain_text(plan),
                     34,
                 )));
             }
@@ -2178,10 +2213,6 @@ fn fill_period_response_to_minimum(
                     .get("theme_label")
                     .and_then(Value::as_str)
                     .unwrap_or("ce thème");
-                let personalization = plan
-                    .get("personalization_hint")
-                    .and_then(Value::as_str)
-                    .unwrap_or("Cette nuance reste reliée au thème natal.");
                 if let Some(text) = day.get_mut("text") {
                     append_period_value_sentence(
                         text,
@@ -2189,27 +2220,187 @@ fn fill_period_response_to_minimum(
                             "Pour {theme}, cette indication précise la façon de choisir un rythme personnel sans isoler la journée du reste de la période."
                         ),
                     );
-                    append_period_value_sentence(text, personalization);
+                    append_period_value_sentence(
+                        text,
+                        &period_public_personalization_sentence(plan),
+                    );
                 }
             }
         }
     }
 }
 
+fn normalize_period_week_overview_repetition(response: &mut Value) {
+    let phrase = "thème natal comme fil directeur";
+    let week_text = format!(
+        "{} {}",
+        response["week_overview"]["text"].as_str().unwrap_or(""),
+        response["week_overview"]["trajectory"]
+            .as_str()
+            .unwrap_or("")
+    );
+    if count_normalized_phrase(&week_text, phrase) <= 1 {
+        return;
+    }
+    for pointer in ["/week_overview/trajectory", "/week_overview/text"] {
+        if count_normalized_phrase(
+            &format!(
+                "{} {}",
+                response["week_overview"]["text"].as_str().unwrap_or(""),
+                response["week_overview"]["trajectory"]
+                    .as_str()
+                    .unwrap_or("")
+            ),
+            phrase,
+        ) <= 1
+        {
+            return;
+        }
+        if let Some(value) = response
+            .pointer(pointer)
+            .and_then(Value::as_str)
+            .map(str::to_string)
+        {
+            let normalized = if pointer == "/week_overview/trajectory" {
+                replace_period_phrase_all(&value, phrase, "progression personnelle de la semaine")
+            } else {
+                replace_period_phrase_after_first(
+                    &value,
+                    phrase,
+                    "progression personnelle de la semaine",
+                )
+            };
+            *response.pointer_mut(pointer).unwrap() = json!(normalized);
+        }
+    }
+}
+
+fn replace_period_phrase_all(text: &str, phrase: &str, replacement: &str) -> String {
+    let lower = text.to_lowercase();
+    let phrase_lower = phrase.to_lowercase();
+    let mut out = String::new();
+    let mut cursor = 0;
+    for (index, _) in lower.match_indices(&phrase_lower) {
+        out.push_str(&text[cursor..index]);
+        out.push_str(replacement);
+        cursor = index + phrase.len();
+    }
+    out.push_str(&text[cursor..]);
+    out
+}
+
+fn replace_period_phrase_after_first(text: &str, phrase: &str, replacement: &str) -> String {
+    let lower = text.to_lowercase();
+    let phrase_lower = phrase.to_lowercase();
+    let mut out = String::new();
+    let mut cursor = 0;
+    let mut seen = false;
+    for (index, _) in lower.match_indices(&phrase_lower) {
+        out.push_str(&text[cursor..index]);
+        let end = index + phrase.len();
+        if seen {
+            out.push_str(replacement);
+        } else {
+            out.push_str(&text[index..end]);
+            seen = true;
+        }
+        cursor = end;
+    }
+    out.push_str(&text[cursor..]);
+    out
+}
+
 fn compact_period_words(text: &str, max_words: usize) -> String {
-    let words = text.split_whitespace().collect::<Vec<_>>();
-    if words.len() <= max_words {
+    if text.split_whitespace().count() <= max_words {
         return text.to_string();
     }
-    let mut compact = words
-        .into_iter()
+    let mut out = String::new();
+    for sentence in period_complete_sentences(text) {
+        let candidate = if out.is_empty() {
+            sentence.to_string()
+        } else {
+            format!("{out} {sentence}")
+        };
+        if candidate.split_whitespace().count() > max_words {
+            break;
+        }
+        out = candidate;
+    }
+    if !out.trim().is_empty() {
+        return out;
+    }
+    let compact = text
+        .split_whitespace()
         .take(max_words)
         .collect::<Vec<_>>()
         .join(" ");
-    if !compact.ends_with('.') {
+    period_trim_incomplete_tail(&compact)
+}
+
+fn period_complete_sentences(text: &str) -> Vec<&str> {
+    let mut sentences = Vec::new();
+    let mut start = 0;
+    for (index, ch) in text.char_indices() {
+        if matches!(ch, '.' | '!' | '?') {
+            let end = index + ch.len_utf8();
+            let sentence = text[start..end].trim();
+            if !sentence.is_empty() {
+                sentences.push(sentence);
+            }
+            start = end;
+        }
+    }
+    sentences
+}
+
+fn period_trim_incomplete_tail(text: &str) -> String {
+    let mut words = text
+        .split_whitespace()
+        .map(|word| word.trim_matches(|ch: char| matches!(ch, ',' | ';' | ':')))
+        .filter(|word| !word.is_empty())
+        .collect::<Vec<_>>();
+    while words
+        .last()
+        .map(|word| period_is_weak_sentence_ending(word))
+        .unwrap_or(false)
+    {
+        words.pop();
+    }
+    let mut compact = words.join(" ");
+    compact = compact.trim_end_matches([',', ';', ':']).to_string();
+    if !compact.ends_with(['.', '!', '?']) {
         compact.push('.');
     }
     compact
+}
+
+fn period_is_weak_sentence_ending(word: &str) -> bool {
+    matches!(
+        word.trim_matches(|ch: char| !ch.is_alphabetic())
+            .to_lowercase()
+            .as_str(),
+        "et" | "à"
+            | "a"
+            | "de"
+            | "pour"
+            | "avec"
+            | "sans"
+            | "dans"
+            | "sur"
+            | "vers"
+            | "la"
+            | "le"
+            | "les"
+            | "des"
+            | "du"
+            | "au"
+            | "aux"
+            | "un"
+            | "une"
+            | "ce"
+            | "cet"
+            | "cette"
+    )
 }
 
 fn append_period_value_sentence(value: &mut Value, sentence: &str) {
@@ -2739,6 +2930,38 @@ fn period_max_major_aspect_orb_deg() -> f64 {
 fn validate_period_public_text(public_text: &str) -> Result<(), GenerationError> {
     let lower = public_text.to_lowercase();
     for forbidden in [
+        "personnaliser ce signal",
+        "relier ce signal",
+        "relier ce domaine",
+        "plutôt que rester sur un conseil générique",
+        "donne le relief principal",
+        " en prose utilisateur",
+        "writer",
+        "summary_hint",
+        "advice_hint",
+        "personalization_hint",
+        "natal_focus_hint",
+    ] {
+        if lower.contains(forbidden) {
+            return Err(quality_error(
+                "HOROSCOPE_PERIOD_INTERNAL_GUIDANCE_LEAK",
+                json!({ "forbidden": forbidden }),
+            ));
+        }
+    }
+    if contains_period_theme_instruction(&lower) {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_INTERNAL_GUIDANCE_LEAK",
+            json!({ "forbidden": "date_theme_instruction" }),
+        ));
+    }
+    if let Some(fragment) = period_broken_sentence_fragment(public_text) {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_BROKEN_SENTENCE",
+            json!({ "fragment": fragment }),
+        ));
+    }
+    for forbidden in [
         "slot:",
         "slot_",
         "[morning]",
@@ -2787,6 +3010,49 @@ fn validate_period_public_text(public_text: &str) -> Result<(), GenerationError>
     Ok(())
 }
 
+fn contains_period_theme_instruction(lower: &str) -> bool {
+    lower
+        .split(['.', '!', '?', '\n'])
+        .any(|sentence| sentence.contains(", le thème ") && sentence.contains(" donne "))
+}
+
+fn period_broken_sentence_fragment(public_text: &str) -> Option<String> {
+    for sentence in public_text.split(['.', '!', '?']) {
+        let trimmed = sentence.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        let tail = trimmed
+            .split_whitespace()
+            .rev()
+            .take(3)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .collect::<Vec<_>>()
+            .join(" ");
+        if period_is_broken_sentence_tail(&tail) {
+            return Some(tail);
+        }
+    }
+    None
+}
+
+fn period_is_broken_sentence_tail(tail: &str) -> bool {
+    let normalized = tail
+        .trim()
+        .trim_matches(|ch: char| matches!(ch, ',' | ';' | ':'))
+        .to_lowercase();
+    let words = normalized.split_whitespace().collect::<Vec<_>>();
+    match words.as_slice() {
+        [] => false,
+        [last] => period_is_weak_sentence_ending(last),
+        [.., "à", "la" | "l" | "l'"] => true,
+        [.., "de", "la" | "l" | "l'"] => true,
+        [.., last] => period_is_weak_sentence_ending(last),
+    }
+}
+
 fn validate_period_public_personalization(response: &Value) -> Result<(), GenerationError> {
     let mut count = 0;
     for day in response["daily_timeline"].as_array().into_iter().flatten() {
@@ -2801,6 +3067,12 @@ fn validate_period_public_personalization(response: &Value) -> Result<(), Genera
             .as_str()
             .unwrap_or("")
     );
+    if count_normalized_phrase(&week_text, "thème natal comme fil directeur") > 1 {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_OVERVIEW_REPETITION",
+            json!({ "phrase": "thème natal comme fil directeur" }),
+        ));
+    }
     if !period_text_has_personalization(&week_text) {
         return Err(quality_error(
             "HOROSCOPE_PERIOD_EVIDENCE_MISSING",
@@ -2822,6 +3094,10 @@ fn validate_period_public_personalization(response: &Value) -> Result<(), Genera
         ));
     }
     Ok(())
+}
+
+fn count_normalized_phrase(text: &str, phrase: &str) -> usize {
+    text.to_lowercase().matches(&phrase.to_lowercase()).count()
 }
 
 fn period_text_has_personalization(text: &str) -> bool {
