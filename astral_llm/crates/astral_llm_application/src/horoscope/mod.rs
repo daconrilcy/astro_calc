@@ -38,6 +38,7 @@ const TARGET_WEIGHTS_JSON: &str =
 const ASPECT_WEIGHTS_JSON: &str =
     include_str!("../../../../../json_db/horoscope_aspect_weights.json");
 const ORB_BANDS_JSON: &str = include_str!("../../../../../json_db/horoscope_orb_weight_bands.json");
+const TONE_LABELS_JSON: &str = include_str!("../../../../../json_db/horoscope_tone_labels.json");
 const THEME_MAPPINGS_JSON: &str =
     include_str!("../../../../../json_db/horoscope_signal_theme_mappings.json");
 const THEME_ADVICE_AXES_JSON: &str =
@@ -819,6 +820,14 @@ fn period_evidence_from_snapshots(snapshots: &[Value]) -> Result<Vec<Value>, Gen
             let fact_type = fact["fact_type"].as_str().unwrap_or("transit_active");
             let object = fact["transiting_object"].as_str().unwrap_or("moon");
             let aspect = fact.get("aspect").and_then(|value| value.as_str());
+            let orb_deg = fact.get("orb_deg").and_then(Value::as_f64);
+            if let Some(aspect_code) = aspect {
+                if is_period_major_aspect(aspect_code)
+                    && orb_deg.unwrap_or(f64::INFINITY) > period_max_major_aspect_orb_deg()
+                {
+                    return Err(horoscope_error("HOROSCOPE_PERIOD_CALCULATION_FAILED"));
+                }
+            }
             let theme = match object {
                 "venus" => "relationship",
                 "mars" => "energy",
@@ -828,8 +837,8 @@ fn period_evidence_from_snapshots(snapshots: &[Value]) -> Result<Vec<Value>, Gen
                 _ => "organization",
             };
             let tone = match aspect {
-                Some("square") => "careful",
-                Some("trine") => "supportive",
+                Some("square") | Some("opposition") => "careful",
+                Some("trine") | Some("sextile") => "supportive",
                 Some("conjunction") => "active",
                 _ => "focused",
             };
@@ -846,7 +855,7 @@ fn period_evidence_from_snapshots(snapshots: &[Value]) -> Result<Vec<Value>, Gen
                 "theme_code": theme,
                 "tone": tone,
                 "human_label": format!(
-                    "{} active le thème {}",
+                    "{} met en avant le thème {}",
                     period_object_public_label(object),
                     period_theme_public_label(theme)
                 )
@@ -935,7 +944,8 @@ fn build_period_day_markers(days: &[Value], limit: usize, title: &str) -> Vec<Va
                     day["day_label"].as_str().unwrap_or("Ce jour"),
                     period_theme_public_label(day["theme_code"].as_str().unwrap_or("principal"))
                 ),
-                "evidence_keys": day["evidence_keys"]
+                "evidence_keys": day["evidence_keys"],
+                "fallback_reason": ""
             })
         })
         .collect()
@@ -1036,6 +1046,7 @@ async fn period_writer_response(
     response["quality"]["provider"] = json!(routed.used_provider.as_str());
     response["quality"]["model"] = json!(routed.response.model_used);
     response["quality"]["fallback_used"] = json!(routed.fallback_used);
+    normalize_period_public_tones(&mut response);
     Ok(response)
 }
 
@@ -1050,7 +1061,7 @@ fn period_writer_messages(request: &Value) -> Result<Vec<PromptMessage>, Generat
     Ok(vec![
         PromptMessage {
             role: PromptRole::System,
-            content: "Tu écris une lecture d'horoscope de période en français. Retourne uniquement un objet JSON conforme au schéma fourni. N'invente aucune preuve: chaque evidence_key publique doit provenir de la requête. N'affiche jamais les codes internes, les clés de preuve, les noms techniques de transits, ni les theme_code anglais. La timeline doit couvrir exactement les 7 dates, avec des formulations variées et une trajectoire globale.".to_string(),
+            content: "Tu écris une lecture d'horoscope de période en français. Retourne uniquement un objet JSON conforme au schéma fourni. N'invente aucune preuve: chaque evidence_key publique doit provenir de la requête. N'affiche jamais les codes internes, les clés de preuve, les noms techniques de transits, les theme_code anglais, ni les codes tone anglais. La timeline doit couvrir exactement les 7 dates, avec des formulations variées et une trajectoire globale.".to_string(),
         },
         PromptMessage {
             role: PromptRole::User,
@@ -1085,7 +1096,7 @@ fn fake_period_writer_response(request: &Value) -> Result<Value, GenerationError
                 "date": day["date"],
                 "day_label": day["day_label"],
                 "theme": theme_label,
-                "tone": day["tone"],
+                "tone": period_tone_public_label(day["tone"].as_str().unwrap_or("focused")),
                 "text": text,
                 "advice": day["advice_hint"],
                 "evidence_keys": day["evidence_keys"]
@@ -1134,6 +1145,8 @@ fn fake_period_writer_response(request: &Value) -> Result<Value, GenerationError
             "evidence_guard_passed": true,
             "best_watch_overlap_passed": true,
             "provider": "fake",
+            "model": "fake-model",
+            "fallback_used": false,
             "period_contract": "basic_next_7_days"
         }
     });
@@ -1357,6 +1370,25 @@ fn validate_period_domain_sections(
     Ok(())
 }
 
+fn is_period_major_aspect(aspect: &str) -> bool {
+    matches!(
+        aspect,
+        "conjunction" | "sextile" | "square" | "trine" | "opposition"
+    )
+}
+
+fn period_max_major_aspect_orb_deg() -> f64 {
+    serde_json::from_str::<Value>(ORB_BANDS_JSON)
+        .ok()
+        .and_then(|value| value.get("data").and_then(Value::as_array).cloned())
+        .into_iter()
+        .flatten()
+        .filter_map(|row| row.get("max_orb_deg").and_then(Value::as_f64))
+        .filter(|orb| orb.is_finite() && *orb > 0.0)
+        .max_by(|left, right| left.total_cmp(right))
+        .expect("json_db/horoscope_orb_weight_bands.json must define positive max_orb_deg values")
+}
+
 fn validate_period_public_text(public_text: &str) -> Result<(), GenerationError> {
     let lower = public_text.to_lowercase();
     for forbidden in [
@@ -1388,7 +1420,37 @@ fn validate_period_public_text(public_text: &str) -> Result<(), GenerationError>
             ));
         }
     }
+    for forbidden in [
+        "focused",
+        "focus",
+        "supportive",
+        "careful",
+        "active",
+        "mixed",
+        "fluid",
+        "tense",
+    ] {
+        if contains_ascii_token(&lower, forbidden) {
+            return Err(quality_error(
+                "HOROSCOPE_PERIOD_TECHNICAL_CODE_LEAK",
+                json!({ "forbidden": forbidden }),
+            ));
+        }
+    }
     Ok(())
+}
+
+fn contains_ascii_token(text: &str, token: &str) -> bool {
+    text.match_indices(token).any(|(idx, _)| {
+        let before = text[..idx].chars().next_back();
+        let after = text[idx + token.len()..].chars().next();
+        before
+            .map(|ch| !ch.is_ascii_alphanumeric() && ch != '_')
+            .unwrap_or(true)
+            && after
+                .map(|ch| !ch.is_ascii_alphanumeric() && ch != '_')
+                .unwrap_or(true)
+    })
 }
 
 fn collect_period_public_text(response: &Value, public_text: &mut String) {
@@ -1446,6 +1508,56 @@ fn period_theme_public_label(theme_code: &str) -> &'static str {
         "integration" => "intégration",
         "routine" => "routine",
         _ => "priorité principale",
+    }
+}
+
+fn period_tone_public_label(tone_code: &str) -> String {
+    period_tone_labels()
+        .get(tone_code)
+        .cloned()
+        .unwrap_or_else(|| "nuancé".to_string())
+}
+
+fn period_tone_public_label_if_code(tone: &str) -> String {
+    period_tone_labels()
+        .get(tone)
+        .cloned()
+        .unwrap_or_else(|| tone.to_string())
+}
+
+fn period_tone_labels() -> &'static HashMap<String, String> {
+    static TONE_LABELS: OnceLock<HashMap<String, String>> = OnceLock::new();
+    TONE_LABELS.get_or_init(|| {
+        serde_json::from_str::<Value>(TONE_LABELS_JSON)
+            .ok()
+            .and_then(|value| value.get("data").and_then(Value::as_array).cloned())
+            .into_iter()
+            .flatten()
+            .filter(|row| {
+                row.get("is_active")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(true)
+            })
+            .filter_map(|row| {
+                Some((
+                    row.get("tone_code")?.as_str()?.to_string(),
+                    row.get("label_fr")?.as_str()?.to_string(),
+                ))
+            })
+            .collect::<HashMap<_, _>>()
+    })
+}
+
+fn normalize_period_public_tones(response: &mut Value) {
+    if let Some(days) = response
+        .get_mut("daily_timeline")
+        .and_then(Value::as_array_mut)
+    {
+        for day in days {
+            if let Some(tone) = day.get("tone").and_then(Value::as_str) {
+                day["tone"] = json!(period_tone_public_label_if_code(tone));
+            }
+        }
     }
 }
 

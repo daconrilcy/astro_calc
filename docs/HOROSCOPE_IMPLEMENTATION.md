@@ -146,7 +146,16 @@ Durcissement real E2E period :
   defaut n'est pas `fake`; le fake writer reste reserve aux smokes rapides ;
 - les textes publics utilisent des libelles francais (`theme_label`) et ne
   doivent pas exposer `theme_code`, `evidence_key`, `period:`, `natal_`,
-  `transit_exact`, `transit_active` ou `moon_house_by_day` ;
+  `transit_exact`, `transit_active`, `moon_house_by_day` ou les codes tone
+  internes (`focused`, `supportive`, `careful`, etc.) ;
+- `daily_timeline[].tone` reste present dans le contrat public, mais porte un
+  libelle utilisateur francais depuis `horoscope_tone_labels` ;
+- les aspects period nommes sont limites a la bande maximale du referentiel
+  `horoscope_orb_weight_bands` ; au-dela, le calculateur produit un fait de
+  contexte non aspecte (`transit_context`) plutot qu'un aspect large ;
+- `watch_days` est construit depuis les evenements de vigilance credibles
+  (`careful`, `square`, `opposition`) et reste sans chevauchement avec
+  `best_days` ;
 - `scripts/test_horoscope_basic_next_7_days_real_e2e.ps1` echoue si le
   calculateur ou le writer reste fake, si la timeline est repetitive ou si les
   sections de domaine reutilisent toutes la meme preuve.

@@ -1,0 +1,20 @@
+{
+  "name": "horoscope_tone_labels",
+  "structure": {
+    "tone_code": "string, primary key",
+    "label_fr": "string",
+    "is_active": "boolean",
+    "sort_order": "integer",
+    "unique_key": ["tone_code"]
+  },
+  "data": [
+    { "tone_code": "focused", "label_fr": "concentré", "is_active": true, "sort_order": 10 },
+    { "tone_code": "focus", "label_fr": "concentré", "is_active": true, "sort_order": 11 },
+    { "tone_code": "supportive", "label_fr": "soutenant", "is_active": true, "sort_order": 20 },
+    { "tone_code": "careful", "label_fr": "vigilant", "is_active": true, "sort_order": 30 },
+    { "tone_code": "active", "label_fr": "dynamique", "is_active": true, "sort_order": 40 },
+    { "tone_code": "mixed", "label_fr": "nuancé", "is_active": true, "sort_order": 50 },
+    { "tone_code": "fluid", "label_fr": "fluide", "is_active": true, "sort_order": 60 },
+    { "tone_code": "tense", "label_fr": "sous tension", "is_active": true, "sort_order": 70 }
+  ]
+}

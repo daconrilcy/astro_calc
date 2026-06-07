@@ -154,6 +154,89 @@ fn horoscope_period_calculator_with_transits_uses_swisseph_source() {
 }
 
 #[test]
+fn horoscope_period_calculator_rejects_wide_major_aspect_orbs() {
+    let request = period_calculator_request();
+    let positions = sample_natal_positions();
+    let mut transit_positions = positions.clone();
+    transit_positions.push(ObjectPositionFact {
+        chart_object_id: 3,
+        object_code: "venus".to_string(),
+        object_name: "Venus".to_string(),
+        zodiacal_reference_system_id: 1,
+        coordinate_reference_system_id: 1,
+        sign_id: 6,
+        sign_code: "virgo".to_string(),
+        sign_name: "Virgo".to_string(),
+        house_id: Some(6),
+        house_number: Some(6),
+        house_name: Some("House 6".to_string()),
+        motion_state_id: None,
+        horizon_position_id: None,
+        longitude_deg: 178.0,
+        latitude_deg: None,
+        apparent_speed_deg_per_day: Some(1.0),
+        altitude_deg: None,
+        is_visible: None,
+        facts_json: None,
+    });
+    let transit_snapshots = request
+        .scan_plan
+        .snapshots
+        .iter()
+        .map(|snapshot| (snapshot.snapshot_key.clone(), transit_positions.clone()))
+        .collect::<Vec<_>>();
+
+    let response =
+        calculate_horoscope_period_natal_from_transits(request, &positions, &transit_snapshots);
+    let venus_fact = response.snapshots[1].transits_to_natal.first().unwrap();
+    assert_ne!(venus_fact.fact_type, "transit_to_natal");
+    assert!(venus_fact.aspect.is_none());
+    assert!(venus_fact.orb_deg.unwrap() > 6.0);
+}
+
+#[test]
+fn horoscope_period_calculator_outputs_context_fact_when_no_valid_aspect() {
+    let request = period_calculator_request();
+    let positions = sample_natal_positions();
+    let mut transit_positions = positions.clone();
+    transit_positions.push(ObjectPositionFact {
+        chart_object_id: 3,
+        object_code: "venus".to_string(),
+        object_name: "Venus".to_string(),
+        zodiacal_reference_system_id: 1,
+        coordinate_reference_system_id: 1,
+        sign_id: 6,
+        sign_code: "virgo".to_string(),
+        sign_name: "Virgo".to_string(),
+        house_id: Some(6),
+        house_number: Some(6),
+        house_name: Some("House 6".to_string()),
+        motion_state_id: None,
+        horizon_position_id: None,
+        longitude_deg: 178.0,
+        latitude_deg: None,
+        apparent_speed_deg_per_day: Some(1.0),
+        altitude_deg: None,
+        is_visible: None,
+        facts_json: None,
+    });
+    let transit_snapshots = request
+        .scan_plan
+        .snapshots
+        .iter()
+        .map(|snapshot| (snapshot.snapshot_key.clone(), transit_positions.clone()))
+        .collect::<Vec<_>>();
+
+    let response =
+        calculate_horoscope_period_natal_from_transits(request, &positions, &transit_snapshots);
+    let venus_snapshot = &response.snapshots[1];
+    let venus_fact = venus_snapshot.transits_to_natal.first().unwrap();
+    assert_eq!(venus_fact.fact_type, "transit_context");
+    assert!(venus_fact.evidence_key.contains(":context:"));
+    assert_eq!(venus_snapshot.current_sky_aspects[0]["aspect"], "context");
+}
+
+#[test]
 fn horoscope_period_calculator_request_normalizes_utc_fields() {
     let request: HoroscopePeriodCalculationRequest = serde_json::from_value(serde_json::json!({
         "contract_version": "horoscope_period_calculation_request_v1",

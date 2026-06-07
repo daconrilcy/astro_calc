@@ -18,9 +18,9 @@
   ],
   "additionalProperties": false,
   "properties": {
-    "contract_version": { "const": "horoscope_period_response_v1" },
-    "service_code": { "const": "horoscope_basic_next_7_days_natal" },
-    "period_resolution": { "type": "object" },
+    "contract_version": { "type": "string", "const": "horoscope_period_response_v1" },
+    "service_code": { "type": "string", "const": "horoscope_basic_next_7_days_natal" },
+    "period_resolution": { "$ref": "#/definitions/period_resolution" },
     "week_overview": {
       "type": "object",
       "required": ["title", "text", "trajectory"],
@@ -51,20 +51,50 @@
         "avoid": { "type": "string" }
       }
     },
-    "evidence_summary": { "type": "array", "items": { "type": "object" } },
-    "quality": { "type": "object" }
+    "evidence_summary": { "type": "array", "items": { "$ref": "#/definitions/evidence_summary_item" } },
+    "quality": { "$ref": "#/definitions/quality" }
   },
   "definitions": {
+    "period_resolution": {
+      "type": "object",
+      "required": [
+        "period_profile_code",
+        "anchor_date",
+        "timezone",
+        "start_datetime_local",
+        "end_datetime_local",
+        "start_datetime_utc",
+        "end_datetime_utc",
+        "end_exclusive",
+        "duration_days",
+        "included_dates",
+        "included_days"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "period_profile_code": { "type": "string" },
+        "anchor_date": { "type": "string" },
+        "timezone": { "type": "string" },
+        "start_datetime_local": { "type": "string" },
+        "end_datetime_local": { "type": "string" },
+        "start_datetime_utc": { "type": "string" },
+        "end_datetime_utc": { "type": "string" },
+        "end_exclusive": { "type": "boolean" },
+        "duration_days": { "type": "integer" },
+        "included_dates": { "type": "array", "items": { "type": "string" } },
+        "included_days": { "type": "array", "items": { "type": "string" } }
+      }
+    },
     "day_marker": {
       "type": "object",
-      "required": ["date", "title", "reason", "evidence_keys"],
+      "required": ["date", "title", "reason", "evidence_keys", "fallback_reason"],
       "additionalProperties": false,
       "properties": {
         "date": { "type": "string" },
         "title": { "type": "string" },
         "reason": { "type": "string" },
         "evidence_keys": { "type": "array", "items": { "type": "string" } },
-        "fallback_reason": { "type": "string" }
+        "fallback_reason": { "type": ["string", "null"] }
       }
     },
     "timeline_day": {
@@ -90,6 +120,38 @@
         "title": { "type": "string" },
         "text": { "type": "string" },
         "evidence_keys": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "evidence_summary_item": {
+      "type": "object",
+      "required": ["date", "evidence_key", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "date": { "type": "string" },
+        "evidence_key": { "type": "string" },
+        "label": { "type": "string" }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "required": [
+        "daily_timeline_count",
+        "evidence_guard_passed",
+        "best_watch_overlap_passed",
+        "provider",
+        "model",
+        "fallback_used",
+        "period_contract"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "daily_timeline_count": { "type": "integer" },
+        "evidence_guard_passed": { "type": "boolean" },
+        "best_watch_overlap_passed": { "type": "boolean" },
+        "provider": { "type": "string" },
+        "model": { "type": "string" },
+        "fallback_used": { "type": "boolean" },
+        "period_contract": { "type": "string" }
       }
     }
   }

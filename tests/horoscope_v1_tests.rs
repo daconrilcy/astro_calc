@@ -235,7 +235,12 @@ fn period_response_from_request(request: &serde_json::Value) -> serde_json::Valu
                 "date": day["date"],
                 "day_label": day["day_label"],
                 "theme": theme,
-                "tone": day["tone"],
+                "tone": match day["tone"].as_str().unwrap_or("focused") {
+                    "supportive" => "soutenant",
+                    "careful" => "vigilant",
+                    "active" => "dynamique",
+                    _ => "concentré",
+                },
                 "text": format!("Cette journée numéro {} s'inscrit dans une progression de période et garde un lien clair avec {}.", index + 1, theme),
                 "advice": day["advice_hint"],
                 "evidence_keys": day["evidence_keys"]
@@ -267,7 +272,15 @@ fn period_response_from_request(request: &serde_json::Value) -> serde_json::Valu
             "avoid": "Isoler chaque journée du mouvement d'ensemble."
         },
         "evidence_summary": [],
-        "quality": {}
+        "quality": {
+            "daily_timeline_count": 7,
+            "evidence_guard_passed": true,
+            "best_watch_overlap_passed": true,
+            "provider": "fake",
+            "model": "fake-model",
+            "fallback_used": false,
+            "period_contract": "basic_next_7_days"
+        }
     })
 }
 
@@ -739,6 +752,25 @@ fn horoscope_period_response_has_exactly_7_daily_timeline_entries() {
 }
 
 #[test]
+fn horoscope_period_public_tone_uses_french_labels() {
+    let request = period_interpretation_request();
+    let response = period_response_from_request(&request);
+    validate_period_response_evidence(&request, &response).unwrap();
+    let tones = response["daily_timeline"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|day| day["tone"].as_str().unwrap())
+        .collect::<Vec<_>>();
+    assert!(tones.iter().any(|tone| *tone == "soutenant"));
+    assert!(tones.iter().any(|tone| *tone == "vigilant"));
+    assert!(!tones.iter().any(|tone| matches!(
+        *tone,
+        "focused" | "focus" | "supportive" | "careful" | "active" | "mixed" | "fluid" | "tense"
+    )));
+}
+
+#[test]
 fn horoscope_period_daily_timeline_matches_included_dates() {
     let request = period_interpretation_request();
     let response = period_response_from_request(&request);
@@ -784,6 +816,15 @@ fn horoscope_period_response_rejects_public_theme_codes() {
 }
 
 #[test]
+fn horoscope_period_public_text_rejects_internal_tone_codes() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response["daily_timeline"][0]["tone"] = serde_json::json!("focus");
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_TECHNICAL_CODE_LEAK");
+}
+
+#[test]
 fn horoscope_period_response_rejects_repetitive_timeline() {
     let request = period_interpretation_request();
     let mut response = period_response_from_request(&request);
@@ -796,6 +837,36 @@ fn horoscope_period_response_rejects_repetitive_timeline() {
         err.detail().message,
         "HOROSCOPE_PERIOD_REPETITIVE_DAILY_TEXT"
     );
+}
+
+#[test]
+fn horoscope_period_watch_days_created_from_valid_tension_event() {
+    let request = period_interpretation_request();
+    let watch_days = request["watch_days"].as_array().unwrap();
+    assert!(
+        !watch_days.is_empty(),
+        "period interpretation should expose watch days for valid square/opposition events"
+    );
+    assert!(watch_days.iter().any(|day| day["date"] == "2026-06-09"));
+}
+
+#[test]
+fn horoscope_period_best_days_do_not_overlap_watch_days_after_tension_selection() {
+    let request = period_interpretation_request();
+    let best = request["best_days"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|day| day["date"].as_str())
+        .collect::<std::collections::HashSet<_>>();
+    for date in request["watch_days"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|day| day["date"].as_str())
+    {
+        assert!(!best.contains(date), "watch day {date} overlaps best_days");
+    }
 }
 
 #[test]
@@ -824,6 +895,16 @@ fn horoscope_period_rejects_event_outside_window() {
         err.detail().message,
         "HOROSCOPE_PERIOD_EVENT_OUTSIDE_WINDOW"
     );
+}
+
+#[test]
+fn horoscope_period_application_rejects_wide_named_major_aspect() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let mut calculation = period_calculation();
+    calculation["snapshots"][2]["transits_to_natal"][0]["aspect"] = serde_json::json!("square");
+    calculation["snapshots"][2]["transits_to_natal"][0]["orb_deg"] = serde_json::json!(6.7);
+    let err = build_period_interpretation_request(&public, &calculation).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_CALCULATION_FAILED");
 }
 
 #[test]

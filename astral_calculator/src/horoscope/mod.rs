@@ -10,6 +10,8 @@ pub const HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE: &str =
     "horoscope_premium_daily_local_2h_slots";
 pub const HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE: &str =
     "horoscope_basic_next_7_days_natal";
+const HOROSCOPE_ORB_WEIGHT_BANDS_JSON: &str =
+    include_str!("../../../json_db/horoscope_orb_weight_bands.json");
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct HoroscopeCalculationRequest {
@@ -324,7 +326,10 @@ fn real_period_snapshot(
     let transit_longitude = transit
         .map(|position| position.longitude_deg)
         .unwrap_or_else(|| normalize_deg(natal_longitude + 12.5 + (index as f64 * 27.0)));
-    let (aspect, orb) = nearest_major_aspect(transit_longitude, natal_longitude);
+    let nearest_aspect = nearest_major_aspect(transit_longitude, natal_longitude);
+    let valid_aspect = nearest_aspect.filter(|(_, orb)| *orb <= period_max_major_aspect_orb_deg());
+    let (aspect, orb) =
+        valid_aspect.unwrap_or(("context", nearest_aspect.map(|(_, orb)| orb).unwrap_or(0.0)));
     let natal_house = if object == "moon" {
         transit
             .and_then(|position| position.house_number)
@@ -350,6 +355,11 @@ fn real_period_snapshot(
             snapshot.date,
             snapshot.snapshot_key,
             natal_house.unwrap_or(1)
+        )
+    } else if valid_aspect.is_none() {
+        format!(
+            "period:{}:{}:{}:context:{}",
+            snapshot.date, snapshot.snapshot_key, object, natal_target
         )
     } else {
         format!(
@@ -380,6 +390,8 @@ fn real_period_snapshot(
             evidence_key,
             fact_type: if object == "moon" {
                 "moon_house_by_day".into()
+            } else if valid_aspect.is_none() {
+                "transit_context".into()
             } else {
                 "transit_to_natal".into()
             },
@@ -390,7 +402,7 @@ fn real_period_snapshot(
             } else {
                 Some(natal_target)
             },
-            aspect: if object == "moon" {
+            aspect: if object == "moon" || valid_aspect.is_none() {
                 None
             } else {
                 Some(aspect.into())
@@ -400,7 +412,7 @@ fn real_period_snapshot(
         }],
         current_sky_aspects: vec![serde_json::json!({
             "transiting_object": object,
-            "aspect": if object == "moon" { "context" } else { aspect },
+            "aspect": if object == "moon" || valid_aspect.is_none() { "context" } else { aspect },
             "target": "period_tone",
             "orb_deg": round1(orb),
             "source": source
@@ -437,7 +449,7 @@ fn visible_objects(transit_positions: Option<&[ObjectPositionFact]>) -> Vec<Stri
     objects
 }
 
-fn nearest_major_aspect(left: f64, right: f64) -> (&'static str, f64) {
+fn nearest_major_aspect(left: f64, right: f64) -> Option<(&'static str, f64)> {
     let separation = angular_separation(left, right);
     let mut best = ("conjunction", (separation - 0.0).abs());
     for (name, angle) in [
@@ -451,7 +463,23 @@ fn nearest_major_aspect(left: f64, right: f64) -> (&'static str, f64) {
             best = (name, orb);
         }
     }
-    best
+    Some(best)
+}
+
+fn period_max_major_aspect_orb_deg() -> f64 {
+    serde_json::from_str::<serde_json::Value>(HOROSCOPE_ORB_WEIGHT_BANDS_JSON)
+        .ok()
+        .and_then(|value| {
+            value
+                .get("data")
+                .and_then(serde_json::Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter_map(|row| row.get("max_orb_deg").and_then(serde_json::Value::as_f64))
+                .filter(|orb| orb.is_finite() && *orb > 0.0)
+                .max_by(|left, right| left.total_cmp(right))
+        })
+        .expect("json_db/horoscope_orb_weight_bands.json must define positive max_orb_deg values")
 }
 
 fn angular_separation(left: f64, right: f64) -> f64 {

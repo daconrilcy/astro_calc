@@ -34,6 +34,180 @@ if ([string]::IsNullOrWhiteSpace($IdempotencyKey)) {
 $headers["Idempotency-Key"] = $IdempotencyKey
 $calcHeaders = New-AstralAuthHeaders -Service calculator
 
+function Assert-RealLlmProviderReady {
+    param(
+        [string]$BaseUrl,
+        $Headers,
+        [string]$RepoRoot
+    )
+    $providers = Invoke-RestMethod -Method Get -Uri "$BaseUrl/v1/providers" -Headers $Headers -TimeoutSec 10
+    $defaultProvider = [string]$providers.default_provider
+    $defaultModel = [string]$providers.default_model
+    if ([string]::IsNullOrWhiteSpace($defaultProvider) -or $defaultProvider -eq "fake") {
+        Sync-DockerLlmProviderFromDotEnv -RepoRoot $RepoRoot -BaseUrl $BaseUrl
+        $providers = Invoke-RestMethod -Method Get -Uri "$BaseUrl/v1/providers" -Headers $Headers -TimeoutSec 10
+        $defaultProvider = [string]$providers.default_provider
+        $defaultModel = [string]$providers.default_model
+        if ([string]::IsNullOrWhiteSpace($defaultProvider) -or $defaultProvider -eq "fake") {
+            throw @"
+Real horoscope period E2E requires the LLM API default provider to be real.
+Current /v1/providers default_provider='$defaultProvider', default_model='$defaultModel'.
+The script read .env but could not align the running LLM containers.
+"@
+        }
+    }
+}
+
+function ConvertTo-YamlSingleQuoted {
+    param([string]$Value)
+    return "'" + ($Value -replace "'", "''") + "'"
+}
+
+function Wait-LlmReady {
+    param(
+        [string]$BaseUrl,
+        $Headers,
+        [int]$TimeoutSec = 90
+    )
+    $deadline = (Get-Date).AddSeconds($TimeoutSec)
+    $lastError = $null
+    while ((Get-Date) -lt $deadline) {
+        try {
+            $ready = Invoke-RestMethod -Method Get -Uri "$BaseUrl/health/ready" -Headers $Headers -TimeoutSec 5
+            if ($ready.status -eq "ready") { return }
+            $lastError = "status=$($ready.status)"
+        } catch {
+            $lastError = $_.Exception.Message
+        }
+        Start-Sleep -Seconds 2
+    }
+    throw "LLM API not ready after provider sync. Last error: $lastError"
+}
+
+function Sync-DockerLlmProviderFromDotEnv {
+    param(
+        [string]$RepoRoot,
+        [string]$BaseUrl
+    )
+    $expectedProvider = [Environment]::GetEnvironmentVariable("ASTRAL_LLM_DEFAULT_PROVIDER")
+    $expectedModel = [Environment]::GetEnvironmentVariable("ASTRAL_LLM_DEFAULT_MODEL")
+    if ([string]::IsNullOrWhiteSpace($expectedProvider) -or $expectedProvider -eq "fake") {
+        throw ".env must define ASTRAL_LLM_DEFAULT_PROVIDER with a real provider for real horoscope period E2E"
+    }
+    if ([string]::IsNullOrWhiteSpace($expectedModel)) {
+        throw ".env must define ASTRAL_LLM_DEFAULT_MODEL for real horoscope period E2E"
+    }
+    if ($BaseUrl -notmatch "^(http://)?(127\.0\.0\.1|localhost):") {
+        throw "Running LLM provider is fake and BaseUrl is not local; cannot sync Docker containers from .env"
+    }
+
+    $overrideDir = Join-Path $RepoRoot "output\horoscope_period_real"
+    New-Item -ItemType Directory -Force -Path $overrideDir | Out-Null
+    $overridePath = Join-Path $overrideDir "docker-compose.real-provider.override.yml"
+    $providerYaml = ConvertTo-YamlSingleQuoted $expectedProvider
+    $modelYaml = ConvertTo-YamlSingleQuoted $expectedModel
+    @"
+services:
+  astral_llm_api:
+    environment:
+      ASTRAL_LLM_DEFAULT_PROVIDER: $providerYaml
+      ASTRAL_LLM_DEFAULT_MODEL: $modelYaml
+  astral_llm_worker:
+    environment:
+      ASTRAL_LLM_DEFAULT_PROVIDER: $providerYaml
+      ASTRAL_LLM_DEFAULT_MODEL: $modelYaml
+"@ | Set-Content -LiteralPath $overridePath -Encoding UTF8
+
+    Write-Host "Syncing astral_llm_api and astral_llm_worker from .env ($expectedProvider / $expectedModel)..." -ForegroundColor Yellow
+    & docker compose -f (Join-Path $RepoRoot "docker-compose.yml") -f $overridePath up -d --no-build --force-recreate astral_llm_api astral_llm_worker | Out-Host
+    if ($LASTEXITCODE -ne 0) {
+        throw "docker compose provider sync failed"
+    }
+    Wait-LlmReady -BaseUrl $BaseUrl -Headers $headers
+}
+
+function ConvertFrom-JsonPreserveDates {
+    param([string]$Json)
+    if ((Get-Command ConvertFrom-Json).Parameters.ContainsKey("DateKind")) {
+        return $Json | ConvertFrom-Json -DateKind String
+    }
+    return $Json | ConvertFrom-Json
+}
+
+function Get-RawJsonElement {
+    param(
+        [System.Text.Json.JsonElement]$Element,
+        [object[]]$Path
+    )
+    $current = $Element
+    foreach ($segment in $Path) {
+        if ($current.ValueKind -eq [System.Text.Json.JsonValueKind]::Object) {
+            $property = $current.EnumerateObject() | Where-Object { $_.Name -eq [string]$segment } | Select-Object -First 1
+            if (-not $property) {
+                throw "Missing JSON path segment '$segment' in '$($Path -join ".")'"
+            }
+            $current = $property.Value
+        } elseif ($current.ValueKind -eq [System.Text.Json.JsonValueKind]::Array -and $segment -is [int]) {
+            $items = @($current.EnumerateArray())
+            if ($segment -lt 0 -or $segment -ge $items.Count) {
+                throw "Array index '$segment' out of bounds in '$($Path -join ".")'"
+            }
+            $current = $items[$segment]
+        } else {
+            throw "Cannot traverse JSON path '$($Path -join ".")' at segment '$segment'"
+        }
+    }
+    return $current
+}
+
+function Get-RawJsonString {
+    param(
+        [string]$Json,
+        [object[]]$Path
+    )
+    $doc = [System.Text.Json.JsonDocument]::Parse($Json)
+    try {
+        $element = Get-RawJsonElement -Element $doc.RootElement -Path $Path
+        if ($element.ValueKind -ne [System.Text.Json.JsonValueKind]::String) {
+            throw "JSON path '$($Path -join ".")' is not a string"
+        }
+        return $element.GetString()
+    } finally {
+        $doc.Dispose()
+    }
+}
+
+function Get-RawJsonArrayPropertyStrings {
+    param(
+        [string]$Json,
+        [object[]]$ArrayPath,
+        [string]$PropertyName
+    )
+    $doc = [System.Text.Json.JsonDocument]::Parse($Json)
+    try {
+        $array = Get-RawJsonElement -Element $doc.RootElement -Path $ArrayPath
+        if ($array.ValueKind -ne [System.Text.Json.JsonValueKind]::Array) {
+            throw "JSON path '$($ArrayPath -join ".")' is not an array"
+        }
+        $values = @()
+        foreach ($item in $array.EnumerateArray()) {
+            $property = $item.EnumerateObject() | Where-Object { $_.Name -eq $PropertyName } | Select-Object -First 1
+            if (-not $property -or $property.Value.ValueKind -ne [System.Text.Json.JsonValueKind]::String) {
+                throw "Array item '$($ArrayPath -join ".")' is missing string property '$PropertyName'"
+            }
+            $values += $property.Value.GetString()
+        }
+        return $values
+    } finally {
+        $doc.Dispose()
+    }
+}
+
+if ($BaseUrl -match "^(http://)?(127\.0\.0\.1|localhost):") {
+    Sync-DockerLlmProviderFromDotEnv -RepoRoot $repoRoot -BaseUrl $BaseUrl
+}
+Assert-RealLlmProviderReady -BaseUrl $BaseUrl -Headers $headers -RepoRoot $repoRoot
+
 $chartCalculationId = $UseExistingChartCalculationId
 if ([string]::IsNullOrWhiteSpace($chartCalculationId)) {
     $natalRequestPath = Join-Path $repoRoot "contracts\integration\examples\natal_calculation_request_v1.paris_1990.json"
@@ -56,12 +230,15 @@ $body = @{
     }
 } | ConvertTo-Json -Depth 20
 
-$submit = Invoke-RestMethod -Method Post -Uri "$BaseUrl/v1/jobs" -Headers $headers -ContentType "application/json" -Body $body
+$submitRaw = (Invoke-WebRequest -Method Post -Uri "$BaseUrl/v1/jobs" -Headers $headers -ContentType "application/json" -Body $body).Content
+$submit = ConvertFrom-JsonPreserveDates $submitRaw
 $deadline = (Get-Date).AddSeconds($TimeoutSec)
 $status = $null
+$statusRaw = $null
 while ((Get-Date) -lt $deadline) {
     Start-Sleep -Seconds 3
-    $status = Invoke-RestMethod -Method Get -Uri "$BaseUrl/v1/jobs/$($submit.run_id)" -Headers $headers
+    $statusRaw = (Invoke-WebRequest -Method Get -Uri "$BaseUrl/v1/jobs/$($submit.run_id)" -Headers $headers).Content
+    $status = ConvertFrom-JsonPreserveDates $statusRaw
     if ($status.status -eq "completed") { break }
     if ($status.status -eq "failed" -or $status.status -eq "safety_rejected") {
         throw "Real horoscope period E2E ended with $($status.status): $($status | ConvertTo-Json -Depth 20)"
@@ -94,13 +271,15 @@ function Assert-UtcString {
     }
 }
 
-Assert-UtcString ([string]$reading.period_resolution.start_datetime_utc) "period_resolution.start_datetime_utc"
-Assert-UtcString ([string]$reading.period_resolution.end_datetime_utc) "period_resolution.end_datetime_utc"
-foreach ($snapshot in @($calculation.scan_plan.snapshots)) {
-    Assert-UtcString ([string]$snapshot.reference_datetime_utc) "scan_plan snapshot $($snapshot.snapshot_key)"
+Assert-UtcString (Get-RawJsonString $statusRaw @("result", "reading", "period_resolution", "start_datetime_utc")) "period_resolution.start_datetime_utc"
+Assert-UtcString (Get-RawJsonString $statusRaw @("result", "reading", "period_resolution", "end_datetime_utc")) "period_resolution.end_datetime_utc"
+foreach ($value in Get-RawJsonArrayPropertyStrings $statusRaw @("result", "calculation", "scan_plan", "snapshots") "reference_datetime_utc") {
+    Assert-UtcString $value "scan_plan snapshot reference_datetime_utc"
+}
+foreach ($value in Get-RawJsonArrayPropertyStrings $statusRaw @("result", "calculation", "snapshots") "reference_datetime_utc") {
+    Assert-UtcString $value "calculation snapshot reference_datetime_utc"
 }
 foreach ($snapshot in @($calculation.snapshots)) {
-    Assert-UtcString ([string]$snapshot.reference_datetime_utc) "calculation snapshot $($snapshot.snapshot_key)"
     foreach ($fact in @($snapshot.transits_to_natal)) {
         if ([string]$fact.source -match "^fake|fake_") {
             throw "Real period calculation used fake source: $($fact.source)"
@@ -111,11 +290,55 @@ foreach ($snapshot in @($calculation.snapshots)) {
     }
 }
 $provider = [string]$reading.quality.provider
-if ([string]::IsNullOrWhiteSpace($provider) -or $provider -eq "fake") {
+if ($provider -ne "openai") {
     throw "Real period writer used invalid provider: '$provider'"
 }
+if ([bool]$reading.quality.fallback_used) {
+    throw "Real period writer unexpectedly used fallback"
+}
+if ([string]::IsNullOrWhiteSpace([string]$reading.quality.model)) {
+    throw "Real period writer did not expose model"
+}
 
-$forbiddenPublicPattern = "period:|natal_|fake_|theme_code|evidence_key|snapshot|transit_exact|transit_active|moon_house_by_day|organization|relationship|energy|clarity|integration"
+$validTensionDates = New-Object System.Collections.Generic.HashSet[string]
+foreach ($event in @($interpretation.period_events)) {
+    $tone = [string]$event.tone
+    $aspect = [string]$event.aspect
+    $date = [string]$event.date
+    if ($tone -eq "careful" -or $aspect -in @("square", "opposition")) {
+        [void]$validTensionDates.Add($date)
+    }
+}
+foreach ($snapshot in @($calculation.snapshots)) {
+    foreach ($fact in @($snapshot.transits_to_natal)) {
+        if ($fact.fact_type -eq "transit_to_natal" -and -not [string]::IsNullOrWhiteSpace([string]$fact.aspect)) {
+            $orb = [double]$fact.orb_deg
+            if ($orb -gt 6.0) {
+                throw "Named period aspect exceeds 6.0 deg orb: $($snapshot.date) $($fact.transiting_object) $($fact.aspect) orb=$orb"
+            }
+            if ([string]$fact.aspect -in @("square", "opposition")) {
+                [void]$validTensionDates.Add([string]$snapshot.date)
+            }
+        }
+    }
+}
+if ($validTensionDates.Count -gt 0) {
+    $watchDates = @($reading.watch_days | ForEach-Object { [string]$_.date })
+    if ($watchDates.Count -lt 1) {
+        throw "Valid period tension exists but reading.watch_days is empty"
+    }
+    foreach ($date in $validTensionDates) {
+        if ($watchDates -contains $date) {
+            $bestDates = @($reading.best_days | ForEach-Object { [string]$_.date })
+            if ($bestDates -contains $date) {
+                throw "Period day $date overlaps best_days and watch_days"
+            }
+            break
+        }
+    }
+}
+
+$forbiddenPublicPattern = "period:|natal_|fake_|theme_code|evidence_key|snapshot|transit_exact|transit_active|moon_house_by_day|organization|relationship|energy|clarity|integration|\bfocused\b|\bfocus\b|\bsupportive\b|\bcareful\b|\bactive\b|\bmixed\b|\bfluid\b|\btense\b"
 $allPublicText = @(
     $reading.week_overview.title,
     $reading.week_overview.text,
@@ -129,7 +352,10 @@ foreach ($day in $reading.daily_timeline) {
     if (-not $day.evidence_keys -or @($day.evidence_keys).Count -lt 1) {
         throw "Real period reading day $($day.date) missing evidence"
     }
-    $public = "$($day.day_label) $($day.theme) $($day.text) $($day.advice)"
+    if ([string]$day.tone -match "^(focused|focus|supportive|careful|active|mixed|fluid|tense)$") {
+        throw "Real period reading day $($day.date) exposes internal tone code: $($day.tone)"
+    }
+    $public = "$($day.day_label) $($day.theme) $($day.tone) $($day.text) $($day.advice)"
     if ($public -match $forbiddenPublicPattern -or $public -match "slot_|slot:|raw_transits") {
         throw "Technical code leaked in real period reading: $public"
     }

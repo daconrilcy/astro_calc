@@ -29,7 +29,10 @@ Le service period `horoscope_basic_next_7_days_natal` est egalement documente
 dans `docs/HOROSCOPE_IMPLEMENTATION.md`; ce fichier ne duplique pas son contrat.
 Depuis le durcissement real E2E, ce service exige des champs UTC normalises,
 refuse les sources/provider fake dans le script reel et expose des libelles
-publics francais au lieu des `theme_code` internes.
+publics francais au lieu des `theme_code` internes. Les tonalites publiques
+viennent de `horoscope_tone_labels`, et les aspects period nommes sont bornes
+par le referentiel `horoscope_orb_weight_bands`; un aspect trop large devient un
+fait de contexte non aspecte.
 
 ## Objectif
 
