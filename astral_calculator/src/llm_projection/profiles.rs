@@ -8,12 +8,14 @@ pub fn profile_from_level(level: &str) -> Result<LlmProjectionProfile, RuntimeEr
     all_profiles_from_seed()
         .into_iter()
         .find(|profile| profile.level_code == level)
-        .ok_or_else(|| RuntimeError::InvalidEngineRequest(format!("unknown projection level: {level}")))
+        .ok_or_else(|| {
+            RuntimeError::InvalidEngineRequest(format!("unknown projection level: {level}"))
+        })
 }
 
 pub fn all_profiles_from_seed() -> Vec<LlmProjectionProfile> {
-    let table: serde_json::Value =
-        serde_json::from_str(PROFILES_JSON).expect("astral_llm_projection_profiles.json must parse");
+    let table: serde_json::Value = serde_json::from_str(PROFILES_JSON)
+        .expect("astral_llm_projection_profiles.json must parse");
     table["data"]
         .as_array()
         .expect("profiles data array")
@@ -32,7 +34,8 @@ pub fn all_profiles_from_seed() -> Vec<LlmProjectionProfile> {
                 .expect("max_core_placements") as usize,
             max_supporting_placements: row["max_supporting_placements"]
                 .as_u64()
-                .expect("max_supporting_placements") as usize,
+                .expect("max_supporting_placements")
+                as usize,
             max_dominant_signs: row["max_dominant_signs"]
                 .as_u64()
                 .expect("max_dominant_signs") as usize,
@@ -42,17 +45,15 @@ pub fn all_profiles_from_seed() -> Vec<LlmProjectionProfile> {
             max_dominant_objects: row["max_dominant_objects"]
                 .as_u64()
                 .expect("max_dominant_objects") as usize,
-            max_house_axes: row["max_house_axes"]
-                .as_u64()
-                .expect("max_house_axes") as usize,
+            max_house_axes: row["max_house_axes"].as_u64().expect("max_house_axes") as usize,
             max_aspects: row["max_aspects"].as_u64().expect("max_aspects") as usize,
-            max_background_placements: row["max_background_placements"]
-                .as_u64()
-                .unwrap_or_else(|| {
+            max_background_placements: row["max_background_placements"].as_u64().unwrap_or_else(
+                || {
                     default_max_background_placements_u64(
                         row["level_code"].as_str().expect("level_code"),
                     )
-                }) as usize,
+                },
+            ) as usize,
             max_accidental_conditions_per_object: row["max_accidental_conditions_per_object"]
                 .as_u64()
                 .unwrap_or_else(|| {
@@ -85,7 +86,9 @@ pub async fn resolve_projection_profile(
         .await
     {
         Ok(profile) => Ok(merge_seed_limits(profile)),
-        Err(RuntimeError::Database(error)) if missing_relation(&error, "astral_llm_projection_profiles") => {
+        Err(RuntimeError::Database(error))
+            if missing_relation(&error, "astral_llm_projection_profiles") =>
+        {
             profile_from_level(level)
         }
         Err(RuntimeError::InvalidEngineRequest(message))

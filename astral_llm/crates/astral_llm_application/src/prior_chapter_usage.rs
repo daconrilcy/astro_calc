@@ -144,7 +144,9 @@ mod tests {
         let avoid = prior.build_avoid_repeating(&PremiumEvidencePolicy::default());
         assert!(avoid.contains(&"aspect:jupiter:uranus:opposition".to_string()));
         assert!(avoid.contains(&"signal:dignity:saturn:domicile:capricorn".to_string()));
-        assert!(prior.planner_avoid_keys().contains("aspect:jupiter:uranus:opposition"));
+        assert!(prior
+            .planner_avoid_keys()
+            .contains("aspect:jupiter:uranus:opposition"));
     }
 
     #[test]
@@ -156,7 +158,12 @@ mod tests {
             prior.record_pack(&ChapterEvidencePack {
                 chapter_code: ch.into(),
                 core: vec![],
-                supporting: vec![ev("placement:sun", "placement", EvidenceKindFamily::Placement, key)],
+                supporting: vec![ev(
+                    "placement:sun",
+                    "placement",
+                    EvidenceKindFamily::Placement,
+                    key,
+                )],
                 nuance: vec![],
                 avoid_repeating: vec![],
             });

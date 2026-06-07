@@ -4,7 +4,9 @@ use astral_llm_application::InterpretationProfileResolver;
 use astral_llm_domain::{
     astrologer_profile::{JargonLevel, ToneProfile, WordingStyle},
     generation_request::{AudienceLevel, ProductContext},
-    interpretation_profile::{InterpretationProfile, InterpretationProfileDocument, NATAL_PROMPTER_PRODUCT},
+    interpretation_profile::{
+        InterpretationProfile, InterpretationProfileDocument, NATAL_PROMPTER_PRODUCT,
+    },
     output_contract::{GenerationMode, OutputFormat, ResponseContract},
     AstroCalculationPayload, AstrologerProfile, GenerateReadingRequest,
 };
@@ -24,7 +26,9 @@ fn bootstrap_profiles_load_five_tiers() {
 #[test]
 fn premium_plus_profile_targets_rich_reading() {
     let profiles = bootstrap_interpretation_profiles();
-    let profile = profiles.get("natal_premium_plus").expect("natal_premium_plus");
+    let profile = profiles
+        .get("natal_premium_plus")
+        .expect("natal_premium_plus");
     assert!(profile.evidence_enabled());
     assert!(profile.blocking_quality_gate());
     assert!(profile.has_final_synthesis_chapter());
@@ -171,7 +175,10 @@ fn legacy_natal_premium_product_code_migrates_at_normalize() {
     InterpretationProfileResolver::normalize_request(&mut request, &catalog).unwrap();
     assert_eq!(request.product_context.product_code, NATAL_PROMPTER_PRODUCT);
     assert_eq!(
-        request.product_context.interpretation_profile_code.as_deref(),
+        request
+            .product_context
+            .interpretation_profile_code
+            .as_deref(),
         Some("natal_premium")
     );
     assert_eq!(

@@ -1,9 +1,8 @@
 //! Consignes structurelles injectees avant generation chapitre (anti-repetition en amont).
 
 use astral_llm_domain::{
-    generation_response::ReadingChapter,
+    generation_response::ReadingChapter, interpretation_profile::BodyStructureConfig,
     interpretive_evidence::ChapterEvidencePack,
-    interpretation_profile::BodyStructureConfig,
 };
 
 use crate::astro_label_humanizer::AstroLabelHumanizer;
@@ -29,7 +28,8 @@ impl ChapterWritingGuidance {
         let locale = AstroLabelHumanizer::locale_key(language);
         let prior_bodies: Vec<&str> = prior_chapters.iter().map(|c| c.body.as_str()).collect();
         let avoid_phrases = phrases_to_avoid_from_prior(&prior_bodies, locale, MAX_PRIOR_PHRASES);
-        let avoid_openings = openings_to_avoid_from_prior(&prior_bodies, locale, MAX_PRIOR_OPENINGS);
+        let avoid_openings =
+            openings_to_avoid_from_prior(&prior_bodies, locale, MAX_PRIOR_OPENINGS);
         let rich_editorial = interpretation
             .map(|ctx| ctx.profile.uses_rich_editorial_structure())
             .unwrap_or(false);
@@ -159,7 +159,11 @@ impl ChapterWritingGuidance {
                         .iter()
                         .map(|e| format!("- {} (supporting)", e.fact_id)),
                 )
-                .chain(pack.nuance.iter().map(|e| format!("- {} (nuance)", e.fact_id)))
+                .chain(
+                    pack.nuance
+                        .iter()
+                        .map(|e| format!("- {} (nuance)", e.fact_id)),
+                )
                 .collect();
             if !basis_lines.is_empty() {
                 block.push_str(
@@ -208,9 +212,9 @@ fn default_compact_body_structure() -> BodyStructureConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use astral_llm_infra::bootstrap_interpretation_profiles;
     use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
     use crate::prompt_compiler::PromptBundle;
+    use astral_llm_infra::bootstrap_interpretation_profiles;
 
     fn premium_plus_ctx() -> ResolvedInterpretationContext {
         let profile = bootstrap_interpretation_profiles()

@@ -11,7 +11,7 @@ mod uncertainty_window;
 
 pub use catalog::SimplifiedCatalog;
 pub use request::{
-    AstroSimplifiedNatalRequest, SIMPLIFIED_REQUEST_CONTRACT_VERSION, SimplifiedLocationRequest,
+    AstroSimplifiedNatalRequest, SimplifiedLocationRequest, SIMPLIFIED_REQUEST_CONTRACT_VERSION,
 };
 pub use response::{
     AstroSimplifiedNatalResponse, LlmPayloadControls, SIMPLIFIED_RESPONSE_CONTRACT_VERSION,
@@ -34,6 +34,6 @@ pub use payload::build_response;
 pub use resolve::{build_uncertainty_window, validate_and_resolve};
 #[cfg(any(test, feature = "test-utils"))]
 pub use response::{AmbiguousSignFactResponse, SignFactResponse};
+pub use service::calculate_simplified_natal;
 #[cfg(any(test, feature = "test-utils"))]
 pub use uncertainty_window::sample_points_utc;
-pub use service::calculate_simplified_natal;

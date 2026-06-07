@@ -142,8 +142,7 @@ pub fn validate_aspect_definitions(
             "invalid max_default_orb_deg for major aspect family: {max_default_orb_deg}"
         )));
     }
-    if product_default_major_orb_deg <= 0.0 || product_default_major_orb_deg > max_default_orb_deg
-    {
+    if product_default_major_orb_deg <= 0.0 || product_default_major_orb_deg > max_default_orb_deg {
         return Err(RuntimeError::Ephemeris(
             "invalid product default_major_orb_deg (sanity check only; detection uses astral_aspects.default_orb_deg)".to_string(),
         ));
@@ -461,7 +460,9 @@ pub fn validate_accidental_condition_triggers(
     Ok(())
 }
 
-pub fn validate_accidental_scoring_params(params: &AccidentalScoringParams) -> Result<(), RuntimeError> {
+pub fn validate_accidental_scoring_params(
+    params: &AccidentalScoringParams,
+) -> Result<(), RuntimeError> {
     if params.code.trim().is_empty()
         || params.overall_score_min > params.overall_score_baseline
         || params.overall_score_baseline > params.overall_score_max
@@ -515,4 +516,3 @@ pub fn validate_object_sect_affinity_references(
     let _ = affinity_codes;
     Ok(())
 }
-

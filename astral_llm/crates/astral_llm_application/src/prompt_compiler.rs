@@ -1,9 +1,8 @@
 use std::path::{Path, PathBuf};
 
 use astral_llm_domain::{
-    interpretation_profile::NATAL_PROMPTER_PRODUCT,
-    interpretive_evidence::ChapterEvidencePack, GenerateReadingRequest, NormalizedAstroFacts,
-    SafetyPolicy,
+    interpretation_profile::NATAL_PROMPTER_PRODUCT, interpretive_evidence::ChapterEvidencePack,
+    GenerateReadingRequest, NormalizedAstroFacts, SafetyPolicy,
 };
 use astral_llm_infra::SharedCanonicalCatalog;
 
@@ -49,10 +48,8 @@ impl PromptCompiler {
     }
 
     pub fn compile(&self, input: PromptCompilationInput<'_>) -> Result<PromptBundle, String> {
-        let (family, version) = resolve_prompt_profile(
-            &input.request.product_context.product_code,
-            input.catalog,
-        );
+        let (family, version) =
+            resolve_prompt_profile(&input.request.product_context.product_code, input.catalog);
         let base_dir = self.prompts_root.join(&family).join(&version);
 
         let system = read_template(&base_dir.join("system.md"))?;
@@ -111,12 +108,7 @@ impl PromptCompiler {
                 if let Some(controls) = input.request.astro_result.data.get("llm_controls") {
                     obj.insert("llm_controls".into(), controls.clone());
                 }
-                if let Some(excluded) = input
-                    .request
-                    .astro_result
-                    .data
-                    .get("excluded_features")
-                {
+                if let Some(excluded) = input.request.astro_result.data.get("excluded_features") {
                     obj.insert("excluded_features".into(), excluded.clone());
                 }
             }
@@ -134,8 +126,10 @@ impl PromptCompiler {
             AstroPayloadNormalizer::to_prompt_data_block(input.astro_facts)
         };
 
-        let language_block =
-            WritingLanguageDirective::prompt_block(input.catalog, &input.request.product_context.user_language);
+        let language_block = WritingLanguageDirective::prompt_block(
+            input.catalog,
+            &input.request.product_context.user_language,
+        );
 
         Ok(PromptBundle {
             system_instructions: format!(
@@ -236,9 +230,7 @@ fn build_profile_block(
          Wording style: {:?}\n\
          Preferred domains: {domains}\n\
          Forbidden wording: {forbidden}{custom}",
-        profile.tone,
-        profile.jargon_level,
-        profile.wording_style,
+        profile.tone, profile.jargon_level, profile.wording_style,
     )
 }
 

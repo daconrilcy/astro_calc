@@ -1,24 +1,24 @@
 use serde_json::Value;
 use sqlx::{PgPool, Postgres, Transaction};
 
-use crate::domain::{
-    AspectFact, BasicPayload, CalculatedChartFacts, HouseCuspFact, InterpretationSignalDraft,
-    NatalChartInput, ObjectPositionFact, RuntimeOptions,
-};
 use crate::catalog::BasicPayloadCatalog;
 use crate::domain::{
     AccidentalConditionTrigger, AccidentalPolarityBand, AccidentalScoringParams,
     BasicProductScoringProfile, EssentialDignityRuleReference,
 };
+use crate::domain::{
+    AspectFact, BasicPayload, CalculatedChartFacts, HouseCuspFact, InterpretationSignalDraft,
+    NatalChartInput, ObjectPositionFact, RuntimeOptions,
+};
 use crate::models::{
-    AccidentalConditionTriggerRow, AccidentalPolarityBandRow, AccidentalScoringParamsRow,
-    AnglePointReference, AspectDefinition, BasicProductScoringProfileRow, ChartCalculationRow,
-    MajorAspectFamilyReference,
-    ChartObject, DomicileRulerReference, EssentialDignityRuleReferenceRow,
-    HorizonPositionReference, HouseAxisReferenceRow, HouseReference,
-    AccidentalDignityConditionReferenceRow, HouseSystem, InterpretationSignalRow,
-    LunarPhaseReferenceRow, LlmProjectionProfileRow, MotionStateReference,
-    ObjectSectAffinityReferenceRow, PersistedAspectFact, PersistedObjectPositionFact, SignReference,
+    AccidentalConditionTriggerRow, AccidentalDignityConditionReferenceRow,
+    AccidentalPolarityBandRow, AccidentalScoringParamsRow, AnglePointReference, AspectDefinition,
+    BasicProductScoringProfileRow, ChartCalculationRow, ChartObject, DomicileRulerReference,
+    EssentialDignityRuleReferenceRow, HorizonPositionReference, HouseAxisReferenceRow,
+    HouseReference, HouseSystem, InterpretationSignalRow, LlmProjectionProfileRow,
+    LunarPhaseReferenceRow, MajorAspectFamilyReference, MotionStateReference,
+    ObjectSectAffinityReferenceRow, PersistedAspectFact, PersistedObjectPositionFact,
+    SignReference,
 };
 use crate::runtime::RuntimeError;
 
@@ -575,7 +575,10 @@ impl RuntimeRepository {
         })
     }
 
-    pub async fn zodiacal_reference_system_id_by_key(&self, key: &str) -> Result<i32, RuntimeError> {
+    pub async fn zodiacal_reference_system_id_by_key(
+        &self,
+        key: &str,
+    ) -> Result<i32, RuntimeError> {
         let id = sqlx::query_scalar::<_, i32>(
             r#"
             SELECT id
@@ -591,7 +594,10 @@ impl RuntimeRepository {
         })
     }
 
-    pub async fn coordinate_reference_system_id_by_key(&self, key: &str) -> Result<i32, RuntimeError> {
+    pub async fn coordinate_reference_system_id_by_key(
+        &self,
+        key: &str,
+    ) -> Result<i32, RuntimeError> {
         let id = sqlx::query_scalar::<_, i32>(
             r#"
             SELECT id
@@ -609,7 +615,10 @@ impl RuntimeRepository {
         })
     }
 
-    pub async fn zodiacal_reference_system_display_name(&self, id: i32) -> Result<String, RuntimeError> {
+    pub async fn zodiacal_reference_system_display_name(
+        &self,
+        id: i32,
+    ) -> Result<String, RuntimeError> {
         let name = sqlx::query_scalar::<_, String>(
             r#"
             SELECT display_name

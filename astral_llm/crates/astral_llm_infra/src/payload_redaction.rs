@@ -100,10 +100,7 @@ mod tests {
             safety_policy: None,
         };
         let redacted = redact_request_for_storage(&request);
-        assert_eq!(
-            redacted["astro_result"]["data"]["birth_date"],
-            "[REDACTED]"
-        );
+        assert_eq!(redacted["astro_result"]["data"]["birth_date"], "[REDACTED]");
         assert_eq!(
             redacted["astrologer_profile"]["custom_instructions"],
             "[REDACTED]"
@@ -118,10 +115,7 @@ mod tests {
             }
         });
         let out = redact_value(&input);
-        assert_eq!(
-            out["astro_result"]["data"]["birth_date"],
-            "[REDACTED]"
-        );
+        assert_eq!(out["astro_result"]["data"]["birth_date"], "[REDACTED]");
         assert!(out["astro_result"]["data"]["domain_scores"]["identity"].is_number());
     }
 }

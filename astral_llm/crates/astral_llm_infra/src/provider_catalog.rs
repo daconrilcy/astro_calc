@@ -80,7 +80,10 @@ impl ProviderCatalogRepository {
         &self.pool
     }
 
-    pub async fn list_providers(&self, include_inactive: bool) -> Result<Vec<LlmProviderRow>, sqlx::Error> {
+    pub async fn list_providers(
+        &self,
+        include_inactive: bool,
+    ) -> Result<Vec<LlmProviderRow>, sqlx::Error> {
         if include_inactive {
             sqlx::query_as(
                 "SELECT id, provider_code, label_fr, sort_order, is_active \
@@ -198,12 +201,11 @@ impl ProviderCatalogRepository {
         model: &str,
         input: &UpsertProviderModelInput,
     ) -> Result<LlmProviderModelRow, sqlx::Error> {
-        let provider_id: i32 = sqlx::query_scalar(
-            "SELECT id FROM llm_providers WHERE provider_code = $1",
-        )
-        .bind(provider_code.trim().to_lowercase())
-        .fetch_one(&self.pool)
-        .await?;
+        let provider_id: i32 =
+            sqlx::query_scalar("SELECT id FROM llm_providers WHERE provider_code = $1")
+                .bind(provider_code.trim().to_lowercase())
+                .fetch_one(&self.pool)
+                .await?;
 
         let sql = format!(
             "INSERT INTO llm_provider_models ( \
@@ -273,14 +275,17 @@ impl ProviderCatalogRepository {
         Ok(result.rows_affected() > 0)
     }
 
-    pub async fn delete_model(&self, provider_code: &str, model: &str) -> Result<bool, sqlx::Error> {
-        let result = sqlx::query(
-            "DELETE FROM llm_provider_models WHERE provider = $1 AND model = $2",
-        )
-        .bind(provider_code.trim().to_lowercase())
-        .bind(model.trim())
-        .execute(&self.pool)
-        .await?;
+    pub async fn delete_model(
+        &self,
+        provider_code: &str,
+        model: &str,
+    ) -> Result<bool, sqlx::Error> {
+        let result =
+            sqlx::query("DELETE FROM llm_provider_models WHERE provider = $1 AND model = $2")
+                .bind(provider_code.trim().to_lowercase())
+                .bind(model.trim())
+                .execute(&self.pool)
+                .await?;
         Ok(result.rows_affected() > 0)
     }
 }
@@ -359,7 +364,9 @@ fn parse_provider(raw: &str) -> Option<ProviderKind> {
 
 fn parse_adapter(raw: &str) -> StructuredOutputAdapterKind {
     match raw.trim().to_lowercase().as_str() {
-        "anthropic_output_config_format" => StructuredOutputAdapterKind::AnthropicOutputConfigFormat,
+        "anthropic_output_config_format" => {
+            StructuredOutputAdapterKind::AnthropicOutputConfigFormat
+        }
         "mistral_response_format_json_schema" => {
             StructuredOutputAdapterKind::MistralResponseFormatJsonSchema
         }

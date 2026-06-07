@@ -26,7 +26,10 @@ pub enum ChapterRepairKind {
         target_words: u32,
         mode: TooShortRepairMode,
     },
-    Repetition { score: usize, max_allowed: usize },
+    Repetition {
+        score: usize,
+        max_allowed: usize,
+    },
     EvidenceCoherence {
         missing_pack_fact_ids: Vec<String>,
         orphan_object_codes: Vec<String>,
@@ -147,7 +150,11 @@ where
         None,
         None,
         started.elapsed().as_millis() as u64,
-        Some(GenerationErrorCode::SchemaValidationFailed.as_str().to_string()),
+        Some(
+            GenerationErrorCode::SchemaValidationFailed
+                .as_str()
+                .to_string(),
+        ),
         Some("repair_too_short"),
     );
     Err(last_err)
@@ -276,7 +283,11 @@ where
         best_meta.3,
         best_meta.4,
         started.elapsed().as_millis() as u64,
-        Some(GenerationErrorCode::ReadingQualityFailed.as_str().to_string()),
+        Some(
+            GenerationErrorCode::ReadingQualityFailed
+                .as_str()
+                .to_string(),
+        ),
         Some("repair_repetition"),
     );
     Err(GenerationError::with_details(

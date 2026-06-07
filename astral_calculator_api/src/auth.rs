@@ -1,10 +1,4 @@
-use axum::{
-    body::Body,
-    extract::State,
-    http::Request,
-    middleware::Next,
-    response::Response,
-};
+use axum::{body::Body, extract::State, http::Request, middleware::Next, response::Response};
 
 use crate::error;
 use crate::state::AppState;
@@ -19,13 +13,12 @@ pub async fn require_api_key(
     }
 
     let expected = state.config.api_key.as_deref().unwrap_or("");
-    let token = bearer_token(request.headers().get("authorization"))
-        .or_else(|| {
-            request
-                .headers()
-                .get("x-api-key")
-                .and_then(|v| v.to_str().ok())
-        });
+    let token = bearer_token(request.headers().get("authorization")).or_else(|| {
+        request
+            .headers()
+            .get("x-api-key")
+            .and_then(|v| v.to_str().ok())
+    });
 
     if token.is_some_and(|t| constant_time_eq(t, expected)) {
         next.run(request).await

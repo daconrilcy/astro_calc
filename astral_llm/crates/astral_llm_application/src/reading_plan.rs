@@ -25,8 +25,7 @@ impl ReadingPlanBuilder {
         let fixed_sequence = interpretation
             .map(|ctx| ctx.profile.uses_fixed_chapter_sequence())
             .unwrap_or(false);
-        let use_client_chapters =
-            !request.response_contract.chapters.is_empty() && !fixed_sequence;
+        let use_client_chapters = !request.response_contract.chapters.is_empty() && !fixed_sequence;
 
         let mut chapters: Vec<ReadingPlanChapter> = if use_client_chapters {
             request
@@ -155,6 +154,7 @@ fn humanize_domain(code: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
     use astral_llm_domain::{
         astrologer_profile::{JargonLevel, ToneProfile, WordingStyle},
         engine_params::EngineParams,
@@ -163,7 +163,6 @@ mod tests {
         AstroCalculationPayload, AstrologerProfile,
     };
     use astral_llm_infra::bootstrap_interpretation_profiles;
-    use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
 
     #[test]
     fn premium_plus_plan_appends_synthesis_chapter() {
@@ -219,7 +218,10 @@ mod tests {
             .collect();
         let plan = ReadingPlanBuilder::build(&request, &domains, Some(&ctx));
         assert_eq!(plan.chapters.len(), 9);
-        assert_eq!(plan.chapters.last().map(|c| c.code.as_str()), Some("synthesis"));
+        assert_eq!(
+            plan.chapters.last().map(|c| c.code.as_str()),
+            Some("synthesis")
+        );
         assert_eq!(plan.chapters[0].min_words, 520);
     }
 

@@ -64,9 +64,9 @@ impl ProductGenerationPolicy {
         if self.allowed_models.is_empty() {
             return self.allows_provider(provider);
         }
-        self.allowed_models.iter().any(|m| {
-            m.provider == *provider && m.model.eq_ignore_ascii_case(model)
-        })
+        self.allowed_models
+            .iter()
+            .any(|m| m.provider == *provider && m.model.eq_ignore_ascii_case(model))
     }
 
     pub fn allows_mode(&self, mode: &GenerationMode) -> bool {

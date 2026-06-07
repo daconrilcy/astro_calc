@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-use schemars::schema_for;
 use jsonschema::JSONSchema;
+use schemars::schema_for;
+use std::collections::HashMap;
 
 use astral_llm_domain::{
     generation_response::{ChapterProviderResponse, NatalReadingResponse, SummaryProviderResponse},
@@ -34,7 +34,11 @@ impl SchemaRegistry {
         self.provider_schemas.get(version)
     }
 
-    pub fn validate(&self, version: &str, value: &serde_json::Value) -> Result<(), GenerationError> {
+    pub fn validate(
+        &self,
+        version: &str,
+        value: &serde_json::Value,
+    ) -> Result<(), GenerationError> {
         let validator = self.validators.get(version).ok_or_else(|| {
             GenerationError::new(
                 GenerationErrorCode::SchemaValidationFailed,
@@ -61,8 +65,7 @@ impl SchemaRegistry {
         let value = serde_json::to_value(schema).expect("schema serializable");
         let provider_schema = strip_schema_for_provider(&value);
         let validator = JSONSchema::compile(&value).expect("valid schema");
-        self.schemas
-            .insert("natal_reading_v1".to_string(), value);
+        self.schemas.insert("natal_reading_v1".to_string(), value);
         self.provider_schemas
             .insert("natal_reading_v1".to_string(), provider_schema);
         self.validators
@@ -104,8 +107,8 @@ impl Default for SchemaRegistry {
 }
 
 fn patch_chapter_interpretive_role_enum(schema: &mut serde_json::Value) {
-    let Some(props) = schema
-        .pointer_mut("/properties/astro_basis/items/properties/interpretive_role")
+    let Some(props) =
+        schema.pointer_mut("/properties/astro_basis/items/properties/interpretive_role")
     else {
         return;
     };

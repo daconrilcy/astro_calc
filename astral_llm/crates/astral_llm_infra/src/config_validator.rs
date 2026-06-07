@@ -12,7 +12,10 @@ pub enum ConfigValidationError {
 pub struct ConfigValidator;
 
 impl ConfigValidator {
-    pub fn validate(config: &AppConfig, secrets: &ProviderSecrets) -> Result<(), ConfigValidationError> {
+    pub fn validate(
+        config: &AppConfig,
+        secrets: &ProviderSecrets,
+    ) -> Result<(), ConfigValidationError> {
         if config.runtime_env.is_production() {
             if config.enable_fake_provider {
                 return Err(ConfigValidationError::Message(
@@ -34,7 +37,8 @@ impl ConfigValidator {
 
             if config.bind_addr.ip().is_unspecified() && !config.allow_public_bind {
                 return Err(ConfigValidationError::Message(
-                    "binding to 0.0.0.0 in production requires ASTRAL_LLM_ALLOW_PUBLIC_BIND=true".into(),
+                    "binding to 0.0.0.0 in production requires ASTRAL_LLM_ALLOW_PUBLIC_BIND=true"
+                        .into(),
                 ));
             }
 
@@ -82,9 +86,7 @@ impl ConfigValidator {
             ));
         }
 
-        if config.runtime_env.is_production()
-            && config.default_provider == ProviderKind::Fake
-        {
+        if config.runtime_env.is_production() && config.default_provider == ProviderKind::Fake {
             return Err(ConfigValidationError::Message(
                 "ASTRAL_LLM_DEFAULT_PROVIDER=fake is forbidden in production".into(),
             ));

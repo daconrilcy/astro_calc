@@ -8,8 +8,7 @@ pub use request::{
     RESPONSE_CONTRACT_VERSION,
 };
 pub use resolve::{
-    local_birth_to_utc, validate_and_resolve_request, validate_request_early,
-    ResolvedEngineRequest,
+    local_birth_to_utc, validate_and_resolve_request, validate_request_early, ResolvedEngineRequest,
 };
 pub use response::{
     AstroEngineResponse, EngineAuditPayload, EngineCalculationResult, EngineEchoLocation,
@@ -17,9 +16,7 @@ pub use response::{
 };
 
 use crate::domain::{BasicPayload, RuntimeOptions};
-use crate::llm_projection::{
-    build_llm_projection_natal_v1, LlmProjectionBuildContext,
-};
+use crate::llm_projection::{build_llm_projection_natal_v1, LlmProjectionBuildContext};
 use crate::runtime::RuntimeError;
 
 #[allow(clippy::too_many_arguments)]
@@ -84,4 +81,3 @@ pub fn build_engine_response(
         llm_payload,
     })
 }
-

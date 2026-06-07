@@ -39,7 +39,10 @@ pub(super) fn object_source_weight(position: &ObjectPositionFact) -> f64 {
     object_signal_scoring_number(position, "source_weight").unwrap_or(0.0)
 }
 
-pub(super) fn object_signal_scoring_number(position: &ObjectPositionFact, key: &str) -> Option<f64> {
+pub(super) fn object_signal_scoring_number(
+    position: &ObjectPositionFact,
+    key: &str,
+) -> Option<f64> {
     placement_context_value(position, "object_context", "signal_scoring")
         .and_then(|value| value.get(key))
         .and_then(|value| value.as_f64())

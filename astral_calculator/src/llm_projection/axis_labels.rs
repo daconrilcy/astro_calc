@@ -3,7 +3,8 @@ use std::sync::OnceLock;
 
 use crate::domain::HouseAxisReference;
 
-const AXIS_DEFINITIONS_JSON: &str = include_str!("../../../json_db/astral_house_axis_definitions.json");
+const AXIS_DEFINITIONS_JSON: &str =
+    include_str!("../../../json_db/astral_house_axis_definitions.json");
 
 fn seed_axis_labels() -> &'static HashMap<String, String> {
     static LABELS: OnceLock<HashMap<String, String>> = OnceLock::new();

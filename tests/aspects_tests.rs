@@ -1,13 +1,14 @@
 mod common;
 
-use common::json_db::{
-    major_aspect_definitions_from_json_db_seed, major_aspect_family_expected_count_from_json_db_seed,
-    major_aspect_family_max_default_orb_deg_from_json_db_seed,
-};
 use astral_calculator::aspects::{canonical_aspect_orb_deg, detect_aspects};
 use astral_calculator::domain::ObjectPositionFact;
 use astral_calculator::models::AspectDefinition;
 use astral_calculator::runtime::validate_aspect_definitions;
+use common::json_db::{
+    major_aspect_definitions_from_json_db_seed,
+    major_aspect_family_expected_count_from_json_db_seed,
+    major_aspect_family_max_default_orb_deg_from_json_db_seed,
+};
 use serde_json::json;
 
 fn single_aspect_definition(code: &str, angle: f64, orb: f64) -> Vec<AspectDefinition> {
@@ -22,7 +23,9 @@ fn single_aspect_definition(code: &str, angle: f64, orb: f64) -> Vec<AspectDefin
     }]
 }
 
-fn validate_major_aspects(aspects: &[AspectDefinition]) -> Result<(), astral_calculator::runtime::RuntimeError> {
+fn validate_major_aspects(
+    aspects: &[AspectDefinition],
+) -> Result<(), astral_calculator::runtime::RuntimeError> {
     validate_aspect_definitions(
         aspects,
         8.0,
@@ -31,7 +34,11 @@ fn validate_major_aspects(aspects: &[AspectDefinition]) -> Result<(), astral_cal
     )
 }
 
-fn detect_between(longitude_left: f64, longitude_right: f64, aspects: &[AspectDefinition]) -> Vec<astral_calculator::domain::AspectFact> {
+fn detect_between(
+    longitude_left: f64,
+    longitude_right: f64,
+    aspects: &[AspectDefinition],
+) -> Vec<astral_calculator::domain::AspectFact> {
     detect_aspects(
         &[
             position(1, longitude_left, 0.0),
@@ -41,9 +48,7 @@ fn detect_between(longitude_left: f64, longitude_right: f64, aspects: &[AspectDe
     )
 }
 
-fn orb_limit_from_fact(
-    fact: &astral_calculator::domain::AspectFact,
-) -> Option<f64> {
+fn orb_limit_from_fact(fact: &astral_calculator::domain::AspectFact) -> Option<f64> {
     fact.calculation_notes_json
         .as_ref()
         .and_then(|notes| notes.get("orb_limit_deg"))
@@ -129,17 +134,11 @@ fn aspect_phase_uses_relative_speed() {
         default_orb_deg: Some(8.0),
         max_default_orb_deg: major_aspect_family_max_default_orb_deg_from_json_db_seed(),
     }];
-    let applying = detect_aspects(
-        &[position(1, 0.0, 1.0), position(2, 2.0, 0.0)],
-        &aspects,
-    );
+    let applying = detect_aspects(&[position(1, 0.0, 1.0), position(2, 2.0, 0.0)], &aspects);
     assert_eq!(applying[0].phase_state, "applying");
     assert!(applying[0].is_applying);
 
-    let separating = detect_aspects(
-        &[position(1, 0.0, -1.0), position(2, 2.0, 0.0)],
-        &aspects,
-    );
+    let separating = detect_aspects(&[position(1, 0.0, -1.0), position(2, 2.0, 0.0)], &aspects);
     assert_eq!(separating[0].phase_state, "separating");
     assert!(!separating[0].is_applying);
 }
@@ -204,9 +203,10 @@ fn detect_aspects_uses_per_aspect_orb_not_product_fallback() {
         .iter()
         .any(|aspect| aspect.aspect_code == "conjunction"));
 
-    let near_sextile =
-        detect_aspects(&[position(1, 0.0, 0.0), position(2, 58.0, 0.0)], &aspects);
-    assert!(!near_sextile.iter().any(|aspect| aspect.aspect_code == "sextile"));
+    let near_sextile = detect_aspects(&[position(1, 0.0, 0.0), position(2, 58.0, 0.0)], &aspects);
+    assert!(!near_sextile
+        .iter()
+        .any(|aspect| aspect.aspect_code == "sextile"));
 }
 
 #[test]
@@ -221,7 +221,11 @@ fn canonical_major_aspect_orbs_match_json_db_seed() {
         assert_eq!(canonical_aspect_orb_deg(aspect), Some(orb));
 
         let inside_right = angle - (orb - 0.01);
-        let inside = detect_between(0.0, inside_right, &single_aspect_definition(&code, angle, orb));
+        let inside = detect_between(
+            0.0,
+            inside_right,
+            &single_aspect_definition(&code, angle, orb),
+        );
         let inside_fact = inside
             .iter()
             .find(|fact| fact.aspect_code == code)
@@ -229,8 +233,11 @@ fn canonical_major_aspect_orbs_match_json_db_seed() {
         assert_eq!(orb_limit_from_fact(inside_fact), Some(orb));
 
         let outside_right = angle - (orb + 0.01);
-        let outside =
-            detect_between(0.0, outside_right, &single_aspect_definition(&code, angle, orb));
+        let outside = detect_between(
+            0.0,
+            outside_right,
+            &single_aspect_definition(&code, angle, orb),
+        );
         assert!(
             !outside.iter().any(|fact| fact.aspect_code == code),
             "{code} should be outside {orb}° orb at separation {:.2}",
@@ -273,7 +280,5 @@ fn canonical_aspect_orb_deg_rejects_orb_above_family_max() {
         max_default_orb_deg: max,
     };
     assert_eq!(canonical_aspect_orb_deg(&aspect), None);
-    assert!(
-        detect_aspects(&[position(1, 0.0, 0.0), position(2, 3.0, 0.0)], &[aspect]).is_empty()
-    );
+    assert!(detect_aspects(&[position(1, 0.0, 0.0), position(2, 3.0, 0.0)], &[aspect]).is_empty());
 }

@@ -1,9 +1,9 @@
 use astral_calculator::simplified::{
     build_response, build_uncertainty_window, dedupe_preserve_order, sample_points_utc,
-    validate_and_resolve, AmbiguousSignFactResponse, AstroSimplifiedNatalRequest,
-    CalculationScope, CollectedSignFacts, InputPrecisionLevel, LimitationCode,
-    ProfileFeatureExclusion, ReliabilityLevel, SignFactResponse, SimplifiedCatalog,
-    SimplifiedLocationRequest, SimplifiedPolicy, RELIABILITY_AMBIGUOUS, RELIABILITY_STABLE,
+    validate_and_resolve, AmbiguousSignFactResponse, AstroSimplifiedNatalRequest, CalculationScope,
+    CollectedSignFacts, InputPrecisionLevel, LimitationCode, ProfileFeatureExclusion,
+    ReliabilityLevel, SignFactResponse, SimplifiedCatalog, SimplifiedLocationRequest,
+    SimplifiedPolicy, RELIABILITY_AMBIGUOUS, RELIABILITY_STABLE,
 };
 use chrono::{Duration, TimeZone, Utc};
 use serde_json::json;
@@ -84,7 +84,9 @@ fn test_catalog() -> SimplifiedCatalog {
             },
         ],
         input_precision_levels: vec![
-            InputPrecisionLevel { code: "date_only".into() },
+            InputPrecisionLevel {
+                code: "date_only".into(),
+            },
             InputPrecisionLevel {
                 code: "date_with_location_without_timezone".into(),
             },
@@ -156,7 +158,10 @@ fn resolve_input_precision_matrix() {
     let mut with_tz = base_request();
     with_tz.birth.timezone = Some("Europe/Paris".into());
     let resolved = validate_and_resolve(&with_tz, &catalog).expect("date+tz");
-    assert_eq!(resolved.input_precision_level, "date_with_timezone_without_time");
+    assert_eq!(
+        resolved.input_precision_level,
+        "date_with_timezone_without_time"
+    );
 
     let mut with_loc_tz = with_tz.clone();
     with_loc_tz.birth.location = Some(SimplifiedLocationRequest {
@@ -283,7 +288,10 @@ fn llm_controls_block_ambiguous_and_allow_stable() {
         collected,
         None,
     );
-    assert!(response.llm_payload.allowed_fact_codes.contains(&"sun.sign".to_string()));
+    assert!(response
+        .llm_payload
+        .allowed_fact_codes
+        .contains(&"sun.sign".to_string()));
     assert!(response
         .llm_payload
         .allowed_astro_basis_fact_ids
@@ -306,14 +314,9 @@ fn llm_controls_block_ambiguous_and_allow_stable() {
         .as_ref()
         .expect("forbidden_interpretation_topics");
     assert!(topics.contains(&"moon.sign".to_string()));
-    assert_eq!(
-        response.llm_payload.forbidden_topics.as_ref(),
-        Some(topics)
-    );
+    assert_eq!(response.llm_payload.forbidden_topics.as_ref(), Some(topics));
     let serialized = serde_json::to_value(&response.llm_payload).expect("serialize");
-    assert!(serialized
-        .get("forbidden_interpretation_topics")
-        .is_some());
+    assert!(serialized.get("forbidden_interpretation_topics").is_some());
     assert!(serialized.get("forbidden_topics").is_some());
     let payload = response.simplified_payload.payload;
     assert!(payload["planets"]["sun"].is_object());
@@ -359,8 +362,8 @@ fn datetime_without_location_adds_limitation() {
 #[test]
 fn moon_can_span_multiple_signs_on_world_window() {
     use astral_calculator::config::ephemeris_path_from_env;
-    use astral_calculator::simplified::{build_uncertainty_window, collect_window_sign_facts};
     use astral_calculator::models::SignReference;
+    use astral_calculator::simplified::{build_uncertainty_window, collect_window_sign_facts};
 
     let catalog = test_catalog();
     let ephemeris_path = ephemeris_path_from_env();
@@ -421,7 +424,11 @@ fn moon_can_span_multiple_signs_on_world_window() {
             end,
         )
         .expect("collect");
-        if let Some(moon) = collected.ambiguous_facts.iter().find(|f| f.object_code == "moon") {
+        if let Some(moon) = collected
+            .ambiguous_facts
+            .iter()
+            .find(|f| f.object_code == "moon")
+        {
             if moon.possible_sign_codes.len() >= 2 {
                 found_two_or_more = true;
                 break;

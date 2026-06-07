@@ -102,10 +102,7 @@ pub fn dignity_source_weight_delta_for_position(
         .min(0.2)
 }
 
-pub fn dignity_emphasis_weight(
-    dignity_type: &str,
-    catalog: &BasicPayloadCatalog,
-) -> f64 {
+pub fn dignity_emphasis_weight(dignity_type: &str, catalog: &BasicPayloadCatalog) -> f64 {
     catalog
         .dignity_scoring_weight(dignity_type)
         .map(|weight: &EssentialDignityScoringWeight| weight.emphasis_weight)

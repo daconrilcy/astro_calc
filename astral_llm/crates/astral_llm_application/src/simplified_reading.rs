@@ -117,7 +117,11 @@ pub fn sun_sign_blocked(controls: &Value) -> bool {
     controls
         .get("blocked_interpretation_fact_codes")
         .and_then(|v| v.as_array())
-        .is_some_and(|items| items.iter().any(|v| v.as_str() == Some(SUN_SIGN_BLOCKED_CODE)))
+        .is_some_and(|items| {
+            items
+                .iter()
+                .any(|v| v.as_str() == Some(SUN_SIGN_BLOCKED_CODE))
+        })
 }
 
 pub fn resolve_simplified_chapter_code(controls: &Value) -> &'static str {
@@ -128,10 +132,7 @@ pub fn resolve_simplified_chapter_code(controls: &Value) -> &'static str {
     }
 }
 
-pub fn merge_simplified_forbidden_wording(
-    controls: &Value,
-    base: Vec<String>,
-) -> Vec<String> {
+pub fn merge_simplified_forbidden_wording(controls: &Value, base: Vec<String>) -> Vec<String> {
     let mut out = base;
     // Seuls les codes interpretatifs bloques (ex. moon.sign) — pas excluded_feature_codes
     // (sect/houses provoquent des faux positifs substring dans SafetyGuard : "section", etc.).
@@ -258,7 +259,10 @@ fn blocked_object_codes(controls: &Value) -> Vec<String> {
         .unwrap_or_default()
 }
 
-fn scrub_simplified_payload_for_llm(payload: &mut serde_json::Map<String, Value>, controls: &Value) {
+fn scrub_simplified_payload_for_llm(
+    payload: &mut serde_json::Map<String, Value>,
+    controls: &Value,
+) {
     payload.remove("position_count");
     payload.remove("house_cusp_count");
     payload.remove("aspect_count");

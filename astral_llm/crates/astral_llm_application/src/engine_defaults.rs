@@ -45,11 +45,7 @@ pub fn resolve_service_engine_defaults(
     if let Some(provider) = policy.default_provider.clone() {
         out.provider = provider;
     }
-    if let Some(model) = policy
-        .default_model
-        .as_ref()
-        .and_then(|m| trimmed_model(m))
-    {
+    if let Some(model) = policy.default_model.as_ref().and_then(|m| trimmed_model(m)) {
         out.model = model;
     }
     out
@@ -183,7 +179,8 @@ mod tests {
         generation_request::{AudienceLevel, ProductContext},
         output_contract::{GenerationMode, OutputFormat, ResponseContract},
         provider::ProviderKind,
-        AstroCalculationPayload, AstrologerProfile, GenerateReadingRequest, ProductGenerationPolicy,
+        AstroCalculationPayload, AstrologerProfile, GenerateReadingRequest,
+        ProductGenerationPolicy,
     };
 
     fn minimal_request(product_code: &str, profile: Option<&str>) -> GenerateReadingRequest {

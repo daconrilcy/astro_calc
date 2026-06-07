@@ -1,6 +1,9 @@
 use sqlx::PgPool;
 
-use super::catalog::{CalculationScope, InputPrecisionLevel, LimitationCode, ReliabilityLevel, SimplifiedCatalog, SimplifiedPolicy};
+use super::catalog::{
+    CalculationScope, InputPrecisionLevel, LimitationCode, ReliabilityLevel, SimplifiedCatalog,
+    SimplifiedPolicy,
+};
 use crate::runtime::RuntimeError;
 
 fn map_catalog_db_error(err: sqlx::Error) -> RuntimeError {

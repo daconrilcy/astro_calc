@@ -17,7 +17,9 @@ impl SafetyResolver {
 
     pub fn product_default_for(
         _product_code: &str,
-        interpretation: Option<&crate::interpretation_profile_resolver::ResolvedInterpretationContext>,
+        interpretation: Option<
+            &crate::interpretation_profile_resolver::ResolvedInterpretationContext,
+        >,
     ) -> SafetyPolicy {
         let mut policy = SafetyPolicy::mandatory();
         if interpretation

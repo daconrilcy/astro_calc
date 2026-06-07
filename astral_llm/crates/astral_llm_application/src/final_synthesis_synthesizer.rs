@@ -5,12 +5,12 @@ use std::time::Duration;
 use astral_llm_domain::{
     chapter_orchestration::ReadingPlanChapter,
     generation_response::{ChapterProviderResponse, ReadingChapter},
-    interpretive_evidence::ChapterEvidencePack,
     interpretation_profile::SYNTHESIS_CHAPTER_CODE,
+    interpretive_evidence::ChapterEvidencePack,
     model_usage_tier::ModelRouteContext,
     output_contract::ChapterContract,
-    GenerateReadingRequest, GenerationError, GenerationErrorCode,
-    NormalizedAstroFacts, ProductGenerationPolicy, SafetyMode, SafetyPolicy,
+    GenerateReadingRequest, GenerationError, GenerationErrorCode, NormalizedAstroFacts,
+    ProductGenerationPolicy, SafetyMode, SafetyPolicy,
 };
 use astral_llm_infra::SharedCanonicalCatalog;
 use astral_llm_providers::{GenerationMetadata, ProviderGenerationRequest};
@@ -27,8 +27,8 @@ use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
 use crate::product_policy_validator::ProductPolicyValidator;
 use crate::prompt_trace;
 use crate::provider_router::ProviderRouter;
-use crate::provider_schema_compiler::ProviderSchemaCompiler;
 use crate::provider_schema_compiler::pin_chapter_code;
+use crate::provider_schema_compiler::ProviderSchemaCompiler;
 use crate::reasoning_generation::{effective_temperature, resolve_reasoning_effort};
 use crate::response_validator::ResponseValidator;
 use crate::safety_guard::SafetyGuard;
@@ -95,12 +95,14 @@ impl<'a> FinalSynthesisSynthesizer<'a> {
             &messages,
         );
 
-        self.router.capability_registry().validate_engine_for_context(
-            ModelRouteContext::PrimaryReading,
-            &engine.provider,
-            &engine.model,
-            engine.allow_oracle_benchmark,
-        )?;
+        self.router
+            .capability_registry()
+            .validate_engine_for_context(
+                ModelRouteContext::PrimaryReading,
+                &engine.provider,
+                &engine.model,
+                engine.allow_oracle_benchmark,
+            )?;
         let model_cap = self
             .router
             .capability_registry()
@@ -296,8 +298,7 @@ fn build_synthesis_messages(
         .and_then(|ctx| ctx.profile.document.task_fragment.clone())
         .unwrap_or_default();
 
-    let body_structure = interpretation
-        .and_then(|ctx| ctx.profile.body_structure());
+    let body_structure = interpretation.and_then(|ctx| ctx.profile.body_structure());
     let paragraph_count = body_structure.map(|bs| bs.paragraph_count).unwrap_or(6);
     let (para_min_w, para_max_w) = body_structure
         .map(|bs| (bs.paragraph_min_words, bs.paragraph_max_words))
@@ -381,7 +382,8 @@ fn synthesis_repair_directive(chapter: &ReadingPlanChapter, repair: &ChapterRepa
         ChapterRepairKind::SymbolicFraming => {
             "\nREPAIR: synthesis body lacks symbolic/interpretive framing. Rewrite with explicit \
              non-deterministic language (French: symbolique, suggère, peut, invite, tendance, \
-             met en lumière). Keep fact_ids valid; avoid prescriptive advice.".into()
+             met en lumière). Keep fact_ids valid; avoid prescriptive advice."
+                .into()
         }
         _ => format!(
             "\nREPAIR: rewrite chapter '{}' addressing the quality issue noted above.",

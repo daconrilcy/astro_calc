@@ -3,8 +3,8 @@ use serde_json::{json, Value};
 use crate::catalog::BasicPayloadCatalog;
 use crate::domain::{
     BasicAccidentalScoringSnapshot, BasicCalculationReliability, BasicChartContext,
-    BasicHemisphereEmphasis, BasicPayloadContract, BasicProductScoringSnapshot,
-    BasicSectContext, NatalChartInput, ObjectPositionFact,
+    BasicHemisphereEmphasis, BasicPayloadContract, BasicProductScoringSnapshot, BasicSectContext,
+    NatalChartInput, ObjectPositionFact,
 };
 
 const ABOVE_HORIZON: &str = "above_horizon";

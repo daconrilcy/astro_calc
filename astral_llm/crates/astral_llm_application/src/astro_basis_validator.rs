@@ -61,8 +61,7 @@ impl AstroBasisValidator {
             .iter()
             .filter(|b| {
                 b.fact_id.as_ref().is_some_and(|id| {
-                    crate::evidence_fact_parse::resolve_canonical_fact_id(id, facts)
-                        .is_some()
+                    crate::evidence_fact_parse::resolve_canonical_fact_id(id, facts).is_some()
                 })
             })
             .count();
@@ -146,7 +145,9 @@ impl AstroBasisValidator {
         pack: Option<&ChapterEvidencePack>,
     ) -> Result<(), GenerationError> {
         for basis in &chapter.astro_basis {
-            let Some(fact_id) = &basis.fact_id else { continue };
+            let Some(fact_id) = &basis.fact_id else {
+                continue;
+            };
             if fact_id.starts_with("domain_score:") {
                 continue;
             }
@@ -320,14 +321,9 @@ mod tests {
                 domains: vec![],
             }],
         };
-        let mut chapter = chapter_with_basis(vec![(
-            "signal:jupiter:uranus:opposition",
-            "supporting",
-        )]);
-        crate::evidence_fact_parse::normalize_chapter_astro_basis_fact_ids(
-            &mut chapter,
-            &facts,
-        );
+        let mut chapter =
+            chapter_with_basis(vec![("signal:jupiter:uranus:opposition", "supporting")]);
+        crate::evidence_fact_parse::normalize_chapter_astro_basis_fact_ids(&mut chapter, &facts);
         let policy = premium_like_policy();
         assert!(AstroBasisValidator::validate_chapter(&chapter, &facts, &policy).is_ok());
         assert_eq!(

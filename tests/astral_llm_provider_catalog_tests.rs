@@ -21,7 +21,10 @@ fn registry_rejects_oracle_on_primary_without_flag() {
             false,
         )
         .expect_err("oracle_only blocked on primary");
-    assert_eq!(err.detail().code, GenerationErrorCode::UnsupportedCapability);
+    assert_eq!(
+        err.detail().code,
+        GenerationErrorCode::UnsupportedCapability
+    );
 }
 
 #[test]
@@ -68,32 +71,35 @@ fn registry_accepts_production_openai_models() {
 
 #[test]
 fn subtask_tier_allowed_for_summary_context() {
-    let registry = ModelCapabilityRegistry::from_db_catalog(vec!["openai".into()], vec![ModelCapability {
-        provider: ProviderKind::OpenAi,
-        model: "gpt-5.4-nano".into(),
-        supports_json_schema_strict: true,
-        supports_json_object: true,
-        supports_reasoning_effort: true,
-        supports_streaming: true,
-        supports_native_safety_prompt: false,
-        max_input_tokens: 400_000,
-        max_output_tokens: 128_000,
-        structured_output_mode: StructuredOutputMode::JsonSchemaStrict,
-        structured_output_adapter: StructuredOutputAdapterKind::OpenAiResponsesTextFormat,
-        storage_disable_supported: true,
-        is_active: true,
-        supports_temperature: false,
-        reasoning_output_reserve_min: Some(4096),
-        reasoning_effort_subtask: Some(ReasoningEffort::None),
-        reasoning_effort_primary: Some(ReasoningEffort::Low),
-        reasoning_effort_oracle: Some(ReasoningEffort::Medium),
-        usage_tier_code: Some("subtask_candidate".into()),
-        tier_policy: ModelUsageTierPolicy {
-            allows_primary_reading: false,
-            allows_subtask: true,
-            allows_oracle_benchmark: false,
-        },
-    }]);
+    let registry = ModelCapabilityRegistry::from_db_catalog(
+        vec!["openai".into()],
+        vec![ModelCapability {
+            provider: ProviderKind::OpenAi,
+            model: "gpt-5.4-nano".into(),
+            supports_json_schema_strict: true,
+            supports_json_object: true,
+            supports_reasoning_effort: true,
+            supports_streaming: true,
+            supports_native_safety_prompt: false,
+            max_input_tokens: 400_000,
+            max_output_tokens: 128_000,
+            structured_output_mode: StructuredOutputMode::JsonSchemaStrict,
+            structured_output_adapter: StructuredOutputAdapterKind::OpenAiResponsesTextFormat,
+            storage_disable_supported: true,
+            is_active: true,
+            supports_temperature: false,
+            reasoning_output_reserve_min: Some(4096),
+            reasoning_effort_subtask: Some(ReasoningEffort::None),
+            reasoning_effort_primary: Some(ReasoningEffort::Low),
+            reasoning_effort_oracle: Some(ReasoningEffort::Medium),
+            usage_tier_code: Some("subtask_candidate".into()),
+            tier_policy: ModelUsageTierPolicy {
+                allows_primary_reading: false,
+                allows_subtask: true,
+                allows_oracle_benchmark: false,
+            },
+        }],
+    );
     assert!(registry
         .validate_engine_for_context(
             ModelRouteContext::Subtask,

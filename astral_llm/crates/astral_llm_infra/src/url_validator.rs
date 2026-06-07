@@ -4,7 +4,11 @@ const ALLOWED_OPENAI_HOSTS: &[&str] = &["api.openai.com"];
 const ALLOWED_ANTHROPIC_HOSTS: &[&str] = &["api.anthropic.com"];
 const ALLOWED_MISTRAL_HOSTS: &[&str] = &["api.mistral.ai"];
 
-pub fn validate_provider_base_url(label: &str, url: &str, allowed_hosts: &[&str]) -> Result<(), String> {
+pub fn validate_provider_base_url(
+    label: &str,
+    url: &str,
+    allowed_hosts: &[&str],
+) -> Result<(), String> {
     let parsed = reqwest::Url::parse(url).map_err(|e| format!("{label} URL invalid: {e}"))?;
 
     if parsed.scheme() != "https" {
@@ -16,10 +20,15 @@ pub fn validate_provider_base_url(label: &str, url: &str, allowed_hosts: &[&str]
         .ok_or_else(|| format!("{label} URL missing host"))?;
 
     if is_private_or_local_host(host) {
-        return Err(format!("{label} URL must not target private or local addresses"));
+        return Err(format!(
+            "{label} URL must not target private or local addresses"
+        ));
     }
 
-    if !allowed_hosts.iter().any(|allowed| host.eq_ignore_ascii_case(allowed)) {
+    if !allowed_hosts
+        .iter()
+        .any(|allowed| host.eq_ignore_ascii_case(allowed))
+    {
         return Err(format!(
             "{label} URL host `{host}` not in allowlist: {allowed_hosts:?}"
         ));
@@ -51,11 +60,12 @@ fn is_private_or_local_host(host: &str) -> bool {
     if lower.starts_with("169.254.") || lower == "0.0.0.0" {
         return true;
     }
-    lower.starts_with("172.") && lower
-        .split('.')
-        .nth(1)
-        .and_then(|p| p.parse::<u8>().ok())
-        .is_some_and(|p| (16..=31).contains(&p))
+    lower.starts_with("172.")
+        && lower
+            .split('.')
+            .nth(1)
+            .and_then(|p| p.parse::<u8>().ok())
+            .is_some_and(|p| (16..=31).contains(&p))
 }
 
 #[cfg(test)]

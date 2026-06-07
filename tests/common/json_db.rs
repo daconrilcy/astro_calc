@@ -19,8 +19,7 @@ pub fn major_aspect_family_expected_count_from_json_db_seed() -> usize {
         .expect("major family must exist in json_db seed");
     row["expected_aspect_count"]
         .as_u64()
-        .expect("major family must define expected_aspect_count in json_db seed")
-        as usize
+        .expect("major family must define expected_aspect_count in json_db seed") as usize
 }
 
 pub fn major_aspect_family_max_default_orb_deg_from_json_db_seed() -> f64 {
@@ -52,7 +51,10 @@ pub fn major_aspect_definitions_from_json_db_seed() -> Vec<AspectDefinition> {
             let code = row["code"].as_str().expect("major aspect code").to_string();
             let name = row["name"].as_str().unwrap_or(code.as_str()).to_string();
             let angle = row["angle"].as_f64().expect("major aspect angle");
-            let family = row["family"].as_str().expect("major aspect family").to_string();
+            let family = row["family"]
+                .as_str()
+                .expect("major aspect family")
+                .to_string();
             let default_orb_deg = row["default_orb_deg"]
                 .as_f64()
                 .filter(|orb| orb.is_finite() && *orb > 0.0);

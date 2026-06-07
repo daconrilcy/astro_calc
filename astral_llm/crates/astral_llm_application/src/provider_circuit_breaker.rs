@@ -38,14 +38,12 @@ impl ProviderCircuitBreaker {
     pub fn allows_call(&self, provider: &ProviderKind) -> bool {
         let key = provider.as_str().to_string();
         let mut guard = self.inner.lock().expect("circuit breaker lock");
-        let circuit = guard
-            .entry(key)
-            .or_insert_with(|| ProviderCircuit {
-                state: CircuitBreakerState::Closed,
-                consecutive_failures: 0,
-                open_until: None,
-                half_open_probe_active: false,
-            });
+        let circuit = guard.entry(key).or_insert_with(|| ProviderCircuit {
+            state: CircuitBreakerState::Closed,
+            consecutive_failures: 0,
+            open_until: None,
+            half_open_probe_active: false,
+        });
 
         match circuit.state {
             CircuitBreakerState::Closed => true,
@@ -84,14 +82,12 @@ impl ProviderCircuitBreaker {
     pub fn record_transient_failure(&self, provider: &ProviderKind) {
         let key = provider.as_str().to_string();
         let mut guard = self.inner.lock().expect("circuit breaker lock");
-        let circuit = guard
-            .entry(key)
-            .or_insert_with(|| ProviderCircuit {
-                state: CircuitBreakerState::Closed,
-                consecutive_failures: 0,
-                open_until: None,
-                half_open_probe_active: false,
-            });
+        let circuit = guard.entry(key).or_insert_with(|| ProviderCircuit {
+            state: CircuitBreakerState::Closed,
+            consecutive_failures: 0,
+            open_until: None,
+            half_open_probe_active: false,
+        });
 
         circuit.half_open_probe_active = false;
 
@@ -119,10 +115,7 @@ impl ProviderCircuitBreaker {
 
     pub fn snapshot(&self) -> Vec<(String, CircuitBreakerState)> {
         let guard = self.inner.lock().expect("circuit breaker lock");
-        guard
-            .iter()
-            .map(|(k, c)| (k.clone(), c.state))
-            .collect()
+        guard.iter().map(|(k, c)| (k.clone(), c.state)).collect()
     }
 }
 

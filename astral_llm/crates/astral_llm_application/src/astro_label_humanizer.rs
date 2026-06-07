@@ -234,15 +234,22 @@ fn resolve_object_placement(
     None
 }
 
-fn placement_from_pool(facts: &NormalizedAstroFacts, object: &str) -> Option<(String, Option<u64>)> {
+fn placement_from_pool(
+    facts: &NormalizedAstroFacts,
+    object: &str,
+) -> Option<(String, Option<u64>)> {
     let prefix = format!("placement:{object}:");
-    facts.facts.iter().find(|f| f.id.starts_with(&prefix)).map(|f| {
-        if let Some((_, sign, house)) = parse_placement_fact_id(&f.id) {
-            (sign, Some(house))
-        } else {
-            ("unknown".into(), None)
-        }
-    })
+    facts
+        .facts
+        .iter()
+        .find(|f| f.id.starts_with(&prefix))
+        .map(|f| {
+            if let Some((_, sign, house)) = parse_placement_fact_id(&f.id) {
+                (sign, Some(house))
+            } else {
+                ("unknown".into(), None)
+            }
+        })
 }
 
 fn humanize_object_position_signal(
@@ -408,7 +415,8 @@ fn label_from_fact_id(
             _ => {}
         }
     }
-    parse_angle_fact_id(fact_id).map(|(angle, sign)| humanize_angle_sign_label(humanizer, locale, &angle, &sign))
+    parse_angle_fact_id(fact_id)
+        .map(|(angle, sign)| humanize_angle_sign_label(humanizer, locale, &angle, &sign))
 }
 
 fn interpretive_hint_from_fact_id(
@@ -479,7 +487,9 @@ fn humanize_cluster_signal(
         return None;
     }
     let sign = humanizer.sign_label(locale, parts[0]);
-    let house = parts[1].strip_prefix("house_").and_then(|h| h.parse::<u8>().ok());
+    let house = parts[1]
+        .strip_prefix("house_")
+        .and_then(|h| h.parse::<u8>().ok());
     Some(match (locale, house) {
         ("fr", Some(h)) => format!("Concentration en {sign} en maison {h}"),
         ("es", Some(h)) => format!("Concentración en {sign} en casa {h}"),
@@ -612,20 +622,44 @@ fn label_from_fact_value(
         .value
         .get("object")
         .and_then(|v| v.as_str())
-        .or_else(|| fact.value.pointer("/placement/object").and_then(|v| v.as_str()))
-        .or_else(|| fact.value.pointer("/evidence/object_code").and_then(|v| v.as_str()))?;
+        .or_else(|| {
+            fact.value
+                .pointer("/placement/object")
+                .and_then(|v| v.as_str())
+        })
+        .or_else(|| {
+            fact.value
+                .pointer("/evidence/object_code")
+                .and_then(|v| v.as_str())
+        })?;
     let sign = fact
         .value
         .get("sign")
         .and_then(|v| v.as_str())
-        .or_else(|| fact.value.pointer("/placement/sign").and_then(|v| v.as_str()))
-        .or_else(|| fact.value.pointer("/evidence/sign_code").and_then(|v| v.as_str()))?;
+        .or_else(|| {
+            fact.value
+                .pointer("/placement/sign")
+                .and_then(|v| v.as_str())
+        })
+        .or_else(|| {
+            fact.value
+                .pointer("/evidence/sign_code")
+                .and_then(|v| v.as_str())
+        })?;
     let house = fact
         .value
         .get("house")
         .and_then(|v| v.as_u64())
-        .or_else(|| fact.value.pointer("/placement/house/number").and_then(|v| v.as_u64()))
-        .or_else(|| fact.value.pointer("/evidence/house_number").and_then(|v| v.as_u64()));
+        .or_else(|| {
+            fact.value
+                .pointer("/placement/house/number")
+                .and_then(|v| v.as_u64())
+        })
+        .or_else(|| {
+            fact.value
+                .pointer("/evidence/house_number")
+                .and_then(|v| v.as_u64())
+        });
     Some(humanizer.placement_label(locale, object, sign, house))
 }
 
@@ -662,8 +696,9 @@ mod tests {
     use super::*;
     use astral_llm_domain::astro_fact::{AstroFactKind, AstroFactUsage, NormalizedAstroFact};
     use astral_llm_infra::{
-        bootstrap_aspect_type_labels, bootstrap_astro_object_labels, bootstrap_extra_object_sign_labels,
-        bootstrap_zodiac_sign_labels, bootstrap_writing_locales, CanonicalCatalog,
+        bootstrap_aspect_type_labels, bootstrap_astro_object_labels,
+        bootstrap_extra_object_sign_labels, bootstrap_writing_locales,
+        bootstrap_zodiac_sign_labels, CanonicalCatalog,
     };
 
     fn test_catalog() -> CanonicalCatalog {
@@ -682,19 +717,23 @@ mod tests {
         let catalog = test_catalog();
         let h = AstroLabelHumanizer::new(&catalog);
         assert_eq!(
-            h.label_for_fact_id("element_balance:earth", "fr", None).as_deref(),
+            h.label_for_fact_id("element_balance:earth", "fr", None)
+                .as_deref(),
             Some("Dominante élément Terre")
         );
         assert_eq!(
-            h.label_for_fact_id("modality_balance:cardinal", "fr", None).as_deref(),
+            h.label_for_fact_id("modality_balance:cardinal", "fr", None)
+                .as_deref(),
             Some("Dominante cardinale")
         );
         assert_eq!(
-            h.label_for_fact_id("dominant_planet:saturn", "fr", None).as_deref(),
+            h.label_for_fact_id("dominant_planet:saturn", "fr", None)
+                .as_deref(),
             Some("Saturne dominante")
         );
         assert_eq!(
-            h.label_for_fact_id("sect_condition:night", "fr", None).as_deref(),
+            h.label_for_fact_id("sect_condition:night", "fr", None)
+                .as_deref(),
             Some("Thème nocturne")
         );
     }
@@ -704,7 +743,8 @@ mod tests {
         let catalog = test_catalog();
         let h = AstroLabelHumanizer::new(&catalog);
         assert_eq!(
-            h.label_for_fact_id("house_axis:private_public", "fr", None).as_deref(),
+            h.label_for_fact_id("house_axis:private_public", "fr", None)
+                .as_deref(),
             Some("Axe vie privée / vie publique")
         );
         assert_eq!(
@@ -713,11 +753,13 @@ mod tests {
             Some("Axe ressources personnelles / ressources partagées : circulation entre sécurité propre, confiance et engagement commun")
         );
         assert_eq!(
-            h.label_for_fact_id("element_balance:earth", "fr", None).as_deref(),
+            h.label_for_fact_id("element_balance:earth", "fr", None)
+                .as_deref(),
             Some("Dominante élément Terre")
         );
         assert_eq!(
-            h.interpretive_hint_for_fact_id("element_balance:earth", "fr", None).as_deref(),
+            h.interpretive_hint_for_fact_id("element_balance:earth", "fr", None)
+                .as_deref(),
             Some("Dominante Terre : stabilité, réalisme et construction")
         );
     }
@@ -727,15 +769,18 @@ mod tests {
         let catalog = test_catalog();
         let h = AstroLabelHumanizer::new(&catalog);
         assert_eq!(
-            h.label_for_fact_id("ruler:angle:mc:sun", "fr", None).as_deref(),
+            h.label_for_fact_id("ruler:angle:mc:sun", "fr", None)
+                .as_deref(),
             Some("Maître du Milieu du Ciel : Soleil")
         );
         assert_eq!(
-            h.label_for_fact_id("ruler:angle:descendant:venus", "fr", None).as_deref(),
+            h.label_for_fact_id("ruler:angle:descendant:venus", "fr", None)
+                .as_deref(),
             Some("Maître du Descendant : Vénus")
         );
         assert_eq!(
-            h.label_for_fact_id("ruler:dominant_house:house_1:mars", "fr", None).as_deref(),
+            h.label_for_fact_id("ruler:dominant_house:house_1:mars", "fr", None)
+                .as_deref(),
             Some("Maître de la maison 1 : Mars")
         );
     }
@@ -803,12 +848,8 @@ mod tests {
     fn humanizes_aspect_in_french() {
         let catalog = test_catalog();
         let h = AstroLabelHumanizer::new(&catalog);
-        let label = humanize_aspect_signal(
-            &h,
-            "signal:aspect:jupiter:uranus:opposition",
-            "fr",
-        )
-        .unwrap();
+        let label =
+            humanize_aspect_signal(&h, "signal:aspect:jupiter:uranus:opposition", "fr").unwrap();
         assert_eq!(label, "Jupiter en opposition à Uranus");
     }
 
@@ -830,13 +871,8 @@ mod tests {
             h.humanize_fact_label(&fact, "fr", None),
             "Ascendant en Scorpion"
         );
-        let label = label_from_fact_id(
-            "signal:angle:ascendant:sign:scorpio",
-            &h,
-            "fr",
-            None,
-        )
-        .unwrap();
+        let label =
+            label_from_fact_id("signal:angle:ascendant:sign:scorpio", &h, "fr", None).unwrap();
         assert_eq!(label, "Ascendant en Scorpion");
     }
 
@@ -844,12 +880,8 @@ mod tests {
     fn humanizes_aspect_in_german() {
         let catalog = test_catalog();
         let h = AstroLabelHumanizer::new(&catalog);
-        let label = humanize_aspect_signal(
-            &h,
-            "signal:aspect:jupiter:uranus:opposition",
-            "de",
-        )
-        .unwrap();
+        let label =
+            humanize_aspect_signal(&h, "signal:aspect:jupiter:uranus:opposition", "de").unwrap();
         assert!(label.contains("Jupiter"));
         assert!(label.contains("Opposition"));
     }

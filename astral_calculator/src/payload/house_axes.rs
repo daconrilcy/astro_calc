@@ -127,7 +127,7 @@ fn build_axis(
     let axis_score = round4(
         (first_score.max(second_score)
             + scoring.axis_secondary_weight * first_score.min(second_score))
-            .clamp(0.0, 1.0),
+        .clamp(0.0, 1.0),
     );
     let (primary_house, secondary_house) = if first_score >= second_score {
         (reference.house_a_number, reference.house_b_number)

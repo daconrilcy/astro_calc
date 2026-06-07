@@ -58,7 +58,10 @@ impl ProductPolicyValidator {
         if domain_count > policy.max_domains {
             return Err(GenerationError::with_details(
                 GenerationErrorCode::ProductPolicyViolation,
-                format!("domain_count exceeds product maximum ({})", policy.max_domains),
+                format!(
+                    "domain_count exceeds product maximum ({})",
+                    policy.max_domains
+                ),
                 serde_json::json!({ "max_domains": policy.max_domains }),
             ));
         }
@@ -71,7 +74,10 @@ impl ProductPolicyValidator {
         if chapter_count > policy.max_chapters {
             return Err(GenerationError::with_details(
                 GenerationErrorCode::ProductPolicyViolation,
-                format!("chapter count exceeds product maximum ({})", policy.max_chapters),
+                format!(
+                    "chapter count exceeds product maximum ({})",
+                    policy.max_chapters
+                ),
                 serde_json::json!({ "max_chapters": policy.max_chapters }),
             ));
         }

@@ -193,7 +193,12 @@ impl ChapterEvidencePack {
 
     pub fn distinct_families(&self) -> usize {
         let mut families = std::collections::HashSet::new();
-        for e in self.core.iter().chain(self.supporting.iter()).chain(self.nuance.iter()) {
+        for e in self
+            .core
+            .iter()
+            .chain(self.supporting.iter())
+            .chain(self.nuance.iter())
+        {
             families.insert(e.family.as_str());
         }
         families.len()
@@ -216,7 +221,11 @@ impl ChapterEvidencePack {
     }
 
     pub fn role_for_fact_id(&self, fact_id: &str, semantic_key: &str) -> Option<&'static str> {
-        if self.core.iter().any(|e| e.fact_id == fact_id || e.semantic_fact_key == semantic_key) {
+        if self
+            .core
+            .iter()
+            .any(|e| e.fact_id == fact_id || e.semantic_fact_key == semantic_key)
+        {
             return Some("core");
         }
         if self
@@ -259,7 +268,9 @@ impl InterpretiveEvidencePool {
     }
 
     pub fn pool_has_rulers(&self) -> bool {
-        self.evidence.iter().any(|e| e.kind_code == KIND_HOUSE_RULER)
+        self.evidence
+            .iter()
+            .any(|e| e.kind_code == KIND_HOUSE_RULER)
     }
 
     pub fn pool_has_non_placement(&self) -> bool {

@@ -209,7 +209,10 @@ fn enforce_strict_object_rules(value: &mut serde_json::Value) {
                 || (obj.contains_key("properties") && !obj.contains_key("$ref"));
 
             if is_object {
-                obj.insert("additionalProperties".into(), serde_json::Value::Bool(false));
+                obj.insert(
+                    "additionalProperties".into(),
+                    serde_json::Value::Bool(false),
+                );
                 if let Some(props) = obj.get("properties").and_then(|p| p.as_object()) {
                     let required: Vec<&str> = props.keys().map(String::as_str).collect();
                     obj.insert("required".into(), serde_json::json!(required));
@@ -293,10 +296,7 @@ mod tests {
         let compiled = ProviderSchemaCompiler::compile(&schema, &openai_cap()).unwrap();
         assert!(compiled.get("$schema").is_none());
         assert_eq!(compiled["additionalProperties"], false);
-        assert_eq!(
-            compiled["required"],
-            serde_json::json!(["title"])
-        );
+        assert_eq!(compiled["required"], serde_json::json!(["title"]));
     }
 
     #[test]
@@ -315,7 +315,10 @@ mod tests {
         });
         let compiled = ProviderSchemaCompiler::compile(&schema, &openai_cap()).unwrap();
         assert_eq!(compiled["additionalProperties"], false);
-        assert_eq!(compiled["properties"]["meta"]["additionalProperties"], false);
+        assert_eq!(
+            compiled["properties"]["meta"]["additionalProperties"],
+            false
+        );
     }
 
     #[test]

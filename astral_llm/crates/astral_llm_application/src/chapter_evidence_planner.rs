@@ -2,11 +2,11 @@ use std::collections::HashSet;
 
 use astral_llm_domain::{
     chapter_orchestration::ReadingPlan,
+    interpretation_profile::SYNTHESIS_CHAPTER_CODE,
     interpretive_evidence::{
         ChapterEvidencePack, ChapterEvidenceSlot, EvidenceRequirementSeverity, EvidenceSlotRole,
         InterpretiveEvidence, InterpretiveEvidencePool, PremiumEvidencePolicy, KIND_DOMAIN_SCORE,
     },
-    interpretation_profile::SYNTHESIS_CHAPTER_CODE,
     GenerationError, GenerationErrorCode,
 };
 use astral_llm_infra::EvidenceCanonicalCatalog;
@@ -29,13 +29,7 @@ impl ChapterEvidencePlanner {
         let mut prior_usage = PriorChapterUsage::default();
 
         for chapter in &plan.chapters {
-            let pack = Self::plan_chapter(
-                pool,
-                &chapter.code,
-                catalog,
-                policy,
-                &prior_usage,
-            )?;
+            let pack = Self::plan_chapter(pool, &chapter.code, catalog, policy, &prior_usage)?;
             prior_usage.record_pack(&pack);
             packs.push(pack);
         }
@@ -228,11 +222,7 @@ fn validate_no_avoid_in_active_slots(pack: &ChapterEvidencePack) -> Result<(), G
 const MAX_GLOBAL_FILLER_PER_CHAPTER: usize = 2;
 
 /// Retire les fillers globaux en surplus sans descendre sous le minimum du chapitre.
-fn trim_excess_global_filler(
-    pack: &mut ChapterEvidencePack,
-    chapter_code: &str,
-    min_required: u8,
-) {
+fn trim_excess_global_filler(pack: &mut ChapterEvidencePack, chapter_code: &str, min_required: u8) {
     if chapter_code == "synthesis" {
         return;
     }
@@ -309,12 +299,15 @@ fn supporting_cap_exempt_for_chapter(
     if ev.kind_code != "house_ruler" {
         return false;
     }
-    catalog.requirements_for_chapter(chapter_code).iter().any(|req| {
-        req.severity == EvidenceRequirementSeverity::Blocking
-            && requirement_pool_match(pool, req)
-                .iter()
-                .any(|m| m.semantic_fact_key == ev.semantic_fact_key)
-    })
+    catalog
+        .requirements_for_chapter(chapter_code)
+        .iter()
+        .any(|req| {
+            req.severity == EvidenceRequirementSeverity::Blocking
+                && requirement_pool_match(pool, req)
+                    .iter()
+                    .any(|m| m.semantic_fact_key == ev.semantic_fact_key)
+        })
 }
 
 fn pick_for_slot<'a>(
@@ -341,7 +334,12 @@ fn pick_for_slot<'a>(
         .filter(|e| {
             !cap_supporting
                 || !supporting_semantic_cap_blocks(
-                    prior_usage, e, chapter_code, policy, catalog, pool,
+                    prior_usage,
+                    e,
+                    chapter_code,
+                    policy,
+                    catalog,
+                    pool,
                 )
         })
         .filter(|e| matches_slot(e, slot))
@@ -451,7 +449,11 @@ fn inject_blocking_requirements(
             .iter()
             .chain(supporting.iter())
             .chain(nuance.iter())
-            .filter(|e| available.iter().any(|a| a.semantic_fact_key == e.semantic_fact_key))
+            .filter(|e| {
+                available
+                    .iter()
+                    .any(|a| a.semantic_fact_key == e.semantic_fact_key)
+            })
             .count();
         if selected_count >= req.min_count as usize {
             continue;
@@ -507,16 +509,18 @@ fn eligible_candidates<'a>(
         .filter(|e| !prior_avoid.contains(e.semantic_fact_key.as_str()))
         .filter(|e| !catalog.excludes_candidate(chapter, e))
         .filter(|e| e.kind_code != KIND_DOMAIN_SCORE)
-        .filter(|e| {
-            !require_new_family || !families.contains(&e.family.as_str().to_string())
-        })
+        .filter(|e| !require_new_family || !families.contains(&e.family.as_str().to_string()))
         .collect()
 }
 
 fn best_by_weight(candidates: Vec<&InterpretiveEvidence>) -> Option<InterpretiveEvidence> {
     candidates
         .into_iter()
-        .max_by(|a, b| a.weight.partial_cmp(&b.weight).unwrap_or(std::cmp::Ordering::Equal))
+        .max_by(|a, b| {
+            a.weight
+                .partial_cmp(&b.weight)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
         .map(|e| e.clone())
 }
 
@@ -566,15 +570,11 @@ fn swap_supporting_for_any(
     supporting: &mut Vec<InterpretiveEvidence>,
     assigned: &mut HashSet<String>,
 ) -> bool {
-    let Some((idx, _)) = supporting
-        .iter()
-        .enumerate()
-        .min_by(|(_, a), (_, b)| {
-            a.weight
-                .partial_cmp(&b.weight)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        })
-    else {
+    let Some((idx, _)) = supporting.iter().enumerate().min_by(|(_, a), (_, b)| {
+        a.weight
+            .partial_cmp(&b.weight)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    }) else {
         return false;
     };
     assigned.remove(&supporting[idx].fact_id);
@@ -704,12 +704,8 @@ fn fill_minimums(
                         assigned_semantic,
                         &ctx,
                     ) || swap_supporting_for_family_diversity(
-                        ev,
-                        supporting,
-                        assigned,
-                        &families,
-                    )
-                    {
+                        ev, supporting, assigned, &families,
+                    ) {
                         injected = true;
                         break;
                     }
@@ -721,7 +717,8 @@ fn fill_minimums(
         }
     }
 
-    while (core.len() + supporting.len() + nuance.len()) < policy.min_evidence_per_chapter as usize {
+    while (core.len() + supporting.len() + nuance.len()) < policy.min_evidence_per_chapter as usize
+    {
         let families = collect_families(core, supporting, nuance);
         let need_family = families.len() < min_families;
         let pool: Vec<_> = eligible_candidates(
@@ -787,7 +784,8 @@ fn fill_minimums(
                     assigned_semantic,
                     &ctx,
                 ) {
-                    let _ = swap_supporting_for_family_diversity(ev, supporting, assigned, &families);
+                    let _ =
+                        swap_supporting_for_family_diversity(ev, supporting, assigned, &families);
                 }
             }
         }
@@ -849,13 +847,8 @@ fn validate_pack_structure(
     }
 
     let min_count = policy.min_evidence_per_chapter as usize;
-    let eligible_left = count_eligible_for_chapter(
-        pool,
-        chapter_code,
-        assigned,
-        assigned_semantic,
-        prior_avoid,
-    );
+    let eligible_left =
+        count_eligible_for_chapter(pool, chapter_code, assigned, assigned_semantic, prior_avoid);
     let families_available =
         distinct_families_available(candidates, assigned, assigned_semantic, prior_avoid).max(1);
     let min_families = policy
@@ -898,7 +891,10 @@ fn validate_pack_structure(
     if pack.distinct_families() < min_families {
         return Err(GenerationError::with_details(
             GenerationErrorCode::PremiumEvidenceDiversityFailed,
-            format!("chapter '{}' lacks distinct evidence kind families", pack.chapter_code),
+            format!(
+                "chapter '{}' lacks distinct evidence kind families",
+                pack.chapter_code
+            ),
             serde_json::json!({
                 "chapter": pack.chapter_code,
                 "families": pack.distinct_families(),
@@ -976,8 +972,7 @@ mod tests {
             "fr",
         )
         .unwrap();
-        let pool =
-            crate::InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).unwrap();
+        let pool = crate::InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).unwrap();
         let policy = catalog.evidence.premium_policy.clone();
         let plan = astral_llm_domain::chapter_orchestration::ReadingPlan {
             product_code: "natal_prompter".into(),
@@ -989,16 +984,22 @@ mod tests {
                 "career".into(),
                 "growth_path".into(),
             ],
-            chapters: ["identity", "emotional_life", "relationships", "career", "growth_path"]
-                .into_iter()
-                .map(|code| ReadingPlanChapter {
-                    code: code.into(),
-                    title: code.into(),
-                    min_words: 40,
-                    target_words: 200,
-                    max_words: 500,
-                })
-                .collect(),
+            chapters: [
+                "identity",
+                "emotional_life",
+                "relationships",
+                "career",
+                "growth_path",
+            ]
+            .into_iter()
+            .map(|code| ReadingPlanChapter {
+                code: code.into(),
+                title: code.into(),
+                min_words: 40,
+                target_words: 200,
+                max_words: 500,
+            })
+            .collect(),
         };
         let packs = ChapterEvidencePlanner::plan_all(&pool, &plan, &catalog.evidence, &policy)
             .expect("plan all five chapters");
@@ -1018,7 +1019,10 @@ mod tests {
             rel.total_count(),
             rel.all_fact_ids()
         );
-        let growth = packs.iter().find(|p| p.chapter_code == "growth_path").unwrap();
+        let growth = packs
+            .iter()
+            .find(|p| p.chapter_code == "growth_path")
+            .unwrap();
         assert!(
             growth.total_count() >= 2,
             "growth_path count={} ids={:?}",
@@ -1059,8 +1063,7 @@ mod tests {
             "fr",
         )
         .unwrap();
-        let pool =
-            crate::InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).unwrap();
+        let pool = crate::InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).unwrap();
         let profile = astral_llm_infra::bootstrap_interpretation_profiles()
             .get("natal_premium_plus")
             .expect("natal_premium_plus")
@@ -1072,10 +1075,12 @@ mod tests {
         let plan = crate::ReadingPlanBuilder::build(
             &premium_plus_request(),
             &domains,
-            Some(&crate::interpretation_profile_resolver::ResolvedInterpretationContext {
-                profile: profile.clone(),
-                effective_policy: profile.to_product_generation_policy(),
-            }),
+            Some(
+                &crate::interpretation_profile_resolver::ResolvedInterpretationContext {
+                    profile: profile.clone(),
+                    effective_policy: profile.to_product_generation_policy(),
+                },
+            ),
         );
         assert_eq!(plan.chapters.len(), 9);
         let packs = ChapterEvidencePlanner::plan_all(&pool, &plan, &catalog.evidence, &policy)
@@ -1085,13 +1090,11 @@ mod tests {
             .find(|p| p.chapter_code == "synthesis")
             .expect("synthesis pack");
         assert!(synthesis.total_count() >= policy.min_evidence_per_chapter as usize);
-        assert!(
-            synthesis
-                .core
-                .iter()
-                .chain(synthesis.supporting.iter())
-                .any(|e| e.kind_code == "dominant_planet" || e.kind_code == "house_emphasis")
-        );
+        assert!(synthesis
+            .core
+            .iter()
+            .chain(synthesis.supporting.iter())
+            .any(|e| e.kind_code == "dominant_planet" || e.kind_code == "house_emphasis"));
     }
 
     fn premium_plus_request() -> astral_llm_domain::GenerateReadingRequest {
@@ -1138,8 +1141,7 @@ pub fn requirement_pool_match<'a>(
     pool: &'a InterpretiveEvidencePool,
     req: &'a astral_llm_domain::EvidenceRequirement,
 ) -> Vec<&'a InterpretiveEvidence> {
-    pool
-        .matching_for_chapter(&req.chapter_code)
+    pool.matching_for_chapter(&req.chapter_code)
         .into_iter()
         .filter(|e| evidence_matches_requirement(e, req))
         .collect()

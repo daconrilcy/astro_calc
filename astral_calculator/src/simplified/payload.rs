@@ -5,8 +5,9 @@ use super::facts::{CollectedSignFacts, RELIABILITY_DECLARED, RELIABILITY_STABLE}
 use super::resolve::ResolvedSimplifiedInput;
 use super::response::{
     AstroSimplifiedNatalResponse, InputPrecisionResponse, LimitationResponse, LlmPayloadControls,
-    ReadingHintResponse, RECOMMENDED_SIMPLIFIED_PROFILE_CODE, READING_COMPLETENESS_V1,
-    SIMPLIFIED_PAYLOAD_CONTRACT, SIMPLIFIED_RESPONSE_CONTRACT_VERSION, SimplifiedPayloadEnvelope,
+    ReadingHintResponse, SimplifiedPayloadEnvelope, READING_COMPLETENESS_V1,
+    RECOMMENDED_SIMPLIFIED_PROFILE_CODE, SIMPLIFIED_PAYLOAD_CONTRACT,
+    SIMPLIFIED_RESPONSE_CONTRACT_VERSION,
 };
 use crate::domain::CalculatedChartFacts;
 
@@ -28,12 +29,8 @@ pub fn build_response(
         })
         .collect();
 
-    let llm_controls = build_llm_controls(
-        resolved,
-        catalog,
-        profile_feature_exclusions,
-        &collected,
-    );
+    let llm_controls =
+        build_llm_controls(resolved, catalog, profile_feature_exclusions, &collected);
 
     AstroSimplifiedNatalResponse {
         response_contract_version: SIMPLIFIED_RESPONSE_CONTRACT_VERSION.to_string(),
@@ -71,10 +68,7 @@ fn build_simplified_payload(
     if let Some(map) = planets.as_object_mut() {
         for fact in &collected.facts {
             if fact.reliability == RELIABILITY_STABLE || fact.reliability == RELIABILITY_DECLARED {
-                map.insert(
-                    fact.object_code.clone(),
-                    json!({ "sign": fact.sign_code }),
-                );
+                map.insert(fact.object_code.clone(), json!({ "sign": fact.sign_code }));
             }
         }
     }

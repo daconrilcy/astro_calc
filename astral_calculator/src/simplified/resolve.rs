@@ -37,9 +37,8 @@ pub fn validate_and_resolve(
         )));
     }
 
-    let birth_date = NaiveDate::parse_from_str(&request.birth.date, "%Y-%m-%d").map_err(|_| {
-        RuntimeError::InvalidEngineRequest("birth.date must be YYYY-MM-DD".into())
-    })?;
+    let birth_date = NaiveDate::parse_from_str(&request.birth.date, "%Y-%m-%d")
+        .map_err(|_| RuntimeError::InvalidEngineRequest("birth.date must be YYYY-MM-DD".into()))?;
 
     if let Some(location) = &request.birth.location {
         validate_coordinates(location.latitude, location.longitude)?;
@@ -73,11 +72,8 @@ pub fn validate_and_resolve(
         .map(|loc| (Some(loc.latitude), Some(loc.longitude)))
         .unwrap_or((None, None));
 
-    let input_precision_level = classify_input_precision(
-        location_provided,
-        time_provided,
-        timezone_provided,
-    );
+    let input_precision_level =
+        classify_input_precision(location_provided, time_provided, timezone_provided);
 
     let computed_scope = match input_precision_level.as_str() {
         "datetime_without_location" => PLANETARY_SCOPE,
@@ -99,7 +95,10 @@ pub fn validate_and_resolve(
     let excluded_features = if computed_scope == ANGULAR_SCOPE {
         Vec::new()
     } else {
-        EXCLUDED_WITHOUT_ANGULAR.iter().map(|s| s.to_string()).collect()
+        EXCLUDED_WITHOUT_ANGULAR
+            .iter()
+            .map(|s| s.to_string())
+            .collect()
     };
 
     if catalog.input_precision(&input_precision_level).is_none() {
@@ -202,7 +201,11 @@ pub fn build_uncertainty_window(
 
     if let Some(tz) = resolved.timezone {
         let start_local = tz
-            .from_local_datetime(&resolved.birth_date.and_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap()))
+            .from_local_datetime(
+                &resolved
+                    .birth_date
+                    .and_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap()),
+            )
             .single()
             .ok_or_else(|| {
                 RuntimeError::InvalidEngineRequest("invalid local day start for timezone".into())
@@ -217,7 +220,10 @@ pub fn build_uncertainty_window(
             .ok_or_else(|| {
                 RuntimeError::InvalidEngineRequest("invalid local day end for timezone".into())
             })?;
-        return Ok((start_local.with_timezone(&Utc), end_local.with_timezone(&Utc)));
+        return Ok((
+            start_local.with_timezone(&Utc),
+            end_local.with_timezone(&Utc),
+        ));
     }
 
     if catalog.policy.date_only_uncertainty_mode != "world_civil_date_window" {
@@ -229,10 +235,8 @@ pub fn build_uncertainty_window(
 
     let previous_day = resolved.birth_date - Duration::days(1);
     let next_day = resolved.birth_date + Duration::days(1);
-    let start = Utc
-        .from_utc_datetime(
-            &previous_day.and_time(NaiveTime::from_hms_opt(10, 0, 0).unwrap()),
-        );
+    let start =
+        Utc.from_utc_datetime(&previous_day.and_time(NaiveTime::from_hms_opt(10, 0, 0).unwrap()));
     let end = Utc.from_utc_datetime(&next_day.and_time(NaiveTime::from_hms_opt(12, 0, 0).unwrap()));
     Ok((start, end))
 }

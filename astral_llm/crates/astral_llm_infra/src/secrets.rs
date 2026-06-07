@@ -1,6 +1,6 @@
 use secrecy::{ExposeSecret, SecretString};
 
-use crate::config::{load_dotenv, env_var};
+use crate::config::{env_var, load_dotenv};
 
 #[derive(Debug, Clone, Default)]
 pub struct ProviderSecrets {

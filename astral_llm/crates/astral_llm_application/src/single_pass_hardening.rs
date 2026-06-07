@@ -6,9 +6,7 @@ use astral_llm_domain::{
 use crate::execution_audit::ExecutionAudit;
 use crate::generate_reading_use_case::GenerateReadingUseCase;
 use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
-use crate::reading_script_guard::{
-    violations_are_script_only,
-};
+use crate::reading_script_guard::violations_are_script_only;
 use crate::safety_guard::SafetyGuard;
 use crate::simplified_reading::{SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE, SIMPLIFIED_PROFILE};
 use crate::simplified_reading_guard::violations_are_ambiguous_core_only;
@@ -117,7 +115,8 @@ impl GenerateReadingUseCase {
                     }
                     return Ok(reading);
                 }
-                Err(violations) if violations_are_script_only(&violations) && attempt + 1 < max_attempts =>
+                Err(violations)
+                    if violations_are_script_only(&violations) && attempt + 1 < max_attempts =>
                 {
                     last_violations = violations;
                     repair_instruction = Some(SCRIPT_REPAIR_INSTRUCTION);
@@ -151,12 +150,10 @@ impl GenerateReadingUseCase {
                     last_violations = violations;
                     break;
                 }
-                Err(violations) if violations_are_ambiguous_core_only(&violations) && is_simplified =>
+                Err(violations)
+                    if violations_are_ambiguous_core_only(&violations) && is_simplified =>
                 {
-                    apply_simplified_body_fallback(
-                        &mut reading,
-                        SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE,
-                    );
+                    apply_simplified_body_fallback(&mut reading, SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE);
                     let _ = post_process_single_pass_reading(&mut reading, request, interpretation);
                     if self
                         .validate_single_pass_output(request, &reading, safety_policy, true)

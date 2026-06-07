@@ -77,7 +77,10 @@ impl ModelCapabilityRegistry {
         if self.enforce_provider_catalog && !self.provider_is_active(provider) {
             return Err(GenerationError::with_details(
                 GenerationErrorCode::UnsupportedProvider,
-                format!("provider is not in the active catalog: {}", provider.as_str()),
+                format!(
+                    "provider is not in the active catalog: {}",
+                    provider.as_str()
+                ),
                 serde_json::json!({ "provider": provider.as_str() }),
             ));
         }
@@ -130,12 +133,12 @@ impl ModelCapabilityRegistry {
             ));
         }
 
-        let effective_context = if allow_oracle_benchmark && context == ModelRouteContext::PrimaryReading
-        {
-            ModelRouteContext::OracleBenchmark
-        } else {
-            context
-        };
+        let effective_context =
+            if allow_oracle_benchmark && context == ModelRouteContext::PrimaryReading {
+                ModelRouteContext::OracleBenchmark
+            } else {
+                context
+            };
 
         if !cap.tier_policy.allows(effective_context) {
             return Err(GenerationError::with_details(
@@ -213,11 +216,7 @@ impl ModelCapabilityRegistry {
     pub fn default_model_for_provider(&self, provider: &ProviderKind) -> Option<String> {
         self.models
             .values()
-            .find(|m| {
-                m.is_active
-                    && m.provider == *provider
-                    && self.provider_is_active(provider)
-            })
+            .find(|m| m.is_active && m.provider == *provider && self.provider_is_active(provider))
             .map(|m| m.model.clone())
     }
 
@@ -491,10 +490,7 @@ mod tests {
 
     #[test]
     fn rejects_inactive_model_when_catalog_enforced() {
-        let mut registry = ModelCapabilityRegistry::from_db_catalog(
-            vec!["openai".into()],
-            vec![],
-        );
+        let mut registry = ModelCapabilityRegistry::from_db_catalog(vec!["openai".into()], vec![]);
         registry.register(ModelCapability {
             provider: ProviderKind::OpenAi,
             model: "gpt-5.5-pro".into(),
@@ -533,10 +529,7 @@ mod tests {
 
     #[test]
     fn oracle_allowed_with_explicit_flag() {
-        let mut registry = ModelCapabilityRegistry::from_db_catalog(
-            vec!["openai".into()],
-            vec![],
-        );
+        let mut registry = ModelCapabilityRegistry::from_db_catalog(vec!["openai".into()], vec![]);
         registry.register(ModelCapability {
             provider: ProviderKind::OpenAi,
             model: "gpt-5.5-pro".into(),

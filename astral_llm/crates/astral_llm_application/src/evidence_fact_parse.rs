@@ -2,9 +2,7 @@
 
 use std::collections::HashMap;
 
-use astral_llm_domain::{
-    astro_fact::NormalizedAstroFacts, generation_response::ReadingChapter,
-};
+use astral_llm_domain::{astro_fact::NormalizedAstroFacts, generation_response::ReadingChapter};
 
 pub fn object_code_from_fact_id(fact_id: &str) -> Option<String> {
     object_codes_from_fact_id(fact_id).into_iter().next()
@@ -62,7 +60,11 @@ pub fn object_codes_from_fact_id(fact_id: &str) -> Vec<String> {
             if key.starts_with("aspect:") {
                 vec![]
             } else {
-                key.split(':').next().map(str::to_string).into_iter().collect()
+                key.split(':')
+                    .next()
+                    .map(str::to_string)
+                    .into_iter()
+                    .collect()
             }
         }
         _ => vec![],
@@ -167,10 +169,7 @@ mod tests {
     #[test]
     fn semantic_key_aligns_signal_and_placement_sun() {
         let mut placements = HashMap::new();
-        placements.insert(
-            "sun".into(),
-            "placement:sun:capricorn:house:2".into(),
-        );
+        placements.insert("sun".into(), "placement:sun:capricorn:house:2".into());
         let signal = compute_semantic_fact_key(
             "signal:object_position:sun",
             &serde_json::json!({}),
@@ -199,9 +198,7 @@ pub fn house_number_from_fact(fact_id: &str, raw: &serde_json::Value) -> Option<
 }
 
 pub fn fact_involves_object(fact_id: &str, object: &str) -> bool {
-    fact_id
-        .to_lowercase()
-        .contains(&format!(":{object}:"))
+    fact_id.to_lowercase().contains(&format!(":{object}:"))
         || fact_id.ends_with(&format!(":{object}"))
         || object_code_from_fact_id(fact_id).is_some_and(|o| o == object)
 }
@@ -235,7 +232,9 @@ pub fn sign_code_from_fact(fact_id: &str, raw: &serde_json::Value) -> Option<Str
 }
 
 /// Index objet -> fact_id placement canonique (premier gagnant).
-pub fn placement_index_by_object(facts: &[astral_llm_domain::NormalizedAstroFact]) -> HashMap<String, String> {
+pub fn placement_index_by_object(
+    facts: &[astral_llm_domain::NormalizedAstroFact],
+) -> HashMap<String, String> {
     let mut map = HashMap::new();
     for fact in facts {
         if !fact.id.starts_with("placement:") {
@@ -281,13 +280,7 @@ pub fn compute_semantic_fact_key(
     fact_id.to_string()
 }
 
-const SIGNAL_KIND_SEGMENTS: &[&str] = &[
-    "aspect",
-    "object_position",
-    "angle",
-    "dignity",
-    "cluster",
-];
+const SIGNAL_KIND_SEGMENTS: &[&str] = &["aspect", "object_position", "angle", "dignity", "cluster"];
 
 /// Alias connus quand le modele omet le segment `aspect` (ex. `signal:jupiter:uranus:opposition`).
 pub fn candidate_fact_id_aliases(fact_id: &str) -> Vec<String> {
@@ -299,10 +292,16 @@ pub fn candidate_fact_id_aliases(fact_id: &str) -> Vec<String> {
     }
     let parts: Vec<&str> = fact_id.split(':').collect();
     if parts.len() == 4 && parts[0] == "signal" && !SIGNAL_KIND_SEGMENTS.contains(&parts[1]) {
-        out.push(format!("signal:aspect:{}:{}:{}", parts[1], parts[2], parts[3]));
+        out.push(format!(
+            "signal:aspect:{}:{}:{}",
+            parts[1], parts[2], parts[3]
+        ));
     }
     if parts.len() == 4 && parts[0] == "aspect" {
-        out.push(format!("signal:aspect:{}:{}:{}", parts[1], parts[2], parts[3]));
+        out.push(format!(
+            "signal:aspect:{}:{}:{}",
+            parts[1], parts[2], parts[3]
+        ));
     }
     out
 }
@@ -343,10 +342,13 @@ pub fn normalize_chapter_astro_basis_fact_ids(
 
 fn aspect_semantic_key_from_fact_id(fact_id: &str) -> Option<String> {
     let parts: Vec<&str> = fact_id.split(':').collect();
-    let (obj_a, obj_b, aspect_type) = if parts.len() >= 5 && parts[0] == "signal" && parts[1] == "aspect"
+    let (obj_a, obj_b, aspect_type) = if parts.len() >= 5
+        && parts[0] == "signal"
+        && parts[1] == "aspect"
     {
         (parts[2], parts[3], parts[4])
-    } else if parts.len() == 4 && parts[0] == "signal" && !SIGNAL_KIND_SEGMENTS.contains(&parts[1]) {
+    } else if parts.len() == 4 && parts[0] == "signal" && !SIGNAL_KIND_SEGMENTS.contains(&parts[1])
+    {
         (parts[1], parts[2], parts[3])
     } else if parts.len() == 4 && parts[0] == "aspect" {
         (parts[1], parts[2], parts[3])
@@ -365,11 +367,7 @@ fn placement_key_from_evidence(object: &str, raw: &serde_json::Value) -> Option<
     Some(format!("placement:{object}:{sign}:house:{house}"))
 }
 
-pub fn matches_requirement_object(
-    fact_id: &str,
-    object_code: Option<&str>,
-    code: &str,
-) -> bool {
+pub fn matches_requirement_object(fact_id: &str, object_code: Option<&str>, code: &str) -> bool {
     if fact_id.contains(&format!(":{code}:")) || fact_id.ends_with(&format!(":{code}")) {
         return true;
     }

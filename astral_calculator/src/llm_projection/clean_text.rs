@@ -45,7 +45,11 @@ pub fn humanize_reason(reason: &str, object_names: &HashMap<String, String>) -> 
 
     if let Some((obj, rest)) = reason.split_once('_') {
         match (obj, rest) {
-            ("sun" | "moon" | "mercury" | "venus" | "mars" | "jupiter" | "saturn" | "uranus" | "neptune" | "pluto", "in_sign") => {
+            (
+                "sun" | "moon" | "mercury" | "venus" | "mars" | "jupiter" | "saturn" | "uranus"
+                | "neptune" | "pluto",
+                "in_sign",
+            ) => {
                 return format!("{} in sign", object_label(obj));
             }
             (obj, "in_house") => return format!("{} in house", object_label(obj)),
@@ -56,9 +60,13 @@ pub fn humanize_reason(reason: &str, object_names: &HashMap<String, String>) -> 
     }
 
     match reason {
-        "multiple_objects" => "Several chart factors are concentrated in the same sign and house".to_string(),
+        "multiple_objects" => {
+            "Several chart factors are concentrated in the same sign and house".to_string()
+        }
         "cluster" => "Dominant house cluster".to_string(),
-        "sign_house_cluster" => "Several chart factors are concentrated in the same sign and house".to_string(),
+        "sign_house_cluster" => {
+            "Several chart factors are concentrated in the same sign and house".to_string()
+        }
         "saturn_domicile" => "Saturn in domicile".to_string(),
         "placement" => "Strong placement".to_string(),
         "cluster_participant" => "Participant in dominant theme".to_string(),
@@ -204,7 +212,11 @@ pub fn reading_slot_section(slot: &str, title: &str) -> String {
     }
 }
 
-pub fn axis_balance_label(polarity_balance: &str, primary_house: i32, secondary_house: i32) -> String {
+pub fn axis_balance_label(
+    polarity_balance: &str,
+    primary_house: i32,
+    secondary_house: i32,
+) -> String {
     match polarity_balance {
         "primary_dominant" => format!("Mainly house {primary_house}"),
         "secondary_dominant" => format!("Mainly house {secondary_house}"),
@@ -303,10 +315,7 @@ pub fn humanize_theme_code(theme_code: &str) -> String {
 }
 
 /// Rewrites engine `interpretive_hint` parenthetical theme codes for LLM-facing text.
-pub fn humanize_axis_summary(
-    hint: &str,
-    theme_in_parens: &[(String, String)],
-) -> String {
+pub fn humanize_axis_summary(hint: &str, theme_in_parens: &[(String, String)]) -> String {
     let mut summary = hint.to_string();
     for (code, label) in theme_in_parens {
         summary = summary.replace(&format!("({code})"), &format!("({label})"));

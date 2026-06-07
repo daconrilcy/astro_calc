@@ -1,8 +1,6 @@
 //! Extraction de faits astro normalises depuis les contrats entrant.
 
-use astral_llm_domain::astro_fact::{
-    AstroFactKind, AstroFactUsage, NormalizedAstroFact,
-};
+use astral_llm_domain::astro_fact::{AstroFactKind, AstroFactUsage, NormalizedAstroFact};
 use astral_llm_domain::{GenerationError, GenerationErrorCode, PrivacyPolicy};
 use astral_llm_infra::payload_redaction::redact_value;
 
@@ -83,7 +81,10 @@ fn extract_simplified_structured(
 
     if let Some(planets) = data.get("planets").and_then(|v| v.as_object()) {
         for (planet, detail) in planets {
-            if facts.iter().any(|fact| fact.id == format!("placement:{planet}")) {
+            if facts
+                .iter()
+                .any(|fact| fact.id == format!("placement:{planet}"))
+            {
                 continue;
             }
             extract_legacy_planet(planet, detail, &mut facts, privacy);
@@ -123,8 +124,14 @@ fn extract_natal_structured(
     if let Some(signals) = data.get("signals").and_then(|v| v.as_array()) {
         let mut sorted: Vec<_> = signals.iter().collect();
         sorted.sort_by(|a, b| {
-            let sa = a.get("priority_score").and_then(|v| v.as_f64()).unwrap_or(0.0);
-            let sb = b.get("priority_score").and_then(|v| v.as_f64()).unwrap_or(0.0);
+            let sa = a
+                .get("priority_score")
+                .and_then(|v| v.as_f64())
+                .unwrap_or(0.0);
+            let sb = b
+                .get("priority_score")
+                .and_then(|v| v.as_f64())
+                .unwrap_or(0.0);
             sb.partial_cmp(&sa).unwrap_or(std::cmp::Ordering::Equal)
         });
         for signal in sorted.into_iter().take(48) {
@@ -189,10 +196,7 @@ fn extract_chart_emphasis(
                 value = redact_value(&value);
             }
             facts.push(NormalizedAstroFact {
-                id: format!(
-                    "house_emphasis:house:{}",
-                    house_number.unwrap_or(0)
-                ),
+                id: format!("house_emphasis:house:{}", house_number.unwrap_or(0)),
                 kind: AstroFactKind::HousePlacement,
                 kind_code: "house_emphasis".to_string(),
                 usage: AstroFactUsage::InterpretiveBasis,
@@ -204,8 +208,10 @@ fn extract_chart_emphasis(
         }
     }
 
-    let mut element_scores: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
-    let mut modality_scores: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
+    let mut element_scores: std::collections::HashMap<String, f64> =
+        std::collections::HashMap::new();
+    let mut modality_scores: std::collections::HashMap<String, f64> =
+        std::collections::HashMap::new();
     if let Some(signs) = emphasis.get("dominant_signs").and_then(|v| v.as_array()) {
         for entry in signs {
             let sign = entry
@@ -359,11 +365,19 @@ fn extract_rulership_context(
     };
 
     let entries: &[(&str, &serde_json::Value)] = &[
-        ("ascendant_ruler", ctx.get("ascendant_ruler").unwrap_or(&serde_json::Value::Null)),
-        ("mc_ruler", ctx.get("mc_ruler").unwrap_or(&serde_json::Value::Null)),
+        (
+            "ascendant_ruler",
+            ctx.get("ascendant_ruler")
+                .unwrap_or(&serde_json::Value::Null),
+        ),
+        (
+            "mc_ruler",
+            ctx.get("mc_ruler").unwrap_or(&serde_json::Value::Null),
+        ),
         (
             "descendant_ruler",
-            ctx.get("descendant_ruler").unwrap_or(&serde_json::Value::Null),
+            ctx.get("descendant_ruler")
+                .unwrap_or(&serde_json::Value::Null),
         ),
     ];
 
@@ -577,9 +591,7 @@ fn extract_position(
 
     let kind = if object_code == "ascendant"
         || object_code.ends_with("coeli")
-        || pos.pointer("/object_context/role")
-            .and_then(|v| v.as_str())
-            == Some("angle")
+        || pos.pointer("/object_context/role").and_then(|v| v.as_str()) == Some("angle")
     {
         AstroFactKind::Angle
     } else {
@@ -587,7 +599,10 @@ fn extract_position(
     };
 
     facts.push(NormalizedAstroFact {
-        id: format!("placement:{object_code}:{sign}:house:{}", house.unwrap_or(0)),
+        id: format!(
+            "placement:{object_code}:{sign}:house:{}",
+            house.unwrap_or(0)
+        ),
         kind,
         kind_code: String::new(),
         usage: AstroFactUsage::InterpretiveBasis,
@@ -657,15 +672,35 @@ fn extract_signal(
         .map(|s| s.to_string());
 
     let (kind, kind_code, usage) = if signal_key.starts_with("aspect:") {
-        (AstroFactKind::Aspect, "aspect", AstroFactUsage::InterpretiveBasis)
+        (
+            AstroFactKind::Aspect,
+            "aspect",
+            AstroFactUsage::InterpretiveBasis,
+        )
     } else if signal_key.contains("dignity") {
-        (AstroFactKind::Dignity, "essential_dignity", AstroFactUsage::InterpretiveBasis)
+        (
+            AstroFactKind::Dignity,
+            "essential_dignity",
+            AstroFactUsage::InterpretiveBasis,
+        )
     } else if signal_key.starts_with("angle:") {
-        (AstroFactKind::Angle, "angle", AstroFactUsage::InterpretiveBasis)
+        (
+            AstroFactKind::Angle,
+            "angle",
+            AstroFactUsage::InterpretiveBasis,
+        )
     } else if signal_key.contains("ruler") {
-        (AstroFactKind::Ruler, "house_ruler", AstroFactUsage::InterpretiveBasis)
+        (
+            AstroFactKind::Ruler,
+            "house_ruler",
+            AstroFactUsage::InterpretiveBasis,
+        )
     } else {
-        (AstroFactKind::PlanetPosition, "placement", AstroFactUsage::InterpretiveBasis)
+        (
+            AstroFactKind::PlanetPosition,
+            "placement",
+            AstroFactUsage::InterpretiveBasis,
+        )
     };
 
     let mut value = serde_json::json!({
@@ -833,11 +868,7 @@ fn extract_projection_placement(
         ),
         value,
         interpretive_weight: None,
-        domains: if group == "core" {
-            vec![]
-        } else {
-            vec![]
-        },
+        domains: if group == "core" { vec![] } else { vec![] },
     });
 }
 
@@ -903,7 +934,10 @@ fn extract_house_axis(
 pub fn dedupe_facts(facts: Vec<NormalizedAstroFact>) -> Vec<NormalizedAstroFact> {
     let mut out = Vec::new();
     for fact in facts {
-        if !out.iter().any(|existing: &NormalizedAstroFact| existing.id == fact.id) {
+        if !out
+            .iter()
+            .any(|existing: &NormalizedAstroFact| existing.id == fact.id)
+        {
             out.push(fact.with_kind_code());
         }
     }
@@ -952,8 +986,12 @@ mod tests {
         });
         let facts = extract_natal_structured(&data, &PrivacyPolicy::default());
         assert!(facts.iter().any(|f| f.id.starts_with("placement:sun")));
-        assert!(facts.iter().any(|f| f.usage == AstroFactUsage::DomainSelection));
-        assert!(facts.iter().any(|f| f.usage == AstroFactUsage::InterpretiveBasis));
+        assert!(facts
+            .iter()
+            .any(|f| f.usage == AstroFactUsage::DomainSelection));
+        assert!(facts
+            .iter()
+            .any(|f| f.usage == AstroFactUsage::InterpretiveBasis));
     }
 
     #[test]
@@ -975,7 +1013,9 @@ mod tests {
             .find(|f| f.id == "signal:object_position:moon")
             .expect("moon signal");
         assert_eq!(
-            moon.value.pointer("/evidence/sign_code").and_then(|v| v.as_str()),
+            moon.value
+                .pointer("/evidence/sign_code")
+                .and_then(|v| v.as_str()),
             Some("pisces")
         );
     }

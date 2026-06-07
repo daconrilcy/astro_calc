@@ -14,7 +14,8 @@ use crate::simplified_reading::{
 };
 use crate::summary_ux_rules::{count_words, split_sentences_fr, SummaryUxRules};
 
-pub const SCRIPT_REPAIR_INSTRUCTION: &str = "Réécrivez entièrement en français avec l'alphabet latin \
+pub const SCRIPT_REPAIR_INSTRUCTION: &str =
+    "Réécrivez entièrement en français avec l'alphabet latin \
     (accents français autorisés). Supprimez tout caractère d'un autre système d'écriture \
     (cyrillique, devanagari, arabe, etc.). Utilisez les apostrophes d'élision françaises \
     (l'identité, d'une, n'est, qu'elle, s'appuie). Ne changez pas le fond astrologique.";
@@ -84,10 +85,7 @@ pub fn post_process_single_pass_reading(
     audit
 }
 
-pub fn apply_simplified_body_fallback(
-    reading: &mut NatalReadingResponse,
-    chapter_code: &str,
-) {
+pub fn apply_simplified_body_fallback(reading: &mut NatalReadingResponse, chapter_code: &str) {
     let body = simplified_deterministic_body(chapter_code);
     if let Some(chapter) = reading.chapters.first_mut() {
         chapter.code = chapter_code.to_string();
@@ -265,8 +263,7 @@ fn ambiguous_uncertainty_prefix_sentence() -> String {
         .next()
         .filter(|s| !s.trim().is_empty())
         .unwrap_or_else(|| {
-            "Votre Soleil se situe dans une zone de changement possible entre deux signes."
-                .into()
+            "Votre Soleil se situe dans une zone de changement possible entre deux signes.".into()
         })
 }
 
@@ -478,10 +475,11 @@ mod tests {
     fn ambiguous_body_fallback_is_french_only() {
         let body = simplified_deterministic_body(SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE);
         assert!(body.contains("zone de changement"));
-        assert!(
-            crate::reading_script_guard::script_violations_for_reading("fr", &sample_reading(&body))
-                .is_empty()
-        );
+        assert!(crate::reading_script_guard::script_violations_for_reading(
+            "fr",
+            &sample_reading(&body)
+        )
+        .is_empty());
     }
 
     #[test]
@@ -525,14 +523,15 @@ mod tests {
         let audit = harden_ambiguous_core_identity_chapter(&mut reading, true, "fr");
         assert!(audit.uncertainty_prefix_applied);
         assert!(reading.chapters[0].body.contains("zone de changement"));
-        assert!(body_has_ambiguous_uncertainty_lexicon(&reading.chapters[0].body));
+        assert!(body_has_ambiguous_uncertainty_lexicon(
+            &reading.chapters[0].body
+        ));
     }
 
     #[test]
     fn harden_prefix_is_idempotent_when_lexicon_present() {
-        let mut reading = sample_reading(
-            "Le soleil reste incertain dans une zone de changement sans certitude.",
-        );
+        let mut reading =
+            sample_reading("Le soleil reste incertain dans une zone de changement sans certitude.");
         let audit = harden_ambiguous_core_identity_chapter(&mut reading, true, "fr");
         assert!(!audit.uncertainty_prefix_applied);
     }
@@ -602,7 +601,9 @@ mod tests {
         assert!(audit.confidence_clamped);
         assert_eq!(reading.chapters[0].code, "identity");
         assert_eq!(reading.chapters[1].confidence, ConfidenceLevel::Low);
-        assert!(body_has_ambiguous_uncertainty_lexicon(&reading.chapters[1].body));
+        assert!(body_has_ambiguous_uncertainty_lexicon(
+            &reading.chapters[1].body
+        ));
     }
 
     #[test]

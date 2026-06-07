@@ -61,7 +61,9 @@ pub struct ProfileFeatureExclusion {
 
 impl SimplifiedCatalog {
     pub fn limitation(&self, code: &str) -> Option<&LimitationCode> {
-        self.limitation_codes.iter().find(|entry| entry.code == code)
+        self.limitation_codes
+            .iter()
+            .find(|entry| entry.code == code)
     }
 
     pub fn allows_interpretive_affirmation(&self, reliability: &str) -> bool {
@@ -72,7 +74,9 @@ impl SimplifiedCatalog {
     }
 
     pub fn scope(&self, code: &str) -> Option<&CalculationScope> {
-        self.calculation_scopes.iter().find(|entry| entry.code == code)
+        self.calculation_scopes
+            .iter()
+            .find(|entry| entry.code == code)
     }
 
     pub fn input_precision(&self, code: &str) -> Option<&InputPrecisionLevel> {

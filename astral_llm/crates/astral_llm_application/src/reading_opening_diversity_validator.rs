@@ -1,16 +1,14 @@
 //! Detection des amorces repetees entre chapitres (post-lecture).
 
 use astral_llm_domain::{
-    chapter_orchestration::ReadingPlanChapter,
-    generation_response::ReadingChapter,
-    interpretation_profile::SYNTHESIS_CHAPTER_CODE,
-    GenerationError, GenerationErrorCode,
+    chapter_orchestration::ReadingPlanChapter, generation_response::ReadingChapter,
+    interpretation_profile::SYNTHESIS_CHAPTER_CODE, GenerationError, GenerationErrorCode,
 };
 
 use crate::text_trigrams::{
     chapter_opening_phrase, detect_duplicate_openings, detect_raw_placement_paragraph_openings,
-    openings_to_avoid_from_prior, paragraph_opening_phrases, source_chapter_from_duplicate_kind,
-    is_planet_in_sign_paragraph_opening, STOCK_OPENINGS_FR,
+    is_planet_in_sign_paragraph_opening, openings_to_avoid_from_prior, paragraph_opening_phrases,
+    source_chapter_from_duplicate_kind, STOCK_OPENINGS_FR,
 };
 
 pub struct ReadingOpeningDiversityValidator;
@@ -143,7 +141,9 @@ impl ReadingOpeningDiversityValidator {
             || chapter_violations
                 .iter()
                 .any(|v| is_planet_in_sign_paragraph_opening(&v.phrase))
-            || banned.iter().any(|p| is_planet_in_sign_paragraph_opening(p));
+            || banned
+                .iter()
+                .any(|p| is_planet_in_sign_paragraph_opening(p));
         if needs_raw_placement_rule {
             bundle.task_instructions.push_str(
                 "\nREPAIR (raw placement opening): at least one paragraph still opens with \
@@ -161,9 +161,9 @@ impl ReadingOpeningDiversityValidator {
         }
 
         if locale == "fr" {
-            bundle.task_instructions.push_str(
-                "\nStock formulas already used elsewhere — do not reuse as openings:\n",
-            );
+            bundle
+                .task_instructions
+                .push_str("\nStock formulas already used elsewhere — do not reuse as openings:\n");
             for s in STOCK_OPENINGS_FR {
                 bundle.task_instructions.push_str(&format!("- {s}\n"));
             }

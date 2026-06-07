@@ -48,7 +48,10 @@ fn minimal_structured_request(model: String, product_code: &str) -> ProviderGene
 
 async fn assert_invalid_api_key_rejected<P: LlmProvider>(provider: P) {
     let request = minimal_structured_request("smoke-model".into(), "natal_prompter");
-    let err = provider.generate(request).await.expect_err("invalid key must fail");
+    let err = provider
+        .generate(request)
+        .await
+        .expect_err("invalid key must fail");
     let msg = err.to_string().to_lowercase();
     assert!(
         matches!(
@@ -70,10 +73,7 @@ async fn assert_invalid_api_key_rejected<P: LlmProvider>(provider: P) {
 /// Charge le `.env` a la racine du depot (`astral_calculation/.env`), pas seulement le cwd du test.
 fn load_dotenv_repo_root() {
     let manifest = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let candidates = [
-        manifest.join("../../../.env"),
-        manifest.join("../../.env"),
-    ];
+    let candidates = [manifest.join("../../../.env"), manifest.join("../../.env")];
     for path in &candidates {
         if path.is_file() {
             dotenvy::from_path(path).ok();
@@ -144,8 +144,8 @@ async fn mistral_structured_minimal_smoke() {
         load_api_key("MISTRAL_API_KEY"),
         std::env::var("MISTRAL_BASE_URL").unwrap_or_else(|_| "https://api.mistral.ai".into()),
     );
-    let model = std::env::var("MISTRAL_DEFAULT_MODEL")
-        .unwrap_or_else(|_| "mistral-small-latest".into());
+    let model =
+        std::env::var("MISTRAL_DEFAULT_MODEL").unwrap_or_else(|_| "mistral-small-latest".into());
     let response = provider
         .generate(minimal_structured_request(model, "natal_prompter"))
         .await
@@ -199,8 +199,7 @@ async fn anthropic_invalid_api_key_smoke() {
 #[ignore = "requires OPENAI_API_KEY and network"]
 async fn openai_chapter_provider_schema_smoke() {
     use astral_llm_application::{
-        provider_schema_compiler::pin_chapter_code,
-        reasoning_generation::effective_temperature,
+        provider_schema_compiler::pin_chapter_code, reasoning_generation::effective_temperature,
         ModelCapabilityRegistry, ProviderSchemaCompiler, SchemaRegistry,
     };
     use std::sync::Arc;

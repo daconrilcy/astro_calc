@@ -4,16 +4,13 @@ use secrecy::{ExposeSecret, SecretString};
 use serde_json::json;
 
 use astral_llm_domain::{
-    provider::{
-        ProviderCapabilities, ProviderKind, ReasoningEffort, StructuredOutputMode,
-    },
+    provider::{ProviderCapabilities, ProviderKind, ReasoningEffort, StructuredOutputMode},
     ProviderKind as DomainProviderKind,
 };
 
 use crate::provider_trait::LlmProvider;
 use crate::types::{
-    PromptMessage, PromptRole, ProviderGenerationRequest, ProviderGenerationResponse,
-    TokenUsage,
+    PromptMessage, PromptRole, ProviderGenerationRequest, ProviderGenerationResponse, TokenUsage,
 };
 use crate::LlmProviderError;
 
@@ -254,9 +251,9 @@ fn output_has_only_reasoning(payload: &serde_json::Value) -> bool {
         return false;
     };
     !outputs.is_empty()
-        && outputs.iter().all(|item| {
-            item.get("type").and_then(|v| v.as_str()) == Some("reasoning")
-        })
+        && outputs
+            .iter()
+            .all(|item| item.get("type").and_then(|v| v.as_str()) == Some("reasoning"))
 }
 
 #[cfg(test)]
@@ -266,10 +263,7 @@ mod extract_tests {
     #[test]
     fn uses_top_level_output_text() {
         let payload = json!({ "output_text": "{\"ok\":true}" });
-        assert_eq!(
-            extract_output_text(&payload).unwrap(),
-            "{\"ok\":true}"
-        );
+        assert_eq!(extract_output_text(&payload).unwrap(), "{\"ok\":true}");
     }
 
     #[test]

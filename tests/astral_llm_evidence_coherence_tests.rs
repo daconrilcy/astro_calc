@@ -3,7 +3,9 @@
 use astral_llm_application::ChapterEvidenceCoherence;
 use astral_llm_domain::{
     generation_response::{AstroBasisItem, ConfidenceLevel, ReadingChapter},
-    interpretive_evidence::{ChapterEvidencePack, EvidenceKindFamily, InterpretiveEvidence, SlotEligibility},
+    interpretive_evidence::{
+        ChapterEvidencePack, EvidenceKindFamily, InterpretiveEvidence, SlotEligibility,
+    },
 };
 use astral_llm_infra::{
     bootstrap_astro_object_labels, bootstrap_zodiac_sign_labels, CanonicalCatalog,

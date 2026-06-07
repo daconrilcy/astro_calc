@@ -53,8 +53,20 @@ pub fn bootstrap_astro_basis_roles() -> HashSet<String> {
 pub fn bootstrap_aspect_type_labels() -> HashMap<(String, String), String> {
     let mut m = HashMap::new();
     for (aspect, fr, en, es, de) in [
-        ("conjunction", "conjonction", "conjunction", "conjunción", "Konjunktion"),
-        ("opposition", "opposition", "opposition", "oposición", "Opposition"),
+        (
+            "conjunction",
+            "conjonction",
+            "conjunction",
+            "conjunción",
+            "Konjunktion",
+        ),
+        (
+            "opposition",
+            "opposition",
+            "opposition",
+            "oposición",
+            "Opposition",
+        ),
         ("trine", "trigone", "trine", "trígono", "Trigon"),
         ("square", "carré", "square", "cuadratura", "Quadrat"),
         ("sextile", "sextile", "sextile", "sextil", "Sextil"),
@@ -113,10 +125,26 @@ pub fn bootstrap_extra_object_sign_labels(
 pub fn bootstrap_element_balance_labels() -> HashMap<(String, String), I18nLabelPair> {
     let mut m = HashMap::new();
     for (code, fr_display, fr_interp) in [
-        ("fire", "Dominante élément Feu", "Dominante Feu : élan, intuition et mouvement"),
-        ("earth", "Dominante élément Terre", "Dominante Terre : stabilité, réalisme et construction"),
-        ("air", "Dominante élément Air", "Dominante Air : idées, échanges et perspective"),
-        ("water", "Dominante élément Eau", "Dominante Eau : sensibilité, mémoire et lien intérieur"),
+        (
+            "fire",
+            "Dominante élément Feu",
+            "Dominante Feu : élan, intuition et mouvement",
+        ),
+        (
+            "earth",
+            "Dominante élément Terre",
+            "Dominante Terre : stabilité, réalisme et construction",
+        ),
+        (
+            "air",
+            "Dominante élément Air",
+            "Dominante Air : idées, échanges et perspective",
+        ),
+        (
+            "water",
+            "Dominante élément Eau",
+            "Dominante Eau : sensibilité, mémoire et lien intérieur",
+        ),
     ] {
         m.insert(
             ("fr".into(), code.into()),
@@ -132,9 +160,21 @@ pub fn bootstrap_element_balance_labels() -> HashMap<(String, String), I18nLabel
 pub fn bootstrap_modality_balance_labels() -> HashMap<(String, String), I18nLabelPair> {
     let mut m = HashMap::new();
     for (code, fr_display, fr_interp) in [
-        ("cardinal", "Dominante cardinale", "Dominante cardinale : initiative et ouverture des cycles"),
-        ("fixed", "Dominante fixe", "Dominante fixe : persévérance et ancrage"),
-        ("mutable", "Dominante mutable", "Dominante mutable : adaptabilité et transition"),
+        (
+            "cardinal",
+            "Dominante cardinale",
+            "Dominante cardinale : initiative et ouverture des cycles",
+        ),
+        (
+            "fixed",
+            "Dominante fixe",
+            "Dominante fixe : persévérance et ancrage",
+        ),
+        (
+            "mutable",
+            "Dominante mutable",
+            "Dominante mutable : adaptabilité et transition",
+        ),
     ] {
         m.insert(
             ("fr".into(), code.into()),
@@ -150,8 +190,16 @@ pub fn bootstrap_modality_balance_labels() -> HashMap<(String, String), I18nLabe
 pub fn bootstrap_sect_labels() -> HashMap<(String, String), I18nLabelPair> {
     let mut m = HashMap::new();
     for (code, fr_display, fr_interp) in [
-        ("day", "Thème diurne", "Thème diurne : visibilité et rayonnement"),
-        ("night", "Thème nocturne", "Thème nocturne : intériorité et réceptivité"),
+        (
+            "day",
+            "Thème diurne",
+            "Thème diurne : visibilité et rayonnement",
+        ),
+        (
+            "night",
+            "Thème nocturne",
+            "Thème nocturne : intériorité et réceptivité",
+        ),
     ] {
         m.insert(
             ("fr".into(), code.into()),
@@ -231,10 +279,26 @@ pub fn bootstrap_house_axis_labels() -> HashMap<(String, String), I18nLabelPair>
 pub fn bootstrap_house_theme_labels() -> HashMap<(String, u8), I18nLabelPair> {
     let mut m = HashMap::new();
     for (house, fr_display, fr_interp) in [
-        (2u8, "Emphase de la maison 2", "Emphase de la maison 2 : ressources, valeur et sécurité"),
-        (3u8, "Emphase de la maison 3", "Emphase de la maison 3 : communication et environnement proche"),
-        (4u8, "Emphase de la maison 4", "Emphase de la maison 4 : racines, foyer et mémoire"),
-        (10u8, "Emphase de la maison 10", "Emphase de la maison 10 : vocation et reconnaissance"),
+        (
+            2u8,
+            "Emphase de la maison 2",
+            "Emphase de la maison 2 : ressources, valeur et sécurité",
+        ),
+        (
+            3u8,
+            "Emphase de la maison 3",
+            "Emphase de la maison 3 : communication et environnement proche",
+        ),
+        (
+            4u8,
+            "Emphase de la maison 4",
+            "Emphase de la maison 4 : racines, foyer et mémoire",
+        ),
+        (
+            10u8,
+            "Emphase de la maison 10",
+            "Emphase de la maison 10 : vocation et reconnaissance",
+        ),
     ] {
         m.insert(
             ("fr".into(), house),

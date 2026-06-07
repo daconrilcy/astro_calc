@@ -1,8 +1,6 @@
 use astral_llm_domain::{
-    generation_request::AudienceLevel,
-    generation_response::NatalReadingResponse,
-    interpretation_profile::SYNTHESIS_CHAPTER_CODE,
-    output_contract::GenerationMode,
+    generation_request::AudienceLevel, generation_response::NatalReadingResponse,
+    interpretation_profile::SYNTHESIS_CHAPTER_CODE, output_contract::GenerationMode,
     GenerateReadingRequest, GenerationError, GenerationErrorCode,
 };
 
@@ -65,9 +63,10 @@ impl ReadingQualityValidator {
         let thresholds = thresholds_for_request(request, interpretation);
         let locale = AstroLabelHumanizer::locale_key(&request.product_context.user_language);
         let blocking = requires_blocking_quality_gate(request, interpretation);
-        let synthesis_min_astro = interpretation.map(|c| c.profile.synthesis_min_astro_basis_refs());
-        let synthesis_min_words = interpretation
-            .map(|c| c.profile.synthesis_word_targets().0 as usize);
+        let synthesis_min_astro =
+            interpretation.map(|c| c.profile.synthesis_min_astro_basis_refs());
+        let synthesis_min_words =
+            interpretation.map(|c| c.profile.synthesis_word_targets().0 as usize);
         Self::assess_with_thresholds(
             request,
             reading,
@@ -136,8 +135,7 @@ impl ReadingQualityValidator {
                 .filter(|b| !b.factor.trim().is_empty())
                 .count();
             let min_basis = if chapter.code == SYNTHESIS_CHAPTER_CODE {
-                synthesis_min_astro_basis
-                    .unwrap_or(thresholds.min_astro_basis_per_chapter) as usize
+                synthesis_min_astro_basis.unwrap_or(thresholds.min_astro_basis_per_chapter) as usize
             } else {
                 thresholds.min_astro_basis_per_chapter as usize
             };
@@ -149,7 +147,8 @@ impl ReadingQualityValidator {
             }
         }
 
-        if request.response_contract.include_legal_disclaimer && reading.legal.disclaimer.is_empty() {
+        if request.response_contract.include_legal_disclaimer && reading.legal.disclaimer.is_empty()
+        {
             warnings.push("legal disclaimer missing".into());
         }
 
@@ -165,7 +164,10 @@ impl ReadingQualityValidator {
             ));
         }
 
-        if matches!(request.product_context.audience_level, AudienceLevel::Beginner) {
+        if matches!(
+            request.product_context.audience_level,
+            AudienceLevel::Beginner
+        ) {
             if has_beginner_jargon(&corpus) {
                 warnings.push("beginner audience contains excessive jargon".into());
             }
@@ -267,9 +269,24 @@ fn word_count(text: &str) -> usize {
 fn has_interpretive_framing(body: &str) -> bool {
     let lower = body.to_lowercase();
     [
-        "symbolique", "interpretation", "interprétation", "suggere", "suggère", "invite",
-        "tendance", "peut", "offre", "révèle", "revel", "met en lumière", "met en lumiere",
-        "suggests", "invites", "tendency", "may", "offers",
+        "symbolique",
+        "interpretation",
+        "interprétation",
+        "suggere",
+        "suggère",
+        "invite",
+        "tendance",
+        "peut",
+        "offre",
+        "révèle",
+        "revel",
+        "met en lumière",
+        "met en lumiere",
+        "suggests",
+        "invites",
+        "tendency",
+        "may",
+        "offers",
     ]
     .iter()
     .any(|marker| lower.contains(marker))
@@ -285,7 +302,10 @@ mod repetition_tests {
             a explorer la vie interieure avec douceur et clarte symbolique \
             pour comprendre les emotions et les liens humains avec bienveillance";
         let score = count_repeated_trigrams(body, "fr");
-        assert!(score <= 3, "expected at most 3 distinct repeats, got {score}");
+        assert!(
+            score <= 3,
+            "expected at most 3 distinct repeats, got {score}"
+        );
     }
 }
 
@@ -510,8 +530,7 @@ mod tests {
             effective_policy: profile.to_product_generation_policy(),
         };
         let mut request = premium_request();
-        request.product_context.interpretation_profile_code =
-            Some("natal_premium_plus".into());
+        request.product_context.interpretation_profile_code = Some("natal_premium_plus".into());
         let mut reading = good_reading();
         let (syn_min, _, _) = profile.synthesis_word_targets();
         let basis_item = astral_llm_domain::AstroBasisItem {
@@ -524,7 +543,12 @@ mod tests {
             code: SYNTHESIS_CHAPTER_CODE.into(),
             title: "Synthese".into(),
             body: "Court.".into(),
-            astro_basis: vec![basis_item.clone(), basis_item.clone(), basis_item.clone(), basis_item],
+            astro_basis: vec![
+                basis_item.clone(),
+                basis_item.clone(),
+                basis_item.clone(),
+                basis_item,
+            ],
             confidence: ConfidenceLevel::Medium,
             safety_flags: vec![],
         });

@@ -25,12 +25,10 @@ pub fn resolve_reasoning_effort(
 
 fn default_reasoning_effort(cap: &ModelCapability, route: ModelRouteContext) -> ReasoningEffort {
     match route {
-        ModelRouteContext::Subtask => cap
-            .reasoning_effort_subtask
-            .unwrap_or(ReasoningEffort::Low),
-        ModelRouteContext::PrimaryReading => cap
-            .reasoning_effort_primary
-            .unwrap_or(ReasoningEffort::Low),
+        ModelRouteContext::Subtask => cap.reasoning_effort_subtask.unwrap_or(ReasoningEffort::Low),
+        ModelRouteContext::PrimaryReading => {
+            cap.reasoning_effort_primary.unwrap_or(ReasoningEffort::Low)
+        }
         ModelRouteContext::OracleBenchmark => cap
             .reasoning_effort_oracle
             .unwrap_or(ReasoningEffort::Medium),

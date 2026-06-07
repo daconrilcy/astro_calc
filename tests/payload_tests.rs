@@ -1827,7 +1827,8 @@ fn v13_contains_accidental_dignities_from_reference_definitions() {
     assert!(payload
         .positions
         .iter()
-        .all(|position| position.object_code == "moon" || !position.accidental_dignity_context.is_empty()));
+        .all(|position| position.object_code == "moon"
+            || !position.accidental_dignity_context.is_empty()));
 }
 
 #[test]
@@ -1951,7 +1952,13 @@ fn aspect_signal(
 fn canonical_accidental_conditions() -> Vec<AccidentalDignityConditionReference> {
     vec![
         accidental_condition_ref("angular_house", "house_modality", "dignity", 0.75, 0.25),
-        accidental_condition_ref("succedent_house", "house_modality", "contextual", 0.45, 0.05),
+        accidental_condition_ref(
+            "succedent_house",
+            "house_modality",
+            "contextual",
+            0.45,
+            0.05,
+        ),
         accidental_condition_ref("cadent_house", "house_modality", "debility", 0.35, -0.12),
         accidental_condition_ref("near_ascendant", "angle_proximity", "dignity", 0.82, 0.22),
         accidental_condition_ref("near_descendant", "angle_proximity", "dignity", 0.82, 0.22),

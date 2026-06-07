@@ -7,7 +7,8 @@ mod profiles;
 mod types;
 
 pub use profiles::{
-    default_max_accidental_conditions, default_max_background_placements, resolve_projection_profile,
+    default_max_accidental_conditions, default_max_background_placements,
+    resolve_projection_profile,
 };
 
 pub use builder::{build_llm_projection_natal_v1, LlmProjectionBuildContext};

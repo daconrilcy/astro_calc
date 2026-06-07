@@ -20,7 +20,14 @@ pub fn trigram_phrases(body: &str) -> Vec<String> {
     }
     words
         .windows(3)
-        .map(|w| format!("{} {} {}", w[0].to_lowercase(), w[1].to_lowercase(), w[2].to_lowercase()))
+        .map(|w| {
+            format!(
+                "{} {} {}",
+                w[0].to_lowercase(),
+                w[1].to_lowercase(),
+                w[2].to_lowercase()
+            )
+        })
         .collect()
 }
 
@@ -345,7 +352,9 @@ mod tests {
     #[test]
     fn planet_in_sign_opening_pattern() {
         assert!(is_planet_in_sign_paragraph_opening("jupiter en cancer en"));
-        assert!(!is_planet_in_sign_paragraph_opening("par ailleurs la presence"));
+        assert!(!is_planet_in_sign_paragraph_opening(
+            "par ailleurs la presence"
+        ));
     }
 
     #[test]
@@ -455,7 +464,8 @@ mod tests {
                 code: "identity".into(),
                 title: "I".into(),
                 body: "Ouverture unique sur l ascendant.\n\nPar ailleurs la presence \
-                    du soleil colore le tableau.\n\nTroisieme bloc.".into(),
+                    du soleil colore le tableau.\n\nTroisieme bloc."
+                    .into(),
                 astro_basis: vec![],
                 confidence: ConfidenceLevel::High,
                 safety_flags: vec![],
@@ -464,7 +474,8 @@ mod tests {
                 code: "relationships".into(),
                 title: "R".into(),
                 body: "Autre entree venus et partenaires.\n\nPar ailleurs la presence \
-                    de venus invite a nuancer.\n\nFin.".into(),
+                    de venus invite a nuancer.\n\nFin."
+                    .into(),
                 astro_basis: vec![],
                 confidence: ConfidenceLevel::High,
                 safety_flags: vec![],
@@ -481,7 +492,8 @@ mod tests {
                 code: "career".into(),
                 title: "C".into(),
                 body: "Ouverture carriere.\n\nDans le même mouvement le milieu \
-                    du ciel colore la trajectoire.\n\nSuite.".into(),
+                    du ciel colore la trajectoire.\n\nSuite."
+                    .into(),
                 astro_basis: vec![],
                 confidence: ConfidenceLevel::High,
                 safety_flags: vec![],
@@ -490,7 +502,8 @@ mod tests {
                 code: "growth_path".into(),
                 title: "G".into(),
                 body: "Ouverture croissance.\n\nDans le même mouvement saturne \
-                    invite a consolider.\n\nFin.".into(),
+                    invite a consolider.\n\nFin."
+                    .into(),
                 astro_basis: vec![],
                 confidence: ConfidenceLevel::High,
                 safety_flags: vec![],
@@ -507,7 +520,8 @@ mod tests {
                 code: "career".into(),
                 title: "C".into(),
                 body: "Ouverture carriere.\n\nDans la vie quotidienne le milieu \
-                    du ciel colore la trajectoire.\n\nSuite.".into(),
+                    du ciel colore la trajectoire.\n\nSuite."
+                    .into(),
                 astro_basis: vec![],
                 confidence: ConfidenceLevel::High,
                 safety_flags: vec![],
@@ -516,7 +530,8 @@ mod tests {
                 code: "resources".into(),
                 title: "R".into(),
                 body: "Ouverture ressources.\n\nDans la vie quotidienne saturne \
-                    invite a consolider.\n\nFin.".into(),
+                    invite a consolider.\n\nFin."
+                    .into(),
                 astro_basis: vec![],
                 confidence: ConfidenceLevel::High,
                 safety_flags: vec![],

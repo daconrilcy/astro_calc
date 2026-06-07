@@ -172,8 +172,7 @@ fn premium_rich_pool_plans_distinct_chapters() {
     let payload = rich_payload_from_golden();
     let facts = normalize(&payload);
     let catalog = catalog_with_evidence();
-    let pool =
-        InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
+    let pool = InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
     let policy = catalog.evidence.premium_policy.clone();
     pool_richness_check(&pool, &policy, 5).expect("rich enough");
 
@@ -186,8 +185,8 @@ fn premium_rich_pool_plans_distinct_chapters() {
         "growth_path".into(),
     ];
     let plan = ReadingPlanBuilder::build(&request, &domains, None);
-    let packs = ChapterEvidencePlanner::plan_all(&pool, &plan, &catalog.evidence, &policy)
-        .expect("plan");
+    let packs =
+        ChapterEvidencePlanner::plan_all(&pool, &plan, &catalog.evidence, &policy).expect("plan");
     assert_eq!(packs.len(), 5);
     let core_sets: Vec<HashSet<_>> = packs
         .iter()
@@ -206,8 +205,7 @@ fn later_chapters_exclude_prior_chapter_fact_ids_from_pack() {
     let payload = rich_payload_from_golden();
     let facts = normalize(&payload);
     let catalog = catalog_with_evidence();
-    let pool =
-        InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
+    let pool = InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
     let policy = catalog.evidence.premium_policy.clone();
     let request = premium_request(payload);
     let plan = ReadingPlanBuilder::build(
@@ -221,8 +219,8 @@ fn later_chapters_exclude_prior_chapter_fact_ids_from_pack() {
         ],
         None,
     );
-    let packs = ChapterEvidencePlanner::plan_all(&pool, &plan, &catalog.evidence, &policy)
-        .expect("plan");
+    let packs =
+        ChapterEvidencePlanner::plan_all(&pool, &plan, &catalog.evidence, &policy).expect("plan");
 
     let emotional = packs
         .iter()
@@ -263,8 +261,7 @@ fn relationships_pack_prefers_descendant_ruler_not_mc() {
     let payload = rich_payload_from_golden();
     let facts = normalize(&payload);
     let catalog = catalog_with_evidence();
-    let pool =
-        InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
+    let pool = InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
     let has_dsc_ruler = pool
         .evidence
         .iter()
@@ -311,9 +308,11 @@ fn career_pack_prefers_mc_ruler_when_in_pool() {
     let payload = rich_payload_from_golden();
     let facts = normalize(&payload);
     let catalog = catalog_with_evidence();
-    let pool =
-        InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
-    let has_mc_ruler = pool.evidence.iter().any(|e| e.fact_id.contains("ruler:angle:mc"));
+    let pool = InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
+    let has_mc_ruler = pool
+        .evidence
+        .iter()
+        .any(|e| e.fact_id.contains("ruler:angle:mc"));
     if !has_mc_ruler {
         return;
     }
@@ -335,7 +334,10 @@ fn career_pack_prefers_mc_ruler_when_in_pool() {
         .iter()
         .chain(career.supporting.iter())
         .chain(career.nuance.iter())
-        .any(|e| e.kind_code == "house_ruler" && (e.fact_id.contains("mc") || e.object_code.as_deref() == Some("sun")));
+        .any(|e| {
+            e.kind_code == "house_ruler"
+                && (e.fact_id.contains("mc") || e.object_code.as_deref() == Some("sun"))
+        });
     assert!(
         cites_ruler,
         "career pack should include mc ruler when available; pack={:?}",
@@ -348,8 +350,7 @@ fn identity_pack_excludes_sun() {
     let payload = rich_payload_from_golden();
     let facts = normalize(&payload);
     let catalog = catalog_with_evidence();
-    let pool =
-        InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
+    let pool = InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
     let request = premium_request(payload);
     let plan = ReadingPlanBuilder::build(&request, &["identity".into()], None);
     let packs = ChapterEvidencePlanner::plan_all(
@@ -366,7 +367,10 @@ fn identity_pack_excludes_sun() {
         .chain(identity.supporting.iter())
         .chain(identity.nuance.iter())
         .any(|e| e.object_code.as_deref() == Some("sun") || e.semantic_fact_key.contains(":sun:"));
-    assert!(!has_sun, "identity must not carry sun (reserved for career)");
+    assert!(
+        !has_sun,
+        "identity must not carry sun (reserved for career)"
+    );
 }
 
 #[test]
@@ -374,8 +378,7 @@ fn emotional_excludes_aspect_already_in_identity_pack() {
     let payload = rich_payload_from_golden();
     let facts = normalize(&payload);
     let catalog = catalog_with_evidence();
-    let pool =
-        InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
+    let pool = InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
     let request = premium_request(payload);
     let plan = ReadingPlanBuilder::build(
         &request,
@@ -400,7 +403,10 @@ fn emotional_excludes_aspect_already_in_identity_pack() {
     if !identity_used_aspect {
         return;
     }
-    let emotional = packs.iter().find(|p| p.chapter_code == "emotional_life").unwrap();
+    let emotional = packs
+        .iter()
+        .find(|p| p.chapter_code == "emotional_life")
+        .unwrap();
     assert!(
         !emotional
             .core
@@ -418,8 +424,7 @@ fn signal_sun_and_placement_sun_not_both_in_same_chapter_pack() {
     let payload = rich_payload_from_golden();
     let facts = normalize(&payload);
     let catalog = catalog_with_evidence();
-    let pool =
-        InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
+    let pool = InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
     let sun_placement = pool
         .evidence
         .iter()
@@ -453,8 +458,7 @@ fn signal_sun_and_placement_sun_not_both_in_same_chapter_pack() {
 fn prompt_pack_labels_localized_for_fr() {
     let facts = normalize(&rich_payload_from_golden());
     let catalog = catalog_with_evidence();
-    let pool =
-        InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
+    let pool = InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
     let request = premium_request(rich_payload_from_golden());
     let plan = ReadingPlanBuilder::build(&request, &["identity".into()], None);
     let packs = ChapterEvidencePlanner::plan_all(
@@ -464,12 +468,8 @@ fn prompt_pack_labels_localized_for_fr() {
         &catalog.evidence.premium_policy,
     )
     .unwrap();
-    let block = AstroPayloadNormalizer::to_chapter_evidence_pack_block(
-        &packs[0],
-        &catalog,
-        "fr",
-        &facts,
-    );
+    let block =
+        AstroPayloadNormalizer::to_chapter_evidence_pack_block(&packs[0], &catalog, "fr", &facts);
     let asc = block["core"]
         .as_array()
         .and_then(|a| a.first())
@@ -486,8 +486,7 @@ fn prompt_pack_humanizes_ruler_labels_in_french() {
     let payload = rich_payload_from_golden();
     let facts = normalize(&payload);
     let catalog = catalog_with_evidence();
-    let pool =
-        InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
+    let pool = InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
     let request = premium_request(payload);
     let plan = ReadingPlanBuilder::build(&request, &["career".into()], None);
     let packs = ChapterEvidencePlanner::plan_all(
@@ -501,12 +500,8 @@ fn prompt_pack_humanizes_ruler_labels_in_french() {
         .iter()
         .find(|p| p.chapter_code == "career")
         .expect("career pack");
-    let block = AstroPayloadNormalizer::to_chapter_evidence_pack_block(
-        career,
-        &catalog,
-        "fr",
-        &facts,
-    );
+    let block =
+        AstroPayloadNormalizer::to_chapter_evidence_pack_block(career, &catalog, "fr", &facts);
     let labels: Vec<String> = ["core", "supporting", "nuance"]
         .iter()
         .flat_map(|tier| {
@@ -518,7 +513,9 @@ fn prompt_pack_humanizes_ruler_labels_in_french() {
         })
         .collect();
     assert!(
-        labels.iter().any(|l| l.contains("Maître du Milieu du Ciel")),
+        labels
+            .iter()
+            .any(|l| l.contains("Maître du Milieu du Ciel")),
         "expected humanized MC ruler label, got: {labels:?}"
     );
     assert!(
@@ -532,8 +529,7 @@ fn sun_supporting_semantic_key_capped_at_three_chapters() {
     let payload = rich_payload_from_golden();
     let facts = normalize(&payload);
     let catalog = catalog_with_evidence();
-    let pool =
-        InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
+    let pool = InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
     let policy = catalog.evidence.premium_policy.clone();
     let request = premium_request(payload);
     let plan = ReadingPlanBuilder::build(
@@ -547,16 +543,16 @@ fn sun_supporting_semantic_key_capped_at_three_chapters() {
         ],
         None,
     );
-    let packs = ChapterEvidencePlanner::plan_all(&pool, &plan, &catalog.evidence, &policy)
-        .expect("plan");
+    let packs =
+        ChapterEvidencePlanner::plan_all(&pool, &plan, &catalog.evidence, &policy).expect("plan");
 
     let mut supporting_chapters_by_key: std::collections::HashMap<String, u8> =
         std::collections::HashMap::new();
     for pack in &packs {
         let mut seen = HashSet::new();
         for ev in &pack.supporting {
-            let sun = ev.object_code.as_deref() == Some("sun")
-                || ev.semantic_fact_key.contains(":sun:");
+            let sun =
+                ev.object_code.as_deref() == Some("sun") || ev.semantic_fact_key.contains(":sun:");
             if !sun {
                 continue;
             }
@@ -580,8 +576,7 @@ fn sun_supporting_semantic_key_capped_at_three_chapters() {
 fn prompt_pack_smaller_than_global_facts_block() {
     let facts = normalize(&rich_payload_from_golden());
     let catalog = catalog_with_evidence();
-    let pool =
-        InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
+    let pool = InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
     let request = premium_request(rich_payload_from_golden());
     let plan = ReadingPlanBuilder::build(&request, &["identity".into()], None);
     let packs = ChapterEvidencePlanner::plan_all(
@@ -591,12 +586,8 @@ fn prompt_pack_smaller_than_global_facts_block() {
         &catalog.evidence.premium_policy,
     )
     .unwrap();
-    let block = AstroPayloadNormalizer::to_chapter_evidence_pack_block(
-        &packs[0],
-        &catalog,
-        "fr",
-        &facts,
-    );
+    let block =
+        AstroPayloadNormalizer::to_chapter_evidence_pack_block(&packs[0], &catalog, "fr", &facts);
     assert_eq!(block["_type"], "chapter_evidence_pack");
     assert!(block.get("facts").is_none());
     let global = AstroPayloadNormalizer::to_chapter_prompt_data_block(&facts, "identity");
@@ -608,8 +599,7 @@ fn premium_plus_rich_pool_plans_synthesis_with_global_dominants() {
     let payload = rich_payload_from_golden();
     let facts = normalize(&payload);
     let catalog = catalog_with_evidence();
-    let pool =
-        InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
+    let pool = InterpretiveEvidenceBuilder::build(&facts, &catalog.evidence).expect("build pool");
     let profiles = astral_llm_infra::bootstrap_interpretation_profiles();
     let profile = profiles.get("natal_premium_plus").expect("profile");
     let policy = profile.to_premium_evidence_policy().expect("policy");
@@ -617,10 +607,11 @@ fn premium_plus_rich_pool_plans_synthesis_with_global_dominants() {
 
     let mut request = premium_request(payload);
     request.product_context.interpretation_profile_code = Some("natal_premium_plus".into());
-    let ctx = astral_llm_application::interpretation_profile_resolver::ResolvedInterpretationContext {
-        profile: profile.clone(),
-        effective_policy: profile.to_product_generation_policy(),
-    };
+    let ctx =
+        astral_llm_application::interpretation_profile_resolver::ResolvedInterpretationContext {
+            profile: profile.clone(),
+            effective_policy: profile.to_product_generation_policy(),
+        };
     let domains = ctx.profile.astrological_chapter_types();
     let plan = ReadingPlanBuilder::build(&request, &domains, Some(&ctx));
     assert_eq!(plan.chapters.len(), 9);

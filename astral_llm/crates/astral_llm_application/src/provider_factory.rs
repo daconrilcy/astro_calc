@@ -54,7 +54,10 @@ pub fn build_providers(
     if secrets.has_anthropic() {
         providers.push(Arc::new(AnthropicProvider::with_client(
             client.clone(),
-            secrets.anthropic_api_key.clone().expect("anthropic key checked"),
+            secrets
+                .anthropic_api_key
+                .clone()
+                .expect("anthropic key checked"),
             config.anthropic_base_url.clone(),
         )));
         real_count += 1;
@@ -63,7 +66,10 @@ pub fn build_providers(
     if secrets.has_mistral() {
         providers.push(Arc::new(MistralProvider::with_client(
             client,
-            secrets.mistral_api_key.clone().expect("mistral key checked"),
+            secrets
+                .mistral_api_key
+                .clone()
+                .expect("mistral key checked"),
             config.mistral_base_url.clone(),
         )));
         real_count += 1;

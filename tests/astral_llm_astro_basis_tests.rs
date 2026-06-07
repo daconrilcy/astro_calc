@@ -11,8 +11,8 @@ use astral_llm_domain::{
     astro_fact::AstroFactUsage,
     astrologer_profile::{JargonLevel, ToneProfile, WordingStyle},
     engine_params::EngineParams,
-    generation_response::{ConfidenceLevel, GenerateReadingResponse, ReadingChapter},
     generation_request::{AudienceLevel, GenerateReadingRequest, ProductContext},
+    generation_response::{ConfidenceLevel, GenerateReadingResponse, ReadingChapter},
     output_contract::{GenerationMode, OutputFormat, ResponseContract},
     provider::ProviderKind,
     AstroCalculationPayload, AstrologerProfile, EngineDefaults, FallbackPolicy, PrivacyPolicy,
@@ -20,8 +20,7 @@ use astral_llm_domain::{
 };
 use astral_llm_infra::{
     bootstrap_astro_object_labels, bootstrap_domains, bootstrap_interpretation_profiles,
-    bootstrap_product_policies,
-    bootstrap_zodiac_sign_labels, CanonicalCatalog, SafetyPattern,
+    bootstrap_product_policies, bootstrap_zodiac_sign_labels, CanonicalCatalog, SafetyPattern,
 };
 use astral_llm_providers::FakeProvider;
 
@@ -42,13 +41,8 @@ fn test_catalog() -> Arc<CanonicalCatalog> {
 }
 
 fn normalize_facts(payload: &AstroCalculationPayload) -> astral_llm_domain::NormalizedAstroFacts {
-    AstroPayloadNormalizer::normalize(
-        payload,
-        &PrivacyPolicy::default(),
-        &test_catalog(),
-        "fr",
-    )
-    .expect("normalize")
+    AstroPayloadNormalizer::normalize(payload, &PrivacyPolicy::default(), &test_catalog(), "fr")
+        .expect("normalize")
 }
 
 fn premium_payload_with_scores_only() -> serde_json::Value {
@@ -156,7 +150,10 @@ fn premium_rejects_domain_score_only_chapter_basis() {
     });
 
     assert!(
-        !facts.facts.iter().any(|f| f.usage == AstroFactUsage::InterpretiveBasis),
+        !facts
+            .facts
+            .iter()
+            .any(|f| f.usage == AstroFactUsage::InterpretiveBasis),
         "scores-only payload must not produce interpretive facts"
     );
 
@@ -270,10 +267,17 @@ async fn premium_e2e_succeeds_with_rich_payload_and_summary() {
                         .as_ref()
                         .is_some_and(|id| !id.starts_with("domain_score:"))
                 });
-                assert!(has_interpretive, "chapter {} lacks interpretive basis", chapter.code);
+                assert!(
+                    has_interpretive,
+                    "chapter {} lacks interpretive basis",
+                    chapter.code
+                );
             }
             let summary = &success.reading.summary;
-            assert!(!summary.short_text.to_lowercase().contains("generation chapitre"));
+            assert!(!summary
+                .short_text
+                .to_lowercase()
+                .contains("generation chapitre"));
             assert!(!summary.title.to_lowercase().contains("natal_premium"));
         }
         other => panic!("expected success with placements, got {other:?}"),

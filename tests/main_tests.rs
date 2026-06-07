@@ -1,7 +1,7 @@
 use chrono::{TimeZone, Utc};
 
 use astral_calculator::cli::{
-    cli_options_from_args, output_mode_from_args, output_contract_from_env, root_output_dir,
+    cli_options_from_args, output_contract_from_env, output_mode_from_args, root_output_dir,
     timestamped_output_filename, OutputContract, OutputMode,
 };
 use std::path::Path;

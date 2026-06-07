@@ -5,8 +5,8 @@ use astral_calculator::db::connect_from_env;
 use astral_calculator::ephemeris::SwissEphemerisEngine;
 use astral_calculator::runtime::ChartCalculationRuntimeService;
 use astral_calculator_api::{
-    build_app, config::AppConfig, reference_status::check_reference_status, schema_registry::SchemaRegistry,
-    state::AppState,
+    build_app, config::AppConfig, reference_status::check_reference_status,
+    schema_registry::SchemaRegistry, state::AppState,
 };
 
 async fn build_test_state() -> Option<AppState> {
@@ -134,9 +134,16 @@ async fn calculate_natal_paris_1990_when_ready() {
         .await
         .expect("request");
 
-    assert!(response.status().is_success(), "status={}", response.status());
+    assert!(
+        response.status().is_success(),
+        "status={}",
+        response.status()
+    );
     let body: serde_json::Value = response.json().await.expect("json");
-    assert_eq!(body["response_contract_version"], "astro_engine_response_v1");
+    assert_eq!(
+        body["response_contract_version"],
+        "astro_engine_response_v1"
+    );
 }
 
 #[tokio::test]
@@ -181,9 +188,16 @@ async fn calculate_simplified_date_only_when_ready() {
         .send()
         .await
         .expect("request");
-    assert!(response.status().is_success(), "status={}", response.status());
+    assert!(
+        response.status().is_success(),
+        "status={}",
+        response.status()
+    );
     let body: serde_json::Value = response.json().await.expect("json");
-    assert_eq!(body["response_contract_version"], "astro_simplified_natal_response_v1");
+    assert_eq!(
+        body["response_contract_version"],
+        "astro_simplified_natal_response_v1"
+    );
     assert_eq!(body["computed_scope"], "stable_birth_date_profile");
     assert_eq!(body["reading_hint"]["reading_completeness"], "partial");
 }
@@ -197,7 +211,9 @@ async fn health_ready_returns_503_when_reference_missing() {
 
     let status = check_reference_status(&state.pool).await;
     if status.status == "ready" {
-        eprintln!("SKIP health_ready_returns_503_when_reference_missing: environment is fully ready");
+        eprintln!(
+            "SKIP health_ready_returns_503_when_reference_missing: environment is fully ready"
+        );
         return;
     }
 

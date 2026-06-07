@@ -2,33 +2,33 @@ use chrono::{TimeZone, Utc};
 use serde_json::json;
 
 use astral_calculator::domain::{
-    BasicAngleFact, BasicCalculationReliability, BasicChartContext, BasicChartEmphasis,
-    BasicDignity, BasicDominantHouse, BasicDominantObject, BasicDominantSign,
-    BasicAccidentalDignityCondition, BasicAccidentalDignityContextSummary,
-    BasicAccidentalDignityEvaluation, BasicHemisphereEmphasis, BasicHouseAxisEmphasis,
-    BasicHouseAxisScore, BasicLunarPhaseContext, BasicObjectPosition, BasicPayload,
-    BasicPayloadContract, BasicReadingPlanItem,
-    BasicRulerContext, BasicRulerSource, BasicRulershipContext, BasicSecondarySlotCandidate,
-    BasicSectContext, BasicSignal, CalculationReferenceData, HouseAxisReference,
-    AccidentalDignityConditionReference, LunarPhaseReference, ObjectSectAffinityReference,
+    AccidentalDignityConditionReference, BasicAccidentalDignityCondition,
+    BasicAccidentalDignityContextSummary, BasicAccidentalDignityEvaluation, BasicAngleFact,
+    BasicCalculationReliability, BasicChartContext, BasicChartEmphasis, BasicDignity,
+    BasicDominantHouse, BasicDominantObject, BasicDominantSign, BasicHemisphereEmphasis,
+    BasicHouseAxisEmphasis, BasicHouseAxisScore, BasicLunarPhaseContext, BasicObjectPosition,
+    BasicPayload, BasicPayloadContract, BasicReadingPlanItem, BasicRulerContext, BasicRulerSource,
+    BasicRulershipContext, BasicSecondarySlotCandidate, BasicSectContext, BasicSignal,
+    CalculationReferenceData, HouseAxisReference, LunarPhaseReference, ObjectSectAffinityReference,
 };
 mod common;
 
-use common::json_db::{
-    major_aspect_definitions_from_json_db_seed, major_aspect_family_expected_count_from_json_db_seed,
-    major_aspect_family_max_default_orb_deg_from_json_db_seed,
-};
 use astral_calculator::models::{
     AnglePointReference, AspectDefinition, ChartObject, DomicileRulerReference, HouseReference,
     SignReference,
 };
 use astral_calculator::repositories::parse_existing_basic_payload_value;
 use astral_calculator::runtime::{
-    has_current_rulership_references, is_current_basic_payload, validate_aspect_definitions,
-    RuntimeError,
+    has_current_rulership_references, is_current_basic_payload,
+    validate_accidental_dignity_condition_references, validate_aspect_definitions,
     validate_calculation_references, validate_chart_object_signal_profiles,
-    validate_house_axis_references, validate_accidental_dignity_condition_references,
-    validate_lunar_phase_references, validate_object_sect_affinity_references,
+    validate_house_axis_references, validate_lunar_phase_references,
+    validate_object_sect_affinity_references, RuntimeError,
+};
+use common::json_db::{
+    major_aspect_definitions_from_json_db_seed,
+    major_aspect_family_expected_count_from_json_db_seed,
+    major_aspect_family_max_default_orb_deg_from_json_db_seed,
 };
 
 fn current_payload() -> BasicPayload {
@@ -1859,7 +1859,13 @@ fn lunar_phase(
 fn accidental_dignity_condition_references() -> Vec<AccidentalDignityConditionReference> {
     vec![
         accidental_condition("angular_house", "house_modality", "dignity", 0.75, 0.25),
-        accidental_condition("succedent_house", "house_modality", "contextual", 0.45, 0.05),
+        accidental_condition(
+            "succedent_house",
+            "house_modality",
+            "contextual",
+            0.45,
+            0.05,
+        ),
         accidental_condition("cadent_house", "house_modality", "debility", 0.35, -0.12),
         accidental_condition("near_ascendant", "angle_proximity", "dignity", 0.82, 0.22),
         accidental_condition("near_descendant", "angle_proximity", "dignity", 0.82, 0.22),

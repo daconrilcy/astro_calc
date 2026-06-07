@@ -27,9 +27,8 @@ impl NonFallbackReason {
     pub fn from_error_code(code: &crate::GenerationErrorCode) -> Option<Self> {
         use crate::GenerationErrorCode;
         match code {
-            GenerationErrorCode::SafetyRejected | GenerationErrorCode::PostSafetyValidationFailed => {
-                Some(Self::SafetyRejected)
-            }
+            GenerationErrorCode::SafetyRejected
+            | GenerationErrorCode::PostSafetyValidationFailed => Some(Self::SafetyRejected),
             GenerationErrorCode::InvalidInput => Some(Self::InvalidInput),
             GenerationErrorCode::UnsupportedCapability => Some(Self::UnsupportedCapability),
             _ => None,

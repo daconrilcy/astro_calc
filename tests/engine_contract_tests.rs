@@ -21,7 +21,8 @@ const ENGINE_RESPONSE_GOLDEN_RICH: &str =
     "../tests/golden/astro_engine_response_v1_paris_1990_rich.json";
 
 const LLM_GOLDEN_COMPACT: &str = "../tests/golden/llm_projection_natal_v1_paris_1990_compact.json";
-const LLM_GOLDEN_STANDARD: &str = "../tests/golden/llm_projection_natal_v1_paris_1990_standard.json";
+const LLM_GOLDEN_STANDARD: &str =
+    "../tests/golden/llm_projection_natal_v1_paris_1990_standard.json";
 const LLM_GOLDEN_RICH: &str = "../tests/golden/llm_projection_natal_v1_paris_1990_rich.json";
 
 fn load_v13_golden() -> BasicPayload {
@@ -106,24 +107,14 @@ fn build_level(level: &str) -> Value {
 }
 
 fn top_level_keys(value: &Value) -> BTreeSet<String> {
-    value
-        .as_object()
-        .expect("object")
-        .keys()
-        .cloned()
-        .collect()
+    value.as_object().expect("object").keys().cloned().collect()
 }
 
 fn assert_compact_profile_rules(value: &Value) {
-    assert!(
-        value["core_identity"]["ascendant"]
-            .get("ruler")
-            .is_none_or(|r| r.is_null())
-    );
-    assert_eq!(
-        value["relationship_network"].as_object().unwrap().len(),
-        0
-    );
+    assert!(value["core_identity"]["ascendant"]
+        .get("ruler")
+        .is_none_or(|r| r.is_null()));
+    assert_eq!(value["relationship_network"].as_object().unwrap().len(), 0);
     assert_eq!(
         value["strengths"]["accidental_conditions"]
             .as_array()
@@ -170,12 +161,7 @@ fn assert_no_technical_ids(value: &Value) {
     ];
     const FORBIDDEN_SUFFIXES: &[&str] = &["_id", "_code"];
 
-    fn walk(
-        node: &Value,
-        path: &str,
-        forbidden_keys: &[&str],
-        forbidden_suffixes: &[&str],
-    ) {
+    fn walk(node: &Value, path: &str, forbidden_keys: &[&str], forbidden_suffixes: &[&str]) {
         match node {
             Value::Object(map) => {
                 for (key, child) in map {
@@ -263,7 +249,11 @@ fn sample_engine_request_matches_schema() {
         }
     });
     let errors = validate_schema(&request, REQUEST_SCHEMA);
-    assert!(errors.is_empty(), "request schema errors:\n{}", errors.join("\n"));
+    assert!(
+        errors.is_empty(),
+        "request schema errors:\n{}",
+        errors.join("\n")
+    );
 }
 
 #[test]
@@ -283,7 +273,11 @@ fn llm_projection_levels_share_identical_structure() {
         "standard vs rich top-level keys"
     );
 
-    for level in [("compact", &compact), ("standard", &standard), ("rich", &rich)] {
+    for level in [
+        ("compact", &compact),
+        ("standard", &standard),
+        ("rich", &rich),
+    ] {
         let errors = validate_schema(level.1, LLM_SCHEMA);
         assert!(
             errors.is_empty(),
@@ -341,7 +335,10 @@ fn llm_projection_golden_compact_standard_rich() {
             )
         });
         let golden: Value = serde_json::from_str(&golden_raw).expect("golden json");
-        assert_eq!(generated, golden, "llm projection {level} differs from {path}");
+        assert_eq!(
+            generated, golden,
+            "llm projection {level} differs from {path}"
+        );
     }
 }
 
@@ -364,7 +361,8 @@ fn write_llm_projection_goldens_when_env_set() {
 fn engine_envelope_is_not_flat_v13_payload() {
     let envelope = build_engine_envelope("rich");
     assert_eq!(
-        envelope["response_contract_version"], "astro_engine_response_v1"
+        envelope["response_contract_version"],
+        "astro_engine_response_v1"
     );
     assert!(envelope.get("product_code").is_none());
     assert!(envelope.get("audit_payload").is_some());
@@ -386,7 +384,11 @@ fn engine_envelope_golden_rich_matches_built_sample() {
 
 #[test]
 fn write_engine_response_golden_when_env_set() {
-    if std::env::var("UPDATE_ENGINE_RESPONSE_GOLDEN").ok().as_deref() != Some("1") {
+    if std::env::var("UPDATE_ENGINE_RESPONSE_GOLDEN")
+        .ok()
+        .as_deref()
+        != Some("1")
+    {
         return;
     }
     let json = serde_json::to_string_pretty(&build_engine_envelope("rich")).expect("serialize");
@@ -482,13 +484,19 @@ fn llm_projection_includes_active_major_aspect() {
         .iter()
         .filter(|s| is_active_major_aspect_signal(s))
         .count();
-    assert!(aspect_count >= 1, "golden must contain at least one major aspect signal");
+    assert!(
+        aspect_count >= 1,
+        "golden must contain at least one major aspect signal"
+    );
 
     let rich = build_level("rich");
     let aspects = rich["dynamics"]["major_aspects"]
         .as_array()
         .expect("major_aspects array");
-    assert!(!aspects.is_empty(), "rich projection must include major aspects");
+    assert!(
+        !aspects.is_empty(),
+        "rich projection must include major aspects"
+    );
 }
 
 #[test]
@@ -506,7 +514,10 @@ fn llm_projection_maps_jupiter_uranus_opposition() {
     assert_eq!(jupiter_uranus["valence"], "Polarizing");
     assert_eq!(jupiter_uranus["phase"], "Separating");
     let orb = jupiter_uranus["orb_degrees"].as_f64().expect("orb");
-    assert!((orb - 0.76).abs() < 0.01, "orb expected near 0.76, got {orb}");
+    assert!(
+        (orb - 0.76).abs() < 0.01,
+        "orb expected near 0.76, got {orb}"
+    );
 }
 
 #[test]
@@ -531,9 +542,7 @@ fn llm_projection_humanizes_accidental_conditions() {
         .as_array()
         .expect("accidental_conditions");
     assert!(!conditions.is_empty());
-    let first = &conditions[0]["conditions"]
-        .as_array()
-        .expect("conditions")[0];
+    let first = &conditions[0]["conditions"].as_array().expect("conditions")[0];
     let label = first.as_str().expect("condition label");
     assert!(!label.contains('_'));
 }
@@ -622,7 +631,10 @@ fn llm_projection_accidental_conditions_are_deduplicated() {
         let normalized: Vec<String> = labels.iter().map(|s| s.to_ascii_lowercase()).collect();
         assert_eq!(
             normalized.len(),
-            normalized.iter().collect::<std::collections::HashSet<_>>().len(),
+            normalized
+                .iter()
+                .collect::<std::collections::HashSet<_>>()
+                .len(),
             "duplicate accidental labels: {labels:?}"
         );
     }
@@ -631,9 +643,7 @@ fn llm_projection_accidental_conditions_are_deduplicated() {
 #[test]
 fn llm_projection_axis_summary_has_no_snake_case_themes() {
     let rich = build_level("rich");
-    let summary = rich["house_axes"][0]["summary"]
-        .as_str()
-        .expect("summary");
+    let summary = rich["house_axes"][0]["summary"].as_str().expect("summary");
     assert!(
         !summary.contains("shared_resources"),
         "summary must not contain snake_case theme codes: {summary}"
@@ -702,8 +712,14 @@ fn compact_has_fewer_placements_than_rich() {
     let compact = build_level("compact");
     let rich = build_level("rich");
     let compact_total = compact["placements"]["primary"].as_array().unwrap().len()
-        + compact["placements"]["supporting"].as_array().unwrap().len()
-        + compact["placements"]["background"].as_array().unwrap().len();
+        + compact["placements"]["supporting"]
+            .as_array()
+            .unwrap()
+            .len()
+        + compact["placements"]["background"]
+            .as_array()
+            .unwrap()
+            .len();
     let rich_total = rich["placements"]["primary"].as_array().unwrap().len()
         + rich["placements"]["supporting"].as_array().unwrap().len()
         + rich["placements"]["background"].as_array().unwrap().len();

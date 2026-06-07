@@ -36,9 +36,9 @@ impl InterpretationProfileResolver {
         }
 
         let profile_code = Self::required_profile_code(request)?;
-        let profile = catalog.interpretation_profile(profile_code).ok_or_else(|| {
-            profile_not_found(profile_code)
-        })?;
+        let profile = catalog
+            .interpretation_profile(profile_code)
+            .ok_or_else(|| profile_not_found(profile_code))?;
 
         profile.validate().map_err(|msg| {
             GenerationError::with_details(
@@ -83,7 +83,9 @@ impl InterpretationProfileResolver {
         catalog.interpretation_profile(code)
     }
 
-    fn migrate_legacy_product_codes(request: &mut GenerateReadingRequest) -> Result<(), GenerationError> {
+    fn migrate_legacy_product_codes(
+        request: &mut GenerateReadingRequest,
+    ) -> Result<(), GenerationError> {
         let implied_profile = match request.product_context.product_code.as_str() {
             LEGACY_PRODUCT_NATAL_PREMIUM => Some(PROFILE_NATAL_PREMIUM),
             LEGACY_PRODUCT_NATAL_BASIC => Some(PROFILE_NATAL_BASIC),
@@ -117,8 +119,7 @@ impl InterpretationProfileResolver {
             "legacy product_code; use natal_prompter + interpretation_profile_code"
         );
         request.product_context.product_code = NATAL_PROMPTER_PRODUCT.into();
-        request.product_context.interpretation_profile_code =
-            Some(implied_profile.unwrap().into());
+        request.product_context.interpretation_profile_code = Some(implied_profile.unwrap().into());
         Ok(())
     }
 
@@ -149,9 +150,9 @@ impl InterpretationProfileResolver {
         }
 
         let profile_code = Self::required_profile_code(request)?;
-        let profile = catalog.interpretation_profile(profile_code).ok_or_else(|| {
-            profile_not_found(profile_code)
-        })?;
+        let profile = catalog
+            .interpretation_profile(profile_code)
+            .ok_or_else(|| profile_not_found(profile_code))?;
 
         profile.validate().map_err(|msg| {
             GenerationError::with_details(
@@ -272,7 +273,11 @@ mod tests {
         })
     }
 
-    fn base_request(product_code: &str, profile: Option<&str>, mode: GenerationMode) -> GenerateReadingRequest {
+    fn base_request(
+        product_code: &str,
+        profile: Option<&str>,
+        mode: GenerationMode,
+    ) -> GenerateReadingRequest {
         GenerateReadingRequest {
             request_id: None,
             idempotency_key: None,
@@ -318,7 +323,10 @@ mod tests {
         InterpretationProfileResolver::normalize_request(&mut request, &catalog).unwrap();
         assert_eq!(request.product_context.product_code, NATAL_PROMPTER_PRODUCT);
         assert_eq!(
-            request.product_context.interpretation_profile_code.as_deref(),
+            request
+                .product_context
+                .interpretation_profile_code
+                .as_deref(),
             Some("natal_premium")
         );
         assert_eq!(
@@ -330,7 +338,11 @@ mod tests {
     #[test]
     fn legacy_product_code_rejects_conflicting_profile() {
         let catalog = catalog_with_profiles();
-        let mut request = base_request(LEGACY_PRODUCT_NATAL_BASIC, Some("natal_premium"), GenerationMode::SinglePass);
+        let mut request = base_request(
+            LEGACY_PRODUCT_NATAL_BASIC,
+            Some("natal_premium"),
+            GenerationMode::SinglePass,
+        );
         let err = InterpretationProfileResolver::normalize_request(&mut request, &catalog)
             .expect_err("conflicting legacy profile");
         assert_eq!(
@@ -342,7 +354,11 @@ mod tests {
     #[test]
     fn legacy_premium_product_code_rejects_conflicting_light_profile() {
         let catalog = catalog_with_profiles();
-        let mut request = base_request(LEGACY_PRODUCT_NATAL_PREMIUM, Some("natal_light"), GenerationMode::SinglePass);
+        let mut request = base_request(
+            LEGACY_PRODUCT_NATAL_PREMIUM,
+            Some("natal_light"),
+            GenerationMode::SinglePass,
+        );
         let err = InterpretationProfileResolver::normalize_request(&mut request, &catalog)
             .expect_err("premium legacy cannot force light profile");
         assert_eq!(
@@ -354,12 +370,30 @@ mod tests {
     #[test]
     fn premium_rate_limit_only_for_premium_profile() {
         let catalog = catalog_with_profiles();
-        let premium = base_request(NATAL_PROMPTER_PRODUCT, Some("natal_premium"), GenerationMode::ChapterOrchestrated);
-        let basic = base_request(NATAL_PROMPTER_PRODUCT, Some("natal_basic"), GenerationMode::ChapterOrchestrated);
-        let light = base_request(NATAL_PROMPTER_PRODUCT, Some("natal_light"), GenerationMode::SinglePass);
-        assert!(InterpretationProfileResolver::requires_premium_rate_limit(&premium, &catalog));
-        assert!(!InterpretationProfileResolver::requires_premium_rate_limit(&basic, &catalog));
-        assert!(!InterpretationProfileResolver::requires_premium_rate_limit(&light, &catalog));
+        let premium = base_request(
+            NATAL_PROMPTER_PRODUCT,
+            Some("natal_premium"),
+            GenerationMode::ChapterOrchestrated,
+        );
+        let basic = base_request(
+            NATAL_PROMPTER_PRODUCT,
+            Some("natal_basic"),
+            GenerationMode::ChapterOrchestrated,
+        );
+        let light = base_request(
+            NATAL_PROMPTER_PRODUCT,
+            Some("natal_light"),
+            GenerationMode::SinglePass,
+        );
+        assert!(InterpretationProfileResolver::requires_premium_rate_limit(
+            &premium, &catalog
+        ));
+        assert!(!InterpretationProfileResolver::requires_premium_rate_limit(
+            &basic, &catalog
+        ));
+        assert!(!InterpretationProfileResolver::requires_premium_rate_limit(
+            &light, &catalog
+        ));
     }
 
     #[test]

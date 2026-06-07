@@ -4,17 +4,13 @@ use secrecy::{ExposeSecret, SecretString};
 use serde_json::json;
 
 use astral_llm_domain::{
-    provider::{
-        ProviderCapabilities, ProviderKind, StructuredOutputMode,
-    },
-    SafetyMode,
-    ProviderKind as DomainProviderKind,
+    provider::{ProviderCapabilities, ProviderKind, StructuredOutputMode},
+    ProviderKind as DomainProviderKind, SafetyMode,
 };
 
 use crate::provider_trait::LlmProvider;
 use crate::types::{
-    PromptMessage, PromptRole, ProviderGenerationRequest, ProviderGenerationResponse,
-    TokenUsage,
+    PromptMessage, PromptRole, ProviderGenerationRequest, ProviderGenerationResponse, TokenUsage,
 };
 use crate::LlmProviderError;
 

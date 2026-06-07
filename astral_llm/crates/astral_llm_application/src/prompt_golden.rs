@@ -126,8 +126,13 @@ pub fn assert_compiled_prompt_is_safe(prompts_root: &std::path::Path) -> Result<
     }
 
     for forbidden in FORBIDDEN_SUBSTRINGS {
-        if full_prompt.to_lowercase().contains(&forbidden.to_lowercase()) {
-            return Err(format!("compiled prompt contains forbidden substring: {forbidden}"));
+        if full_prompt
+            .to_lowercase()
+            .contains(&forbidden.to_lowercase())
+        {
+            return Err(format!(
+                "compiled prompt contains forbidden substring: {forbidden}"
+            ));
         }
     }
 
@@ -159,13 +164,9 @@ pub fn assert_premium_plus_prompt_structure(prompts_root: &std::path::Path) -> R
             "planets": { "sun": { "sign": "capricorn", "house": 2 } }
         }),
     };
-    let facts = AstroPayloadNormalizer::normalize(
-        &payload,
-        &PrivacyPolicy::default(),
-        &catalog,
-        "fr",
-    )
-    .map_err(|e| e.to_string())?;
+    let facts =
+        AstroPayloadNormalizer::normalize(&payload, &PrivacyPolicy::default(), &catalog, "fr")
+            .map_err(|e| e.to_string())?;
     use astral_llm_domain::interpretive_evidence::{
         ChapterEvidencePack, EvidenceKindFamily, InterpretiveEvidence, SlotEligibility,
     };
@@ -305,7 +306,9 @@ mod tests {
     }
 }
 
-pub fn assert_premium_compact_prompt_structure(prompts_root: &std::path::Path) -> Result<(), String> {
+pub fn assert_premium_compact_prompt_structure(
+    prompts_root: &std::path::Path,
+) -> Result<(), String> {
     let profile = astral_llm_infra::bootstrap_interpretation_profiles()
         .get("natal_premium")
         .expect("natal_premium")
@@ -326,13 +329,9 @@ pub fn assert_premium_compact_prompt_structure(prompts_root: &std::path::Path) -
             "planets": { "sun": { "sign": "capricorn", "house": 2 } }
         }),
     };
-    let facts = AstroPayloadNormalizer::normalize(
-        &payload,
-        &PrivacyPolicy::default(),
-        &catalog,
-        "fr",
-    )
-    .map_err(|e| e.to_string())?;
+    let facts =
+        AstroPayloadNormalizer::normalize(&payload, &PrivacyPolicy::default(), &catalog, "fr")
+            .map_err(|e| e.to_string())?;
     use astral_llm_domain::interpretive_evidence::{
         ChapterEvidencePack, EvidenceKindFamily, InterpretiveEvidence, SlotEligibility,
     };
@@ -423,7 +422,9 @@ pub fn assert_premium_compact_prompt_structure(prompts_root: &std::path::Path) -
     );
     let task = bundle.task_instructions.to_lowercase();
     if task.contains("4 paragraphes") {
-        return Err("premium compact must not inject legacy chapter_structure.md (4 paragraphes)".into());
+        return Err(
+            "premium compact must not inject legacy chapter_structure.md (4 paragraphes)".into(),
+        );
     }
     let structure_blocks = task.matches("--- chapter writing structure").count();
     if structure_blocks != 1 {
@@ -432,7 +433,9 @@ pub fn assert_premium_compact_prompt_structure(prompts_root: &std::path::Path) -
         ));
     }
     if !task.contains("exactly 4 paragraphs") {
-        return Err("premium compact prompt must contain exactly 4 paragraphs from body_structure".into());
+        return Err(
+            "premium compact prompt must contain exactly 4 paragraphs from body_structure".into(),
+        );
     }
     Ok(())
 }

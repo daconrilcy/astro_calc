@@ -9,11 +9,12 @@ use astral_llm_application::{
 use astral_llm_domain::{
     astrologer_profile::{JargonLevel, ToneProfile, WordingStyle},
     engine_params::EngineParams,
-    generation_response::GenerateReadingResponse,
     generation_request::{AudienceLevel, GenerateReadingRequest, ProductContext},
+    generation_response::GenerateReadingResponse,
     output_contract::{GenerationMode, OutputFormat, ResponseContract},
     provider::ProviderKind,
-    AstroCalculationPayload, AstrologerProfile,     EngineDefaults, FallbackPolicy, PrivacyPolicy, ServiceLimits,
+    AstroCalculationPayload, AstrologerProfile, EngineDefaults, FallbackPolicy, PrivacyPolicy,
+    ServiceLimits,
 };
 use astral_llm_infra::{
     bootstrap_domains, bootstrap_interpretation_profiles, bootstrap_product_policies,
@@ -70,7 +71,10 @@ fn sample_request(mode: GenerationMode) -> GenerateReadingRequest {
     )
 }
 
-fn sample_request_with_engine(mode: GenerationMode, engine: EngineParams) -> GenerateReadingRequest {
+fn sample_request_with_engine(
+    mode: GenerationMode,
+    engine: EngineParams,
+) -> GenerateReadingRequest {
     let profile_code = match mode {
         GenerationMode::SinglePass => "natal_light",
         GenerationMode::ChapterOrchestrated => "natal_basic",
@@ -164,8 +168,7 @@ async fn generate_chapter_orchestrated_multi_domain() {
     request.product_context.interpretation_profile_code = Some("natal_basic".into());
     // natal_basic utilise une sequence fixe de 6 chapitres (domain_count ignore).
     request.engine.domain_count = Some(2);
-    request.astrologer_profile.preferred_domains =
-        vec!["identity".into(), "relationships".into()];
+    request.astrologer_profile.preferred_domains = vec!["identity".into(), "relationships".into()];
 
     let response = use_case.execute(request).await;
     match response {

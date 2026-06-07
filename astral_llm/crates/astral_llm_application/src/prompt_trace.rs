@@ -215,10 +215,8 @@ mod tests {
     #[test]
     fn writes_prompt_under_run_subdirectory() {
         let _guard = env_lock();
-        let temp = std::env::temp_dir().join(format!(
-            "astral_prompt_log_test_{}",
-            uuid::Uuid::new_v4()
-        ));
+        let temp =
+            std::env::temp_dir().join(format!("astral_prompt_log_test_{}", uuid::Uuid::new_v4()));
         std::env::set_var("ASTRAL_LLM_LOG_COMPILED_PROMPTS", "true");
         std::env::set_var("ASTRAL_LLM_PROMPT_LOG_DIR", temp.to_string_lossy().as_ref());
 

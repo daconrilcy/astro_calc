@@ -33,16 +33,13 @@ fn has_current_accidental_dignity_context(position: &BasicObjectPosition, is_ang
     if is_angle {
         return position.accidental_dignity_context.is_empty();
     }
-    position
-        .accidental_dignity_context
-        .iter()
-        .all(|summary| {
-            !summary.condition_code.trim().is_empty()
-                && !summary.condition_family.trim().is_empty()
-                && !summary.polarity.trim().is_empty()
-                && summary.strength_score.is_finite()
-                && (0.0..=1.0).contains(&summary.strength_score)
-        })
+    position.accidental_dignity_context.iter().all(|summary| {
+        !summary.condition_code.trim().is_empty()
+            && !summary.condition_family.trim().is_empty()
+            && !summary.polarity.trim().is_empty()
+            && summary.strength_score.is_finite()
+            && (0.0..=1.0).contains(&summary.strength_score)
+    })
 }
 
 pub(super) fn has_current_placement_context(signal: &BasicSignal) -> bool {
@@ -69,7 +66,9 @@ pub(super) fn has_current_placement_context(signal: &BasicSignal) -> bool {
         && json::nested_json_has_text(context, "object_context", "role")
         && json::nested_json_has_text(context, "motion_context", "motion_state")
         && has_current_mobile_visibility_context(context.get("visibility_context"))
-        && context.get("accidental_dignity_context").is_some_and(|value| value.is_array())
+        && context
+            .get("accidental_dignity_context")
+            .is_some_and(|value| value.is_array())
 }
 
 fn has_current_mobile_visibility_context(value: Option<&serde_json::Value>) -> bool {

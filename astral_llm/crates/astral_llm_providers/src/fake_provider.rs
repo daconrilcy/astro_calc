@@ -18,8 +18,8 @@ use astral_llm_domain::chapter_orchestration::READING_SUMMARY_STEP_CODE;
 
 pub struct FakeProvider;
 
-
-const SUMMARY_SHORT_TEXT: &str = "Votre theme met en avant une dynamique d'affirmation personnelle, \
+const SUMMARY_SHORT_TEXT: &str =
+    "Votre theme met en avant une dynamique d'affirmation personnelle, \
     une grande richesse emotionnelle et un chemin relationnel structurant. Cette configuration \
     symbolique invite a accueillir les transitions interieures comme des espaces de croissance \
     authentique, sans figer votre parcours dans une trajectoire unique.";
@@ -47,14 +47,15 @@ impl LlmProvider for FakeProvider {
         request: ProviderGenerationRequest,
     ) -> Result<ProviderGenerationResponse, LlmProviderError> {
         crate::http::with_timeout(request.timeout, async {
-            let json = if request.metadata.chapter_code.as_deref() == Some(READING_SUMMARY_STEP_CODE) {
-                serde_json::to_value(build_summary_response())
-            } else if request.metadata.chapter_code.is_some() {
-                serde_json::to_value(build_chapter_response(&request))
-            } else {
-                serde_json::to_value(build_full_reading(&request))
-            }
-            .map_err(|e| LlmProviderError::InvalidResponse(e.to_string()))?;
+            let json =
+                if request.metadata.chapter_code.as_deref() == Some(READING_SUMMARY_STEP_CODE) {
+                    serde_json::to_value(build_summary_response())
+                } else if request.metadata.chapter_code.is_some() {
+                    serde_json::to_value(build_chapter_response(&request))
+                } else {
+                    serde_json::to_value(build_full_reading(&request))
+                }
+                .map_err(|e| LlmProviderError::InvalidResponse(e.to_string()))?;
 
             Ok(ProviderGenerationResponse {
                 raw_text: json.to_string(),
@@ -101,14 +102,12 @@ fn build_chapter_response(request: &ProviderGenerationRequest) -> ChapterProvide
         .find(|id| *id != interpretive.as_str() && !id.starts_with("domain_score:"))
         .cloned();
 
-    let mut basis = vec![
-        astral_llm_domain::AstroBasisItem {
-            fact_id: Some(interpretive),
-            label: None,
-            factor: "placement".into(),
-            interpretive_role: "core".into(),
-        },
-    ];
+    let mut basis = vec![astral_llm_domain::AstroBasisItem {
+        fact_id: Some(interpretive),
+        label: None,
+        factor: "placement".into(),
+        interpretive_role: "core".into(),
+    }];
     if let Some(sid) = supporting {
         basis.push(astral_llm_domain::AstroBasisItem {
             fact_id: Some(sid),
@@ -207,7 +206,10 @@ fn chapter_body_for_code(code: &str) -> String {
              et recul."
         ),
     };
-    pad_to_min_words(format!("{core} {FAKE_CHAPTER_SUFFIX}"), FAKE_MIN_CHAPTER_WORDS)
+    pad_to_min_words(
+        format!("{core} {FAKE_CHAPTER_SUFFIX}"),
+        FAKE_MIN_CHAPTER_WORDS,
+    )
 }
 
 fn extract_fact_ids_from_messages(messages: &[crate::types::PromptMessage]) -> Vec<String> {
@@ -303,10 +305,8 @@ fn build_full_reading(request: &ProviderGenerationRequest) -> NatalReadingRespon
     } else {
         "Identite"
     };
-    let astro_contract_version =
-        extract_simplified_contract_version(&request.messages).unwrap_or_else(|| {
-            "natal_simplified_structured_v1".to_string()
-        });
+    let astro_contract_version = extract_simplified_contract_version(&request.messages)
+        .unwrap_or_else(|| "natal_simplified_structured_v1".to_string());
     NatalReadingResponse {
         schema_version: "natal_reading_v1".to_string(),
         language: "fr".to_string(),
@@ -338,7 +338,9 @@ fn build_full_reading(request: &ProviderGenerationRequest) -> NatalReadingRespon
     }
 }
 
-fn simplified_fake_astro_basis(messages: &[crate::types::PromptMessage]) -> Vec<astral_llm_domain::AstroBasisItem> {
+fn simplified_fake_astro_basis(
+    messages: &[crate::types::PromptMessage],
+) -> Vec<astral_llm_domain::AstroBasisItem> {
     let blocked = extract_blocked_object_codes(messages);
     extract_allowed_astro_basis_ids(messages)
         .into_iter()
@@ -413,8 +415,8 @@ fn extract_allowed_astro_basis_ids(messages: &[crate::types::PromptMessage]) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use astral_llm_domain::provider::ReasoningEffort;
     use crate::types::{GenerationMetadata, PromptMessage, PromptRole};
+    use astral_llm_domain::provider::ReasoningEffort;
     use std::time::Duration;
 
     #[test]

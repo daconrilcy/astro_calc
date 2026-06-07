@@ -108,8 +108,9 @@ pub fn map_runtime_error(err: astral_calculator::runtime::RuntimeError) -> Respo
                 "chart_calculation_id": chart_calculation_id
             })),
         ),
-        astral_calculator::runtime::RuntimeError::Json(err) => {
-            validation_failed("invalid JSON payload", Some(json!({ "errors": [err.to_string()] })))
-        }
+        astral_calculator::runtime::RuntimeError::Json(err) => validation_failed(
+            "invalid JSON payload",
+            Some(json!({ "errors": [err.to_string()] })),
+        ),
     }
 }

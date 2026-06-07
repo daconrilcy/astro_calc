@@ -97,7 +97,8 @@ impl EditorialValidator {
             violations.extend(quality.warnings.clone());
         }
 
-        if matches!(spec.audience_level, AudienceLevel::Beginner) && has_excessive_jargon(&corpus(reading))
+        if matches!(spec.audience_level, AudienceLevel::Beginner)
+            && has_excessive_jargon(&corpus(reading))
         {
             violations.push("excessive jargon for beginner audience".into());
         }

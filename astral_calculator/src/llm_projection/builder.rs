@@ -8,10 +8,9 @@ use crate::llm_projection::axis_labels::house_axis_label;
 use crate::llm_projection::dynamics::build_dynamics;
 use crate::llm_projection::humanize::{
     accidental_overall_label, axis_balance_label, axis_importance, chart_sect_label,
-    dignity_meaning, hemisphere_dominant_area, humanize_condition, humanize_motion_label,
-    humanize_axis_summary, humanize_reason, importance_label,
-    is_unremarkable_motion_condition, limit_keywords, push_unique, reading_slot_section,
-    title_case_sign,
+    dignity_meaning, hemisphere_dominant_area, humanize_axis_summary, humanize_condition,
+    humanize_motion_label, humanize_reason, importance_label, is_unremarkable_motion_condition,
+    limit_keywords, push_unique, reading_slot_section, title_case_sign,
 };
 use crate::llm_projection::profiles::limits_envelope;
 use crate::llm_projection::types::*;
@@ -68,16 +67,25 @@ fn build_chart(payload: &BasicPayload, ctx: &LlmProjectionBuildContext<'_>) -> L
         .chart_sect
         .as_deref()
         .map(chart_sect_label);
-    let hemisphere = payload.chart_context.hemisphere_emphasis.interpretive_hint.as_ref().map(
-        |hint| LlmHemisphereEmphasis {
+    let hemisphere = payload
+        .chart_context
+        .hemisphere_emphasis
+        .interpretive_hint
+        .as_ref()
+        .map(|hint| LlmHemisphereEmphasis {
             dominant_area: hemisphere_dominant_area(
                 hint,
-                payload.chart_context.hemisphere_emphasis.above_horizon_count,
-                payload.chart_context.hemisphere_emphasis.below_horizon_count,
+                payload
+                    .chart_context
+                    .hemisphere_emphasis
+                    .above_horizon_count,
+                payload
+                    .chart_context
+                    .hemisphere_emphasis
+                    .below_horizon_count,
             ),
             summary: hint.clone(),
-        },
-    );
+        });
 
     LlmChart {
         chart_type: "Natal chart".to_string(),
@@ -137,7 +145,11 @@ fn dominant_cluster_reading_focus(
         let theme = house_ref_from_payload(house.house_number, &house.theme_code, payload);
         push_unique(
             &mut focus,
-            format!("House {} {} emphasis", theme.number, theme.theme.to_lowercase()),
+            format!(
+                "House {} {} emphasis",
+                theme.number,
+                theme.theme.to_lowercase()
+            ),
         );
     }
     if let Some(object) = payload.chart_emphasis.dominant_objects.first() {
@@ -247,7 +259,11 @@ fn chart_sect(payload: &BasicPayload) -> Option<&str> {
     payload.chart_context.sect.chart_sect.as_deref()
 }
 
-fn mobile_body(payload: &BasicPayload, code: &str, profile: &LlmProjectionProfile) -> Option<LlmCoreBody> {
+fn mobile_body(
+    payload: &BasicPayload,
+    code: &str,
+    profile: &LlmProjectionProfile,
+) -> Option<LlmCoreBody> {
     let position = payload.positions.iter().find(|p| p.object_code == code)?;
     Some(LlmCoreBody {
         placement: placement_from_position(position, profile.include_degrees),
@@ -275,37 +291,37 @@ fn build_ascendant_core(
 
     let ruler = if profile.include_rulership_details {
         payload.rulership_context.ascendant_ruler.as_ref().map(|r| {
-        let mut rulers = LlmAscendantRulers {
-            traditional: None,
-            modern: None,
-        };
-        for source in &r.ruler_sources {
-            if source.astral_system_code == "traditional" {
+            let mut rulers = LlmAscendantRulers {
+                traditional: None,
+                modern: None,
+            };
+            for source in &r.ruler_sources {
+                if source.astral_system_code == "traditional" {
+                    rulers.traditional = Some(
+                        object_names
+                            .get(&source.object_code)
+                            .cloned()
+                            .unwrap_or_else(|| title_case_sign(&source.object_code)),
+                    );
+                }
+                if source.astral_system_code == "modern" {
+                    rulers.modern = Some(
+                        object_names
+                            .get(&source.object_code)
+                            .cloned()
+                            .unwrap_or_else(|| title_case_sign(&source.object_code)),
+                    );
+                }
+            }
+            if rulers.traditional.is_none() {
                 rulers.traditional = Some(
                     object_names
-                        .get(&source.object_code)
+                        .get(&r.ruler_object_code)
                         .cloned()
-                        .unwrap_or_else(|| title_case_sign(&source.object_code)),
+                        .unwrap_or_else(|| title_case_sign(&r.ruler_object_code)),
                 );
             }
-            if source.astral_system_code == "modern" {
-                rulers.modern = Some(
-                    object_names
-                        .get(&source.object_code)
-                        .cloned()
-                        .unwrap_or_else(|| title_case_sign(&source.object_code)),
-                );
-            }
-        }
-        if rulers.traditional.is_none() {
-            rulers.traditional = Some(
-                object_names
-                    .get(&r.ruler_object_code)
-                    .cloned()
-                    .unwrap_or_else(|| title_case_sign(&r.ruler_object_code)),
-            );
-        }
-        rulers
+            rulers
         })
     } else {
         None
@@ -339,7 +355,11 @@ fn build_dominant_themes(
                     object_names,
                     profile.max_keywords_per_item,
                 ),
-                keywords: sign_keywords_from_positions(payload, &entry.sign_code, profile.max_keywords_per_item),
+                keywords: sign_keywords_from_positions(
+                    payload,
+                    &entry.sign_code,
+                    profile.max_keywords_per_item,
+                ),
                 score: profile.include_scores.then_some(entry.score),
             }
         })
@@ -399,7 +419,11 @@ fn sign_keywords_from_positions(
     limit: usize,
 ) -> Vec<String> {
     let mut out = Vec::new();
-    for position in payload.positions.iter().filter(|p| p.sign_code == sign_code) {
+    for position in payload
+        .positions
+        .iter()
+        .filter(|p| p.sign_code == sign_code)
+    {
         for kw in limited_keywords(position, limit) {
             push_unique(&mut out, kw);
             if out.len() >= limit {
@@ -412,7 +436,9 @@ fn sign_keywords_from_positions(
 
 fn build_placements(payload: &BasicPayload, profile: &LlmProjectionProfile) -> LlmPlacementsGroup {
     let core_codes: HashSet<&str> = ["sun", "moon"].into_iter().collect();
-    let angle_codes: HashSet<&str> = ["ascendant", "descendant", "mc", "ic"].into_iter().collect();
+    let angle_codes: HashSet<&str> = ["ascendant", "descendant", "mc", "ic"]
+        .into_iter()
+        .collect();
     let reading_codes: HashSet<String> = payload
         .reading_plan
         .iter()
@@ -438,7 +464,8 @@ fn build_placements(payload: &BasicPayload, profile: &LlmProjectionProfile) -> L
             .map(|n| house_ref_from_payload(n, house_theme_code(position), payload));
         item.keywords = limited_keywords(position, profile.max_keywords_per_item);
         item.conditions = position_conditions(position, chart_sect(payload), profile);
-        item.importance = Some(importance_for_object(&position.object_code, &reading_codes).to_string());
+        item.importance =
+            Some(importance_for_object(&position.object_code, &reading_codes).to_string());
 
         if core_codes.contains(position.object_code.as_str()) {
             continue;
@@ -610,14 +637,18 @@ fn build_relationship_network(
         }
     });
 
-    let midheaven_ruler = payload.rulership_context.mc_ruler.as_ref().map(|r| LlmMcRulerNetwork {
-        midheaven_sign: title_case_sign(&r.sign_code),
-        ruler: object_names
-            .get(&r.ruler_object_code)
-            .cloned()
-            .unwrap_or_else(|| title_case_sign(&r.ruler_object_code)),
-        ruler_placement: ruler_placement_text(payload, &r.ruler_object_code),
-    });
+    let midheaven_ruler = payload
+        .rulership_context
+        .mc_ruler
+        .as_ref()
+        .map(|r| LlmMcRulerNetwork {
+            midheaven_sign: title_case_sign(&r.sign_code),
+            ruler: object_names
+                .get(&r.ruler_object_code)
+                .cloned()
+                .unwrap_or_else(|| title_case_sign(&r.ruler_object_code)),
+            ruler_placement: ruler_placement_text(payload, &r.ruler_object_code),
+        });
 
     let final_dispositors = payload
         .rulership_context
@@ -682,7 +713,11 @@ fn build_relationship_network(
 }
 
 fn ruler_placement_text(payload: &BasicPayload, ruler_code: &str) -> String {
-    let Some(position) = payload.positions.iter().find(|p| p.object_code == ruler_code) else {
+    let Some(position) = payload
+        .positions
+        .iter()
+        .find(|p| p.object_code == ruler_code)
+    else {
         return title_case_sign(ruler_code);
     };
     format!(
@@ -728,7 +763,8 @@ fn house_axis_to_llm(
         .house_scores
         .iter()
         .map(|score| {
-            let label = house_ref_from_payload(score.house_number, &score.theme_code, payload).theme;
+            let label =
+                house_ref_from_payload(score.house_number, &score.theme_code, payload).theme;
             (score.theme_code.clone(), label)
         })
         .collect();
@@ -737,7 +773,11 @@ fn house_axis_to_llm(
     LlmHouseAxis {
         axis: axis_title,
         houses,
-        balance: axis_balance_label(&axis.polarity_balance, axis.primary_house, axis.secondary_house),
+        balance: axis_balance_label(
+            &axis.polarity_balance,
+            axis.primary_house,
+            axis.secondary_house,
+        ),
         importance: axis_importance(axis.axis_score).to_string(),
         summary,
         supporting_factors,
@@ -831,19 +871,22 @@ fn is_placement_technical_keyword(kw: &str) -> bool {
 }
 
 fn angle_codes() -> HashSet<&'static str> {
-    ["ascendant", "descendant", "mc", "ic"].into_iter().collect()
+    ["ascendant", "descendant", "mc", "ic"]
+        .into_iter()
+        .collect()
 }
 
 fn placement_from_position(position: &BasicObjectPosition, include_degrees: bool) -> LlmPlacement {
     LlmPlacement {
         object: position.object_name.clone(),
         sign: position.sign_name.clone(),
-        house: position
-            .house_number
-            .map(|n| LlmHouseRef {
-                number: n,
-                theme: position.house_name.clone().unwrap_or_else(|| title_case_sign(house_theme_code(position))),
-            }),
+        house: position.house_number.map(|n| LlmHouseRef {
+            number: n,
+            theme: position
+                .house_name
+                .clone()
+                .unwrap_or_else(|| title_case_sign(house_theme_code(position))),
+        }),
         motion: motion_label(position),
         keywords: Vec::new(),
         conditions: Vec::new(),
@@ -852,7 +895,11 @@ fn placement_from_position(position: &BasicObjectPosition, include_degrees: bool
     }
 }
 
-fn house_ref_from_payload(house_number: i32, theme_code: &str, payload: &BasicPayload) -> LlmHouseRef {
+fn house_ref_from_payload(
+    house_number: i32,
+    theme_code: &str,
+    payload: &BasicPayload,
+) -> LlmHouseRef {
     let theme = payload
         .positions
         .iter()

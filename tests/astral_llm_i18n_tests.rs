@@ -2,16 +2,16 @@
 
 use astral_llm_application::{
     astro_basis_role_normalizer::AstroBasisRoleNormalizer,
-    astro_label_humanizer::AstroLabelHumanizer,
-    writing_language::WritingLanguageDirective,
+    astro_label_humanizer::AstroLabelHumanizer, writing_language::WritingLanguageDirective,
 };
 use astral_llm_domain::{
     astro_fact::{AstroFactKind, AstroFactUsage, NormalizedAstroFact, NormalizedAstroFacts},
     generation_response::{AstroBasisItem, ConfidenceLevel, ReadingChapter},
 };
 use astral_llm_infra::{
-    bootstrap_aspect_type_labels, bootstrap_astro_object_labels, bootstrap_extra_object_sign_labels,
-    bootstrap_writing_locales, bootstrap_zodiac_sign_labels, CanonicalCatalog,
+    bootstrap_aspect_type_labels, bootstrap_astro_object_labels,
+    bootstrap_extra_object_sign_labels, bootstrap_writing_locales, bootstrap_zodiac_sign_labels,
+    CanonicalCatalog,
 };
 use std::sync::Arc;
 
@@ -60,7 +60,10 @@ fn humanizer_sets_french_factor_on_basis_item() {
         interpretive_role: "core".into(),
     }];
     h.enrich_chapter_astro_basis(&mut items, &facts, "fr");
-    assert_eq!(items[0].label.as_deref(), Some("Lune en Poissons en maison 4"));
+    assert_eq!(
+        items[0].label.as_deref(),
+        Some("Lune en Poissons en maison 4")
+    );
     assert_eq!(items[0].factor.as_str(), "Lune en Poissons en maison 4");
 }
 
@@ -95,7 +98,10 @@ fn enrich_replaces_unknown_label_from_evidence() {
         interpretive_role: "core".into(),
     }];
     h.enrich_chapter_astro_basis(&mut items, &facts, "fr");
-    assert_eq!(items[0].label.as_deref(), Some("Vénus en Verseau en maison 3"));
+    assert_eq!(
+        items[0].label.as_deref(),
+        Some("Vénus en Verseau en maison 3")
+    );
     assert_eq!(items[0].factor.as_str(), "Vénus en Verseau en maison 3");
 }
 

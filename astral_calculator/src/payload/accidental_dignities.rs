@@ -62,13 +62,17 @@ pub(super) fn build_accidental_dignities(
             .collect();
         context_by_object.insert(position.object_code.clone(), summaries);
 
-        let raw_score: f64 = conditions.iter().map(|condition| condition.score_delta).sum();
+        let raw_score: f64 = conditions
+            .iter()
+            .map(|condition| condition.score_delta)
+            .sum();
         let scoring = &catalog.accidental_scoring;
         let overall_score = round4(
             (scoring.overall_score_baseline + raw_score)
                 .clamp(scoring.overall_score_min, scoring.overall_score_max),
         );
-        let (overall_polarity, expression_quality) = catalog.overall_polarity_for_score(overall_score);
+        let (overall_polarity, expression_quality) =
+            catalog.overall_polarity_for_score(overall_score);
         let signal_key = format!("object_position:{}", position.object_code);
         let related_signal_key = active_signal_keys
             .contains(signal_key.as_str())
@@ -137,7 +141,10 @@ pub(super) fn apply_accidental_context_to_emphasis(
         .collect();
     for dominant in chart_emphasis.dominant_objects.iter_mut() {
         if objects_with_accidental.contains(dominant.object_code.as_str())
-            && !dominant.reasons.iter().any(|reason| reason == "accidental_context")
+            && !dominant
+                .reasons
+                .iter()
+                .any(|reason| reason == "accidental_context")
         {
             dominant.reasons.push("accidental_context".to_string());
         }
@@ -186,7 +193,12 @@ fn house_modality_condition(
     let condition_code = catalog.condition_code_for_house_modality(code)?;
     let definition = definitions.get(condition_code)?;
     let theme_code = position_context(position, "house_context")
-        .and_then(|context| context.get("theme_code").and_then(|value| value.as_str()).map(str::to_string))
+        .and_then(|context| {
+            context
+                .get("theme_code")
+                .and_then(|value| value.as_str())
+                .map(str::to_string)
+        })
         .unwrap_or_else(|| "object_position".to_string());
     Some(build_condition(
         definition,
@@ -270,7 +282,10 @@ fn horizon_condition(
     let mut source = json!({
         "horizon_position": horizon_position
     });
-    if let Some(altitude) = visibility.get("altitude_deg").and_then(|value| value.as_f64()) {
+    if let Some(altitude) = visibility
+        .get("altitude_deg")
+        .and_then(|value| value.as_f64())
+    {
         source["altitude_deg"] = json!(round4(altitude));
     }
     Some(build_condition(
@@ -454,7 +469,11 @@ mod tests {
     };
     use serde_json::json;
 
-    fn mobile_position(object_code: &str, longitude: f64, house_modality: &str) -> ObjectPositionFact {
+    fn mobile_position(
+        object_code: &str,
+        longitude: f64,
+        house_modality: &str,
+    ) -> ObjectPositionFact {
         ObjectPositionFact {
             chart_object_id: 1,
             object_code: object_code.to_string(),

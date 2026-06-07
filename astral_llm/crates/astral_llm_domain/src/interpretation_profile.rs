@@ -189,7 +189,10 @@ impl InterpretationProfile {
             max_output_tokens: self.document.max_output_tokens,
             max_reasoning_effort: self.document.max_reasoning_effort,
             allow_chapter_orchestrated: self.allows_chapter_orchestration(),
-            min_astro_basis_refs_per_chapter: self.document.quality.min_astro_basis_refs_per_chapter,
+            min_astro_basis_refs_per_chapter: self
+                .document
+                .quality
+                .min_astro_basis_refs_per_chapter,
             min_interpretive_astro_basis_refs_per_chapter: self
                 .document
                 .quality
@@ -274,8 +277,7 @@ impl InterpretationProfile {
     /// Profils dont l'ordre `chapter_types` definit la lecture (ex. `natal_premium_plus`).
     pub fn uses_fixed_chapter_sequence(&self) -> bool {
         let astro = self.astrological_chapter_types();
-        !astro.is_empty()
-            && self.default_domain_count() as usize == astro.len()
+        !astro.is_empty() && self.default_domain_count() as usize == astro.len()
     }
 
     pub fn planned_chapter_count(&self, engine_domain_count: Option<u8>) -> u8 {
@@ -324,7 +326,9 @@ impl InterpretationProfile {
                 return Err("body_structure.paragraph_count must be > 0".into());
             }
             if bs.paragraph_min_words > bs.paragraph_max_words {
-                return Err("body_structure.paragraph_min_words must be <= paragraph_max_words".into());
+                return Err(
+                    "body_structure.paragraph_min_words must be <= paragraph_max_words".into(),
+                );
             }
             if bs.style != BODY_STYLE_EDITORIAL_FLOW && bs.style != BODY_STYLE_COMPACT_FLOW {
                 return Err(format!(
@@ -357,7 +361,9 @@ impl InterpretationProfile {
                         return Err("min_words_synthesis must be <= target_words_synthesis".into());
                     }
                     if target_syn > t.max {
-                        return Err("target_words_synthesis must be <= chapter_word_targets.max".into());
+                        return Err(
+                            "target_words_synthesis must be <= chapter_word_targets.max".into()
+                        );
                     }
                 }
             }
@@ -390,7 +396,8 @@ mod tests {
 
     #[test]
     fn premium_profile_parses_from_fixture_shape() {
-        let json = include_str!("../../../../config/natal_interpretation_profiles/natal_premium.json");
+        let json =
+            include_str!("../../../../config/natal_interpretation_profiles/natal_premium.json");
         let doc: InterpretationProfileDocument = serde_json::from_str(json).expect("parse");
         let profile = InterpretationProfile::from_document(doc);
         assert!(profile.validate().is_ok());
@@ -400,8 +407,9 @@ mod tests {
 
     #[test]
     fn premium_plus_uses_fixed_chapter_sequence() {
-        let json =
-            include_str!("../../../../config/natal_interpretation_profiles/natal_premium_plus.json");
+        let json = include_str!(
+            "../../../../config/natal_interpretation_profiles/natal_premium_plus.json"
+        );
         let doc: InterpretationProfileDocument = serde_json::from_str(json).expect("parse");
         let profile = InterpretationProfile::from_document(doc);
         assert!(profile.uses_fixed_chapter_sequence());
@@ -410,8 +418,9 @@ mod tests {
 
     #[test]
     fn premium_plus_profile_parses_from_fixture_shape() {
-        let json =
-            include_str!("../../../../config/natal_interpretation_profiles/natal_premium_plus.json");
+        let json = include_str!(
+            "../../../../config/natal_interpretation_profiles/natal_premium_plus.json"
+        );
         let doc: InterpretationProfileDocument = serde_json::from_str(json).expect("parse");
         let profile = InterpretationProfile::from_document(doc);
         assert!(profile.validate().is_ok());

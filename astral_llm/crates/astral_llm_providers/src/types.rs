@@ -85,7 +85,9 @@ impl LlmProviderError {
 }
 
 fn is_transient_status(msg: &str) -> bool {
-    ["429 ", "502 ", "503 ", "504 ", "429:", "502:", "503:", "504:"]
-        .iter()
-        .any(|code| msg.starts_with(code))
+    [
+        "429 ", "502 ", "503 ", "504 ", "429:", "502:", "503:", "504:",
+    ]
+    .iter()
+    .any(|code| msg.starts_with(code))
 }

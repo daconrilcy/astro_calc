@@ -1,9 +1,11 @@
 use crate::domain::{BasicPayload, BasicSignal};
 use crate::llm_projection::clean_text::{
-    clean_semantic_tags, humanize_dynamic_quality, humanize_phase, humanize_valence, limit_keywords,
-    title_case_sign,
+    clean_semantic_tags, humanize_dynamic_quality, humanize_phase, humanize_valence,
+    limit_keywords, title_case_sign,
 };
-use crate::llm_projection::types::{LlmDynamics, LlmLunarPhase, LlmMajorAspect, LlmProjectionProfile};
+use crate::llm_projection::types::{
+    LlmDynamics, LlmLunarPhase, LlmMajorAspect, LlmProjectionProfile,
+};
 
 pub fn build_dynamics(payload: &BasicPayload, profile: &LlmProjectionProfile) -> LlmDynamics {
     let lunar_phase = payload.lunar_phase_context.as_ref().map(|phase| {

@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use crate::domain::{
-    AccidentalDignityConditionReference, AccidentalPolarityBand, AccidentalScoringParams,
-    AccidentalConditionTrigger, BasicProductScoringProfile, EssentialDignityRuleReference,
+    AccidentalConditionTrigger, AccidentalDignityConditionReference, AccidentalPolarityBand,
+    AccidentalScoringParams, BasicProductScoringProfile, EssentialDignityRuleReference,
     ObjectSectAffinityReference,
 };
 
@@ -82,7 +82,10 @@ impl BasicPayloadCatalog {
             .unwrap_or(&[])
     }
 
-    pub fn dignity_scoring_weight(&self, dignity_type: &str) -> Option<&EssentialDignityScoringWeight> {
+    pub fn dignity_scoring_weight(
+        &self,
+        dignity_type: &str,
+    ) -> Option<&EssentialDignityScoringWeight> {
         self.dignity_weight_by_type.get(dignity_type)
     }
 
@@ -192,23 +195,95 @@ fn test_essential_dignity_rules() -> Vec<EssentialDignityRuleReference> {
 
     vec![
         rule("sun", "leo", "domicile", "Domicile", "dignity", 1.0, 8.0),
-        rule("moon", "cancer", "domicile", "Domicile", "dignity", 1.0, 8.0),
-        rule("mercury", "gemini", "domicile", "Domicile", "dignity", 1.0, 8.0),
-        rule("mercury", "virgo", "domicile", "Domicile", "dignity", 1.0, 8.0),
-        rule("mercury", "virgo", "exaltation", "Exaltation", "dignity", 0.9, 6.0),
-        rule("mercury", "sagittarius", "detriment", "Detriment", "debility", 0.85, 4.0),
-        rule("mercury", "pisces", "detriment", "Detriment", "debility", 0.85, 4.0),
+        rule(
+            "moon", "cancer", "domicile", "Domicile", "dignity", 1.0, 8.0,
+        ),
+        rule(
+            "mercury", "gemini", "domicile", "Domicile", "dignity", 1.0, 8.0,
+        ),
+        rule(
+            "mercury", "virgo", "domicile", "Domicile", "dignity", 1.0, 8.0,
+        ),
+        rule(
+            "mercury",
+            "virgo",
+            "exaltation",
+            "Exaltation",
+            "dignity",
+            0.9,
+            6.0,
+        ),
+        rule(
+            "mercury",
+            "sagittarius",
+            "detriment",
+            "Detriment",
+            "debility",
+            0.85,
+            4.0,
+        ),
+        rule(
+            "mercury",
+            "pisces",
+            "detriment",
+            "Detriment",
+            "debility",
+            0.85,
+            4.0,
+        ),
         rule("mercury", "pisces", "fall", "Fall", "debility", 0.75, 3.0),
-        rule("venus", "taurus", "domicile", "Domicile", "dignity", 1.0, 8.0),
-        rule("venus", "libra", "domicile", "Domicile", "dignity", 1.0, 8.0),
+        rule(
+            "venus", "taurus", "domicile", "Domicile", "dignity", 1.0, 8.0,
+        ),
+        rule(
+            "venus", "libra", "domicile", "Domicile", "dignity", 1.0, 8.0,
+        ),
         rule("mars", "aries", "domicile", "Domicile", "dignity", 1.0, 8.0),
-        rule("mars", "scorpio", "domicile", "Domicile", "dignity", 1.0, 8.0),
-        rule("mars", "taurus", "detriment", "Detriment", "debility", 0.85, 4.0),
-        rule("jupiter", "sagittarius", "domicile", "Domicile", "dignity", 1.0, 8.0),
-        rule("jupiter", "pisces", "domicile", "Domicile", "dignity", 1.0, 8.0),
-        rule("jupiter", "cancer", "exaltation", "Exaltation", "dignity", 0.9, 6.0),
-        rule("saturn", "capricorn", "domicile", "Domicile", "dignity", 1.0, 8.0),
-        rule("saturn", "aquarius", "domicile", "Domicile", "dignity", 1.0, 8.0),
+        rule(
+            "mars", "scorpio", "domicile", "Domicile", "dignity", 1.0, 8.0,
+        ),
+        rule(
+            "mars",
+            "taurus",
+            "detriment",
+            "Detriment",
+            "debility",
+            0.85,
+            4.0,
+        ),
+        rule(
+            "jupiter",
+            "sagittarius",
+            "domicile",
+            "Domicile",
+            "dignity",
+            1.0,
+            8.0,
+        ),
+        rule(
+            "jupiter", "pisces", "domicile", "Domicile", "dignity", 1.0, 8.0,
+        ),
+        rule(
+            "jupiter",
+            "cancer",
+            "exaltation",
+            "Exaltation",
+            "dignity",
+            0.9,
+            6.0,
+        ),
+        rule(
+            "saturn",
+            "capricorn",
+            "domicile",
+            "Domicile",
+            "dignity",
+            1.0,
+            8.0,
+        ),
+        rule(
+            "saturn", "aquarius", "domicile", "Domicile", "dignity", 1.0, 8.0,
+        ),
     ]
 }
 
@@ -331,9 +406,9 @@ pub fn accidental_polarity_bands_are_valid(bands: &[AccidentalPolarityBand]) -> 
         return false;
     }
 
-    sorted
-        .windows(2)
-        .all(|window| (window[0].max_score - window[1].min_score).abs() <= POLARITY_BAND_SCORE_TOLERANCE)
+    sorted.windows(2).all(|window| {
+        (window[0].max_score - window[1].min_score).abs() <= POLARITY_BAND_SCORE_TOLERANCE
+    })
 }
 
 pub fn overall_polarity_for_score_with_bands(
@@ -342,13 +417,11 @@ pub fn overall_polarity_for_score_with_bands(
 ) -> (String, String) {
     let mut bands: Vec<AccidentalPolarityBand> = bands.to_vec();
     bands.sort_by(|left, right| {
-        left.sort_order
-            .cmp(&right.sort_order)
-            .then_with(|| {
-                left.min_score
-                    .partial_cmp(&right.min_score)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            })
+        left.sort_order.cmp(&right.sort_order).then_with(|| {
+            left.min_score
+                .partial_cmp(&right.min_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
     });
     for (index, band) in bands.iter().enumerate() {
         let is_last = index + 1 == bands.len();
@@ -393,12 +466,14 @@ mod tests {
     #[test]
     fn empty_polarity_bands_are_invalid() {
         assert!(!accidental_polarity_bands_are_valid(&[]));
-        assert!(!accidental_polarity_bands_are_valid(&[AccidentalPolarityBand {
-            polarity_code: "fortified".to_string(),
-            expression_quality_code: "strong_external_manifestation".to_string(),
-            min_score: 0.2,
-            max_score: 1.0,
-            sort_order: 1,
-        }]));
+        assert!(!accidental_polarity_bands_are_valid(&[
+            AccidentalPolarityBand {
+                polarity_code: "fortified".to_string(),
+                expression_quality_code: "strong_external_manifestation".to_string(),
+                min_score: 0.2,
+                max_score: 1.0,
+                sort_order: 1,
+            }
+        ]));
     }
 }

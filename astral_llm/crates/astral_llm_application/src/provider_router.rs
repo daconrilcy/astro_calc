@@ -96,7 +96,9 @@ impl ProviderRouter {
             .capability_registry
             .require(&requested_provider, requested_model)?;
 
-        let candidates = self.fallback_policy.candidate_chain(&requested_provider, allow_fallback);
+        let candidates = self
+            .fallback_policy
+            .candidate_chain(&requested_provider, allow_fallback);
         let mut last_error: Option<GenerationError> = None;
 
         for provider_kind in candidates {
@@ -203,7 +205,10 @@ impl ProviderRouter {
                             fallback_used,
                         });
                     }
-                    Err(err) if err.is_transient() && attempt < self.fallback_policy.max_retries_per_provider => {
+                    Err(err)
+                        if err.is_transient()
+                            && attempt < self.fallback_policy.max_retries_per_provider =>
+                    {
                         attempt += 1;
                         tracing::warn!(
                             provider = provider_kind.as_str(),
@@ -288,10 +293,7 @@ fn client_error_message(code: &GenerationErrorCode) -> &'static str {
 pub fn build_provider_map(
     providers: Vec<Arc<dyn LlmProvider>>,
 ) -> HashMap<ProviderKind, SharedLlmProvider> {
-    providers
-        .into_iter()
-        .map(|p| (p.kind(), p))
-        .collect()
+    providers.into_iter().map(|p| (p.kind(), p)).collect()
 }
 
 pub fn build_http_client(timeout: Duration) -> reqwest::Client {

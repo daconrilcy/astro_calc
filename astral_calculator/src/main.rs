@@ -2,14 +2,12 @@ use astral_calculator::cli::{
     cli_options_from_args, output_mode_from_env, root_output_dir, write_timestamped_output_file,
     OutputContract, OutputMode,
 };
-use astral_calculator::config::{
-    ephemeris_path_from_env, load_dotenv, runtime_options_from_env,
-};
+use astral_calculator::config::{ephemeris_path_from_env, load_dotenv, runtime_options_from_env};
 use astral_calculator::db::connect_from_env;
 use astral_calculator::domain::NatalChartInput;
 use astral_calculator::engine_env::{
-    birth_datetime_utc_from_env, coordinate_reference_system_id_from_env,
-    house_system_id_from_env, zodiacal_reference_system_id_from_env,
+    birth_datetime_utc_from_env, coordinate_reference_system_id_from_env, house_system_id_from_env,
+    zodiacal_reference_system_id_from_env,
 };
 use astral_calculator::engine_request_from_env;
 use astral_calculator::ephemeris::SwissEphemerisEngine;

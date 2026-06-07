@@ -3,8 +3,7 @@ use std::collections::HashSet;
 use crate::domain::{AspectFact, InterpretationSignalDraft};
 
 use super::constants::{
-    SIGNAL_PREFIX_ASPECT,
-    SIGNAL_PREFIX_CLUSTER, SUPPRESSION_ACTIVE, SUPPRESSION_SUPPRESSED,
+    SIGNAL_PREFIX_ASPECT, SIGNAL_PREFIX_CLUSTER, SUPPRESSION_ACTIVE, SUPPRESSION_SUPPRESSED,
 };
 use super::relations::normalized_pair;
 
@@ -218,10 +217,7 @@ fn is_basic_fill_eligible(
         && !is_angle_to_angle_aspect_signal(signal, angle_object_codes)
 }
 
-fn is_weak_aspect_signal(
-    signal: &InterpretationSignalDraft,
-    aspect_min_strength: f64,
-) -> bool {
+fn is_weak_aspect_signal(signal: &InterpretationSignalDraft, aspect_min_strength: f64) -> bool {
     if !signal.signal_key.starts_with(SIGNAL_PREFIX_ASPECT) {
         return false;
     }

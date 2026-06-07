@@ -8,17 +8,19 @@ use astral_llm_domain::{
     GenerateReadingRequest, GenerationError, GenerationErrorCode, SafetyMode, SafetyPolicy,
 };
 use astral_llm_infra::SharedCanonicalCatalog;
-use astral_llm_providers::{GenerationMetadata, PromptMessage, PromptRole, ProviderGenerationRequest};
+use astral_llm_providers::{
+    GenerationMetadata, PromptMessage, PromptRole, ProviderGenerationRequest,
+};
 
 use crate::engine_defaults::ResolvedEngineParams;
 use crate::product_policy_validator::ProductPolicyValidator;
+use crate::prompt_trace;
 use crate::provider_router::ProviderRouter;
+use crate::provider_schema_compiler::ProviderSchemaCompiler;
 use crate::reasoning_generation::{
     apply_reasoning_output_reserve, effective_temperature, resolve_reasoning_effort,
     SUBTASK_BASE_OUTPUT_TOKENS,
 };
-use crate::prompt_trace;
-use crate::provider_schema_compiler::ProviderSchemaCompiler;
 use crate::response_validator::ResponseValidator;
 use crate::safety_guard::SafetyGuard;
 use crate::summary_forbidden_patterns::find_forbidden_summary_patterns;
@@ -89,8 +91,7 @@ impl<'a> SummarySynthesizer<'a> {
         run_id: &str,
         repair_instruction: Option<&str>,
     ) -> Result<SummarySynthesisResult, GenerationError> {
-        let messages =
-            build_summary_messages(request, chapters, &self.catalog, repair_instruction);
+        let messages = build_summary_messages(request, chapters, &self.catalog, repair_instruction);
         prompt_trace::log_provider_messages(
             run_id,
             Some(READING_SUMMARY_STEP_CODE),
@@ -104,12 +105,14 @@ impl<'a> SummarySynthesizer<'a> {
             .schema_registry()
             .provider_schema("summary_provider_v1")
             .cloned();
-        self.router.capability_registry().validate_engine_for_context(
-            ModelRouteContext::Subtask,
-            &engine.provider,
-            &engine.model,
-            engine.allow_oracle_benchmark,
-        )?;
+        self.router
+            .capability_registry()
+            .validate_engine_for_context(
+                ModelRouteContext::Subtask,
+                &engine.provider,
+                &engine.model,
+                engine.allow_oracle_benchmark,
+            )?;
         let model_cap = self
             .router
             .capability_registry()
@@ -436,7 +439,8 @@ mod tests {
             short_text: "Votre theme met en avant une dynamique d'affirmation personnelle, \
                 une grande richesse emotionnelle et un chemin relationnel structurant. \
                 Cette configuration symbolique invite a accueillir les transitions interieures \
-                comme des espaces de croissance authentique.".into(),
+                comme des espaces de croissance authentique."
+                .into(),
         };
         assert!(validate_summary_content(&summary, None).is_ok());
     }
@@ -447,7 +451,8 @@ mod tests {
             title: "Une dynamique de retirage et de recentrage".into(),
             short_text: "Cette lecture symbolique evoque un theme de recentrage interieur \
                 avec une profondeur emotionnelle et une clarte relationnelle dans la vie \
-                quotidienne et les choix professionnels.".into(),
+                quotidienne et les choix professionnels."
+                .into(),
         };
         assert!(validate_summary_content(&summary, Some("natal_premium_plus")).is_ok());
     }
@@ -458,7 +463,8 @@ mod tests {
             title: "Une lecture symbolique du theme".into(),
             short_text: "Ce tirage evoque une presence attentive et une quete de sens \
                 dans les relations et la vie professionnelle avec une profondeur \
-                emotionnelle et une stabilite interieure.".into(),
+                emotionnelle et une stabilite interieure."
+                .into(),
         };
         assert!(validate_summary_content(&summary, Some("natal_premium_plus")).is_err());
     }
@@ -469,7 +475,8 @@ mod tests {
             title: "Une lecture symbolique".into(),
             short_text: "Cette lecture evoque un oracle dans le theme natal avec une \
                 profondeur emotionnelle et une stabilite relationnelle dans la vie \
-                quotidienne et les choix professionnels.".into(),
+                quotidienne et les choix professionnels."
+                .into(),
         };
         assert!(validate_summary_content(&oracle, Some("natal_premium_plus")).is_err());
 
@@ -477,7 +484,8 @@ mod tests {
             title: "Une lecture symbolique".into(),
             short_text: "Ces oracles symboliques evoquent une presence attentive dans le \
                 theme natal avec une profondeur emotionnelle et une stabilite \
-                relationnelle dans la vie quotidienne.".into(),
+                relationnelle dans la vie quotidienne."
+                .into(),
         };
         assert!(validate_summary_content(&oracles, Some("natal_premium_plus")).is_err());
     }
@@ -488,7 +496,8 @@ mod tests {
             title: "Une lecture symbolique".into(),
             short_text: "Ce tirage evoque une presence attentive dans le theme natal avec \
                 une profondeur emotionnelle et une stabilite relationnelle dans la vie \
-                quotidienne et les choix professionnels.".into(),
+                quotidienne et les choix professionnels."
+                .into(),
         };
         assert!(validate_summary_content(&tirage, Some("natal_premium_plus")).is_err());
 
@@ -496,7 +505,8 @@ mod tests {
             title: "Une lecture symbolique".into(),
             short_text: "Ces tirages evoquent une presence attentive dans le theme natal \
                 avec une profondeur emotionnelle et une stabilite relationnelle dans la \
-                vie quotidienne et les choix professionnels.".into(),
+                vie quotidienne et les choix professionnels."
+                .into(),
         };
         assert!(validate_summary_content(&tirages, Some("natal_premium_plus")).is_err());
     }
@@ -507,7 +517,8 @@ mod tests {
             title: "Une lecture symbolique".into(),
             short_text: "Les cartes tirees indiquent une presence attentive dans le theme \
                 natal avec une profondeur emotionnelle et une stabilite relationnelle \
-                dans la vie quotidienne et les choix professionnels.".into(),
+                dans la vie quotidienne et les choix professionnels."
+                .into(),
         };
         assert!(validate_summary_content(&summary, Some("natal_premium_plus")).is_err());
     }
@@ -518,7 +529,8 @@ mod tests {
             title: "Présence intérieure et construction".into(),
             short_text: "Cette lecture symbolique met en lumière une carte natale structurée \
                 par la profondeur et la constance. Les chapitres développent ensuite les \
-                nuances du thème entre identité et relations.".into(),
+                nuances du thème entre identité et relations."
+                .into(),
         };
         assert!(validate_summary_content(&summary, Some("natal_premium_plus")).is_ok());
     }
@@ -529,7 +541,8 @@ mod tests {
             title: "Présence intérieure et construction".into(),
             short_text: "Cette lecture symbolique met en lumière une carte natale structurée \
                 par la profondeur. Les chapitres développent les nuances du thème. \
-                Une troisième phrase dépasse le contrat UX.".into(),
+                Une troisième phrase dépasse le contrat UX."
+                .into(),
         };
         let err = validate_summary_content(&summary, Some("natal_premium_plus")).unwrap_err();
         assert!(is_summary_banned_pattern_error(&err));
@@ -541,7 +554,8 @@ mod tests {
             title: "Présence intérieure et construction".into(),
             short_text: "Cette lecture symbolique met en lumière une carte natale structurée \
                 par la profondeur. Les chapitres développent les nuances du thème. \
-                Une troisième phrase dépasse le contrat UX.".into(),
+                Une troisième phrase dépasse le contrat UX."
+                .into(),
         };
         assert!(validate_summary_content(&summary, Some("natal_premium_plus")).is_err());
     }
@@ -553,7 +567,8 @@ mod tests {
                 .into(),
             short_text: "Cette lecture symbolique met en lumière une carte natale riche en \
                 tensions fécondes entre sécurité intérieure, expression personnelle et besoin de \
-                croissance relationnelle authentique dans la vie quotidienne.".into(),
+                croissance relationnelle authentique dans la vie quotidienne."
+                .into(),
         };
         let err = validate_summary_content(&summary, Some("natal_premium_plus")).unwrap_err();
         assert!(is_summary_banned_pattern_error(&err));
@@ -583,7 +598,8 @@ mod tests {
             title: "Une lecture symbolique".into(),
             short_text: "Tendance vers une presence attentive dans le theme natal avec une \
                 profondeur emotionnelle et une stabilite relationnelle dans la vie quotidienne \
-                et les choix professionnels.".into(),
+                et les choix professionnels."
+                .into(),
         };
         let err = validate_summary_content(&summary, Some("natal_premium_plus")).unwrap_err();
         assert!(is_summary_banned_pattern_error(&err));
@@ -595,7 +611,8 @@ mod tests {
             title: "Une dynamique personnelle".into(),
             short_text: "Vous avancez avec assurance et une grande sensibilite aux relations \
                 humaines, en cultivant des liens authentiques et une ecoute attentive des autres \
-                dans votre vie quotidienne et professionnelle.".into(),
+                dans votre vie quotidienne et professionnelle."
+                .into(),
         };
         let err = validate_summary_content(&summary, Some("natal_premium_plus")).unwrap_err();
         assert!(is_summary_banned_pattern_error(&err));
@@ -607,7 +624,8 @@ mod tests {
             title: "Une dynamique personnelle".into(),
             short_text: "Vous avancez avec assurance et une grande sensibilite aux relations \
                 humaines, en cultivant des liens authentiques et une ecoute attentive des autres \
-                dans votre vie quotidienne et professionnelle.".into(),
+                dans votre vie quotidienne et professionnelle."
+                .into(),
         };
         assert!(
             validate_summary_content(&summary, Some("natal_premium_plus")).is_err(),

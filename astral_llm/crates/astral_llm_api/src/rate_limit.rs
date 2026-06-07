@@ -2,11 +2,7 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use axum::{
-    extract::State,
-    middleware::Next,
-    response::Response,
-};
+use axum::{extract::State, middleware::Next, response::Response};
 use tokio::sync::Semaphore;
 
 use crate::api_error::too_many_requests;
@@ -41,7 +37,11 @@ impl ApiKeyRateLimiter {
         }
     }
 
-    pub fn try_acquire(&self, key_id: &str, is_premium: bool) -> Result<ApiKeyPermit<'_>, RateLimitReason> {
+    pub fn try_acquire(
+        &self,
+        key_id: &str,
+        is_premium: bool,
+    ) -> Result<ApiKeyPermit<'_>, RateLimitReason> {
         let mut guard = self.inner.lock().expect("rate limiter lock");
         let state = guard
             .entry(key_id.to_string())
@@ -139,19 +139,22 @@ pub async fn api_key_rate_limit(
     response
 }
 
-pub fn rate_limit_key_id_from_headers(
-    headers: &axum::http::HeaderMap,
-    state: &AppState,
-) -> String {
+pub fn rate_limit_key_id_from_headers(headers: &axum::http::HeaderMap, state: &AppState) -> String {
     if let Some(token) = headers
         .get("authorization")
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.strip_prefix("Bearer "))
     {
-        return format!("key:{}", astral_llm_infra::hash_json(&serde_json::json!(token)));
+        return format!(
+            "key:{}",
+            astral_llm_infra::hash_json(&serde_json::json!(token))
+        );
     }
     if let Some(token) = headers.get("x-api-key").and_then(|v| v.to_str().ok()) {
-        return format!("key:{}", astral_llm_infra::hash_json(&serde_json::json!(token)));
+        return format!(
+            "key:{}",
+            astral_llm_infra::hash_json(&serde_json::json!(token))
+        );
     }
     if state.config.requires_auth() {
         "key:authenticated".into()
@@ -178,7 +181,10 @@ pub struct PremiumAddonPermit<'a> {
 }
 
 impl ApiKeyRateLimiter {
-    pub fn reserve_premium_slot(&self, key_id: &str) -> Result<PremiumAddonPermit<'_>, RateLimitReason> {
+    pub fn reserve_premium_slot(
+        &self,
+        key_id: &str,
+    ) -> Result<PremiumAddonPermit<'_>, RateLimitReason> {
         let mut guard = self.inner.lock().expect("rate limiter lock");
         let state = guard
             .entry(key_id.to_string())
@@ -210,9 +216,15 @@ impl Drop for PremiumAddonPermit<'_> {
     }
 }
 
-pub fn rate_limit_key_id(request: &axum::http::Request<axum::body::Body>, state: &AppState) -> String {
+pub fn rate_limit_key_id(
+    request: &axum::http::Request<axum::body::Body>,
+    state: &AppState,
+) -> String {
     if let Some(token) = extract_api_token(request) {
-        return format!("key:{}", astral_llm_infra::hash_json(&serde_json::json!(token)));
+        return format!(
+            "key:{}",
+            astral_llm_infra::hash_json(&serde_json::json!(token))
+        );
     }
     if state.config.requires_auth() {
         "key:authenticated".into()

@@ -33,9 +33,11 @@ impl EvidenceDiversityValidator {
 
         if pool.pool_has_aspects() {
             let any_aspect = packs.iter().any(|p| {
-                p.core.iter().chain(p.supporting.iter()).chain(p.nuance.iter()).any(|e| {
-                    e.kind_code == KIND_ASPECT
-                })
+                p.core
+                    .iter()
+                    .chain(p.supporting.iter())
+                    .chain(p.nuance.iter())
+                    .any(|e| e.kind_code == KIND_ASPECT)
             });
             if !any_aspect {
                 return Err(Self::diversity_error(
@@ -251,7 +253,9 @@ impl EvidenceDiversityValidator {
                 })
             });
             if !cites_ruler {
-                tracing::warn!("premium reading generated without citing rulers though pool has them");
+                tracing::warn!(
+                    "premium reading generated without citing rulers though pool has them"
+                );
             }
         }
 
@@ -279,7 +283,12 @@ pub fn compute_evidence_metrics(
     let mut max_overlap = 0f32;
 
     for pack in packs {
-        for e in pack.core.iter().chain(pack.supporting.iter()).chain(pack.nuance.iter()) {
+        for e in pack
+            .core
+            .iter()
+            .chain(pack.supporting.iter())
+            .chain(pack.nuance.iter())
+        {
             ids.insert(e.fact_id.clone());
             semantic_keys.insert(e.semantic_fact_key.clone());
             families.insert(e.family.as_str());

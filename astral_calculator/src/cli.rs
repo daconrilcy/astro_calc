@@ -42,12 +42,10 @@ pub fn cli_options_from_args(
                 saw_engine = true;
             }
             "--help" | "-h" => {
-                return Err(
-                    "usage: cargo run -- [--file] [--engine|--audit-only]\n\
+                return Err("usage: cargo run -- [--file] [--engine|--audit-only]\n\
                      default: astro_engine_response_v1 envelope (4A)\n\
                      --audit-only: raw natal_structured_v13 payload"
-                        .into(),
-                );
+                    .into());
             }
             other => {
                 return Err(format!(
@@ -83,9 +81,7 @@ pub fn output_contract_from_env() -> OutputContract {
         .map(|value| value.to_ascii_lowercase())
         .as_deref()
     {
-        Some("audit" | "audit_only" | "natal_structured_v13" | "v13") => {
-            OutputContract::AuditOnly
-        }
+        Some("audit" | "audit_only" | "natal_structured_v13" | "v13") => OutputContract::AuditOnly,
         Some("engine" | "astro_engine_response_v1" | "4a") => OutputContract::Engine,
         _ => OutputContract::Engine,
     }

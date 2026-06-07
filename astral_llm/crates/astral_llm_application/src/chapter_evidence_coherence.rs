@@ -3,8 +3,7 @@
 use std::collections::HashSet;
 
 use astral_llm_domain::{
-    generation_response::ReadingChapter,
-    interpretive_evidence::ChapterEvidencePack,
+    generation_response::ReadingChapter, interpretive_evidence::ChapterEvidencePack,
     GenerationError, GenerationErrorCode,
 };
 use astral_llm_infra::CanonicalCatalog;
@@ -41,8 +40,7 @@ impl ChapterEvidenceCoherence {
         language: &str,
     ) -> CoherenceViolation {
         let missing_pack_fact_ids = Self::missing_pack_slots_in_basis(chapter, pack);
-        let orphan_object_codes =
-            Self::orphan_body_mentions(chapter, catalog, language);
+        let orphan_object_codes = Self::orphan_body_mentions(chapter, catalog, language);
         CoherenceViolation {
             missing_pack_fact_ids,
             orphan_object_codes,

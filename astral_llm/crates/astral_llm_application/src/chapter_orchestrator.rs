@@ -2,14 +2,13 @@ use std::time::{Duration, Instant};
 
 use astral_llm_domain::{
     chapter_orchestration::{ChapterGenerationStatus, ReadingPlan, ReadingPlanChapter},
-    interpretation_profile::SYNTHESIS_CHAPTER_CODE,
     generation_response::{
-        ChapterProviderResponse, LegalBlock, NatalReadingResponse, QualityMetadata,
-        ReadingChapter,
+        ChapterProviderResponse, LegalBlock, NatalReadingResponse, QualityMetadata, ReadingChapter,
     },
+    interpretation_profile::SYNTHESIS_CHAPTER_CODE,
     output_contract::GenerationMode,
     GenerateReadingRequest, GenerationError, GenerationErrorCode, NormalizedAstroFacts,
-    ProductGenerationPolicy, SafetyPolicy, SafetyMode,
+    ProductGenerationPolicy, SafetyMode, SafetyPolicy,
 };
 use astral_llm_infra::SharedCanonicalCatalog;
 use astral_llm_providers::{GenerationMetadata, ProviderGenerationRequest};
@@ -21,36 +20,38 @@ use crate::astro_basis_validator::AstroBasisValidator;
 use crate::astro_label_humanizer::AstroLabelHumanizer;
 use crate::chapter_evidence_basis_enricher::ChapterEvidenceBasisEnricher;
 use crate::chapter_evidence_coherence::ChapterEvidenceCoherence;
-use crate::chapter_writing_guidance::ChapterWritingGuidance;
 use crate::chapter_evidence_planner::{pack_for_chapter, ChapterEvidencePlanner};
-use crate::evidence_diversity_validator::{compute_evidence_metrics, EvidenceDiversityValidator};
-use crate::reading_opening_diversity_validator::ReadingOpeningDiversityValidator;
-use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
-use crate::interpretive_evidence_builder::{evidence_enabled_for_request, InterpretiveEvidenceBuilder};
 use crate::chapter_quality_repair::{
     append_repair_instructions, is_min_words_violation, length_repair_from_error,
     maybe_repair_repetition, retry_chapter_on_min_words, ChapterRepairKind,
 };
+use crate::chapter_writing_guidance::ChapterWritingGuidance;
 use crate::domain_resolver::DomainResolver;
 use crate::engine_defaults::{
     drop_unsupported_reasoning, drop_unsupported_temperature, resolve_subtask_engine,
     ResolvedEngineParams,
 };
+use crate::evidence_diversity_validator::{compute_evidence_metrics, EvidenceDiversityValidator};
 use crate::execution_audit::ExecutionAudit;
+use crate::final_synthesis_synthesizer::FinalSynthesisSynthesizer;
+use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
+use crate::interpretive_evidence_builder::{
+    evidence_enabled_for_request, InterpretiveEvidenceBuilder,
+};
 use crate::product_policy_validator::ProductPolicyValidator;
 use crate::prompt_compiler::{PromptCompilationInput, PromptCompiler};
 use crate::prompt_trace;
 use crate::provider_router::ProviderRouter;
 use crate::provider_schema_compiler::ProviderSchemaCompiler;
+use crate::reading_opening_diversity_validator::ReadingOpeningDiversityValidator;
 use crate::reading_plan::ReadingPlanBuilder;
 use crate::reading_quality_validator::{PremiumQualityThresholds, ReadingQualityValidator};
+use crate::reasoning_generation::{effective_temperature, resolve_reasoning_effort};
 use crate::response_validator::ResponseValidator;
 use crate::safety_guard::SafetyGuard;
-use crate::final_synthesis_synthesizer::FinalSynthesisSynthesizer;
 use crate::summary_synthesizer::{
     deterministic_safe_summary_fallback, is_summary_banned_pattern_error, SummarySynthesizer,
 };
-use crate::reasoning_generation::{effective_temperature, resolve_reasoning_effort};
 use crate::token_budget::TokenBudget;
 use astral_llm_domain::ServiceLimits;
 
@@ -226,8 +227,7 @@ impl<'a> ChapterOrchestrator<'a> {
                     );
                     generated.push(outcome.reading_chapter);
                 }
-                Err(err) if is_evidence_coherence_violation(&err) && chapter_pack.is_some() =>
-                {
+                Err(err) if is_evidence_coherence_violation(&err) && chapter_pack.is_some() => {
                     let repair_kind = evidence_repair_from_error(&err).unwrap_or(
                         ChapterRepairKind::EvidenceCoherence {
                             missing_pack_fact_ids: vec![],
@@ -400,7 +400,10 @@ impl<'a> ChapterOrchestrator<'a> {
                             | GenerationErrorCode::SafetyRejected
                     ) {
                         ChapterGenerationStatus::SafetyRejected
-                    } else if matches!(err.detail().code, GenerationErrorCode::SchemaValidationFailed) {
+                    } else if matches!(
+                        err.detail().code,
+                        GenerationErrorCode::SchemaValidationFailed
+                    ) {
                         ChapterGenerationStatus::AstroBasisInvalid
                     } else {
                         ChapterGenerationStatus::Failed
@@ -424,16 +427,12 @@ impl<'a> ChapterOrchestrator<'a> {
         let bundle = last_bundle.expect("at least one chapter");
 
         let summary_started = Instant::now();
-        let mut summary_engine = resolve_subtask_engine(
-            engine,
-            &request.engine,
-            Some(product_policy),
-        );
+        let mut summary_engine =
+            resolve_subtask_engine(engine, &request.engine, Some(product_policy));
         let registry = self.router.capability_registry();
         drop_unsupported_reasoning(&mut summary_engine, registry);
         drop_unsupported_temperature(&mut summary_engine, registry);
-        let synthesizer =
-            SummarySynthesizer::new(self.router, self.validator, self.catalog);
+        let synthesizer = SummarySynthesizer::new(self.router, self.validator, self.catalog);
         const MAX_SUMMARY_ATTEMPTS: usize = 2;
         const SUMMARY_STYLE_REPAIR: &str = "Rewrite title and short_text without banned poetic \
             clichés (e.g. liane de constance), divinatory wording, or mechanical formulas. \
@@ -461,17 +460,21 @@ impl<'a> ChapterOrchestrator<'a> {
                     summary_result = Some(result);
                     break;
                 }
-                Err(err) if is_summary_banned_pattern_error(&err) && attempt + 1 < MAX_SUMMARY_ATTEMPTS => {
+                Err(err)
+                    if is_summary_banned_pattern_error(&err)
+                        && attempt + 1 < MAX_SUMMARY_ATTEMPTS =>
+                {
                     tracing::warn!(
                         attempt = attempt + 1,
                         "summary banned pattern — retrying with repair instruction"
                     );
                 }
                 Err(err) if is_summary_banned_pattern_error(&err) => {
-                    tracing::warn!("summary banned pattern persists — using deterministic fallback");
+                    tracing::warn!(
+                        "summary banned pattern persists — using deterministic fallback"
+                    );
                     let fallback = deterministic_safe_summary_fallback();
-                    let fallback_corpus =
-                        format!("{} {}", fallback.title, fallback.short_text);
+                    let fallback_corpus = format!("{} {}", fallback.title, fallback.short_text);
                     SafetyGuard::validate_chapter_text(
                         &fallback_corpus,
                         safety_policy,
@@ -791,11 +794,12 @@ impl<'a> ChapterOrchestrator<'a> {
                             if chapter.code == SYNTHESIS_CHAPTER_CODE {
                                 continue;
                             }
-                            chapter.body = crate::text_trigrams::soften_raw_placement_openings_in_body(
-                                &chapter.body,
-                                &planet_names,
-                                writing_locale,
-                            );
+                            chapter.body =
+                                crate::text_trigrams::soften_raw_placement_openings_in_body(
+                                    &chapter.body,
+                                    &planet_names,
+                                    writing_locale,
+                                );
                         }
                     }
                 }
@@ -876,9 +880,7 @@ impl<'a> ChapterOrchestrator<'a> {
                 return Ok(());
             }
 
-            let Some(first_violation) = violations
-                .iter()
-                .find(|v| v.kind.contains("duplicate"))
+            let Some(first_violation) = violations.iter().find(|v| v.kind.contains("duplicate"))
             else {
                 break;
             };
@@ -943,9 +945,9 @@ impl<'a> ChapterOrchestrator<'a> {
                         Err(err)
                             if is_min_words_violation(&err)
                                 && opening_attempt == 0
-                                && !repairs.iter().any(|r| {
-                                    matches!(r, ChapterRepairKind::TooShort { .. })
-                                }) =>
+                                && !repairs
+                                    .iter()
+                                    .any(|r| matches!(r, ChapterRepairKind::TooShort { .. })) =>
                         {
                             repairs.push(length_repair_from_error(&err, chapter, opening_attempt));
                             tracing::info!(
@@ -997,10 +999,8 @@ impl<'a> ChapterOrchestrator<'a> {
             return Ok(());
         }
 
-        let mut target_codes: Vec<String> = violations
-            .iter()
-            .map(|v| v.chapter_code.clone())
-            .collect();
+        let mut target_codes: Vec<String> =
+            violations.iter().map(|v| v.chapter_code.clone()).collect();
         target_codes.sort();
         target_codes.dedup();
 
@@ -1138,8 +1138,12 @@ impl<'a> ChapterOrchestrator<'a> {
         let messages = self.compiler.to_provider_messages(&bundle);
         let attempt = if repairs.is_empty() {
             "primary"
-        } else if repairs.iter().any(|r| matches!(r, ChapterRepairKind::OpeningDiversity { .. }))
-            && repairs.iter().any(|r| matches!(r, ChapterRepairKind::TooShort { .. }))
+        } else if repairs
+            .iter()
+            .any(|r| matches!(r, ChapterRepairKind::OpeningDiversity { .. }))
+            && repairs
+                .iter()
+                .any(|r| matches!(r, ChapterRepairKind::TooShort { .. }))
         {
             "repair_opening_too_short"
         } else if let Some(primary) = repairs.last() {
@@ -1165,12 +1169,14 @@ impl<'a> ChapterOrchestrator<'a> {
         } else {
             astral_llm_domain::ModelRouteContext::Subtask
         };
-        self.router.capability_registry().validate_engine_for_context(
-            route_context,
-            &engine.provider,
-            &engine.model,
-            engine.allow_oracle_benchmark,
-        )?;
+        self.router
+            .capability_registry()
+            .validate_engine_for_context(
+                route_context,
+                &engine.provider,
+                &engine.model,
+                engine.allow_oracle_benchmark,
+            )?;
 
         let canonical_schema = self
             .validator
@@ -1185,7 +1191,10 @@ impl<'a> ChapterOrchestrator<'a> {
             .as_ref()
             .map(|s| {
                 let mut provider_schema = s.clone();
-                crate::provider_schema_compiler::pin_chapter_code(&mut provider_schema, &chapter.code);
+                crate::provider_schema_compiler::pin_chapter_code(
+                    &mut provider_schema,
+                    &chapter.code,
+                );
                 ProviderSchemaCompiler::compile(&provider_schema, model_cap)
             })
             .transpose()?;
@@ -1248,12 +1257,13 @@ impl<'a> ChapterOrchestrator<'a> {
 
         self.validator.validate_chapter(&json)?;
 
-        let mut chapter_reading: ChapterProviderResponse = serde_json::from_value(json).map_err(|e| {
-            GenerationError::new(
-                GenerationErrorCode::InvalidJsonOutput,
-                format!("chapter deserialization failed: {e}"),
-            )
-        })?;
+        let mut chapter_reading: ChapterProviderResponse =
+            serde_json::from_value(json).map_err(|e| {
+                GenerationError::new(
+                    GenerationErrorCode::InvalidJsonOutput,
+                    format!("chapter deserialization failed: {e}"),
+                )
+            })?;
 
         if chapter_reading.code != chapter.code {
             if let Some(normalized) = normalize_chapter_code(&chapter_reading.code, &chapter.code) {

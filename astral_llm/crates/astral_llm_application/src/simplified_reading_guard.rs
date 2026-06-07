@@ -109,16 +109,16 @@ pub fn profile_excluded_affirmation_violations(
 
     if profile_excluded.iter().any(|c| c == "ascendant") {
         if affirms_ascendant_by_sign(&corpus) {
-            violations.push(
-                "affirms ascendant by zodiac sign while profile excludes ascendant".into(),
-            );
+            violations
+                .push("affirms ascendant by zodiac sign while profile excludes ascendant".into());
         }
     }
-    if profile_excluded.iter().any(|c| c == "houses" || c == "house_placements") {
+    if profile_excluded
+        .iter()
+        .any(|c| c == "houses" || c == "house_placements")
+    {
         if affirms_house_placement(&corpus) {
-            violations.push(
-                "affirms house placement while profile excludes houses".into(),
-            );
+            violations.push("affirms house placement while profile excludes houses".into());
         }
     }
     violations
@@ -140,9 +140,7 @@ pub fn ambiguous_core_identity_violations(
         .find(|ch| ch.code == SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE);
 
     let Some(chapter) = ambiguous else {
-        violations.push(
-            "ambiguous_core_identity chapter required when sun.sign blocked".into(),
-        );
+        violations.push("ambiguous_core_identity chapter required when sun.sign blocked".into());
         return violations;
     };
 
@@ -168,9 +166,7 @@ pub fn ambiguous_core_identity_violations(
     if language.trim().eq_ignore_ascii_case("fr")
         && !body_has_ambiguous_uncertainty_lexicon(&chapter.body)
     {
-        violations.push(
-            "ambiguous_core_identity missing uncertainty wording (fr)".into(),
-        );
+        violations.push("ambiguous_core_identity missing uncertainty wording (fr)".into());
     }
 
     violations
@@ -178,7 +174,9 @@ pub fn ambiguous_core_identity_violations(
 
 pub fn violations_are_ambiguous_core_only(violations: &[String]) -> bool {
     !violations.is_empty()
-        && violations.iter().all(|v| v.starts_with("ambiguous_core_identity"))
+        && violations
+            .iter()
+            .all(|v| v.starts_with("ambiguous_core_identity"))
 }
 
 fn collect_reading_corpus(reading: &NatalReadingResponse) -> String {
@@ -203,8 +201,18 @@ fn french_body_name(object_code: &str) -> Option<&'static str> {
 
 fn french_zodiac_labels(catalog: &SharedCanonicalCatalog) -> Vec<String> {
     let codes = [
-        "aries", "taurus", "gemini", "cancer", "leo", "virgo", "libra", "scorpio",
-        "sagittarius", "capricorn", "aquarius", "pisces",
+        "aries",
+        "taurus",
+        "gemini",
+        "cancer",
+        "leo",
+        "virgo",
+        "libra",
+        "scorpio",
+        "sagittarius",
+        "capricorn",
+        "aquarius",
+        "pisces",
     ];
     codes
         .iter()
@@ -228,8 +236,18 @@ fn affirms_sign_for_body(corpus_lower: &str, body_fr: &str, sign_labels: &[Strin
 
 fn affirms_ascendant_by_sign(corpus_lower: &str) -> bool {
     const SIGNS: &[&str] = &[
-        "bélier", "taureau", "gémeaux", "cancer", "lion", "vierge", "balance", "scorpion",
-        "sagittaire", "capricorne", "verseau", "poissons",
+        "bélier",
+        "taureau",
+        "gémeaux",
+        "cancer",
+        "lion",
+        "vierge",
+        "balance",
+        "scorpion",
+        "sagittaire",
+        "capricorne",
+        "verseau",
+        "poissons",
     ];
     for sign in SIGNS {
         if corpus_lower.contains(&format!("ascendant en {sign}"))
@@ -265,8 +283,8 @@ mod tests {
         ReadingChapter, ReadingSummary,
     };
     use astral_llm_domain::output_contract::GenerationMode;
-    use std::sync::Arc;
     use astral_llm_infra::{bootstrap_zodiac_sign_labels, CanonicalCatalog};
+    use std::sync::Arc;
 
     fn test_catalog() -> Arc<CanonicalCatalog> {
         let mut catalog = CanonicalCatalog::default();
@@ -321,11 +339,8 @@ mod tests {
             confidence: ConfidenceLevel::Medium,
             safety_flags: vec![],
         };
-        let err = validate_allowed_astro_basis_ids(
-            &[chapter],
-            &["placement:mercury".into()],
-        )
-        .expect_err("moon blocked");
+        let err = validate_allowed_astro_basis_ids(&[chapter], &["placement:mercury".into()])
+            .expect_err("moon blocked");
         assert!(err.to_string().contains("allowed_astro_basis_fact_ids"));
     }
 
@@ -333,12 +348,7 @@ mod tests {
     fn detects_blocked_sun_sign_affirmation_fr() {
         let catalog = test_catalog();
         let reading = sample_reading("Votre Soleil est en Bélier, une energie directe.");
-        let v = blocked_sign_affirmation_violations(
-            &reading,
-            &["sun.sign".into()],
-            &catalog,
-            "fr",
-        );
+        let v = blocked_sign_affirmation_violations(&reading, &["sun.sign".into()], &catalog, "fr");
         assert!(!v.is_empty());
     }
 
@@ -348,12 +358,7 @@ mod tests {
         let reading = sample_reading(
             "Sans heure precise, le signe solaire reste incertain entre deux possibilites.",
         );
-        let v = blocked_sign_affirmation_violations(
-            &reading,
-            &["sun.sign".into()],
-            &catalog,
-            "fr",
-        );
+        let v = blocked_sign_affirmation_violations(&reading, &["sun.sign".into()], &catalog, "fr");
         assert!(v.is_empty());
     }
 

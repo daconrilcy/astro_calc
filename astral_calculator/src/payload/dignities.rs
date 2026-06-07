@@ -55,7 +55,10 @@ pub(super) fn build_payload_dignities(
         .collect()
 }
 
-fn dignity_signal_key(dignity: &crate::dignities::EssentialDignityFact, catalog: &BasicPayloadCatalog) -> String {
+fn dignity_signal_key(
+    dignity: &crate::dignities::EssentialDignityFact,
+    catalog: &BasicPayloadCatalog,
+) -> String {
     if dignity_is_signal_worthy(dignity, catalog) {
         format!(
             "dignity:{}:{}:{}",

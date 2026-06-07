@@ -34,8 +34,10 @@ impl SafetyPolicy {
         Self {
             forbid_medical_advice: base.forbid_medical_advice || overlay.forbid_medical_advice,
             forbid_legal_advice: base.forbid_legal_advice || overlay.forbid_legal_advice,
-            forbid_financial_advice: base.forbid_financial_advice || overlay.forbid_financial_advice,
-            forbid_death_prediction: base.forbid_death_prediction || overlay.forbid_death_prediction,
+            forbid_financial_advice: base.forbid_financial_advice
+                || overlay.forbid_financial_advice,
+            forbid_death_prediction: base.forbid_death_prediction
+                || overlay.forbid_death_prediction,
             forbid_pregnancy_prediction: base.forbid_pregnancy_prediction
                 || overlay.forbid_pregnancy_prediction,
             forbid_deterministic_claims: base.forbid_deterministic_claims

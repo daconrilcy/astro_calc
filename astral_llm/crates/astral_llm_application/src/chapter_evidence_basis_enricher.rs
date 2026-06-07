@@ -33,8 +33,7 @@ impl ChapterEvidenceBasisEnricher {
                 .filter(|(e, _)| {
                     // Identity : n'injecter que les supporting non-Soleil (Soleil reserve a career).
                     pack.chapter_code != "identity"
-                        || !e.fact_id.contains(":sun:")
-                            && !e.semantic_fact_key.contains("sun")
+                        || !e.fact_id.contains(":sun:") && !e.semantic_fact_key.contains("sun")
                 })
                 .map(|(e, role)| (e.fact_id.clone(), e.label.clone(), role.to_string())),
         );
@@ -58,7 +57,10 @@ impl ChapterEvidenceBasisEnricher {
     }
 }
 
-fn already_cited(cited: &HashSet<&str>, ev: &astral_llm_domain::interpretive_evidence::InterpretiveEvidence) -> bool {
+fn already_cited(
+    cited: &HashSet<&str>,
+    ev: &astral_llm_domain::interpretive_evidence::InterpretiveEvidence,
+) -> bool {
     if cited.contains(ev.fact_id.as_str()) {
         return true;
     }
@@ -120,12 +122,10 @@ mod tests {
         };
         ChapterEvidenceBasisEnricher::enrich_missing_pack_slots(&mut chapter, &pack);
         assert_eq!(chapter.astro_basis.len(), 1);
-        assert!(
-            !chapter
-                .astro_basis
-                .iter()
-                .any(|b| b.fact_id.as_deref() == Some("signal:object_position:sun"))
-        );
+        assert!(!chapter
+            .astro_basis
+            .iter()
+            .any(|b| b.fact_id.as_deref() == Some("signal:object_position:sun")));
     }
 
     #[test]
@@ -166,12 +166,10 @@ mod tests {
         ChapterEvidenceBasisEnricher::enrich_missing_pack_slots(&mut chapter, &pack);
         let v = ChapterEvidenceCoherence::detect(&chapter, &pack, &catalog, "fr");
         assert!(v.missing_pack_fact_ids.is_empty());
-        assert!(
-            chapter
-                .astro_basis
-                .iter()
-                .any(|b| b.fact_id.as_deref() == Some("ruler:angle:ascendant:mars"))
-        );
+        assert!(chapter
+            .astro_basis
+            .iter()
+            .any(|b| b.fact_id.as_deref() == Some("ruler:angle:ascendant:mars")));
         assert!(v.orphan_object_codes.is_empty());
     }
 
@@ -206,12 +204,10 @@ mod tests {
             safety_flags: vec![],
         };
         ChapterEvidenceBasisEnricher::enrich_missing_pack_slots(&mut chapter, &pack);
-        assert!(
-            chapter
-                .astro_basis
-                .iter()
-                .any(|b| b.fact_id.as_deref() == Some("signal:dignity:saturn:domicile:capricorn"))
-        );
+        assert!(chapter
+            .astro_basis
+            .iter()
+            .any(|b| b.fact_id.as_deref() == Some("signal:dignity:saturn:domicile:capricorn")));
         assert_eq!(chapter.astro_basis.len(), 3);
     }
 

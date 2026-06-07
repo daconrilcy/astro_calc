@@ -128,9 +128,7 @@ impl NormalizedAstroFacts {
             .facts
             .iter()
             .filter(|f| match f.usage {
-                AstroFactUsage::DomainSelection => {
-                    f.domains.iter().any(|d| d == chapter_code)
-                }
+                AstroFactUsage::DomainSelection => f.domains.iter().any(|d| d == chapter_code),
                 AstroFactUsage::InterpretiveBasis => {
                     f.domains.is_empty() || f.domains.iter().any(|d| d == chapter_code)
                 }

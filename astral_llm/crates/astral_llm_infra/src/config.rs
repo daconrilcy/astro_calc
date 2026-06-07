@@ -69,12 +69,12 @@ impl AppConfig {
 
         let fallback_policy = build_fallback_policy_from_env(&default_provider);
 
-        let openai_base_url = env_var("OPENAI_BASE_URL")
-            .unwrap_or_else(|| "https://api.openai.com".into());
-        let anthropic_base_url = env_var("ANTHROPIC_BASE_URL")
-            .unwrap_or_else(|| "https://api.anthropic.com".into());
-        let mistral_base_url = env_var("MISTRAL_BASE_URL")
-            .unwrap_or_else(|| "https://api.mistral.ai".into());
+        let openai_base_url =
+            env_var("OPENAI_BASE_URL").unwrap_or_else(|| "https://api.openai.com".into());
+        let anthropic_base_url =
+            env_var("ANTHROPIC_BASE_URL").unwrap_or_else(|| "https://api.anthropic.com".into());
+        let mistral_base_url =
+            env_var("MISTRAL_BASE_URL").unwrap_or_else(|| "https://api.mistral.ai".into());
 
         validate_openai_base_url(&openai_base_url).expect("invalid OPENAI_BASE_URL");
         validate_anthropic_base_url(&anthropic_base_url).expect("invalid ANTHROPIC_BASE_URL");
@@ -161,11 +161,7 @@ impl AppConfig {
     }
 
     pub fn requires_auth(&self) -> bool {
-        self.runtime_env.requires_api_key()
-            || self
-                .api_key
-                .as_ref()
-                .is_some_and(|k| !k.is_empty())
+        self.runtime_env.requires_api_key() || self.api_key.as_ref().is_some_and(|k| !k.is_empty())
     }
 }
 
@@ -200,11 +196,7 @@ fn build_fallback_policy_from_env(default_provider: &ProviderKind) -> FallbackPo
         .map(|v| parse_provider_list(&v))
         .unwrap_or_else(|| Vec::new());
 
-    let chain = if chain.is_empty() {
-        Vec::new()
-    } else {
-        chain
-    };
+    let chain = if chain.is_empty() { Vec::new() } else { chain };
 
     let allow_cross = env_bool("ASTRAL_LLM_ALLOW_CROSS_PROVIDER_FALLBACK", false);
 

@@ -1,9 +1,7 @@
 use std::path::Path;
 
 use super::catalog::SimplifiedCatalog;
-use super::facts::{
-    collect_declared_sign_facts, collect_window_sign_facts, CollectedSignFacts,
-};
+use super::facts::{collect_declared_sign_facts, collect_window_sign_facts, CollectedSignFacts};
 use super::payload::build_response;
 use super::repository::{load_profile_feature_exclusions, load_simplified_catalog};
 use super::request::AstroSimplifiedNatalRequest;
@@ -76,8 +74,9 @@ pub async fn calculate_simplified_natal<E: EphemerisEngine>(
 
     let collected = match resolved.computed_scope.as_str() {
         "planetary_positions" | "angular_chart" => {
-            let instant = declared_datetime_utc(&resolved)?
-                .ok_or_else(|| RuntimeError::InvalidEngineRequest("missing declared datetime".into()))?;
+            let instant = declared_datetime_utc(&resolved)?.ok_or_else(|| {
+                RuntimeError::InvalidEngineRequest("missing declared datetime".into())
+            })?;
             collect_declared_sign_facts(ephemeris_path, instant, &chart_objects, &signs, &catalog)?
         }
         _ => {

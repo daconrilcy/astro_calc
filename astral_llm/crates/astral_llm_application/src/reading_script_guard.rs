@@ -1,14 +1,22 @@
 use astral_llm_domain::NatalReadingResponse;
 
 /// Rejette les contaminations de script (ex. devanagari dans un texte `fr`).
-pub fn script_violations_for_reading(language: &str, reading: &NatalReadingResponse) -> Vec<String> {
+pub fn script_violations_for_reading(
+    language: &str,
+    reading: &NatalReadingResponse,
+) -> Vec<String> {
     let lang = language.trim().to_lowercase();
     if lang != "fr" {
         return Vec::new();
     }
 
     let mut violations = Vec::new();
-    check_field(&mut violations, "summary.title", &reading.summary.title, &lang);
+    check_field(
+        &mut violations,
+        "summary.title",
+        &reading.summary.title,
+        &lang,
+    );
     check_field(
         &mut violations,
         "summary.short_text",
@@ -22,8 +30,18 @@ pub fn script_violations_for_reading(language: &str, reading: &NatalReadingRespo
         &lang,
     );
     for (i, ch) in reading.chapters.iter().enumerate() {
-        check_field(&mut violations, &format!("chapters[{i}].title"), &ch.title, &lang);
-        check_field(&mut violations, &format!("chapters[{i}].body"), &ch.body, &lang);
+        check_field(
+            &mut violations,
+            &format!("chapters[{i}].title"),
+            &ch.title,
+            &lang,
+        );
+        check_field(
+            &mut violations,
+            &format!("chapters[{i}].body"),
+            &ch.body,
+            &lang,
+        );
     }
     violations
 }
@@ -152,7 +170,9 @@ mod tests {
         assert!(violations_are_script_only(&[
             "unexpected script in chapters[0].body (language=fr): 'स' U+0938".into()
         ]));
-        assert!(!violations_are_script_only(&["medical advice detected".into()]));
+        assert!(!violations_are_script_only(&[
+            "medical advice detected".into()
+        ]));
     }
 
     #[test]

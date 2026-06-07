@@ -2,26 +2,26 @@
 
 use std::sync::Arc;
 
-use astral_llm_application::{
-    astro_payload_normalizer::AstroPayloadNormalizer,
-    build_reading_request, merge_simplified_forbidden_wording, prompt_constraints_block,
-    resolve_simplified_chapter_code, sun_sign_blocked, validate_simplified_calculation_request,
-    PromptCompiler, SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE, SIMPLIFIED_CHAPTER_IDENTITY,
-    SIMPLIFIED_PAYLOAD_CONTRACT, SIMPLIFIED_PROFILE, SUN_SIGN_BLOCKED_CODE,
+use astral_llm_application::french_typography::{
+    french_elision_violations, restore_french_elisions,
 };
-use astral_llm_application::french_typography::{french_elision_violations, restore_french_elisions};
+use astral_llm_application::prompt_compiler::PromptCompilationInput;
+use astral_llm_application::simplified_reading_guard::{
+    ambiguous_core_identity_violations, violations_are_ambiguous_core_only,
+};
 use astral_llm_application::simplified_reading_postprocess::{
     apply_simplified_body_fallback, build_compact_summary_from_body,
     harden_ambiguous_core_identity_chapter, normalize_simplified_interpretive_roles,
     simplified_deterministic_body,
 };
-use astral_llm_application::simplified_reading_guard::{
-    ambiguous_core_identity_violations, violations_are_ambiguous_core_only,
+use astral_llm_application::{
+    astro_payload_normalizer::AstroPayloadNormalizer, build_reading_request,
+    merge_simplified_forbidden_wording, prompt_constraints_block, resolve_simplified_chapter_code,
+    sun_sign_blocked, validate_simplified_calculation_request, PromptCompiler,
+    SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE, SIMPLIFIED_CHAPTER_IDENTITY, SIMPLIFIED_PAYLOAD_CONTRACT,
+    SIMPLIFIED_PROFILE, SUN_SIGN_BLOCKED_CODE,
 };
-use astral_llm_application::prompt_compiler::PromptCompilationInput;
-use astral_llm_domain::{
-    generation_request::AudienceLevel, PrivacyPolicy, SafetyPolicy,
-};
+use astral_llm_domain::{generation_request::AudienceLevel, PrivacyPolicy, SafetyPolicy};
 use astral_llm_infra::{bootstrap_interpretation_profiles, CanonicalCatalog};
 use serde_json::json;
 
@@ -69,15 +69,15 @@ fn build_reading_request_scrubs_blocked_objects_from_payload() {
     assert!(request.astro_result.data["planets"].get("sun").is_none());
     assert!(request.astro_result.data["planets"].get("moon").is_none());
     assert!(request.astro_result.data.get("position_count").is_none());
-    let facts = request.astro_result.data["facts"].as_array().expect("facts");
+    let facts = request.astro_result.data["facts"]
+        .as_array()
+        .expect("facts");
     assert!(!facts.iter().any(|f| f["object_code"] == "sun"));
     assert!(!facts.iter().any(|f| f["object_code"] == "moon"));
-    assert!(
-        request
-            .astrologer_profile
-            .forbidden_wording
-            .contains(&"moon.sign".to_string())
-    );
+    assert!(request
+        .astrologer_profile
+        .forbidden_wording
+        .contains(&"moon.sign".to_string()));
 }
 
 #[test]
@@ -140,10 +140,15 @@ fn build_reading_request_uses_identity_when_sun_stable() {
 #[test]
 fn merge_forbidden_wording_deduplicates_controls() {
     let controls = equinox_calculation()["llm_payload"].clone();
-    let merged = merge_simplified_forbidden_wording(&controls, vec!["custom".into(), "moon.sign".into()]);
+    let merged =
+        merge_simplified_forbidden_wording(&controls, vec!["custom".into(), "moon.sign".into()]);
     assert!(merged.contains(&"custom".to_string()));
     assert!(merged.contains(&"moon.sign".to_string()));
-    assert_eq!(merged.iter().filter(|v| *v == "moon.sign").count(), 1, "deduped");
+    assert_eq!(
+        merged.iter().filter(|v| *v == "moon.sign").count(),
+        1,
+        "deduped"
+    );
     assert!(
         !merged.contains(&"sect".to_string()),
         "excluded features must not become substring forbidden wording"
@@ -157,10 +162,11 @@ fn compiled_simplified_prompt_injects_constraints_and_data_controls() {
         build_reading_request(&calculation, "fr", AudienceLevel::Beginner).expect("build");
     let profiles = bootstrap_interpretation_profiles();
     let profile = profiles.get(SIMPLIFIED_PROFILE).expect("profile");
-    let ctx = astral_llm_application::interpretation_profile_resolver::ResolvedInterpretationContext {
-        profile: profile.clone(),
-        effective_policy: profile.to_product_generation_policy(),
-    };
+    let ctx =
+        astral_llm_application::interpretation_profile_resolver::ResolvedInterpretationContext {
+            profile: profile.clone(),
+            effective_policy: profile.to_product_generation_policy(),
+        };
     let catalog = Arc::new({
         let mut c = CanonicalCatalog::default();
         astral_llm_infra::enrich_catalog_from_bootstrap(&mut c);
@@ -190,7 +196,9 @@ fn compiled_simplified_prompt_injects_constraints_and_data_controls() {
         .expect("compile");
 
     assert!(
-        bundle.task_instructions.contains("SIMPLIFIED NATAL CONSTRAINTS"),
+        bundle
+            .task_instructions
+            .contains("SIMPLIFIED NATAL CONSTRAINTS"),
         "constraints must be in task instructions"
     );
     assert!(bundle.task_instructions.contains("moon.sign"));

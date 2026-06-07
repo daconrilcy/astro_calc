@@ -45,12 +45,8 @@ pub fn sign_code_at_jd(
             .ok_or_else(|| RuntimeError::Ephemeris("invalid ephemeris path".into()))?,
     );
 
-    let position = calc_ut(
-        jd_ut,
-        swe_id,
-        CalcFlags::new().with_swiss_ephemeris().raw(),
-    )
-    .map_err(|error| RuntimeError::Ephemeris(error.to_string()))?;
+    let position = calc_ut(jd_ut, swe_id, CalcFlags::new().with_swiss_ephemeris().raw())
+        .map_err(|error| RuntimeError::Ephemeris(error.to_string()))?;
 
     let longitude = normalize_degrees(position.longitude);
     let slot = zodiac_slot_for_longitude(longitude);

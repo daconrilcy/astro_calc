@@ -67,9 +67,9 @@ pub fn local_birth_to_utc(
     })?;
     let naive_local = NaiveDateTime::new(naive_date, naive_time);
 
-    let tz: Tz = timezone.parse().map_err(|_| {
-        RuntimeError::InvalidEngineRequest(format!("invalid timezone: {timezone}"))
-    })?;
+    let tz: Tz = timezone
+        .parse()
+        .map_err(|_| RuntimeError::InvalidEngineRequest(format!("invalid timezone: {timezone}")))?;
 
     tz.from_local_datetime(&naive_local)
         .single()
@@ -188,8 +188,8 @@ mod tests {
 
     #[test]
     fn paris_local_time_converts_to_expected_utc() {
-        let resolved =
-            validate_and_resolve_request(&paris_request("Europe/Paris"), 1, 1, 1, 1).expect("resolve");
+        let resolved = validate_and_resolve_request(&paris_request("Europe/Paris"), 1, 1, 1, 1)
+            .expect("resolve");
         assert_eq!(
             resolved.birth_datetime_utc,
             Utc.with_ymd_and_hms(1990, 1, 2, 2, 4, 5).unwrap()
@@ -198,7 +198,8 @@ mod tests {
 
     #[test]
     fn utc_timezone_keeps_clock_time_as_utc() {
-        let resolved = validate_and_resolve_request(&paris_request("UTC"), 1, 1, 1, 1).expect("resolve");
+        let resolved =
+            validate_and_resolve_request(&paris_request("UTC"), 1, 1, 1, 1).expect("resolve");
         assert_eq!(
             resolved.birth_datetime_utc,
             Utc.with_ymd_and_hms(1990, 1, 2, 3, 4, 5).unwrap()

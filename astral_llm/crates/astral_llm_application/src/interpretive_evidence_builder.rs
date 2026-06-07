@@ -120,7 +120,8 @@ mod tests {
     #[test]
     fn minimal_pool_not_rich_enough() {
         let facts = minimal_facts();
-        let pool = InterpretiveEvidenceBuilder::build(&facts, &bootstrap_evidence_catalog()).unwrap();
+        let pool =
+            InterpretiveEvidenceBuilder::build(&facts, &bootstrap_evidence_catalog()).unwrap();
         let policy = bootstrap_evidence_catalog().premium_policy;
         assert!(pool_richness_check(&pool, &policy, 5).is_err());
     }
@@ -128,7 +129,8 @@ mod tests {
     #[test]
     fn signal_and_placement_share_semantic_key() {
         let facts = minimal_facts();
-        let pool = InterpretiveEvidenceBuilder::build(&facts, &bootstrap_evidence_catalog()).unwrap();
+        let pool =
+            InterpretiveEvidenceBuilder::build(&facts, &bootstrap_evidence_catalog()).unwrap();
         let placement = pool
             .evidence
             .iter()
@@ -150,8 +152,8 @@ pub fn pool_richness_check(
     chapter_count: usize,
 ) -> Result<(), GenerationError> {
     if !pool.is_rich_enough_for_premium(policy.min_evidence_per_chapter, chapter_count) {
-        let minimum = (policy.min_evidence_per_chapter as usize)
-            * chapter_count.clamp(1, 12).min(6).max(3);
+        let minimum =
+            (policy.min_evidence_per_chapter as usize) * chapter_count.clamp(1, 12).min(6).max(3);
         return Err(GenerationError::with_details(
             GenerationErrorCode::PremiumEvidenceDiversityFailed,
             "The provided astrology payload does not contain enough interpretive evidence for a Premium reading.",

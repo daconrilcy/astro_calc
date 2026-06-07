@@ -2,7 +2,8 @@ use std::collections::HashMap;
 use std::sync::OnceLock;
 
 const ZODIAC_JSON: &str = include_str!("../../../json_db/astral_zodiacal_reference_systems.json");
-const COORDINATE_JSON: &str = include_str!("../../../json_db/astral_coordinate_reference_systems.json");
+const COORDINATE_JSON: &str =
+    include_str!("../../../json_db/astral_coordinate_reference_systems.json");
 const HOUSE_SYSTEM_JSON: &str = include_str!("../../../json_db/astral_house_systems.json");
 
 fn zodiac_key_by_id() -> &'static HashMap<i32, String> {
@@ -32,10 +33,7 @@ fn key_by_id_map(json: &str, key_field: &str) -> HashMap<i32, String> {
         .iter()
         .map(|row| {
             let id = row["id"].as_i64().expect("row id") as i32;
-            let key = row[key_field]
-                .as_str()
-                .expect("row key")
-                .to_string();
+            let key = row[key_field].as_str().expect("row key").to_string();
             (id, key)
         })
         .collect()
@@ -85,9 +83,10 @@ fn reference_key_from_env(
         let id: i32 = id_raw
             .parse()
             .map_err(|error| format!("{id_var} is invalid: {error}"))?;
-        return id_map.get(&id).cloned().ok_or_else(|| {
-            format!("{id_var}={id} has no matching entry in json_db seed")
-        });
+        return id_map
+            .get(&id)
+            .cloned()
+            .ok_or_else(|| format!("{id_var}={id} has no matching entry in json_db seed"));
     }
 
     Ok(default.to_string())

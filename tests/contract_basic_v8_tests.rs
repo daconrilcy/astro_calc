@@ -673,7 +673,10 @@ fn v13_contains_accidental_dignities() {
 #[test]
 fn v13_rejects_missing_accidental_dignities() {
     let mut payload = load_golden_payload();
-    payload.as_object_mut().expect("payload object").remove("accidental_dignities");
+    payload
+        .as_object_mut()
+        .expect("payload object")
+        .remove("accidental_dignities");
 
     assert!(
         !validate_with_schema(&payload).is_empty(),
@@ -795,7 +798,12 @@ fn overall_polarity_matches_overall_score() {
         } else {
             "strongly_weakened"
         };
-        assert_eq!(polarity, expected, "object {}", string(evaluation, "object_code"));
+        assert_eq!(
+            polarity,
+            expected,
+            "object {}",
+            string(evaluation, "object_code")
+        );
     }
 }
 

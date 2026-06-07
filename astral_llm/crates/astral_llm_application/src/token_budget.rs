@@ -80,10 +80,8 @@ mod tests {
         )
         .is_err());
         let long = (0..400).map(|_| "word").collect::<Vec<_>>().join(" ");
-        assert!(TokenBudget::validate_chapter_lengths(
-            &[("career".into(), long)],
-            &contracts,
-        )
-        .is_ok());
+        assert!(
+            TokenBudget::validate_chapter_lengths(&[("career".into(), long)], &contracts,).is_ok()
+        );
     }
 }

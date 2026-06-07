@@ -1,3 +1,4 @@
+mod accidental_dignities;
 mod angles;
 mod aspects;
 mod chart_context;
@@ -5,7 +6,6 @@ mod dignities;
 mod emphasis;
 mod house_axes;
 mod json;
-mod accidental_dignities;
 mod lunar_phase;
 mod placements;
 mod plan;

@@ -22,7 +22,9 @@ impl Default for SummaryUxRules {
 }
 
 pub fn count_words(text: &str) -> usize {
-    text.split_whitespace().filter(|w| !w.trim().is_empty()).count()
+    text.split_whitespace()
+        .filter(|w| !w.trim().is_empty())
+        .count()
 }
 
 /// Compte les phrases comme le gate E2E PowerShell : frontiere apres `.?!` suivis d'espaces.
@@ -162,9 +164,8 @@ mod tests {
 
     #[test]
     fn split_sentences_fr_handles_two_sentences() {
-        let parts = split_sentences_fr(
-            "Première phrase. Deuxième phrase plus longue, avec une virgule.",
-        );
+        let parts =
+            split_sentences_fr("Première phrase. Deuxième phrase plus longue, avec une virgule.");
         assert_eq!(parts.len(), 2);
         assert_eq!(parts[0], "Première phrase.");
     }
@@ -197,7 +198,10 @@ mod tests {
         assert_eq!(count_sentences_fr("Première. Deuxième. Troisième."), 3);
         assert_eq!(count_sentences_fr("Première. Deuxième"), 2);
         assert_eq!(count_sentences_fr("Première.Deuxième. Troisième."), 2);
-        assert_eq!(count_sentences_fr("Une seule phrase sans ponctuation finale"), 1);
+        assert_eq!(
+            count_sentences_fr("Une seule phrase sans ponctuation finale"),
+            1
+        );
     }
 
     #[test]

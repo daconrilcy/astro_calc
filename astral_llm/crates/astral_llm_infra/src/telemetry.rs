@@ -28,7 +28,11 @@ pub fn init_tracing() {
                 let (writer, guard) = tracing_appender::non_blocking(file);
                 let _ = LOG_GUARD.set(guard);
                 let file_layer = if json_logs {
-                    fmt::layer().json().with_writer(writer).with_target(true).boxed()
+                    fmt::layer()
+                        .json()
+                        .with_writer(writer)
+                        .with_target(true)
+                        .boxed()
                 } else {
                     fmt::layer().with_writer(writer).with_target(true).boxed()
                 };

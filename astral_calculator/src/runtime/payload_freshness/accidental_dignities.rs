@@ -13,7 +13,10 @@ const ANGLE_ORB_TOLERANCE_DEG: f64 = 0.01;
 pub(super) fn has_current_accidental_dignities(payload: &BasicPayload) -> bool {
     payload.chart_context.payload_contract.contract_version == "natal_structured_v13"
         && has_valid_accidental_dignities_block(payload)
-        && payload.positions.iter().all(has_current_position_accidental_context)
+        && payload
+            .positions
+            .iter()
+            .all(has_current_position_accidental_context)
         && payload
             .signals
             .iter()
@@ -42,14 +45,17 @@ fn has_valid_accidental_dignities_block(payload: &BasicPayload) -> bool {
         .collect();
 
     !payload.accidental_dignities.is_empty()
-        && evaluation_codes.iter().all(|code| position_codes.contains(code))
+        && evaluation_codes
+            .iter()
+            .all(|code| position_codes.contains(code))
         && !payload
             .accidental_dignities
             .iter()
             .any(|evaluation| is_angle_position_code(payload, &evaluation.object_code))
-        && payload.accidental_dignities.iter().all(|evaluation| {
-            has_valid_evaluation(payload, evaluation, &signal_keys)
-        })
+        && payload
+            .accidental_dignities
+            .iter()
+            .all(|evaluation| has_valid_evaluation(payload, evaluation, &signal_keys))
 }
 
 fn has_valid_evaluation(
@@ -102,9 +108,10 @@ fn has_unique_condition_codes(evaluation: &BasicAccidentalDignityEvaluation) -> 
 }
 
 fn related_signal_key_matches_object(evaluation: &BasicAccidentalDignityEvaluation) -> bool {
-    evaluation.related_signal_key.as_ref().is_none_or(|key| {
-        key == &format!("object_position:{}", evaluation.object_code)
-    })
+    evaluation
+        .related_signal_key
+        .as_ref()
+        .is_none_or(|key| key == &format!("object_position:{}", evaluation.object_code))
 }
 
 fn expression_quality_matches_polarity(
@@ -123,15 +130,12 @@ fn expression_quality_matches_polarity(
 }
 
 fn has_current_position_accidental_context(position: &BasicObjectPosition) -> bool {
-    position
-        .accidental_dignity_context
-        .iter()
-        .all(|summary| {
-            !summary.condition_code.trim().is_empty()
-                && valid_condition_family(summary.condition_family.as_str())
-                && valid_polarity(summary.polarity.as_str())
-                && (0.0..=1.0).contains(&summary.strength_score)
-        })
+    position.accidental_dignity_context.iter().all(|summary| {
+        !summary.condition_code.trim().is_empty()
+            && valid_condition_family(summary.condition_family.as_str())
+            && valid_polarity(summary.polarity.as_str())
+            && (0.0..=1.0).contains(&summary.strength_score)
+    })
 }
 
 fn has_current_signal_accidental_context(signal: &BasicSignal) -> bool {
@@ -144,12 +148,14 @@ fn has_current_signal_accidental_context(signal: &BasicSignal) -> bool {
     let Some(context) = evidence.get("placement_context") else {
         return false;
     };
-    context.get("accidental_dignity_context").is_some_and(|value| {
-        value.is_array()
-            && value
-                .as_array()
-                .is_some_and(|items| items.iter().all(|item| item.is_object()))
-    })
+    context
+        .get("accidental_dignity_context")
+        .is_some_and(|value| {
+            value.is_array()
+                && value
+                    .as_array()
+                    .is_some_and(|items| items.iter().all(|item| item.is_object()))
+        })
 }
 
 pub(super) fn accidental_context_matches_positions(payload: &BasicPayload) -> bool {
@@ -184,13 +190,7 @@ pub(super) fn accidental_conditions_match_position_facts(payload: &BasicPayload)
             return false;
         };
         evaluation.conditions.iter().all(|condition| {
-            condition_matches_position(
-                payload,
-                condition,
-                position,
-                chart_sect,
-                &angle_longitudes,
-            )
+            condition_matches_position(payload, condition, position, chart_sect, &angle_longitudes)
         })
     })
 }
@@ -214,22 +214,20 @@ fn condition_matches_position(
         "near_ascendant" => {
             angle_proximity_matches(payload, condition, position, "ascendant", angle_longitudes)
         }
-        "near_descendant" => angle_proximity_matches(
-            payload,
-            condition,
-            position,
-            "descendant",
-            angle_longitudes,
-        ),
+        "near_descendant" => {
+            angle_proximity_matches(payload, condition, position, "descendant", angle_longitudes)
+        }
         "near_mc" => angle_proximity_matches(payload, condition, position, "mc", angle_longitudes),
         "near_ic" => angle_proximity_matches(payload, condition, position, "ic", angle_longitudes),
         "sect_affinity_match" => sect_matches(chart_sect, condition, true),
         "sect_affinity_mismatch" => sect_matches(chart_sect, condition, false),
-        "sect_affinity_variable_unresolved" => condition
-            .source
-            .get("object_sect_affinity")
-            .and_then(|value| value.as_str())
-            == Some("variable"),
+        "sect_affinity_variable_unresolved" => {
+            condition
+                .source
+                .get("object_sect_affinity")
+                .and_then(|value| value.as_str())
+                == Some("variable")
+        }
         _ => false,
     }
 }
@@ -278,11 +276,9 @@ pub(super) fn accidental_signal_context_matches_positions(payload: &BasicPayload
         let Some(signal_context) = context.get("accidental_dignity_context") else {
             return false;
         };
-        let Ok(signal_summaries) =
-            serde_json::from_value::<Vec<crate::domain::BasicAccidentalDignityContextSummary>>(
-                signal_context.clone(),
-            )
-        else {
+        let Ok(signal_summaries) = serde_json::from_value::<
+            Vec<crate::domain::BasicAccidentalDignityContextSummary>,
+        >(signal_context.clone()) else {
             return false;
         };
         if signal_summaries != position.accidental_dignity_context {
@@ -320,12 +316,15 @@ fn summaries_match_conditions(
     if summaries.len() != conditions.len() {
         return false;
     }
-    summaries.iter().zip(conditions.iter()).all(|(summary, condition)| {
-        summary.condition_code == condition.condition_code
-            && summary.condition_family == condition.condition_family
-            && summary.polarity == condition.polarity
-            && (summary.strength_score - condition.strength_score).abs() <= SCORE_TOLERANCE
-    })
+    summaries
+        .iter()
+        .zip(conditions.iter())
+        .all(|(summary, condition)| {
+            summary.condition_code == condition.condition_code
+                && summary.condition_family == condition.condition_family
+                && summary.polarity == condition.polarity
+                && (summary.strength_score - condition.strength_score).abs() <= SCORE_TOLERANCE
+        })
 }
 
 fn overall_score_matches_deltas(
@@ -345,11 +344,7 @@ fn overall_score_matches_deltas(
     (evaluation.overall_score - expected).abs() <= SCORE_TOLERANCE
 }
 
-fn overall_polarity_matches_score(
-    payload: &BasicPayload,
-    score: f64,
-    polarity: &str,
-) -> bool {
+fn overall_polarity_matches_score(payload: &BasicPayload, score: f64, polarity: &str) -> bool {
     let Some(scoring) = payload.chart_context.accidental_scoring.as_ref() else {
         return false;
     };
