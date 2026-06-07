@@ -148,8 +148,13 @@ Durcissement real E2E period :
   doivent pas exposer `theme_code`, `evidence_key`, `period:`, `natal_`,
   `transit_exact`, `transit_active`, `moon_house_by_day` ou les codes tone
   internes (`focused`, `supportive`, `careful`, etc.) ;
-- `daily_timeline[].tone` reste present dans le contrat public, mais porte un
-  libelle utilisateur francais depuis `horoscope_tone_labels` ;
+- `daily_timeline[].tone` reste present dans le contrat public, mais porte
+  exclusivement un libelle utilisateur francais actif depuis
+  `horoscope_tone_labels`; les tons generes par le provider sont remplaces par
+  le label attendu du `daily_plan` correspondant ;
+- le service period Basic reel respecte les bornes du profil
+  `basic_standard` dans `horoscope_detail_profiles` : cible 800-1200 mots
+  publics, rejet sous `target_words_min` et au-dessus de `hard_limit_words` ;
 - les aspects period nommes sont limites a la bande maximale du referentiel
   `horoscope_orb_weight_bands` ; au-dela, le calculateur produit un fait de
   contexte non aspecte (`transit_context`) plutot qu'un aspect large ;
@@ -158,7 +163,8 @@ Durcissement real E2E period :
   `best_days` ;
 - `scripts/test_horoscope_basic_next_7_days_real_e2e.ps1` echoue si le
   calculateur ou le writer reste fake, si la timeline est repetitive ou si les
-  sections de domaine reutilisent toutes la meme preuve.
+  sections de domaine reutilisent toutes la meme preuve, si un tone public
+  n'est pas reference en DB ou si la longueur publique sort des bornes Basic.
 
 Les creneaux Premium sont construits en heure locale depuis `timezone`, puis
 chaque `reference_local_time` est converti en `reference_datetime_utc`. Certains

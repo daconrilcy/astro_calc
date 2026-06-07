@@ -300,6 +300,15 @@ if ([string]::IsNullOrWhiteSpace([string]$reading.quality.model)) {
     throw "Real period writer did not expose model"
 }
 
+$includedDates = New-Object System.Collections.Generic.HashSet[string]
+foreach ($date in @($interpretation.period_resolution.included_dates)) {
+    [void]$includedDates.Add([string]$date)
+}
+$allowedEvidenceKeys = New-Object System.Collections.Generic.HashSet[string]
+foreach ($evidence in @($interpretation.evidence)) {
+    [void]$allowedEvidenceKeys.Add([string]$evidence.evidence_key)
+}
+
 $validTensionDates = New-Object System.Collections.Generic.HashSet[string]
 foreach ($event in @($interpretation.period_events)) {
     $tone = [string]$event.tone
@@ -339,6 +348,22 @@ if ($validTensionDates.Count -gt 0) {
 }
 
 $forbiddenPublicPattern = "period:|natal_|fake_|theme_code|evidence_key|snapshot|transit_exact|transit_active|moon_house_by_day|organization|relationship|energy|clarity|integration|\bfocused\b|\bfocus\b|\bsupportive\b|\bcareful\b|\bactive\b|\bmixed\b|\bfluid\b|\btense\b"
+$toneLabelsPath = Join-Path $repoRoot "json_db\horoscope_tone_labels.json"
+$toneLabelsDoc = Get-Content -LiteralPath $toneLabelsPath -Raw | ConvertFrom-Json
+$allowedPublicTones = New-Object System.Collections.Generic.HashSet[string]
+foreach ($row in @($toneLabelsDoc.data)) {
+    if ($row.is_active -ne $false) {
+        [void]$allowedPublicTones.Add([string]$row.label_fr)
+    }
+}
+$detailProfilesPath = Join-Path $repoRoot "json_db\horoscope_detail_profiles.json"
+$detailProfilesDoc = Get-Content -LiteralPath $detailProfilesPath -Raw | ConvertFrom-Json
+$basicDetailProfile = @($detailProfilesDoc.data | Where-Object { $_.detail_profile_code -eq "basic_standard" -and $_.is_enabled -ne $false } | Select-Object -First 1)
+if (-not $basicDetailProfile) {
+    throw "Missing basic_standard in horoscope_detail_profiles.json"
+}
+$targetWordsMin = [int]$basicDetailProfile.target_words_min
+$hardLimitWords = [int]$basicDetailProfile.hard_limit_words
 $allPublicText = @(
     $reading.week_overview.title,
     $reading.week_overview.text,
@@ -354,6 +379,9 @@ foreach ($day in $reading.daily_timeline) {
     }
     if ([string]$day.tone -match "^(focused|focus|supportive|careful|active|mixed|fluid|tense)$") {
         throw "Real period reading day $($day.date) exposes internal tone code: $($day.tone)"
+    }
+    if (-not $allowedPublicTones.Contains([string]$day.tone)) {
+        throw "Real period reading day $($day.date) exposes tone outside horoscope_tone_labels: $($day.tone)"
     }
     $public = "$($day.day_label) $($day.theme) $($day.tone) $($day.text) $($day.advice)"
     if ($public -match $forbiddenPublicPattern -or $public -match "slot_|slot:|raw_transits") {
@@ -382,11 +410,21 @@ foreach ($marker in @($reading.key_days) + @($reading.best_days) + @($reading.wa
     $allPublicText += "$($marker.title) $($marker.reason)"
 }
 foreach ($evidence in @($reading.evidence_summary)) {
+    if (-not $includedDates.Contains([string]$evidence.date)) {
+        throw "Evidence summary date outside period: $($evidence.date)"
+    }
+    if (-not $allowedEvidenceKeys.Contains([string]$evidence.evidence_key)) {
+        throw "Evidence summary invented evidence_key: $($evidence.evidence_key)"
+    }
     $allPublicText += "$($evidence.label)"
 }
 $joinedPublicText = ($allPublicText -join "`n")
 if ($joinedPublicText -match $forbiddenPublicPattern -or $joinedPublicText -match "slot_|slot:|raw_transits") {
     throw "Technical code leaked in public period response"
+}
+$wordCount = @($joinedPublicText -split "\s+" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }).Count
+if ($wordCount -lt $targetWordsMin -or $wordCount -gt $hardLimitWords) {
+    throw "Real period public word count must be in [$targetWordsMin,$hardLimitWords], got $wordCount"
 }
 
 $stamp = Get-Date -Format "yyyyMMdd_HHmmss"

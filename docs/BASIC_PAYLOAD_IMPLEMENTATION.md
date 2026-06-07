@@ -30,9 +30,13 @@ dans `docs/HOROSCOPE_IMPLEMENTATION.md`; ce fichier ne duplique pas son contrat.
 Depuis le durcissement real E2E, ce service exige des champs UTC normalises,
 refuse les sources/provider fake dans le script reel et expose des libelles
 publics francais au lieu des `theme_code` internes. Les tonalites publiques
-viennent de `horoscope_tone_labels`, et les aspects period nommes sont bornes
-par le referentiel `horoscope_orb_weight_bands`; un aspect trop large devient un
-fait de contexte non aspecte.
+viennent exclusivement des labels actifs `horoscope_tone_labels` et sont
+reinjectees depuis les `daily_plans`, sans conserver les tons inventes par le
+provider. Les aspects period nommes sont bornes par le referentiel
+`horoscope_orb_weight_bands`; un aspect trop large devient un fait de contexte
+non aspecte. En E2E reel, la longueur publique respecte les bornes
+`target_words_min`, `target_words_max` et `hard_limit_words` du profil
+`basic_standard`.
 
 ## Objectif
 
