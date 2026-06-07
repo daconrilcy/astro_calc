@@ -77,8 +77,8 @@ try {
         }
     } else {
         Invoke-Step "Start existing containers" {
-            docker compose up -d
-            if ($LASTEXITCODE -ne 0) { throw "docker compose up -d failed" }
+            docker compose up -d --no-build
+            if ($LASTEXITCODE -ne 0) { throw "docker compose up -d --no-build failed" }
         }
     }
 

@@ -3317,7 +3317,8 @@ Durcissement Docker/import :
   `docker compose up -d --build`, import `json_db`, soumission catalogue,
   restart LLM API/worker, readiness HTTP, catalogue public et smoke jobs E2E.
   Options utiles : `-SkipBuild`, `-SkipImport`, `-SkipCatalogueSubmit`,
-  `-SkipSmoke`, `-RunRustChecks`.
+  `-SkipSmoke`, `-RunRustChecks`. Avec `-SkipBuild`, le demarrage passe par
+  `docker compose up -d --no-build` pour eviter un warning Compose parasite.
 
 ### Endpoints
 
@@ -3399,6 +3400,10 @@ Suite de validation dediee : `scripts/test_horoscope_premium_daily_all.ps1`
 regroupe les tests Rust du service, les contrats, les checks integration et le
 smoke HTTP fake Premium. Elle est appelee par
 `scripts/docker_update_integration_stack.ps1` pendant les smokes Docker.
+Le smoke fake Premium imprime un resume de succes plutot que le payload complet :
+le marqueur calculateur `FAKE_PREMIUM_LOCAL_DATA_STABLE_FOR_TESTS` reste une
+donnee de test voulue dans `calculation_warnings`, sans etre remonte comme une
+alerte de deroule.
 Le test E2E reel Docker dedie est
 `tests/e2e_real/04_horoscope_premium_daily.e2e.ps1` ; il couvre catalogue,
 contrat, schema, job async Premium, calcul local `timeline[12]`, `local_chart`,

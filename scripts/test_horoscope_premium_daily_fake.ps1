@@ -89,7 +89,14 @@ for ($i = 0; $i -lt 30; $i++) {
                 throw "Technical slot code leaked in premium timeline"
             }
         }
-        $status | ConvertTo-Json -Depth 20
+        [pscustomobject]@{
+            status         = $status.status
+            run_id         = $status.run_id
+            service_code   = $status.result.reading.service_code
+            timeline_count = @($status.result.reading.timeline).Count
+            best_slots     = @($status.result.reading.best_slots).Count
+            watch_slots    = @($status.result.reading.watch_slots).Count
+        } | ConvertTo-Json -Depth 4
         exit 0
     }
     if ($status.status -eq "failed" -or $status.status -eq "safety_rejected") {

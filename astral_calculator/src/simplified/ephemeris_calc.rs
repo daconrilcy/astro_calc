@@ -5,7 +5,7 @@ use std::sync::{Mutex, OnceLock};
 
 use chrono::{DateTime, Utc};
 
-use crate::facts::{normalize_degrees, zodiac_slot_for_longitude};
+use crate::facts::normalize_degrees;
 use crate::models::SignReference;
 use crate::runtime::RuntimeError;
 
@@ -34,6 +34,7 @@ pub fn sign_code_at_jd(
     swe_id: i32,
     signs: &[SignReference],
 ) -> Result<(String, f64), RuntimeError> {
+    use crate::facts::zodiac_slot_for_longitude;
     use swiss_eph::safe::{calc_ut, set_ephe_path, CalcFlags};
 
     let _guard = swiss_ephemeris_lock()
