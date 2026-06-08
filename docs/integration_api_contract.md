@@ -531,3 +531,84 @@ Erreurs possibles :
 `HOROSCOPE_PERIOD_TECHNICAL_CODE_LEAK`,
 `HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH`,
 `HOROSCOPE_PERIOD_EVIDENCE_MISSING`.
+
+### Service `horoscope_premium_next_7_days_natal`
+
+- `availability` : `beta`
+- `payload_contract` : `horoscope_period_natal_request_v1`
+- `calculation_output_contract` : `horoscope_period_calculation_response_v1`
+- `reading_output_contract` : `horoscope_period_response_v1`
+- `detail_profile_code` : `premium_rich`
+- `scan_profile_code` : `six_hour_7_days`
+- Endpoint : `POST /v1/jobs`
+
+Ce service est la version Premium V1 de l'horoscope des 7 prochains jours. Il
+reste natal, sans localisation obligatoire, et reutilise l'infrastructure async
+existante.
+
+Payload minimal :
+
+```json
+{
+  "service_code": "horoscope_premium_next_7_days_natal",
+  "payload": {
+    "anchor_date": "2026-06-07",
+    "timezone": "Europe/Paris",
+    "target_language": "fr",
+    "chart_calculation_id": "123",
+    "audience_level": "general"
+  }
+}
+```
+
+Regles publiques :
+
+- `chart_calculation_id`, `anchor_date`, `timezone` et `target_language` sont
+  obligatoires.
+- `birth_data` inline est refuse.
+- `period_profile_code`, `detail_profile_code` et `scan_profile_code` viennent
+  du catalogue service.
+- Le scan `six_hour_7_days` contient 28 snapshots : 00:00, 06:00, 12:00 et
+  18:00 pour chacune des 7 dates incluses.
+- `best_days` et `watch_days` designent des dates.
+- `best_windows` et `watch_windows` designent des plages horaires et doivent
+  referencer des `source_snapshot_keys` existants.
+- La reponse Premium contient `strategy`, 3 a 5 `domain_sections`, 7 entrees
+  `daily_timeline`, `best_windows`, `watch_windows` ou
+  `watch_summary.status = none`.
+- Le profil `premium_rich` vise 2200 mots et impose une limite dure de 3200 mots.
+
+Reponse abregee :
+
+```json
+{
+  "contract_version": "horoscope_period_response_v1",
+  "service_code": "horoscope_premium_next_7_days_natal",
+  "period_resolution": {},
+  "week_overview": {},
+  "key_days": [],
+  "best_days": [],
+  "watch_days": [],
+  "watch_summary": { "status": "active", "text": "...", "evidence_keys": [] },
+  "best_windows": [],
+  "watch_windows": [],
+  "daily_timeline": [],
+  "domain_sections": [],
+  "strategy": {},
+  "advice": {},
+  "evidence_summary": [],
+  "quality": {}
+}
+```
+
+Erreurs Premium possibles :
+
+`HOROSCOPE_PERIOD_PREMIUM_WINDOWS_MISSING`,
+`HOROSCOPE_PERIOD_PREMIUM_STRATEGY_MISSING`,
+`HOROSCOPE_PERIOD_PREMIUM_DOMAIN_DEPTH_MISSING`,
+`HOROSCOPE_PERIOD_PREMIUM_WINDOW_EVIDENCE_MISSING`,
+`HOROSCOPE_PERIOD_PREMIUM_WINDOW_OVERLAP`,
+`HOROSCOPE_PERIOD_PREMIUM_INSUFFICIENT_DETAIL`,
+`HOROSCOPE_PERIOD_TECHNICAL_CODE_LEAK`,
+`HOROSCOPE_PERIOD_INTERNAL_GUIDANCE_LEAK`,
+`HOROSCOPE_PERIOD_BROKEN_SENTENCE`.

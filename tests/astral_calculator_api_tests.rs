@@ -284,6 +284,34 @@ fn horoscope_period_calculator_request_normalizes_utc_fields() {
 }
 
 #[test]
+fn horoscope_period_calculator_response_keeps_canonical_utc_fields() {
+    let mut request = period_calculator_request();
+    request.period_resolution["start_datetime_utc"] =
+        serde_json::json!("2026-06-07T00:00:00+02:00");
+    request.period_resolution["end_datetime_utc"] = serde_json::json!("2026-06-14T00:00:00+02:00");
+    request.scan_plan.snapshots[0].reference_datetime_utc = "2026-06-07T12:00:00+02:00".to_string();
+
+    let response = calculate_horoscope_period_natal(request);
+
+    assert_eq!(
+        response.period_resolution["start_datetime_utc"],
+        serde_json::json!("2026-06-06T22:00:00+00:00")
+    );
+    assert_eq!(
+        response.period_resolution["end_datetime_utc"],
+        serde_json::json!("2026-06-13T22:00:00+00:00")
+    );
+    assert_eq!(
+        response.scan_plan.snapshots[0].reference_datetime_utc,
+        "2026-06-07T10:00:00+00:00"
+    );
+    assert_eq!(
+        response.snapshots[0].reference_datetime_utc,
+        "2026-06-07T10:00:00+00:00"
+    );
+}
+
+#[test]
 fn horoscope_period_calculator_request_rejects_duplicate_snapshot_keys() {
     let mut request = period_calculator_request();
     request.scan_plan.snapshots[1].snapshot_key =

@@ -424,6 +424,37 @@
         }
       },
       "sort_order": 230
+    },
+    {
+      "service_code": "horoscope_premium_next_7_days_natal",
+      "profile_code": "natal_premium",
+      "product_code": "horoscope",
+      "label_fr": "Horoscope premium 7 prochains jours",
+      "description_fr": "Horoscope de periode premium personnalise sur theme natal pour piloter les 7 prochains jours avec scan 6h, fenetres favorables, vigilance et strategie.",
+      "orchestration_mode": "horoscope_period_natal",
+      "calculation_mode": "none",
+      "service_request_contract": "integration_job_request_v1",
+      "payload_contract": "horoscope_period_natal_request_v1",
+      "service_response_contract": "integration_job_status_v1",
+      "calculation_output_contract": "horoscope_period_calculation_response_v1",
+      "reading_output_contract": "horoscope_period_response_v1",
+      "sync_endpoint": null,
+      "async_endpoint": "POST /v1/jobs",
+      "supports_async": true,
+      "supports_sync_legacy": false,
+      "supports_mercure": false,
+      "availability": "beta",
+      "example_request_json": {
+        "service_code": "horoscope_premium_next_7_days_natal",
+        "payload": {
+          "anchor_date": "2026-06-07",
+          "timezone": "Europe/Paris",
+          "target_language": "fr",
+          "chart_calculation_id": "123",
+          "audience_level": "general"
+        }
+      },
+      "sort_order": 240
     }
   ]
 }

@@ -154,6 +154,12 @@ try {
             Invoke-Step "Horoscope period real E2E" {
                 & (Join-Path $repoRoot "scripts\test_horoscope_basic_next_7_days_real_e2e.ps1") -BaseUrl $LlmUrl -CalculatorUrl $CalculatorUrl
             }
+            $premiumPeriodReal = Join-Path $repoRoot "scripts\test_horoscope_premium_next_7_days_real_e2e.ps1"
+            if (Test-Path -LiteralPath $premiumPeriodReal) {
+                Invoke-Step "Horoscope premium period real E2E" {
+                    & $premiumPeriodReal -BaseUrl $LlmUrl -CalculatorUrl $CalculatorUrl
+                }
+            }
         }
     }
 

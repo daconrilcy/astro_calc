@@ -27,6 +27,12 @@ que l'articulation historique avec le payload moteur natal/basic.
 
 Le service period `horoscope_basic_next_7_days_natal` est egalement documente
 dans `docs/HOROSCOPE_IMPLEMENTATION.md`; ce fichier ne duplique pas son contrat.
+
+La version Premium period `horoscope_premium_next_7_days_natal` est une extension
+du flux horoscope period, pas du payload route basic natal historique. Elle
+reutilise `horoscope_period_natal_request_v1`, impose ses profils depuis le
+catalogue (`premium_rich`, `six_hour_7_days`) et ajoute windows/strategy dans la
+couche application. Le calculateur continue de produire uniquement des faits.
 Depuis le durcissement real E2E, ce service exige des champs UTC normalises,
 refuse les sources/provider fake dans le script reel et expose des libelles
 publics francais au lieu des `theme_code` internes. Les tonalites publiques
@@ -3498,3 +3504,17 @@ Tests : `cargo test -p astral_time_window` ou
 `.\scripts\test_time_window_service.ps1`. Le script est aussi appele par
 `.\scripts\docker_update_integration_stack.ps1` dans la phase smoke, sauf avec
 `-SkipSmoke`.
+
+## E2E reel Premium period (2026-06-08)
+
+Le service `horoscope_premium_next_7_days_natal` dispose d'un script E2E reel
+dedie : `.\scripts\test_horoscope_premium_next_7_days_real_e2e.ps1`.
+
+Il soumet le service via `POST /v1/jobs`, verifie le provider LLM reel,
+l'absence de fallback, le scan `six_hour_7_days` a 28 snapshots, la timeline 7
+jours, `strategy`, 3 a 5 `domain_sections`, `best_windows` non vide,
+`watch_windows` coherentes avec `watch_summary`, les references
+`source_snapshot_keys`, les evidence publiques et la limite dure `premium_rich`.
+Le script est appele par `test_horoscope_premium_next_7_days_all.ps1`,
+`test_horoscope_period_all.ps1` et `docker_update_integration_stack.ps1` quand
+les options de reel period sont activees.

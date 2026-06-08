@@ -119,6 +119,7 @@ Respecter `poll_after_ms`. Statut terminal `completed` inclut `result` (envelopp
 | `natal_light`, `natal_premium`, `natal_premium_plus` | full natal | planned (activation progressive) |
 | `horoscope_premium_daily_local_2h_slots` | horoscope quotidien local 12 créneaux | **beta** |
 | `horoscope_basic_next_7_days_natal` | horoscope Basic des 7 prochains jours | **beta** |
+| `horoscope_premium_next_7_days_natal` | horoscope Premium des 7 prochains jours | **beta** |
 
 ### Horoscope Premium quotidien local
 
@@ -182,6 +183,40 @@ libelles publics francais. Les codes internes (`theme_code`, `period:`,
 `natal_`, `transit_exact`, `transit_active`, etc.) restent dans les payloads
 internes ou les champs de preuve, pas dans les textes publics.
 
+### Horoscope Premium 7 prochains jours
+
+Le service Premium period reutilise le meme payload public que le Basic period,
+mais le catalogue impose `detail_profile_code = premium_rich` et
+`scan_profile_code = six_hour_7_days`.
+
+```json
+{
+  "service_code": "horoscope_premium_next_7_days_natal",
+  "payload": {
+    "anchor_date": "2026-06-07",
+    "timezone": "Europe/Paris",
+    "target_language": "fr",
+    "chart_calculation_id": "123",
+    "audience_level": "general"
+  }
+}
+```
+
+Difference produit :
+
+| Basic period | Premium period |
+| --- | --- |
+| `daily_noon_7_days` | `six_hour_7_days` |
+| 7 snapshots | 28 snapshots |
+| `best_days` / `watch_days` | days + `best_windows` / `watch_windows` |
+| domaines synthetiques | 3 a 5 domaines enrichis |
+| conseil global | strategie de semaine |
+
+Chaque window Premium reference `source_snapshot_keys`. `best_days` et
+`watch_days` restent des dates globales ; `best_windows` et `watch_windows`
+localisent des plages horaires. Le profil `premium_rich` vise 2200 mots et
+bloque au-dela de 3200 mots.
+
 ## Mercure (optionnel)
 
 Si `supports_mercure: true` sur le service, s'abonner au topic :
@@ -211,6 +246,7 @@ Voir [contracts/README.md](../contracts/README.md) pour la matrice complète.
 | `test_natal_from_birth_e2e.ps1` | E2E full natal via jobs |
 | `test_horoscope_period_all.ps1` | Suite fake + contrats horoscope period |
 | `test_horoscope_basic_next_7_days_real_e2e.ps1` | E2E reel optionnel horoscope period |
+| `test_horoscope_premium_next_7_days_real_e2e.ps1` | E2E reel optionnel horoscope period Premium |
 
 ## Erreurs fréquentes
 

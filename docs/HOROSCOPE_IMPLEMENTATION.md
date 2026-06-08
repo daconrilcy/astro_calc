@@ -925,3 +925,37 @@ Refactor V1 applique :
 
 Plan et reviews :
 [`docs/reviews/horoscope_v1/INDEX.md`](reviews/horoscope_v1/INDEX.md).
+# Horoscope Premium next 7 days natal
+
+Le service `horoscope_premium_next_7_days_natal` etend le service period Basic
+sans nouvelle infrastructure async. Il reutilise `POST /v1/jobs`, le worker, le
+polling et le contrat public `horoscope_period_natal_request_v1`.
+
+Matrice period :
+
+| Service | Niveau | Detail | Scan | Sortie |
+| --- | --- | --- | --- | --- |
+| `horoscope_basic_next_7_days_natal` | basic | `basic_standard` | `daily_noon_7_days` | 7 jours, jours clefs, best/watch days |
+| `horoscope_premium_next_7_days_natal` | premium | `premium_rich` | `six_hour_7_days` | 7 jours, 28 snapshots, windows, strategy |
+
+`daily_noon_7_days` produit un snapshot quotidien a 12:00. `six_hour_7_days`
+produit quatre snapshots locaux par jour : 00:00, 06:00, 12:00 et 18:00, soit
+28 snapshots pour `next_7_days`. Les snapshots de 00:00 restent rattaches a la
+date locale meme si leur UTC tombe la veille.
+
+`best_days` et `watch_days` identifient des dates. `best_windows` et
+`watch_windows` identifient des plages horaires plus fines et doivent referencer
+au moins un `source_snapshot_key` existant dans `scan_plan.snapshots`.
+
+Le profil `premium_rich` vise 2200 mots et impose une limite dure a 3200 mots.
+La reponse Premium doit contenir `strategy`, `best_windows`, `watch_windows` ou
+`watch_summary.status = none`, exactement 7 entrees `daily_timeline`, 3 a 5
+`domain_sections`, `advice`, `evidence_summary` et `quality`.
+
+Non-objectifs V1 : pas de service local obligatoire, pas de nouveau worker, pas
+de nouvel endpoint, pas de nouvelle table jobs, pas de progressions, pas de
+revolutions solaires, pas d'aspects mineurs et pas de prediction fataliste.
+
+Le calculateur period produit uniquement les faits : snapshots, contexte lunaire,
+transits, aspects du ciel courant, activations et warnings. Les fenetres, domaines,
+conseils, strategy et scores editoriaux sont construits dans la couche application.

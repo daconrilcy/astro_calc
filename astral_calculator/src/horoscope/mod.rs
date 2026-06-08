@@ -10,6 +10,8 @@ pub const HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE: &str =
     "horoscope_premium_daily_local_2h_slots";
 pub const HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE: &str =
     "horoscope_basic_next_7_days_natal";
+pub const HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE: &str =
+    "horoscope_premium_next_7_days_natal";
 const HOROSCOPE_ORB_WEIGHT_BANDS_JSON: &str =
     include_str!("../../../json_db/horoscope_orb_weight_bands.json");
 
@@ -260,6 +262,9 @@ pub fn calculate_horoscope_period_natal_from_transits(
     natal_positions: &[ObjectPositionFact],
     transit_snapshots: &[(String, Vec<ObjectPositionFact>)],
 ) -> HoroscopePeriodCalculationResponse {
+    let request = normalize_horoscope_period_request_utc(request).unwrap_or_else(|request| {
+        panic!("invalid horoscope period calculation request: {request}")
+    });
     let usable_positions = natal_positions
         .iter()
         .filter(|position| {

@@ -17,6 +17,14 @@
       "expected_snapshots_per_day": 1,
       "is_enabled": true,
       "sort_order": 10
+    },
+    {
+      "scan_profile_code": "six_hour_7_days",
+      "granularity": "six_hour",
+      "reference_time_local": "00:00,06:00,12:00,18:00",
+      "expected_snapshots_per_day": 4,
+      "is_enabled": true,
+      "sort_order": 20
     }
   ]
 }

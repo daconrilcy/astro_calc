@@ -26,6 +26,8 @@ pub const HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE: &str =
     "horoscope_premium_daily_local_2h_slots";
 pub const HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE: &str =
     "horoscope_basic_next_7_days_natal";
+pub const HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE: &str =
+    "horoscope_premium_next_7_days_natal";
 pub const HOROSCOPE_SERVICE_CODE: &str = HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE;
 
 const SERVICES_JSON: &str = include_str!("../../../../../json_db/horoscope_services.json");
@@ -68,6 +70,8 @@ const RESPONSE_SCHEMA_JSON: &str =
     include_str!("../../../../../contracts/llm/horoscope_response_v1.schema.json");
 const PERIOD_PROFILES_JSON: &str =
     include_str!("../../../../../json_db/astral_time_period_profiles.json");
+const SCAN_PROFILES_JSON: &str =
+    include_str!("../../../../../json_db/horoscope_scan_profiles.json");
 const PERIOD_INTERPRETATION_REQUEST_SCHEMA_JSON: &str = include_str!(
     "../../../../../contracts/llm/horoscope_period_interpretation_request_v1.schema.json"
 );
@@ -198,12 +202,15 @@ impl HoroscopePremiumDailyLocalOrchestrator {
 
 impl HoroscopePeriodNatalOrchestrator {
     pub async fn execute(
+        service_code: &str,
         calculator: &astral_llm_infra::CalculatorClient,
         use_case: &GenerateReadingUseCase,
         payload: &Value,
     ) -> Result<serde_json::Value, GenerationError> {
+        validate_period_service_code(service_code)?;
         let public = validate_period_public_request(payload)?;
-        let calculation_request = build_period_calculation_request(&public)?;
+        let calculation_request =
+            build_period_calculation_request_for_service(service_code, &public)?;
         let calculation = calculator
             .calculate_horoscope_period_natal(&calculation_request)
             .await
@@ -337,12 +344,30 @@ pub fn validate_period_public_request(
 pub fn build_period_calculation_request(
     public: &HoroscopePeriodPublicRequest,
 ) -> Result<Value, GenerationError> {
+    build_period_calculation_request_for_service(
+        HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+        public,
+    )
+}
+
+pub fn build_period_calculation_request_for_service(
+    service_code: &str,
+    public: &HoroscopePeriodPublicRequest,
+) -> Result<Value, GenerationError> {
+    validate_period_service_code(service_code)?;
+    let profile = period_service_profile(service_code)?;
     let period_resolution = resolve_period(public)?;
-    let scan_plan = build_scan_plan(&period_resolution)?;
+    let scan_plan = build_scan_plan(
+        &period_resolution,
+        profile
+            .scan_profile_code
+            .as_deref()
+            .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"))?,
+    )?;
     validate_scan_plan(&period_resolution, &scan_plan)?;
     Ok(json!({
         "contract_version": "horoscope_period_calculation_request_v1",
-        "service_code": HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+        "service_code": service_code,
         "chart_calculation_id": public.chart_calculation_id,
         "period_resolution": period_resolution,
         "scan_plan": scan_plan
@@ -409,7 +434,11 @@ fn resolve_period(public: &HoroscopePeriodPublicRequest) -> Result<Value, Genera
     }))
 }
 
-fn build_scan_plan(period_resolution: &Value) -> Result<Value, GenerationError> {
+fn build_scan_plan(
+    period_resolution: &Value,
+    scan_profile_code: &str,
+) -> Result<Value, GenerationError> {
+    let scan_profile = scan_profile(scan_profile_code)?;
     let tz = period_resolution["timezone"]
         .as_str()
         .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH"))?
@@ -418,29 +447,42 @@ fn build_scan_plan(period_resolution: &Value) -> Result<Value, GenerationError> 
     let dates = period_resolution["included_dates"]
         .as_array()
         .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH"))?;
-    let noon = NaiveTime::from_hms_opt(12, 0, 0).expect("noon is valid");
-    let snapshots = dates
-        .iter()
-        .map(|value| {
-            let date = value
-                .as_str()
-                .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH"))?;
-            let parsed = NaiveDate::parse_from_str(date, "%Y-%m-%d")
-                .map_err(|_| horoscope_error("HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH"))?;
-            let local = parsed.and_time(noon);
+    let reference_times = scan_profile.reference_times()?;
+    let mut snapshots = Vec::new();
+    for value in dates {
+        let date = value
+            .as_str()
+            .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH"))?;
+        let parsed = NaiveDate::parse_from_str(date, "%Y-%m-%d")
+            .map_err(|_| horoscope_error("HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH"))?;
+        for time in &reference_times {
+            let local = parsed.and_time(*time);
             let utc = local_to_utc(tz, local)?;
-            Ok(json!({
-                "snapshot_key": format!("{date}:noon"),
+            let time_label = time.format("%H:%M").to_string();
+            let key_suffix = if scan_profile_code == "daily_noon_7_days" {
+                "noon".to_string()
+            } else {
+                time_label.clone()
+            };
+            snapshots.push(json!({
+                "snapshot_key": format!("{date}:{key_suffix}"),
                 "date": date,
-                "reference_time_local": "12:00",
+                "reference_time_local": time_label,
                 "reference_datetime_local": local.format("%Y-%m-%dT%H:%M:%S").to_string(),
                 "reference_datetime_utc": utc
-            }))
-        })
-        .collect::<Result<Vec<_>, GenerationError>>()?;
+            }));
+        }
+    }
+    let duration_days = period_resolution["duration_days"]
+        .as_u64()
+        .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH"))?
+        as usize;
+    if snapshots.len() != duration_days * scan_profile.expected_snapshots_per_day {
+        return Err(horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"));
+    }
     Ok(json!({
-        "scan_profile_code": "daily_noon_7_days",
-        "granularity": "daily_noon",
+        "scan_profile_code": scan_profile_code,
+        "granularity": scan_profile.granularity,
         "snapshot_count": snapshots.len(),
         "snapshots": snapshots
     }))
@@ -460,15 +502,26 @@ pub fn validate_scan_plan(
         .map_err(|_| horoscope_error("HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH"))?;
     let end = chrono::DateTime::parse_from_rfc3339(end)
         .map_err(|_| horoscope_error("HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH"))?;
+    require_canonical_utc_offset(
+        period_resolution["start_datetime_utc"]
+            .as_str()
+            .unwrap_or(""),
+    )?;
+    require_canonical_utc_offset(period_resolution["end_datetime_utc"].as_str().unwrap_or(""))?;
     let included = period_resolution["included_dates"]
         .as_array()
         .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH"))?;
     let snapshots = scan_plan["snapshots"]
         .as_array()
         .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"))?;
-    if scan_plan["snapshot_count"].as_u64() != Some(snapshots.len() as u64)
-        || snapshots.len() != included.len()
-    {
+    if scan_plan["snapshot_count"].as_u64() != Some(snapshots.len() as u64) {
+        return Err(horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"));
+    }
+    let scan_profile_code = scan_plan["scan_profile_code"]
+        .as_str()
+        .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"))?;
+    let scan_profile = scan_profile(scan_profile_code)?;
+    if snapshots.len() != included.len() * scan_profile.expected_snapshots_per_day {
         return Err(horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"));
     }
     let mut keys = HashSet::new();
@@ -487,6 +540,7 @@ pub fn validate_scan_plan(
         let utc = snapshot["reference_datetime_utc"]
             .as_str()
             .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"))?;
+        require_canonical_utc_offset(utc)?;
         let utc = chrono::DateTime::parse_from_rfc3339(utc)
             .map_err(|_| horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"))?;
         if utc < start || utc >= end {
@@ -497,6 +551,15 @@ pub fn validate_scan_plan(
         if !dates.contains(date) {
             return Err(horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"));
         }
+    }
+    Ok(())
+}
+
+fn require_canonical_utc_offset(raw: &str) -> Result<(), GenerationError> {
+    let parsed = chrono::DateTime::parse_from_rfc3339(raw)
+        .map_err(|_| horoscope_error("HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH"))?;
+    if parsed.with_timezone(&chrono::Utc).to_rfc3339() != raw {
+        return Err(horoscope_error("HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH"));
     }
     Ok(())
 }
@@ -733,6 +796,17 @@ pub fn build_period_interpretation_request(
     public: &HoroscopePeriodPublicRequest,
     calculation: &Value,
 ) -> Result<Value, GenerationError> {
+    let service_code = calculation
+        .get("service_code")
+        .and_then(Value::as_str)
+        .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_CALCULATION_FAILED"))?;
+    validate_period_service_code(service_code)?;
+    let service_profile = period_service_profile(service_code)?;
+    let detail_profile_code = service_profile
+        .detail_profile_code
+        .as_deref()
+        .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_PROFILE_UNSUPPORTED"))?;
+    let detail = period_detail_profile(detail_profile_code)?;
     let period_resolution = calculation
         .get("period_resolution")
         .cloned()
@@ -754,34 +828,67 @@ pub fn build_period_interpretation_request(
         .flatten()
         .filter_map(|value| value.as_str().map(str::to_string))
         .collect::<Vec<_>>();
-    if snapshots.len() != 7 || included_dates.len() != 7 {
+    if included_dates.len() != 7 {
+        return Err(horoscope_error("HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH"));
+    }
+    let scan_profile_code = scan_plan["scan_profile_code"]
+        .as_str()
+        .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"))?;
+    let scan_profile = scan_profile(scan_profile_code)?;
+    if snapshots.len() != included_dates.len() * scan_profile.expected_snapshots_per_day {
         return Err(horoscope_error("HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH"));
     }
 
-    let evidence = period_evidence_from_snapshots(snapshots)?;
+    let evidence = period_evidence_from_snapshots(snapshots)?
+        .into_iter()
+        .take(detail.max_evidence)
+        .collect::<Vec<_>>();
     if evidence.is_empty() {
         return Err(horoscope_error("HOROSCOPE_PERIOD_EVIDENCE_MISSING"));
     }
     let events = build_period_events(&evidence, &period_resolution)?;
     let daily_plans = build_daily_plans(&included_dates, &events)?;
-    let key_days = build_period_key_day_markers(&events);
+    let key_days = build_period_key_day_markers(&events, detail.max_key_days);
     let key_dates = key_days
         .iter()
         .filter_map(|day| day.get("date").and_then(Value::as_str).map(str::to_string))
         .collect::<HashSet<_>>();
-    let watch_days = build_period_watch_day_markers(&events);
+    let watch_days = build_period_watch_day_markers(&events, detail.max_watch_days);
     let watch_dates = watch_days
         .iter()
         .filter_map(|day| day.get("date").and_then(Value::as_str).map(str::to_string))
         .collect::<HashSet<_>>();
-    let best_days = build_period_best_day_markers(&events, &watch_dates, &key_dates);
+    let best_days =
+        build_period_best_day_markers(&events, &watch_dates, &key_dates, detail.max_best_days);
     let watch_summary_plan = build_period_watch_summary_plan(&watch_days);
-    let request = json!({
+    let best_windows = if is_premium_period_service(service_code) {
+        build_period_best_windows(&events, &scan_plan, detail.max_best_windows)
+    } else {
+        Vec::new()
+    };
+    let watch_windows = if is_premium_period_service(service_code) {
+        build_period_watch_windows(&events, &scan_plan, &best_windows, detail.max_watch_windows)
+    } else {
+        Vec::new()
+    };
+    let strategy = if is_premium_period_service(service_code) {
+        json!({
+            "title": "Stratégie de semaine",
+            "focus": "Utiliser les fenêtres favorables pour agir court, les fenêtres de vigilance pour ralentir, puis consolider les décisions utiles.",
+            "best_use": "Réserver les créneaux soutenants aux échanges, décisions et actions concrètes.",
+            "recovery": "Préserver des temps de recul après les moments plus réactifs.",
+            "evidence_keys": evidence.iter().take(4).filter_map(|item| item["evidence_key"].as_str()).collect::<Vec<_>>()
+        })
+    } else {
+        Value::Null
+    };
+    let mut request = json!({
         "contract_version": "horoscope_period_interpretation_request_v1",
-        "service_code": HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+        "service_code": service_code,
         "period_resolution": period_resolution,
         "scan_plan": scan_plan,
         "target_language": public.target_language,
+        "detail_profile_code": detail_profile_code,
         "week_overview_plan": {
             "dominant_theme": events.first().and_then(|event| event["theme_code"].as_str()).unwrap_or("weekly_focus"),
             "tone": events.first().and_then(|event| event["tone"].as_str()).unwrap_or("constructive"),
@@ -789,15 +896,21 @@ pub fn build_period_interpretation_request(
             "evidence_keys": evidence.iter().take(4).filter_map(|item| item["evidence_key"].as_str()).collect::<Vec<_>>()
         },
         "period_events": events.clone(),
-        "main_events": events.iter().take(8).cloned().collect::<Vec<_>>(),
+        "main_events": events.iter().take(detail.max_main_events).cloned().collect::<Vec<_>>(),
         "key_days": key_days,
         "best_days": best_days,
         "watch_days": watch_days,
         "watch_summary_plan": watch_summary_plan,
         "daily_plans": daily_plans,
-        "domain_sections": build_period_domain_sections(&evidence),
-        "evidence": evidence.into_iter().take(20).collect::<Vec<_>>()
+        "domain_sections": build_period_domain_sections(&evidence, detail.max_domain_sections),
+        "evidence": evidence
     });
+    if is_premium_period_service(service_code) {
+        request["best_windows"] = json!(best_windows);
+        request["watch_windows"] = json!(watch_windows);
+        request["strategy"] = strategy;
+        request["premium_scores"] = json!(build_period_premium_scores(&request));
+    }
     validate_period_interpretation_request_schema(&request)?;
     Ok(request)
 }
@@ -853,6 +966,7 @@ fn period_evidence_from_snapshots(snapshots: &[Value]) -> Result<Vec<Value>, Gen
             out.push(json!({
                 "evidence_key": key,
                 "date": date,
+                "snapshot_key": snapshot["snapshot_key"].as_str().unwrap_or(""),
                 "fact_type": fact_type,
                 "source": fact["source"].as_str().unwrap_or("calculator"),
                 "transiting_object": object,
@@ -923,6 +1037,7 @@ fn build_period_events(
             "event_key": format!("event:{evidence_key}"),
             "event_type": event_type,
             "date": date,
+            "snapshot_key": item.get("snapshot_key").cloned().unwrap_or(Value::Null),
             "theme_code": item["theme_code"],
             "tone": item["tone"],
             "aspect": item.get("aspect").cloned().unwrap_or(Value::Null),
@@ -944,13 +1059,11 @@ fn build_daily_plans(
     events: &[Value],
 ) -> Result<Vec<Value>, GenerationError> {
     let mut out = Vec::new();
+    let mut theme_counts = HashMap::<String, usize>::new();
     for date in included_dates {
-        let event = events
-            .iter()
-            .find(|event| event["date"].as_str() == Some(date.as_str()))
-            .or_else(|| events.first())
-            .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_EVIDENCE_MISSING"))?;
+        let event = select_daily_plan_event(date, events, &theme_counts)?;
         let theme = event["theme_code"].as_str().unwrap_or("organization");
+        *theme_counts.entry(theme.to_string()).or_default() += 1;
         let theme_label = period_theme_public_label(theme);
         let tone = event["tone"].as_str().unwrap_or("focused");
         let evidence_keys = event["evidence_keys"].clone();
@@ -979,6 +1092,42 @@ fn build_daily_plans(
         }));
     }
     Ok(out)
+}
+
+fn select_daily_plan_event<'a>(
+    date: &str,
+    events: &'a [Value],
+    theme_counts: &HashMap<String, usize>,
+) -> Result<&'a Value, GenerationError> {
+    let candidates = events
+        .iter()
+        .filter(|event| event["date"].as_str() == Some(date))
+        .collect::<Vec<_>>();
+    let candidates = if candidates.is_empty() {
+        events.iter().collect::<Vec<_>>()
+    } else {
+        candidates
+    };
+    let best = candidates
+        .iter()
+        .copied()
+        .min_by(|left, right| period_event_sort(left, right))
+        .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_EVIDENCE_MISSING"))?;
+    let Some(best_theme) = best["theme_code"].as_str() else {
+        return Ok(best);
+    };
+    if theme_counts.get(best_theme).copied().unwrap_or(0) < 5 {
+        return Ok(best);
+    }
+    Ok(candidates
+        .iter()
+        .copied()
+        .filter(|event| {
+            let theme = event["theme_code"].as_str().unwrap_or("");
+            theme != best_theme && theme_counts.get(theme).copied().unwrap_or(0) < 5
+        })
+        .min_by(|left, right| period_event_sort(left, right))
+        .unwrap_or(best))
 }
 
 fn period_internal_tone(theme: &str, fact_type: &str, aspect: Option<&str>) -> &'static str {
@@ -1043,7 +1192,7 @@ fn is_period_watch_event(event: &Value) -> bool {
     tone == Some("careful") || matches!(aspect, Some("square") | Some("opposition"))
 }
 
-fn build_period_key_day_markers(events: &[Value]) -> Vec<Value> {
+fn build_period_key_day_markers(events: &[Value], limit: usize) -> Vec<Value> {
     let Some(top_score) = events.first().and_then(|event| event["score"].as_f64()) else {
         return Vec::new();
     };
@@ -1078,7 +1227,7 @@ fn build_period_key_day_markers(events: &[Value]) -> Vec<Value> {
                     .cmp(right["date"].as_str().unwrap_or(""))
             })
     });
-    build_period_day_markers_from_events(&candidates, 2, "Jour clé", None, None)
+    build_period_day_markers_from_events(&candidates, limit, "Jour clé", None, None)
 }
 
 fn build_period_day_markers_from_events(
@@ -1122,8 +1271,10 @@ fn build_period_best_day_markers(
     events: &[Value],
     watch_dates: &HashSet<String>,
     key_dates: &HashSet<String>,
+    limit: usize,
 ) -> Vec<Value> {
     let mut used_themes = HashSet::new();
+    let mut used_dates = HashSet::new();
     let mut out = Vec::new();
     for event in events {
         let date = event["date"].as_str().unwrap_or("");
@@ -1131,6 +1282,7 @@ fn build_period_best_day_markers(
         if watch_dates.contains(date)
             || key_dates.contains(date)
             || is_period_watch_event(event)
+            || !used_dates.insert(date.to_string())
             || !used_themes.insert(theme.to_string())
         {
             continue;
@@ -1140,20 +1292,26 @@ fn build_period_best_day_markers(
             period_best_day_title(theme),
             None,
         ));
-        if out.len() == 2 {
+        if out.len() == limit {
             break;
         }
     }
     out
 }
 
-fn build_period_watch_day_markers(events: &[Value]) -> Vec<Value> {
+fn build_period_watch_day_markers(events: &[Value], limit: usize) -> Vec<Value> {
     let tension_candidates = events
         .iter()
         .filter(|event| is_period_watch_event(event))
         .cloned()
         .collect::<Vec<_>>();
-    build_period_day_markers_from_events(&tension_candidates, 2, "Jour de vigilance", None, None)
+    build_period_day_markers_from_events(
+        &tension_candidates,
+        limit,
+        "Jour de vigilance",
+        None,
+        None,
+    )
 }
 
 fn build_period_watch_summary_plan(watch_days: &[Value]) -> Value {
@@ -1173,6 +1331,246 @@ fn build_period_watch_summary_plan(watch_days: &[Value]) -> Value {
             .filter_map(Value::as_str)
             .collect::<Vec<_>>()
     })
+}
+
+fn build_period_best_windows(events: &[Value], scan_plan: &Value, limit: usize) -> Vec<Value> {
+    let snapshot_keys = scan_plan_snapshot_keys_by_date(scan_plan);
+    let mut out = Vec::new();
+    for event in events.iter().filter(|event| !is_period_watch_event(event)) {
+        let Some(window) = build_period_window(event, &snapshot_keys, false) else {
+            continue;
+        };
+        out.push(window);
+        if out.len() == limit {
+            break;
+        }
+    }
+    out
+}
+
+fn build_period_watch_windows(
+    events: &[Value],
+    scan_plan: &Value,
+    best_windows: &[Value],
+    limit: usize,
+) -> Vec<Value> {
+    let snapshot_keys = scan_plan_snapshot_keys_by_date(scan_plan);
+    let best_keys = best_windows
+        .iter()
+        .flat_map(|window| {
+            window["source_snapshot_keys"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+        })
+        .collect::<HashSet<_>>();
+    let mut out = Vec::new();
+    for event in events.iter().filter(|event| is_period_watch_event(event)) {
+        let Some(window) = build_period_window(event, &snapshot_keys, true) else {
+            continue;
+        };
+        let overlaps_best = window["source_snapshot_keys"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .any(|key| best_keys.contains(key));
+        if overlaps_best {
+            continue;
+        }
+        out.push(window);
+        if out.len() == limit {
+            break;
+        }
+    }
+    out
+}
+
+fn build_period_window(
+    event: &Value,
+    snapshot_keys: &HashMap<String, Vec<(String, String)>>,
+    watch: bool,
+) -> Option<Value> {
+    let date = event["date"].as_str()?;
+    let snapshots = snapshot_keys.get(date)?;
+    let event_snapshot = event
+        .get("snapshot_key")
+        .and_then(Value::as_str)
+        .and_then(|key| {
+            snapshots
+                .iter()
+                .position(|(_, snapshot_key)| snapshot_key == key)
+        })
+        .unwrap_or(0);
+    let (start_label, snapshot_key) = snapshots.get(event_snapshot)?.clone();
+    let end_label = snapshots
+        .get(event_snapshot + 1)
+        .map(|(time, _)| time.clone())
+        .unwrap_or_else(|| "00:00".to_string());
+    let theme = event["theme_code"].as_str().unwrap_or("organization");
+    let tone = event["tone"].as_str().unwrap_or("focused");
+    let evidence_keys = event["evidence_keys"].clone();
+    if watch {
+        Some(json!({
+            "date": date,
+            "time_range_label": format!("{start_label}–{end_label}"),
+            "source_snapshot_keys": [snapshot_key],
+            "title": period_watch_window_title(theme),
+            "theme": period_theme_public_label(theme),
+            "tone": period_tone_public_label(tone),
+            "watch_point": period_watch_window_point(theme),
+            "evidence_keys": evidence_keys
+        }))
+    } else {
+        Some(json!({
+            "date": date,
+            "time_range_label": format!("{start_label}–{end_label}"),
+            "source_snapshot_keys": [snapshot_key],
+            "title": period_best_window_title(theme),
+            "theme": period_theme_public_label(theme),
+            "tone": period_tone_public_label(tone),
+            "reason": period_best_window_reason(theme),
+            "best_for": period_best_window_best_for(theme),
+            "evidence_keys": evidence_keys
+        }))
+    }
+}
+
+fn scan_plan_snapshot_keys_by_date(scan_plan: &Value) -> HashMap<String, Vec<(String, String)>> {
+    let mut by_date: HashMap<String, Vec<(String, String)>> = HashMap::new();
+    for snapshot in scan_plan["snapshots"].as_array().into_iter().flatten() {
+        let Some(date) = snapshot["date"].as_str() else {
+            continue;
+        };
+        let time = snapshot["reference_time_local"]
+            .as_str()
+            .unwrap_or("12:00")
+            .to_string();
+        let key = snapshot["snapshot_key"].as_str().unwrap_or("").to_string();
+        by_date
+            .entry(date.to_string())
+            .or_default()
+            .push((time, key));
+    }
+    for items in by_date.values_mut() {
+        items.sort_by(|left, right| left.0.cmp(&right.0));
+    }
+    by_date
+}
+
+fn period_best_window_title(theme: &str) -> &'static str {
+    match theme {
+        "relationship" => "Fenêtre favorable aux échanges",
+        "energy" => "Énergie utile pour agir",
+        "communication" => "Créneau clair pour formuler",
+        "clarity" => "Fenêtre de décision simple",
+        "integration" => "Moment favorable pour consolider",
+        _ => "Fenêtre favorable",
+    }
+}
+
+fn period_watch_window_title(theme: &str) -> &'static str {
+    match theme {
+        "communication" => "Attention aux réponses trop rapides",
+        "energy" => "Canaliser la réaction",
+        "relationship" => "Vigilance relationnelle",
+        "clarity" => "Ne pas conclure trop vite",
+        _ => "Fenêtre de vigilance",
+    }
+}
+
+fn period_best_window_reason(theme: &str) -> &'static str {
+    match theme {
+        "relationship" => "Le signal soutient un échange plus simple et mieux ajusté.",
+        "energy" => "Le signal aide à transformer l'élan en action courte.",
+        "communication" => "Le signal favorise une formulation plus nette.",
+        "clarity" => "Le signal aide à trier et décider sans disperser l'attention.",
+        "integration" => "Le signal soutient la consolidation de ce qui a déjà été compris.",
+        _ => "Le signal offre un appui concret dans la trajectoire de semaine.",
+    }
+}
+
+fn period_watch_window_point(theme: &str) -> &'static str {
+    match theme {
+        "communication" => "Éviter de répondre trop vite si l'échange devient tendu.",
+        "energy" => "Ralentir avant d'agir sous impulsion.",
+        "relationship" => "Ne pas surinterpréter une réaction ou un silence.",
+        "clarity" => "Reporter une conclusion si les informations restent incomplètes.",
+        _ => "Garder une marge avant de transformer le signal en décision définitive.",
+    }
+}
+
+fn period_best_window_best_for(theme: &str) -> Vec<&'static str> {
+    match theme {
+        "relationship" => vec![
+            "ouvrir un échange utile",
+            "clarifier une attente",
+            "réparer un malentendu simple",
+        ],
+        "energy" => vec![
+            "lancer une action courte",
+            "débloquer une décision pratique",
+            "poser une limite concrète",
+        ],
+        "communication" => vec![
+            "envoyer un message clair",
+            "préparer une réponse",
+            "nommer une priorité",
+        ],
+        "clarity" => vec![
+            "trier les options",
+            "choisir une suite simple",
+            "mettre à jour une priorité",
+        ],
+        _ => vec![
+            "consolider une avancée",
+            "revenir à l'essentiel",
+            "stabiliser une décision",
+        ],
+    }
+}
+
+fn build_period_premium_scores(request: &Value) -> Value {
+    let events = request["period_events"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    let event_score = events
+        .first()
+        .and_then(|event| event["score"].as_f64())
+        .unwrap_or(0.0);
+    let tension_score = events
+        .iter()
+        .filter(|event| is_period_watch_event(event))
+        .filter_map(|event| event["score"].as_f64())
+        .fold(0.0, f64::max);
+    let support_score = events
+        .iter()
+        .filter(|event| !is_period_watch_event(event))
+        .filter_map(|event| event["score"].as_f64())
+        .fold(0.0, f64::max);
+    json!({
+        "event_score": round2(event_score),
+        "day_score": round2(event_score * 0.92),
+        "window_score": round2(support_score.max(tension_score) * 0.95),
+        "domain_score": round2((events.len() as f64 / 28.0).min(1.0)),
+        "tension_score": round2(tension_score),
+        "support_score": round2(support_score),
+        "clarity_score": round2(period_theme_score(&events, "clarity")),
+        "relationship_score": round2(period_theme_score(&events, "relationship")),
+        "energy_score": round2(period_theme_score(&events, "energy")),
+        "decision_score": round2(period_theme_score(&events, "communication").max(period_theme_score(&events, "clarity"))),
+        "integration_score": round2(period_theme_score(&events, "integration"))
+    })
+}
+
+fn period_theme_score(events: &[Value], theme: &str) -> f64 {
+    events
+        .iter()
+        .filter(|event| event["theme_code"].as_str() == Some(theme))
+        .filter_map(|event| event["score"].as_f64())
+        .fold(0.0, f64::max)
 }
 
 fn build_period_marker(event: &Value, title: &str, fallback_reason: Option<&str>) -> Value {
@@ -1215,7 +1613,7 @@ fn period_theme_counts(events: &[Value]) -> HashMap<&str, usize> {
         })
 }
 
-fn build_period_domain_sections(evidence: &[Value]) -> Vec<Value> {
+fn build_period_domain_sections(evidence: &[Value], max_sections: usize) -> Vec<Value> {
     let mut by_theme: HashMap<String, Vec<&Value>> = HashMap::new();
     for item in evidence {
         let theme = item["theme_code"].as_str().unwrap_or("organization");
@@ -1242,7 +1640,7 @@ fn build_period_domain_sections(evidence: &[Value]) -> Vec<Value> {
     });
     themes
         .into_iter()
-        .take(4)
+        .take(max_sections)
         .map(|(theme, items, _)| {
             let first = items.first().copied().unwrap_or(&Value::Null);
             let evidence_keys = items
@@ -1276,26 +1674,23 @@ async fn period_writer_response(
         return fake_period_writer_response(request);
     }
 
-    let schema: Value = serde_json::from_str(PERIOD_RESPONSE_SCHEMA_JSON).map_err(|err| {
-        GenerationError::with_details(
-            GenerationErrorCode::SchemaValidationFailed,
-            format!("HOROSCOPE_PERIOD_RESPONSE_INVALID: {err}"),
-            Value::Null,
-        )
-    })?;
+    let schema = period_response_provider_schema(request)?;
     let provider_request = ProviderGenerationRequest {
         model: defaults.model.clone(),
         messages: period_writer_messages(request)?,
         structured_schema: Some(schema),
         reasoning_effort: None,
         temperature: Some(0.4),
-        max_output_tokens: Some(period_writer_max_output_tokens()),
+        max_output_tokens: Some(period_writer_max_output_tokens(request)),
         safety_mode: SafetyMode::PlatformRulesOnly,
         timeout: StdDuration::from_secs(180),
         metadata: GenerationMetadata {
             run_id: uuid::Uuid::new_v4().to_string(),
             request_id: None,
-            product_code: HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE.to_string(),
+            product_code: request["service_code"]
+                .as_str()
+                .unwrap_or(HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE)
+                .to_string(),
             chapter_code: None,
         },
     };
@@ -1347,6 +1742,38 @@ async fn period_writer_response(
     repair_period_response_shape(request, &mut response);
     normalize_period_public_tones(request, &mut response);
     Ok(response)
+}
+
+#[doc(hidden)]
+pub fn period_response_provider_schema(request: &Value) -> Result<Value, GenerationError> {
+    let mut schema: Value = serde_json::from_str(PERIOD_RESPONSE_SCHEMA_JSON).map_err(|err| {
+        GenerationError::with_details(
+            GenerationErrorCode::SchemaValidationFailed,
+            format!("HOROSCOPE_PERIOD_RESPONSE_INVALID: {err}"),
+            Value::Null,
+        )
+    })?;
+    let premium = is_premium_period_request(request);
+    let properties = schema
+        .get_mut("properties")
+        .and_then(Value::as_object_mut)
+        .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_RESPONSE_INVALID"))?;
+    if premium {
+        let required = schema
+            .get_mut("required")
+            .and_then(Value::as_array_mut)
+            .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_RESPONSE_INVALID"))?;
+        for field in ["best_windows", "watch_windows", "strategy"] {
+            if !required.iter().any(|value| value.as_str() == Some(field)) {
+                required.push(json!(field));
+            }
+        }
+    } else {
+        properties.remove("best_windows");
+        properties.remove("watch_windows");
+        properties.remove("strategy");
+    }
+    Ok(schema)
 }
 
 fn parse_period_provider_json(raw: &str) -> Option<Value> {
@@ -1406,7 +1833,25 @@ fn period_writer_messages(request: &Value) -> Result<Vec<PromptMessage>, Generat
             Value::Null,
         )
     })?;
-    let limits = period_basic_word_limits();
+    let limits = period_word_limits_for_request(request);
+    if is_premium_period_request(request) {
+        return Ok(vec![
+            PromptMessage {
+                role: PromptRole::System,
+                content: format!(
+                    "Tu écris une lecture Premium d'horoscope de période en français. Retourne uniquement un objet JSON conforme au schéma fourni. N'invente aucune preuve: chaque evidence_key publique et chaque source_snapshot_key doit provenir de la requête. N'affiche jamais les codes internes, les clés de preuve, les noms techniques de transits, les theme_code anglais, les codes tone anglais, ni les consignes internes. La timeline doit couvrir exactement les 7 dates, avec une formulation distincte pour chaque journée. La lecture publique doit compter entre {} et {} mots, sans dépasser {} mots.",
+                    limits.target_min, limits.target_max, limits.hard_limit
+                ),
+            },
+            PromptMessage {
+                role: PromptRole::User,
+                content: format!(
+                    "Construis horoscope_period_response_v1 Premium pour cette requête. La valeur Premium doit venir de best_windows, watch_windows, strategy, 3 à 5 domain_sections, et d'une trajectoire de semaine plus pilotable que le Basic. best_days/watch_days sont des dates; best_windows/watch_windows sont des plages horaires et doivent garder les source_snapshot_keys fournis. Développe week_overview, strategy, advice, domain_sections, windows et les 7 entrées daily_timeline afin d'atteindre {} à {} mots publics. Utilise les libellés français déjà présents, pas les codes internes. Pour chaque entrée daily_timeline, garde le thème principal du daily_plan et mentionne au besoin les signaux secondaires du même jour dans le texte afin d'éviter une semaine monotone. Respecte les avoid_terms des daily_plans et ne répète pas plus de deux fois les mêmes amorces comme clarifier, ajuster, intégrer, restez concret, gardez une marge ou choisissez une seule priorité. Requête JSON:\n{compact}",
+                    limits.target_min, limits.target_max
+                ),
+            },
+        ]);
+    }
     Ok(vec![
         PromptMessage {
             role: PromptRole::System,
@@ -1425,7 +1870,8 @@ fn period_writer_messages(request: &Value) -> Result<Vec<PromptMessage>, Generat
     ])
 }
 
-fn fake_period_writer_response(request: &Value) -> Result<Value, GenerationError> {
+#[doc(hidden)]
+pub fn fake_period_writer_response(request: &Value) -> Result<Value, GenerationError> {
     let daily_timeline = request["daily_plans"]
         .as_array()
         .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_TIMELINE_MISSING"))?
@@ -1436,7 +1882,13 @@ fn fake_period_writer_response(request: &Value) -> Result<Value, GenerationError
             let theme_label = day["theme_label"]
                 .as_str()
                 .unwrap_or_else(|| period_theme_public_label(theme));
-            let text = period_public_day_text(day, index);
+            let text = ensure_period_personalization_text(
+                &period_public_day_text(day, index),
+                &format!(
+                    "Le thème natal sert ici de repère concret autour de {}.",
+                    period_public_focus_text(day)
+                ),
+            );
             json!({
                 "date": day["date"],
                 "day_label": day["day_label"],
@@ -1461,9 +1913,12 @@ fn fake_period_writer_response(request: &Value) -> Result<Value, GenerationError
             })
         })
         .collect::<Vec<_>>();
-    let response = json!({
+    let service_code = request["service_code"]
+        .as_str()
+        .unwrap_or(HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE);
+    let mut response = json!({
         "contract_version": "horoscope_period_response_v1",
-        "service_code": HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+        "service_code": service_code,
         "period_resolution": request["period_resolution"],
         "week_overview": {
             "title": "Vos 7 prochains jours",
@@ -1496,12 +1951,27 @@ fn fake_period_writer_response(request: &Value) -> Result<Value, GenerationError
             "period_contract": "basic_next_7_days"
         }
     });
+    if is_premium_period_service(service_code) {
+        response["best_windows"] = request["best_windows"].clone();
+        response["watch_windows"] = request["watch_windows"].clone();
+        response["strategy"] = json!({
+            "title": request["strategy"]["title"].as_str().unwrap_or("Stratégie de semaine"),
+            "text": "Utilisez les meilleurs créneaux pour agir court et les moments de vigilance pour ralentir avant de répondre. La stratégie consiste à alterner décision, clarification et récupération sans transformer la semaine en suite d'urgences.",
+            "best_use": request["strategy"]["best_use"].as_str().unwrap_or("Réserver les créneaux soutenants aux échanges utiles."),
+            "recovery": request["strategy"]["recovery"].as_str().unwrap_or("Préserver des temps de recul après les moments plus réactifs."),
+            "evidence_keys": request["strategy"]["evidence_keys"]
+        });
+        response["quality"]["period_contract"] = json!("premium_next_7_days");
+    }
     Ok(response)
 }
 
-fn repair_period_response_shape(request: &Value, response: &mut Value) {
+pub fn repair_period_response_shape(request: &Value, response: &mut Value) {
+    let service_code = request["service_code"]
+        .as_str()
+        .unwrap_or(HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE);
     response["contract_version"] = json!("horoscope_period_response_v1");
-    response["service_code"] = json!(HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE);
+    response["service_code"] = json!(service_code);
     response["period_resolution"] = request["period_resolution"].clone();
 
     response["week_overview"] = sanitize_period_week_overview(response.get("week_overview"));
@@ -1517,10 +1987,24 @@ fn repair_period_response_shape(request: &Value, response: &mut Value) {
         sanitize_period_daily_timeline(response.get("daily_timeline"), request);
     response["domain_sections"] =
         sanitize_period_domain_sections(response.get("domain_sections"), request);
+    if is_premium_period_service(service_code) {
+        response["best_windows"] =
+            sanitize_period_windows(response.get("best_windows"), request, "best_windows");
+        response["watch_windows"] =
+            sanitize_period_windows(response.get("watch_windows"), request, "watch_windows");
+        response["strategy"] = sanitize_period_strategy(response.get("strategy"), request);
+    } else {
+        response.as_object_mut().map(|map| {
+            map.remove("best_windows");
+            map.remove("watch_windows");
+            map.remove("strategy");
+        });
+    }
     response["evidence_summary"] =
         sanitize_period_evidence_summary(response.get("evidence_summary"), request);
     ensure_period_response_minimum_words(request, response);
     normalize_period_week_overview_repetition(response);
+    normalize_period_repetitive_public_phrases(response);
 
     let provider = response["quality"]["provider"]
         .as_str()
@@ -1542,6 +2026,10 @@ fn repair_period_response_shape(request: &Value, response: &mut Value) {
         "fallback_used": fallback_used,
         "period_contract": "horoscope_period_response_v1"
     });
+}
+
+fn is_premium_period_service(service_code: &str) -> bool {
+    service_code == HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE
 }
 
 fn sanitize_period_week_overview(value: Option<&Value>) -> Value {
@@ -1654,7 +2142,7 @@ fn sanitize_period_daily_timeline(value: Option<&Value>, request: &Value) -> Val
             json!({
                 "date": date,
                 "day_label": sanitize_period_public_string(generated.and_then(|day| day.get("day_label")).and_then(Value::as_str).or_else(|| plan.get("day_label").and_then(Value::as_str)).unwrap_or("Jour")),
-                "theme": sanitize_period_public_string(generated.and_then(|day| day.get("theme")).and_then(Value::as_str).unwrap_or(theme)),
+                "theme": sanitize_period_public_string(theme),
                 "tone": generated.and_then(|day| day.get("tone")).and_then(Value::as_str).unwrap_or("concentré"),
                 "text": sanitize_period_public_string(&generated.and_then(|day| day.get("text")).and_then(Value::as_str).map(|text| ensure_period_personalization_text(text, &period_public_interpretive_sentence(plan))).unwrap_or(fallback_text)),
                 "advice": sanitize_period_public_string(generated.and_then(|day| day.get("advice")).and_then(Value::as_str).unwrap_or(&fallback_advice)),
@@ -1698,6 +2186,88 @@ fn sanitize_period_domain_sections(value: Option<&Value>, request: &Value) -> Va
             })
             .collect(),
     )
+}
+
+fn sanitize_period_windows(value: Option<&Value>, request: &Value, field: &str) -> Value {
+    let allowed = request[field].as_array().cloned().unwrap_or_default();
+    let allowed_by_key = allowed
+        .iter()
+        .filter_map(|window| {
+            let key = period_window_identity(window)?;
+            Some((key, window.clone()))
+        })
+        .collect::<HashMap<_, _>>();
+    let generated = value.and_then(Value::as_array).cloned().unwrap_or_default();
+    let mut out = Vec::new();
+    for window in generated {
+        let Some(identity) = period_window_identity(&window) else {
+            continue;
+        };
+        let Some(fallback) = allowed_by_key.get(&identity) else {
+            continue;
+        };
+        out.push(sanitize_period_window_from_fallback(
+            &window, fallback, field,
+        ));
+    }
+    Value::Array(out)
+}
+
+fn period_window_identity(window: &Value) -> Option<String> {
+    let date = window.get("date")?.as_str()?;
+    let keys = window
+        .get("source_snapshot_keys")?
+        .as_array()?
+        .iter()
+        .filter_map(Value::as_str)
+        .collect::<Vec<_>>()
+        .join("|");
+    if keys.is_empty() {
+        return None;
+    }
+    Some(format!("{date}:{keys}"))
+}
+
+fn sanitize_period_window_from_fallback(window: &Value, fallback: &Value, field: &str) -> Value {
+    let mut out = json!({
+        "date": fallback["date"],
+        "time_range_label": sanitize_period_public_string(window.get("time_range_label").and_then(Value::as_str).or_else(|| fallback.get("time_range_label").and_then(Value::as_str)).unwrap_or("")),
+        "source_snapshot_keys": fallback["source_snapshot_keys"],
+        "title": sanitize_period_public_string(window.get("title").and_then(Value::as_str).or_else(|| fallback.get("title").and_then(Value::as_str)).unwrap_or("Fenêtre")),
+        "theme": sanitize_period_public_string(window.get("theme").and_then(Value::as_str).or_else(|| fallback.get("theme").and_then(Value::as_str)).unwrap_or("priorité")),
+        "tone": sanitize_period_public_string(window.get("tone").and_then(Value::as_str).or_else(|| fallback.get("tone").and_then(Value::as_str)).unwrap_or("nuancé")),
+        "evidence_keys": fallback["evidence_keys"]
+    });
+    if field == "best_windows" {
+        out["reason"] = json!(sanitize_period_public_string(
+            window
+                .get("reason")
+                .and_then(Value::as_str)
+                .or_else(|| fallback.get("reason").and_then(Value::as_str))
+                .unwrap_or("Ce créneau ressort comme un appui concret.")
+        ));
+        out["best_for"] = fallback["best_for"].clone();
+    } else {
+        out["watch_point"] = json!(sanitize_period_public_string(
+            window
+                .get("watch_point")
+                .and_then(Value::as_str)
+                .or_else(|| fallback.get("watch_point").and_then(Value::as_str))
+                .unwrap_or("Garder une marge avant de répondre.")
+        ));
+    }
+    out
+}
+
+fn sanitize_period_strategy(value: Option<&Value>, request: &Value) -> Value {
+    let fallback = &request["strategy"];
+    json!({
+        "title": sanitize_period_public_string(value.and_then(|v| v.get("title")).and_then(Value::as_str).or_else(|| fallback.get("title").and_then(Value::as_str)).unwrap_or("Stratégie de semaine")),
+        "text": sanitize_period_public_string(value.and_then(|v| v.get("text")).and_then(Value::as_str).unwrap_or("Alterner les fenêtres favorables pour agir, les moments de vigilance pour ralentir et les temps d'intégration pour consolider les choix.")),
+        "best_use": sanitize_period_public_string(value.and_then(|v| v.get("best_use")).and_then(Value::as_str).or_else(|| fallback.get("best_use").and_then(Value::as_str)).unwrap_or("Utiliser les appuis pour décider et communiquer simplement.")),
+        "recovery": sanitize_period_public_string(value.and_then(|v| v.get("recovery")).and_then(Value::as_str).or_else(|| fallback.get("recovery").and_then(Value::as_str)).unwrap_or("Préserver un temps de recul après les moments plus réactifs.")),
+        "evidence_keys": string_array_value(fallback.get("evidence_keys")).unwrap_or_else(|| json!([]))
+    })
 }
 
 fn ensure_period_personalization_text(text: &str, personalization: &str) -> String {
@@ -1758,6 +2328,18 @@ fn period_public_day_advice(day: &Value) -> String {
         "communication" => format!("Formulez une demande courte et vérifiable, puis écoutez la réponse sans surinterpréter."),
         "integration" => format!("Reliez ce travail d'intégration à une habitude déjà solide et consolidez-la avant d'ajouter autre chose."),
         _ => format!("Posez une priorité claire liée à {focus}, puis avancez par un geste mesuré."),
+    }
+}
+
+fn period_daily_advice_expansion(index: usize) -> &'static str {
+    match index % 7 {
+        0 => "Gardez un geste simple et retenez une suite concrète.",
+        1 => "Avancez par une décision courte, puis laissez le rythme se stabiliser.",
+        2 => "Choisissez un repère utile et vérifiez-le avant d'élargir l'action.",
+        3 => "Préservez une marge de recul avant de répondre trop vite.",
+        4 => "Transformez l'élan du jour en action mesurable et limitée.",
+        5 => "Revenez à ce qui peut vraiment être tenu jusqu'au lendemain.",
+        _ => "Laissez la journée fermer une étape avant d'en ouvrir une autre.",
     }
 }
 
@@ -1891,7 +2473,77 @@ fn sanitize_period_public_string(text: &str) -> String {
     ] {
         sanitized = replace_ascii_token_case_insensitive(&sanitized, from, to);
     }
-    sanitized
+    sanitize_period_sentence_boundaries(&sanitize_period_french_colon_spacing(
+        &sanitize_period_broken_sentences(&sanitized),
+    ))
+}
+
+fn sanitize_period_broken_sentences(text: &str) -> String {
+    let mut sentences = Vec::new();
+    let mut current = String::new();
+    for ch in text.chars() {
+        current.push(ch);
+        if matches!(ch, '.' | '!' | '?') {
+            sentences.push(std::mem::take(&mut current));
+        }
+    }
+    if !current.trim().is_empty() {
+        sentences.push(current);
+    }
+    if sentences.len() <= 1 {
+        let trimmed = text.trim().trim_end_matches(['.', '!', '?']);
+        if period_is_broken_sentence_tail(trimmed) {
+            return "Le thème natal garde un repère concret pour avancer avec mesure.".to_string();
+        }
+        return text.to_string();
+    }
+    let filtered = sentences
+        .iter()
+        .filter(|sentence| {
+            let trimmed = sentence.trim().trim_end_matches(['.', '!', '?']);
+            !period_is_broken_sentence_tail(trimmed)
+        })
+        .map(|sentence| sentence.trim())
+        .filter(|sentence| !sentence.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ");
+    if filtered.trim().is_empty() {
+        text.to_string()
+    } else {
+        filtered
+    }
+}
+
+fn sanitize_period_sentence_boundaries(text: &str) -> String {
+    text.replace(". votre", ". Votre").replace(". vos", ". Vos")
+}
+
+fn sanitize_period_french_colon_spacing(text: &str) -> String {
+    let chars = text.chars().collect::<Vec<_>>();
+    let mut out = String::new();
+    for index in 0..chars.len() {
+        let ch = chars[index];
+        if ch != ':' {
+            out.push(ch);
+            continue;
+        }
+        let before = index.checked_sub(1).and_then(|idx| chars.get(idx)).copied();
+        let after = chars.get(index + 1).copied();
+        if before.map(|ch| ch.is_ascii_digit()).unwrap_or(false)
+            && after.map(|ch| ch.is_ascii_digit()).unwrap_or(false)
+        {
+            out.push(ch);
+            continue;
+        }
+        if !out.chars().last().map(char::is_whitespace).unwrap_or(true) {
+            out.push(' ');
+        }
+        out.push(':');
+        if !after.map(|ch| ch.is_whitespace()).unwrap_or(true) {
+            out.push(' ');
+        }
+    }
+    out
 }
 
 fn replace_ascii_case_insensitive(text: &str, from: &str, to: &str) -> String {
@@ -1976,7 +2628,7 @@ fn sanitize_period_evidence_summary(value: Option<&Value>, request: &Value) -> V
 }
 
 fn ensure_period_response_minimum_words(request: &Value, response: &mut Value) {
-    let limits = period_basic_word_limits();
+    let limits = period_word_limits_for_request(request);
     trim_period_response_to_hard_limit(request, response, &limits);
     let current_words = period_public_word_count(response);
     if current_words >= limits.target_min && current_words <= limits.hard_limit {
@@ -2008,7 +2660,7 @@ fn ensure_period_response_minimum_words(request: &Value, response: &mut Value) {
         .cloned()
         .unwrap_or_default();
     if let Some(days) = response["daily_timeline"].as_array_mut() {
-        for day in days {
+        for (index, day) in days.iter_mut().enumerate() {
             let date = day.get("date").and_then(Value::as_str).unwrap_or("");
             let plan = plans
                 .iter()
@@ -2021,10 +2673,7 @@ fn ensure_period_response_minimum_words(request: &Value, response: &mut Value) {
                     );
                 }
                 if let Some(advice) = day.get_mut("advice") {
-                    append_period_value_sentence(
-                        advice,
-                        "Gardez un geste simple et choisissez une seule suite concrète.",
-                    );
+                    append_period_value_sentence(advice, period_daily_advice_expansion(index));
                 }
             }
         }
@@ -2312,6 +2961,128 @@ fn normalize_period_week_overview_repetition(response: &mut Value) {
     }
 }
 
+fn normalize_period_repetitive_public_phrases(response: &mut Value) {
+    let mut counts = HashMap::<&'static str, usize>::new();
+    normalize_period_repetitive_value(response, &mut counts, None);
+}
+
+fn normalize_period_repetitive_value(
+    value: &mut Value,
+    counts: &mut HashMap<&'static str, usize>,
+    key: Option<&str>,
+) {
+    match value {
+        Value::String(text) => {
+            if !period_repetition_normalization_excluded_key(key) {
+                *text = normalize_period_repetitive_text(text, counts);
+            }
+        }
+        Value::Array(items) => {
+            for item in items {
+                normalize_period_repetitive_value(item, counts, key);
+            }
+        }
+        Value::Object(map) => {
+            for (child_key, child) in map {
+                normalize_period_repetitive_value(child, counts, Some(child_key));
+            }
+        }
+        _ => {}
+    }
+}
+
+fn period_repetition_normalization_excluded_key(key: Option<&str>) -> bool {
+    matches!(
+        key,
+        Some(
+            "contract_version"
+                | "service_code"
+                | "date"
+                | "evidence_key"
+                | "evidence_keys"
+                | "source_snapshot_keys"
+                | "quality"
+                | "period_resolution"
+                | "provider"
+                | "model"
+                | "period_contract"
+        )
+    )
+}
+
+fn normalize_period_repetitive_text(
+    text: &str,
+    counts: &mut HashMap<&'static str, usize>,
+) -> String {
+    let mut normalized = text.to_string();
+    for (phrase, replacements) in period_repetitive_phrase_replacements() {
+        normalized = replace_period_phrase_after_allowed(&normalized, phrase, replacements, counts);
+    }
+    normalized
+}
+
+fn replace_period_phrase_after_allowed(
+    text: &str,
+    phrase: &'static str,
+    replacements: &[&'static str],
+    counts: &mut HashMap<&'static str, usize>,
+) -> String {
+    let lower = text.to_lowercase();
+    let phrase_lower = phrase.to_lowercase();
+    let mut out = String::with_capacity(text.len());
+    let mut cursor = 0;
+    while let Some(relative) = lower[cursor..].find(&phrase_lower) {
+        let start = cursor + relative;
+        let end = start + phrase.len();
+        out.push_str(&text[cursor..start]);
+        let count = counts.entry(phrase).or_insert(0);
+        if *count < 2 {
+            out.push_str(&text[start..end]);
+        } else {
+            let replacement = replacements
+                .get((*count - 2) % replacements.len())
+                .copied()
+                .unwrap_or("préciser");
+            out.push_str(replacement);
+        }
+        *count += 1;
+        cursor = end;
+    }
+    out.push_str(&text[cursor..]);
+    out
+}
+
+fn period_repetitive_phrase_replacements() -> &'static [(&'static str, &'static [&'static str])] {
+    &[
+        (
+            "restez concret",
+            &["gardez une prise directe", "revenez au geste utile"],
+        ),
+        (
+            "gardez une marge",
+            &["préservez un espace de recul", "laissez une respiration"],
+        ),
+        ("clarifier", &["rendre lisible", "mettre au net", "nommer"]),
+        ("ajuster", &["réaccorder", "moduler", "reprendre"]),
+        ("intégrer", &["assimiler", "relier", "consolider"]),
+        (
+            "met l'accent",
+            &["souligne", "fait ressortir", "place l'attention"],
+        ),
+        (
+            "choisissez une seule priorité",
+            &[
+                "retenez une priorité nette",
+                "avancez avec une priorité lisible",
+            ],
+        ),
+        (
+            "le point d'appui concerne",
+            &["l'appui principal touche", "le repère central passe par"],
+        ),
+    ]
+}
+
 fn replace_period_phrase_all(text: &str, phrase: &str, replacement: &str) -> String {
     let lower = text.to_lowercase();
     let phrase_lower = phrase.to_lowercase();
@@ -2508,7 +3279,14 @@ pub fn validate_period_provider_public_payload(response: &Value) -> Result<(), G
         .get("domain_sections")
         .and_then(Value::as_array)
         .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_EVIDENCE_MISSING"))?;
-    if !(2..=4).contains(&domains.len()) {
+    let domain_range = if response["service_code"].as_str()
+        == Some(HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE)
+    {
+        3..=5
+    } else {
+        2..=4
+    };
+    if !domain_range.contains(&domains.len()) {
         return Err(quality_error(
             "HOROSCOPE_PERIOD_EVIDENCE_MISSING",
             json!({ "field": "domain_sections", "count": domains.len() }),
@@ -2534,6 +3312,52 @@ pub fn validate_period_provider_public_payload(response: &Value) -> Result<(), G
         require_period_public_string_in(item, "date", "evidence_summary")?;
         require_period_public_string_in(item, "evidence_key", "evidence_summary")?;
         require_period_public_string_in(item, "label", "evidence_summary")?;
+    }
+    if response["service_code"].as_str() == Some(HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE) {
+        let best_windows = response
+            .get("best_windows")
+            .and_then(Value::as_array)
+            .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_PREMIUM_WINDOWS_MISSING"))?;
+        if best_windows.is_empty() {
+            return Err(quality_error(
+                "HOROSCOPE_PERIOD_PREMIUM_WINDOWS_MISSING",
+                json!({ "field": "best_windows" }),
+            ));
+        }
+        for window in best_windows {
+            for field in [
+                "date",
+                "time_range_label",
+                "title",
+                "theme",
+                "tone",
+                "reason",
+            ] {
+                require_period_public_string_in(window, field, "best_windows")?;
+            }
+        }
+        let watch_windows = response
+            .get("watch_windows")
+            .and_then(Value::as_array)
+            .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_PREMIUM_WINDOWS_MISSING"))?;
+        for window in watch_windows {
+            for field in [
+                "date",
+                "time_range_label",
+                "title",
+                "theme",
+                "tone",
+                "watch_point",
+            ] {
+                require_period_public_string_in(window, field, "watch_windows")?;
+            }
+        }
+        let strategy = response
+            .get("strategy")
+            .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_PREMIUM_STRATEGY_MISSING"))?;
+        for field in ["title", "text", "best_use", "recovery"] {
+            require_period_public_string_in(strategy, field, "strategy")?;
+        }
     }
     Ok(())
 }
@@ -2706,11 +3530,16 @@ pub fn validate_period_response_evidence(
     validate_period_day_markers(request, response, "watch_days", &included, &evidence)?;
     validate_period_watch_summary(response, &evidence)?;
     validate_period_domain_sections(response, &evidence)?;
+    if is_premium_period_request(request) {
+        validate_period_premium_windows(request, response, &included, &evidence)?;
+        validate_period_premium_strategy(response, &evidence)?;
+        validate_period_premium_detail(response)?;
+    }
     validate_period_evidence_summary(response, &included, &evidence)?;
     validate_period_marker_date_overlaps(response)?;
     validate_period_public_text(&public_text)?;
     validate_period_public_tones(response)?;
-    validate_period_public_word_count(response, &public_text)?;
+    validate_period_public_word_count(request, response, &public_text)?;
     validate_period_public_personalization(response)?;
     validate_period_repeated_vocabulary(&public_text)?;
     validate_period_not_seven_daily(response)?;
@@ -2755,10 +3584,17 @@ fn validate_period_day_markers(
     included: &HashSet<&str>,
     evidence: &HashSet<&str>,
 ) -> Result<(), GenerationError> {
+    let mut dates = HashSet::new();
     for marker in response[field].as_array().into_iter().flatten() {
         let date = marker["date"]
             .as_str()
             .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_KEY_DAYS_MISSING"))?;
+        if !dates.insert(date) {
+            return Err(quality_error(
+                "HOROSCOPE_PERIOD_DUPLICATE_DAY_MARKER",
+                json!({ "field": field, "date": date }),
+            ));
+        }
         if !included.contains(date) {
             return Err(quality_error(
                 "HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH",
@@ -2867,9 +3703,16 @@ fn validate_period_domain_sections(
     let sections = response["domain_sections"]
         .as_array()
         .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_EVIDENCE_MISSING"))?;
-    if !(2..=4).contains(&sections.len()) {
+    let is_premium =
+        response["service_code"].as_str() == Some(HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE);
+    let valid_range = if is_premium { 3..=5 } else { 2..=4 };
+    if !valid_range.contains(&sections.len()) {
         return Err(quality_error(
-            "HOROSCOPE_PERIOD_EVIDENCE_MISSING",
+            if is_premium {
+                "HOROSCOPE_PERIOD_PREMIUM_DOMAIN_DEPTH_MISSING"
+            } else {
+                "HOROSCOPE_PERIOD_EVIDENCE_MISSING"
+            },
             json!({ "field": "domain_sections", "count": sections.len() }),
         ));
     }
@@ -2900,6 +3743,175 @@ fn validate_period_domain_sections(
         ));
     }
     Ok(())
+}
+
+fn validate_period_premium_windows(
+    request: &Value,
+    response: &Value,
+    included: &HashSet<&str>,
+    evidence: &HashSet<&str>,
+) -> Result<(), GenerationError> {
+    let snapshot_keys = request["scan_plan"]["snapshots"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|snapshot| snapshot["snapshot_key"].as_str())
+        .collect::<HashSet<_>>();
+    let best = response["best_windows"]
+        .as_array()
+        .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_PREMIUM_WINDOWS_MISSING"))?;
+    if best.is_empty() {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_PREMIUM_WINDOWS_MISSING",
+            json!({ "field": "best_windows" }),
+        ));
+    }
+    validate_period_window_array("best_windows", best, included, evidence, &snapshot_keys)?;
+    let watch = response["watch_windows"]
+        .as_array()
+        .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_PREMIUM_WINDOWS_MISSING"))?;
+    if watch.is_empty() && response["watch_summary"]["status"].as_str() != Some("none") {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_PREMIUM_WINDOWS_MISSING",
+            json!({ "field": "watch_windows" }),
+        ));
+    }
+    if !watch.is_empty() {
+        validate_period_window_array("watch_windows", watch, included, evidence, &snapshot_keys)?;
+    }
+    let best_identities = best
+        .iter()
+        .filter_map(period_window_identity)
+        .collect::<HashSet<_>>();
+    for window in watch {
+        if let Some(identity) = period_window_identity(window) {
+            if best_identities.contains(&identity) {
+                return Err(quality_error(
+                    "HOROSCOPE_PERIOD_PREMIUM_WINDOW_OVERLAP",
+                    json!({ "window": identity }),
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_period_window_array(
+    field: &str,
+    windows: &[Value],
+    included: &HashSet<&str>,
+    evidence: &HashSet<&str>,
+    snapshot_keys: &HashSet<&str>,
+) -> Result<(), GenerationError> {
+    for window in windows {
+        let date = window["date"]
+            .as_str()
+            .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_PREMIUM_WINDOWS_MISSING"))?;
+        if !included.contains(date) {
+            return Err(quality_error(
+                "HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH",
+                json!({ "field": field, "date": date }),
+            ));
+        }
+        for text_field in ["time_range_label", "title", "theme", "tone"] {
+            require_period_public_string_in(window, text_field, field)?;
+        }
+        if field == "best_windows" {
+            require_period_public_string_in(window, "reason", field)?;
+        } else {
+            require_period_public_string_in(window, "watch_point", field)?;
+        }
+        let sources = window["source_snapshot_keys"].as_array().ok_or_else(|| {
+            quality_error(
+                "HOROSCOPE_PERIOD_PREMIUM_WINDOWS_MISSING",
+                json!({ "field": format!("{field}.source_snapshot_keys") }),
+            )
+        })?;
+        if sources.is_empty() {
+            return Err(quality_error(
+                "HOROSCOPE_PERIOD_PREMIUM_WINDOWS_MISSING",
+                json!({ "field": format!("{field}.source_snapshot_keys") }),
+            ));
+        }
+        for source in sources {
+            let Some(source) = source.as_str() else {
+                return Err(horoscope_error("HOROSCOPE_PERIOD_PREMIUM_WINDOWS_MISSING"));
+            };
+            if !snapshot_keys.contains(source) {
+                return Err(quality_error(
+                    "HOROSCOPE_PERIOD_PREMIUM_WINDOWS_MISSING",
+                    json!({ "field": field, "source_snapshot_key": source }),
+                ));
+            }
+        }
+        let keys = window["evidence_keys"].as_array();
+        if keys.map(|items| items.is_empty()).unwrap_or(true) {
+            return Err(quality_error(
+                "HOROSCOPE_PERIOD_PREMIUM_WINDOW_EVIDENCE_MISSING",
+                json!({ "field": field, "date": date }),
+            ));
+        }
+        validate_period_evidence_keys(evidence, keys).map_err(|_| {
+            quality_error(
+                "HOROSCOPE_PERIOD_PREMIUM_WINDOW_EVIDENCE_MISSING",
+                json!({ "field": field, "date": date }),
+            )
+        })?;
+    }
+    Ok(())
+}
+
+fn validate_period_premium_strategy(
+    response: &Value,
+    evidence: &HashSet<&str>,
+) -> Result<(), GenerationError> {
+    let strategy = response
+        .get("strategy")
+        .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_PREMIUM_STRATEGY_MISSING"))?;
+    for field in ["title", "text", "best_use", "recovery"] {
+        require_period_public_string_in(strategy, field, "strategy").map_err(|_| {
+            quality_error(
+                "HOROSCOPE_PERIOD_PREMIUM_STRATEGY_MISSING",
+                json!({ "field": field }),
+            )
+        })?;
+    }
+    validate_period_evidence_keys(evidence, strategy["evidence_keys"].as_array())
+}
+
+fn validate_period_premium_detail(response: &Value) -> Result<(), GenerationError> {
+    if response["best_windows"]
+        .as_array()
+        .map(Vec::len)
+        .unwrap_or(0)
+        == 0
+        || response.get("strategy").is_none()
+        || response["domain_sections"]
+            .as_array()
+            .map(Vec::len)
+            .unwrap_or(0)
+            < 3
+        || response["daily_timeline"]
+            .as_array()
+            .map(Vec::len)
+            .unwrap_or(0)
+            != 7
+        || response["evidence_summary"]
+            .as_array()
+            .map(Vec::len)
+            .unwrap_or(0)
+            == 0
+    {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_PREMIUM_INSUFFICIENT_DETAIL",
+            Value::Null,
+        ));
+    }
+    Ok(())
+}
+
+fn is_premium_period_request(request: &Value) -> bool {
+    request["service_code"].as_str() == Some(HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE)
 }
 
 fn validate_period_evidence_summary(
@@ -3298,16 +4310,38 @@ fn collect_period_public_text(response: &Value, public_text: &mut String) {
         "key_days",
         "best_days",
         "watch_days",
+        "best_windows",
+        "watch_windows",
         "domain_sections",
         "evidence_summary",
     ] {
         for item in response[field].as_array().into_iter().flatten() {
-            for key in ["title", "reason", "domain", "text", "label"] {
+            for key in [
+                "title",
+                "reason",
+                "watch_point",
+                "theme",
+                "tone",
+                "domain",
+                "text",
+                "label",
+            ] {
                 if let Some(value) = item.get(key).and_then(|value| value.as_str()) {
                     public_text.push_str(value);
                     public_text.push('\n');
                 }
             }
+        }
+    }
+    for pointer in [
+        "/strategy/title",
+        "/strategy/text",
+        "/strategy/best_use",
+        "/strategy/recovery",
+    ] {
+        if let Some(value) = response.pointer(pointer).and_then(Value::as_str) {
+            public_text.push_str(value);
+            public_text.push('\n');
         }
     }
 }
@@ -3596,42 +4630,109 @@ struct PeriodWordLimits {
     hard_limit: usize,
 }
 
-fn period_basic_word_limits() -> PeriodWordLimits {
-    serde_json::from_str::<Value>(DETAIL_PROFILES_JSON)
-        .ok()
-        .and_then(|value| value.get("data").and_then(Value::as_array).cloned())
+#[derive(Debug, Clone, Copy)]
+struct PeriodDetailProfile {
+    max_main_events: usize,
+    max_evidence: usize,
+    max_key_days: usize,
+    max_best_days: usize,
+    max_watch_days: usize,
+    max_domain_sections: usize,
+    max_best_windows: usize,
+    max_watch_windows: usize,
+    word_limits: PeriodWordLimits,
+}
+
+fn period_detail_profile(
+    detail_profile_code: &str,
+) -> Result<PeriodDetailProfile, GenerationError> {
+    let row = rows(DETAIL_PROFILES_JSON)?
         .into_iter()
-        .flatten()
         .find(|row| {
-            row.get("detail_profile_code").and_then(Value::as_str) == Some("basic_standard")
+            row.get("detail_profile_code").and_then(Value::as_str) == Some(detail_profile_code)
                 && row
                     .get("is_enabled")
                     .and_then(Value::as_bool)
                     .unwrap_or(true)
         })
-        .and_then(|row| {
-            Some(PeriodWordLimits {
-                target_min: row.get("target_words_min")?.as_u64()? as usize,
-                target_max: row.get("target_words_max")?.as_u64()? as usize,
-                hard_limit: row.get("hard_limit_words")?.as_u64()? as usize,
-            })
-        })
+        .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_PROFILE_UNSUPPORTED"))?;
+    let max_domain_sections = if detail_profile_code == "premium_rich" {
+        5
+    } else {
+        4
+    };
+    Ok(PeriodDetailProfile {
+        max_main_events: row
+            .get("max_main_events")
+            .and_then(Value::as_u64)
+            .unwrap_or(8) as usize,
+        max_evidence: row
+            .get("max_evidence")
+            .and_then(Value::as_u64)
+            .unwrap_or(20) as usize,
+        max_key_days: row.get("max_key_days").and_then(Value::as_u64).unwrap_or(2) as usize,
+        max_best_days: row
+            .get("max_best_days")
+            .and_then(Value::as_u64)
+            .unwrap_or(2) as usize,
+        max_watch_days: row
+            .get("max_watch_days")
+            .and_then(Value::as_u64)
+            .unwrap_or(2) as usize,
+        max_domain_sections,
+        max_best_windows: row
+            .get("max_best_windows")
+            .and_then(Value::as_u64)
+            .unwrap_or(3) as usize,
+        max_watch_windows: row
+            .get("max_watch_windows")
+            .and_then(Value::as_u64)
+            .unwrap_or(3) as usize,
+        word_limits: PeriodWordLimits {
+            target_min: row
+                .get("target_words_min")
+                .and_then(Value::as_u64)
+                .unwrap_or(800) as usize,
+            target_max: row
+                .get("target_words_max")
+                .and_then(Value::as_u64)
+                .unwrap_or(1200) as usize,
+            hard_limit: row
+                .get("hard_limit_words")
+                .and_then(Value::as_u64)
+                .unwrap_or(1500) as usize,
+        },
+    })
+}
+
+fn period_basic_word_limits() -> PeriodWordLimits {
+    period_detail_profile("basic_standard")
+        .map(|profile| profile.word_limits)
         .expect("json_db/horoscope_detail_profiles.json must define basic_standard word limits")
 }
 
-fn period_writer_max_output_tokens() -> u32 {
-    let limits = period_basic_word_limits();
+fn period_word_limits_for_request(request: &Value) -> PeriodWordLimits {
+    request["detail_profile_code"]
+        .as_str()
+        .and_then(|code| period_detail_profile(code).ok())
+        .map(|profile| profile.word_limits)
+        .unwrap_or_else(period_basic_word_limits)
+}
+
+fn period_writer_max_output_tokens(request: &Value) -> u32 {
+    let limits = period_word_limits_for_request(request);
     ((limits.hard_limit as u32).saturating_mul(3)).saturating_add(500)
 }
 
 fn validate_period_public_word_count(
+    request: &Value,
     response: &Value,
     public_text: &str,
 ) -> Result<(), GenerationError> {
     if response["quality"]["provider"].as_str() == Some("fake") {
         return Ok(());
     }
-    let limits = period_basic_word_limits();
+    let limits = period_word_limits_for_request(request);
     let word_count = public_text.split_whitespace().count();
     if word_count < limits.target_min || word_count > limits.hard_limit {
         return Err(quality_error(
@@ -4716,6 +5817,16 @@ struct ReferenceData {
 #[derive(Clone)]
 struct ServiceProfile {
     house_system_code: Option<String>,
+    period_profile_code: Option<String>,
+    detail_profile_code: Option<String>,
+    scan_profile_code: Option<String>,
+}
+
+#[derive(Clone)]
+struct ScanProfile {
+    granularity: String,
+    reference_time_local: String,
+    expected_snapshots_per_day: usize,
 }
 
 #[derive(Clone)]
@@ -4940,7 +6051,79 @@ fn service_profile(service_code: &str) -> Result<ServiceProfile, GenerationError
             .get("house_system_code")
             .and_then(|v| v.as_str())
             .map(str::to_string),
+        period_profile_code: row
+            .get("period_profile_code")
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
+        detail_profile_code: row
+            .get("detail_profile_code")
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
+        scan_profile_code: row
+            .get("scan_profile_code")
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
     })
+}
+
+fn period_service_profile(service_code: &str) -> Result<ServiceProfile, GenerationError> {
+    let profile = service_profile(service_code)?;
+    if profile.period_profile_code.as_deref() != Some("next_7_days")
+        || profile.detail_profile_code.is_none()
+        || profile.scan_profile_code.is_none()
+    {
+        return Err(horoscope_error("HOROSCOPE_PERIOD_PROFILE_UNSUPPORTED"));
+    }
+    Ok(profile)
+}
+
+fn scan_profile(scan_profile_code: &str) -> Result<ScanProfile, GenerationError> {
+    let row = rows(SCAN_PROFILES_JSON)?
+        .into_iter()
+        .find(|row| {
+            row.get("scan_profile_code").and_then(Value::as_str) == Some(scan_profile_code)
+                && row
+                    .get("is_enabled")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(true)
+        })
+        .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"))?;
+    Ok(ScanProfile {
+        granularity: row
+            .get("granularity")
+            .and_then(Value::as_str)
+            .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"))?
+            .to_string(),
+        reference_time_local: row
+            .get("reference_time_local")
+            .and_then(Value::as_str)
+            .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"))?
+            .to_string(),
+        expected_snapshots_per_day: row
+            .get("expected_snapshots_per_day")
+            .and_then(Value::as_u64)
+            .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"))?
+            as usize,
+    })
+}
+
+impl ScanProfile {
+    fn reference_times(&self) -> Result<Vec<NaiveTime>, GenerationError> {
+        let times = self
+            .reference_time_local
+            .split(',')
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(|value| {
+                NaiveTime::parse_from_str(value, "%H:%M")
+                    .map_err(|_| horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        if times.len() != self.expected_snapshots_per_day || times.is_empty() {
+            return Err(horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"));
+        }
+        Ok(times)
+    }
 }
 
 fn shortlist_profile(service_code: &str) -> Result<ShortlistProfile, GenerationError> {
@@ -5574,6 +6757,17 @@ fn validate_supported_service_code(service_code: &str) -> Result<(), GenerationE
         HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE
             | HOROSCOPE_FREE_DAILY_SERVICE_CODE
             | HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE
+    ) {
+        return Ok(());
+    }
+    Err(horoscope_error("HOROSCOPE_SERVICE_NOT_IMPLEMENTED"))
+}
+
+fn validate_period_service_code(service_code: &str) -> Result<(), GenerationError> {
+    if matches!(
+        service_code,
+        HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE
+            | HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE
     ) {
         return Ok(());
     }

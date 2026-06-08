@@ -90,6 +90,24 @@
       "detail_level": "basic_standard",
       "max_words_target": 1200,
       "max_words_hard_limit": 1500
+    },
+    {
+      "service_code": "horoscope_premium_next_7_days_natal",
+      "product_level_code": "premium",
+      "shortlist_profile_code": "basic_daily_natal",
+      "time_slot_profile_code": null,
+      "slot_mode": "period_premium_windows",
+      "requires_natal_chart": true,
+      "requires_location": false,
+      "requires_timezone": true,
+      "requires_inline_birth_data": false,
+      "house_system_code": null,
+      "period_profile_code": "next_7_days",
+      "detail_profile_code": "premium_rich",
+      "scan_profile_code": "six_hour_7_days",
+      "detail_level": "premium_rich",
+      "max_words_target": 2200,
+      "max_words_hard_limit": 3200
     }
   ]
 }

@@ -1,0 +1,241 @@
+{
+  "contract_version": "horoscope_period_response_v1",
+  "service_code": "horoscope_premium_next_7_days_natal",
+  "period_resolution": {
+    "period_profile_code": "next_7_days",
+    "anchor_date": "2026-06-07",
+    "timezone": "Europe/Paris",
+    "start_datetime_local": "2026-06-07T00:00:00",
+    "end_datetime_local": "2026-06-14T00:00:00",
+    "start_datetime_utc": "2026-06-06T22:00:00+00:00",
+    "end_datetime_utc": "2026-06-13T22:00:00+00:00",
+    "end_exclusive": true,
+    "duration_days": 7,
+    "included_dates": [
+      "2026-06-07",
+      "2026-06-08",
+      "2026-06-09",
+      "2026-06-10",
+      "2026-06-11",
+      "2026-06-12",
+      "2026-06-13"
+    ],
+    "included_days": []
+  },
+  "week_overview": {
+    "title": "Vos 7 prochains jours",
+    "text": "La semaine relie les relations directes, les besoins émotionnels et le thème natal.",
+    "trajectory": "Agir, ordonner puis intégrer."
+  },
+  "key_days": [],
+  "best_days": [],
+  "watch_days": [
+    {
+      "date": "2026-06-07",
+      "title": "Jour de vigilance",
+      "reason": "Ce jour demande de ralentir avant de répondre.",
+      "evidence_keys": [
+        "period:2026-06-07:2026-06-07:06:00:mars:square:natal_mercury"
+      ],
+      "fallback_reason": null
+    }
+  ],
+  "watch_summary": {
+    "status": "active",
+    "text": "Une vigilance demande de ralentir.",
+    "evidence_keys": [
+      "period:2026-06-07:2026-06-07:06:00:mars:square:natal_mercury"
+    ]
+  },
+  "best_windows": [
+    {
+      "date": "2026-06-07",
+      "time_range_label": "00:00–06:00",
+      "source_snapshot_keys": [
+        "2026-06-07:00:00"
+      ],
+      "title": "Fenêtre favorable",
+      "theme": "relations",
+      "tone": "soutenant",
+      "reason": "Le signal offre un appui concret.",
+      "best_for": [
+        "ouvrir un échange"
+      ],
+      "evidence_keys": [
+        "period:2026-06-07:2026-06-07:00:00:venus:trine:natal_moon"
+      ]
+    }
+  ],
+  "watch_windows": [
+    {
+      "date": "2026-06-07",
+      "time_range_label": "06:00–12:00",
+      "source_snapshot_keys": [
+        "2026-06-07:06:00"
+      ],
+      "title": "Fenêtre de vigilance",
+      "theme": "énergie",
+      "tone": "vigilant",
+      "watch_point": "Ralentir avant de répondre.",
+      "evidence_keys": [
+        "period:2026-06-07:2026-06-07:06:00:mars:square:natal_mercury"
+      ]
+    }
+  ],
+  "daily_timeline": [
+    {
+      "date": "2026-06-07",
+      "day_label": "2026-06-07",
+      "theme": "priorité",
+      "tone": "soutenant",
+      "text": "La journée ouvre la semaine en reliant le thème natal aux relations directes et aux besoins émotionnels.",
+      "advice": "Choisir un premier geste clair.",
+      "evidence_keys": [
+        "period:2026-06-07:2026-06-07:00:00:venus:trine:natal_moon"
+      ]
+    },
+    {
+      "date": "2026-06-08",
+      "day_label": "2026-06-08",
+      "theme": "priorité",
+      "tone": "soutenant",
+      "text": "Cette étape aide à ouvrir un échange sans perdre le rythme de travail déjà engagé.",
+      "advice": "ouvrir un échange simple.",
+      "evidence_keys": [
+        "period:2026-06-08:2026-06-08:00:00:moon:natal_house:6"
+      ]
+    },
+    {
+      "date": "2026-06-09",
+      "day_label": "2026-06-09",
+      "theme": "priorité",
+      "tone": "soutenant",
+      "text": "Le signal invite à canaliser l énergie et à choisir une action courte plutôt qu une réaction immédiate.",
+      "advice": "Agir court et garder une marge.",
+      "evidence_keys": [
+        "period:2026-06-09:2026-06-09:00:00:mars:square:natal_mercury"
+      ]
+    },
+    {
+      "date": "2026-06-10",
+      "day_label": "2026-06-10",
+      "theme": "priorité",
+      "tone": "soutenant",
+      "text": "La communication devient plus utile quand elle reste reliée au thème natal et à une priorité concrète.",
+      "advice": "Formuler une priorité utile.",
+      "evidence_keys": [
+        "period:2026-06-10:2026-06-10:00:00:jupiter:trine:natal_saturn"
+      ]
+    },
+    {
+      "date": "2026-06-11",
+      "day_label": "2026-06-11",
+      "theme": "priorité",
+      "tone": "soutenant",
+      "text": "Le milieu de semaine demande de consolider la responsabilité concrète sans multiplier les fronts.",
+      "advice": "Consolider sans disperser.",
+      "evidence_keys": [
+        "period:2026-06-11:2026-06-11:00:00:mercury:trine:natal_mars"
+      ]
+    },
+    {
+      "date": "2026-06-12",
+      "day_label": "2026-06-12",
+      "theme": "priorité",
+      "tone": "soutenant",
+      "text": "Cette journée soutient une reprise simple autour des besoins émotionnels et de la relation directe.",
+      "advice": "Revenir à un besoin précis.",
+      "evidence_keys": [
+        "period:2026-06-12:2026-06-12:00:00:saturn:opposition:natal_sun"
+      ]
+    },
+    {
+      "date": "2026-06-13",
+      "day_label": "2026-06-13",
+      "theme": "priorité",
+      "tone": "soutenant",
+      "text": "La fin de période favorise l intégration des choix posés et un retour plus stable au rythme personnel.",
+      "advice": "Intégrer avant de relancer.",
+      "evidence_keys": [
+        "period:2026-06-13:2026-06-13:00:00:sun:sextile:natal_venus"
+      ]
+    }
+  ],
+  "domain_sections": [
+    {
+      "domain": "relations",
+      "title": "relations",
+      "text": "Ce domaine relie le thème natal, les relations directes et une action concrète.",
+      "evidence_keys": [
+        "period:2026-06-07:2026-06-07:00:00:venus:trine:natal_moon"
+      ]
+    },
+    {
+      "domain": "énergie",
+      "title": "énergie",
+      "text": "Ce domaine relie le thème natal, les relations directes et une action concrète.",
+      "evidence_keys": [
+        "period:2026-06-07:2026-06-07:06:00:mars:square:natal_mercury"
+      ]
+    },
+    {
+      "domain": "communication",
+      "title": "communication",
+      "text": "Ce domaine relie le thème natal, les relations directes et une action concrète.",
+      "evidence_keys": [
+        "period:2026-06-07:2026-06-07:12:00:mercury:trine:natal_mars"
+      ]
+    }
+  ],
+  "strategy": {
+    "title": "Stratégie de semaine",
+    "text": "Utiliser les fenêtres favorables et ralentir dans les vigilances.",
+    "best_use": "Décider et communiquer simplement.",
+    "recovery": "Revenir aux besoins émotionnels.",
+    "evidence_keys": [
+      "period:2026-06-07:2026-06-07:00:00:venus:trine:natal_moon"
+    ]
+  },
+  "advice": {
+    "main": "Avancer par fenêtres.",
+    "best_use": "Utiliser les appuis.",
+    "avoid": "Forcer une certitude."
+  },
+  "evidence_summary": [
+    {
+      "date": "2026-06-07",
+      "evidence_key": "period:2026-06-07:2026-06-07:00:00:venus:trine:natal_moon",
+      "label": "Signal premium de periode"
+    },
+    {
+      "date": "2026-06-07",
+      "evidence_key": "period:2026-06-07:2026-06-07:06:00:mars:square:natal_mercury",
+      "label": "Signal premium de periode"
+    },
+    {
+      "date": "2026-06-07",
+      "evidence_key": "period:2026-06-07:2026-06-07:12:00:mercury:trine:natal_mars",
+      "label": "Signal premium de periode"
+    },
+    {
+      "date": "2026-06-07",
+      "evidence_key": "period:2026-06-07:2026-06-07:18:00:sun:sextile:natal_venus",
+      "label": "Signal premium de periode"
+    },
+    {
+      "date": "2026-06-08",
+      "evidence_key": "period:2026-06-08:2026-06-08:00:00:moon:natal_house:6",
+      "label": "Signal premium de periode"
+    }
+  ],
+  "quality": {
+    "daily_timeline_count": 7,
+    "evidence_guard_passed": true,
+    "best_watch_overlap_passed": true,
+    "provider": "fake",
+    "model": "fake-model",
+    "fallback_used": false,
+    "period_contract": "premium_next_7_days"
+  }
+}
+

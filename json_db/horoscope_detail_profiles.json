@@ -11,6 +11,11 @@
     "target_words_min": "integer",
     "target_words_max": "integer",
     "hard_limit_words": "integer",
+    "max_best_windows": "integer|null",
+    "max_watch_windows": "integer|null",
+    "include_best_windows": "boolean|null",
+    "include_watch_windows": "boolean|null",
+    "include_strategy_section": "boolean|null",
     "is_enabled": "boolean",
     "sort_order": "integer",
     "unique_key": ["detail_profile_code"]
@@ -20,7 +25,7 @@
       "detail_profile_code": "basic_standard",
       "max_main_events": 8,
       "max_evidence": 20,
-      "max_key_days": 3,
+      "max_key_days": 2,
       "max_best_days": 2,
       "max_watch_days": 2,
       "daily_timeline_entries": 7,
@@ -29,6 +34,25 @@
       "hard_limit_words": 1500,
       "is_enabled": true,
       "sort_order": 10
+    },
+    {
+      "detail_profile_code": "premium_rich",
+      "max_main_events": 18,
+      "max_evidence": 50,
+      "max_key_days": 4,
+      "max_best_days": 3,
+      "max_watch_days": 3,
+      "daily_timeline_entries": 7,
+      "target_words_min": 2200,
+      "target_words_max": 3200,
+      "hard_limit_words": 3200,
+      "max_best_windows": 3,
+      "max_watch_windows": 3,
+      "include_best_windows": true,
+      "include_watch_windows": true,
+      "include_strategy_section": true,
+      "is_enabled": true,
+      "sort_order": 20
     }
   ]
 }
