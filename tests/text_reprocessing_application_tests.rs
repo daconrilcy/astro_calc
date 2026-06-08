@@ -1,7 +1,8 @@
 use astral_llm_application::{
     normalize_json_for_text_reprocessing_parity, reprocess_calculator_projection,
-    reprocess_natal_simplified, reprocess_prompt_trace, reprocess_shared_text, LanguageRegistry,
-    LanguageRuleSet, ProcessorRegistry, ServiceRegistry, ServiceRuleSet, TextRetreatmentPipeline,
+    reprocess_natal_simplified, reprocess_natal_theme, reprocess_prompt_trace,
+    reprocess_shared_text, LanguageRegistry, LanguageRuleSet, ProcessorRegistry, ServiceRegistry,
+    ServiceRuleSet, TextRetreatmentPipeline,
 };
 use astral_llm_domain::{
     generation_response::{
@@ -836,4 +837,77 @@ fn text_reprocessing_adapter_natal_simplified_preserves_technical_fields() {
         .typography_fields
         .iter()
         .any(|field| field == "chapters[0].astro_basis[0].factor"));
+}
+
+#[test]
+fn text_reprocessing_adapter_natal_theme_removes_chapter_disclaimer_boilerplate() {
+    let mut reading = NatalReadingResponse {
+        schema_version: "natal_reading_v1".into(),
+        language: LANG_FR.into(),
+        reading_type: "natal_prompter".into(),
+        summary: ReadingSummary {
+            title: "Synthese".into(),
+            short_text: "Une synthese lisible.".into(),
+        },
+        chapters: vec![ReadingChapter {
+            code: "identity".into(),
+            title: "Identite".into(),
+            body: "Votre presence se construit avec profondeur. Cette lecture reste symbolique et exploratoire, non deterministe.\n\nDans une lecture symbolique, Venus montre une facon plus relationnelle de chercher l'accord.\n\nCette lecture symbolique met en lumiere une priorite relationnelle concrete.\n\nLe chapitre propose une hypothese exploratoire sur votre rythme professionnel.\n\nLe chapitre garde son developpement utile.".into(),
+            astro_basis: vec![AstroBasisItem {
+                fact_id: Some("fact_identity".into()),
+                label: Some("Ascendant".into()),
+                factor: "Ascendant".into(),
+                interpretive_role: "core".into(),
+            }],
+            confidence: ConfidenceLevel::High,
+            safety_flags: vec![],
+        }],
+        legal: LegalBlock {
+            disclaimer: "Cette lecture est une interpretation symbolique.".into(),
+        },
+        quality: QualityMetadata {
+            used_provider: "fixture".into(),
+            used_model: "fixture".into(),
+            generation_mode: GenerationMode::ChapterOrchestrated,
+            prompt_family: "fixture".into(),
+            prompt_version: "fixture".into(),
+            astro_contract_version: "fixture".into(),
+            fallback_used: false,
+        },
+    };
+
+    reprocess_natal_theme(&mut reading, LANG_FR).expect("fixture must reprocess");
+
+    assert!(
+        !reading.chapters[0]
+            .body
+            .to_lowercase()
+            .contains("lecture reste symbolique"),
+        "{}",
+        reading.chapters[0].body
+    );
+    let body = reading.chapters[0].body.to_lowercase();
+    assert!(
+        body.contains("venus montre une facon plus relationnelle")
+            || body.contains("vénus montre une façon plus relationnelle"),
+        "{}",
+        reading.chapters[0].body
+    );
+    assert!(
+        body.contains("chapitre garde son"),
+        "{}",
+        reading.chapters[0].body
+    );
+    assert!(
+        body.contains("hypothese exploratoire") || body.contains("hypothèse exploratoire"),
+        "{}",
+        reading.chapters[0].body
+    );
+    assert!(
+        body.contains("priorite relationnelle concrete")
+            || body.contains("priorité relationnelle concrète"),
+        "{}",
+        reading.chapters[0].body
+    );
+    assert!(reading.legal.disclaimer.contains("symbolique"));
 }

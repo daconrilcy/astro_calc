@@ -4,12 +4,13 @@ use astral_llm_application::horoscope::{
     aggregate_themes, build_calculation_request, build_calculation_request_for_service,
     build_interpretation_request, build_period_calculation_request,
     build_period_calculation_request_for_service, build_period_interpretation_request,
-    fake_period_writer_response, period_response_provider_schema, score_calculation,
-    validate_horoscope_response_schema, validate_interpretation_request_schema,
-    validate_period_interpretation_request_schema, validate_period_provider_public_payload,
-    validate_period_public_request, validate_period_response_evidence,
-    validate_period_response_schema, validate_public_request, validate_response_evidence,
-    validate_scan_plan, HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+    fake_period_writer_response, period_response_provider_schema,
+    postprocess_period_provider_response, prune_period_response_variant_fields,
+    reprocess_horoscope_period_payload, score_calculation, validate_horoscope_response_schema,
+    validate_interpretation_request_schema, validate_period_interpretation_request_schema,
+    validate_period_provider_public_payload, validate_period_public_request,
+    validate_period_response_evidence, validate_period_response_schema, validate_public_request,
+    validate_response_evidence, validate_scan_plan, HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE,
     HOROSCOPE_FREE_DAILY_SERVICE_CODE, HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
     HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE, HOROSCOPE_SERVICE_CODE,
@@ -1431,6 +1432,82 @@ fn horoscope_period_schema_rejects_basic_present_watch_summary_status() {
 }
 
 #[test]
+fn horoscope_period_repair_removes_free_fields_from_basic_response() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response["summary"] = serde_json::json!({
+        "title": "Vos 7 prochains jours",
+        "text": "Cette lecture reste indicative et reformule les points utiles sans ajouter de certitude."
+    });
+    response["dominant_theme"] = serde_json::json!({
+        "theme": "Organisation",
+        "text": "Un theme compact ne doit pas rester dans la variante Basic."
+    });
+
+    repair_period_response_shape(&request, &mut response);
+
+    assert!(response.get("summary").is_none());
+    assert!(response.get("dominant_theme").is_none());
+    validate_period_response_schema(&response).unwrap();
+}
+
+#[test]
+fn horoscope_period_postprocess_prunes_summary_added_by_text_reprocessing() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    repair_period_response_shape(&request, &mut response);
+    response = reprocess_horoscope_period_payload(response);
+    assert!(response.get("summary").is_some());
+
+    prune_period_response_variant_fields(&request, &mut response);
+
+    assert!(response.get("summary").is_none());
+    assert!(response.get("dominant_theme").is_none());
+    validate_period_response_schema(&response).unwrap();
+}
+
+#[test]
+fn horoscope_period_repair_restores_empty_provider_evidence_keys_from_request() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response["key_days"][0]["evidence_keys"] = serde_json::json!([]);
+    response["best_days"][0]["evidence_keys"] = serde_json::json!([""]);
+    response["domain_sections"][0]["evidence_keys"] = serde_json::json!([""]);
+
+    repair_period_response_shape(&request, &mut response);
+
+    assert!(!response["key_days"][0]["evidence_keys"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+    assert!(!response["best_days"][0]["evidence_keys"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+    assert!(!response["domain_sections"][0]["evidence_keys"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+    validate_period_response_evidence(&request, &response).unwrap();
+}
+
+#[test]
+fn horoscope_premium_period_postprocess_preserves_word_bounds_after_normalization() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    response["week_overview"]["trajectory"] = serde_json::json!("Clarifier puis clarifier encore.");
+    response["advice"]["main"] = serde_json::json!("Clarifier avant de clarifier.");
+    response["quality"]["provider"] = serde_json::json!("openai");
+
+    repair_period_response_shape(&request, &mut response);
+    let response = postprocess_period_provider_response(&request, response);
+
+    let public = response.to_string().to_lowercase();
+    assert!(public.matches("clarifier").count() <= 2, "{public}");
+    validate_period_provider_public_payload(&response).unwrap();
+}
+
+#[test]
 fn horoscope_period_interpretation_schema_rejects_basic_without_domain_sections() {
     let mut request = period_interpretation_request();
     request["domain_sections"] = serde_json::json!([]);
@@ -2532,10 +2609,32 @@ fn horoscope_period_provider_schema_matches_service_shape() {
         .iter()
         .filter_map(|value| value.as_str())
         .collect::<std::collections::HashSet<_>>();
+    for field in basic_properties.keys() {
+        assert!(
+            basic_required.contains(field.as_str()),
+            "basic provider schema property must be required: {field}"
+        );
+    }
     assert!(!basic_properties.contains_key("best_windows"));
     assert!(!basic_properties.contains_key("watch_windows"));
     assert!(!basic_properties.contains_key("strategy"));
+    assert!(!basic_properties.contains_key("summary"));
+    assert!(!basic_properties.contains_key("dominant_theme"));
+    assert!(!basic_required.contains("summary"));
+    assert!(!basic_required.contains("dominant_theme"));
     assert!(!basic_required.contains("best_windows"));
+    assert!(!basic_required.contains("watch_windows"));
+    assert!(!basic_required.contains("strategy"));
+    for field in [
+        "week_overview",
+        "best_days",
+        "watch_days",
+        "daily_timeline",
+        "domain_sections",
+    ] {
+        assert!(basic_properties.contains_key(field));
+        assert!(basic_required.contains(field));
+    }
 
     let premium = premium_period_interpretation_request();
     let premium_schema = period_response_provider_schema(&premium).unwrap();
@@ -2547,7 +2646,27 @@ fn horoscope_period_provider_schema_matches_service_shape() {
         .iter()
         .filter_map(|value| value.as_str())
         .collect::<std::collections::HashSet<_>>();
+    for field in premium_properties.keys() {
+        assert!(
+            premium_required.contains(field.as_str()),
+            "premium provider schema property must be required: {field}"
+        );
+    }
     for field in ["best_windows", "watch_windows", "strategy"] {
+        assert!(premium_properties.contains_key(field));
+        assert!(premium_required.contains(field));
+    }
+    assert!(!premium_properties.contains_key("summary"));
+    assert!(!premium_properties.contains_key("dominant_theme"));
+    assert!(!premium_required.contains("summary"));
+    assert!(!premium_required.contains("dominant_theme"));
+    for field in [
+        "week_overview",
+        "best_days",
+        "watch_days",
+        "daily_timeline",
+        "domain_sections",
+    ] {
         assert!(premium_properties.contains_key(field));
         assert!(premium_required.contains(field));
     }

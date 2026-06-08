@@ -50,9 +50,108 @@ pub fn count_repeated_trigrams(body: &str, locale: &str) -> usize {
         if is_low_signal_trigram(&phrase, locale) {
             continue;
         }
+        if is_structural_astro_trigram(&phrase, locale) {
+            continue;
+        }
         *counts.entry(phrase).or_insert(0) += 1;
     }
     counts.values().filter(|&&n| n > 1).count()
+}
+
+fn is_structural_astro_trigram(phrase: &str, locale: &str) -> bool {
+    if !matches!(locale, "fr" | "es") {
+        return false;
+    }
+    let words = phrase.split_whitespace().collect::<Vec<_>>();
+    if words.len() != 3 {
+        return false;
+    }
+    if matches!(phrase, "milieu du ciel" | "fond du ciel") {
+        return true;
+    }
+    if is_numbered_house_trigram(&words) {
+        return true;
+    }
+    is_known_astro_body(words[0])
+        && matches!(words[1], "en" | "dans")
+        && (is_known_zodiac_or_context_word(words[2]) || matches!(words[2], "maison" | "maisons"))
+}
+
+fn is_numbered_house_trigram(words: &[&str]) -> bool {
+    words
+        .windows(2)
+        .any(|pair| matches!(pair[0], "maison" | "maisons") && is_house_number_token(pair[1]))
+        || words
+            .windows(2)
+            .any(|pair| is_house_number_token(pair[0]) && matches!(pair[1], "maison" | "maisons"))
+}
+
+fn is_house_number_token(word: &str) -> bool {
+    let token = word.trim_matches(|ch: char| !ch.is_alphanumeric());
+    matches!(
+        token,
+        "1" | "2"
+            | "3"
+            | "4"
+            | "5"
+            | "6"
+            | "7"
+            | "8"
+            | "9"
+            | "10"
+            | "11"
+            | "12"
+            | "i"
+            | "ii"
+            | "iii"
+            | "iv"
+            | "v"
+            | "vi"
+            | "vii"
+            | "viii"
+            | "ix"
+            | "x"
+            | "xi"
+            | "xii"
+    )
+}
+
+fn is_known_astro_body(word: &str) -> bool {
+    matches!(
+        word,
+        "soleil"
+            | "lune"
+            | "mercure"
+            | "vénus"
+            | "venus"
+            | "mars"
+            | "jupiter"
+            | "saturne"
+            | "uranus"
+            | "neptune"
+            | "pluton"
+            | "ascendant"
+    )
+}
+
+fn is_known_zodiac_or_context_word(word: &str) -> bool {
+    matches!(
+        word.trim_matches(|ch: char| !ch.is_alphanumeric()),
+        "bélier"
+            | "belier"
+            | "taureau"
+            | "gémeaux"
+            | "gemeaux"
+            | "cancer"
+            | "lion"
+            | "vierge"
+            | "balance"
+            | "scorpion"
+            | "sagittaire"
+            | "capricorne"
+            | "verseau"
+            | "poissons"
+    )
 }
 
 /// Phrases deja employees dans les chapitres precedents (meme trigramme dans 2+ chapitres).
@@ -428,6 +527,35 @@ mod tests {
     fn counts_meaningful_repeats() {
         let body = "cette dynamique invite cette dynamique invite cette dynamique invite \
             a explorer votre vocation avec patience et creativite authentique";
+        assert!(count_repeated_trigrams(body, "fr") >= 1);
+    }
+
+    #[test]
+    fn ignores_repeated_structural_astro_anchors() {
+        let body = "Le milieu du ciel organise la vocation. Le milieu du ciel revient \
+            comme repere professionnel. Jupiter en Cancer soutient l'élan. Jupiter en Cancer \
+            colore aussi la confiance.";
+        assert_eq!(count_repeated_trigrams(body, "fr"), 0);
+    }
+
+    #[test]
+    fn still_counts_repeated_editorial_phrases_near_astro_anchors() {
+        let body = "Cette dynamique invite le Milieu du Ciel a se deployer. \
+            Cette dynamique invite Jupiter en Cancer a clarifier la place.";
+        assert!(count_repeated_trigrams(body, "fr") >= 1);
+    }
+
+    #[test]
+    fn still_counts_non_numbered_house_editorial_repetition() {
+        let body = "Maison interieure vivante, maison interieure vivante, \
+            maison interieure vivante dans le recit personnel.";
+        assert!(count_repeated_trigrams(body, "fr") >= 1);
+    }
+
+    #[test]
+    fn still_counts_planet_metaphor_repetition_that_is_not_a_placement() {
+        let body = "Mars en tension devient un refrain. Mars en tension revient \
+            comme formule trop visible.";
         assert!(count_repeated_trigrams(body, "fr") >= 1);
     }
 

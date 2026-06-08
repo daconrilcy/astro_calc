@@ -99,7 +99,112 @@ pub fn reprocess_natal_simplified(
     );
     let audit = field_audit_from_response(&response);
     *reading = serde_json::from_value(response.payload)?;
+    remove_chapter_symbolic_disclaimer_boilerplate(reading);
     Ok(audit)
+}
+
+fn remove_chapter_symbolic_disclaimer_boilerplate(reading: &mut NatalReadingResponse) {
+    for chapter in &mut reading.chapters {
+        chapter.body = chapter
+            .body
+            .split("\n\n")
+            .filter_map(|paragraph| {
+                let cleaned = remove_symbolic_boilerplate_sentences(paragraph);
+                let cleaned = cleaned.trim();
+                (!cleaned.is_empty()).then(|| cleaned.to_string())
+            })
+            .collect::<Vec<_>>()
+            .join("\n\n");
+    }
+}
+
+fn remove_symbolic_boilerplate_sentences(paragraph: &str) -> String {
+    let mut kept = Vec::new();
+    let mut start = 0;
+    for (index, ch) in paragraph.char_indices() {
+        if matches!(ch, '.' | '!' | '?') {
+            let end = index + ch.len_utf8();
+            let sentence = paragraph[start..end].trim();
+            let cleaned = strip_symbolic_boilerplate_fragments(sentence);
+            if !cleaned.is_empty() {
+                kept.push(cleaned);
+            }
+            start = end;
+        }
+    }
+    let tail = paragraph[start..].trim();
+    if !tail.is_empty() {
+        let cleaned = strip_symbolic_boilerplate_fragments(tail);
+        if !cleaned.is_empty() {
+            kept.push(cleaned);
+        }
+    }
+    kept.join(" ")
+}
+
+fn strip_symbolic_boilerplate_fragments(text: &str) -> String {
+    let mut cleaned = text.to_string();
+    for phrase in [
+        "Cette lecture reste symbolique et exploratoire, non deterministe.",
+        "Cette lecture reste symbolique et exploratoire, non déterministe.",
+        "Cette lecture reste symbolique et exploratoire.",
+        "Cette lecture reste symbolique.",
+        "Lecture symbolique et non deterministe, bien sur ; elle decrit une tendance de fond, pas une destinee fermee.",
+        "Lecture symbolique et non déterministe, bien sûr ; elle décrit une tendance de fond, pas une destinée fermée.",
+        "Comme toujours en astrologie, il s’agit d’une lecture exploratoire, non déterministe, de vos tendances profondes.",
+        "Comme toujours en astrologie, il s'agit d'une lecture exploratoire, non deterministe, de vos tendances profondes.",
+        "lecture astrologique reste symbolique",
+        "Lecture astrologique reste symbolique",
+        "cette lecture reste symbolique",
+        "Cette lecture reste symbolique",
+        "lecture reste symbolique",
+        "Lecture reste symbolique",
+        "dans une lecture symbolique",
+        "Dans une lecture symbolique",
+    ] {
+        cleaned = cleaned.replace(phrase, "");
+    }
+    let cleaned = cleaned.trim().trim_matches(|ch: char| {
+        ch.is_whitespace() || matches!(ch, '.' | '!' | '?' | ',' | ';' | ':')
+    });
+    if is_symbolic_boilerplate_sentence(cleaned) {
+        return String::new();
+    }
+    cleaned
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .trim()
+        .to_string()
+}
+
+fn is_symbolic_boilerplate_sentence(sentence: &str) -> bool {
+    let lower = sentence.to_lowercase();
+    let normalized = lower.trim_matches(|ch: char| {
+        ch.is_whitespace() || matches!(ch, '.' | '!' | '?' | ',' | ';' | ':')
+    });
+    let is_reading_disclaimer = (normalized.starts_with("cette lecture")
+        || normalized.starts_with("lecture symbolique")
+        || normalized.starts_with("la lecture")
+        || normalized.starts_with("comme toujours en astrologie"))
+        && (normalized.contains("reste symbolique")
+            || normalized.contains("exploratoire")
+            || normalized.contains("non déterministe")
+            || normalized.contains("non deterministe")
+            || normalized.contains("rien de certain"));
+    normalized.is_empty()
+        || normalized == "cette lecture reste"
+        || normalized == "cette lecture"
+        || normalized == "lecture astrologique reste"
+        || normalized == "lecture reste"
+        || normalized == "comme toujours en astrologie"
+        || normalized
+            == "il s’agit d’une lecture exploratoire, non déterministe, de vos tendances profondes"
+        || normalized
+            == "il s'agit d'une lecture exploratoire, non deterministe, de vos tendances profondes"
+        || normalized == "thème n’annonce rien de certain"
+        || normalized == "theme n'annonce rien de certain"
+        || is_reading_disclaimer
 }
 
 pub fn reprocess_horoscope_daily(
@@ -175,6 +280,7 @@ pub fn reprocess_natal_theme_with_context(
     );
     let audit = field_audit_from_response(&response);
     *reading = serde_json::from_value(response.payload)?;
+    remove_chapter_symbolic_disclaimer_boilerplate(reading);
     Ok(audit)
 }
 

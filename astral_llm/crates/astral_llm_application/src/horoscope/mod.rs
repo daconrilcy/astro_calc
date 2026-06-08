@@ -1938,7 +1938,7 @@ async fn period_writer_response(
     response["quality"]["fallback_used"] = json!(routed.fallback_used);
     repair_period_response_shape(request, &mut response);
     normalize_period_public_tones(request, &mut response);
-    response = reprocess_horoscope_period_payload(response);
+    response = postprocess_period_provider_response(request, response);
     validate_period_provider_public_payload(&response)?;
     Ok(response)
 }
@@ -2008,21 +2008,67 @@ pub fn period_response_provider_schema(request: &Value) -> Result<Value, Generat
         properties["watch_summary"] = json!({ "$ref": "#/definitions/free_watch_summary" });
         return Ok(schema);
     }
-    let properties = schema
-        .get_mut("properties")
-        .and_then(Value::as_object_mut)
-        .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_RESPONSE_INVALID"))?;
     if premium {
         let required = schema
             .get_mut("required")
             .and_then(Value::as_array_mut)
             .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_RESPONSE_INVALID"))?;
-        for field in ["best_windows", "watch_windows", "strategy"] {
+        for field in [
+            "week_overview",
+            "best_days",
+            "watch_days",
+            "daily_timeline",
+            "domain_sections",
+            "best_windows",
+            "watch_windows",
+            "strategy",
+        ] {
             if !required.iter().any(|value| value.as_str() == Some(field)) {
                 required.push(json!(field));
             }
         }
+        required
+            .retain(|value| !matches!(value.as_str(), Some("summary") | Some("dominant_theme")));
+        let properties = schema
+            .get_mut("properties")
+            .and_then(Value::as_object_mut)
+            .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_RESPONSE_INVALID"))?;
+        properties.remove("summary");
+        properties.remove("dominant_theme");
     } else {
+        {
+            let required = schema
+                .get_mut("required")
+                .and_then(Value::as_array_mut)
+                .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_RESPONSE_INVALID"))?;
+            for field in [
+                "week_overview",
+                "best_days",
+                "watch_days",
+                "daily_timeline",
+                "domain_sections",
+            ] {
+                if !required.iter().any(|value| value.as_str() == Some(field)) {
+                    required.push(json!(field));
+                }
+            }
+            required.retain(|value| {
+                !matches!(
+                    value.as_str(),
+                    Some("summary")
+                        | Some("dominant_theme")
+                        | Some("best_windows")
+                        | Some("watch_windows")
+                        | Some("strategy")
+                )
+            });
+        }
+        let properties = schema
+            .get_mut("properties")
+            .and_then(Value::as_object_mut)
+            .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_RESPONSE_INVALID"))?;
+        properties.remove("summary");
+        properties.remove("dominant_theme");
         properties.remove("best_windows");
         properties.remove("watch_windows");
         properties.remove("strategy");
@@ -2345,6 +2391,10 @@ pub fn repair_period_response_shape(request: &Value, response: &mut Value) {
             map.remove("strategy");
         });
     }
+    response.as_object_mut().map(|map| {
+        map.remove("summary");
+        map.remove("dominant_theme");
+    });
     response["evidence_summary"] =
         sanitize_period_evidence_summary(response.get("evidence_summary"), request);
     ensure_period_response_minimum_words(request, response);
@@ -2377,8 +2427,63 @@ fn reprocess_horoscope_daily_payload(response: Value) -> Value {
     reprocess_horoscope_daily("fr", response, None).payload
 }
 
-fn reprocess_horoscope_period_payload(response: Value) -> Value {
+#[doc(hidden)]
+pub fn reprocess_horoscope_period_payload(response: Value) -> Value {
     reprocess_horoscope_period("fr", response, None).payload
+}
+
+#[doc(hidden)]
+pub fn postprocess_period_provider_response(request: &Value, response: Value) -> Value {
+    let mut response = reprocess_horoscope_period_payload(response);
+    prune_period_response_variant_fields(request, &mut response);
+    finalize_period_response_words_and_repetition(request, &mut response);
+    prune_period_response_variant_fields(request, &mut response);
+    response
+}
+
+fn finalize_period_response_words_and_repetition(request: &Value, response: &mut Value) {
+    ensure_period_response_minimum_words(request, response);
+    normalize_period_week_overview_repetition(response);
+    normalize_period_repetitive_public_phrases(response);
+    ensure_period_response_minimum_words(request, response);
+    normalize_period_week_overview_repetition(response);
+    normalize_period_repetitive_public_phrases(response);
+    ensure_period_response_minimum_words(request, response);
+}
+
+#[doc(hidden)]
+pub fn prune_period_response_variant_fields(request: &Value, response: &mut Value) {
+    let service_code = request["service_code"]
+        .as_str()
+        .unwrap_or(HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE);
+    if is_free_period_service(service_code) {
+        response.as_object_mut().map(|map| {
+            map.remove("week_overview");
+            map.remove("best_days");
+            map.remove("watch_days");
+            map.remove("daily_timeline");
+            map.remove("domain_sections");
+            map.remove("best_windows");
+            map.remove("watch_windows");
+            map.remove("strategy");
+        });
+        return;
+    }
+    response["watch_summary"] = sanitize_period_watch_summary(
+        response.get("watch_summary"),
+        &request["watch_summary_plan"],
+    );
+    response.as_object_mut().map(|map| {
+        map.remove("summary");
+        map.remove("dominant_theme");
+    });
+    if !is_premium_period_service(service_code) {
+        response.as_object_mut().map(|map| {
+            map.remove("best_windows");
+            map.remove("watch_windows");
+            map.remove("strategy");
+        });
+    }
 }
 
 fn repair_free_period_response_shape(request: &Value, response: &mut Value) {
@@ -2630,7 +2735,7 @@ fn sanitize_period_markers(value: Option<&Value>, fallback: &Value) -> Value {
                     "date": date,
                     "title": sanitize_period_public_string(item.get("title").and_then(Value::as_str).unwrap_or("Jour")),
                     "reason": sanitize_period_public_string(item.get("reason").and_then(Value::as_str).unwrap_or("Ce jour ressort dans la trajectoire de la période.")),
-                    "evidence_keys": string_array_value(item.get("evidence_keys")).or_else(|| fallback_item.and_then(|fallback| string_array_value(fallback.get("evidence_keys")))).unwrap_or_else(|| json!([])),
+                    "evidence_keys": non_empty_string_array_value(item.get("evidence_keys")).or_else(|| fallback_item.and_then(|fallback| non_empty_string_array_value(fallback.get("evidence_keys")))).unwrap_or_else(|| json!([])),
                     "fallback_reason": fallback_reason
                 })
             })
@@ -2674,6 +2779,15 @@ fn sanitize_period_daily_timeline(value: Option<&Value>, request: &Value) -> Val
 
 fn sanitize_period_domain_sections(value: Option<&Value>, request: &Value) -> Value {
     let generated = value.and_then(Value::as_array).cloned().unwrap_or_default();
+    let fallback_by_domain = request["domain_sections"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|section| {
+            let domain = section.get("domain")?.as_str()?.to_string();
+            Some((domain, section.clone()))
+        })
+        .collect::<HashMap<_, _>>();
     let fallback = request["domain_sections"]
         .as_array()
         .into_iter()
@@ -2696,11 +2810,15 @@ fn sanitize_period_domain_sections(value: Option<&Value>, request: &Value) -> Va
         source
             .into_iter()
             .map(|section| {
+                let fallback = section
+                    .get("domain")
+                    .and_then(Value::as_str)
+                    .and_then(|domain| fallback_by_domain.get(domain));
                 json!({
                     "domain": sanitize_period_public_string(section.get("domain").and_then(Value::as_str).unwrap_or("organisation")),
                     "title": sanitize_period_public_string(section.get("title").and_then(Value::as_str).unwrap_or("Organisation")),
                     "text": sanitize_period_public_string(&section.get("text").and_then(Value::as_str).map(|text| ensure_period_personalization_text(text, &period_public_domain_interpretive_sentence(&section))).unwrap_or_else(|| period_public_domain_text(&section))),
-                    "evidence_keys": string_array_value(section.get("evidence_keys")).unwrap_or_else(|| json!([]))
+                    "evidence_keys": non_empty_string_array_value(section.get("evidence_keys")).or_else(|| fallback.and_then(|fallback| non_empty_string_array_value(fallback.get("evidence_keys")))).unwrap_or_else(|| json!([]))
                 })
             })
             .collect(),
@@ -3022,8 +3140,13 @@ fn ensure_period_response_minimum_words(request: &Value, response: &mut Value) {
         .as_array()
         .cloned()
         .unwrap_or_default();
-    if let Some(days) = response["daily_timeline"].as_array_mut() {
-        for (index, day) in days.iter_mut().enumerate() {
+    let day_count = response["daily_timeline"]
+        .as_array()
+        .map(Vec::len)
+        .unwrap_or(0);
+    for index in 0..day_count {
+        {
+            let day = &mut response["daily_timeline"][index];
             let date = day.get("date").and_then(Value::as_str).unwrap_or("");
             let plan = plans
                 .iter()
@@ -3040,6 +3163,9 @@ fn ensure_period_response_minimum_words(request: &Value, response: &mut Value) {
                 }
             }
         }
+        if period_public_word_count(response) >= limits.target_min {
+            return;
+        }
     }
     if period_public_word_count(response) >= limits.target_min {
         return;
@@ -3049,8 +3175,13 @@ fn ensure_period_response_minimum_words(request: &Value, response: &mut Value) {
         .as_array()
         .cloned()
         .unwrap_or_default();
-    if let Some(domain_sections) = response["domain_sections"].as_array_mut() {
-        for section in domain_sections {
+    let section_count = response["domain_sections"]
+        .as_array()
+        .map(Vec::len)
+        .unwrap_or(0);
+    for index in 0..section_count {
+        {
+            let section = &mut response["domain_sections"][index];
             let domain = section.get("domain").and_then(Value::as_str).unwrap_or("");
             let plan = sections
                 .iter()
@@ -3064,6 +3195,9 @@ fn ensure_period_response_minimum_words(request: &Value, response: &mut Value) {
                 }
             }
         }
+        if period_public_word_count(response) >= limits.target_min {
+            return;
+        }
     }
     if period_public_word_count(response) >= limits.target_min {
         return;
@@ -3076,6 +3210,12 @@ fn ensure_period_response_minimum_words(request: &Value, response: &mut Value) {
         );
     }
     fill_period_response_to_minimum(request, response, &limits);
+    if period_public_word_count(response) > limits.hard_limit {
+        trim_period_response_to_hard_limit(request, response, &limits);
+    }
+    if period_public_word_count(response) > limits.hard_limit {
+        trim_period_response_aggressively(request, response);
+    }
 }
 
 fn trim_period_response_to_hard_limit(
@@ -3251,8 +3391,13 @@ fn fill_period_response_to_minimum(
         .as_array()
         .cloned()
         .unwrap_or_default();
-    if let Some(days) = response["daily_timeline"].as_array_mut() {
-        for day in days {
+    let day_count = response["daily_timeline"]
+        .as_array()
+        .map(Vec::len)
+        .unwrap_or(0);
+    for index in 0..day_count {
+        {
+            let day = &mut response["daily_timeline"][index];
             let date = day.get("date").and_then(Value::as_str).unwrap_or("");
             if let Some(plan) = plans
                 .iter()
@@ -3275,6 +3420,9 @@ fn fill_period_response_to_minimum(
                     );
                 }
             }
+        }
+        if period_public_word_count(response) >= limits.target_min {
+            return;
         }
     }
 }
@@ -3625,9 +3773,19 @@ fn string_array_value(value: Option<&Value>) -> Option<Value> {
         .as_array()?
         .iter()
         .filter_map(Value::as_str)
+        .filter(|item| !item.trim().is_empty())
         .map(|item| json!(item))
         .collect::<Vec<_>>();
     Some(Value::Array(items))
+}
+
+fn non_empty_string_array_value(value: Option<&Value>) -> Option<Value> {
+    let value = string_array_value(value)?;
+    if value.as_array().map(Vec::is_empty).unwrap_or(true) {
+        None
+    } else {
+        Some(value)
+    }
 }
 
 pub fn validate_period_provider_public_payload(response: &Value) -> Result<(), GenerationError> {
