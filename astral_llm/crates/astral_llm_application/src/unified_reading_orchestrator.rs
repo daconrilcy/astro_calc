@@ -11,6 +11,7 @@ use crate::horoscope::{
     HoroscopeBasicDailyNatalOrchestrator, HoroscopeFreeDailyOrchestrator,
     HoroscopePeriodNatalOrchestrator, HoroscopePremiumDailyLocalOrchestrator,
     HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE, HOROSCOPE_FREE_DAILY_SERVICE_CODE,
+    HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
     HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE, HOROSCOPE_SERVICE_CODE,
 };
@@ -58,7 +59,8 @@ impl<'a> UnifiedReadingOrchestrator<'a> {
             HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE => {
                 self.run_premium_horoscope(job).await
             }
-            HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE
+            HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE
+            | HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE
             | HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE => {
                 self.run_period_horoscope(job).await
             }

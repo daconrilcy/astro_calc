@@ -49,6 +49,11 @@ try {
     }
 
     if (-not $SkipFakeSmoke) {
+        Invoke-Step "Horoscope Period: free next 7 days fake smoke" {
+            & (Join-Path $repoRoot "scripts\test_horoscope_free_next_7_days_fake.ps1") `
+                -BaseUrl $BaseUrl `
+                -CalculatorUrl $CalculatorUrl
+        }
         Invoke-Step "Horoscope Period: basic next 7 days fake smoke" {
             & (Join-Path $repoRoot "scripts\test_horoscope_basic_next_7_days_fake.ps1") `
                 -BaseUrl $BaseUrl `

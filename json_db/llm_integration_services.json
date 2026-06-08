@@ -395,6 +395,37 @@
       "sort_order": 220
     },
     {
+      "service_code": "horoscope_free_next_7_days_natal",
+      "profile_code": "natal_basic",
+      "product_code": "horoscope",
+      "label_fr": "Horoscope free 7 prochains jours",
+      "description_fr": "Projection Free compacte personnalisee sur theme natal pour comprendre la tendance des 7 prochains jours sans timeline ni fenetres.",
+      "orchestration_mode": "horoscope_period_natal",
+      "calculation_mode": "none",
+      "service_request_contract": "integration_job_request_v1",
+      "payload_contract": "horoscope_period_natal_request_v1",
+      "service_response_contract": "integration_job_status_v1",
+      "calculation_output_contract": "horoscope_period_calculation_response_v1",
+      "reading_output_contract": "horoscope_period_response_v1",
+      "sync_endpoint": null,
+      "async_endpoint": "POST /v1/jobs",
+      "supports_async": true,
+      "supports_sync_legacy": false,
+      "supports_mercure": false,
+      "availability": "planned",
+      "example_request_json": {
+        "service_code": "horoscope_free_next_7_days_natal",
+        "payload": {
+          "anchor_date": "2026-06-07",
+          "timezone": "Europe/Paris",
+          "target_language": "fr",
+          "chart_calculation_id": "123",
+          "audience_level": "general"
+        }
+      },
+      "sort_order": 225
+    },
+    {
       "service_code": "horoscope_basic_next_7_days_natal",
       "profile_code": "natal_basic",
       "product_code": "horoscope",

@@ -421,6 +421,7 @@ pub fn service_has_v1_orchestrator(service: &IntegrationService) -> bool {
                 || service.service_code == "horoscope_basic_daily_natal_3_slots"
                 || service.service_code == "horoscope_free_daily"
                 || service.service_code == "horoscope_premium_daily_local_2h_slots"
+                || service.service_code == "horoscope_free_next_7_days_natal"
                 || service.service_code == "horoscope_basic_next_7_days_natal"
                 || service.service_code == "horoscope_premium_next_7_days_natal"
         }
@@ -505,7 +506,8 @@ fn service_mapping_notes(service: &IntegrationService) -> Vec<&'static str> {
                     "payload = horoscope_premium_daily_local_request_v1",
                     "orchestration: calculator local horoscope facts -> deterministic premium scoring -> structured premium fake horoscope response",
                 ]
-            } else if service.service_code == "horoscope_basic_next_7_days_natal"
+            } else if service.service_code == "horoscope_free_next_7_days_natal"
+                || service.service_code == "horoscope_basic_next_7_days_natal"
                 || service.service_code == "horoscope_premium_next_7_days_natal"
             {
                 vec![
@@ -535,6 +537,7 @@ fn service_validation_notes(service: &IntegrationService) -> Vec<String> {
     } else if service.service_code == "horoscope_basic_daily_natal_3_slots"
         || service.service_code == "horoscope_free_daily"
         || service.service_code == "horoscope_premium_daily_local_2h_slots"
+        || service.service_code == "horoscope_free_next_7_days_natal"
         || service.service_code == "horoscope_basic_next_7_days_natal"
         || service.service_code == "horoscope_premium_next_7_days_natal"
     {

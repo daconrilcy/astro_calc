@@ -475,6 +475,70 @@ Erreurs possibles :
 `HOROSCOPE_PREMIUM_CONTRADICTORY_SLOT_CLASSIFICATION`,
 `HOROSCOPE_PUBLIC_SLOT_CODE_LEAK`, `HOROSCOPE_EVIDENCE_MISMATCH`.
 
+### Service `horoscope_free_next_7_days_natal`
+
+Statut catalogue : `planned`.
+
+Positionnement produit : Free = comprendre la tendance. Ce service reste natal
+personnalise et synthetique ; il ne publie pas la timeline Basic ni les
+fenetres/strategie Premium.
+
+Payload : `horoscope_period_natal_request_v1`.
+
+Contraintes :
+
+- `chart_calculation_id`, `anchor_date`, `timezone`, `target_language` requis
+- `birth_data` inline refuse
+- `period_profile_code = next_7_days`
+- `detail_profile_code = free_compact`
+- `scan_profile_code = daily_noon_7_days`
+- scan de 7 snapshots exactement
+
+Exemple payload :
+
+```json
+{
+  "service_code": "horoscope_free_next_7_days_natal",
+  "payload": {
+    "anchor_date": "2026-06-07",
+    "timezone": "Europe/Paris",
+    "target_language": "fr",
+    "chart_calculation_id": "123",
+    "audience_level": "general"
+  }
+}
+```
+
+Shape reponse publique :
+
+```json
+{
+  "contract_version": "horoscope_period_response_v1",
+  "service_code": "horoscope_free_next_7_days_natal",
+  "period_resolution": {},
+  "summary": { "title": "Vos 7 prochains jours", "text": "..." },
+  "dominant_theme": { "theme": "organisation", "text": "..." },
+  "key_days": [{ "date": "2026-06-10", "title": "Jour à retenir", "reason": "...", "evidence_keys": [] }],
+  "advice": "...",
+  "watch_summary": { "status": "none", "text": "...", "evidence_keys": [] },
+  "evidence_summary": [{ "date": "2026-06-10", "evidence_key": "...", "label": "..." }],
+  "quality": {}
+}
+```
+
+Le front affiche `key_days` sous le libelle public "Jours a retenir".
+Champs interdits en Free : `daily_timeline`, `best_days`, `watch_days`,
+`week_overview`, `best_windows`, `watch_windows`, `domain_sections`,
+`strategy`. Le payload d'interpretation Free garde les snapshots et preuves,
+mais n'envoie pas de `daily_plans` au writer. `watch_summary.status` accepte
+`none`, `low` ou `present`; `present` reste interdit aux shapes Basic/Premium.
+
+Validation fake :
+
+```powershell
+.\scripts\test_horoscope_free_next_7_days_fake.ps1
+```
+
 ### Service `horoscope_basic_next_7_days_natal`
 
 - `availability` : `beta`

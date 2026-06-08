@@ -118,6 +118,7 @@ Respecter `poll_after_ms`. Statut terminal `completed` inclut `result` (envelopp
 | `natal_*_from_payload` | payload pré-calculé | planned |
 | `natal_light`, `natal_premium`, `natal_premium_plus` | full natal | planned (activation progressive) |
 | `horoscope_premium_daily_local_2h_slots` | horoscope quotidien local 12 créneaux | **beta** |
+| `horoscope_free_next_7_days_natal` | horoscope Free compact des 7 prochains jours | **planned** |
 | `horoscope_basic_next_7_days_natal` | horoscope Basic des 7 prochains jours | **beta** |
 | `horoscope_premium_next_7_days_natal` | horoscope Premium des 7 prochains jours | **beta** |
 
@@ -256,6 +257,7 @@ Voir [contracts/README.md](../contracts/README.md) pour la matrice complète.
 | `test_horoscope_period_all.ps1` | Suite fake + contrats horoscope period |
 | `test_horoscope_basic_next_7_days_real_e2e.ps1` | E2E reel optionnel horoscope period |
 | `test_horoscope_premium_next_7_days_real_e2e.ps1` | E2E reel optionnel horoscope period Premium |
+| `test_horoscope_free_next_7_days_fake.ps1` | validation fake Free period compact |
 
 ## Erreurs fréquentes
 

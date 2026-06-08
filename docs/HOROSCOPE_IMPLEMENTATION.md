@@ -939,6 +939,55 @@ Matrice period :
 | `horoscope_basic_next_7_days_natal` | basic | `basic_standard` | `daily_noon_7_days` | 7 jours, jours clefs, best/watch days |
 | `horoscope_premium_next_7_days_natal` | premium | `premium_rich` | `six_hour_7_days` | 7 jours, 28 snapshots, windows, strategy |
 
+## Horoscope Free Next 7 Days
+
+`horoscope_free_next_7_days_natal` est la projection Free du moteur period :
+comprendre la tendance des 7 prochains jours sans fournir la lecture jour par
+jour du Basic ni les fenetres/strategie du Premium.
+
+Configuration catalogue :
+
+- `product_level_code = free`
+- `period_profile_code = next_7_days`
+- `detail_profile_code = free_compact`
+- `scan_profile_code = daily_noon_7_days`
+- `payload_contract = horoscope_period_natal_request_v1`
+- `calculation_output_contract = horoscope_period_calculation_response_v1`
+- `reading_output_contract = horoscope_period_response_v1`
+- `requires_natal_chart = true`, `requires_timezone = true`, `requires_location = false`
+- `availability = planned`
+
+Contraintes d'entree : `chart_calculation_id`, `anchor_date`, `timezone` et
+`target_language` sont obligatoires. `birth_data` inline est refuse par le
+contrat public.
+
+Shape public Free :
+
+- `summary`
+- `dominant_theme`
+- `key_days` affiche cote front sous le libelle "Jours a retenir"
+- `advice`
+- `watch_summary`
+- `evidence_summary`
+- `quality`
+
+Champs interdits en Free : `daily_timeline`, `best_days`, `watch_days`,
+`week_overview`, `best_windows`, `watch_windows`, `domain_sections`,
+`strategy`. La requete d'interpretation Free conserve les snapshots et preuves
+mais ne transmet pas de `daily_plans` au writer. `watch_summary.status` est
+borne a `none`, `low` ou `present`, avec preuves obligatoires hors `none`.
+
+Limites editoriales : `summary.text` vise 90 a 180 mots et au maximum deux
+dates explicites ; `key_days` contient 1 a 2 dates ; `evidence_summary`
+contient 1 a 3 entrees ; `watch_summary` est obligatoire et doit citer des
+preuves si son statut n'est pas `none`.
+
+Commande de validation fake :
+
+```powershell
+.\scripts\test_horoscope_free_next_7_days_fake.ps1
+```
+
 `daily_noon_7_days` produit un snapshot quotidien a 12:00. `six_hour_7_days`
 produit quatre snapshots locaux par jour : 00:00, 06:00, 12:00 et 18:00, soit
 28 snapshots pour `next_7_days`. Les snapshots de 00:00 restent rattaches a la

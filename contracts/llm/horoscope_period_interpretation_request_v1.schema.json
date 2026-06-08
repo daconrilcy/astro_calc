@@ -21,10 +21,49 @@
     "evidence"
   ],
   "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": { "service_code": { "const": "horoscope_free_next_7_days_natal" } },
+        "required": ["service_code"]
+      },
+      "then": {
+        "properties": {
+          "daily_plans": { "type": "array", "maxItems": 0 },
+          "domain_sections": { "type": "array", "maxItems": 0 }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "service_code": { "const": "horoscope_basic_next_7_days_natal" } },
+        "required": ["service_code"]
+      },
+      "then": {
+        "properties": {
+          "daily_plans": { "type": "array", "minItems": 7, "maxItems": 7 },
+          "domain_sections": { "type": "array", "minItems": 2, "maxItems": 5 }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "service_code": { "const": "horoscope_premium_next_7_days_natal" } },
+        "required": ["service_code"]
+      },
+      "then": {
+        "properties": {
+          "daily_plans": { "type": "array", "minItems": 7, "maxItems": 7 },
+          "domain_sections": { "type": "array", "minItems": 2, "maxItems": 5 }
+        }
+      }
+    }
+  ],
   "properties": {
     "contract_version": { "const": "horoscope_period_interpretation_request_v1" },
     "service_code": {
       "enum": [
+        "horoscope_free_next_7_days_natal",
         "horoscope_basic_next_7_days_natal",
         "horoscope_premium_next_7_days_natal"
       ]
@@ -56,11 +95,10 @@
     "premium_scores": { "type": "object" },
     "daily_plans": {
       "type": "array",
-      "minItems": 7,
       "maxItems": 7,
       "items": { "$ref": "#/definitions/daily_plan" }
     },
-    "domain_sections": { "type": "array", "minItems": 2, "maxItems": 5, "items": { "$ref": "#/definitions/domain_section" } },
+    "domain_sections": { "type": "array", "maxItems": 5, "items": { "$ref": "#/definitions/domain_section" } },
     "evidence": { "type": "array", "maxItems": 50, "items": { "$ref": "#/definitions/evidence" } }
   },
   "definitions": {

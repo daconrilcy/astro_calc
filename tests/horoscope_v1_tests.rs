@@ -10,7 +10,8 @@ use astral_llm_application::horoscope::{
     validate_period_public_request, validate_period_response_evidence,
     validate_period_response_schema, validate_public_request, validate_response_evidence,
     validate_scan_plan, HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE,
-    HOROSCOPE_FREE_DAILY_SERVICE_CODE, HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
+    HOROSCOPE_FREE_DAILY_SERVICE_CODE, HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+    HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
     HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE, HOROSCOPE_SERVICE_CODE,
 };
 use astral_llm_application::IntegrationJobValidator;
@@ -113,6 +114,31 @@ fn horoscope_period_service() -> IntegrationService {
         availability: ServiceAvailability::Beta,
         example_request_json: None,
         sort_order: 230,
+    }
+}
+
+fn horoscope_free_period_service() -> IntegrationService {
+    IntegrationService {
+        service_code: HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE.into(),
+        profile_code: "natal_basic".into(),
+        product_code: "horoscope".into(),
+        label_fr: "Horoscope period free".into(),
+        description_fr: "Test".into(),
+        orchestration_mode: "horoscope_period_natal".into(),
+        calculation_mode: CalculationMode::None,
+        service_request_contract: "integration_job_request_v1".into(),
+        payload_contract: "horoscope_period_natal_request_v1".into(),
+        service_response_contract: "integration_job_status_v1".into(),
+        calculation_output_contract: Some("horoscope_period_calculation_response_v1".into()),
+        reading_output_contract: "horoscope_period_response_v1".into(),
+        sync_endpoint: None,
+        async_endpoint: "POST /v1/jobs".into(),
+        supports_async: true,
+        supports_sync_legacy: false,
+        supports_mercure: false,
+        availability: ServiceAvailability::Planned,
+        example_request_json: None,
+        sort_order: 225,
     }
 }
 
@@ -245,6 +271,17 @@ fn period_calculation() -> serde_json::Value {
         "calculation_warnings": [],
         "evidence_keys": []
     })
+}
+
+fn free_period_calculation() -> serde_json::Value {
+    let mut calculation = period_calculation();
+    calculation["service_code"] = serde_json::json!(HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE);
+    calculation
+}
+
+fn free_period_interpretation_request() -> serde_json::Value {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    build_period_interpretation_request(&public, &free_period_calculation()).unwrap()
 }
 
 fn premium_period_calculation() -> serde_json::Value {
@@ -923,6 +960,314 @@ fn horoscope_period_daily_noon_has_one_snapshot_per_included_date() {
     assert!(snapshots
         .iter()
         .all(|snapshot| snapshot["reference_time_local"] == "12:00"));
+}
+
+#[test]
+fn horoscope_free_next_7_days_uses_daily_noon_scan() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_calculation_request_for_service(
+        HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+        &public,
+    )
+    .unwrap();
+    assert_eq!(
+        request["scan_plan"]["scan_profile_code"],
+        "daily_noon_7_days"
+    );
+    assert_eq!(request["scan_plan"]["snapshot_count"], 7);
+    assert!(request["scan_plan"]["snapshots"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|snapshot| snapshot["reference_time_local"] == "12:00"));
+}
+
+#[test]
+fn horoscope_free_next_7_days_interpretation_is_free_compact() {
+    let request = free_period_interpretation_request();
+    validate_period_interpretation_request_schema(&request).unwrap();
+    assert_eq!(
+        request["service_code"],
+        HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE
+    );
+    assert_eq!(request["detail_profile_code"], "free_compact");
+    assert_eq!(request["scan_plan"]["snapshot_count"], 7);
+    assert!(request["daily_plans"].as_array().unwrap().is_empty());
+    assert!((1..=2).contains(&request["key_days"].as_array().unwrap().len()));
+    assert!(request["best_days"].as_array().unwrap().is_empty());
+    assert!(request["watch_days"].as_array().unwrap().is_empty());
+    assert!(request["key_days"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|day| day["title"] == "Jour à retenir"));
+    assert!(request["domain_sections"].as_array().unwrap().is_empty());
+    assert!(request.get("best_windows").is_none());
+    assert!(request.get("watch_windows").is_none());
+    assert!(request.get("strategy").is_none());
+}
+
+#[test]
+fn horoscope_free_next_7_days_response_has_compact_shape() {
+    let request = free_period_interpretation_request();
+    let response = fake_period_writer_response(&request).unwrap();
+    validate_period_response_schema(&response).unwrap();
+    validate_period_response_evidence(&request, &response).unwrap();
+    assert!(response.get("summary").is_some());
+    assert!(response.get("dominant_theme").is_some());
+    assert!(response
+        .get("advice")
+        .and_then(|value| value.as_str())
+        .is_some());
+    assert!((1..=2).contains(&response["key_days"].as_array().unwrap().len()));
+    assert!((1..=3).contains(&response["evidence_summary"].as_array().unwrap().len()));
+    for forbidden in [
+        "daily_timeline",
+        "best_days",
+        "watch_days",
+        "best_windows",
+        "watch_windows",
+        "domain_sections",
+        "strategy",
+    ] {
+        assert!(response.get(forbidden).is_none(), "{forbidden} leaked");
+    }
+}
+
+#[test]
+fn horoscope_free_next_7_days_goldens_validate_shape_and_evidence() {
+    let calculation: serde_json::Value = serde_json::from_str(include_str!(
+        "golden/horoscope_period_calculation_response_v1_free_next_7_days_paris_1990.json"
+    ))
+    .unwrap();
+    assert_eq!(
+        calculation["service_code"],
+        HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE
+    );
+    assert_eq!(calculation["scan_plan"]["snapshot_count"], 7);
+
+    let interpretation: serde_json::Value = serde_json::from_str(include_str!(
+        "golden/horoscope_period_interpretation_request_v1_free_next_7_days_paris_1990.json"
+    ))
+    .unwrap();
+    validate_period_interpretation_request_schema(&interpretation).unwrap();
+    assert_eq!(interpretation["detail_profile_code"], "free_compact");
+
+    let response: serde_json::Value = serde_json::from_str(include_str!(
+        "golden/horoscope_period_response_v1_free_next_7_days_fake.json"
+    ))
+    .unwrap();
+    validate_period_response_schema(&response).unwrap();
+    validate_period_response_evidence(&interpretation, &response).unwrap();
+}
+
+#[test]
+fn horoscope_free_next_7_days_rejects_basic_or_premium_leaks() {
+    let request = free_period_interpretation_request();
+    let mut response = fake_period_writer_response(&request).unwrap();
+    response["daily_timeline"] = serde_json::json!([]);
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_FREE_DAILY_TIMELINE_LEAK"
+    );
+
+    let mut response = fake_period_writer_response(&request).unwrap();
+    response["week_overview"] = serde_json::json!({
+        "title": "Semaine",
+        "text": "Texte",
+        "trajectory": "Progression"
+    });
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_FREE_WEEK_OVERVIEW_LEAK"
+    );
+}
+
+#[test]
+fn horoscope_free_next_7_days_watch_summary_present_requires_evidence() {
+    let request = free_period_interpretation_request();
+    let mut response = fake_period_writer_response(&request).unwrap();
+    response["watch_summary"]["status"] = serde_json::json!("present");
+    response["watch_summary"]["evidence_keys"] = serde_json::json!([]);
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_EVIDENCE_MISSING");
+}
+
+#[test]
+fn horoscope_free_next_7_days_rejects_active_watch_summary_status() {
+    let request = free_period_interpretation_request();
+    let mut response = fake_period_writer_response(&request).unwrap();
+    response["watch_summary"]["status"] = serde_json::json!("active");
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert!(err
+        .detail()
+        .message
+        .starts_with("HOROSCOPE_PERIOD_RESPONSE_INVALID"));
+}
+
+#[test]
+fn horoscope_free_next_7_days_repair_preserves_present_watch_summary_with_allowed_evidence() {
+    let request = free_period_interpretation_request();
+    let mut response = fake_period_writer_response(&request).unwrap();
+    let evidence_key = request["evidence"][0]["evidence_key"].clone();
+    response["watch_summary"] = serde_json::json!({
+        "status": "present",
+        "text": "Un point demande de ralentir la réponse avant de conclure.",
+        "evidence_keys": [evidence_key]
+    });
+    repair_period_response_shape(&request, &mut response);
+    assert_eq!(response["watch_summary"]["status"], "present");
+    assert_eq!(
+        response["watch_summary"]["evidence_keys"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+    validate_period_response_evidence(&request, &response).unwrap();
+}
+
+#[test]
+fn horoscope_free_next_7_days_rejects_basic_key_day_title() {
+    let request = free_period_interpretation_request();
+    let mut response = fake_period_writer_response(&request).unwrap();
+    response["key_days"][0]["title"] = serde_json::json!("Jour favorable");
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_FREE_KEY_DAY_TITLE_INVALID"
+    );
+}
+
+#[test]
+fn horoscope_free_next_7_days_repair_normalizes_key_day_title() {
+    let request = free_period_interpretation_request();
+    let mut response = fake_period_writer_response(&request).unwrap();
+    response["key_days"][0]["title"] = serde_json::json!("Jour favorable");
+    repair_period_response_shape(&request, &mut response);
+    assert_eq!(response["key_days"][0]["title"], "Jour à retenir");
+    validate_period_response_evidence(&request, &response).unwrap();
+}
+
+#[test]
+fn horoscope_free_next_7_days_missing_required_fields_use_free_guard_codes() {
+    let request = free_period_interpretation_request();
+    let mut response = fake_period_writer_response(&request).unwrap();
+    response.as_object_mut().unwrap().remove("summary");
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_FREE_MISSING_SUMMARY"
+    );
+
+    let mut response = fake_period_writer_response(&request).unwrap();
+    response["key_days"] = serde_json::json!([]);
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_FREE_MISSING_KEY_DAY"
+    );
+
+    let mut response = fake_period_writer_response(&request).unwrap();
+    response["dominant_theme"]["theme"] = serde_json::json!("");
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_FREE_MISSING_DOMINANT_THEME"
+    );
+}
+
+#[test]
+fn horoscope_free_next_7_days_rejects_summary_with_three_french_dates() {
+    let request = free_period_interpretation_request();
+    let mut response = fake_period_writer_response(&request).unwrap();
+    response["summary"]["text"] = serde_json::json!(
+        "Le 7 juin donne un premier repère. Le 8 juin demande un ajustement simple. Le 9 juin confirme la tendance générale sans fournir de timeline complète."
+    );
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_FREE_SUMMARY_TOO_MANY_EXPLICIT_DATES"
+    );
+}
+
+#[test]
+fn horoscope_free_next_7_days_real_response_above_hard_limit_uses_too_long_guard() {
+    let request = free_period_interpretation_request();
+    let mut response = fake_period_writer_response(&request).unwrap();
+    response["quality"]["provider"] = serde_json::json!("openai");
+    response["advice"] = serde_json::json!(std::iter::repeat("Phrase publique simple.")
+        .take(180)
+        .collect::<Vec<_>>()
+        .join(" "));
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_FREE_TOO_LONG");
+}
+
+#[test]
+fn horoscope_free_next_7_days_rejects_too_generic_public_text() {
+    let request = free_period_interpretation_request();
+    let mut response = fake_period_writer_response(&request).unwrap();
+    response["summary"]["text"] = serde_json::json!(
+        "Les prochains jours peuvent aider à avancer avec prudence. Prenez le temps de choisir ce qui compte et gardez une approche simple."
+    );
+    response["dominant_theme"]["theme"] = serde_json::json!("repère");
+    response["dominant_theme"]["text"] =
+        serde_json::json!("Un repère général aide à garder une direction simple.");
+    response["advice"] = serde_json::json!("Avancez doucement et observez ce qui évolue.");
+    response["watch_summary"]["text"] =
+        serde_json::json!("Une attention calme suffit pour traverser la période.");
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_FREE_TOO_GENERIC");
+}
+
+#[test]
+fn horoscope_period_schema_rejects_basic_without_timeline_shape() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response.as_object_mut().unwrap().remove("daily_timeline");
+    let err = validate_period_response_schema(&response).unwrap_err();
+    assert!(err
+        .detail()
+        .message
+        .starts_with("HOROSCOPE_PERIOD_RESPONSE_INVALID"));
+}
+
+#[test]
+fn horoscope_period_schema_rejects_basic_present_watch_summary_status() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response["watch_summary"]["status"] = serde_json::json!("present");
+    let err = validate_period_response_schema(&response).unwrap_err();
+    assert!(err
+        .detail()
+        .message
+        .starts_with("HOROSCOPE_PERIOD_RESPONSE_INVALID"));
+}
+
+#[test]
+fn horoscope_period_interpretation_schema_rejects_basic_without_domain_sections() {
+    let mut request = period_interpretation_request();
+    request["domain_sections"] = serde_json::json!([]);
+    let err = validate_period_interpretation_request_schema(&request).unwrap_err();
+    assert!(err
+        .detail()
+        .message
+        .starts_with("HOROSCOPE_PERIOD_RESPONSE_INVALID"));
+}
+
+#[test]
+fn horoscope_period_schema_rejects_premium_without_windows_shape() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    response.as_object_mut().unwrap().remove("best_windows");
+    let err = validate_period_response_schema(&response).unwrap_err();
+    assert!(err
+        .detail()
+        .message
+        .starts_with("HOROSCOPE_PERIOD_RESPONSE_INVALID"));
 }
 
 #[test]
@@ -2285,12 +2630,15 @@ fn horoscope_premium_next_7_days_is_not_basic_shape_with_more_words() {
     response.as_object_mut().unwrap().remove("strategy");
     response["best_windows"] = serde_json::json!([]);
     let err = validate_period_response_evidence(&request, &response).unwrap_err();
-    assert!(matches!(
-        err.detail().message.as_str(),
-        "HOROSCOPE_PERIOD_RESPONSE_INVALID"
-            | "HOROSCOPE_PERIOD_PREMIUM_WINDOWS_MISSING"
-            | "HOROSCOPE_PERIOD_PREMIUM_INSUFFICIENT_DETAIL"
-    ));
+    let message = err.detail().message.as_str();
+    assert!(
+        message.starts_with("HOROSCOPE_PERIOD_RESPONSE_INVALID")
+            || matches!(
+                message,
+                "HOROSCOPE_PERIOD_PREMIUM_WINDOWS_MISSING"
+                    | "HOROSCOPE_PERIOD_PREMIUM_INSUFFICIENT_DETAIL"
+            )
+    );
 }
 
 #[test]
@@ -3511,6 +3859,7 @@ fn horoscope_service_has_v1_orchestrator() {
     assert!(service_has_v1_orchestrator(&horoscope_service()));
     assert!(service_has_v1_orchestrator(&horoscope_free_service()));
     assert!(service_has_v1_orchestrator(&horoscope_premium_service()));
+    assert!(service_has_v1_orchestrator(&horoscope_free_period_service()));
     assert!(service_has_v1_orchestrator(&horoscope_period_service()));
     assert!(service_has_v1_orchestrator(
         &horoscope_premium_period_service()
