@@ -2317,8 +2317,31 @@ fn horoscope_premium_next_7_days_fake_writer_context_only_passes_evidence_guard(
 
 #[test]
 fn horoscope_period_provider_schema_matches_service_shape() {
+    let free = free_period_interpretation_request();
+    let free_schema = period_response_provider_schema(&free).unwrap();
+    assert!(free_schema.get("allOf").is_none());
+    let free_properties = free_schema["properties"].as_object().unwrap();
+    for forbidden in [
+        "week_overview",
+        "best_days",
+        "watch_days",
+        "daily_timeline",
+        "domain_sections",
+        "best_windows",
+        "watch_windows",
+        "strategy",
+    ] {
+        assert!(!free_properties.contains_key(forbidden));
+    }
+    assert_eq!(free_properties["advice"]["type"], "string");
+    assert_eq!(
+        free_properties["watch_summary"]["$ref"],
+        "#/definitions/free_watch_summary"
+    );
+
     let basic = period_interpretation_request();
     let basic_schema = period_response_provider_schema(&basic).unwrap();
+    assert!(basic_schema.get("allOf").is_none());
     let basic_properties = basic_schema["properties"].as_object().unwrap();
     let basic_required = basic_schema["required"]
         .as_array()
@@ -2333,6 +2356,7 @@ fn horoscope_period_provider_schema_matches_service_shape() {
 
     let premium = premium_period_interpretation_request();
     let premium_schema = period_response_provider_schema(&premium).unwrap();
+    assert!(premium_schema.get("allOf").is_none());
     let premium_properties = premium_schema["properties"].as_object().unwrap();
     let premium_required = premium_schema["required"]
         .as_array()

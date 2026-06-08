@@ -1946,6 +1946,9 @@ pub fn period_response_provider_schema(request: &Value) -> Result<Value, Generat
             Value::Null,
         )
     })?;
+    schema.as_object_mut().map(|object| {
+        object.remove("allOf");
+    });
     let free = is_free_period_request(request);
     let premium = is_premium_period_request(request);
     if free {
@@ -1983,6 +1986,20 @@ pub fn period_response_provider_schema(request: &Value) -> Result<Value, Generat
         ] {
             properties.remove(field);
         }
+        properties["advice"] = json!({ "type": "string" });
+        properties["key_days"] = json!({
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 2,
+            "items": { "$ref": "#/definitions/day_marker" }
+        });
+        properties["evidence_summary"] = json!({
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 3,
+            "items": { "$ref": "#/definitions/evidence_summary_item" }
+        });
+        properties["watch_summary"] = json!({ "$ref": "#/definitions/free_watch_summary" });
         return Ok(schema);
     }
     let properties = schema
