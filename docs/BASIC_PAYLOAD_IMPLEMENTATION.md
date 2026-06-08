@@ -46,6 +46,18 @@ avec une marge d'observation concrete sans `evidence_keys`, et refusent les
 creneaux favorables. Les `key_days` restent donc des reperes utiles, avec une
 raison suffisamment explicite, sans devenir des `best_days` deguises.
 
+Le reprocessing centralise des reponses horoscope daily conserve les formes de
+contrat par service. Le fallback `advice` a la racine est reserve aux payloads
+daily compacts sans `slots`, `timeline`, `best_slots` ou `watch_slots`; il ne
+doit pas etre ajoute au service Basic
+`horoscope_basic_daily_natal_3_slots`, qui expose les conseils uniquement dans
+`slots[]`. Les champs techniques de preuve (`*_key`, `*_keys`) sont exclus des
+normalisations typographiques afin de conserver les valeurs exactes attendues par
+les gardes d'evidence. Les tests
+`text_reprocessing_horoscope_basic_daily_does_not_add_root_advice`
+et `text_reprocessing_public_text_processors_preserve_technical_fields`
+verrouillent cette non-regression.
+
 La version Premium period `horoscope_premium_next_7_days_natal` est une extension
 du flux horoscope period, pas du payload route basic natal historique. Elle
 reutilise `horoscope_period_natal_request_v1`, impose ses profils depuis le

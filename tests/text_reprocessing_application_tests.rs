@@ -75,6 +75,27 @@ fn text_reprocessing_horoscope_daily_generates_expected_json() {
 }
 
 #[test]
+fn text_reprocessing_horoscope_basic_daily_does_not_add_root_advice() {
+    let response = TextRetreatmentPipeline::default().process(request(
+        LANG_FR,
+        SERVICE_HOROSCOPE_DAILY,
+        TextTarget::HoroscopeDailyResponse,
+        vec![Op::BuildFallback],
+        json!({
+            "contract_version": "horoscope_response_v1",
+            "service_code": "horoscope_basic_daily_natal_3_slots",
+            "slots": []
+        }),
+    ));
+
+    assert!(response.payload.get("advice").is_none());
+    assert!(response
+        .audit
+        .iter()
+        .all(|item| item.field_path.as_deref() != Some("$.advice")));
+}
+
+#[test]
 fn text_reprocessing_horoscope_period_generates_expected_json() {
     let response = TextRetreatmentPipeline::default().process(request(
         LANG_FR,
@@ -484,12 +505,22 @@ fn text_reprocessing_public_text_processors_preserve_technical_fields() {
         json!({
             "theme_code": "l impression",
             "fact_id": "d une source",
+            "evidence_key": "slot:morning:moon:natal_house:6",
+            "evidence_keys": ["slot:afternoon:mars:square:natal_moon"],
             "text": "l impression compte"
         }),
     ));
 
     assert_eq!(response.payload["theme_code"], "l impression");
     assert_eq!(response.payload["fact_id"], "d une source");
+    assert_eq!(
+        response.payload["evidence_key"],
+        "slot:morning:moon:natal_house:6"
+    );
+    assert_eq!(
+        response.payload["evidence_keys"],
+        json!(["slot:afternoon:mars:square:natal_moon"])
+    );
     assert_eq!(response.payload["text"], "l'impression compte");
 }
 

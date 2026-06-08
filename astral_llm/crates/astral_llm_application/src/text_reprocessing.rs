@@ -828,7 +828,7 @@ impl TextRetreatmentProcessor for FallbackTextProcessor {
             payload["summary"] = json!({ "title": title, "text": fallback_summary_text(ctx) });
             outcome.fallback_paths.push("$.summary".into());
         }
-        if ctx.request.service.code == SERVICE_HOROSCOPE_DAILY && payload.get("advice").is_none() {
+        if should_add_daily_root_advice(ctx, payload) {
             payload["advice"] = json!(ctx
                 .language_rules
                 .map(|rules| rules.fallback_advice.as_str())
@@ -837,6 +837,15 @@ impl TextRetreatmentProcessor for FallbackTextProcessor {
         }
         outcome
     }
+}
+
+fn should_add_daily_root_advice(ctx: &TextRetreatmentContext<'_>, payload: &Value) -> bool {
+    ctx.request.service.code == SERVICE_HOROSCOPE_DAILY
+        && payload.get("advice").is_none()
+        && payload.get("slots").is_none()
+        && payload.get("timeline").is_none()
+        && payload.get("best_slots").is_none()
+        && payload.get("watch_slots").is_none()
 }
 
 pub struct PromptGuidanceProcessor;
@@ -966,6 +975,8 @@ fn is_technical_string_path(path: &str) -> bool {
         || key == "formatted_trace"
         || key.ends_with("_code")
         || key.ends_with("_id")
+        || key.ends_with("_key")
+        || key.ends_with("_keys")
 }
 
 fn is_length_controlled_path(path: &str) -> bool {
