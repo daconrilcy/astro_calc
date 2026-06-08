@@ -31,6 +31,8 @@ pub const HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE: &str =
     "horoscope_premium_next_7_days_natal";
 pub const HOROSCOPE_SERVICE_CODE: &str = HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE;
 
+const FREE_PERIOD_NONE_WATCH_SUMMARY: &str = "Aucun point de vigilance dominant ne ressort cette semaine. Gardez simplement une marge d'observation si un échange ou une décision demande plus de temps que prévu.";
+
 const SERVICES_JSON: &str = include_str!("../../../../../json_db/horoscope_services.json");
 const TIME_SLOTS_JSON: &str =
     include_str!("../../../../../json_db/horoscope_time_slot_profiles.json");
@@ -1291,7 +1293,7 @@ fn build_period_day_markers_from_events(
                 "date": event["date"],
                 "title": title,
                 "reason": format!(
-                    "{} ressort par le thème {}.",
+                    "{} ressort par le thème {} et sert de repère utile pour comprendre une priorité concrète.",
                     public_day_label(date),
                     period_theme_public_label(theme)
                 ),
@@ -1368,7 +1370,7 @@ fn build_period_watch_summary_plan(
         }
         return json!({
             "status": "none",
-            "text": "Aucun point de vigilance particulier ne ressort cette semaine.",
+            "text": FREE_PERIOD_NONE_WATCH_SUMMARY,
             "evidence_keys": []
         });
     }
@@ -1776,7 +1778,7 @@ fn build_period_marker(event: &Value, title: &str, fallback_reason: Option<&str>
         "date": event["date"],
         "title": title,
         "reason": format!(
-            "{} ressort par le thème {}.",
+            "{} ressort par le thème {} et sert de repère utile pour comprendre une priorité concrète.",
             public_day_label(date),
             period_theme_public_label(theme)
         ),
@@ -2094,7 +2096,7 @@ fn period_writer_messages(request: &Value) -> Result<Vec<PromptMessage>, Generat
             PromptMessage {
                 role: PromptRole::User,
                 content: format!(
-                    "Construis horoscope_period_response_v1 Free compact. Produis summary, dominant_theme, 1 à 2 key_days sous forme de jours à retenir, advice en 1 à 3 phrases, watch_summary court, evidence_summary limitée à 1 à 3 entrées. summary.text doit rester entre 90 et 180 mots et mentionner au maximum deux dates explicites. Requête JSON:\n{compact}"
+                    "Construis horoscope_period_response_v1 Free compact. Produis summary, dominant_theme, 1 à 2 key_days sous forme de jours à retenir, advice en 1 à 3 phrases, watch_summary court, evidence_summary limitée à 1 à 3 entrées. key_days sont des repères utiles, jamais des meilleurs jours ni des créneaux favorables. Si watch_summary.status vaut none, garde evidence_keys vide et explique brièvement qu'aucun signal dominant ne ressort tout en donnant une marge d'observation concrète. summary.text doit rester entre 90 et 180 mots et mentionner au maximum deux dates explicites. Requête JSON:\n{compact}"
                 ),
             },
         ]);
@@ -2494,7 +2496,7 @@ fn sanitize_free_period_watch_summary(value: Option<&Value>, request: &Value) ->
         .filter(|status| matches!(*status, "none" | "low" | "present"));
     let status = generated_status.unwrap_or("none");
     let fallback_text = if status == "none" {
-        "Aucun point de vigilance particulier ne ressort cette semaine."
+        FREE_PERIOD_NONE_WATCH_SUMMARY
     } else {
         "Une vigilance légère suffit : ralentir si une réaction paraît plus forte que la situation."
     };
@@ -2566,7 +2568,7 @@ fn sanitize_period_watch_summary(value: Option<&Value>, fallback: &Value) -> Val
     let fallback_text = fallback
         .get("text")
         .and_then(Value::as_str)
-        .unwrap_or("Aucun point de vigilance particulier ne ressort cette semaine.");
+        .unwrap_or(FREE_PERIOD_NONE_WATCH_SUMMARY);
     json!({
         "status": status,
         "text": sanitize_period_public_string(value
@@ -3946,6 +3948,7 @@ fn validate_free_period_provider_public_payload(response: &Value) -> Result<(), 
             ));
         }
     }
+    validate_free_period_key_days_are_neutral_markers(response)?;
     require_period_public_string(response, &["advice"])?;
     let evidence = response
         .get("evidence_summary")
@@ -3956,6 +3959,76 @@ fn validate_free_period_provider_public_payload(response: &Value) -> Result<(), 
             "HOROSCOPE_PERIOD_FREE_EVIDENCE_MISSING",
             json!({ "field": "evidence_summary", "count": evidence.len() }),
         ));
+    }
+    Ok(())
+}
+
+fn validate_free_period_key_days_are_neutral_markers(
+    response: &Value,
+) -> Result<(), GenerationError> {
+    let forbidden_terms = [
+        "meilleur",
+        "meilleure",
+        "favorabl",
+        "idéal",
+        "ideal",
+        "opportun",
+        "chance",
+        "fenêtre",
+        "fenetre",
+        "créneau",
+        "creneau",
+        "optimal",
+        "parfait",
+        "profiter",
+    ];
+    let useful_terms = [
+        "repère",
+        "repere",
+        "retenir",
+        "attention",
+        "thème",
+        "theme",
+        "priorité",
+        "priorite",
+        "tendance",
+        "ajuster",
+        "comprendre",
+    ];
+    for (index, day) in response["key_days"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .enumerate()
+    {
+        let text = [
+            day.get("title").and_then(Value::as_str),
+            day.get("reason").and_then(Value::as_str),
+        ]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase();
+        if forbidden_terms.iter().any(|term| text.contains(term)) {
+            return Err(quality_error(
+                "HOROSCOPE_PERIOD_FREE_KEY_DAY_BEST_DAY_LEAK",
+                json!({ "field": "key_days", "index": index }),
+            ));
+        }
+        let reason = day
+            .get("reason")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_lowercase();
+        if reason.split_whitespace().count() < 8
+            || !useful_terms.iter().any(|term| reason.contains(term))
+        {
+            return Err(quality_error(
+                "HOROSCOPE_PERIOD_FREE_KEY_DAY_TOO_THIN",
+                json!({ "field": "key_days.reason", "index": index }),
+            ));
+        }
     }
     Ok(())
 }
@@ -4284,6 +4357,16 @@ fn validate_free_period_response_evidence(
             return Err(quality_error(
                 "HOROSCOPE_PERIOD_FREE_EVIDENCE_MISSING",
                 json!({ "field": "watch_summary.evidence_keys" }),
+            ));
+        }
+        if watch["text"]
+            .as_str()
+            .map(|text| text.split_whitespace().count() < 14)
+            .unwrap_or(true)
+        {
+            return Err(quality_error(
+                "HOROSCOPE_PERIOD_FREE_WATCH_SUMMARY_TOO_THIN",
+                json!({ "field": "watch_summary.text" }),
             ));
         }
     } else {

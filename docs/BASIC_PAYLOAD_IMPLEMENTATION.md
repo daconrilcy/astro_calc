@@ -39,6 +39,12 @@ recopiables au writer. Les tests sont regroupes dans
 `scripts/test_horoscope_free_next_7_days_fake.ps1`, inclus dans
 `scripts/test_horoscope_period_all.ps1`, avec goldens sous `tests/golden/` et
 reviews sous `docs/reviews/horoscope_free_next_7_days/`.
+Les garde-fous Free imposent une sortie publique compacte entre 140 et 450 mots
+sur plusieurs profils de calcul, enrichissent `watch_summary.status = "none"`
+avec une marge d'observation concrete sans `evidence_keys`, et refusent les
+`key_days` qui reprennent le vocabulaire Premium de meilleurs jours, fenetres ou
+creneaux favorables. Les `key_days` restent donc des reperes utiles, avec une
+raison suffisamment explicite, sans devenir des `best_days` deguises.
 
 La version Premium period `horoscope_premium_next_7_days_natal` est une extension
 du flux horoscope period, pas du payload route basic natal historique. Elle

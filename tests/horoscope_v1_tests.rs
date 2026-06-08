@@ -284,6 +284,97 @@ fn free_period_interpretation_request() -> serde_json::Value {
     build_period_interpretation_request(&public, &free_period_calculation()).unwrap()
 }
 
+fn free_period_interpretation_request_from_calculation(
+    calculation: &serde_json::Value,
+) -> serde_json::Value {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    build_period_interpretation_request(&public, calculation).unwrap()
+}
+
+fn free_period_calculation_without_tension() -> serde_json::Value {
+    let mut calculation = free_period_calculation();
+    for snapshot in calculation["snapshots"].as_array_mut().unwrap() {
+        let date = snapshot["date"].as_str().unwrap().to_string();
+        let snapshot_key = snapshot["snapshot_key"].as_str().unwrap().to_string();
+        let fact = &mut snapshot["transits_to_natal"][0];
+        if fact["fact_type"] == "transit_to_natal" {
+            let object = fact["transiting_object"].as_str().unwrap().to_string();
+            fact["aspect"] = serde_json::json!("trine");
+            fact["evidence_key"] = serde_json::json!(format!(
+                "period:{}:{}:{}:trine:natal_moon",
+                date, snapshot_key, object
+            ));
+        }
+    }
+    calculation
+}
+
+fn free_period_calculation_active_profile() -> serde_json::Value {
+    let mut calculation = free_period_calculation();
+    let objects = ["mars", "mercury", "sun", "venus", "mars", "mercury", "moon"];
+    for (index, snapshot) in calculation["snapshots"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .enumerate()
+    {
+        let date = snapshot["date"].as_str().unwrap().to_string();
+        let snapshot_key = snapshot["snapshot_key"].as_str().unwrap().to_string();
+        let object = objects[index % objects.len()];
+        let fact = &mut snapshot["transits_to_natal"][0];
+        if object == "moon" {
+            fact["fact_type"] = serde_json::json!("moon_house_by_day");
+            fact["transiting_object"] = serde_json::json!("moon");
+            fact["natal_target"] = serde_json::Value::Null;
+            fact["aspect"] = serde_json::Value::Null;
+            fact["natal_house"] = serde_json::json!(6);
+            fact["evidence_key"] = serde_json::json!(format!(
+                "period:{}:{}:moon:natal_house:6",
+                date, snapshot_key
+            ));
+        } else {
+            fact["fact_type"] = serde_json::json!("transit_to_natal");
+            fact["transiting_object"] = serde_json::json!(object);
+            fact["natal_target"] = serde_json::json!("natal_moon");
+            fact["aspect"] = serde_json::json!("square");
+            fact["orb_deg"] = serde_json::json!(0.6);
+            fact["evidence_key"] = serde_json::json!(format!(
+                "period:{}:{}:{}:square:natal_moon",
+                date, snapshot_key, object
+            ));
+        }
+    }
+    calculation
+}
+
+fn free_period_public_word_count(response: &serde_json::Value) -> usize {
+    let mut text = String::new();
+    for pointer in [
+        "/summary/title",
+        "/summary/text",
+        "/dominant_theme/theme",
+        "/dominant_theme/text",
+        "/watch_summary/text",
+        "/advice",
+    ] {
+        if let Some(value) = response.pointer(pointer).and_then(|value| value.as_str()) {
+            text.push_str(value);
+            text.push('\n');
+        }
+    }
+    for field in ["key_days", "evidence_summary"] {
+        for item in response[field].as_array().into_iter().flatten() {
+            for key in ["title", "reason", "label"] {
+                if let Some(value) = item.get(key).and_then(|value| value.as_str()) {
+                    text.push_str(value);
+                    text.push('\n');
+                }
+            }
+        }
+    }
+    text.split_whitespace().count()
+}
+
 fn premium_period_calculation() -> serde_json::Value {
     let public = validate_period_public_request(&period_public_payload()).unwrap();
     let request = build_period_calculation_request_for_service(
@@ -1035,6 +1126,29 @@ fn horoscope_free_next_7_days_response_has_compact_shape() {
 }
 
 #[test]
+fn horoscope_free_next_7_days_public_words_stay_within_free_bounds_across_profiles() {
+    let requests = [
+        free_period_interpretation_request(),
+        free_period_interpretation_request_from_calculation(
+            &free_period_calculation_without_tension(),
+        ),
+        free_period_interpretation_request_from_calculation(
+            &free_period_calculation_active_profile(),
+        ),
+    ];
+
+    for request in requests {
+        let response = fake_period_writer_response(&request).unwrap();
+        validate_period_response_evidence(&request, &response).unwrap();
+        let words = free_period_public_word_count(&response);
+        assert!(
+            (140..=450).contains(&words),
+            "free public response should stay between 140 and 450 words, got {words}"
+        );
+    }
+}
+
+#[test]
 fn horoscope_free_next_7_days_goldens_validate_shape_and_evidence() {
     let calculation: serde_json::Value = serde_json::from_str(include_str!(
         "golden/horoscope_period_calculation_response_v1_free_next_7_days_paris_1990.json"
@@ -1130,6 +1244,49 @@ fn horoscope_free_next_7_days_repair_preserves_present_watch_summary_with_allowe
 }
 
 #[test]
+fn horoscope_free_next_7_days_repair_enriches_none_watch_summary() {
+    let request = free_period_interpretation_request_from_calculation(
+        &free_period_calculation_without_tension(),
+    );
+    let mut response = fake_period_writer_response(&request).unwrap();
+    response["watch_summary"] = serde_json::json!({
+        "status": "none",
+        "text": "",
+        "evidence_keys": [request["evidence"][0]["evidence_key"].clone()]
+    });
+    repair_period_response_shape(&request, &mut response);
+
+    assert_eq!(response["watch_summary"]["status"], "none");
+    assert!(response["watch_summary"]["evidence_keys"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+    let text = response["watch_summary"]["text"].as_str().unwrap();
+    assert!(text.contains("marge d'observation"));
+    assert!(text.split_whitespace().count() >= 14);
+    validate_period_response_evidence(&request, &response).unwrap();
+}
+
+#[test]
+fn horoscope_free_next_7_days_rejects_thin_none_watch_summary() {
+    let request = free_period_interpretation_request_from_calculation(
+        &free_period_calculation_without_tension(),
+    );
+    let mut response = fake_period_writer_response(&request).unwrap();
+    response["watch_summary"] = serde_json::json!({
+        "status": "none",
+        "text": "Aucun point particulier cette semaine.",
+        "evidence_keys": []
+    });
+
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_FREE_WATCH_SUMMARY_TOO_THIN"
+    );
+}
+
+#[test]
 fn horoscope_free_next_7_days_rejects_basic_key_day_title() {
     let request = free_period_interpretation_request();
     let mut response = fake_period_writer_response(&request).unwrap();
@@ -1149,6 +1306,32 @@ fn horoscope_free_next_7_days_repair_normalizes_key_day_title() {
     repair_period_response_shape(&request, &mut response);
     assert_eq!(response["key_days"][0]["title"], "Jour à retenir");
     validate_period_response_evidence(&request, &response).unwrap();
+}
+
+#[test]
+fn horoscope_free_next_7_days_rejects_best_day_disguised_as_key_day() {
+    let request = free_period_interpretation_request();
+    let mut response = fake_period_writer_response(&request).unwrap();
+    response["key_days"][0]["reason"] = serde_json::json!(
+        "C'est le meilleur créneau favorable pour profiter d'une opportunité idéale."
+    );
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_FREE_KEY_DAY_BEST_DAY_LEAK"
+    );
+}
+
+#[test]
+fn horoscope_free_next_7_days_rejects_thin_key_day_reason() {
+    let request = free_period_interpretation_request();
+    let mut response = fake_period_writer_response(&request).unwrap();
+    response["key_days"][0]["reason"] = serde_json::json!("Jour important.");
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_FREE_KEY_DAY_TOO_THIN"
+    );
 }
 
 #[test]
@@ -2167,7 +2350,7 @@ fn horoscope_period_no_tension_has_empty_watch_days_and_none_summary() {
     assert_eq!(request["watch_summary_plan"]["status"], "none");
     assert_eq!(
         request["watch_summary_plan"]["text"],
-        "Aucun point de vigilance particulier ne ressort cette semaine."
+        "Aucun point de vigilance dominant ne ressort cette semaine. Gardez simplement une marge d'observation si un échange ou une décision demande plus de temps que prévu."
     );
 }
 
