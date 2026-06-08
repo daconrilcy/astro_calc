@@ -24,7 +24,7 @@
   },
   "week_overview": {
     "title": "Vos 7 prochains jours",
-    "text": "La semaine relie les relations directes, les besoins émotionnels et le thème natal.",
+    "text": "La semaine relie les relations directes, les besoins émotionnels et vos repères personnels.",
     "trajectory": "Agir, ordonner puis intégrer."
   },
   "key_days": [],
@@ -54,12 +54,14 @@
       "source_snapshot_keys": [
         "2026-06-07:00:00"
       ],
-      "title": "Fenêtre favorable",
+      "title": "Ouvrir le lien utile",
       "theme": "relations",
       "tone": "soutenant",
       "reason": "Le signal offre un appui concret.",
       "best_for": [
-        "ouvrir un échange"
+        "ouvrir un échange important",
+        "apaiser un échange sensible",
+        "poser un accord concret"
       ],
       "evidence_keys": [
         "period:2026-06-07:2026-06-07:00:00:venus:trine:natal_moon"
@@ -73,7 +75,7 @@
       "source_snapshot_keys": [
         "2026-06-07:06:00"
       ],
-      "title": "Fenêtre de vigilance",
+      "title": "Ralentir l'impulsion avant midi",
       "theme": "énergie",
       "tone": "vigilant",
       "watch_point": "Ralentir avant de répondre.",
@@ -88,7 +90,7 @@
       "day_label": "2026-06-07",
       "theme": "priorité",
       "tone": "soutenant",
-      "text": "La journée ouvre la semaine en reliant le thème natal aux relations directes et aux besoins émotionnels.",
+      "text": "La journée ouvre la semaine en reliant vos repères personnels aux relations directes et aux besoins émotionnels.",
       "advice": "Choisir un premier geste clair.",
       "evidence_keys": [
         "period:2026-06-07:2026-06-07:00:00:venus:trine:natal_moon"
@@ -121,7 +123,7 @@
       "day_label": "2026-06-10",
       "theme": "priorité",
       "tone": "soutenant",
-      "text": "La communication devient plus utile quand elle reste reliée au thème natal et à une priorité concrète.",
+      "text": "La communication devient plus utile quand elle reste reliée à vos repères personnels et à une priorité concrète.",
       "advice": "Formuler une priorité utile.",
       "evidence_keys": [
         "period:2026-06-10:2026-06-10:00:00:jupiter:trine:natal_saturn"
@@ -165,7 +167,7 @@
     {
       "domain": "relations",
       "title": "relations",
-      "text": "Ce domaine relie le thème natal, les relations directes et une action concrète.",
+      "text": "Ce domaine relie vos repères personnels, les relations directes et une action concrète.",
       "evidence_keys": [
         "period:2026-06-07:2026-06-07:00:00:venus:trine:natal_moon"
       ]
@@ -173,7 +175,7 @@
     {
       "domain": "énergie",
       "title": "énergie",
-      "text": "Ce domaine relie le thème natal, les relations directes et une action concrète.",
+      "text": "Ce domaine relie vos repères personnels, les relations directes et une action concrète.",
       "evidence_keys": [
         "period:2026-06-07:2026-06-07:06:00:mars:square:natal_mercury"
       ]
@@ -181,7 +183,7 @@
     {
       "domain": "communication",
       "title": "communication",
-      "text": "Ce domaine relie le thème natal, les relations directes et une action concrète.",
+      "text": "Ce domaine relie vos repères personnels, les relations directes et une action concrète.",
       "evidence_keys": [
         "period:2026-06-07:2026-06-07:12:00:mercury:trine:natal_mars"
       ]

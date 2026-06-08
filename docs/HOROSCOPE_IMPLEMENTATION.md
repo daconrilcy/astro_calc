@@ -166,9 +166,10 @@ Durcissement real E2E period :
 - `key_days` est limite a deux entrees maximum et ne remonte que les pics nets
   (`score >= 0.60` et proche du meilleur score), avec rarete de theme comme
   departage ;
-- `best_days` est limite a deux entrees, hors `key_days`/`watch_days`, avec des
-  themes distincts et des titres qualitatifs (`Jour de clarte`, `Jour le plus
-  structurant`, etc.) ;
+- `best_days` est limite par le profil de detail (`max_best_days`) et reste hors
+  `key_days`/`watch_days`, avec des themes distincts et des titres qualitatifs
+  (`Jour de clarte`, `Jour le plus structurant`, etc.) ; ce plafond n'est pas un
+  minimum, et une date faible ne doit pas etre forcee pour remplir le quota ;
 - `watch_days` est construit uniquement depuis les evenements de vigilance
   credibles (`careful`, `square`, `opposition`) et peut etre vide ; dans ce cas,
   `watch_summary.status = "none"` annonce qu'aucun point de vigilance
@@ -943,14 +944,29 @@ produit quatre snapshots locaux par jour : 00:00, 06:00, 12:00 et 18:00, soit
 28 snapshots pour `next_7_days`. Les snapshots de 00:00 restent rattaches a la
 date locale meme si leur UTC tombe la veille.
 
-`best_days` et `watch_days` identifient des dates. `best_windows` et
-`watch_windows` identifient des plages horaires plus fines et doivent referencer
-au moins un `source_snapshot_key` existant dans `scan_plan.snapshots`.
+`best_days` et `watch_days` identifient des dates. `watch_days` reste reserve
+aux journees de vigilance forte. `best_windows` et `watch_windows` identifient
+des plages horaires plus fines et doivent referencer au moins un
+`source_snapshot_key` existant dans `scan_plan.snapshots`. Pour Premium,
+`watch_windows` peut etre non vide avec `watch_days = []` uniquement quand
+`watch_summary.status = low`, c'est-a-dire pour des fenetres locales ou garder
+une marge sans alerte forte.
+Pour Premium, `best_days` peut contenir jusqu'a 3 dates distinctes, mais peut
+rester a 2 si seules deux dates ressortent clairement apres scoring,
+deduplication de theme et exclusions `key_days`/`watch_days`.
 
 Le profil `premium_rich` vise 2200 mots et impose une limite dure a 3200 mots.
-La reponse Premium doit contenir `strategy`, `best_windows`, `watch_windows` ou
-`watch_summary.status = none`, exactement 7 entrees `daily_timeline`, 3 a 5
-`domain_sections`, `advice`, `evidence_summary` et `quality`.
+La reponse Premium doit contenir `strategy`, `best_windows`, des
+`watch_windows` evidencées quand des signaux exploitables existent, exactement 7
+entrees `daily_timeline`, 3 a 5 `domain_sections`, `advice`,
+`evidence_summary` et `quality`. Quand aucune tension forte ne ressort,
+`watch_summary.status = low` produit une vigilance douce ; `none` est reserve au
+cas sans signal exploitable. Les `best_windows` ne peuvent pas conserver un
+titre generique ni des `best_for` indifferencies.
+
+`premium_scores.domain_score` est un score applicatif de couverture : il combine
+la diversite des themes presents et la couverture evidence disponible. Il ne
+doit pas etre un placeholder constant a `1.0`.
 
 Non-objectifs V1 : pas de service local obligatoire, pas de nouveau worker, pas
 de nouvel endpoint, pas de nouvelle table jobs, pas de progressions, pas de

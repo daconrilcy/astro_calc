@@ -47,7 +47,10 @@ rejet. Le payload period interne utilise des scores discriminants, des tonalites
 diversifiees par evenement, des `key_days` limites aux pics nets, des
 `best_days` qualitativement distincts, des `watch_days` uniquement lorsqu'une
 vraie tension existe, et `watch_summary.status = "none"` quand aucun point de
-vigilance ne ressort. Les preuves period portent des hints de personnalisation
+vigilance ne ressort. Pour Premium period V1.1, une absence de tension forte
+mais avec signaux exploitables produit une vigilance douce `status = "low"` et
+des `watch_windows` evidencées ; `best_days` peut rester a deux dates si aucune
+troisieme date suffisamment nette ne ressort. Les preuves period portent des hints de personnalisation
 natale issus de `horoscope_natal_focus_labels`, les domaines publics couvrent 2
 a 4 themes scores, les `daily_plans` portent une variation lexicale, les faits
 de contexte ont des orbes nulles et `fallback_reason: null` hors fallback
@@ -3515,6 +3518,12 @@ l'absence de fallback, le scan `six_hour_7_days` a 28 snapshots, la timeline 7
 jours, `strategy`, 3 a 5 `domain_sections`, `best_windows` non vide,
 `watch_windows` coherentes avec `watch_summary`, les references
 `source_snapshot_keys`, les evidence publiques et la limite dure `premium_rich`.
+Depuis V1.1, Premium produit `watch_summary.status = "low"` avec 1 a 3
+`watch_windows` douces quand aucune tension forte ne ressort mais que des
+signaux exploitables existent. `status = "none"` reste reserve aux cas sans
+signal exploitable. Les `best_windows` doivent avoir des titres et `best_for`
+differencies, et `premium_scores.domain_score` mesure une couverture variable
+des themes/evidence plutot qu'un placeholder constant.
 Le script est appele par `test_horoscope_premium_next_7_days_all.ps1`,
 `test_horoscope_period_all.ps1` et `docker_update_integration_stack.ps1` quand
 les options de reel period sont activees.

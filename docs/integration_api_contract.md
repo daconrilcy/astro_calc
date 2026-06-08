@@ -515,6 +515,9 @@ Regles publiques :
 - La reponse contient exactement `daily_timeline[7]`, alignee sur
   `period_resolution.included_dates`.
 - `best_days` et `watch_days` ne peuvent pas se chevaucher.
+- `best_days` est borne par le profil de detail ; le maximum catalogue n'est pas
+  un minimum, et l'API peut retourner moins d'entrees si les signaux valides ne
+  justifient pas de date supplementaire.
 - En E2E reel, le calculateur ne doit pas retourner de source `fake_*`, le
   writer ne doit pas utiliser le provider `fake`, et le texte public ne doit pas
   exposer les codes internes (`theme_code`, `period:`, `natal_`, `transit_*`).
@@ -570,13 +573,22 @@ Regles publiques :
   du catalogue service.
 - Le scan `six_hour_7_days` contient 28 snapshots : 00:00, 06:00, 12:00 et
   18:00 pour chacune des 7 dates incluses.
-- `best_days` et `watch_days` designent des dates.
+- `best_days` et `watch_days` designent des dates ; `watch_days` represente des
+  journees de vigilance forte.
+- Pour Premium, `best_days` contient jusqu'a 3 dates distinctes. Il peut rester
+  a 2 si seules deux dates sont suffisamment nettes apres scoring,
+  deduplication et exclusions `key_days`/`watch_days`.
 - `best_windows` et `watch_windows` designent des plages horaires et doivent
   referencer des `source_snapshot_keys` existants.
 - La reponse Premium contient `strategy`, 3 a 5 `domain_sections`, 7 entrees
-  `daily_timeline`, `best_windows`, `watch_windows` ou
-  `watch_summary.status = none`.
+  `daily_timeline`, `best_windows` et des `watch_windows` evidences. Si aucune
+  tension forte ne ressort mais que des signaux exploitables existent,
+  `watch_summary.status = low` decrit une vigilance douce. `status = none`
+  n'est utilise que sans signal exploitable. `watch_windows` peut donc etre non
+  vide avec `watch_days = []` uniquement en statut `low`.
 - Le profil `premium_rich` vise 2200 mots et impose une limite dure de 3200 mots.
+- Les `best_windows` Premium doivent avoir des titres et `best_for`
+  differencies ; le titre generique `Fenetre favorable` est refuse.
 
 Reponse abregee :
 
@@ -589,7 +601,7 @@ Reponse abregee :
   "key_days": [],
   "best_days": [],
   "watch_days": [],
-  "watch_summary": { "status": "active", "text": "...", "evidence_keys": [] },
+  "watch_summary": { "status": "active|low|none", "text": "...", "evidence_keys": [] },
   "best_windows": [],
   "watch_windows": [],
   "daily_timeline": [],
@@ -608,6 +620,8 @@ Erreurs Premium possibles :
 `HOROSCOPE_PERIOD_PREMIUM_DOMAIN_DEPTH_MISSING`,
 `HOROSCOPE_PERIOD_PREMIUM_WINDOW_EVIDENCE_MISSING`,
 `HOROSCOPE_PERIOD_PREMIUM_WINDOW_OVERLAP`,
+`HOROSCOPE_PERIOD_PREMIUM_WINDOWS_TOO_GENERIC`,
+`HOROSCOPE_PERIOD_BROKEN_FRENCH_FRAGMENT`,
 `HOROSCOPE_PERIOD_PREMIUM_INSUFFICIENT_DETAIL`,
 `HOROSCOPE_PERIOD_TECHNICAL_CODE_LEAK`,
 `HOROSCOPE_PERIOD_INTERNAL_GUIDANCE_LEAK`,

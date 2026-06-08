@@ -138,7 +138,7 @@
       "required": ["status", "text", "evidence_keys"],
       "additionalProperties": false,
       "properties": {
-        "status": { "type": "string", "enum": ["active", "none"] },
+        "status": { "type": "string", "enum": ["active", "low", "none"] },
         "text": { "type": "string" },
         "evidence_keys": { "type": "array", "items": { "type": "string" } }
       }

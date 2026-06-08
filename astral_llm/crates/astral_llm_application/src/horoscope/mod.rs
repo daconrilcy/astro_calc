@@ -860,7 +860,6 @@ pub fn build_period_interpretation_request(
         .collect::<HashSet<_>>();
     let best_days =
         build_period_best_day_markers(&events, &watch_dates, &key_dates, detail.max_best_days);
-    let watch_summary_plan = build_period_watch_summary_plan(&watch_days);
     let best_windows = if is_premium_period_service(service_code) {
         build_period_best_windows(&events, &scan_plan, detail.max_best_windows)
     } else {
@@ -871,6 +870,11 @@ pub fn build_period_interpretation_request(
     } else {
         Vec::new()
     };
+    let watch_summary_plan = build_period_watch_summary_plan(
+        &watch_days,
+        is_premium_period_service(service_code),
+        &watch_windows,
+    );
     let strategy = if is_premium_period_service(service_code) {
         json!({
             "title": "Stratégie de semaine",
@@ -1314,8 +1318,23 @@ fn build_period_watch_day_markers(events: &[Value], limit: usize) -> Vec<Value> 
     )
 }
 
-fn build_period_watch_summary_plan(watch_days: &[Value]) -> Value {
+fn build_period_watch_summary_plan(
+    watch_days: &[Value],
+    premium: bool,
+    watch_windows: &[Value],
+) -> Value {
     if watch_days.is_empty() {
+        if premium && !watch_windows.is_empty() {
+            return json!({
+                "status": "low",
+                "text": "Aucune fenêtre de vigilance forte ne ressort, mais certains moments demandent de limiter la dispersion et de garder une marge.",
+                "evidence_keys": watch_windows
+                    .iter()
+                    .flat_map(|window| window["evidence_keys"].as_array().into_iter().flatten())
+                    .filter_map(Value::as_str)
+                    .collect::<Vec<_>>()
+            });
+        }
         return json!({
             "status": "none",
             "text": "Aucun point de vigilance particulier ne ressort cette semaine.",
@@ -1366,7 +1385,19 @@ fn build_period_watch_windows(
         })
         .collect::<HashSet<_>>();
     let mut out = Vec::new();
-    for event in events.iter().filter(|event| is_period_watch_event(event)) {
+    let candidates = events
+        .iter()
+        .filter(|event| is_period_watch_event(event))
+        .collect::<Vec<_>>();
+    let candidates = if candidates.is_empty() {
+        events
+            .iter()
+            .filter(|event| !is_period_watch_event(event))
+            .collect::<Vec<_>>()
+    } else {
+        candidates
+    };
+    for event in candidates {
         let Some(window) = build_period_window(event, &snapshot_keys, true) else {
             continue;
         };
@@ -1416,7 +1447,7 @@ fn build_period_window(
             "date": date,
             "time_range_label": format!("{start_label}–{end_label}"),
             "source_snapshot_keys": [snapshot_key],
-            "title": period_watch_window_title(theme),
+            "title": period_watch_window_title(theme, &start_label),
             "theme": period_theme_public_label(theme),
             "tone": period_tone_public_label(tone),
             "watch_point": period_watch_window_point(theme),
@@ -1427,11 +1458,11 @@ fn build_period_window(
             "date": date,
             "time_range_label": format!("{start_label}–{end_label}"),
             "source_snapshot_keys": [snapshot_key],
-            "title": period_best_window_title(theme),
+            "title": period_best_window_title(theme, &start_label),
             "theme": period_theme_public_label(theme),
             "tone": period_tone_public_label(tone),
             "reason": period_best_window_reason(theme),
-            "best_for": period_best_window_best_for(theme),
+            "best_for": period_best_window_best_for(theme, &start_label),
             "evidence_keys": evidence_keys
         }))
     }
@@ -1459,24 +1490,46 @@ fn scan_plan_snapshot_keys_by_date(scan_plan: &Value) -> HashMap<String, Vec<(St
     by_date
 }
 
-fn period_best_window_title(theme: &str) -> &'static str {
-    match theme {
-        "relationship" => "Fenêtre favorable aux échanges",
-        "energy" => "Énergie utile pour agir",
-        "communication" => "Créneau clair pour formuler",
-        "clarity" => "Fenêtre de décision simple",
-        "integration" => "Moment favorable pour consolider",
-        _ => "Fenêtre favorable",
+fn period_best_window_title(theme: &str, start_label: &str) -> &'static str {
+    match (theme, start_label) {
+        ("relationship", "00:00") => "Apaiser une attente personnelle",
+        ("relationship", "06:00") => "Ouvrir un échange utile",
+        ("relationship", "12:00") => "Clarifier une attente relationnelle",
+        ("relationship", _) => "Retrouver une fluidité relationnelle",
+        ("energy", "00:00") => "Relancer l'élan sans brusquer",
+        ("energy", "06:00") => "Passer à l'action courte",
+        ("energy", "12:00") => "Canaliser l'énergie disponible",
+        ("energy", _) => "Transformer l'élan en décision",
+        ("communication", "00:00") => "Préparer une parole nette",
+        ("communication", "06:00") => "Formuler le message essentiel",
+        ("communication", "12:00") => "Mettre les mots au bon endroit",
+        ("communication", _) => "Répondre avec plus de précision",
+        ("clarity", "00:00") => "Reprendre l'initiative personnelle",
+        ("clarity", "06:00") => "Clarifier le cap visible",
+        ("clarity", "12:00") => "Choisir une suite simple",
+        ("clarity", _) => "Retrouver une impulsion créative",
+        ("integration", "00:00") => "Stabiliser une base intérieure",
+        ("integration", "06:00") => "Consolider ce qui doit durer",
+        ("integration", "12:00") => "Relier les décisions au cadre",
+        ("integration", _) => "Préparer une suite plus stable",
+        (_, "00:00") => "Reprendre l'initiative personnelle",
+        (_, "06:00") => "Clarifier le cap visible",
+        (_, "12:00") => "Stabiliser une décision utile",
+        _ => "Retrouver une impulsion créative",
     }
 }
 
-fn period_watch_window_title(theme: &str) -> &'static str {
-    match theme {
-        "communication" => "Attention aux réponses trop rapides",
-        "energy" => "Canaliser la réaction",
-        "relationship" => "Vigilance relationnelle",
-        "clarity" => "Ne pas conclure trop vite",
-        _ => "Fenêtre de vigilance",
+fn period_watch_window_title(theme: &str, start_label: &str) -> &'static str {
+    match (theme, start_label) {
+        ("communication", _) => "Limiter les réponses trop rapides",
+        ("energy", _) => "Canaliser la réaction",
+        ("relationship", _) => "Préserver une marge relationnelle",
+        ("clarity", _) => "Reporter une conclusion trop nette",
+        ("integration", _) => "Ne pas surcharger le cadre",
+        (_, "00:00") => "Éviter de tout relancer d'un coup",
+        (_, "06:00") => "Garder une marge avant d'agir",
+        (_, "12:00") => "Limiter la dispersion du milieu de journée",
+        _ => "Ralentir avant de répondre",
     }
 }
 
@@ -1501,32 +1554,127 @@ fn period_watch_window_point(theme: &str) -> &'static str {
     }
 }
 
-fn period_best_window_best_for(theme: &str) -> Vec<&'static str> {
-    match theme {
-        "relationship" => vec![
+fn period_best_window_best_for(theme: &str, start_label: &str) -> Vec<&'static str> {
+    match (theme, start_label) {
+        ("relationship", "00:00") => vec![
+            "apaiser une attente personnelle",
+            "préparer un échange sensible",
+            "retrouver une disponibilité affective",
+        ],
+        ("relationship", "06:00") => vec![
             "ouvrir un échange utile",
             "clarifier une attente",
             "réparer un malentendu simple",
         ],
-        "energy" => vec![
+        ("relationship", "12:00") => vec![
+            "poser un accord concret",
+            "nommer un besoin relationnel",
+            "ajuster une attente partagée",
+        ],
+        ("relationship", _) => vec![
+            "fluidifier une relation",
+            "répondre avec nuance",
+            "consolider un lien utile",
+        ],
+        ("energy", "00:00") => vec![
+            "préparer l'élan du jour",
+            "choisir une action courte",
+            "éviter de démarrer trop vite",
+        ],
+        ("energy", "06:00") => vec![
             "lancer une action courte",
             "débloquer une décision pratique",
             "poser une limite concrète",
         ],
-        "communication" => vec![
+        ("energy", "12:00") => vec![
+            "canaliser l'effort utile",
+            "traiter un point actif",
+            "agir sans disperser l'énergie",
+        ],
+        ("energy", _) => vec![
+            "transformer l'élan en décision",
+            "conclure une action simple",
+            "récupérer après l'effort",
+        ],
+        ("communication", "00:00") => vec![
+            "préparer une formulation",
+            "ordonner les arguments",
+            "clarifier l'intention du message",
+        ],
+        ("communication", "06:00") => vec![
             "envoyer un message clair",
             "préparer une réponse",
             "nommer une priorité",
         ],
-        "clarity" => vec![
+        ("communication", "12:00") => vec![
+            "ajuster une réponse",
+            "tenir un échange précis",
+            "réduire les explications inutiles",
+        ],
+        ("communication", _) => vec![
+            "répondre avec précision",
+            "clore une discussion utile",
+            "poser un cadre verbal",
+        ],
+        ("clarity", "00:00") => vec![
+            "reprendre l'initiative personnelle",
+            "poser un repère simple",
+            "préparer le rythme du jour",
+        ],
+        ("clarity", "06:00") => vec![
+            "clarifier le cap visible",
+            "organiser la prochaine étape",
+            "rendre une priorité lisible",
+        ],
+        ("clarity", "12:00") => vec![
             "trier les options",
             "choisir une suite simple",
             "mettre à jour une priorité",
         ],
-        _ => vec![
+        ("clarity", _) => vec![
+            "retrouver une impulsion créative",
+            "assouplir une décision",
+            "préserver un élan durable",
+        ],
+        ("integration", "00:00") => vec![
+            "stabiliser une base intérieure",
+            "préparer une consolidation",
+            "faire le point avant d'élargir",
+        ],
+        ("integration", "06:00") => vec![
             "consolider une avancée",
             "revenir à l'essentiel",
             "stabiliser une décision",
+        ],
+        ("integration", "12:00") => vec![
+            "relier une décision au cadre",
+            "vérifier la tenue d'un engagement",
+            "ordonner ce qui doit durer",
+        ],
+        ("integration", _) => vec![
+            "préparer une suite stable",
+            "assimiler une étape",
+            "réduire ce qui surcharge",
+        ],
+        (_, "00:00") => vec![
+            "reprendre l'initiative personnelle",
+            "poser un repère simple",
+            "préparer le rythme du jour",
+        ],
+        (_, "06:00") => vec![
+            "clarifier le cap visible",
+            "organiser la prochaine étape",
+            "rendre une priorité lisible",
+        ],
+        (_, "12:00") => vec![
+            "stabiliser une décision utile",
+            "trier les options concrètes",
+            "réduire la dispersion",
+        ],
+        _ => vec![
+            "retrouver une impulsion créative",
+            "assouplir une décision",
+            "préserver un élan durable",
         ],
     }
 }
@@ -1554,7 +1702,7 @@ fn build_period_premium_scores(request: &Value) -> Value {
         "event_score": round2(event_score),
         "day_score": round2(event_score * 0.92),
         "window_score": round2(support_score.max(tension_score) * 0.95),
-        "domain_score": round2((events.len() as f64 / 28.0).min(1.0)),
+        "domain_score": round2(period_domain_coverage_score(&events)),
         "tension_score": round2(tension_score),
         "support_score": round2(support_score),
         "clarity_score": round2(period_theme_score(&events, "clarity")),
@@ -1571,6 +1719,20 @@ fn period_theme_score(events: &[Value], theme: &str) -> f64 {
         .filter(|event| event["theme_code"].as_str() == Some(theme))
         .filter_map(|event| event["score"].as_f64())
         .fold(0.0, f64::max)
+}
+
+fn period_domain_coverage_score(events: &[Value]) -> f64 {
+    if events.is_empty() {
+        return 0.0;
+    }
+    let distinct_themes = events
+        .iter()
+        .filter_map(|event| event["theme_code"].as_str())
+        .collect::<HashSet<_>>()
+        .len() as f64;
+    let evidence_coverage = (events.len() as f64 / 50.0).min(1.0);
+    let theme_coverage = (distinct_themes / 6.0).min(1.0);
+    round2((theme_coverage * 0.7) + (evidence_coverage * 0.3))
 }
 
 fn build_period_marker(event: &Value, title: &str, fallback_reason: Option<&str>) -> Value {
@@ -1651,7 +1813,7 @@ fn build_period_domain_sections(evidence: &[Value], max_sections: usize) -> Vec<
             let label = period_theme_public_label(&theme);
             let natal_hint = first["natal_focus_hint"]
                 .as_str()
-                .unwrap_or("Relier ce domaine à une zone personnelle du thème natal.");
+                .unwrap_or("Relier ce domaine à un repère personnel important.");
             let personalization = first["personalization_hint"].as_str().unwrap_or(natal_hint);
             json!({
                 "domain": label,
@@ -1738,9 +1900,9 @@ async fn period_writer_response(
     response["quality"]["provider"] = json!(routed.used_provider.as_str());
     response["quality"]["model"] = json!(routed.response.model_used);
     response["quality"]["fallback_used"] = json!(routed.fallback_used);
-    validate_period_provider_public_payload(&response)?;
     repair_period_response_shape(request, &mut response);
     normalize_period_public_tones(request, &mut response);
+    validate_period_provider_public_payload(&response)?;
     Ok(response)
 }
 
@@ -1885,7 +2047,7 @@ pub fn fake_period_writer_response(request: &Value) -> Result<Value, GenerationE
             let text = ensure_period_personalization_text(
                 &period_public_day_text(day, index),
                 &format!(
-                    "Le thème natal sert ici de repère concret autour de {}.",
+                    "Vos repères personnels servent ici d'appui concret autour de {}.",
                     period_public_focus_text(day)
                 ),
             );
@@ -2040,7 +2202,7 @@ fn sanitize_period_week_overview(value: Option<&Value>) -> Value {
         .unwrap_or("Clarifier, ajuster, puis consolider.");
     json!({
         "title": sanitize_period_public_string(value.and_then(|v| v.get("title")).and_then(Value::as_str).unwrap_or("Vue d'ensemble")),
-        "text": sanitize_period_public_string(&ensure_period_personalization_text(text, "Les priorités de la semaine prennent appui sur le thème natal sans perdre leur rythme concret.")),
+        "text": sanitize_period_public_string(&ensure_period_personalization_text(text, "Les priorités de la semaine prennent appui sur vos repères personnels sans perdre leur rythme concret.")),
         "trajectory": sanitize_period_public_string(&ensure_period_personalization_text(trajectory, "Le mouvement relie les échanges, les appuis émotionnels et les choix à consolider."))
     })
 }
@@ -2271,10 +2433,11 @@ fn sanitize_period_strategy(value: Option<&Value>, request: &Value) -> Value {
 }
 
 fn ensure_period_personalization_text(text: &str, personalization: &str) -> String {
-    if period_text_has_personalization(text) {
-        text.to_string()
+    let base = sanitize_period_broken_sentences(text);
+    if period_text_has_personalization(&base) {
+        base
     } else {
-        format!("{text} {personalization}")
+        format!("{base} {personalization}")
     }
 }
 
@@ -2361,7 +2524,7 @@ fn period_public_personalization_sentence(item: &Value) -> String {
 
 fn period_public_interpretive_sentence(item: &Value) -> String {
     let focus = period_public_focus_text(item);
-    format!("L'appui personnel vient de {focus}, à utiliser comme repère concret plutôt que comme explication abstraite.")
+    format!("Avec {focus}, la journée gagne un repère personnel concret sans devenir une explication abstraite.")
 }
 
 fn period_public_domain_personalization_sentence(item: &Value) -> String {
@@ -2399,7 +2562,7 @@ fn period_public_focus_text(item: &Value) -> String {
             }
         }
     }
-    "une zone personnelle de votre thème natal".to_string()
+    "un repère personnel important".to_string()
 }
 
 fn period_public_focus_from_hint(raw: &str) -> String {
@@ -2473,9 +2636,20 @@ fn sanitize_period_public_string(text: &str) -> String {
     ] {
         sanitized = replace_ascii_token_case_insensitive(&sanitized, from, to);
     }
-    sanitize_period_sentence_boundaries(&sanitize_period_french_colon_spacing(
-        &sanitize_period_broken_sentences(&sanitized),
+    sanitize_period_french_fragments(&sanitize_period_sentence_boundaries(
+        &sanitize_period_french_colon_spacing(&sanitize_period_broken_sentences(&sanitized)),
     ))
+}
+
+fn sanitize_period_french_fragments(text: &str) -> String {
+    text.replace("tout s’dynamique", "tout s'accélère")
+        .replace("tout s'dynamique", "tout s'accélère")
+        .replace("s’dynamique", "s'accélère")
+        .replace("s'dynamique", "s'accélère")
+        .replace("d’accélère", "s'accélère")
+        .replace("d'accélère", "s'accélère")
+        .replace("rédynamique", "dynamisante")
+        .replace("redynamique", "dynamisante")
 }
 
 fn sanitize_period_broken_sentences(text: &str) -> String {
@@ -2493,7 +2667,8 @@ fn sanitize_period_broken_sentences(text: &str) -> String {
     if sentences.len() <= 1 {
         let trimmed = text.trim().trim_end_matches(['.', '!', '?']);
         if period_is_broken_sentence_tail(trimmed) {
-            return "Le thème natal garde un repère concret pour avancer avec mesure.".to_string();
+            return "Vos repères personnels gardent un appui concret pour avancer avec mesure."
+                .to_string();
         }
         return text.to_string();
     }
@@ -2515,7 +2690,26 @@ fn sanitize_period_broken_sentences(text: &str) -> String {
 }
 
 fn sanitize_period_sentence_boundaries(text: &str) -> String {
-    text.replace(". votre", ". Votre").replace(". vos", ". Vos")
+    let mut out = String::with_capacity(text.len());
+    let mut capitalize_next = false;
+    for ch in text.chars() {
+        if capitalize_next {
+            if ch.is_whitespace() {
+                out.push(ch);
+                continue;
+            }
+            for upper in ch.to_uppercase() {
+                out.push(upper);
+            }
+            capitalize_next = false;
+            continue;
+        }
+        out.push(ch);
+        if matches!(ch, '.' | '!' | '?') {
+            capitalize_next = true;
+        }
+    }
+    out
 }
 
 fn sanitize_period_french_colon_spacing(text: &str) -> String {
@@ -2648,7 +2842,7 @@ fn ensure_period_response_minimum_words(request: &Value, response: &mut Value) {
     if let Some(text) = response.pointer_mut("/week_overview/text") {
         append_period_value_sentence(
             text,
-            "La semaine gagne en cohérence quand chaque décision reste reliée aux priorités du thème natal et au rythme déjà engagé.",
+            "La semaine gagne en cohérence quand chaque décision reste reliée à vos repères personnels et au rythme déjà engagé.",
         );
     }
     if period_public_word_count(response) >= limits.target_min {
@@ -2726,7 +2920,7 @@ fn trim_period_response_to_hard_limit(
 
     response["week_overview"] = json!({
         "title": "Vos 7 prochains jours",
-        "text": "Vos 7 prochains jours avancent par étapes : remettre de l'ordre, retrouver un appui plus simple, puis consolider ce qui devient clair dans le thème natal.",
+        "text": "Vos 7 prochains jours avancent par étapes : remettre de l'ordre, retrouver un appui plus simple, puis consolider ce qui devient clair dans vos repères personnels.",
         "trajectory": "Le mouvement va des appuis initiaux vers une consolidation plus consciente."
     });
     response["advice"] = json!({
@@ -2794,7 +2988,7 @@ fn trim_period_response_to_hard_limit(
 fn trim_period_response_aggressively(request: &Value, response: &mut Value) {
     response["week_overview"] = json!({
         "title": "Vos 7 prochains jours",
-        "text": "La semaine avance en reliant les échanges, les choix concrets et les priorités du thème natal.",
+        "text": "La semaine avance en reliant les échanges, les choix concrets et vos repères personnels.",
         "trajectory": "La période progresse vers des choix plus posés et personnels."
     });
     response["advice"] = json!({
@@ -3077,8 +3271,23 @@ fn period_repetitive_phrase_replacements() -> &'static [(&'static str, &'static 
             ],
         ),
         (
+            "Hiérarchisez une priorité",
+            &[
+                "Retenez une priorité nette",
+                "Avancez avec une priorité lisible",
+                "Gardez un seul axe prioritaire",
+            ],
+        ),
+        (
             "le point d'appui concerne",
             &["l'appui principal touche", "le repère central passe par"],
+        ),
+        (
+            "L'appui personnel vient de",
+            &[
+                "Le repère personnel passe par",
+                "La nuance natale se lit dans",
+            ],
         ),
     ]
 }
@@ -3208,6 +3417,12 @@ fn period_is_weak_sentence_ending(word: &str) -> bool {
             | "ce"
             | "cet"
             | "cette"
+            | "d"
+            | "l"
+            | "qu"
+            | "jusqu"
+            | "puisqu"
+            | "lorsqu"
     )
 }
 
@@ -3367,7 +3582,7 @@ fn require_period_watch_summary(response: &Value) -> Result<(), GenerationError>
         .get("watch_summary")
         .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_RESPONSE_INVALID"))?;
     let status = summary.get("status").and_then(Value::as_str).unwrap_or("");
-    if status != "active" && status != "none" {
+    if !matches!(status, "active" | "low" | "none") {
         return Err(quality_error(
             "HOROSCOPE_PERIOD_RESPONSE_INVALID",
             json!({ "field": "watch_summary.status" }),
@@ -3555,6 +3770,12 @@ fn validate_period_watch_summary(
         .as_str()
         .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_RESPONSE_INVALID"))?;
     let watch_count = response["watch_days"].as_array().map(Vec::len).unwrap_or(0);
+    if !matches!(status, "none" | "low" | "active") {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_BEST_WATCH_MISSING",
+            json!({ "status": status }),
+        ));
+    }
     if (status == "none" && watch_count > 0) || (status == "active" && watch_count == 0) {
         return Err(quality_error(
             "HOROSCOPE_PERIOD_BEST_WATCH_MISSING",
@@ -3767,10 +3988,11 @@ fn validate_period_premium_windows(
         ));
     }
     validate_period_window_array("best_windows", best, included, evidence, &snapshot_keys)?;
+    validate_period_best_windows_not_generic(best)?;
     let watch = response["watch_windows"]
         .as_array()
         .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_PREMIUM_WINDOWS_MISSING"))?;
-    if watch.is_empty() && response["watch_summary"]["status"].as_str() != Some("none") {
+    if watch.is_empty() && !matches!(response["watch_summary"]["status"].as_str(), Some("none")) {
         return Err(quality_error(
             "HOROSCOPE_PERIOD_PREMIUM_WINDOWS_MISSING",
             json!({ "field": "watch_windows" }),
@@ -3792,6 +4014,42 @@ fn validate_period_premium_windows(
                 ));
             }
         }
+    }
+    Ok(())
+}
+
+fn validate_period_best_windows_not_generic(windows: &[Value]) -> Result<(), GenerationError> {
+    let titles = windows
+        .iter()
+        .filter_map(|window| window["title"].as_str())
+        .map(normalized_text)
+        .collect::<HashSet<_>>();
+    let best_for_sets = windows
+        .iter()
+        .filter_map(|window| window["best_for"].as_array())
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(Value::as_str)
+                .map(normalized_text)
+                .collect::<Vec<_>>()
+                .join("|")
+        })
+        .collect::<HashSet<_>>();
+    let generic_titles = windows
+        .iter()
+        .filter_map(|window| window["title"].as_str())
+        .filter(|title| normalized_text(title) == "fenêtre favorable")
+        .count();
+    if generic_titles > 0 || (windows.len() >= 3 && (titles.len() < 2 || best_for_sets.len() < 2)) {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_PREMIUM_WINDOWS_TOO_GENERIC",
+            json!({
+                "title_count": titles.len(),
+                "best_for_count": best_for_sets.len(),
+                "generic_titles": generic_titles
+            }),
+        ));
     }
     Ok(())
 }
@@ -4016,6 +4274,12 @@ fn validate_period_public_text(public_text: &str) -> Result<(), GenerationError>
             json!({ "fragment": fragment }),
         ));
     }
+    if let Some(fragment) = period_broken_french_fragment(public_text) {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_BROKEN_FRENCH_FRAGMENT",
+            json!({ "fragment": fragment }),
+        ));
+    }
     for forbidden in [
         "plus personnel que générique",
         "conseil générique",
@@ -4094,6 +4358,27 @@ fn validate_period_public_text(public_text: &str) -> Result<(), GenerationError>
     Ok(())
 }
 
+fn period_broken_french_fragment(public_text: &str) -> Option<String> {
+    let lower = public_text.to_lowercase();
+    for fragment in [
+        "s’dynamique",
+        "s'dynamique",
+        "tout s’dynamique",
+        "tout s'dynamique",
+        "d’accélère",
+        "d'accélère",
+        "rédynamique",
+        "redynamique",
+        "l’organiser",
+        "l'organiser",
+    ] {
+        if let Some(index) = lower.find(fragment) {
+            return Some(public_text[index..].chars().take(48).collect::<String>());
+        }
+    }
+    None
+}
+
 fn period_has_bad_french_colon_spacing(public_text: &str) -> bool {
     let chars = public_text.chars().collect::<Vec<_>>();
     for (index, ch) in chars.iter().enumerate() {
@@ -4145,10 +4430,34 @@ fn period_broken_sentence_fragment(public_text: &str) -> Option<String> {
 }
 
 fn period_lowercase_sentence_start(public_text: &str) -> Option<String> {
-    let lower = public_text.to_lowercase();
-    for marker in [". votre", ". vos"] {
-        if let Some(index) = lower.find(marker) {
-            return Some(public_text[index..].chars().take(32).collect::<String>());
+    for (index, ch) in public_text.char_indices() {
+        if !matches!(ch, '.' | '!' | '?') {
+            continue;
+        }
+        let rest = public_text[index + ch.len_utf8()..].trim_start();
+        let mut words = rest.split_whitespace();
+        let first = words.next().unwrap_or("");
+        let second = words.next().unwrap_or("");
+        let first_is_lower = first
+            .chars()
+            .next()
+            .map(|ch| ch.is_lowercase())
+            .unwrap_or(false);
+        let second_is_lower = second
+            .chars()
+            .next()
+            .map(|ch| ch.is_lowercase())
+            .unwrap_or(false);
+        if first_is_lower {
+            match first.trim_matches(|ch: char| !ch.is_alphabetic()) {
+                "votre" | "vos" => {
+                    return Some(rest.chars().take(32).collect::<String>());
+                }
+                "le" | "la" | "un" | "une" if second_is_lower => {
+                    return Some(rest.chars().take(32).collect::<String>());
+                }
+                _ => {}
+            }
         }
     }
     None
@@ -4157,7 +4466,7 @@ fn period_lowercase_sentence_start(public_text: &str) -> Option<String> {
 fn period_is_broken_sentence_tail(tail: &str) -> bool {
     let normalized = tail
         .trim()
-        .trim_matches(|ch: char| matches!(ch, ',' | ';' | ':'))
+        .trim_matches(|ch: char| matches!(ch, ',' | ';' | ':' | '\'' | '’' | '“' | '”' | '"'))
         .to_lowercase();
     let words = normalized.split_whitespace().collect::<Vec<_>>();
     match words.as_slice() {
@@ -4222,6 +4531,8 @@ fn period_text_has_personalization(text: &str) -> bool {
     let lower = text.to_lowercase();
     [
         "thème natal",
+        "repères personnels",
+        "repère personnel",
         "zone natale",
         "zones natales",
         "maison",
@@ -4422,7 +4733,7 @@ fn period_natal_focus(code: &str) -> PeriodNatalFocus {
         .get(code)
         .cloned()
         .unwrap_or_else(|| PeriodNatalFocus {
-            label: "une zone personnelle de votre thème natal".to_string(),
+            label: "un repère personnel important".to_string(),
             hint: "Relier ce signal à une priorité personnelle concrète, sans jargon technique."
                 .to_string(),
         })

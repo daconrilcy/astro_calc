@@ -216,6 +216,15 @@ Chaque window Premium reference `source_snapshot_keys`. `best_days` et
 `watch_days` restent des dates globales ; `best_windows` et `watch_windows`
 localisent des plages horaires. Le profil `premium_rich` vise 2200 mots et
 bloque au-dela de 3200 mots.
+`best_days` Premium retourne jusqu'a 3 dates, sans forcer une troisieme date
+faible : deux dates sont valides si seules deux ressortent clairement apres
+scoring, deduplication et exclusions.
+
+Pour Premium V1.1, `watch_summary.status = low` represente une vigilance douce :
+pas de tension forte, mais 1 a 3 `watch_windows` prudentes, evidencées et sans
+overlap avec `best_windows`. `watch_days` reste vide dans ce cas car il ne
+signale que les journees de vigilance forte. `status = none` reste reserve aux
+cas sans signal exploitable.
 
 ## Mercure (optionnel)
 

@@ -956,12 +956,14 @@
       "source_snapshot_keys": [
         "2026-06-07:00:00"
       ],
-      "title": "Fenêtre favorable",
+      "title": "Ouvrir le lien utile",
       "theme": "relations",
       "tone": "soutenant",
       "reason": "Le signal offre un appui concret.",
       "best_for": [
-        "ouvrir un échange"
+        "ouvrir un échange important",
+        "apaiser un échange sensible",
+        "poser un accord concret"
       ],
       "evidence_keys": [
         "period:2026-06-07:2026-06-07:00:00:venus:trine:natal_moon"
@@ -975,7 +977,7 @@
       "source_snapshot_keys": [
         "2026-06-07:06:00"
       ],
-      "title": "Fenêtre de vigilance",
+      "title": "Ralentir l'impulsion avant midi",
       "theme": "énergie",
       "tone": "vigilant",
       "watch_point": "Ralentir avant de répondre.",
@@ -997,7 +999,7 @@
     "event_score": 0.72,
     "day_score": 0.66,
     "window_score": 0.68,
-    "domain_score": 1.0,
+    "domain_score": 0.87,
     "tension_score": 0.72,
     "support_score": 0.72,
     "clarity_score": 0.72,

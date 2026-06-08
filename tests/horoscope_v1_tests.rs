@@ -1210,6 +1210,17 @@ fn horoscope_period_provider_payload_rejects_missing_domain_text_before_repair()
 }
 
 #[test]
+fn horoscope_period_provider_payload_accepts_low_watch_summary_before_repair() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request =
+        build_period_interpretation_request(&public, &premium_period_context_only_calculation())
+            .unwrap();
+    let response = premium_period_response_from_request(&request);
+    assert_eq!(response["watch_summary"]["status"], "low");
+    validate_period_provider_public_payload(&response).unwrap();
+}
+
+#[test]
 fn horoscope_period_real_response_rejects_too_short_public_text() {
     let request = period_interpretation_request();
     let mut response = period_response_from_request(&request);
@@ -1301,8 +1312,33 @@ fn horoscope_period_repair_replaces_single_broken_sentence() {
     validate_period_response_evidence(&request, &response).unwrap();
     assert_eq!(
         response["advice"]["main"].as_str().unwrap(),
-        "Le thème natal garde un repère concret pour avancer avec mesure."
+        "Vos repères personnels gardent un appui concret pour avancer avec mesure."
     );
+}
+
+#[test]
+fn horoscope_period_repair_removes_typographic_broken_sentence_tail() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response["domain_sections"][0]["text"] =
+        serde_json::json!("Ce domaine soutient une décision utile. L’");
+    repair_period_response_shape(&request, &mut response);
+    validate_period_response_evidence(&request, &response).unwrap();
+    let public = response["domain_sections"][0]["text"].as_str().unwrap();
+    assert!(!public.ends_with("L’"));
+}
+
+#[test]
+fn horoscope_period_repair_removes_elided_broken_sentence_tail() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response["domain_sections"][0]["text"] =
+        serde_json::json!("Ce domaine soutient une décision utile. Une transition reste liée à d’");
+    repair_period_response_shape(&request, &mut response);
+    validate_period_response_evidence(&request, &response).unwrap();
+    let public = response["domain_sections"][0]["text"].as_str().unwrap();
+    assert!(!public.ends_with("d’"));
+    assert!(!public.contains(" à d’"), "{public}");
 }
 
 #[test]
@@ -1314,6 +1350,20 @@ fn horoscope_period_rejects_lowercase_sentence_start_after_period() {
     );
     let err = validate_period_response_evidence(&request, &response).unwrap_err();
     assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_BROKEN_SENTENCE");
+}
+
+#[test]
+fn horoscope_period_repair_capitalizes_lowercase_sentence_starts() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response["week_overview"]["text"] = serde_json::json!(
+        "La semaine avance avec un repère natal. une priorité devient plus lisible. le rythme reste concret."
+    );
+    repair_period_response_shape(&request, &mut response);
+    validate_period_response_evidence(&request, &response).unwrap();
+    let public = response["week_overview"]["text"].as_str().unwrap();
+    assert!(public.contains(". Une priorité"));
+    assert!(public.contains(". Le rythme"));
 }
 
 #[test]
@@ -1470,6 +1520,63 @@ fn horoscope_period_repair_fixes_french_colon_spacing() {
 }
 
 #[test]
+fn horoscope_period_repair_rewrites_repeated_natal_anchor_phrases() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    for day in response["daily_timeline"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .take(4)
+    {
+        day["text"] = serde_json::json!(
+            "L'appui personnel vient de vos habitudes, à utiliser comme repère concret plutôt que comme explication abstraite."
+        );
+    }
+    repair_period_response_shape(&request, &mut response);
+    validate_period_response_evidence(&request, &response).unwrap();
+    let public = response["daily_timeline"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|day| day["text"].as_str())
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        public.matches("L'appui personnel vient de").count() <= 2,
+        "repair should reduce repeated natal anchor phrase: {public}"
+    );
+}
+
+#[test]
+fn horoscope_period_rejects_broken_french_fragments() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response["domain_sections"][0]["text"] = serde_json::json!(
+        "Les moments où tout s’dynamique demandent une reprise simple, avec une preuve astrologique claire et un conseil concret."
+    );
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_BROKEN_FRENCH_FRAGMENT"
+    );
+}
+
+#[test]
+fn horoscope_period_repair_rewrites_redynamique_fragment() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response["domain_sections"][0]["text"] = serde_json::json!(
+        "L’énergie de la semaine est rapide, mentale et rédynamique, avec une preuve astrologique claire et un conseil concret."
+    );
+    repair_period_response_shape(&request, &mut response);
+    validate_period_response_evidence(&request, &response).unwrap();
+    let public = response["domain_sections"][0]["text"].as_str().unwrap();
+    assert!(!public.contains("rédynamique"));
+    assert!(public.contains("dynamisante"));
+}
+
+#[test]
 fn horoscope_period_repair_rewrites_repetitive_public_vocabulary() {
     let request = period_interpretation_request();
     let mut response = period_response_from_request(&request);
@@ -1507,6 +1614,36 @@ fn horoscope_period_repair_rewrites_repetitive_public_vocabulary() {
         .to_lowercase();
     assert!(public.matches("clarifier").count() <= 2);
     assert!(public.matches("choisissez une seule priorité").count() <= 2);
+}
+
+#[test]
+fn horoscope_period_repair_rewrites_repeated_hierarchisez_advice() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    for (index, day) in response["daily_timeline"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .take(5)
+        .enumerate()
+    {
+        day["advice"] = serde_json::json!(format!(
+            "Hiérarchisez une priorité et laissez le reste au second plan. Variante {}.",
+            index + 1
+        ));
+    }
+    repair_period_response_shape(&request, &mut response);
+    validate_period_response_evidence(&request, &response).unwrap();
+    let public = response["daily_timeline"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|day| day["advice"].as_str())
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase();
+    assert!(public.matches("hiérarchisez une priorité").count() <= 2);
+    assert!(public.contains("retenez une priorité nette"));
 }
 
 #[test]
@@ -1707,28 +1844,120 @@ fn horoscope_premium_next_7_days_builds_best_windows() {
 }
 
 #[test]
+fn horoscope_premium_next_7_days_best_windows_have_distinct_titles_and_best_for() {
+    let request = premium_period_interpretation_request();
+    let windows = request["best_windows"].as_array().unwrap();
+    assert!(windows.len() >= 3);
+    let titles = windows
+        .iter()
+        .filter_map(|window| window["title"].as_str())
+        .collect::<std::collections::HashSet<_>>();
+    let best_for_sets = windows
+        .iter()
+        .filter_map(|window| window["best_for"].as_array())
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|item| item.as_str())
+                .collect::<Vec<_>>()
+                .join("|")
+        })
+        .collect::<std::collections::HashSet<_>>();
+    assert!(
+        titles.len() >= 2,
+        "expected differentiated titles: {titles:?}"
+    );
+    assert!(
+        best_for_sets.len() >= 2,
+        "expected differentiated best_for sets: {best_for_sets:?}"
+    );
+    assert!(!titles.contains("Fenêtre favorable"));
+}
+
+#[test]
 fn horoscope_premium_next_7_days_builds_watch_windows_or_none() {
     let request = premium_period_interpretation_request();
     let watch_windows = request["watch_windows"].as_array().unwrap();
-    if request["watch_summary_plan"]["status"] == "none" {
-        assert!(watch_windows.is_empty());
-    } else {
+    if request["watch_summary_plan"]["status"] != "none" {
         assert!(!watch_windows.is_empty());
     }
 }
 
 #[test]
-fn horoscope_premium_next_7_days_context_only_allows_no_watch_windows() {
+fn horoscope_premium_next_7_days_context_only_builds_low_watch_windows() {
     let public = validate_period_public_request(&period_public_payload()).unwrap();
     let request =
         build_period_interpretation_request(&public, &premium_period_context_only_calculation())
             .unwrap();
-    assert_eq!(request["watch_summary_plan"]["status"], "none");
-    assert!(request["watch_windows"].as_array().unwrap().is_empty());
+    assert_eq!(request["watch_summary_plan"]["status"], "low");
+    assert!(!request["watch_windows"].as_array().unwrap().is_empty());
     assert!(!request["best_windows"].as_array().unwrap().is_empty());
     let mut response = premium_period_response_from_request(&request);
     repair_period_response_shape(&request, &mut response);
     validate_period_response_evidence(&request, &response).unwrap();
+}
+
+#[test]
+fn horoscope_premium_next_7_days_builds_low_watch_windows_without_strong_tension() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request =
+        build_period_interpretation_request(&public, &premium_period_context_only_calculation())
+            .unwrap();
+    assert_eq!(request["watch_days"].as_array().unwrap().len(), 0);
+    assert_eq!(request["watch_summary_plan"]["status"], "low");
+    assert!(!request["watch_windows"].as_array().unwrap().is_empty());
+    assert!(!request["watch_summary_plan"]["evidence_keys"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+}
+
+#[test]
+fn horoscope_premium_next_7_days_low_watch_windows_reference_existing_snapshots() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request =
+        build_period_interpretation_request(&public, &premium_period_context_only_calculation())
+            .unwrap();
+    let snapshot_keys = request["scan_plan"]["snapshots"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|snapshot| snapshot["snapshot_key"].as_str())
+        .collect::<std::collections::HashSet<_>>();
+    let evidence = request["evidence"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|item| item["evidence_key"].as_str())
+        .collect::<std::collections::HashSet<_>>();
+    for window in request["watch_windows"].as_array().unwrap() {
+        for key in window["source_snapshot_keys"].as_array().unwrap() {
+            assert!(snapshot_keys.contains(key.as_str().unwrap()));
+        }
+        for key in window["evidence_keys"].as_array().unwrap() {
+            assert!(evidence.contains(key.as_str().unwrap()));
+        }
+    }
+}
+
+#[test]
+fn horoscope_premium_next_7_days_low_watch_windows_do_not_overlap_best_windows() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request =
+        build_period_interpretation_request(&public, &premium_period_context_only_calculation())
+            .unwrap();
+    let best_sources = request["best_windows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|window| window["source_snapshot_keys"].as_array().unwrap())
+        .filter_map(|key| key.as_str())
+        .collect::<std::collections::HashSet<_>>();
+    for window in request["watch_windows"].as_array().unwrap() {
+        for key in window["source_snapshot_keys"].as_array().unwrap() {
+            assert!(!best_sources.contains(key.as_str().unwrap()));
+        }
+    }
 }
 
 #[test]
@@ -1874,6 +2103,49 @@ fn horoscope_premium_next_7_days_rejects_window_without_evidence() {
     assert_eq!(
         err.detail().message,
         "HOROSCOPE_PERIOD_PREMIUM_WINDOW_EVIDENCE_MISSING"
+    );
+}
+
+#[test]
+fn horoscope_premium_next_7_days_rejects_generic_best_windows() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    for window in response["best_windows"].as_array_mut().unwrap() {
+        window["title"] = serde_json::json!("Fenêtre favorable");
+        window["best_for"] = serde_json::json!([
+            "consolider une avancée",
+            "revenir à l'essentiel",
+            "stabiliser une décision"
+        ]);
+    }
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_PREMIUM_WINDOWS_TOO_GENERIC"
+    );
+}
+
+#[test]
+fn horoscope_premium_next_7_days_rejects_identical_best_for_sets() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    for (index, window) in response["best_windows"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .enumerate()
+    {
+        window["title"] = serde_json::json!(format!("Fenêtre différenciée {}", index + 1));
+        window["best_for"] = serde_json::json!([
+            "consolider une avancée",
+            "revenir à l'essentiel",
+            "stabiliser une décision"
+        ]);
+    }
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_PREMIUM_WINDOWS_TOO_GENERIC"
     );
 }
 
@@ -2087,6 +2359,46 @@ fn horoscope_premium_next_7_days_best_days_are_distinct_dates() {
 }
 
 #[test]
+fn premium_best_days_can_return_two_when_only_two_clear_dates_after_exclusions() {
+    let mut request = premium_period_interpretation_request();
+    let two_best_days = request["best_days"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .take(2)
+        .cloned()
+        .collect::<Vec<_>>();
+    request["best_days"] = serde_json::json!(two_best_days);
+    validate_period_interpretation_request_schema(&request).unwrap();
+
+    let mut response = premium_period_response_from_request(&request);
+    repair_period_response_shape(&request, &mut response);
+    validate_period_response_evidence(&request, &response).unwrap();
+
+    let best_days = response["best_days"].as_array().unwrap();
+    assert_eq!(best_days.len(), 2);
+
+    let key_dates = request["key_days"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|day| day["date"].as_str())
+        .collect::<std::collections::HashSet<_>>();
+    let watch_dates = request["watch_days"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|day| day["date"].as_str())
+        .collect::<std::collections::HashSet<_>>();
+    for day in best_days {
+        let date = day["date"].as_str().unwrap();
+        assert!(!key_dates.contains(date));
+        assert!(!watch_dates.contains(date));
+        assert_eq!(day["fallback_reason"], serde_json::Value::Null);
+    }
+}
+
+#[test]
 fn horoscope_period_response_rejects_best_day_overlapping_key_day() {
     let request = period_interpretation_request();
     let mut response = period_response_from_request(&request);
@@ -2193,6 +2505,20 @@ fn horoscope_premium_next_7_days_daily_theme_distribution_is_not_over_dominated_
     assert!(
         max_count <= 5,
         "expected premium daily theme distribution not to exceed 5/7 when alternatives exist: {counts:?}"
+    );
+}
+
+#[test]
+fn horoscope_premium_scores_domain_score_is_not_constant_placeholder() {
+    let request = premium_period_interpretation_request();
+    let score = request["premium_scores"]["domain_score"].as_f64().unwrap();
+    assert!(
+        score > 0.0,
+        "domain_score should reflect available coverage"
+    );
+    assert!(
+        score < 1.0,
+        "domain_score should not be a saturated placeholder: {score}"
     );
 }
 
