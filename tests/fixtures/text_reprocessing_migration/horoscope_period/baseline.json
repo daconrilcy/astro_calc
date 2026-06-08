@@ -1,0 +1,7 @@
+{
+  "service": "horoscope_period",
+  "assertions": [
+    "provider period responses are reprocessed after structural repair and tone normalization",
+    "existing horoscope_v1_tests remain the strict parity baseline"
+  ]
+}

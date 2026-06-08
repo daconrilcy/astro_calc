@@ -76,10 +76,18 @@ pub struct TextRetreatmentRequestContext {
     pub product_code: Option<String>,
     pub audience_level: Option<String>,
     pub word_limits: Option<TextWordLimits>,
+    pub min_astro_basis_per_chapter: Option<usize>,
     pub allowed_evidence_keys: Vec<String>,
+    pub allowed_evidence_by_chapter: Vec<TextChapterEvidenceKeys>,
     pub prior_chapters: Vec<String>,
     pub planet_display_names: Vec<String>,
     pub catalog_locale: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct TextChapterEvidenceKeys {
+    pub chapter_code: String,
+    pub fact_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]

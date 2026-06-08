@@ -52,6 +52,7 @@ use crate::safety_guard::SafetyGuard;
 use crate::summary_synthesizer::{
     deterministic_safe_summary_fallback, is_summary_banned_pattern_error, SummarySynthesizer,
 };
+use crate::text_reprocessing_service_adapter::reprocess_natal_theme;
 use crate::token_budget::TokenBudget;
 use astral_llm_domain::ServiceLimits;
 
@@ -814,7 +815,7 @@ impl<'a> ChapterOrchestrator<'a> {
             ReadingOpeningDiversityValidator::validate(&generated, writing_locale)?;
         }
 
-        let reading = NatalReadingResponse {
+        let mut reading = NatalReadingResponse {
             schema_version: request.response_contract.output_schema_version.clone(),
             language: request.product_context.user_language.clone(),
             reading_type: request.product_context.product_code.clone(),
@@ -836,6 +837,15 @@ impl<'a> ChapterOrchestrator<'a> {
                 fallback_used,
             },
         };
+        reprocess_natal_theme(&mut reading, &request.product_context.user_language).map_err(
+            |err| {
+                GenerationError::with_details(
+                    GenerationErrorCode::PostSafetyValidationFailed,
+                    "TEXT_REPROCESSING_NATAL_THEME_FAILED",
+                    serde_json::json!({ "error": err.to_string() }),
+                )
+            },
+        )?;
 
         let evidence_metrics = if evidence_enabled {
             Some(compute_evidence_metrics(

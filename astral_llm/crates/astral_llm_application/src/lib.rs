@@ -31,6 +31,7 @@ pub mod simplified_reading_guard;
 pub mod simplified_reading_postprocess;
 pub mod single_pass_hardening;
 pub mod text_reprocessing;
+pub mod text_reprocessing_service_adapter;
 pub mod text_trigrams;
 pub mod writing_language;
 pub use reading_plan::ReadingPlanBuilder;
@@ -118,6 +119,12 @@ pub use schema_registry::SchemaRegistry;
 pub use text_reprocessing::{
     LanguageRegistry, LanguageRuleSet, ProcessorRegistry, ServiceRegistry, ServiceRuleSet,
     TextRetreatmentPipeline, TextRetreatmentProcessor,
+};
+pub use text_reprocessing_service_adapter::{
+    normalize_json_for_text_reprocessing_parity, reprocess_calculator_projection,
+    reprocess_horoscope_daily, reprocess_horoscope_period, reprocess_natal_simplified,
+    reprocess_natal_theme, reprocess_natal_theme_with_context, reprocess_prompt_trace,
+    reprocess_shared_text, TextReprocessingApplicationError, TextReprocessingFieldAudit,
 };
 pub use unified_reading_orchestrator::{
     UnifiedReadingOrchestrator, UnifiedReadingOutcome, UnifiedReadingResult,

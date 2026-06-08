@@ -1,0 +1,7 @@
+{
+  "messages": [
+    { "role": "system", "content": "sys" },
+    { "role": "user", "content": "usr" }
+  ],
+  "expected": "<<< system >>>\nsys\n\n<<< user >>>\nusr\n"
+}

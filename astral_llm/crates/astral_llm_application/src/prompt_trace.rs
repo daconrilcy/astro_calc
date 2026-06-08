@@ -5,9 +5,10 @@ use std::path::PathBuf;
 
 use astral_llm_domain::chapter_orchestration::READING_SUMMARY_STEP_CODE;
 use astral_llm_infra::config::{env_bool, env_var};
-use astral_llm_providers::{PromptMessage, PromptRole};
+use astral_llm_providers::PromptMessage;
 
 use crate::prompt_compiler::{PromptBundle, PromptCompiler};
+use crate::text_reprocessing_service_adapter::reprocess_prompt_trace;
 
 pub const TARGET: &str = "astral_llm.prompt";
 const DEFAULT_PROMPT_LOG_DIR: &str = "output/logs/prompts";
@@ -160,24 +161,13 @@ fn sanitize_filename_segment(value: &str) -> String {
 }
 
 fn format_compiled_messages(messages: &[PromptMessage]) -> String {
-    messages
-        .iter()
-        .map(|m| {
-            let role = match m.role {
-                PromptRole::System => "system",
-                PromptRole::Developer => "developer",
-                PromptRole::User => "user",
-                PromptRole::Assistant => "assistant",
-            };
-            format!("<<< {role} >>>\n{}\n", m.content)
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
+    reprocess_prompt_trace(messages)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use astral_llm_providers::PromptRole;
     use std::sync::{Mutex, OnceLock};
 
     fn env_lock() -> std::sync::MutexGuard<'static, ()> {

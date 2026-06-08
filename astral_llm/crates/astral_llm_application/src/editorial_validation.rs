@@ -10,10 +10,14 @@ use astral_llm_domain::{
 };
 use astral_llm_infra::{bootstrap_interpretation_profiles, CanonicalCatalog};
 
+use crate::astro_label_humanizer::AstroLabelHumanizer;
 use crate::interpretation_profile_resolver::InterpretationProfileResolver;
 use crate::reading_quality_validator::{
-    requires_blocking_quality_gate, ReadingQualityReport, ReadingQualityValidator,
+    requires_blocking_quality_gate, thresholds_for_request, ReadingQualityReport,
+    ReadingQualityValidator,
 };
+use crate::text_reprocessing_service_adapter::reprocess_natal_theme_with_context;
+use astral_llm_domain::TextRetreatmentRequestContext;
 
 fn editorial_catalog() -> Arc<CanonicalCatalog> {
     Arc::new(CanonicalCatalog {
@@ -76,8 +80,49 @@ impl EditorialValidator {
         }
 
         let interpretation_ref = interpretation.as_ref();
-        let quality = ReadingQualityValidator::assess(&request, reading, interpretation_ref);
+        let mut reading_for_quality = reading.clone();
+        let mut thresholds = thresholds_for_request(&request, interpretation_ref);
+        let fixture_min_astro_basis = interpretation_ref
+            .map(|ctx| {
+                ctx.profile
+                    .document
+                    .quality
+                    .min_astro_basis_refs_per_chapter as usize
+            })
+            .unwrap_or(thresholds.min_astro_basis_per_chapter as usize);
+        thresholds.min_astro_basis_per_chapter = fixture_min_astro_basis as u8;
+        let _ = reprocess_natal_theme_with_context(
+            &mut reading_for_quality,
+            &spec.user_language,
+            TextRetreatmentRequestContext {
+                profile_code: request.product_context.interpretation_profile_code.clone(),
+                product_code: Some(request.product_context.product_code.clone()),
+                audience_level: Some(format!("{:?}", request.product_context.audience_level)),
+                min_astro_basis_per_chapter: Some(fixture_min_astro_basis),
+                ..TextRetreatmentRequestContext::default()
+            },
+        )
+        .map_err(|err| {
+            GenerationError::new(
+                GenerationErrorCode::ReadingQualityFailed,
+                format!("text reprocessing editorial quality failed: {err}"),
+            )
+        })?;
         let blocking = requires_blocking_quality_gate(&request, interpretation_ref);
+        let locale = AstroLabelHumanizer::locale_key(&request.product_context.user_language);
+        let synthesis_min_astro =
+            interpretation_ref.map(|c| c.profile.synthesis_min_astro_basis_refs());
+        let synthesis_min_words =
+            interpretation_ref.map(|c| c.profile.synthesis_word_targets().0 as usize);
+        let quality = ReadingQualityValidator::assess_with_thresholds(
+            &request,
+            &reading_for_quality,
+            &thresholds,
+            locale,
+            blocking,
+            synthesis_min_astro,
+            synthesis_min_words,
+        );
 
         if blocking && !quality.is_acceptable() {
             return Err(GenerationError::with_details(

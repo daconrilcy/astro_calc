@@ -3575,3 +3575,34 @@ cargo test -p astral_llm_application text_reprocessing
 Les tests dedies sont stockes dans `tests/text_reprocessing_domain_tests.rs`
 et `tests/text_reprocessing_application_tests.rs`, puis rattaches aux crates par
 targets `[[test]]`.
+
+## Branchement text_reprocessing service par service (2026-06-08)
+
+Le module `text_reprocessing` est branche progressivement via
+`astral_llm_application::text_reprocessing_service_adapter`.
+
+- `prompt_trace`: `format_compiled_messages` delegue a `reprocess_prompt_trace`.
+- `natal_simplified`: sanitation et typographie postprocess deleguent a
+  `reprocess_natal_simplified`.
+- `horoscope_daily`: les rendus fake daily passent par
+  `reprocess_horoscope_daily` apres construction structurelle.
+- `horoscope_period`: les reponses provider passent par
+  `reprocess_horoscope_period` apres repair/tone et avant validation.
+  La sanitation de chaine publique periode est centralisee dans
+  `ScriptSanitizerProcessor`; `sanitize_period_public_string` reste un wrapper.
+- `natal_theme`: la lecture finale orchestree passe par
+  `reprocess_natal_theme` apres assemblage.
+- Fixtures editoriales premium: `EditorialValidator` valide une copie de lecture
+  via `reprocess_natal_theme_with_context`; `AstroBasisDensityProcessor`
+  complete les chapitres selon `min_astro_basis_per_chapter` uniquement depuis
+  `allowed_evidence_by_chapter` pour les lectures multi-chapitres, ou
+  `allowed_evidence_keys` pour un payload mono-chapitre.
+- `calculator_projection`: helper `reprocess_calculator_projection` disponible;
+  aucun point runtime direct n'a ete identifie dans `astral_llm_application`.
+
+Reviews de connexion: `docs/reviews/text_reprocessing_connection/`.
+Fixtures de migration: `tests/fixtures/text_reprocessing_migration/`.
+
+Verification residuelle corrigee: `cargo test -p astral_llm_api --test
+astral_llm_editorial_fixtures` est passant. Les fixtures sources ne sont pas
+modifiees; le retraitement est applique sur une copie de validation.

@@ -1,0 +1,12 @@
+{
+  "input": {
+    "axis_code": "private_public",
+    "object_code": "sun",
+    "theme_code": "shared_resources"
+  },
+  "expected": {
+    "axis_code": "Private / public",
+    "object_code": "Sun",
+    "theme_code": "Shared resources"
+  }
+}

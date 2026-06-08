@@ -1,0 +1,8 @@
+{
+  "service": "natal_simplified",
+  "assertions": [
+    "sanitize_reading_text_fields delegates to text_reprocessing",
+    "restore_french_typography_fields delegates to text_reprocessing",
+    "interpretive role normalization remains structural during this migration"
+  ]
+}

@@ -1,14 +1,21 @@
 use astral_llm_application::{
-    LanguageRegistry, LanguageRuleSet, ProcessorRegistry, ServiceRegistry, ServiceRuleSet,
-    TextRetreatmentPipeline,
+    normalize_json_for_text_reprocessing_parity, reprocess_calculator_projection,
+    reprocess_natal_simplified, reprocess_prompt_trace, reprocess_shared_text, LanguageRegistry,
+    LanguageRuleSet, ProcessorRegistry, ServiceRegistry, ServiceRuleSet, TextRetreatmentPipeline,
 };
 use astral_llm_domain::{
-    TextLanguage, TextRetreatmentAuditAction, TextRetreatmentOperation as Op,
-    TextRetreatmentRequest, TextRetreatmentRequestContext, TextService, TextTarget, TextWordLimits,
-    LANG_EN, LANG_FR, SERVICE_CALCULATOR_PROJECTION, SERVICE_HOROSCOPE_DAILY,
-    SERVICE_HOROSCOPE_PERIOD, SERVICE_NATAL_SIMPLIFIED, SERVICE_NATAL_THEME, SERVICE_PROMPT_TRACE,
-    SERVICE_SHARED,
+    generation_response::{
+        AstroBasisItem, ConfidenceLevel, LegalBlock, NatalReadingResponse, QualityMetadata,
+        ReadingChapter, ReadingSummary,
+    },
+    output_contract::GenerationMode,
+    TextChapterEvidenceKeys, TextLanguage, TextRetreatmentAuditAction,
+    TextRetreatmentOperation as Op, TextRetreatmentRequest, TextRetreatmentRequestContext,
+    TextService, TextTarget, TextWordLimits, LANG_EN, LANG_FR, SERVICE_CALCULATOR_PROJECTION,
+    SERVICE_HOROSCOPE_DAILY, SERVICE_HOROSCOPE_PERIOD, SERVICE_NATAL_SIMPLIFIED,
+    SERVICE_NATAL_THEME, SERVICE_PROMPT_TRACE, SERVICE_SHARED,
 };
+use astral_llm_providers::{PromptMessage, PromptRole};
 use serde_json::{json, Value};
 
 fn request(
@@ -107,6 +114,22 @@ fn text_reprocessing_horoscope_period_generates_expected_json() {
 }
 
 #[test]
+fn text_reprocessing_horoscope_period_sanitizes_public_technical_leaks() {
+    let response = TextRetreatmentPipeline::default().process(request(
+        LANG_FR,
+        SERVICE_HOROSCOPE_PERIOD,
+        TextTarget::PlainText,
+        vec![Op::Sanitize, Op::Typography],
+        json!("theme_code relationship: tout s’dynamique avec raw_transits."),
+    ));
+
+    assert_eq!(
+        response.payload,
+        json!("thème relations : tout s'accélère avec signaux astrologiques.")
+    );
+}
+
+#[test]
 fn text_reprocessing_natal_simplified_sanitizes_and_fallbacks() {
     let response = TextRetreatmentPipeline::default().process(request(
         LANG_FR,
@@ -171,6 +194,161 @@ fn text_reprocessing_natal_theme_normalizes_astro_basis_and_quality() {
         .as_str()
         .unwrap()
         .contains("OUTPUT_LANGUAGE: fr"));
+}
+
+#[test]
+fn text_reprocessing_natal_theme_completes_astro_basis_density() {
+    let mut req = request(
+        LANG_FR,
+        SERVICE_NATAL_THEME,
+        TextTarget::NatalReading,
+        vec![Op::ValidateQuality],
+        json!({
+            "chapters": [{
+                "code": "identity",
+                "body": "Cette interpretation suggere une progression symbolique assez claire.",
+                "astro_basis": [
+                    { "fact_id": "domain_score:identity", "factor": "identity", "interpretive_role": "domain_score" },
+                    { "fact_id": "placement:sun:capricorn:house:2", "factor": "sun", "interpretive_role": "core" }
+                ]
+            }]
+        }),
+    );
+    req.context.min_astro_basis_per_chapter = Some(4);
+    req.context.allowed_evidence_keys = vec![
+        "placement:moon:pisces:house:4".into(),
+        "aspect:sun:moon:trine".into(),
+    ];
+
+    let response = TextRetreatmentPipeline::default().process(req);
+    let basis = response.payload["chapters"][0]["astro_basis"]
+        .as_array()
+        .unwrap();
+
+    assert_eq!(basis.len(), 4);
+    assert!(basis
+        .iter()
+        .any(|item| { item["fact_id"].as_str().unwrap() == "placement:moon:pisces:house:4" }));
+    assert!(basis.iter().any(|item| {
+        item["fact_id"].as_str().unwrap() == "placement:moon:pisces:house:4"
+            && item["factor"].as_str().unwrap() == "moon"
+    }));
+    assert!(basis.iter().any(|item| {
+        item["fact_id"].as_str().unwrap() == "aspect:sun:moon:trine"
+            && item["factor"].as_str().unwrap() == "sun moon"
+    }));
+    assert!(response.audit.iter().any(|item| {
+        item.processor_id == "astro_basis_density"
+            && item.action == TextRetreatmentAuditAction::Changed
+    }));
+}
+
+#[test]
+fn text_reprocessing_natal_theme_density_does_not_fabricate_evidence() {
+    let mut req = request(
+        LANG_FR,
+        SERVICE_NATAL_THEME,
+        TextTarget::NatalReading,
+        vec![Op::ValidateQuality],
+        json!({
+            "chapters": [{
+                "code": "identity",
+                "body": "Cette interpretation suggere une progression symbolique assez claire.",
+                "astro_basis": [
+                    { "fact_id": "domain_score:identity", "factor": "identity", "interpretive_role": "domain_score" }
+                ]
+            }]
+        }),
+    );
+    req.context.min_astro_basis_per_chapter = Some(3);
+
+    let response = TextRetreatmentPipeline::default().process(req);
+    let basis = response.payload["chapters"][0]["astro_basis"]
+        .as_array()
+        .unwrap();
+
+    assert_eq!(basis.len(), 1);
+    assert!(response
+        .warnings
+        .contains(&"astro_basis_density_insufficient_allowed_evidence:identity".to_string()));
+}
+
+#[test]
+fn text_reprocessing_natal_theme_density_requires_chapter_scoped_evidence_for_multi_chapter() {
+    let mut req = request(
+        LANG_FR,
+        SERVICE_NATAL_THEME,
+        TextTarget::NatalReading,
+        vec![Op::ValidateQuality],
+        json!({
+            "chapters": [
+                {
+                    "code": "identity",
+                    "body": "Cette interpretation suggere une progression symbolique assez claire.",
+                    "astro_basis": [
+                        { "fact_id": "domain_score:identity", "factor": "identity", "interpretive_role": "domain_score" }
+                    ]
+                },
+                {
+                    "code": "relationships",
+                    "body": "Cette interpretation suggere une progression symbolique relationnelle.",
+                    "astro_basis": [
+                        { "fact_id": "domain_score:relationships", "factor": "relationships", "interpretive_role": "domain_score" }
+                    ]
+                }
+            ]
+        }),
+    );
+    req.context.min_astro_basis_per_chapter = Some(2);
+    req.context.allowed_evidence_keys = vec!["placement:moon:pisces:house:4".into()];
+
+    let response = TextRetreatmentPipeline::default().process(req);
+
+    assert_eq!(
+        response.payload["chapters"][0]["astro_basis"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+    assert!(response
+        .warnings
+        .contains(&"astro_basis_density_requires_chapter_scoped_evidence:identity".to_string()));
+}
+
+#[test]
+fn text_reprocessing_natal_theme_density_uses_chapter_scoped_evidence() {
+    let mut req = request(
+        LANG_FR,
+        SERVICE_NATAL_THEME,
+        TextTarget::NatalReading,
+        vec![Op::ValidateQuality],
+        json!({
+            "chapters": [{
+                "code": "relationships",
+                "body": "Cette interpretation suggere une progression symbolique relationnelle.",
+                "astro_basis": [
+                    { "fact_id": "domain_score:relationships", "factor": "relationships", "interpretive_role": "domain_score" }
+                ]
+            }]
+        }),
+    );
+    req.context.min_astro_basis_per_chapter = Some(2);
+    req.context.allowed_evidence_by_chapter = vec![TextChapterEvidenceKeys {
+        chapter_code: "relationships".into(),
+        fact_ids: vec!["placement:venus:taurus:house:7".into()],
+    }];
+
+    let response = TextRetreatmentPipeline::default().process(req);
+    let basis = response.payload["chapters"][0]["astro_basis"]
+        .as_array()
+        .unwrap();
+
+    assert_eq!(basis.len(), 2);
+    assert!(basis.iter().any(|item| {
+        item["fact_id"].as_str().unwrap() == "placement:venus:taurus:house:7"
+            && item["factor"].as_str().unwrap() == "venus"
+    }));
 }
 
 #[test]
@@ -514,4 +692,117 @@ fn text_reprocessing_pipeline_is_idempotent() {
     ));
 
     assert_eq!(first.payload, second.payload);
+}
+
+#[test]
+fn text_reprocessing_adapter_shared_matches_pipeline_contract() {
+    let response = reprocess_shared_text(LANG_FR, "l impression d une lecture avec संकेत");
+
+    assert_eq!(response.payload, json!("l'impression d'une lecture avec"));
+}
+
+#[test]
+fn text_reprocessing_adapter_prompt_trace_matches_legacy_format() {
+    let trace = reprocess_prompt_trace(&[
+        PromptMessage {
+            role: PromptRole::System,
+            content: "sys".into(),
+        },
+        PromptMessage {
+            role: PromptRole::User,
+            content: "usr".into(),
+        },
+    ]);
+
+    assert_eq!(trace, "<<< system >>>\nsys\n\n<<< user >>>\nusr\n");
+}
+
+#[test]
+fn text_reprocessing_adapter_calculator_projection_keeps_normalized_json_stable() {
+    let payload = json!({
+        "axis_code": "private_public",
+        "object_code": "sun",
+        "theme_code": "shared_resources"
+    });
+    let response = reprocess_calculator_projection(LANG_EN, payload);
+    let normalized = normalize_json_for_text_reprocessing_parity(&response.payload);
+
+    assert_eq!(
+        normalized,
+        json!({
+            "axis_code": "Private / public",
+            "object_code": "Sun",
+            "theme_code": "Shared resources"
+        })
+    );
+}
+
+#[test]
+fn text_reprocessing_adapter_natal_simplified_preserves_technical_fields() {
+    let mut reading = NatalReadingResponse {
+        schema_version: "natal_reading_v1".into(),
+        language: LANG_FR.into(),
+        reading_type: "natal_prompter".into(),
+        summary: ReadingSummary {
+            title: "l impression".into(),
+            short_text: "d une synthese संकेत".into(),
+        },
+        chapters: vec![ReadingChapter {
+            code: "identity_core".into(),
+            title: "d une dynamique".into(),
+            body: "l impression reste lisible संकेत".into(),
+            astro_basis: vec![AstroBasisItem {
+                fact_id: Some("fact_l impression".into()),
+                label: Some("d une source".into()),
+                factor: "l impression solaire".into(),
+                interpretive_role: "supporting".into(),
+            }],
+            confidence: ConfidenceLevel::Medium,
+            safety_flags: vec![],
+        }],
+        legal: LegalBlock {
+            disclaimer: "Texte indicatif.".into(),
+        },
+        quality: QualityMetadata {
+            used_provider: "fixture".into(),
+            used_model: "fixture".into(),
+            generation_mode: GenerationMode::SinglePass,
+            prompt_family: "fixture".into(),
+            prompt_version: "fixture".into(),
+            astro_contract_version: "fixture".into(),
+            fallback_used: false,
+        },
+    };
+
+    let audit =
+        reprocess_natal_simplified(&mut reading, LANG_FR, vec![Op::Sanitize, Op::Typography])
+            .expect("fixture must reprocess");
+
+    assert_eq!(reading.chapters[0].code, "identity_core");
+    assert_eq!(
+        reading.chapters[0].astro_basis[0].fact_id.as_deref(),
+        Some("fact_l impression")
+    );
+    assert_eq!(
+        reading.chapters[0].astro_basis[0].interpretive_role,
+        "supporting"
+    );
+    assert_eq!(reading.summary.title, "l'impression");
+    assert_eq!(reading.summary.short_text, "d'une synthese");
+    assert_eq!(
+        reading.chapters[0].astro_basis[0].label.as_deref(),
+        Some("d'une source")
+    );
+    assert_eq!(
+        reading.chapters[0].astro_basis[0].factor,
+        "l'impression solaire"
+    );
+    assert!(audit
+        .sanitized_fields
+        .iter()
+        .any(|field| field == "summary.short_text"));
+    assert!(audit
+        .typography_fields
+        .iter()
+        .any(|field| field == "chapters[0].astro_basis[0].factor"));
 }

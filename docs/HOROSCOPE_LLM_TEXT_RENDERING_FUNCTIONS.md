@@ -584,7 +584,7 @@ Fichiers:
 
 ## Mapping vers `text_reprocessing`
 
-Le module `astral_llm_application::text_reprocessing` v1 reprend ces fonctionnalites sous forme de processors isoles. Il n'est pas encore branche aux services applicatifs; les anciennes fonctions restent la source de verite runtime.
+Le module `astral_llm_application::text_reprocessing` reprend ces fonctionnalites sous forme de processors et dispose maintenant d'un branchement progressif via `text_reprocessing_service_adapter`.
 
 | Fonctionnalite cible | Processor v1 | Groupes remplaces a terme |
 | --- | --- | --- |
@@ -594,9 +594,22 @@ Le module `astral_llm_application::text_reprocessing` v1 reprend ces fonctionnal
 | Anti-repetition | `RepetitionProcessor` | substitutions periode, trigrammes, ouvertures a eviter |
 | Humanisation libelles | `AstroLabelHumanizerProcessor` | `period_*_public_label`, `humanize_*`, `house_axis_label`, label fallbacks |
 | `astro_basis` | `AstroBasisProcessor` | `AstroBasisRoleNormalizer`, `normalize_simplified_interpretive_roles`, enrichissement basis |
+| Densite `astro_basis` | `AstroBasisDensityProcessor` | gates premium evidence/quality demandant un minimum de references par chapitre, sans fabrication hors evidence autorisee et scopee par chapitre |
 | Qualite / safety texte | `QualityValidationProcessor` | quality validators, forbidden wording, framing, jargon |
 | Fallbacks publics | `FallbackTextProcessor` | fake/fallback summary/advice/body par service |
 | Guidance de prompt | `PromptGuidanceProcessor` | `ChapterWritingGuidance`, opening repair directives, language prompt block |
 | Trace provider | `TraceFormattingProcessor` | `format_compiled_messages`, prompt trace formatting |
 
-Voir `docs/TEXT_REPROCESSING_MODULE.md` pour les contrats, registres, exemples JSON et strategie de branchement futur.
+## Statut de branchement vers `text_reprocessing`
+
+| Famille legacy | Statut | Milestone | Note |
+| --- | --- | --- | --- |
+| Typographie/sanitation shared | `wrapper` | `REV-CONNECT-001-shared` | Helpers bas niveau conserves car utilises par le module central. |
+| Trace prompt `format_compiled_messages` | `replaced` | `REV-CONNECT-002-prompt-trace` | Delegue a `reprocess_prompt_trace`. |
+| Projection calculateur | `wrapper` | `REV-CONNECT-003-calculator-projection` | Helper disponible; aucun runtime direct trouve dans `astral_llm_application`. |
+| `simplified_reading_postprocess` sanitation/typographie | `wrapper` | `REV-CONNECT-004-natal-simplified` | Wrappers vers `reprocess_natal_simplified`. |
+| Horoscope daily fake renderers | `wrapper` | `REV-CONNECT-005-horoscope-daily` | Post-traitement final via `reprocess_horoscope_daily`; structure fake conservee. |
+| Horoscope period repair/sanitize | `wrapper` | `REV-CONNECT-006-horoscope-period` | `sanitize_period_public_string` delegue a `reprocess_horoscope_period`; repair shape/preuves conserve. |
+| Natal theme final reading | `wrapper` | `REV-CONNECT-007-natal-theme` | Post-traitement final via `reprocess_natal_theme`; catalogue humanizer conserve. |
+
+Voir `docs/TEXT_REPROCESSING_MODULE.md` pour les contrats, registres, exemples JSON et strategie de branchement.

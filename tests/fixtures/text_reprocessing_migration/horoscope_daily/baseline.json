@@ -1,0 +1,7 @@
+{
+  "service": "horoscope_daily",
+  "assertions": [
+    "fake daily responses are reprocessed after structural rendering",
+    "existing horoscope_v1_tests remain the strict parity baseline"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "service": "natal_theme",
+  "assertions": [
+    "final orchestrated reading is reprocessed after chapter assembly",
+    "length and repetition remain handled by existing quality gates"
+  ]
+}

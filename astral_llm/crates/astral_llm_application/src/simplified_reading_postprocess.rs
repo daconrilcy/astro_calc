@@ -4,15 +4,15 @@ use astral_llm_domain::{
     GenerateReadingRequest,
 };
 
-use crate::french_typography::restore_french_elisions;
 use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
-use crate::reading_script_guard::sanitize_text_for_french_script;
 use astral_llm_domain::generation_response::ConfidenceLevel;
 
 use crate::simplified_reading::{
     sun_sign_blocked, SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE, SIMPLIFIED_PROFILE,
 };
 use crate::summary_ux_rules::{count_words, split_sentences_fr, SummaryUxRules};
+use crate::text_reprocessing_service_adapter::reprocess_natal_simplified;
+use astral_llm_domain::TextRetreatmentOperation as Op;
 
 pub const SCRIPT_REPAIR_INSTRUCTION: &str =
     "Réécrivez entièrement en français avec l'alphabet latin \
@@ -283,105 +283,18 @@ pub fn normalize_simplified_interpretive_roles(reading: &mut NatalReadingRespons
 }
 
 fn sanitize_reading_text_fields(reading: &mut NatalReadingResponse, language: &str) -> Vec<String> {
-    if !language.trim().eq_ignore_ascii_case("fr") {
-        return Vec::new();
-    }
-
-    let mut sanitized = Vec::new();
-    if sanitize_field("summary.title", &mut reading.summary.title, &mut sanitized) {}
-    if sanitize_field(
-        "summary.short_text",
-        &mut reading.summary.short_text,
-        &mut sanitized,
-    ) {}
-    for (i, chapter) in reading.chapters.iter_mut().enumerate() {
-        sanitize_field(
-            &format!("chapters[{i}].title"),
-            &mut chapter.title,
-            &mut sanitized,
-        );
-        sanitize_field(
-            &format!("chapters[{i}].body"),
-            &mut chapter.body,
-            &mut sanitized,
-        );
-        for (j, basis) in chapter.astro_basis.iter_mut().enumerate() {
-            if let Some(label) = basis.label.as_mut() {
-                sanitize_field(
-                    &format!("chapters[{i}].astro_basis[{j}].label"),
-                    label,
-                    &mut sanitized,
-                );
-            }
-            sanitize_field(
-                &format!("chapters[{i}].astro_basis[{j}].factor"),
-                &mut basis.factor,
-                &mut sanitized,
-            );
-        }
-    }
-    sanitized
+    reprocess_natal_simplified(reading, language, vec![Op::Sanitize])
+        .map(|audit| audit.sanitized_fields)
+        .expect("text_reprocessing natal_simplified sanitation adapter failed")
 }
 
 fn restore_french_typography_fields(
     reading: &mut NatalReadingResponse,
     language: &str,
 ) -> Vec<String> {
-    if !language.trim().eq_ignore_ascii_case("fr") {
-        return Vec::new();
-    }
-
-    let mut restored = Vec::new();
-    typography_field("summary.title", &mut reading.summary.title, &mut restored);
-    typography_field(
-        "summary.short_text",
-        &mut reading.summary.short_text,
-        &mut restored,
-    );
-    for (i, chapter) in reading.chapters.iter_mut().enumerate() {
-        typography_field(
-            &format!("chapters[{i}].title"),
-            &mut chapter.title,
-            &mut restored,
-        );
-        typography_field(
-            &format!("chapters[{i}].body"),
-            &mut chapter.body,
-            &mut restored,
-        );
-        for (j, basis) in chapter.astro_basis.iter_mut().enumerate() {
-            if let Some(label) = basis.label.as_mut() {
-                typography_field(
-                    &format!("chapters[{i}].astro_basis[{j}].label"),
-                    label,
-                    &mut restored,
-                );
-            }
-            typography_field(
-                &format!("chapters[{i}].astro_basis[{j}].factor"),
-                &mut basis.factor,
-                &mut restored,
-            );
-        }
-    }
-    restored
-}
-
-fn sanitize_field(field: &str, text: &mut String, out: &mut Vec<String>) -> bool {
-    let (clean, changed) = sanitize_text_for_french_script(text);
-    if changed {
-        *text = clean;
-        out.push(field.to_string());
-    }
-    changed
-}
-
-fn typography_field(field: &str, text: &mut String, out: &mut Vec<String>) {
-    let (fixed, changed) = restore_french_elisions(text);
-    if changed {
-        *text = fixed;
-        out.push(field.to_string());
-    }
+    reprocess_natal_simplified(reading, language, vec![Op::Typography])
+        .map(|audit| audit.typography_fields)
+        .expect("text_reprocessing natal_simplified typography adapter failed")
 }
 
 #[cfg(test)]

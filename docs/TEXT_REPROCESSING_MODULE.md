@@ -2,9 +2,9 @@
 
 ## Objectif v1
 
-Le module `text_reprocessing` centralise les fonctionnalites de retraitement des textes LLM sans etre branche aux flux applicatifs existants.
+Le module `text_reprocessing` centralise les fonctionnalites de retraitement des textes LLM et dispose maintenant d'un branchement applicatif progressif via un adapter dedie.
 
-La v1 sert a valider les contrats, registres, processors, fixtures par service et audits. Les services `horoscope`, `natal`, `calculator_projection`, `prompt_trace` et les pipelines existants restent inchanges.
+La v1 a d'abord valide les contrats, registres, processors, fixtures par service et audits. Les branchements actuels conservent les contrats publics existants et utilisent des wrappers temporaires lorsque des fonctions legacy portent encore de la structure metier.
 
 ## Architecture
 
@@ -77,12 +77,13 @@ Sortie:
 | `RepetitionProcessor` | substitutions anti-repetition | tous services via `LanguageRuleSet` |
 | `AstroLabelHumanizerProcessor` | humanisation de codes simples | tout service via operation et `LanguageRuleSet` |
 | `AstroBasisProcessor` | normalisation `astro_basis.interpretive_role` | tout service contenant `astro_basis` |
+| `AstroBasisDensityProcessor` | densite minimale `astro_basis` depuis `allowed_evidence_by_chapter` ou evidence mono-chapitre | natal theme/simplified |
 | `QualityValidationProcessor` | checks texte public | horoscope, natal |
 | `FallbackTextProcessor` | summary/advice fallback non destructif | tout service objet via `ServiceRuleSet` |
 | `PromptGuidanceProcessor` | bloc guidance langue/repetition non destructif | tout service objet via operation |
 | `TraceFormattingProcessor` | format trace `<<< role >>>` | tout service avec `messages` |
 
-Les processors de sanitation, typographie, longueur et repetition ne modifient que les champs de texte public. Les chemins techniques (`code`, `*_code`, `id`, `*_id`, `role`, `label`, `factor`, `interpretive_role`) sont proteges contre les recritures. Le sanitizer scanne toutefois toutes les chaines pour detecter des injections. Le controle de longueur est plus restrictif que le texte public general: il ne cible pas les titres et ne s'applique qu'aux textes racine ou champs de corps (`text`, `body`, `content`, `advice`, `watch_point`, `main`).
+Les processors de sanitation, typographie, longueur et repetition ne modifient que les champs de texte public. Les chemins techniques (`code`, `*_code`, `id`, `*_id`, `role`, `interpretive_role`) sont proteges contre les recritures. Les champs `label` et `factor` restent retraitables car ils sont rendus publiquement dans `astro_basis`. Le sanitizer scanne toutefois toutes les chaines pour detecter des injections. Le controle de longueur est plus restrictif que le texte public general: il ne cible pas les titres et ne s'applique qu'aux textes racine ou champs de corps (`text`, `body`, `content`, `advice`, `watch_point`, `main`).
 
 ## Ajouter une langue
 
@@ -128,15 +129,28 @@ Violation codes v1:
 - `empty_public_text`
 - `forbidden_wording`
 
-## Strategie future de branchement
+## Branchement applicatif progressif
 
-La v1 est isolee. Le branchement applicatif devra etre progressif:
+Le branchement applicatif passe par `text_reprocessing_service_adapter`.
 
-1. transformer les anciennes fonctions en wrappers optionnels vers le pipeline;
-2. verifier la parite via tests existants;
-3. brancher d'abord `natal_simplified`, puis `horoscope_period`, puis `natal_theme`;
-4. conserver un audit exploitable pour chaque modification de champ;
-5. migrer ensuite les textes hardcodes vers la base/cataloque canonique.
+| Service | Adapter | Operations principales | Statut |
+| --- | --- | --- | --- |
+| `shared` | `reprocess_shared_text` | sanitize, typography | helper central connecte |
+| `prompt_trace` | `reprocess_prompt_trace` | format_trace | connecte dans `prompt_trace` |
+| `calculator_projection` | `reprocess_calculator_projection` | humanize_labels, sanitize | helper pret, aucun runtime direct trouve dans `astral_llm_application` |
+| `natal_simplified` | `reprocess_natal_simplified` | sanitize, typography | connecte via wrappers postprocess |
+| `horoscope_daily` | `reprocess_horoscope_daily` | sanitize, typography, length, repetition, quality, fallback | connecte apres rendus fake daily |
+| `horoscope_period` | `reprocess_horoscope_period` | sanitize, typography, length, repetition, labels, quality, fallback | connecte; `sanitize_period_public_string` est un wrapper vers le module central |
+| `natal_theme` | `reprocess_natal_theme` | sanitize, typography, labels, quality | connecte apres assemblage final |
+| Fixtures editoriales premium | `reprocess_natal_theme_with_context` | labels, quality, astro_basis density | connecte dans `EditorialValidator` sur copie de validation |
+
+Les fonctions legacy conservees le sont comme wrappers temporaires ou parce qu'elles portent une logique structurelle, catalogue ou metier. Les reviews detaillees sont dans `docs/reviews/text_reprocessing_connection/`.
+
+Prochaine etape possible:
+
+1. reduire les wrappers temporaires service par service;
+2. migrer les textes hardcodes restants vers catalogue/DB quand une source canonique existe;
+3. renforcer les baselines JSON dediees au-dela des tests existants.
 
 ## Commandes de verification
 

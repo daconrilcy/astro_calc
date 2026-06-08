@@ -1,16 +1,16 @@
-//! Pipeline isole de retraitement des textes LLM.
+//! Pipeline central de retraitement des textes LLM.
 //!
-//! V1 n'est pas branchee aux services applicatifs existants. Les flux actuels restent la
-//! source de verite runtime; ce module est valide par tests dedies.
+//! Le branchement applicatif passe par `text_reprocessing_service_adapter` afin de garder les
+//! contrats publics des services stables.
 
 use std::collections::{HashMap, HashSet};
 
 use astral_llm_domain::{
-    TextLanguage, TextRetreatmentAuditAction, TextRetreatmentAuditItem, TextRetreatmentOperation,
-    TextRetreatmentRequest, TextRetreatmentResponse, TextRetreatmentViolation, TextService,
-    TextTarget, TextWordLimits, LANG_DE, LANG_EN, LANG_ES, LANG_FR, SERVICE_CALCULATOR_PROJECTION,
-    SERVICE_HOROSCOPE_DAILY, SERVICE_HOROSCOPE_PERIOD, SERVICE_NATAL_SIMPLIFIED,
-    SERVICE_NATAL_THEME, SERVICE_PROMPT_TRACE, SERVICE_SHARED,
+    TextChapterEvidenceKeys, TextLanguage, TextRetreatmentAuditAction, TextRetreatmentAuditItem,
+    TextRetreatmentOperation, TextRetreatmentRequest, TextRetreatmentResponse,
+    TextRetreatmentViolation, TextService, TextTarget, TextWordLimits, LANG_DE, LANG_EN, LANG_ES,
+    LANG_FR, SERVICE_CALCULATOR_PROJECTION, SERVICE_HOROSCOPE_DAILY, SERVICE_HOROSCOPE_PERIOD,
+    SERVICE_NATAL_SIMPLIFIED, SERVICE_NATAL_THEME, SERVICE_PROMPT_TRACE, SERVICE_SHARED,
 };
 use serde_json::{json, Value};
 
@@ -290,6 +290,7 @@ impl ProcessorRegistry {
             Box::new(RepetitionProcessor),
             Box::new(AstroLabelHumanizerProcessor),
             Box::new(AstroBasisProcessor),
+            Box::new(AstroBasisDensityProcessor),
             Box::new(QualityValidationProcessor),
             Box::new(FallbackTextProcessor),
             Box::new(PromptGuidanceProcessor),
@@ -488,12 +489,21 @@ impl TextRetreatmentProcessor for ScriptSanitizerProcessor {
                     message: "text contains disallowed instruction-like content".into(),
                 });
             }
-            if ctx.request.language.code == LANG_FR && !is_technical_string_path(path) {
-                let (clean, changed) = sanitize_text_for_french_script(text);
-                if changed {
-                    outcome.changed_paths.push(path.to_string());
-                    return Some(clean);
-                }
+            if is_technical_string_path(path) {
+                return None;
+            }
+
+            let mut updated = text.to_string();
+            if ctx.request.service.code == SERVICE_HOROSCOPE_PERIOD {
+                updated = sanitize_period_public_text(&updated);
+            }
+            if ctx.request.language.code == LANG_FR {
+                let (clean, _) = sanitize_text_for_french_script(&updated);
+                updated = clean;
+            }
+            if updated != text {
+                outcome.changed_paths.push(path.to_string());
+                return Some(updated);
             }
             None
         });
@@ -688,6 +698,44 @@ impl TextRetreatmentProcessor for AstroBasisProcessor {
     fn process(&self, _ctx: &TextRetreatmentContext<'_>, payload: &mut Value) -> ProcessorOutcome {
         let mut outcome = ProcessorOutcome::default();
         normalize_astro_basis(payload, "$", &mut outcome);
+        outcome
+    }
+}
+
+pub struct AstroBasisDensityProcessor;
+
+impl TextRetreatmentProcessor for AstroBasisDensityProcessor {
+    fn id(&self) -> &'static str {
+        "astro_basis_density"
+    }
+
+    fn operation(&self) -> TextRetreatmentOperation {
+        TextRetreatmentOperation::ValidateQuality
+    }
+
+    fn supported_languages(&self) -> &'static [&'static str] {
+        &[]
+    }
+
+    fn supported_services(&self) -> &'static [&'static str] {
+        &[SERVICE_NATAL_THEME, SERVICE_NATAL_SIMPLIFIED]
+    }
+
+    fn process(&self, ctx: &TextRetreatmentContext<'_>, payload: &mut Value) -> ProcessorOutcome {
+        let mut outcome = ProcessorOutcome::default();
+        let Some(min_basis) = ctx.request.context.min_astro_basis_per_chapter else {
+            return outcome;
+        };
+        if !matches!(ctx.request.target, TextTarget::NatalReading) {
+            return outcome;
+        }
+        complete_astro_basis_density(
+            payload,
+            min_basis,
+            &ctx.request.context.allowed_evidence_keys,
+            &ctx.request.context.allowed_evidence_by_chapter,
+            &mut outcome,
+        );
         outcome
     }
 }
@@ -914,8 +962,6 @@ fn is_technical_string_path(path: &str) -> bool {
     key == "code"
         || key == "id"
         || key == "role"
-        || key == "label"
-        || key == "factor"
         || key == "interpretive_role"
         || key == "formatted_trace"
         || key.ends_with("_code")
@@ -1009,6 +1055,218 @@ fn should_preserve_colon(chars: &[char], index: usize) -> bool {
         return true;
     }
     false
+}
+
+fn sanitize_period_public_text(text: &str) -> String {
+    let mut sanitized = text.to_string();
+    for (from, to) in [
+        ("natal_focus_hint", "nuance natale"),
+        ("personalization_hint", "nuance personnelle"),
+        ("theme_code", "thème"),
+        ("evidence_key", "preuve"),
+        ("moon_house_by_day", "passage lunaire"),
+        ("transit_exact", "signal précis"),
+        ("transit_active", "signal actif"),
+        ("fake_period_calculator_v1", "calculateur de période"),
+        ("fake_period_writer_v1", "rédaction de période"),
+        ("natal_moon", "sensibilité natale"),
+        ("natal_mercury", "pensée natale"),
+        ("natal_venus", "attachement natal"),
+        ("natal_mars", "élan natal"),
+        ("natal_saturn", "responsabilité natale"),
+        ("natal_", "natal "),
+        ("period:", "signal de période "),
+        ("slot:", "moment "),
+        ("slot_", "moment "),
+        ("snapshot", "repère"),
+        ("raw_transits", "signaux astrologiques"),
+    ] {
+        sanitized = replace_ascii_case_insensitive(&sanitized, from, to);
+    }
+    for (from, to) in [
+        ("organization", "organisation"),
+        ("relationship", "relations"),
+        ("energy", "énergie"),
+        ("clarity", "clarté"),
+        ("integration", "intégration"),
+        ("focused", "concentré"),
+        ("focus", "attention"),
+        ("supportive", "soutenant"),
+        ("careful", "vigilant"),
+        ("active", "dynamique"),
+        ("mixed", "nuancé"),
+        ("fluid", "fluide"),
+        ("tense", "sous tension"),
+    ] {
+        sanitized = replace_ascii_token_case_insensitive(&sanitized, from, to);
+    }
+    sanitize_period_french_fragments(&sanitize_period_sentence_boundaries(
+        &normalize_french_colon_spacing(&sanitize_period_broken_sentences(&sanitized)),
+    ))
+}
+
+fn sanitize_period_french_fragments(text: &str) -> String {
+    text.replace("tout s’dynamique", "tout s'accélère")
+        .replace("tout s'dynamique", "tout s'accélère")
+        .replace("s’dynamique", "s'accélère")
+        .replace("s'dynamique", "s'accélère")
+        .replace("d’accélère", "s'accélère")
+        .replace("d'accélère", "s'accélère")
+        .replace("rédynamique", "dynamisante")
+        .replace("redynamique", "dynamisante")
+}
+
+fn sanitize_period_broken_sentences(text: &str) -> String {
+    let mut sentences = Vec::new();
+    let mut current = String::new();
+    for ch in text.chars() {
+        current.push(ch);
+        if matches!(ch, '.' | '!' | '?') {
+            sentences.push(std::mem::take(&mut current));
+        }
+    }
+    if !current.trim().is_empty() {
+        sentences.push(current);
+    }
+    if sentences.len() <= 1 {
+        let trimmed = text.trim().trim_end_matches(['.', '!', '?']);
+        if period_is_broken_sentence_tail(trimmed) {
+            return "Vos repères personnels gardent un appui concret pour avancer avec mesure."
+                .to_string();
+        }
+        return text.to_string();
+    }
+    let filtered = sentences
+        .iter()
+        .filter(|sentence| {
+            let trimmed = sentence.trim().trim_end_matches(['.', '!', '?']);
+            !period_is_broken_sentence_tail(trimmed)
+        })
+        .map(|sentence| sentence.trim())
+        .filter(|sentence| !sentence.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ");
+    if filtered.trim().is_empty() {
+        text.to_string()
+    } else {
+        filtered
+    }
+}
+
+fn sanitize_period_sentence_boundaries(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut capitalize_next = false;
+    for ch in text.chars() {
+        if capitalize_next {
+            if ch.is_whitespace() {
+                out.push(ch);
+                continue;
+            }
+            for upper in ch.to_uppercase() {
+                out.push(upper);
+            }
+            capitalize_next = false;
+            continue;
+        }
+        out.push(ch);
+        if matches!(ch, '.' | '!') || ch == '?' {
+            capitalize_next = true;
+        }
+    }
+    out
+}
+
+fn period_is_broken_sentence_tail(tail: &str) -> bool {
+    let normalized = tail
+        .trim()
+        .trim_matches(|ch: char| matches!(ch, ',' | ';' | ':' | '\'' | '’' | '“' | '”' | '"'))
+        .to_lowercase();
+    let words = normalized.split_whitespace().collect::<Vec<_>>();
+    match words.as_slice() {
+        [] => false,
+        [last] => period_is_weak_sentence_ending(last),
+        [.., "à", "la" | "l" | "l'"] => true,
+        [.., "de", "la" | "l" | "l'"] => true,
+        [.., last] => period_is_weak_sentence_ending(last),
+    }
+}
+
+fn period_is_weak_sentence_ending(word: &str) -> bool {
+    matches!(
+        word,
+        "à" | "a"
+            | "de"
+            | "d"
+            | "d'"
+            | "l"
+            | "l'"
+            | "le"
+            | "la"
+            | "les"
+            | "un"
+            | "une"
+            | "des"
+            | "du"
+            | "et"
+            | "ou"
+            | "mais"
+            | "pour"
+            | "avec"
+            | "sans"
+            | "dans"
+            | "sur"
+            | "plutôt"
+            | "que"
+    )
+}
+
+fn replace_ascii_case_insensitive(text: &str, from: &str, to: &str) -> String {
+    if from.is_empty() {
+        return text.to_string();
+    }
+    let lower_text = text.to_lowercase();
+    let lower_from = from.to_lowercase();
+    let mut output = String::with_capacity(text.len());
+    let mut cursor = 0;
+    while let Some(relative) = lower_text[cursor..].find(&lower_from) {
+        let start = cursor + relative;
+        output.push_str(&text[cursor..start]);
+        output.push_str(to);
+        cursor = start + from.len();
+    }
+    output.push_str(&text[cursor..]);
+    output
+}
+
+fn replace_ascii_token_case_insensitive(text: &str, from: &str, to: &str) -> String {
+    if from.is_empty() {
+        return text.to_string();
+    }
+    let lower_text = text.to_lowercase();
+    let lower_from = from.to_lowercase();
+    let mut output = String::with_capacity(text.len());
+    let mut cursor = 0;
+    while let Some(relative) = lower_text[cursor..].find(&lower_from) {
+        let start = cursor + relative;
+        let end = start + from.len();
+        let before = text[..start].chars().next_back();
+        let after = text[end..].chars().next();
+        let is_token = before
+            .map(|ch| !ch.is_ascii_alphanumeric() && ch != '_')
+            .unwrap_or(true)
+            && after
+                .map(|ch| !ch.is_ascii_alphanumeric() && ch != '_')
+                .unwrap_or(true);
+        output.push_str(&text[cursor..start]);
+        if is_token {
+            output.push_str(to);
+        } else {
+            output.push_str(&text[start..end]);
+        }
+        cursor = end;
+    }
+    output.push_str(&text[cursor..]);
+    output
 }
 
 fn truncate_complete(text: &str, max_words: usize) -> String {
@@ -1205,6 +1463,162 @@ fn normalize_role(raw: &str) -> &'static str {
         _ if lower.contains("support") || lower.contains("soutien") => "supporting",
         _ if lower.contains("core") || lower.contains("principal") => "core",
         _ => "supporting",
+    }
+}
+
+fn complete_astro_basis_density(
+    value: &mut Value,
+    min_basis: usize,
+    allowed_evidence_keys: &[String],
+    allowed_evidence_by_chapter: &[TextChapterEvidenceKeys],
+    outcome: &mut ProcessorOutcome,
+) {
+    let Some(chapters) = value.get_mut("chapters").and_then(Value::as_array_mut) else {
+        return;
+    };
+    let chapter_count = chapters.len();
+    for (chapter_idx, chapter) in chapters.iter_mut().enumerate() {
+        let chapter_code = chapter
+            .get("code")
+            .and_then(Value::as_str)
+            .unwrap_or("chapter")
+            .to_string();
+        let Some(basis) = chapter.get_mut("astro_basis").and_then(Value::as_array_mut) else {
+            continue;
+        };
+        let valid_count = basis
+            .iter()
+            .filter(|item| {
+                item.get("factor")
+                    .and_then(Value::as_str)
+                    .map(|factor| !factor.trim().is_empty())
+                    .unwrap_or(false)
+            })
+            .count();
+        if valid_count >= min_basis || basis.is_empty() {
+            continue;
+        }
+        let mut cited = basis
+            .iter()
+            .filter_map(|item| item.get("fact_id").and_then(Value::as_str))
+            .map(str::to_string)
+            .collect::<HashSet<_>>();
+        let Some(source_keys) = evidence_keys_for_chapter(
+            &chapter_code,
+            chapter_count,
+            allowed_evidence_keys,
+            allowed_evidence_by_chapter,
+            outcome,
+        ) else {
+            continue;
+        };
+        let mut candidates = source_keys
+            .iter()
+            .filter(|key| !key.trim().is_empty())
+            .filter(|key| !cited.contains(key.as_str()))
+            .cloned()
+            .collect::<Vec<_>>();
+        if candidates.is_empty() {
+            outcome.warnings.push(format!(
+                "astro_basis_density_insufficient_allowed_evidence:{chapter_code}"
+            ));
+            continue;
+        }
+        candidates.reverse();
+        while basis
+            .iter()
+            .filter(|item| {
+                item.get("factor")
+                    .and_then(Value::as_str)
+                    .map(|factor| !factor.trim().is_empty())
+                    .unwrap_or(false)
+            })
+            .count()
+            < min_basis
+        {
+            let Some(fact_id) = candidates.pop() else {
+                outcome.warnings.push(format!(
+                    "astro_basis_density_insufficient_allowed_evidence:{chapter_code}"
+                ));
+                break;
+            };
+            let factor = factor_from_fact_id(&fact_id);
+            basis.push(json!({
+                "fact_id": fact_id.clone(),
+                "label": title_case(&factor),
+                "factor": factor,
+                "interpretive_role": supplemental_role(&fact_id),
+            }));
+            cited.insert(fact_id);
+            outcome
+                .changed_paths
+                .push(format!("$.chapters[{chapter_idx}].astro_basis"));
+        }
+    }
+}
+
+fn evidence_keys_for_chapter<'a>(
+    chapter_code: &str,
+    chapter_count: usize,
+    allowed_evidence_keys: &'a [String],
+    allowed_evidence_by_chapter: &'a [TextChapterEvidenceKeys],
+    outcome: &mut ProcessorOutcome,
+) -> Option<&'a [String]> {
+    if let Some(scoped) = allowed_evidence_by_chapter
+        .iter()
+        .find(|entry| entry.chapter_code == chapter_code)
+    {
+        return Some(&scoped.fact_ids);
+    }
+    if chapter_count <= 1 {
+        return Some(allowed_evidence_keys);
+    }
+    outcome.warnings.push(format!(
+        "astro_basis_density_requires_chapter_scoped_evidence:{chapter_code}"
+    ));
+    None
+}
+
+fn factor_from_fact_id(fact_id: &str) -> String {
+    let parts = fact_id.split(':').collect::<Vec<_>>();
+    match parts.as_slice() {
+        ["domain_score", domain] => clean_factor_token(domain),
+        ["placement", object, ..] => clean_factor_token(object),
+        ["angle", angle, ..] => clean_factor_token(angle),
+        ["ruler", "angle", _, object, ..] => clean_factor_token(object),
+        ["aspect", first, second, ..] => {
+            format!(
+                "{} {}",
+                clean_factor_token(first),
+                clean_factor_token(second)
+            )
+        }
+        ["signal", "object_position", object, ..] => clean_factor_token(object),
+        ["dominant_planet", object, ..] => clean_factor_token(object),
+        ["element_balance", element, ..] => clean_factor_token(element),
+        ["modality_balance", modality, ..] => clean_factor_token(modality),
+        ["house_axis", axis, ..] => clean_factor_token(axis),
+        ["house_emphasis", house, ..] => clean_factor_token(house),
+        _ => parts
+            .iter()
+            .rev()
+            .find(|part| !part.trim().is_empty())
+            .map(|part| clean_factor_token(part))
+            .unwrap_or_else(|| fact_id.replace('_', " ")),
+    }
+}
+
+fn clean_factor_token(token: &str) -> String {
+    token.replace('_', " ")
+}
+
+fn supplemental_role(fact_id: &str) -> &'static str {
+    if fact_id.starts_with("domain_score:") {
+        "domain_score"
+    } else if fact_id.contains("nuance") {
+        "nuance"
+    } else {
+        "supporting"
     }
 }
 

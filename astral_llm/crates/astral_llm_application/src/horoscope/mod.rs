@@ -3,6 +3,9 @@ use std::collections::{HashMap, HashSet};
 use std::sync::OnceLock;
 
 use crate::french_typography::french_elision_violations;
+use crate::text_reprocessing_service_adapter::{
+    reprocess_horoscope_daily, reprocess_horoscope_period,
+};
 
 use astral_llm_domain::{
     model_usage_tier::ModelRouteContext, GenerationError, GenerationErrorCode, ProviderKind,
@@ -1935,6 +1938,7 @@ async fn period_writer_response(
     response["quality"]["fallback_used"] = json!(routed.fallback_used);
     repair_period_response_shape(request, &mut response);
     normalize_period_public_tones(request, &mut response);
+    response = reprocess_horoscope_period_payload(response);
     validate_period_provider_public_payload(&response)?;
     Ok(response)
 }
@@ -2369,6 +2373,14 @@ pub fn repair_period_response_shape(request: &Value, response: &mut Value) {
     });
 }
 
+fn reprocess_horoscope_daily_payload(response: Value) -> Value {
+    reprocess_horoscope_daily("fr", response, None).payload
+}
+
+fn reprocess_horoscope_period_payload(response: Value) -> Value {
+    reprocess_horoscope_period("fr", response, None).payload
+}
+
 fn repair_free_period_response_shape(request: &Value, response: &mut Value) {
     response["summary"] = sanitize_free_period_summary(response.get("summary"));
     response["dominant_theme"] =
@@ -2778,7 +2790,7 @@ fn sanitize_period_strategy(value: Option<&Value>, request: &Value) -> Value {
 }
 
 fn ensure_period_personalization_text(text: &str, personalization: &str) -> String {
-    let base = sanitize_period_broken_sentences(text);
+    let base = sanitize_period_public_string(text);
     if period_text_has_personalization(&base) {
         base
     } else {
@@ -2939,199 +2951,11 @@ fn period_public_focus_from_hint(raw: &str) -> String {
 }
 
 fn sanitize_period_public_string(text: &str) -> String {
-    let mut sanitized = text.to_string();
-    for (from, to) in [
-        ("natal_focus_hint", "nuance natale"),
-        ("personalization_hint", "nuance personnelle"),
-        ("theme_code", "thème"),
-        ("evidence_key", "preuve"),
-        ("moon_house_by_day", "passage lunaire"),
-        ("transit_exact", "signal précis"),
-        ("transit_active", "signal actif"),
-        ("fake_period_calculator_v1", "calculateur de période"),
-        ("fake_period_writer_v1", "rédaction de période"),
-        ("natal_moon", "sensibilité natale"),
-        ("natal_mercury", "pensée natale"),
-        ("natal_venus", "attachement natal"),
-        ("natal_mars", "élan natal"),
-        ("natal_saturn", "responsabilité natale"),
-        ("natal_", "natal "),
-        ("period:", "signal de période "),
-        ("slot:", "moment "),
-        ("slot_", "moment "),
-        ("snapshot", "repère"),
-        ("raw_transits", "signaux astrologiques"),
-    ] {
-        sanitized = replace_ascii_case_insensitive(&sanitized, from, to);
-    }
-    for (from, to) in [
-        ("organization", "organisation"),
-        ("relationship", "relations"),
-        ("energy", "énergie"),
-        ("clarity", "clarté"),
-        ("integration", "intégration"),
-        ("focused", "concentré"),
-        ("focus", "attention"),
-        ("supportive", "soutenant"),
-        ("careful", "vigilant"),
-        ("active", "dynamique"),
-        ("mixed", "nuancé"),
-        ("fluid", "fluide"),
-        ("tense", "sous tension"),
-    ] {
-        sanitized = replace_ascii_token_case_insensitive(&sanitized, from, to);
-    }
-    sanitize_period_french_fragments(&sanitize_period_sentence_boundaries(
-        &sanitize_period_french_colon_spacing(&sanitize_period_broken_sentences(&sanitized)),
-    ))
-}
-
-fn sanitize_period_french_fragments(text: &str) -> String {
-    text.replace("tout s’dynamique", "tout s'accélère")
-        .replace("tout s'dynamique", "tout s'accélère")
-        .replace("s’dynamique", "s'accélère")
-        .replace("s'dynamique", "s'accélère")
-        .replace("d’accélère", "s'accélère")
-        .replace("d'accélère", "s'accélère")
-        .replace("rédynamique", "dynamisante")
-        .replace("redynamique", "dynamisante")
-}
-
-fn sanitize_period_broken_sentences(text: &str) -> String {
-    let mut sentences = Vec::new();
-    let mut current = String::new();
-    for ch in text.chars() {
-        current.push(ch);
-        if matches!(ch, '.' | '!' | '?') {
-            sentences.push(std::mem::take(&mut current));
-        }
-    }
-    if !current.trim().is_empty() {
-        sentences.push(current);
-    }
-    if sentences.len() <= 1 {
-        let trimmed = text.trim().trim_end_matches(['.', '!', '?']);
-        if period_is_broken_sentence_tail(trimmed) {
-            return "Vos repères personnels gardent un appui concret pour avancer avec mesure."
-                .to_string();
-        }
-        return text.to_string();
-    }
-    let filtered = sentences
-        .iter()
-        .filter(|sentence| {
-            let trimmed = sentence.trim().trim_end_matches(['.', '!', '?']);
-            !period_is_broken_sentence_tail(trimmed)
-        })
-        .map(|sentence| sentence.trim())
-        .filter(|sentence| !sentence.is_empty())
-        .collect::<Vec<_>>()
-        .join(" ");
-    if filtered.trim().is_empty() {
-        text.to_string()
-    } else {
-        filtered
-    }
-}
-
-fn sanitize_period_sentence_boundaries(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    let mut capitalize_next = false;
-    for ch in text.chars() {
-        if capitalize_next {
-            if ch.is_whitespace() {
-                out.push(ch);
-                continue;
-            }
-            for upper in ch.to_uppercase() {
-                out.push(upper);
-            }
-            capitalize_next = false;
-            continue;
-        }
-        out.push(ch);
-        if matches!(ch, '.' | '!' | '?') {
-            capitalize_next = true;
-        }
-    }
-    out
-}
-
-fn sanitize_period_french_colon_spacing(text: &str) -> String {
-    let chars = text.chars().collect::<Vec<_>>();
-    let mut out = String::new();
-    for index in 0..chars.len() {
-        let ch = chars[index];
-        if ch != ':' {
-            out.push(ch);
-            continue;
-        }
-        let before = index.checked_sub(1).and_then(|idx| chars.get(idx)).copied();
-        let after = chars.get(index + 1).copied();
-        if before.map(|ch| ch.is_ascii_digit()).unwrap_or(false)
-            && after.map(|ch| ch.is_ascii_digit()).unwrap_or(false)
-        {
-            out.push(ch);
-            continue;
-        }
-        if !out.chars().last().map(char::is_whitespace).unwrap_or(true) {
-            out.push(' ');
-        }
-        out.push(':');
-        if !after.map(|ch| ch.is_whitespace()).unwrap_or(true) {
-            out.push(' ');
-        }
-    }
-    out
-}
-
-fn replace_ascii_case_insensitive(text: &str, from: &str, to: &str) -> String {
-    if from.is_empty() {
-        return text.to_string();
-    }
-    let lower_text = text.to_lowercase();
-    let lower_from = from.to_lowercase();
-    let mut output = String::with_capacity(text.len());
-    let mut cursor = 0;
-    while let Some(relative) = lower_text[cursor..].find(&lower_from) {
-        let start = cursor + relative;
-        output.push_str(&text[cursor..start]);
-        output.push_str(to);
-        cursor = start + from.len();
-    }
-    output.push_str(&text[cursor..]);
-    output
-}
-
-fn replace_ascii_token_case_insensitive(text: &str, from: &str, to: &str) -> String {
-    if from.is_empty() {
-        return text.to_string();
-    }
-    let lower_text = text.to_lowercase();
-    let lower_from = from.to_lowercase();
-    let mut output = String::with_capacity(text.len());
-    let mut cursor = 0;
-    while let Some(relative) = lower_text[cursor..].find(&lower_from) {
-        let start = cursor + relative;
-        let end = start + from.len();
-        let before = text[..start].chars().next_back();
-        let after = text[end..].chars().next();
-        let is_token = before
-            .map(|ch| !ch.is_ascii_alphanumeric() && ch != '_')
-            .unwrap_or(true)
-            && after
-                .map(|ch| !ch.is_ascii_alphanumeric() && ch != '_')
-                .unwrap_or(true);
-        output.push_str(&text[cursor..start]);
-        if is_token {
-            output.push_str(to);
-        } else {
-            output.push_str(&text[start..end]);
-        }
-        cursor = end;
-    }
-    output.push_str(&text[cursor..]);
-    output
+    reprocess_horoscope_period("fr", json!(text), None)
+        .payload
+        .as_str()
+        .unwrap_or(text)
+        .to_string()
 }
 
 fn sanitize_period_evidence_summary(value: Option<&Value>, request: &Value) -> Value {
@@ -6234,7 +6058,7 @@ fn fake_writer_response(request: &Value) -> Result<Value, GenerationError> {
         .iter()
         .map(render_fake_slot)
         .collect::<Result<Vec<_>, _>>()?;
-    Ok(json!({
+    let response = json!({
         "contract_version": "horoscope_response_v1",
         "service_code": HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE,
         "period": period,
@@ -6257,7 +6081,8 @@ fn fake_writer_response(request: &Value) -> Result<Value, GenerationError> {
             "french_typography_passed": true,
             "generic_language_passed": true
         }
-    }))
+    });
+    Ok(reprocess_horoscope_daily_payload(response))
 }
 
 fn validate_free_response_evidence(
@@ -6361,7 +6186,7 @@ fn fake_writer_premium_response(request: &Value) -> Result<Value, GenerationErro
         })
         .collect::<Vec<_>>();
 
-    Ok(json!({
+    let response = json!({
         "contract_version": "horoscope_response_v1",
         "service_code": HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
         "period": period,
@@ -6386,7 +6211,8 @@ fn fake_writer_premium_response(request: &Value) -> Result<Value, GenerationErro
             "timeline_order_passed": true,
             "premium_rich_bounds": "fake_structural_only"
         }
-    }))
+    });
+    Ok(reprocess_horoscope_daily_payload(response))
 }
 
 fn render_fake_premium_timeline_slot(slot: &Value, index: usize) -> Result<Value, GenerationError> {
@@ -6653,7 +6479,7 @@ fn fake_writer_free_response(request: &Value) -> Result<Value, GenerationError> 
         .and_then(|v| v.as_array())
         .cloned()
         .unwrap_or_default();
-    Ok(json!({
+    let response = json!({
         "contract_version": "horoscope_response_v1",
         "service_code": HOROSCOPE_FREE_DAILY_SERVICE_CODE,
         "period": period,
@@ -6672,7 +6498,8 @@ fn fake_writer_free_response(request: &Value) -> Result<Value, GenerationError> 
             "french_typography_passed": true,
             "generic_language_passed": true
         }
-    }))
+    });
+    Ok(reprocess_horoscope_daily_payload(response))
 }
 
 fn score_fact(
