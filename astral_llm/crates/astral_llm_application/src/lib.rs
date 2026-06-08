@@ -30,6 +30,7 @@ pub mod simplified_reading;
 pub mod simplified_reading_guard;
 pub mod simplified_reading_postprocess;
 pub mod single_pass_hardening;
+pub mod text_reprocessing;
 pub mod text_trigrams;
 pub mod writing_language;
 pub use reading_plan::ReadingPlanBuilder;
@@ -114,6 +115,10 @@ pub use response_validator::ResponseValidator;
 pub use safety_guard::SafetyGuard;
 pub use safety_resolver::SafetyResolver;
 pub use schema_registry::SchemaRegistry;
+pub use text_reprocessing::{
+    LanguageRegistry, LanguageRuleSet, ProcessorRegistry, ServiceRegistry, ServiceRuleSet,
+    TextRetreatmentPipeline, TextRetreatmentProcessor,
+};
 pub use unified_reading_orchestrator::{
     UnifiedReadingOrchestrator, UnifiedReadingOutcome, UnifiedReadingResult,
 };

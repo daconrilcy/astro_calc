@@ -11,3 +11,7 @@ thiserror.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true
+
+[[test]]
+name = "text_reprocessing_domain_tests"
+path = "../../../tests/text_reprocessing_domain_tests.rs"

@@ -3545,3 +3545,33 @@ des themes/evidence plutot qu'un placeholder constant.
 Le script est appele par `test_horoscope_premium_next_7_days_all.ps1`,
 `test_horoscope_period_all.ps1` et `docker_update_integration_stack.ps1` quand
 les options de reel period sont activees.
+
+## Module text_reprocessing v1 isole (2026-06-08)
+
+Un module Rust dedie au retraitement des textes LLM a ete ajoute sans branchement
+aux flux applicatifs existants.
+
+- Contrats extensibles : `astral_llm_domain::text_reprocessing`.
+- Pipeline et processors : `astral_llm_application::text_reprocessing`.
+- Services couverts par fixtures isolees : `horoscope_daily`,
+  `horoscope_period`, `natal_theme`, `natal_simplified`,
+  `calculator_projection`, `prompt_trace`, `shared`.
+- Le module reprend les fonctionnalites de sanitation, typographie, longueur,
+  anti-repetition, humanisation de libelles, normalisation `astro_basis`,
+  validation qualite, fallback, guidance prompt et formatting trace.
+- Les anciennes fonctions restent la source de verite runtime : aucun appel
+  existant n'a ete remplace.
+
+Documentation dediee : `docs/TEXT_REPROCESSING_MODULE.md`.
+Reviews adversariales : `docs/reviews/text_reprocessing/`.
+
+Tests cibles :
+
+```powershell
+cargo test -p astral_llm_domain text_reprocessing
+cargo test -p astral_llm_application text_reprocessing
+```
+
+Les tests dedies sont stockes dans `tests/text_reprocessing_domain_tests.rs`
+et `tests/text_reprocessing_application_tests.rs`, puis rattaches aux crates par
+targets `[[test]]`.

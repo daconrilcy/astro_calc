@@ -23,3 +23,7 @@ chrono-tz = "0.10"
 [dev-dependencies]
 serde_json.workspace = true
 tokio.workspace = true
+
+[[test]]
+name = "text_reprocessing_application_tests"
+path = "../../../tests/text_reprocessing_application_tests.rs"
