@@ -147,10 +147,21 @@ try {
         Invoke-Step "Horoscope premium daily full test suite" {
             & (Join-Path $repoRoot "scripts\test_horoscope_premium_daily_all.ps1") -BaseUrl $LlmUrl -CalculatorUrl $CalculatorUrl
         }
+        Invoke-Step "horoscope_free_next_7_days_natal full test suite" {
+            & (Join-Path $repoRoot "scripts\test_horoscope_free_next_7_days_all.ps1") -BaseUrl $LlmUrl -CalculatorUrl $CalculatorUrl
+        }
         Invoke-Step "Horoscope period full test suite" {
-            & (Join-Path $repoRoot "scripts\test_horoscope_period_all.ps1") -BaseUrl $LlmUrl -CalculatorUrl $CalculatorUrl
+            & (Join-Path $repoRoot "scripts\test_horoscope_period_all.ps1") `
+                -BaseUrl $LlmUrl `
+                -CalculatorUrl $CalculatorUrl `
+                -SkipFreeNext7FakeSmoke
         }
         if ($RunRealHoroscopePeriodE2E) {
+            Invoke-Step "Horoscope Free period real E2E" {
+                & (Join-Path $repoRoot "scripts\test_horoscope_free_next_7_days_real_e2e.ps1") `
+                    -BaseUrl $LlmUrl `
+                    -CalculatorUrl $CalculatorUrl
+            }
             Invoke-Step "Horoscope period real E2E" {
                 & (Join-Path $repoRoot "scripts\test_horoscope_basic_next_7_days_real_e2e.ps1") -BaseUrl $LlmUrl -CalculatorUrl $CalculatorUrl
             }

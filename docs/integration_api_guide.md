@@ -118,7 +118,7 @@ Respecter `poll_after_ms`. Statut terminal `completed` inclut `result` (envelopp
 | `natal_*_from_payload` | payload pré-calculé | planned |
 | `natal_light`, `natal_premium`, `natal_premium_plus` | full natal | planned (activation progressive) |
 | `horoscope_premium_daily_local_2h_slots` | horoscope quotidien local 12 créneaux | **beta** |
-| `horoscope_free_next_7_days_natal` | horoscope Free compact des 7 prochains jours | **planned** |
+| `horoscope_free_next_7_days_natal` | horoscope Free compact des 7 prochains jours | **active** |
 | `horoscope_basic_next_7_days_natal` | horoscope Basic des 7 prochains jours | **beta** |
 | `horoscope_premium_next_7_days_natal` | horoscope Premium des 7 prochains jours | **beta** |
 
@@ -255,6 +255,8 @@ Voir [contracts/README.md](../contracts/README.md) pour la matrice complète.
 | `test_integration_jobs_e2e.ps1` | E2E natal_simplified async |
 | `test_natal_from_birth_e2e.ps1` | E2E full natal via jobs |
 | `test_horoscope_period_all.ps1` | Suite fake + contrats horoscope period |
+| `test_horoscope_free_next_7_days_all.ps1` | Suite complete Free period compact, sur le modele Premium |
+| `test_horoscope_free_next_7_days_real_e2e.ps1` | E2E reel Free period compact via `.env` (`OPENAI_API_KEY`) |
 | `test_horoscope_basic_next_7_days_real_e2e.ps1` | E2E reel optionnel horoscope period |
 | `test_horoscope_premium_next_7_days_real_e2e.ps1` | E2E reel optionnel horoscope period Premium |
 | `test_horoscope_free_next_7_days_fake.ps1` | validation fake Free period compact |

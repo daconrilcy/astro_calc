@@ -9,7 +9,7 @@ Checklist:
 - Free remains compact but not empty: covered.
 - At least one "jour à retenir": covered.
 - Evidence summary or vulgarized evidence exists: covered.
-- Service stays `planned` in catalogue until release decision: covered.
+- Service is `active` in catalogue after release decision: covered.
 
 Status: no blocking finding remains.
 

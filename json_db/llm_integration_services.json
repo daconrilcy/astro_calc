@@ -412,7 +412,7 @@
       "supports_async": true,
       "supports_sync_legacy": false,
       "supports_mercure": false,
-      "availability": "planned",
+      "availability": "active",
       "example_request_json": {
         "service_code": "horoscope_free_next_7_days_natal",
         "payload": {

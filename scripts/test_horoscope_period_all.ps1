@@ -7,6 +7,7 @@ param(
     [string]$CalculatorUrl = "http://127.0.0.1:8080",
     [switch]$SkipRustChecks,
     [switch]$SkipFakeSmoke,
+    [switch]$SkipFreeNext7FakeSmoke,
     [switch]$RunRealE2E
 )
 
@@ -49,10 +50,12 @@ try {
     }
 
     if (-not $SkipFakeSmoke) {
-        Invoke-Step "Horoscope Period: free next 7 days fake smoke" {
-            & (Join-Path $repoRoot "scripts\test_horoscope_free_next_7_days_fake.ps1") `
-                -BaseUrl $BaseUrl `
-                -CalculatorUrl $CalculatorUrl
+        if (-not $SkipFreeNext7FakeSmoke) {
+            Invoke-Step "Horoscope Period: free next 7 days fake smoke" {
+                & (Join-Path $repoRoot "scripts\test_horoscope_free_next_7_days_fake.ps1") `
+                    -BaseUrl $BaseUrl `
+                    -CalculatorUrl $CalculatorUrl
+            }
         }
         Invoke-Step "Horoscope Period: basic next 7 days fake smoke" {
             & (Join-Path $repoRoot "scripts\test_horoscope_basic_next_7_days_fake.ps1") `
@@ -67,6 +70,11 @@ try {
     }
 
     if ($RunRealE2E) {
+        Invoke-Step "Horoscope Free Period: real E2E" {
+            & (Join-Path $repoRoot "scripts\test_horoscope_free_next_7_days_real_e2e.ps1") `
+                -BaseUrl $BaseUrl `
+                -CalculatorUrl $CalculatorUrl
+        }
         Invoke-Step "Horoscope Period: real E2E" {
             & (Join-Path $repoRoot "scripts\test_horoscope_basic_next_7_days_real_e2e.ps1") `
                 -BaseUrl $BaseUrl `

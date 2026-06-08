@@ -136,7 +136,7 @@ fn horoscope_free_period_service() -> IntegrationService {
         supports_async: true,
         supports_sync_legacy: false,
         supports_mercure: false,
-        availability: ServiceAvailability::Planned,
+        availability: ServiceAvailability::Active,
         example_request_json: None,
         sort_order: 225,
     }

@@ -955,7 +955,7 @@ Configuration catalogue :
 - `calculation_output_contract = horoscope_period_calculation_response_v1`
 - `reading_output_contract = horoscope_period_response_v1`
 - `requires_natal_chart = true`, `requires_timezone = true`, `requires_location = false`
-- `availability = planned`
+- `availability = active`
 
 Contraintes d'entree : `chart_calculation_id`, `anchor_date`, `timezone` et
 `target_language` sont obligatoires. `birth_data` inline est refuse par le
@@ -987,6 +987,16 @@ Commande de validation fake :
 ```powershell
 .\scripts\test_horoscope_free_next_7_days_fake.ps1
 ```
+
+Commande E2E reelle, a utiliser avec `.env` contenant `OPENAI_API_KEY`,
+`ASTRAL_LLM_DEFAULT_PROVIDER` et `ASTRAL_LLM_DEFAULT_MODEL` reels :
+
+```powershell
+.\scripts\test_horoscope_free_next_7_days_real_e2e.ps1
+```
+
+Le service etant `active`, le script soumet le job via `/v1/jobs` et appelle le
+provider LLM reel configure dans `.env`.
 
 `daily_noon_7_days` produit un snapshot quotidien a 12:00. `six_hour_7_days`
 produit quatre snapshots locaux par jour : 00:00, 06:00, 12:00 et 18:00, soit

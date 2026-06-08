@@ -29,7 +29,7 @@ Le service period `horoscope_basic_next_7_days_natal` est egalement documente
 dans `docs/HOROSCOPE_IMPLEMENTATION.md`; ce fichier ne duplique pas son contrat.
 
 Le service `horoscope_free_next_7_days_natal` est une projection Free compacte
-du meme moteur period. Il reste en `planned`, utilise `next_7_days`,
+du meme moteur period. Il est `active`, utilise `next_7_days`,
 `free_compact` et `daily_noon_7_days`, puis publie uniquement `summary`,
 `dominant_theme`, `key_days` (libelle front "Jours a retenir"), `advice`,
 `watch_summary`, `evidence_summary` et `quality`. Il n'expose jamais

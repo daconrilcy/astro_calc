@@ -477,7 +477,7 @@ Erreurs possibles :
 
 ### Service `horoscope_free_next_7_days_natal`
 
-Statut catalogue : `planned`.
+Statut catalogue : `active`.
 
 Positionnement produit : Free = comprendre la tendance. Ce service reste natal
 personnalise et synthetique ; il ne publie pas la timeline Basic ni les
