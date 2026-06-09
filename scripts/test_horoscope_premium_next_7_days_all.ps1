@@ -12,6 +12,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+. "$PSScriptRoot\lib\astral_http_auth.ps1"
+. "$PSScriptRoot\lib\horoscope_e2e_fake_provider.ps1"
+Import-AstralDotEnv -RepoRoot $repoRoot
 
 function Invoke-Step {
     param(
@@ -24,6 +27,7 @@ function Invoke-Step {
 }
 
 Push-Location $repoRoot
+$fakeProviderEnabled = $false
 try {
     if (-not $SkipRustChecks) {
         Invoke-Step "Horoscope Premium Period: time window tests" {
@@ -53,10 +57,18 @@ try {
     }
 
     if (-not $SkipFakeSmoke) {
-        Invoke-Step "Horoscope Premium Period: fake smoke" {
-            & (Join-Path $repoRoot "scripts\test_horoscope_premium_next_7_days_fake.ps1") `
-                -BaseUrl $BaseUrl `
-                -CalculatorUrl $CalculatorUrl
+        Enable-HoroscopeE2eFakeLlmProvider -RepoRoot $repoRoot
+        $fakeProviderEnabled = $true
+        try {
+            Invoke-Step "Horoscope Premium Period: fake smoke" {
+                & (Join-Path $repoRoot "scripts\test_horoscope_premium_next_7_days_fake.ps1") `
+                    -BaseUrl $BaseUrl `
+                    -CalculatorUrl $CalculatorUrl `
+                    -AssumeFakeProviderConfigured
+            }
+        } finally {
+            Restore-HoroscopeE2eLlmProvider -RepoRoot $repoRoot
+            $fakeProviderEnabled = $false
         }
     }
 
@@ -70,5 +82,8 @@ try {
         }
     }
 } finally {
+    if ($fakeProviderEnabled) {
+        Restore-HoroscopeE2eLlmProvider -RepoRoot $repoRoot
+    }
     Pop-Location
 }

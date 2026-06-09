@@ -105,7 +105,8 @@ WHERE product_code IN ('natal_basic', 'natal_premium');
 INSERT INTO llm_product_generation_policies (
     product_code, max_domains, max_chapters, max_output_tokens, max_reasoning_effort, allow_chapter_orchestrated
 ) VALUES
-    ('natal_prompter', 12, 12, 16000, 'high', true)
+    ('natal_prompter', 12, 12, 16000, 'high', true),
+    ('horoscope', 5, 1, 12000, 'medium', false)
 ON CONFLICT (product_code) DO UPDATE SET
     max_domains = EXCLUDED.max_domains,
     max_chapters = EXCLUDED.max_chapters,

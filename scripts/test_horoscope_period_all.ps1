@@ -13,6 +13,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+. "$PSScriptRoot\lib\astral_http_auth.ps1"
+. "$PSScriptRoot\lib\horoscope_e2e_fake_provider.ps1"
+Import-AstralDotEnv -RepoRoot $repoRoot
 
 function Invoke-Step {
     param(
@@ -25,6 +28,7 @@ function Invoke-Step {
 }
 
 Push-Location $repoRoot
+$fakeProviderEnabled = $false
 try {
     if (-not $SkipRustChecks) {
         Invoke-Step "Horoscope Period: time window tests" {
@@ -50,22 +54,31 @@ try {
     }
 
     if (-not $SkipFakeSmoke) {
-        if (-not $SkipFreeNext7FakeSmoke) {
-            Invoke-Step "Horoscope Period: free next 7 days fake smoke" {
-                & (Join-Path $repoRoot "scripts\test_horoscope_free_next_7_days_fake.ps1") `
-                    -BaseUrl $BaseUrl `
-                    -CalculatorUrl $CalculatorUrl
+        Enable-HoroscopeE2eFakeLlmProvider -RepoRoot $repoRoot
+        $fakeProviderEnabled = $true
+        try {
+            if (-not $SkipFreeNext7FakeSmoke) {
+                Invoke-Step "Horoscope Period: free next 7 days fake smoke" {
+                    & (Join-Path $repoRoot "scripts\test_horoscope_free_next_7_days_fake.ps1") `
+                        -BaseUrl $BaseUrl `
+                        -CalculatorUrl $CalculatorUrl
+                }
             }
-        }
-        Invoke-Step "Horoscope Period: basic next 7 days fake smoke" {
-            & (Join-Path $repoRoot "scripts\test_horoscope_basic_next_7_days_fake.ps1") `
-                -BaseUrl $BaseUrl `
-                -CalculatorUrl $CalculatorUrl
-        }
-        Invoke-Step "Horoscope Period: premium next 7 days fake smoke" {
-            & (Join-Path $repoRoot "scripts\test_horoscope_premium_next_7_days_fake.ps1") `
-                -BaseUrl $BaseUrl `
-                -CalculatorUrl $CalculatorUrl
+            Invoke-Step "Horoscope Period: basic next 7 days fake smoke" {
+                & (Join-Path $repoRoot "scripts\test_horoscope_basic_next_7_days_fake.ps1") `
+                    -BaseUrl $BaseUrl `
+                    -CalculatorUrl $CalculatorUrl `
+                    -AssumeFakeProviderConfigured
+            }
+            Invoke-Step "Horoscope Period: premium next 7 days fake smoke" {
+                & (Join-Path $repoRoot "scripts\test_horoscope_premium_next_7_days_fake.ps1") `
+                    -BaseUrl $BaseUrl `
+                    -CalculatorUrl $CalculatorUrl `
+                    -AssumeFakeProviderConfigured
+            }
+        } finally {
+            Restore-HoroscopeE2eLlmProvider -RepoRoot $repoRoot
+            $fakeProviderEnabled = $false
         }
     }
 
@@ -88,5 +101,8 @@ try {
         }
     }
 } finally {
+    if ($fakeProviderEnabled) {
+        Restore-HoroscopeE2eLlmProvider -RepoRoot $repoRoot
+    }
     Pop-Location
 }

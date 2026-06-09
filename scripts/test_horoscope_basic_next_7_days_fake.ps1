@@ -3,14 +3,28 @@ param(
     [string]$CalculatorUrl = "http://127.0.0.1:8080",
     [string]$ApiKey = "",
     [string]$IdempotencyKey = "",
-    [string]$AnchorDate = "2026-06-07"
+    [string]$AnchorDate = "2026-06-07",
+    [switch]$AssumeFakeProviderConfigured
 )
 
 $ErrorActionPreference = "Stop"
 
 . "$PSScriptRoot\lib\astral_http_auth.ps1"
+. "$PSScriptRoot\lib\horoscope_e2e_fake_provider.ps1"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 Import-AstralDotEnv -RepoRoot $repoRoot
+$fakeProviderEnabled = $false
+trap {
+    if ($fakeProviderEnabled) {
+        Restore-HoroscopeE2eLlmProvider -RepoRoot $repoRoot
+    }
+    break
+}
+
+if (-not $AssumeFakeProviderConfigured) {
+    Enable-HoroscopeE2eFakeLlmProvider -RepoRoot $repoRoot
+    $fakeProviderEnabled = $true
+}
 
 function Assert-HttpReady {
     param([string]$Url)
@@ -75,9 +89,11 @@ if (-not $submit.run_id) {
 }
 
 $completed = $null
+$lastStatus = $null
 for ($i = 0; $i -lt 45; $i++) {
     Start-Sleep -Seconds 2
     $status = Invoke-RestMethod -Method Get -Uri "$BaseUrl/v1/jobs/$($submit.run_id)" -Headers $headers
+    $lastStatus = $status
     if ($status.status -eq "completed") {
         $completed = $status
         break
@@ -88,6 +104,9 @@ for ($i = 0; $i -lt 45; $i++) {
     }
 }
 if (-not $completed) {
+    if ($lastStatus) {
+        $lastStatus | ConvertTo-Json -Depth 30
+    }
     throw "Timeout waiting for horoscope period fake job"
 }
 
@@ -142,3 +161,7 @@ if ($replay.run_id -ne $submit.run_id) {
 }
 
 $completed | ConvertTo-Json -Depth 30
+if ($fakeProviderEnabled) {
+    Restore-HoroscopeE2eLlmProvider -RepoRoot $repoRoot
+    $fakeProviderEnabled = $false
+}

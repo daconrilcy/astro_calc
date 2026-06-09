@@ -104,3 +104,24 @@ Nominatim usage is for local developer testing only. The proxy sets an identifyi
 - Full natal and horoscope flows require a birth time; the UI disables those buttons when the time is missing.
 - Long premium runs can take several minutes and may consume provider quota.
 - Results depend on the worker because the UI uses the public async `/v1/jobs` integration path.
+
+# Horoscope period fake smoke routing - 2026-06-09
+
+## Scope
+
+Fixed the local fake smoke path for `horoscope_premium_next_7_days_natal`, which could time out while the worker retried a real OpenAI-backed job.
+
+## Behavior
+
+- The horoscope writer now resolves engine defaults from the canonical `horoscope` product policy before calling the LLM provider.
+- The canonical SQL seed declares `horoscope` in `llm_product_generation_policies`, allowing `llm_product_default_engine` overrides to apply to horoscope services.
+- Period fake smoke wrappers temporarily switch only the `horoscope` product to `fake/fake-model`, restart the LLM API and worker so the catalog is reloaded, then restore the previous product default.
+- Standalone basic/premium period fake scripts perform the same temporary switch unless their wrapper passes `-AssumeFakeProviderConfigured`.
+- Fake smoke polling now prints the last job status JSON before raising a timeout, so retrying worker failures expose their real error code.
+
+## Validation
+
+- `cargo test -p astral_llm_api --test horoscope_v1_tests horoscope_premium_next_7_days`
+- `docker compose up -d --build astral_llm_api astral_llm_worker`
+- `.\scripts\test_horoscope_premium_next_7_days_all.ps1 -SkipRustChecks`
+- `.\scripts\test_horoscope_period_all.ps1 -SkipRustChecks`

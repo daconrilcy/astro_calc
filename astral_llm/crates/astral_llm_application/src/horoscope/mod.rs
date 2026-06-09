@@ -8,8 +8,8 @@ use crate::text_reprocessing_service_adapter::{
 };
 
 use astral_llm_domain::{
-    model_usage_tier::ModelRouteContext, GenerationError, GenerationErrorCode, ProviderKind,
-    SafetyMode,
+    model_usage_tier::ModelRouteContext, EngineDefaults, GenerationError, GenerationErrorCode,
+    ProviderKind, SafetyMode,
 };
 use astral_llm_providers::{
     GenerationMetadata, PromptMessage, PromptRole, ProviderGenerationRequest,
@@ -33,6 +33,7 @@ pub const HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE: &str = "horoscope_free_
 pub const HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE: &str =
     "horoscope_premium_next_7_days_natal";
 pub const HOROSCOPE_SERVICE_CODE: &str = HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE;
+const HOROSCOPE_PRODUCT_CODE: &str = "horoscope";
 
 const FREE_PERIOD_NONE_WATCH_SUMMARY: &str = "Aucun point de vigilance dominant ne ressort cette semaine. Gardez simplement une marge d'observation si un échange ou une décision demande plus de temps que prévu.";
 
@@ -1874,7 +1875,7 @@ async fn period_writer_response(
     use_case: &GenerateReadingUseCase,
     request: &Value,
 ) -> Result<Value, GenerationError> {
-    let defaults = use_case.engine_defaults();
+    let defaults = horoscope_writer_engine_defaults(use_case);
     if defaults.provider == ProviderKind::Fake {
         return fake_period_writer_response(request);
     }
@@ -5958,7 +5959,7 @@ async fn daily_writer_response(
     use_case: &GenerateReadingUseCase,
     request: &Value,
 ) -> Result<Value, GenerationError> {
-    let defaults = use_case.engine_defaults();
+    let defaults = horoscope_writer_engine_defaults(use_case);
     if defaults.provider == ProviderKind::Fake {
         return fake_writer_response(request);
     }
@@ -6032,6 +6033,25 @@ async fn daily_writer_response(
     Ok(reprocess_horoscope_daily_payload(response))
 }
 
+fn horoscope_writer_engine_defaults(use_case: &GenerateReadingUseCase) -> EngineDefaults {
+    let mut defaults = use_case.engine_defaults().clone();
+    let Some(policy) = use_case.catalog().product_policy(HOROSCOPE_PRODUCT_CODE) else {
+        return defaults;
+    };
+    if let Some(provider) = policy.default_provider.clone() {
+        defaults.provider = provider;
+    }
+    if let Some(model) = policy
+        .default_model
+        .as_ref()
+        .map(|m| m.trim())
+        .filter(|m| !m.is_empty())
+    {
+        defaults.model = model.to_string();
+    }
+    defaults
+}
+
 fn daily_response_provider_schema(request: &Value) -> Result<Value, GenerationError> {
     let schema: Value = serde_json::from_str(RESPONSE_SCHEMA_JSON).map_err(|err| {
         GenerationError::with_details(
@@ -6055,10 +6075,7 @@ fn daily_response_provider_schema(request: &Value) -> Result<Value, GenerationEr
         .and_then(|branches| branches.get(branch_index))
         .cloned()
         .ok_or_else(|| horoscope_error("HOROSCOPE_RESPONSE_INVALID"))?;
-    let mut required = branch
-        .get("required")
-        .cloned()
-        .unwrap_or_else(|| json!([]));
+    let mut required = branch.get("required").cloned().unwrap_or_else(|| json!([]));
     if let Some(items) = required.as_array_mut() {
         items.retain(|item| item.as_str() != Some("quality"));
     }
@@ -6114,7 +6131,9 @@ fn daily_response_provider_schema(request: &Value) -> Result<Value, GenerationEr
             }
         });
     }
-    Ok(crate::provider_schema_compiler::prepare_strict_json_schema(&schema))
+    Ok(crate::provider_schema_compiler::prepare_strict_json_schema(
+        &schema,
+    ))
 }
 
 fn daily_writer_messages(request: &Value) -> Result<Vec<PromptMessage>, GenerationError> {
@@ -6161,7 +6180,11 @@ fn daily_writer_max_output_tokens(request: &Value) -> u32 {
 
 fn repair_daily_response_shape(request: &Value, response: &mut Value) {
     response["contract_version"] = json!("horoscope_response_v1");
-    if response.get("service_code").and_then(Value::as_str).is_none() {
+    if response
+        .get("service_code")
+        .and_then(Value::as_str)
+        .is_none()
+    {
         response["service_code"] = request
             .get("service_code")
             .cloned()
@@ -6196,7 +6219,8 @@ fn repair_daily_response_shape(request: &Value, response: &mut Value) {
 }
 
 fn repair_daily_free_astro_reference(request: &Value, response: &mut Value) {
-    if request.get("service_code").and_then(Value::as_str) != Some(HOROSCOPE_FREE_DAILY_SERVICE_CODE)
+    if request.get("service_code").and_then(Value::as_str)
+        != Some(HOROSCOPE_FREE_DAILY_SERVICE_CODE)
     {
         return;
     }
@@ -6271,9 +6295,9 @@ fn daily_response_astro_reference_prefix(request: &Value, response: &Value) -> O
         .and_then(Value::as_array)?;
     let first_key = evidence_keys.iter().find_map(Value::as_str)?;
     let evidence = request.get("evidence").and_then(Value::as_array)?;
-    let signal = evidence.iter().find(|item| {
-        item.get("evidence_key").and_then(Value::as_str) == Some(first_key)
-    })?;
+    let signal = evidence
+        .iter()
+        .find(|item| item.get("evidence_key").and_then(Value::as_str) == Some(first_key))?;
     let object = signal
         .get("transiting_object")
         .and_then(Value::as_str)
