@@ -55,6 +55,51 @@ fn text_reprocessing_shared_restores_french_elisions() {
 }
 
 #[test]
+fn text_reprocessing_normalizes_em_dashes_in_rendered_text() {
+    let response = TextRetreatmentPipeline::default().process(request(
+        LANG_FR,
+        SERVICE_NATAL_THEME,
+        TextTarget::NatalReading,
+        vec![Op::NormalizeDashes],
+        json!({
+            "chapters": [{
+                "code": "identity—core",
+                "title": "Identité — Soleil",
+                "body": "Une phrase — avec un tiret cadratin.",
+                "astro_basis": [{
+                    "fact_id": "placement:sun—moon",
+                    "label": "Soleil — Lune",
+                    "interpretive_role": "core"
+                }]
+            }]
+        }),
+    ));
+
+    assert_eq!(response.payload["chapters"][0]["code"], "identity—core");
+    assert_eq!(
+        response.payload["chapters"][0]["title"],
+        "Identité - Soleil"
+    );
+    assert_eq!(
+        response.payload["chapters"][0]["body"],
+        "Une phrase - avec un tiret cadratin."
+    );
+    assert_eq!(
+        response.payload["chapters"][0]["astro_basis"][0]["fact_id"],
+        "placement:sun—moon"
+    );
+    assert_eq!(
+        response.payload["chapters"][0]["astro_basis"][0]["label"],
+        "Soleil - Lune"
+    );
+    assert!(response.audit.iter().any(|item| {
+        item.processor_id == "dash_normalization"
+            && item.action == TextRetreatmentAuditAction::Changed
+            && item.field_path.as_deref() == Some("$.chapters[0].body")
+    }));
+}
+
+#[test]
 fn text_reprocessing_horoscope_daily_generates_expected_json() {
     let response = TextRetreatmentPipeline::default().process(request(
         LANG_FR,
@@ -776,13 +821,13 @@ fn text_reprocessing_adapter_natal_simplified_preserves_technical_fields() {
         language: LANG_FR.into(),
         reading_type: "natal_prompter".into(),
         summary: ReadingSummary {
-            title: "l impression".into(),
+            title: "l impression — titre".into(),
             short_text: "d une synthese संकेत".into(),
         },
         chapters: vec![ReadingChapter {
             code: "identity_core".into(),
             title: "d une dynamique".into(),
-            body: "l impression reste lisible संकेत".into(),
+            body: "l impression reste lisible — vraiment संकेत".into(),
             astro_basis: vec![AstroBasisItem {
                 fact_id: Some("fact_l impression".into()),
                 label: Some("d une source".into()),
@@ -819,7 +864,9 @@ fn text_reprocessing_adapter_natal_simplified_preserves_technical_fields() {
         reading.chapters[0].astro_basis[0].interpretive_role,
         "supporting"
     );
-    assert_eq!(reading.summary.title, "l'impression");
+    assert_eq!(reading.summary.title, "l'impression - titre");
+    assert!(!reading.chapters[0].body.contains('—'));
+    assert!(reading.chapters[0].body.contains('-'));
     assert_eq!(reading.summary.short_text, "d'une synthese");
     assert_eq!(
         reading.chapters[0].astro_basis[0].label.as_deref(),

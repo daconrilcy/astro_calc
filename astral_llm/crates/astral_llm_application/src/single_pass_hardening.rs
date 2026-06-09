@@ -60,6 +60,22 @@ impl GenerateReadingUseCase {
 
             let post_audit =
                 post_process_single_pass_reading(&mut reading, request, interpretation);
+            if !post_audit.dash_normalized_fields.is_empty() {
+                audit.push_step(astral_llm_domain::GenerationStepRecord {
+                    step_type: "dash_normalize".into(),
+                    chapter_code: Some(chapter_code.to_string()),
+                    provider: reading.quality.used_provider.clone(),
+                    model: reading.quality.used_model.clone(),
+                    status: astral_llm_domain::ChapterGenerationStatus::Repaired,
+                    input_tokens: None,
+                    output_tokens: None,
+                    latency_ms: None,
+                    error_code: Some(format!(
+                        "dash_normalized_fields={}",
+                        post_audit.dash_normalized_fields.join(",")
+                    )),
+                });
+            }
             if !post_audit.sanitized_fields.is_empty() {
                 audit.push_step(astral_llm_domain::GenerationStepRecord {
                     step_type: "script_sanitize".into(),

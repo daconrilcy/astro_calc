@@ -1,5 +1,24 @@
 # E2E real stabilization - 2026-06-08
 
+# LLM text rendering dash normalization - 2026-06-09
+
+## Scope
+
+Added a central LLM text reprocessing operation that normalizes em dashes (`—`) to ASCII hyphens (`-`) across rendered public text.
+
+## Behavior
+
+- Added `normalize_dashes` to the text reprocessing operation contract.
+- Applied dash normalization in the central pipeline before French typography and length/repetition processors.
+- Wired the operation into the shared, horoscope, natal theme, natal simplified, and calculator projection rendering adapters.
+- Added an adapter-level guard so rendering adapters include dash normalization even when a caller passes a narrowed operation list.
+- Exposed dash-normalized fields in simplified reading post-processing and execution audit records.
+- Preserved technical string fields such as codes, ids, keys, and roles.
+
+## Tests
+
+Added focused regression coverage in `tests/text_reprocessing_application_tests.rs`.
+
 ## Scope
 
 Stabilized the real end-to-end scenarios present in `scripts/` for horoscope and natal reading flows.

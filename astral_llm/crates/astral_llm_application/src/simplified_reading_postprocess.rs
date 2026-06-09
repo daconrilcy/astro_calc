@@ -11,7 +11,9 @@ use crate::simplified_reading::{
     sun_sign_blocked, SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE, SIMPLIFIED_PROFILE,
 };
 use crate::summary_ux_rules::{count_words, split_sentences_fr, SummaryUxRules};
-use crate::text_reprocessing_service_adapter::reprocess_natal_simplified;
+use crate::text_reprocessing_service_adapter::{
+    reprocess_natal_simplified, TextReprocessingFieldAudit,
+};
 use astral_llm_domain::TextRetreatmentOperation as Op;
 
 pub const SCRIPT_REPAIR_INSTRUCTION: &str =
@@ -41,6 +43,7 @@ impl AmbiguousCoreHardeningAudit {
 
 #[derive(Debug, Clone, Default)]
 pub struct SimplifiedPostProcessAudit {
+    pub dash_normalized_fields: Vec<String>,
     pub sanitized_fields: Vec<String>,
     pub typography_fields: Vec<String>,
     pub summary_source: Option<String>,
@@ -65,8 +68,17 @@ pub fn post_process_single_pass_reading(
         .map(|ctx| ctx.profile.profile_code == SIMPLIFIED_PROFILE)
         .unwrap_or(false);
 
-    audit.sanitized_fields = sanitize_reading_text_fields(reading, language);
-    audit.typography_fields = restore_french_typography_fields(reading, language);
+    let sanitize_audit = sanitize_reading_text_fields(reading, language);
+    audit
+        .dash_normalized_fields
+        .extend(sanitize_audit.dash_normalized_fields);
+    audit.sanitized_fields = sanitize_audit.sanitized_fields;
+
+    let typography_audit = restore_french_typography_fields(reading, language);
+    audit
+        .dash_normalized_fields
+        .extend(typography_audit.dash_normalized_fields);
+    audit.typography_fields = typography_audit.typography_fields;
 
     if is_simplified {
         audit.interpretive_roles_normalized = normalize_simplified_interpretive_roles(reading);
@@ -282,18 +294,19 @@ pub fn normalize_simplified_interpretive_roles(reading: &mut NatalReadingRespons
     normalized
 }
 
-fn sanitize_reading_text_fields(reading: &mut NatalReadingResponse, language: &str) -> Vec<String> {
-    reprocess_natal_simplified(reading, language, vec![Op::Sanitize])
-        .map(|audit| audit.sanitized_fields)
+fn sanitize_reading_text_fields(
+    reading: &mut NatalReadingResponse,
+    language: &str,
+) -> TextReprocessingFieldAudit {
+    reprocess_natal_simplified(reading, language, vec![Op::Sanitize, Op::NormalizeDashes])
         .expect("text_reprocessing natal_simplified sanitation adapter failed")
 }
 
 fn restore_french_typography_fields(
     reading: &mut NatalReadingResponse,
     language: &str,
-) -> Vec<String> {
-    reprocess_natal_simplified(reading, language, vec![Op::Typography])
-        .map(|audit| audit.typography_fields)
+) -> TextReprocessingFieldAudit {
+    reprocess_natal_simplified(reading, language, vec![Op::NormalizeDashes, Op::Typography])
         .expect("text_reprocessing natal_simplified typography adapter failed")
 }
 
@@ -341,8 +354,8 @@ mod tests {
     #[test]
     fn sanitize_removes_devanagari_from_body() {
         let mut reading = sample_reading("Texte avec संकेत parasite.");
-        let fields = sanitize_reading_text_fields(&mut reading, "fr");
-        assert!(!fields.is_empty());
+        let audit = sanitize_reading_text_fields(&mut reading, "fr");
+        assert!(!audit.sanitized_fields.is_empty());
         assert!(!reading.chapters[0].body.contains('\u{0938}'));
     }
 
@@ -351,10 +364,21 @@ mod tests {
         let mut reading = sample_reading(
             "Avec le Soleil ambigu, l impression générale reste prudente. Ce n est pas une certitude.",
         );
-        let fields = restore_french_typography_fields(&mut reading, "fr");
-        assert!(!fields.is_empty());
+        let audit = restore_french_typography_fields(&mut reading, "fr");
+        assert!(!audit.typography_fields.is_empty());
         assert!(reading.chapters[0].body.contains("l'impression"));
         assert!(reading.chapters[0].body.contains("n'est"));
+    }
+
+    #[test]
+    fn postprocess_audits_dash_normalization() {
+        let mut reading = sample_reading("Texte — avec tiret.");
+        let audit = sanitize_reading_text_fields(&mut reading, "fr");
+        assert!(audit
+            .dash_normalized_fields
+            .contains(&"chapters[0].body".to_string()));
+        assert!(!reading.chapters[0].body.contains('—'));
+        assert!(reading.chapters[0].body.contains('-'));
     }
 
     #[test]

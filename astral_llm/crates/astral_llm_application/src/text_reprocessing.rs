@@ -198,14 +198,17 @@ fn default_service_rules(code: &str) -> ServiceRuleSet {
     let default_operations = match code {
         SERVICE_PROMPT_TRACE => vec![TextRetreatmentOperation::FormatTrace],
         SERVICE_CALCULATOR_PROJECTION => vec![
+            TextRetreatmentOperation::NormalizeDashes,
             TextRetreatmentOperation::HumanizeLabels,
             TextRetreatmentOperation::Sanitize,
         ],
         SERVICE_SHARED => vec![
+            TextRetreatmentOperation::NormalizeDashes,
             TextRetreatmentOperation::Sanitize,
             TextRetreatmentOperation::Typography,
         ],
         _ => vec![
+            TextRetreatmentOperation::NormalizeDashes,
             TextRetreatmentOperation::Sanitize,
             TextRetreatmentOperation::Typography,
             TextRetreatmentOperation::NormalizeLength,
@@ -284,6 +287,7 @@ impl ProcessorRegistry {
 
     pub fn default_processors() -> Self {
         Self::new(vec![
+            Box::new(DashNormalizationProcessor),
             Box::new(ScriptSanitizerProcessor),
             Box::new(TypographyProcessor),
             Box::new(SentenceAndLengthProcessor),
@@ -506,6 +510,40 @@ impl TextRetreatmentProcessor for ScriptSanitizerProcessor {
                 return Some(updated);
             }
             None
+        });
+        outcome
+    }
+}
+
+pub struct DashNormalizationProcessor;
+
+impl TextRetreatmentProcessor for DashNormalizationProcessor {
+    fn id(&self) -> &'static str {
+        "dash_normalization"
+    }
+
+    fn operation(&self) -> TextRetreatmentOperation {
+        TextRetreatmentOperation::NormalizeDashes
+    }
+
+    fn supported_languages(&self) -> &'static [&'static str] {
+        &[]
+    }
+
+    fn supported_services(&self) -> &'static [&'static str] {
+        &[]
+    }
+
+    fn process(&self, _ctx: &TextRetreatmentContext<'_>, payload: &mut Value) -> ProcessorOutcome {
+        let mut outcome = ProcessorOutcome::default();
+        mutate_public_text_strings(payload, "$", &mut |path, text| {
+            let updated = normalize_em_dashes(text);
+            if updated != text {
+                outcome.changed_paths.push(path.to_string());
+                Some(updated)
+            } else {
+                None
+            }
         });
         outcome
     }
@@ -1010,6 +1048,10 @@ fn contains_prompt_injection(text: &str) -> bool {
     ]
     .iter()
     .any(|pattern| lower.contains(pattern))
+}
+
+fn normalize_em_dashes(text: &str) -> String {
+    text.replace('—', "-")
 }
 
 fn normalize_french_colon_spacing(text: &str) -> String {

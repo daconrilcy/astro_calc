@@ -42,6 +42,7 @@ impl TextService {
 #[serde(rename_all = "snake_case")]
 pub enum TextRetreatmentOperation {
     Sanitize,
+    NormalizeDashes,
     Typography,
     HumanizeLabels,
     NormalizeLength,

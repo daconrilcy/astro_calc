@@ -72,6 +72,7 @@ Sortie:
 | Processor | Fonctionnalite | Services principaux |
 | --- | --- | --- |
 | `ScriptSanitizerProcessor` | sanitation alphabet FR et detection injection | shared, natal, horoscope |
+| `DashNormalizationProcessor` | normalisation des tirets cadratins publics (`—` -> `-`) | tous services de rendu sauf traces prompt |
 | `TypographyProcessor` | elisions francaises et ponctuation FR protegee URL/heures | tout service FR via operation |
 | `SentenceAndLengthProcessor` | trim, limites de mots, completion minimale | horoscope, natal |
 | `RepetitionProcessor` | substitutions anti-repetition | tous services via `LanguageRuleSet` |
@@ -83,7 +84,7 @@ Sortie:
 | `PromptGuidanceProcessor` | bloc guidance langue/repetition non destructif | tout service objet via operation |
 | `TraceFormattingProcessor` | format trace `<<< role >>>` | tout service avec `messages` |
 
-Les processors de sanitation, typographie, longueur et repetition ne modifient que les champs de texte public. Les chemins techniques (`code`, `*_code`, `id`, `*_id`, `role`, `interpretive_role`) sont proteges contre les recritures. Les champs `label` et `factor` restent retraitables car ils sont rendus publiquement dans `astro_basis`. Le sanitizer scanne toutefois toutes les chaines pour detecter des injections. Le controle de longueur est plus restrictif que le texte public general: il ne cible pas les titres et ne s'applique qu'aux textes racine ou champs de corps (`text`, `body`, `content`, `advice`, `watch_point`, `main`).
+Les processors de normalisation des tirets, sanitation, typographie, longueur et repetition ne modifient que les champs de texte public. Les chemins techniques (`code`, `*_code`, `id`, `*_id`, `role`, `interpretive_role`) sont proteges contre les recritures. Les champs `label` et `factor` restent retraitables car ils sont rendus publiquement dans `astro_basis`. Le sanitizer scanne toutefois toutes les chaines pour detecter des injections. Le controle de longueur est plus restrictif que le texte public general: il ne cible pas les titres et ne s'applique qu'aux textes racine ou champs de corps (`text`, `body`, `content`, `advice`, `watch_point`, `main`).
 
 ## Ajouter une langue
 
@@ -135,13 +136,13 @@ Le branchement applicatif passe par `text_reprocessing_service_adapter`.
 
 | Service | Adapter | Operations principales | Statut |
 | --- | --- | --- | --- |
-| `shared` | `reprocess_shared_text` | sanitize, typography | helper central connecte |
+| `shared` | `reprocess_shared_text` | sanitize, normalize_dashes, typography | helper central connecte |
 | `prompt_trace` | `reprocess_prompt_trace` | format_trace | connecte dans `prompt_trace` |
-| `calculator_projection` | `reprocess_calculator_projection` | humanize_labels, sanitize | helper pret, aucun runtime direct trouve dans `astral_llm_application` |
-| `natal_simplified` | `reprocess_natal_simplified` | sanitize, typography | connecte via wrappers postprocess |
-| `horoscope_daily` | `reprocess_horoscope_daily` | sanitize, typography, length, repetition, quality, fallback | connecte apres rendus fake daily |
-| `horoscope_period` | `reprocess_horoscope_period` | sanitize, typography, length, repetition, labels, quality, fallback | connecte; `sanitize_period_public_string` est un wrapper vers le module central |
-| `natal_theme` | `reprocess_natal_theme` | sanitize, typography, labels, quality | connecte apres assemblage final |
+| `calculator_projection` | `reprocess_calculator_projection` | normalize_dashes, humanize_labels, sanitize | helper pret, aucun runtime direct trouve dans `astral_llm_application` |
+| `natal_simplified` | `reprocess_natal_simplified` | normalize_dashes, sanitize, typography | connecte via wrappers postprocess |
+| `horoscope_daily` | `reprocess_horoscope_daily` | normalize_dashes, sanitize, typography, length, repetition, quality, fallback | connecte apres rendus fake daily |
+| `horoscope_period` | `reprocess_horoscope_period` | normalize_dashes, sanitize, typography, length, repetition, labels, quality, fallback | connecte; `sanitize_period_public_string` est un wrapper vers le module central |
+| `natal_theme` | `reprocess_natal_theme` | normalize_dashes, sanitize, typography, labels, quality | connecte apres assemblage final |
 | Fixtures editoriales premium | `reprocess_natal_theme_with_context` | labels, quality, astro_basis density | connecte dans `EditorialValidator` sur copie de validation |
 
 Les fonctions legacy conservees le sont comme wrappers temporaires ou parce qu'elles portent une logique structurelle, catalogue ou metier. Les reviews detaillees sont dans `docs/reviews/text_reprocessing_connection/`.

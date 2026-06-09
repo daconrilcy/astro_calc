@@ -35,6 +35,7 @@ impl From<serde_json::Error> for TextReprocessingApplicationError {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct TextReprocessingFieldAudit {
+    pub dash_normalized_fields: Vec<String>,
     pub sanitized_fields: Vec<String>,
     pub typography_fields: Vec<String>,
     pub fallback_fields: Vec<String>,
@@ -46,7 +47,7 @@ pub fn reprocess_shared_text(language: &str, text: &str) -> TextRetreatmentRespo
         language,
         SERVICE_SHARED,
         TextTarget::PlainText,
-        vec![Op::Sanitize, Op::Typography],
+        vec![Op::Sanitize, Op::NormalizeDashes, Op::Typography],
         json!(text),
         TextRetreatmentRequestContext::default(),
     )
@@ -77,7 +78,7 @@ pub fn reprocess_calculator_projection(language: &str, payload: Value) -> TextRe
         language,
         SERVICE_CALCULATOR_PROJECTION,
         TextTarget::JsonPayload,
-        vec![Op::HumanizeLabels, Op::Sanitize],
+        vec![Op::HumanizeLabels, Op::Sanitize, Op::NormalizeDashes],
         payload,
         TextRetreatmentRequestContext::default(),
     )
@@ -218,6 +219,7 @@ pub fn reprocess_horoscope_daily(
         TextTarget::HoroscopeDailyResponse,
         vec![
             Op::Sanitize,
+            Op::NormalizeDashes,
             Op::Typography,
             Op::NormalizeLength,
             Op::ReduceRepetition,
@@ -240,6 +242,7 @@ pub fn reprocess_horoscope_period(
         TextTarget::HoroscopePeriodResponse,
         vec![
             Op::Sanitize,
+            Op::NormalizeDashes,
             Op::Typography,
             Op::NormalizeLength,
             Op::ReduceRepetition,
@@ -271,6 +274,7 @@ pub fn reprocess_natal_theme_with_context(
         TextTarget::NatalReading,
         vec![
             Op::Sanitize,
+            Op::NormalizeDashes,
             Op::Typography,
             Op::HumanizeLabels,
             Op::ValidateQuality,
@@ -315,6 +319,7 @@ fn run(
     payload: Value,
     context: TextRetreatmentRequestContext,
 ) -> TextRetreatmentResponse {
+    let operations = rendering_operations(service, operations);
     TextRetreatmentPipeline::default().process(TextRetreatmentRequest {
         language: TextLanguage::new(language),
         service: TextService::new(service),
@@ -323,6 +328,13 @@ fn run(
         payload,
         context,
     })
+}
+
+fn rendering_operations(service: &str, mut operations: Vec<Op>) -> Vec<Op> {
+    if service != SERVICE_PROMPT_TRACE && !operations.contains(&Op::NormalizeDashes) {
+        operations.push(Op::NormalizeDashes);
+    }
+    operations
 }
 
 fn prompt_message_to_json(message: &PromptMessage) -> Value {
@@ -353,6 +365,9 @@ fn field_audit_from_response(response: &TextRetreatmentResponse) -> TextReproces
         };
         let field = public_field_path(path);
         match item.operation {
+            Op::NormalizeDashes if item.action == TextRetreatmentAuditAction::Changed => {
+                audit.dash_normalized_fields.push(field)
+            }
             Op::Sanitize if item.action == TextRetreatmentAuditAction::Changed => {
                 audit.sanitized_fields.push(field)
             }
