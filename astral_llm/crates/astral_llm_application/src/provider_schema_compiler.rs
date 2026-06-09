@@ -50,7 +50,7 @@ impl ProviderSchemaCompiler {
     }
 }
 
-fn prepare_strict_json_schema(schema: &serde_json::Value) -> serde_json::Value {
+pub(crate) fn prepare_strict_json_schema(schema: &serde_json::Value) -> serde_json::Value {
     let defs = collect_definitions(schema);
     let mut out = schema.clone();
     inline_refs(&mut out, &defs);
@@ -205,6 +205,22 @@ fn strip_provider_meta_fields(value: &mut serde_json::Value) {
 fn enforce_strict_object_rules(value: &mut serde_json::Value) {
     match value {
         serde_json::Value::Object(obj) => {
+            if !obj.contains_key("type") {
+                if let Some(const_value) = obj.get("const") {
+                    let inferred = match const_value {
+                        serde_json::Value::String(_) => Some("string"),
+                        serde_json::Value::Number(_) => Some("number"),
+                        serde_json::Value::Bool(_) => Some("boolean"),
+                        serde_json::Value::Array(_) => Some("array"),
+                        serde_json::Value::Object(_) => Some("object"),
+                        serde_json::Value::Null => Some("null"),
+                    };
+                    if let Some(inferred) = inferred {
+                        obj.insert("type".into(), serde_json::json!(inferred));
+                    }
+                }
+            }
+
             let is_object = obj.get("type").and_then(|t| t.as_str()) == Some("object")
                 || (obj.contains_key("properties") && !obj.contains_key("$ref"));
 

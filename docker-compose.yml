@@ -70,9 +70,9 @@ services:
       # Reseau Docker : le gateway appelle le calculateur par nom de service (pas 127.0.0.1 du .env hote).
       ASTRAL_CALCULATOR_HOST: astral_calculator_api
       ASTRAL_CALCULATOR_PORT: "8080"
-      ASTRAL_LLM_DEFAULT_PROVIDER: fake
-      ASTRAL_LLM_DEFAULT_MODEL: fake-model
-      ASTRAL_LLM_ENABLE_FAKE: "true"
+      ASTRAL_LLM_DEFAULT_PROVIDER: ${ASTRAL_LLM_DEFAULT_PROVIDER:-openai}
+      ASTRAL_LLM_DEFAULT_MODEL: ${ASTRAL_LLM_DEFAULT_MODEL:-${OPENAI_DEFAULT_MODEL:-gpt-5.4-mini}}
+      ASTRAL_LLM_ENABLE_FAKE: "false"
       ASTRAL_LLM_DB_AUTO_MIGRATE: "true"
     networks:
       - astral_net
@@ -98,9 +98,9 @@ services:
       ASTRAL_LLM_CONTRACTS_DIR: /app/contracts/llm
       ASTRAL_CALCULATOR_HOST: astral_calculator_api
       ASTRAL_CALCULATOR_PORT: "8080"
-      ASTRAL_LLM_DEFAULT_PROVIDER: fake
-      ASTRAL_LLM_DEFAULT_MODEL: fake-model
-      ASTRAL_LLM_ENABLE_FAKE: "true"
+      ASTRAL_LLM_DEFAULT_PROVIDER: ${ASTRAL_LLM_DEFAULT_PROVIDER:-openai}
+      ASTRAL_LLM_DEFAULT_MODEL: ${ASTRAL_LLM_DEFAULT_MODEL:-${OPENAI_DEFAULT_MODEL:-gpt-5.4-mini}}
+      ASTRAL_LLM_ENABLE_FAKE: "false"
       ASTRAL_LLM_MERCURE_URL: http://mercure/.well-known/mercure
       ASTRAL_LLM_MERCURE_PUBLISHER_JWT: ${MERCURE_PUBLISHER_JWT_KEY:-!ChangeThisMercureHubJWTSecretKey!}
     networks:

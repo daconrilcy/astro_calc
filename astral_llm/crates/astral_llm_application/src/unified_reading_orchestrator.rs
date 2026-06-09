@@ -81,7 +81,8 @@ impl<'a> UnifiedReadingOrchestrator<'a> {
     ) -> Result<UnifiedReadingResult, GenerationError> {
         let run_id = Uuid::new_v4().to_string();
         let result =
-            HoroscopeBasicDailyNatalOrchestrator::execute(self.calculator, &job.payload).await?;
+            HoroscopeBasicDailyNatalOrchestrator::execute(self.calculator, self.use_case, &job.payload)
+                .await?;
         Ok(UnifiedReadingResult {
             run_id,
             outcome: UnifiedReadingOutcome::Json(result),
@@ -93,7 +94,9 @@ impl<'a> UnifiedReadingOrchestrator<'a> {
         job: &ValidatedIntegrationJob,
     ) -> Result<UnifiedReadingResult, GenerationError> {
         let run_id = Uuid::new_v4().to_string();
-        let result = HoroscopeFreeDailyOrchestrator::execute(self.calculator, &job.payload).await?;
+        let result =
+            HoroscopeFreeDailyOrchestrator::execute(self.calculator, self.use_case, &job.payload)
+                .await?;
         Ok(UnifiedReadingResult {
             run_id,
             outcome: UnifiedReadingOutcome::Json(result),
@@ -106,7 +109,12 @@ impl<'a> UnifiedReadingOrchestrator<'a> {
     ) -> Result<UnifiedReadingResult, GenerationError> {
         let run_id = Uuid::new_v4().to_string();
         let result =
-            HoroscopePremiumDailyLocalOrchestrator::execute(self.calculator, &job.payload).await?;
+            HoroscopePremiumDailyLocalOrchestrator::execute(
+                self.calculator,
+                self.use_case,
+                &job.payload,
+            )
+            .await?;
         Ok(UnifiedReadingResult {
             run_id,
             outcome: UnifiedReadingOutcome::Json(result),

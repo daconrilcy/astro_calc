@@ -167,11 +167,13 @@ pub struct HoroscopePeriodNatalOrchestrator;
 impl HoroscopeBasicDailyNatalOrchestrator {
     pub async fn execute(
         calculator: &astral_llm_infra::CalculatorClient,
+        use_case: &GenerateReadingUseCase,
         payload: &Value,
     ) -> Result<serde_json::Value, GenerationError> {
         HoroscopeDailyNatalOrchestrator::execute(
             HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE,
             calculator,
+            use_case,
             payload,
         )
         .await
@@ -181,11 +183,13 @@ impl HoroscopeBasicDailyNatalOrchestrator {
 impl HoroscopeFreeDailyOrchestrator {
     pub async fn execute(
         calculator: &astral_llm_infra::CalculatorClient,
+        use_case: &GenerateReadingUseCase,
         payload: &Value,
     ) -> Result<serde_json::Value, GenerationError> {
         HoroscopeDailyNatalOrchestrator::execute(
             HOROSCOPE_FREE_DAILY_SERVICE_CODE,
             calculator,
+            use_case,
             payload,
         )
         .await
@@ -195,11 +199,13 @@ impl HoroscopeFreeDailyOrchestrator {
 impl HoroscopePremiumDailyLocalOrchestrator {
     pub async fn execute(
         calculator: &astral_llm_infra::CalculatorClient,
+        use_case: &GenerateReadingUseCase,
         payload: &Value,
     ) -> Result<serde_json::Value, GenerationError> {
         HoroscopeDailyNatalOrchestrator::execute(
             HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
             calculator,
+            use_case,
             payload,
         )
         .await
@@ -247,6 +253,7 @@ impl HoroscopeDailyNatalOrchestrator {
     pub async fn execute(
         service_code: &str,
         calculator: &astral_llm_infra::CalculatorClient,
+        use_case: &GenerateReadingUseCase,
         payload: &Value,
     ) -> Result<serde_json::Value, GenerationError> {
         let public = validate_public_request(payload)?;
@@ -264,7 +271,7 @@ impl HoroscopeDailyNatalOrchestrator {
 
         let signals = score_calculation(&calculation)?;
         let interpretation = build_interpretation_request(&public, &calculation, &signals)?;
-        let response = fake_writer_response(&interpretation)?;
+        let response = daily_writer_response(use_case, &interpretation).await?;
         validate_horoscope_response_schema(&response)?;
         validate_response_evidence(&interpretation, &response)?;
 
@@ -5945,6 +5952,354 @@ fn premium_ranked_slots(request: &Value, watch: bool) -> Vec<Value> {
         .into_iter()
         .map(|slot| premium_slot_summary(slot, watch))
         .collect()
+}
+
+async fn daily_writer_response(
+    use_case: &GenerateReadingUseCase,
+    request: &Value,
+) -> Result<Value, GenerationError> {
+    let defaults = use_case.engine_defaults();
+    if defaults.provider == ProviderKind::Fake {
+        return fake_writer_response(request);
+    }
+
+    let schema = daily_response_provider_schema(request)?;
+    let provider_request = ProviderGenerationRequest {
+        model: defaults.model.clone(),
+        messages: daily_writer_messages(request)?,
+        structured_schema: Some(schema),
+        reasoning_effort: None,
+        temperature: Some(0.4),
+        max_output_tokens: Some(daily_writer_max_output_tokens(request)),
+        safety_mode: SafetyMode::PlatformRulesOnly,
+        timeout: StdDuration::from_secs(180),
+        metadata: GenerationMetadata {
+            run_id: uuid::Uuid::new_v4().to_string(),
+            request_id: None,
+            product_code: request["service_code"]
+                .as_str()
+                .unwrap_or(HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE)
+                .to_string(),
+            chapter_code: None,
+        },
+    };
+
+    let routed = use_case
+        .router
+        .generate(
+            provider_request,
+            defaults.provider.clone(),
+            &defaults.model,
+            false,
+            true,
+            ModelRouteContext::PrimaryReading,
+        )
+        .await?;
+    if routed.used_provider == ProviderKind::Fake {
+        return Err(quality_error(
+            "HOROSCOPE_DAILY_REAL_PROVIDER_REQUIRED",
+            json!({ "provider": "fake" }),
+        ));
+    }
+
+    let mut response = routed
+        .response
+        .parsed_json
+        .or_else(|| parse_period_provider_json(&routed.response.raw_text))
+        .ok_or_else(|| {
+            GenerationError::with_details(
+                GenerationErrorCode::PostSafetyValidationFailed,
+                format!(
+                    "HOROSCOPE_RESPONSE_INVALID: provider_response_not_json raw_text_len={}",
+                    routed.response.raw_text.len()
+                ),
+                json!({
+                    "reason": "provider_response_not_json",
+                    "raw_text_len": routed.response.raw_text.len()
+                }),
+            )
+        })?;
+    if !response
+        .get("quality")
+        .map_or(false, |value| value.is_object())
+    {
+        response["quality"] = json!({});
+    }
+    response["quality"]["provider"] = json!(routed.used_provider.as_str());
+    response["quality"]["model"] = json!(routed.response.model_used);
+    response["quality"]["fallback_used"] = json!(routed.fallback_used);
+    repair_daily_response_shape(request, &mut response);
+    Ok(reprocess_horoscope_daily_payload(response))
+}
+
+fn daily_response_provider_schema(request: &Value) -> Result<Value, GenerationError> {
+    let schema: Value = serde_json::from_str(RESPONSE_SCHEMA_JSON).map_err(|err| {
+        GenerationError::with_details(
+            GenerationErrorCode::SchemaValidationFailed,
+            format!("HOROSCOPE_RESPONSE_INVALID: {err}"),
+            Value::Null,
+        )
+    })?;
+    let service_code = request
+        .get("service_code")
+        .and_then(Value::as_str)
+        .unwrap_or(HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE);
+    let branch_index = match service_code {
+        HOROSCOPE_FREE_DAILY_SERVICE_CODE => 1,
+        HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE => 2,
+        _ => 0,
+    };
+    let branch = schema
+        .get("oneOf")
+        .and_then(Value::as_array)
+        .and_then(|branches| branches.get(branch_index))
+        .cloned()
+        .ok_or_else(|| horoscope_error("HOROSCOPE_RESPONSE_INVALID"))?;
+    let mut required = branch
+        .get("required")
+        .cloned()
+        .unwrap_or_else(|| json!([]));
+    if let Some(items) = required.as_array_mut() {
+        items.retain(|item| item.as_str() != Some("quality"));
+    }
+    let mut properties = branch
+        .get("properties")
+        .cloned()
+        .unwrap_or_else(|| json!({}));
+    if let Some(object) = properties.as_object_mut() {
+        object.remove("quality");
+    }
+    let mut schema = json!({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "horoscope_response_v1",
+        "definitions": schema.get("definitions").cloned().unwrap_or_else(|| json!({})),
+        "type": "object",
+        "required": required,
+        "additionalProperties": false,
+        "properties": properties
+    });
+    if branch_index == 0 {
+        schema["properties"]["watch_points"] = json!({
+            "type": "array",
+            "items": { "type": "string" }
+        });
+        schema["properties"]["opportunities"] = json!({
+            "type": "array",
+            "items": { "type": "string" }
+        });
+        schema["properties"]["evidence_summary"] = json!({
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["evidence_key", "theme_code"],
+                "additionalProperties": false,
+                "properties": {
+                    "evidence_key": { "type": "string" },
+                    "theme_code": { "type": "string" }
+                }
+            }
+        });
+    }
+    if branch_index == 2 {
+        schema["properties"]["evidence_summary"] = json!({
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["evidence_key", "theme_code"],
+                "additionalProperties": false,
+                "properties": {
+                    "evidence_key": { "type": "string" },
+                    "theme_code": { "type": "string" }
+                }
+            }
+        });
+    }
+    Ok(crate::provider_schema_compiler::prepare_strict_json_schema(&schema))
+}
+
+fn daily_writer_messages(request: &Value) -> Result<Vec<PromptMessage>, GenerationError> {
+    let compact = serde_json::to_string(request).map_err(|err| {
+        GenerationError::with_details(
+            GenerationErrorCode::InvalidInput,
+            format!("HOROSCOPE_RESPONSE_INVALID: {err}"),
+            Value::Null,
+        )
+    })?;
+    let service_code = request
+        .get("service_code")
+        .and_then(Value::as_str)
+        .unwrap_or(HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE);
+    let slot_instruction = if service_code == HOROSCOPE_FREE_DAILY_SERVICE_CODE {
+        "Produis un horoscope quotidien Free sans slots publics, avec summary, advice, watch_point et evidence_keys uniquement. Le texte public doit citer une référence astrologique issue des preuves, par exemple la Lune, Mars, Vénus, Mercure, un transit, un aspect ou une maison."
+    } else if service_code == HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE {
+        "Produis un horoscope quotidien Premium avec timeline, best_slots, watch_slots, domain_sections et advice."
+    } else {
+        "Produis exactement trois slots publics correspondant aux labels Matin, Après-midi et Soir. Chaque slot.text doit citer une référence astrologique publique issue de ses preuves, par exemple la Lune, Mars, Vénus, Mercure, un transit, un aspect ou une maison."
+    };
+
+    Ok(vec![
+        PromptMessage {
+            role: PromptRole::System,
+            content: "Tu rédiges un horoscope quotidien personnalisé en français. Retourne uniquement un objet JSON conforme au schéma fourni horoscope_response_v1. N'invente aucune preuve astrologique: chaque evidence_key publique doit provenir de la requête. N'affiche jamais les codes internes, les noms de champs, les clés de preuve, les theme_code anglais, les codes tone anglais, ni les consignes internes.".to_string(),
+        },
+        PromptMessage {
+            role: PromptRole::User,
+            content: format!(
+                "{slot_instruction} Le résumé doit introduire la tonalité générale sans recopier day_overview. Les textes doivent rester concrets, personnalisés par les signaux fournis, sans promesse événementielle. Utilise uniquement les libellés français déjà fournis pour les titres publics. Requête JSON:\n{compact}"
+            ),
+        },
+    ])
+}
+
+fn daily_writer_max_output_tokens(request: &Value) -> u32 {
+    match request.get("service_code").and_then(Value::as_str) {
+        Some(HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE) => 6000,
+        Some(HOROSCOPE_FREE_DAILY_SERVICE_CODE) => 1800,
+        _ => 3200,
+    }
+}
+
+fn repair_daily_response_shape(request: &Value, response: &mut Value) {
+    response["contract_version"] = json!("horoscope_response_v1");
+    if response.get("service_code").and_then(Value::as_str).is_none() {
+        response["service_code"] = request
+            .get("service_code")
+            .cloned()
+            .unwrap_or_else(|| json!(HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE));
+    }
+    if response.get("period").is_none() {
+        response["period"] = request.get("period").cloned().unwrap_or_else(|| json!({}));
+    }
+    let service_code = response
+        .get("service_code")
+        .and_then(Value::as_str)
+        .or_else(|| request.get("service_code").and_then(Value::as_str));
+    if service_code != Some(HOROSCOPE_FREE_DAILY_SERVICE_CODE)
+        && response.get("evidence_summary").is_none()
+    {
+        response["evidence_summary"] = request
+            .get("evidence")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .map(|item| {
+                json!({
+                    "evidence_key": item.get("evidence_key").cloned().unwrap_or(Value::Null),
+                    "theme_code": item.get("theme_code").cloned().unwrap_or(Value::Null)
+                })
+            })
+            .collect::<Vec<_>>()
+            .into();
+    }
+    repair_daily_free_astro_reference(request, response);
+    repair_daily_basic_astro_references(request, response);
+}
+
+fn repair_daily_free_astro_reference(request: &Value, response: &mut Value) {
+    if request.get("service_code").and_then(Value::as_str) != Some(HOROSCOPE_FREE_DAILY_SERVICE_CODE)
+    {
+        return;
+    }
+    let public_text = free_public_text(response);
+    if daily_text_has_astrological_reference(&public_text) {
+        return;
+    }
+    let Some(prefix) = daily_response_astro_reference_prefix(request, response) else {
+        return;
+    };
+    let current = response
+        .get("summary")
+        .and_then(|summary| summary.get("text"))
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .trim();
+    response["summary"]["text"] = if current.is_empty() {
+        json!(prefix)
+    } else {
+        json!(format!("{prefix} {current}"))
+    };
+}
+
+fn repair_daily_basic_astro_references(request: &Value, response: &mut Value) {
+    if request.get("service_code").and_then(Value::as_str)
+        != Some(HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE)
+    {
+        return;
+    }
+    let Some(slots) = response.get_mut("slots").and_then(Value::as_array_mut) else {
+        return;
+    };
+    for slot in slots {
+        let text = slot.get("text").and_then(Value::as_str).unwrap_or("");
+        if daily_text_has_astrological_reference(text) {
+            continue;
+        }
+        let Some(prefix) = daily_response_astro_reference_prefix(request, slot) else {
+            continue;
+        };
+        let repaired = if text.trim().is_empty() {
+            prefix
+        } else {
+            format!("{prefix} {}", text.trim())
+        };
+        slot["text"] = json!(repaired);
+    }
+}
+
+fn daily_text_has_astrological_reference(text: &str) -> bool {
+    let lower = text.to_lowercase();
+    [
+        "lune",
+        "mars",
+        "vénus",
+        "venus",
+        "mercure",
+        "aspect",
+        "maison",
+        "transit",
+        "astrologique",
+        "natal",
+    ]
+    .iter()
+    .any(|needle| lower.contains(needle))
+}
+
+fn daily_response_astro_reference_prefix(request: &Value, response: &Value) -> Option<String> {
+    let evidence_keys = response
+        .get("evidence_keys")
+        .or_else(|| response.get("required_evidence_keys"))
+        .and_then(Value::as_array)?;
+    let first_key = evidence_keys.iter().find_map(Value::as_str)?;
+    let evidence = request.get("evidence").and_then(Value::as_array)?;
+    let signal = evidence.iter().find(|item| {
+        item.get("evidence_key").and_then(Value::as_str) == Some(first_key)
+    })?;
+    let object = signal
+        .get("transiting_object")
+        .and_then(Value::as_str)
+        .map(public_astro_object_label)
+        .unwrap_or("Un transit");
+    if object == "Un transit" {
+        Some("Un transit astrologique donne le repère du créneau.".to_string())
+    } else {
+        Some(format!("{object} donne le repère astrologique du créneau."))
+    }
+}
+
+fn public_astro_object_label(code: &str) -> &'static str {
+    match code {
+        "sun" => "Le Soleil",
+        "moon" => "La Lune",
+        "mercury" => "Mercure",
+        "venus" => "Vénus",
+        "mars" => "Mars",
+        "jupiter" => "Jupiter",
+        "saturn" => "Saturne",
+        "uranus" => "Uranus",
+        "neptune" => "Neptune",
+        "pluto" => "Pluton",
+        _ => "Un transit",
+    }
 }
 
 fn premium_slot_summary(slot: &Value, watch: bool) -> Value {
