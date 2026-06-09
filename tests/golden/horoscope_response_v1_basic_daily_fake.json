@@ -18,7 +18,7 @@
       "text": "La Lune met l'accent sur l'organisation et les gestes utiles. C'est un bon moment pour clarifier une priorité concrète, ranger une tâche ou reprendre un point simple sans ouvrir trop de sujets à la fois.",
       "advice": "Choisissez une action vérifiable et terminez-la avant de passer à la suivante.",
       "best_for": ["organization", "routine"],
-      "watch_point": "avoid_opening_too_many_topics",
+      "watch_point": "Évitez d'ouvrir trop de sujets à la fois.",
       "evidence_keys": ["slot:morning:moon:natal_house:6"]
     },
     {
@@ -29,7 +29,7 @@
       "text": "Un contact tendu entre Mars et la Lune natale peut rendre l'après-midi plus réactif. Ce créneau demande de ralentir les réponses, surtout si une discussion devient imprécise ou chargée.",
       "advice": "Si une tension monte, reformulez d'abord ce que vous avez compris avant de répondre.",
       "best_for": ["reformulation", "boundaries"],
-      "watch_point": "avoid_answering_before_the_emotion_settles",
+      "watch_point": "Attendez que l'émotion se calme avant de répondre.",
       "evidence_keys": ["slot:afternoon:mars:square:natal_moon"]
     },
     {
@@ -40,7 +40,7 @@
       "text": "Vénus soutient Mercure natal et adoucit le climat relationnel du soir. L'enjeu n'est pas de tout résoudre, mais de rouvrir un échange simple, concret et moins défensif.",
       "advice": "Revenez sur un point précis plutôt que sur toute l'histoire.",
       "best_for": ["dialogue", "repair"],
-      "watch_point": "avoid_reopening_every_subject_at_once",
+      "watch_point": "Ne rouvrez pas tous les sujets en même temps.",
       "evidence_keys": ["slot:evening:venus:trine:natal_mercury"]
     }
   ],

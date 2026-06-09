@@ -6,6 +6,7 @@
     "avoid_axis": "string",
     "best_for": "array<string>",
     "watch_point": "string",
+    "public_watch_point": "string",
     "tone_hint": "string",
     "sort_order": "integer"
   },
@@ -16,6 +17,7 @@
       "avoid_axis": "scattered_effort",
       "best_for": ["organization", "routine"],
       "watch_point": "avoid_opening_too_many_topics",
+      "public_watch_point": "Évitez d'ouvrir trop de sujets à la fois.",
       "tone_hint": "focused",
       "sort_order": 10
     },
@@ -25,6 +27,7 @@
       "avoid_axis": "answering_under_tension",
       "best_for": ["reformulation", "boundaries"],
       "watch_point": "avoid_answering_before_the_emotion_settles",
+      "public_watch_point": "Attendez que l'émotion se calme avant de répondre.",
       "tone_hint": "careful",
       "sort_order": 20
     },
@@ -34,6 +37,7 @@
       "avoid_axis": "overexplaining_the_whole_story",
       "best_for": ["dialogue", "repair"],
       "watch_point": "avoid_reopening_every_subject_at_once",
+      "public_watch_point": "Ne rouvrez pas tous les sujets en même temps.",
       "tone_hint": "softer",
       "sort_order": 30
     }

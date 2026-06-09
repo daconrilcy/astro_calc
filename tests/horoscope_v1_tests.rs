@@ -6,11 +6,12 @@ use astral_llm_application::horoscope::{
     build_period_calculation_request_for_service, build_period_interpretation_request,
     fake_period_writer_response, period_response_provider_schema,
     postprocess_period_provider_response, prune_period_response_variant_fields,
-    reprocess_horoscope_period_payload, score_calculation, validate_horoscope_response_schema,
-    validate_interpretation_request_schema, validate_period_interpretation_request_schema,
-    validate_period_provider_public_payload, validate_period_public_request,
-    validate_period_response_evidence, validate_period_response_schema, validate_public_request,
-    validate_response_evidence, validate_scan_plan, HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+    public_watch_point_for_theme, reprocess_horoscope_period_payload, score_calculation,
+    validate_horoscope_response_schema, validate_interpretation_request_schema,
+    validate_period_interpretation_request_schema, validate_period_provider_public_payload,
+    validate_period_public_request, validate_period_response_evidence,
+    validate_period_response_schema, validate_public_request, validate_response_evidence,
+    validate_scan_plan, HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE,
     HOROSCOPE_FREE_DAILY_SERVICE_CODE, HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
     HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE, HOROSCOPE_SERVICE_CODE,
@@ -786,7 +787,7 @@ fn valid_response_with_slot_keys(slot_keys: [serde_json::Value; 3]) -> serde_jso
                 "text": "La Lune met l'accent sur l'organisation du matin.",
                 "advice": "Choisissez une action vérifiable.",
                 "best_for": ["organization", "routine"],
-                "watch_point": "avoid_opening_too_many_topics",
+                "watch_point": "Évitez d'ouvrir trop de sujets à la fois.",
                 "evidence_keys": slot_keys[0]
             },
             {
@@ -797,7 +798,7 @@ fn valid_response_with_slot_keys(slot_keys: [serde_json::Value; 3]) -> serde_jso
                 "text": "Mars forme un aspect tendu avec la Lune natale.",
                 "advice": "Reformulez avant de répondre.",
                 "best_for": ["reformulation", "boundaries"],
-                "watch_point": "avoid_answering_before_the_emotion_settles",
+                "watch_point": "Attendez que l'émotion se calme avant de répondre.",
                 "evidence_keys": slot_keys[1]
             },
             {
@@ -808,7 +809,7 @@ fn valid_response_with_slot_keys(slot_keys: [serde_json::Value; 3]) -> serde_jso
                 "text": "Vénus soutient Mercure natal et adoucit le dialogue.",
                 "advice": "Revenez sur un point précis.",
                 "best_for": ["dialogue", "repair"],
-                "watch_point": "avoid_reopening_every_subject_at_once",
+                "watch_point": "Ne rouvrez pas tous les sujets en même temps.",
                 "evidence_keys": slot_keys[2]
             }
         ],
@@ -865,7 +866,7 @@ fn premium_response_from_request(request: &serde_json::Value) -> serde_json::Val
                 "text": "La Lune donne un repère concret pour organiser une priorité sans disperser l'attention.",
                 "advice": "Choisissez une tâche utile et terminez-la avant d'en ouvrir une autre.",
                 "best_for": slot["best_for"],
-                "watch_point": slot["watch_point"],
+                "watch_point": premium_public_watch_point(slot),
                 "evidence_keys": slot["required_evidence_keys"]
             })
         })
@@ -890,6 +891,12 @@ fn premium_response_from_request(request: &serde_json::Value) -> serde_json::Val
         "evidence_summary": [],
         "quality": {}
     })
+}
+
+fn premium_public_watch_point(slot: &serde_json::Value) -> String {
+    public_watch_point_for_theme(slot["theme_code"].as_str().unwrap_or(""))
+        .unwrap()
+        .unwrap_or_else(|| "Gardez un repère simple et vérifiable.".to_string())
 }
 
 #[test]
@@ -3848,6 +3855,37 @@ fn horoscope_response_golden_passes_schema_and_evidence_guard() {
     let request = interpretation_request();
     let response = golden_response();
     validate_response_evidence(&request, &response).unwrap();
+}
+
+#[test]
+fn horoscope_basic_daily_public_watch_points_are_humanized() {
+    let request = interpretation_request();
+    let response = golden_response();
+    validate_response_evidence(&request, &response).unwrap();
+    let public_watch_points = response["slots"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|slot| slot["watch_point"].as_str())
+        .collect::<Vec<_>>();
+
+    assert_eq!(public_watch_points.len(), 3);
+    assert!(public_watch_points
+        .iter()
+        .all(|watch_point| !watch_point.contains("avoid_")));
+}
+
+#[test]
+fn horoscope_basic_daily_rejects_internal_watch_point_codes() {
+    let request = interpretation_request();
+    let mut response = golden_response();
+    response["slots"][0]["watch_point"] = serde_json::json!("avoid_opening_too_many_topics");
+
+    let err = validate_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().code,
+        astral_llm_domain::GenerationErrorCode::PostSafetyValidationFailed
+    );
 }
 
 #[test]

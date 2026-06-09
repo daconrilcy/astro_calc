@@ -73,6 +73,7 @@ Then open `http://localhost:8099/`.
 - It submits real jobs through `POST /v1/jobs` with a unique `Idempotency-Key`, then polls `GET /v1/jobs/{run_id}`.
 - For horoscope services, it first calls the calculator natal endpoint to obtain `chart_calculation_id`, then submits the horoscope job.
 - Each service result has a readable view and a raw formatted JSON view.
+- Horoscope daily keeps internal `watch_point` codes in the interpretation request, but public Basic `reading.slots[].watch_point` and Premium `reading.timeline[].watch_point` now use `public_watch_point` labels from `json_db/horoscope_theme_advice_axes.json` so the readable UI does not expose internal identifiers.
 
 ## Geocoding limits
 

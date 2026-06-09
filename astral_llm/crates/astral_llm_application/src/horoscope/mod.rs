@@ -6389,6 +6389,22 @@ fn render_fake_premium_timeline_slot(slot: &Value, index: usize) -> Result<Value
         .and_then(|v| v.as_array())
         .cloned()
         .unwrap_or_default();
+    let theme_code = slot
+        .get("theme_code")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let internal_watch_point = slot.get("watch_point").and_then(|v| v.as_str());
+    let watch_point = public_watch_point_for_theme(theme_code)?
+        .or_else(|| {
+            internal_watch_point.and_then(|value| {
+                if value.contains("avoid_") {
+                    None
+                } else {
+                    Some(value.to_string())
+                }
+            })
+        })
+        .unwrap_or_else(|| "Gardez un repère simple et vérifiable.".to_string());
     Ok(json!({
         "slot_label": label,
         "title": premium_timeline_title(index),
@@ -6397,7 +6413,7 @@ fn render_fake_premium_timeline_slot(slot: &Value, index: usize) -> Result<Value
         "text": premium_timeline_text(index),
         "advice": premium_timeline_advice(index),
         "best_for": best_for,
-        "watch_point": slot.get("watch_point").and_then(|v| v.as_str()).unwrap_or("Gardez un repère simple et vérifiable."),
+        "watch_point": watch_point,
         "evidence_keys": evidence_keys
     }))
 }
@@ -6865,10 +6881,19 @@ fn render_fake_slot(slot: &Value) -> Result<Value, GenerationError> {
         .and_then(|v| v.as_array())
         .cloned()
         .unwrap_or_default();
-    let watch_point = slot
+    let internal_watch_point = slot
         .get("watch_point")
         .and_then(|v| v.as_str())
         .unwrap_or("");
+    let watch_point = public_watch_point_for_theme(theme_code)?
+        .or_else(|| {
+            if internal_watch_point.contains("avoid_") {
+                None
+            } else {
+                Some(internal_watch_point.to_string())
+            }
+        })
+        .unwrap_or_default();
     let (theme, text, advice) = match slot_code {
         "morning" => (
             "Organisation",
@@ -6902,6 +6927,15 @@ fn render_fake_slot(slot: &Value) -> Result<Value, GenerationError> {
         "watch_point": watch_point,
         "evidence_keys": evidence_keys
     }))
+}
+
+pub fn public_watch_point_for_theme(theme_code: &str) -> Result<Option<String>, GenerationError> {
+    if theme_code.trim().is_empty() {
+        return Ok(None);
+    }
+    Ok(advice_axes()?
+        .get(theme_code)
+        .and_then(|axis| axis.public_watch_point.clone()))
 }
 
 #[derive(Clone)]
@@ -6977,6 +7011,7 @@ struct ThemeAdviceAxis {
     avoid_axis: Option<String>,
     best_for: Vec<String>,
     watch_point: Option<String>,
+    public_watch_point: Option<String>,
     tone_hint: Option<String>,
 }
 
@@ -7117,6 +7152,9 @@ impl ReferenceData {
                 avoid_axis: Some("overgeneralizing_the_day".into()),
                 best_for: vec!["orientation".into()],
                 watch_point: Some("avoid_turning_a_small_signal_into_a_prediction".into()),
+                public_watch_point: Some(
+                    "Évitez de transformer un signal bref en prédiction.".into(),
+                ),
                 tone_hint: Some("measured".into()),
             })
     }
@@ -7126,6 +7164,19 @@ impl ReferenceData {
             .duration_classes
             .contains(&self.scoring.default_duration_class)
         {
+            return Err(horoscope_error("HOROSCOPE_SCORING_FAILED"));
+        }
+        if self.advice_axes.values().any(|axis| {
+            axis.watch_point
+                .as_deref()
+                .is_some_and(|value| !value.is_empty())
+                && axis
+                    .public_watch_point
+                    .as_deref()
+                    .map(str::trim)
+                    .unwrap_or("")
+                    .is_empty()
+        }) {
             return Err(horoscope_error("HOROSCOPE_SCORING_FAILED"));
         }
         Ok(())
@@ -7293,6 +7344,10 @@ fn advice_axes() -> Result<HashMap<String, ThemeAdviceAxis>, GenerationError> {
                     best_for,
                     watch_point: row
                         .get("watch_point")
+                        .and_then(|v| v.as_str())
+                        .map(str::to_string),
+                    public_watch_point: row
+                        .get("public_watch_point")
                         .and_then(|v| v.as_str())
                         .map(str::to_string),
                     tone_hint: row
@@ -7467,6 +7522,7 @@ fn validate_public_slot_text(slot: &Value) -> Result<(), GenerationError> {
         "slot:evening",
         "slot:day",
         "slot_",
+        "avoid_",
     ] {
         if public_text.contains(forbidden) {
             return Err(quality_error(
@@ -7518,6 +7574,7 @@ fn validate_public_text_no_technical_codes(public_text: &str) -> Result<(), Gene
         "slot technique",
         "slot_code",
         "slot_",
+        "avoid_",
     ] {
         if lower.contains(forbidden) {
             return Err(quality_error(
