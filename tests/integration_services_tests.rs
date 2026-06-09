@@ -136,6 +136,15 @@ fn natal_basic_full_natal_active_in_seed() {
 }
 
 #[test]
+fn natal_premium_full_natal_beta_in_seed() {
+    let services = load_seed_services();
+    let premium = services.get("natal_premium").expect("natal_premium");
+    assert_eq!(premium.availability, ServiceAvailability::Beta);
+    assert_eq!(premium.calculation_mode, CalculationMode::FullNatal);
+    assert!(premium.availability.is_public_listed(false));
+}
+
+#[test]
 fn natal_simplified_supports_mercure_in_seed() {
     let services = load_seed_services();
     assert!(services.get("natal_simplified").unwrap().supports_mercure);

@@ -35,3 +35,52 @@ Added focused regression coverage in:
 - `astral_llm/crates/astral_llm_application/src/text_trigrams.rs`
 
 Validated with the real E2E scripts and supporting Rust test suites.
+
+# Local real service test UI - 2026-06-09
+
+## Scope
+
+Added a developer-only static UI for manually exercising the real local calculator and LLM integration services from a birth input.
+
+## Location
+
+- UI files: `tests/service_test_ui/`
+- Launcher/proxy: `scripts/start_service_test_ui.ps1`
+- Browser logic test page: `tests/service_test_ui/service-test-ui.test.html`
+
+Start it with:
+
+```powershell
+.\scripts\start_service_test_ui.ps1
+```
+
+Then open `http://localhost:8099/`.
+
+## Runtime prerequisites
+
+- Docker stack running with calculator `:8080`, LLM API `:8081`, PostgreSQL and `astral_llm_worker`.
+- Integration services submitted in DB with `.\scripts\manage_integration_services.ps1 -Submit`.
+- `.env` configured for the local stack.
+- `OPENAI_API_KEY` is required for real provider-backed generations. Fake-provider local smoke flows still depend on the backend configuration.
+- The local proxy loads `ASTRAL_LLM_API_KEY` and `ASTRAL_CALCULATOR_API_KEY` from `.env` and injects them server-side when the UI fields are empty. If needed, the UI fields can override those values for a browser session.
+- After catalogue changes, run `.\scripts\manage_integration_services.ps1 -Submit` so the running DB exposes the updated service list, including `natal_premium`.
+
+## Behavior
+
+- The UI loads `GET /v1/services` through the local proxy and displays only `active` and `beta` services.
+- `natal_premium` is listed as a beta real full-natal service and uses a rich engine projection.
+- It resolves city/country through `/api/geocode`, backed by Nominatim/OpenStreetMap.
+- It submits real jobs through `POST /v1/jobs` with a unique `Idempotency-Key`, then polls `GET /v1/jobs/{run_id}`.
+- For horoscope services, it first calls the calculator natal endpoint to obtain `chart_calculation_id`, then submits the horoscope job.
+- Each service result has a readable view and a raw formatted JSON view.
+
+## Geocoding limits
+
+Nominatim usage is for local developer testing only. The proxy sets an identifying User-Agent/Referer, keeps an in-memory cache, and enforces a minimum one-second delay between external geocoding calls. It must not be used for bulk geocoding or as a production geocoding backend.
+
+## Known limits
+
+- `planned`, `disabled`, and `deprecated` services are hidden in this V1.
+- Full natal and horoscope flows require a birth time; the UI disables those buttons when the time is missing.
+- Long premium runs can take several minutes and may consume provider quota.
+- Results depend on the worker because the UI uses the public async `/v1/jobs` integration path.

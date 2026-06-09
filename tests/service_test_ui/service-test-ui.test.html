@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Tests service-test-ui</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 24px; }
+    .pass { color: #147d4d; }
+    .fail { color: #b42318; }
+  </style>
+</head>
+<body>
+  <h1>Tests service-test-ui</h1>
+  <pre id="output"></pre>
+  <script src="./service-test-ui.js"></script>
+  <script>
+    const output = document.getElementById("output");
+    const logs = [];
+
+    function assert(name, condition) {
+      if (!condition) throw new Error(name);
+      logs.push(`PASS ${name}`);
+    }
+
+    function run() {
+      const api = window.AstralServiceTestUi;
+      const input = {
+        birthDate: "1990-06-15",
+        birthTime: "14:30:00",
+        timezone: "Europe/Paris",
+        targetDate: "2026-06-09",
+        language: "fr",
+        audience: "beginner",
+        location: {
+          latitude: 48.8566,
+          longitude: 2.3522,
+          label: "Paris, France",
+          countryCode: "fr",
+        },
+      };
+
+      const simplified = api.buildNatalSimplifiedPayload(input);
+      assert("payload natal simplifie", simplified.request_contract_version === "astro_simplified_natal_request_v1");
+      assert("payload natal simplifie location", simplified.birth.location.latitude === 48.8566);
+
+      const full = api.buildFullNatalPayload(input, "compact");
+      assert("payload natal full", full.request_contract_version === "astro_engine_request_v1");
+      assert("payload natal full projection", full.projection.level === "compact");
+      assert("payload natal full heure", full.birth.time === "14:30:00");
+
+      const horoscope = api.buildHoroscopePayload({ service_code: "horoscope_premium_daily_local_2h_slots" }, input, 123);
+      assert("payload horoscope id", horoscope.chart_calculation_id === "123");
+      assert("payload horoscope date", horoscope.date === "2026-06-09");
+      assert("payload horoscope premium location", horoscope.location.label === "Paris, France");
+
+      const period = api.buildHoroscopePayload({ service_code: "horoscope_free_next_7_days_natal" }, input, 456);
+      assert("payload horoscope periode anchor", period.anchor_date === "2026-06-09");
+      assert("payload horoscope audience publique", period.audience_level === "general");
+
+      const expertPeriod = api.buildHoroscopePayload({ service_code: "horoscope_free_next_7_days_natal" }, { ...input, audience: "expert" }, 456);
+      assert("payload horoscope audience expert", expertPeriod.audience_level === "expert");
+
+      const job = api.buildJobBody({ service_code: "natal_basic" }, full, { ...input, audience: "general" });
+      assert("enveloppe audience conforme", job.audience_level === "beginner");
+
+      assert("detection horoscope par code", api.isHoroscopeService({ service_code: "horoscope_free_daily" }));
+      assert("detection horoscope par contrat", api.isHoroscopeService({ service_code: "x", contracts: { payload: "horoscope_period_natal_request_v1" } }));
+      assert("natal non horoscope", !api.isHoroscopeService({ service_code: "natal_basic", calculation_mode: "full_natal" }));
+      assert("projection premium riche", api.projectionLevelForService({ service_code: "natal_premium", interpretation_profile_code: "natal_premium" }) === "rich");
+      assert("projection basic compacte", api.projectionLevelForService({ service_code: "natal_basic", interpretation_profile_code: "natal_basic" }) === "compact");
+
+      const filtered = api.filterRunnableServices([
+        { service_code: "planned", availability: "planned", sort_order: 1 },
+        { service_code: "beta", availability: "beta", sort_order: 3 },
+        { service_code: "active", availability: "active", sort_order: 2 },
+      ]);
+      assert("filtrage active beta", filtered.map((service) => service.service_code).join(",") === "active,beta");
+
+      const natalSections = api.normalizeReadingSections({
+        summary: { title: "Synthese", short_text: "Texte court." },
+        chapters: [{ title: "Chapitre", body: "Paragraphe 1.\n\nParagraphe 2." }],
+      });
+      assert("rendu natal sections", natalSections.length === 2);
+      assert("rendu natal paragraphes", natalSections[1].paragraphs.length === 2);
+
+      const horoscopeSections = api.normalizeReadingSections({
+        summary: { title: "Jour", text: "Resume." },
+        slots: [{ title: "Matin", text: "Texte.", advice: "Conseil." }],
+      });
+      assert("rendu horoscope sections", horoscopeSections.length === 2);
+
+      const safetySections = api.normalizeReadingSections({
+        status: "safety_rejected",
+        error: { message: "Sujet non autorise." },
+        violations: ["violation_a"],
+      });
+      assert("rendu safety rejected", safetySections[0].title === "Generation rejetee");
+      assert("rendu safety rejected details", safetySections[0].paragraphs.length === 2);
+
+      const htmlError = api.parseResponseBody("<html>nope</html>", "text/html");
+      assert("parsing erreur non json", htmlError.error.code === "NON_JSON_RESPONSE");
+
+      const invalidJson = api.parseResponseBody("{bad", "application/json");
+      assert("parsing json invalide", invalidJson.error.code === "INVALID_JSON_RESPONSE");
+
+      assert("id client disponible", typeof api.newClientId() === "string" && api.newClientId().length > 8);
+
+      output.className = "pass";
+      output.textContent = logs.join("\n");
+    }
+
+    try {
+      run();
+    } catch (err) {
+      output.className = "fail";
+      output.textContent = `${logs.join("\n")}\nFAIL ${err.message}`;
+      throw err;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Astral - Test services reels</title>
+  <link rel="stylesheet" href="./service-test-ui.css">
+</head>
+<body>
+  <main class="app-shell">
+    <section class="topbar">
+      <div>
+        <h1>Test des services reels</h1>
+        <p>Interface locale de developpement pour lancer les services actifs et beta.</p>
+      </div>
+      <div class="status-strip" aria-live="polite">
+        <span id="llmStatus" class="status-dot">LLM</span>
+        <span id="calculatorStatus" class="status-dot">Calculateur</span>
+      </div>
+    </section>
+
+    <section class="input-panel" aria-label="Parametres de test">
+      <div class="field">
+        <label for="birthDate">Date de naissance</label>
+        <input id="birthDate" type="date" value="1990-06-15" required>
+      </div>
+      <div class="field">
+        <label for="birthTime">Heure de naissance</label>
+        <input id="birthTime" type="time" step="1" value="14:30:00">
+      </div>
+      <div class="field">
+        <label for="timezone">Fuseau horaire</label>
+        <input id="timezone" type="text" value="Europe/Paris" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="city">Ville</label>
+        <input id="city" type="text" value="Paris" autocomplete="address-level2">
+      </div>
+      <div class="field">
+        <label for="country">Pays</label>
+        <input id="country" type="text" value="France" autocomplete="country-name">
+      </div>
+      <div class="field">
+        <label for="targetDate">Date horoscope</label>
+        <input id="targetDate" type="date">
+      </div>
+      <div class="field">
+        <label for="language">Langue</label>
+        <input id="language" type="text" value="fr" maxlength="8">
+      </div>
+      <div class="field">
+        <label for="audience">Audience</label>
+        <select id="audience">
+          <option value="beginner">beginner</option>
+          <option value="intermediate">intermediate</option>
+          <option value="expert">expert</option>
+        </select>
+      </div>
+      <div class="field api-key-field">
+        <label for="llmApiKey">X-API-Key LLM</label>
+        <input id="llmApiKey" type="password" autocomplete="off" placeholder="optionnel">
+      </div>
+      <div class="field api-key-field">
+        <label for="calculatorApiKey">X-API-Key calculateur</label>
+        <input id="calculatorApiKey" type="password" autocomplete="off" placeholder="fallback LLM">
+      </div>
+      <div class="actions">
+        <button id="resolveLocation" type="button">Resoudre le lieu</button>
+        <button id="reloadServices" type="button" class="secondary">Recharger services</button>
+      </div>
+      <div id="locationResult" class="location-result" aria-live="polite"></div>
+    </section>
+
+    <section class="service-board">
+      <div class="board-heading">
+        <h2>Services disponibles</h2>
+        <p id="serviceCount">Chargement...</p>
+      </div>
+      <div id="serviceGrid" class="service-grid"></div>
+    </section>
+  </main>
+
+  <template id="serviceCardTemplate">
+    <article class="service-card">
+      <header class="service-card-header">
+        <div>
+          <h3></h3>
+          <p class="service-description"></p>
+        </div>
+        <span class="availability"></span>
+      </header>
+      <div class="service-meta"></div>
+      <div class="service-actions">
+        <button type="button" class="run-service">Generer en reel</button>
+      </div>
+      <div class="result-region" hidden>
+        <div class="result-toolbar">
+          <button type="button" class="tab active" data-tab="reading">Lecture</button>
+          <button type="button" class="tab" data-tab="json">JSON brut</button>
+          <button type="button" class="copy-json">Copier JSON</button>
+          <button type="button" class="toggle-tech">Details</button>
+        </div>
+        <div class="tech-details" hidden></div>
+        <div class="reading-view"></div>
+        <pre class="json-view" hidden></pre>
+      </div>
+    </article>
+  </template>
+
+  <script src="./service-test-ui.js"></script>
+</body>
+</html>

@@ -263,8 +263,23 @@
       "supports_async": true,
       "supports_sync_legacy": false,
       "supports_mercure": false,
-      "availability": "planned",
-      "example_request_json": null,
+      "availability": "beta",
+      "example_request_json": {
+        "service_code": "natal_premium",
+        "payload": {
+          "request_contract_version": "astro_engine_request_v1",
+          "calculation": { "type": "natal" },
+          "birth": {
+            "date": "1990-06-15",
+            "time": "14:30:00",
+            "timezone": "Europe/Paris",
+            "location": { "latitude": 48.8566, "longitude": 2.3522 }
+          },
+          "projection": { "level": "rich" }
+        },
+        "user_language": "fr",
+        "audience_level": "beginner"
+      },
       "sort_order": 120
     },
     {
