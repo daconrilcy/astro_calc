@@ -6030,6 +6030,7 @@ async fn daily_writer_response(
     response["quality"]["model"] = json!(routed.response.model_used);
     response["quality"]["fallback_used"] = json!(routed.fallback_used);
     repair_daily_response_shape(request, &mut response);
+    repair_premium_daily_editorial_repetition(&mut response);
     Ok(reprocess_horoscope_daily_payload(response))
 }
 
@@ -6151,7 +6152,7 @@ fn daily_writer_messages(request: &Value) -> Result<Vec<PromptMessage>, Generati
     let slot_instruction = if service_code == HOROSCOPE_FREE_DAILY_SERVICE_CODE {
         "Produis un horoscope quotidien Free sans slots publics, avec summary, advice, watch_point et evidence_keys uniquement. Le texte public doit citer une référence astrologique issue des preuves, par exemple la Lune, Mars, Vénus, Mercure, un transit, un aspect ou une maison."
     } else if service_code == HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE {
-        "Produis un horoscope quotidien Premium avec timeline, best_slots, watch_slots, domain_sections et advice."
+        "Produis un horoscope quotidien Premium avec timeline, best_slots, watch_slots, domain_sections et advice. Les 12 entrées timeline doivent avoir des titres et angles rédactionnels distincts. Les reason de best_slots et watch_slots doivent être spécifiques au créneau, jamais copiées-collées entre deux créneaux. Dans domain_sections, garde le champ technique domain tel quel, mais n'écris jamais ce code anglais dans title ou text. Évite les formulations mécaniques répétées comme clarifier, concret, tension, ralentir les réponses ou lire par séquences plus de deux fois dans l'ensemble de la lecture."
     } else {
         "Produis exactement trois slots publics correspondant aux labels Matin, Après-midi et Soir. Chaque slot.text doit citer une référence astrologique publique issue de ses preuves, par exemple la Lune, Mars, Vénus, Mercure, un transit, un aspect ou une maison."
     };
@@ -6216,6 +6217,91 @@ fn repair_daily_response_shape(request: &Value, response: &mut Value) {
     }
     repair_daily_free_astro_reference(request, response);
     repair_daily_basic_astro_references(request, response);
+}
+
+fn repair_premium_daily_editorial_repetition(response: &mut Value) {
+    if response.get("service_code").and_then(Value::as_str)
+        != Some(HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE)
+    {
+        return;
+    }
+    let timeline_text_by_label = response
+        .get("timeline")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|slot| {
+            let label = slot.get("slot_label")?.as_str()?.to_string();
+            let candidates = ["text", "advice", "fallback_reason"]
+                .into_iter()
+                .filter_map(|key| slot.get(key).and_then(Value::as_str))
+                .filter_map(first_public_sentence)
+                .collect::<Vec<_>>();
+            Some((label, candidates))
+        })
+        .collect::<HashMap<_, _>>();
+
+    repair_premium_slot_summary_reasons(response, "best_slots", &timeline_text_by_label);
+    repair_premium_slot_summary_reasons(response, "watch_slots", &timeline_text_by_label);
+}
+
+fn repair_premium_slot_summary_reasons(
+    response: &mut Value,
+    field: &str,
+    timeline_text_by_label: &HashMap<String, Vec<String>>,
+) {
+    let Some(slots) = response.get_mut(field).and_then(Value::as_array_mut) else {
+        return;
+    };
+    let mut used = HashSet::new();
+    for slot in slots {
+        let reason = slot
+            .get("reason")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_string();
+        let normalized = normalize_editorial_sentence(&reason);
+        if normalized.is_empty() || used.insert(normalized) {
+            continue;
+        }
+        let Some(label) = slot.get("slot_label").and_then(Value::as_str) else {
+            continue;
+        };
+        let Some(replacement) = timeline_text_by_label.get(label).and_then(|candidates| {
+            candidates
+                .iter()
+                .find(|candidate| used.insert(normalize_editorial_sentence(candidate)))
+        }) else {
+            continue;
+        };
+        slot["reason"] = json!(replacement);
+    }
+}
+
+fn first_public_sentence(text: &str) -> Option<String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    let end = trimmed
+        .char_indices()
+        .find_map(|(idx, ch)| matches!(ch, '.' | '!' | '?').then_some(idx + ch.len_utf8()))
+        .unwrap_or(trimmed.len());
+    let sentence = trimmed[..end].trim();
+    if sentence.split_whitespace().count() < 5 {
+        None
+    } else {
+        Some(sentence.to_string())
+    }
+}
+
+fn normalize_editorial_sentence(value: &str) -> String {
+    value
+        .trim()
+        .to_lowercase()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn repair_daily_free_astro_reference(request: &Value, response: &mut Value) {
@@ -6338,15 +6424,23 @@ fn premium_slot_summary(slot: &Value, watch: bool) -> Value {
     json!({
         "slot_label": label,
         "title": if watch { "Créneau de vigilance" } else { "Créneau favorable" },
-        "reason": if watch {
-            "La tension du signal principal invite à ralentir les réponses."
-        } else {
-            "La tonalité du signal principal favorise une action simple et utile."
-        },
+        "reason": premium_slot_summary_reason(slot, watch),
         "best_for": slot.get("best_for").cloned().unwrap_or_else(|| json!([])),
         "avoid": if watch { json!(["réponse impulsive"]) } else { json!([]) },
         "evidence_keys": evidence_keys
     })
+}
+
+fn premium_slot_summary_reason(slot: &Value, watch: bool) -> String {
+    let label = slot
+        .get("slot_label")
+        .and_then(Value::as_str)
+        .unwrap_or("ce créneau");
+    if watch {
+        format!("{label} demande de filtrer les réactions et de garder une réponse proportionnée.")
+    } else {
+        format!("{label} soutient une action simple, utile et facile à vérifier.")
+    }
 }
 
 fn build_domain_sections(request: &Value) -> Vec<Value> {
@@ -6912,6 +7006,8 @@ fn validate_premium_response_evidence(
     }
     validate_premium_slot_summaries(best, &request_by_label, "best_slots")?;
     validate_premium_slot_summaries(watch, &request_by_label, "watch_slots")?;
+    validate_premium_slot_summary_reason_diversity(best, "best_slots")?;
+    validate_premium_slot_summary_reason_diversity(watch, "watch_slots")?;
     let best_labels = best
         .iter()
         .filter_map(|slot| slot.get("slot_label").and_then(|v| v.as_str()))
@@ -6990,6 +7086,25 @@ fn validate_premium_slot_summaries(
         }
         validate_slot_evidence_alignment(request_slot, keys)?;
         validate_premium_summary_public_text(slot)?;
+    }
+    Ok(())
+}
+
+fn validate_premium_slot_summary_reason_diversity(
+    slots: &[Value],
+    field: &str,
+) -> Result<(), GenerationError> {
+    let mut seen = HashSet::new();
+    for slot in slots {
+        let reason = slot.get("reason").and_then(Value::as_str).unwrap_or("");
+        let normalized = normalize_editorial_sentence(reason);
+        if normalized.is_empty() || seen.insert(normalized) {
+            continue;
+        }
+        return Err(quality_error(
+            "HOROSCOPE_PREMIUM_REPETITIVE_SLOT_REASON",
+            json!({ "field": field, "reason": reason }),
+        ));
     }
     Ok(())
 }

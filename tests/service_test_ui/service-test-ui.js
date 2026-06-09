@@ -592,8 +592,10 @@
     list.forEach((item) => {
       if (!item || typeof item !== "object") return;
       const title = item.title || item.day_label || item.slot_label || item.date || item.domain || fallbackTitle;
+      const meta = [item.slot_label, item.day_label, item.date]
+        .filter((value) => value && value !== title);
       const paragraphs = paragraphKeys.flatMap((key) => splitParagraphs(item[key])).filter(Boolean);
-      sections.push({ title, paragraphs });
+      sections.push({ title, meta, paragraphs });
     });
   }
 
@@ -603,7 +605,10 @@
   }
 
   function renderSection(section) {
-    return `<section class="reading-block"><h4>${escapeHtml(section.title)}</h4>${section.paragraphs.map((p) => `<p>${escapeHtml(p)}</p>`).join("")}</section>`;
+    const meta = Array.isArray(section.meta) && section.meta.length
+      ? `<div class="reading-meta">${section.meta.map(escapeHtml).join(" · ")}</div>`
+      : "";
+    return `<section class="reading-block"><h4>${escapeHtml(section.title)}</h4>${meta}${section.paragraphs.map((p) => `<p>${escapeHtml(p)}</p>`).join("")}</section>`;
   }
 
   function errorMessage(jobStatus) {

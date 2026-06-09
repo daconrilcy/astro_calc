@@ -1,5 +1,39 @@
 # E2E real stabilization - 2026-06-08
 
+# Premium daily horoscope editorial hardening - 2026-06-09
+
+## Scope
+
+Improved the real LLM output quality for `horoscope_premium_daily_local_2h_slots` and cleaned the local readable rendering.
+
+## Behavior
+
+- Strengthened the Premium daily writer prompt against repeated slot reasons, repeated mechanical phrasing, and public leakage of domain codes in titles or texts.
+- Added post-generation repair for duplicated `best_slots` / `watch_slots` reasons by reusing the matching timeline sentence when available.
+- Added validation that rejects repeated slot summary reasons if repair cannot make them distinct.
+- The service test UI no longer renders the structural `domain` code as reader-facing metadata.
+
+## Tests
+
+- Added regression coverage in `tests/horoscope_v1_tests.rs`.
+- Extended `tests/service_test_ui/service-test-ui.test.html`.
+
+# Service test UI horoscope slot labels - 2026-06-09
+
+## Scope
+
+Fixed the local service test UI rendering for horoscope payload arrays that carry both a human title and a public `slot_label`.
+
+## Behavior
+
+- `slot_label`, `day_label`, `date`, and `domain` are now preserved as visible metadata when they are not already used as the section title.
+- Premium daily horoscope `best_slots`, `watch_slots`, and `timeline` entries now show their 2-hour labels in the readable tab.
+- The JSON contract and engine output are unchanged.
+
+## Tests
+
+Added focused coverage in `tests/service_test_ui/service-test-ui.test.html`.
+
 # LLM text rendering dash normalization - 2026-06-09
 
 ## Scope

@@ -89,6 +89,19 @@
       });
       assert("rendu horoscope sections", horoscopeSections.length === 2);
 
+      const premiumDailySections = api.normalizeReadingSections({
+        timeline: [{ title: "Créneau favorable", slot_label: "00:00–02:00", text: "Texte." }],
+        best_slots: [{ title: "Créneau favorable", slot_label: "02:00–04:00", reason: "Raison." }],
+      });
+      const premiumDailyLabels = premiumDailySections.flatMap((section) => section.meta || []);
+      assert("rendu premium conserve label timeline", premiumDailyLabels.includes("00:00–02:00"));
+      assert("rendu premium conserve label best slot", premiumDailyLabels.includes("02:00–04:00"));
+
+      const domainSections = api.normalizeReadingSections({
+        domain_sections: [{ domain: "work", title: "Travail et organisation", text: "Texte." }],
+      });
+      assert("rendu domaine masque code technique", !(domainSections[0].meta || []).includes("work"));
+
       const safetySections = api.normalizeReadingSections({
         status: "safety_rejected",
         error: { message: "Sujet non autorise." },

@@ -3728,6 +3728,23 @@ fn horoscope_premium_rejects_best_slot_with_another_slot_evidence() {
 }
 
 #[test]
+fn horoscope_premium_rejects_repeated_watch_slot_reasons() {
+    let request = premium_interpretation_request();
+    let mut response = premium_response_from_request(&request);
+    response["watch_slots"] = request["watch_slots"].clone();
+    for slot in response["watch_slots"].as_array_mut().unwrap() {
+        slot["reason"] =
+            serde_json::json!("La tension du signal principal invite à ralentir les réponses.");
+    }
+
+    let err = validate_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PREMIUM_REPETITIVE_SLOT_REASON"
+    );
+}
+
+#[test]
 fn horoscope_premium_rejects_public_slot_codes() {
     let request = premium_interpretation_request();
     let mut response = premium_response_from_request(&request);
