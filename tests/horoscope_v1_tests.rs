@@ -2764,12 +2764,91 @@ fn horoscope_premium_next_7_days_response_has_strategy() {
 }
 
 #[test]
+fn horoscope_premium_next_7_days_markers_explain_their_role() {
+    let request = premium_period_interpretation_request();
+    let marker_text = ["key_days", "best_days", "watch_days"]
+        .into_iter()
+        .flat_map(|field| request[field].as_array().into_iter().flatten())
+        .filter_map(|marker| marker["reason"].as_str())
+        .collect::<Vec<_>>()
+        .join("\n")
+        .to_lowercase();
+
+    assert!(!marker_text.contains("sert de repère utile pour comprendre une priorité concrète"));
+    assert!(
+        marker_text.contains("timeline quotidienne")
+            || marker_text.contains("point de passage")
+            || marker_text.contains("ralentir la réponse")
+    );
+}
+
+#[test]
 fn horoscope_premium_next_7_days_response_has_3_to_5_domain_sections() {
     let request = premium_period_interpretation_request();
     let response = premium_period_response_from_request(&request);
     validate_period_response_evidence(&request, &response).unwrap();
     let count = response["domain_sections"].as_array().unwrap().len();
     assert!((3..=5).contains(&count));
+}
+
+#[test]
+fn horoscope_premium_next_7_days_repair_restores_domain_evidence_when_model_renames_domains() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    for (index, section) in response["domain_sections"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .enumerate()
+    {
+        section["domain"] = serde_json::json!(format!("Domaine éditorial {}", index + 1));
+        section["evidence_keys"] = serde_json::json!([]);
+    }
+
+    repair_period_response_shape(&request, &mut response);
+    validate_period_response_evidence(&request, &response).unwrap();
+
+    for section in response["domain_sections"].as_array().unwrap() {
+        assert!(!section["evidence_keys"].as_array().unwrap().is_empty());
+    }
+}
+
+#[test]
+fn horoscope_premium_next_7_days_repair_personalizes_generic_domain_sections() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    for section in response["domain_sections"].as_array_mut().unwrap() {
+        section["text"] = serde_json::json!(
+            "Ce domaine donne une manière d'utiliser la semaine sans disperser l'énergie."
+        );
+    }
+
+    repair_period_response_shape(&request, &mut response);
+    validate_period_response_evidence(&request, &response).unwrap();
+
+    for section in response["domain_sections"].as_array().unwrap() {
+        assert!(section["text"]
+            .as_str()
+            .unwrap()
+            .contains("repères personnels"));
+    }
+
+    let mut fallback_response = premium_period_response_from_request(&request);
+    fallback_response["domain_sections"] = request["domain_sections"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|section| {
+            serde_json::json!({
+                "domain": section["domain"],
+                "title": section["title"],
+                "text": "Texte fournisseur générique.",
+                "evidence_keys": section["evidence_keys"]
+            })
+        })
+        .collect::<serde_json::Value>();
+    repair_period_response_shape(&request, &mut fallback_response);
+    validate_period_response_evidence(&request, &fallback_response).unwrap();
 }
 
 #[test]
@@ -2954,6 +3033,19 @@ fn horoscope_premium_next_7_days_rejects_technical_codes() {
         serde_json::json!("Cette stratégie expose snapshot et evidence_key.");
     let err = validate_period_response_evidence(&request, &response).unwrap_err();
     assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_TECHNICAL_CODE_LEAK");
+}
+
+#[test]
+fn horoscope_premium_next_7_days_rejects_dates_in_advice_strategy() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    response["advice"]["main"] =
+        serde_json::json!("Le 10/06, avancez vite, puis le 12/06 ralentissez.");
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_PREMIUM_ADVICE_RECALENDARIZED"
+    );
 }
 
 #[test]

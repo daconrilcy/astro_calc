@@ -18,10 +18,21 @@ pub fn unified_result_envelope(
 
 pub fn job_error_from_reading(reading: &GenerateReadingResponse) -> serde_json::Value {
     match reading {
-        GenerateReadingResponse::Failed(f) => json!({
-            "code": f.error.code.as_str(),
-            "message": f.error.message,
-        }),
+        GenerateReadingResponse::Failed(f) => {
+            let mut error = json!({
+                "code": f.error.code.as_str(),
+                "message": f.error.message,
+            });
+            if let Some(details) = f
+                .error
+                .details
+                .as_ref()
+                .filter(|details| !details.is_null())
+            {
+                error["details"] = details.clone();
+            }
+            error
+        }
         GenerateReadingResponse::SafetyRejected(r) => json!({
             "code": "SAFETY_REJECTED",
             "message": r.error.message,

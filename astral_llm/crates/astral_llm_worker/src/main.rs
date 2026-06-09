@@ -306,6 +306,7 @@ async fn main() {
                     run_id = %job.run_id,
                     service = %job.service_code,
                     error = %detail.message,
+                    details = ?detail.details,
                     "job orchestration failed"
                 );
             }

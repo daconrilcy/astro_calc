@@ -1,3 +1,21 @@
+# Premium 7-day horoscope readability - 2026-06-09
+
+## Scope
+
+Improved the editorial structure of `horoscope_premium_next_7_days_natal`.
+
+## Behavior
+
+- Premium day markers now explain their role as structural, supportive, or vigilance markers instead of repeating a generic “repere utile” sentence.
+- The Premium period prompt now enforces a clearer reading flow: overview, short period markers, daily timeline, domains, hourly windows, then strategy.
+- Premium advice and strategy are synthesis sections only; they must not introduce new explicit dates after the timeline and windows have already listed the dated details.
+- Domain section post-processing restores canonical evidence by domain, title, or original section order when the model renames a domain or returns empty evidence arrays.
+- Overview and domain post-processing now add an explicit `repères personnels` anchor when the provider returns text that is astrologically plausible but too implicit for the natal personalization guard.
+
+## Tests
+
+- Added regression coverage in `tests/horoscope_v1_tests.rs`.
+
 # E2E real stabilization - 2026-06-08
 
 # Premium daily horoscope editorial hardening - 2026-06-09
