@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::sync::OnceLock;
 
-use crate::french_typography::french_elision_violations;
+use crate::french_typography::{french_elision_violations, french_glued_compound_violations};
 use crate::text_reprocessing_service_adapter::{
     reprocess_horoscope_daily, reprocess_horoscope_period,
 };
@@ -17,6 +17,7 @@ use astral_llm_providers::{
 use chrono::{Datelike, Duration, NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
 use chrono_tz::Tz;
 use jsonschema::JSONSchema;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::time::Duration as StdDuration;
@@ -249,6 +250,8 @@ impl HoroscopePeriodNatalOrchestrator {
         enforce_period_overview_personalization(&mut response);
         enforce_period_domain_personalization(&interpretation, &mut response);
         enforce_premium_period_advice_synthesis(&interpretation, &mut response);
+        restore_period_response_evidence_from_request(&interpretation, &mut response);
+        normalize_period_public_strings(&mut response);
         validate_period_response_schema(&response)?;
         validate_period_response_evidence(&interpretation, &response)?;
 
@@ -1205,9 +1208,22 @@ fn period_editorial_reader_situation(
     let template = period_editorial_rule_field(
         rule,
         "reader_situation",
-        "Une priorité liée à {theme_label} doit rester simple, visible et limitée.",
+        "Ce repère doit rester simple, visible et limité.",
     );
-    period_editorial_template(template, theme_label, action_mode)
+    naturalize_period_reader_situation(&period_editorial_template(
+        template,
+        theme_label,
+        action_mode,
+    ))
+}
+
+fn naturalize_period_reader_situation(text: &str) -> String {
+    let lower = text.to_lowercase();
+    if lower.starts_with("une priorité liée à ") {
+        "Ce repère doit rester simple, visible et limité.".to_string()
+    } else {
+        text.to_string()
+    }
 }
 
 fn period_editorial_contrast(previous_theme: Option<&str>, theme: &str, index: usize) -> String {
@@ -1915,12 +1931,12 @@ fn period_watch_window_title(theme: &str, start_label: &str) -> &'static str {
 
 fn period_best_window_reason(theme: &str) -> &'static str {
     match theme {
-        "relationship" => "Ce créneau se prête à un échange plus simple et mieux ajusté.",
-        "energy" => "Ce créneau aide à transformer l'élan en action courte.",
-        "communication" => "Ce créneau favorise une formulation plus nette.",
-        "clarity" => "Ce créneau aide à trier et décider sans disperser l'attention.",
-        "integration" => "Ce créneau aide à consolider ce qui a déjà été compris.",
-        _ => "Ce créneau peut servir à poser une action simple et vérifiable.",
+        "relationship" => "À utiliser pour nommer un besoin, confirmer une attente ou réparer un malentendu simple.",
+        "energy" => "À réserver à une action courte : lancer, terminer ou limiter un effort avant dispersion.",
+        "communication" => "À utiliser pour préparer une phrase claire, envoyer un message ciblé ou cadrer une réponse.",
+        "clarity" => "À privilégier pour choisir entre deux options, clarifier une preuve ou mettre une priorité au net.",
+        "integration" => "À garder pour consolider un engagement, vérifier sa tenue ou réduire ce qui surcharge.",
+        _ => "À utiliser pour confirmer une ressource, fermer une tâche pratique ou poser une preuve simple.",
     }
 }
 
@@ -2155,24 +2171,58 @@ fn period_marker_reason(role: PeriodMarkerRole, event: &Value, occurrence_index:
     let situation = period_editorial_reader_situation(&arc_rule, theme, action);
     match role {
         PeriodMarkerRole::Key => format!(
-            "{} sert de repère pour {}. {} Appui concret : {}.",
+            "{} sert de repère pour {}. {} {}",
             public_day_label(date),
             action,
             situation,
-            focus
+            period_marker_focus_sentence(&focus)
         ),
         PeriodMarkerRole::Best => format!(
-            "{} se prête mieux à une action simple autour de {} : {} aide à choisir le bon message, confirmer un rendez-vous ou terminer une tâche sans tout rouvrir.",
+            "{} est le meilleur moment pour {}. {}",
             public_day_label(date),
-            focus,
-            period_theme_public_label(theme)
+            period_best_marker_public_use(theme),
+            period_marker_focus_sentence(&focus)
         ),
         PeriodMarkerRole::Watch => format!(
-            "{} demande une vigilance précise autour de {}. {}",
+            "{} demande de ralentir. {} {}",
             public_day_label(date),
-            focus,
-            situation
+            situation,
+            period_marker_focus_sentence(&focus)
         ),
+    }
+}
+
+fn period_best_marker_public_use(theme: &str) -> &'static str {
+    match theme {
+        "relationship" => "apaiser un lien, nommer un besoin personnel ou confirmer une attente simple",
+        "energy" => "transformer l'élan en action courte sans brusquer le rythme",
+        "communication" => "envoyer un message net, demander une précision ou cadrer un échange",
+        "clarity" => "mettre au net ce qui compte et choisir une suite vérifiable",
+        "integration" => "consolider un engagement, une limite ou une décision déjà amorcée",
+        _ => "sécuriser ce qui soutient la semaine : ressource, rendez-vous, preuve ou tâche pratique",
+    }
+}
+
+fn period_marker_focus_sentence(focus: &str) -> String {
+    let parts = period_focus_parts(focus, 2);
+    match parts.as_slice() {
+        [] => "Gardez le cadre vérifiable avant d'élargir.".to_string(),
+        [one] => format!("Traitez d'abord ce point : {one}."),
+        [one, two, ..] => {
+            format!("Avant de promettre davantage, traitez deux points : {one} et {two}.")
+        }
+    }
+}
+
+fn naturalize_period_focus(focus: &str) -> String {
+    let parts = period_focus_parts(focus, 3);
+    match parts.as_slice() {
+        [one] => format!("Le geste utile consiste à {one}."),
+        [one, two] => format!("Le geste utile consiste à {one}, puis à {two}."),
+        [one, two, three, ..] => {
+            format!("Le geste utile consiste à {one}, à {two} ou à {three}.")
+        }
+        _ => "Choisissez un geste simple et vérifiable.".to_string(),
     }
 }
 
@@ -2324,6 +2374,8 @@ async fn period_writer_response(
     response = postprocess_period_provider_response(request, response);
     enforce_period_domain_personalization(request, &mut response);
     enforce_premium_period_advice_synthesis(request, &mut response);
+    restore_period_response_evidence_from_request(request, &mut response);
+    normalize_period_public_strings(&mut response);
     validate_period_provider_public_payload(&response)?;
     Ok(response)
 }
@@ -2541,14 +2593,14 @@ fn period_writer_messages(request: &Value) -> Result<Vec<PromptMessage>, Generat
             PromptMessage {
                 role: PromptRole::System,
                 content: format!(
-                    "Tu écris une lecture Premium d'horoscope de période en français et tu retournes uniquement un objet JSON conforme au schéma fourni. Ton rôle n'est pas d'expliquer une grille astrologique, mais de transformer les appuis fournis dans la requête en lecture humaine, fluide et utile. La personne doit comprendre comment traverser la période: quoi privilégier, quoi ralentir, où poser une limite, où agir, où attendre, où simplifier. N'invente aucune preuve. Chaque evidence_key publique et chaque source_snapshot_key doit provenir de la requête. N'affiche jamais les codes internes, les clés de preuve, les noms techniques de transits, les theme_code anglais, les codes tone anglais, ni les consignes internes. Écris dans un français naturel, précis et incarné. Évite le ton administratif, le coaching générique, les formulations abstraites et les phrases qui semblent décrire le fonctionnement du moteur. Les catégories techniques doivent être traduites en situations humaines. Chaque journée doit avoir une fonction éditoriale propre dans la semaine. Si plusieurs journées reposent sur un même fond astrologique, elles doivent être distinguées par leur usage concret: décider, différer, cadrer, alléger, pacifier, confirmer, terminer, reprendre du recul, ou préparer une suite. Les repères de période servent à orienter rapidement la lecture; ils ne doivent pas remplacer le détail quotidien. Les explications principales doivent être portées naturellement par les entrées daily_timeline. La lecture publique doit rester dense, claire et pilotable. Elle doit donner une impression Premium par la hiérarchie, la précision des usages, la différenciation des journées, la qualité des fenêtres horaires et la synthèse stratégique. La lecture publique doit compter entre {} et {} mots, sans dépasser {} mots.",
+                    "Tu écris une lecture Premium d'horoscope de période en français et tu retournes uniquement un objet JSON conforme au schéma fourni. Ton rôle n'est pas d'expliquer une grille astrologique, mais de transformer les appuis fournis dans la requête en lecture humaine, fluide et utile. La personne doit comprendre comment traverser la période: quoi privilégier, quoi ralentir, où poser une limite, où agir, où attendre, où simplifier. N'invente aucune preuve. Chaque evidence_key publique et chaque source_snapshot_key doit provenir de la requête. N'affiche jamais les codes internes, les clés de preuve, les noms techniques de transits, les theme_code anglais, les codes tone anglais, ni les consignes internes. Écris dans un français naturel, précis et incarné. Évite le ton administratif, le coaching générique, les formulations abstraites et les phrases qui semblent décrire le fonctionnement du moteur. Respecte la typographie française: écris rendez-vous, phrase-clé, jours clés, utilisez-les, revenez-y, bouclez-la, laissez-le, faites-le, terminez-la, diminuez-le, déléguez-la, transformez-le, accordez-vous, autorisez-vous, arrêtez-vous; ne colle jamais un impératif avec le, la, les, vous ou y. Ne commence jamais une parenthèse d'exemple si elle n'est pas fermée dans la même phrase. Les catégories techniques doivent être traduites en situations humaines. Chaque journée doit avoir une fonction éditoriale propre dans la semaine. Si plusieurs journées reposent sur un même fond astrologique, elles doivent être distinguées par leur usage concret: décider, différer, cadrer, alléger, pacifier, confirmer, terminer, reprendre du recul, ou préparer une suite. Les repères de période servent à orienter rapidement la lecture; ils ne doivent pas remplacer le détail quotidien. Les explications principales doivent être portées naturellement par les entrées daily_timeline. La lecture publique doit rester dense, claire et pilotable. Elle doit donner une impression Premium par la hiérarchie, la précision des usages, la différenciation des journées, la qualité des fenêtres horaires et la synthèse stratégique. La lecture publique doit compter entre {} et {} mots, sans dépasser {} mots.",
                     limits.target_min, limits.target_max, limits.hard_limit
                 ),
             },
             PromptMessage {
                 role: PromptRole::User,
                 content: format!(
-                    "Construis horoscope_period_response_v1 Premium pour la requête JSON fournie. La valeur Premium doit venir de quatre éléments: 1. une vue d'ensemble qui donne le mouvement réel de la période; 2. des journées clairement différenciées, chacune avec son rôle propre; 3. des fenêtres horaires utilisables, non génériques; 4. une stratégie finale qui aide la personne à piloter la semaine sans répéter le calendrier. Avant de rédiger, déduis silencieusement l'angle éditorial de la semaine: ce qui monte en intensité; ce qui devient plus simple; ce qui demande de la prudence; ce qui peut être décidé, reporté, allégé ou confirmé; la différence entre les journées qui semblent proches. Utilise editorial_brief quand il est présent: il donne le rôle humain, la fonction narrative, la situation lecteur, le mode d'action et l'angle à ne pas répéter pour chaque date. editorial_brief est une aide interne de différenciation: ne recopie jamais directement public_role, narrative_function, reader_situation ou avoid_angle_reuse. Transforme-les en scène humaine naturelle. Les titres publics doivent rester courts, lisibles et non méta. Interdit dans la sortie: nouvelle facette, répéter le même conseil, fonction narrative, changer l'usage. Pour chaque daily_timeline, garde le thème principal du daily_plan, mais transforme-le en situation humaine. Le texte principal et le conseil doivent rester alignés avec ce thème principal; si tu utilises un signal secondaire du même jour, garde-le en nuance courte et ne déplace pas l'axe de la journée. Explique ce que la personne peut faire de cette journée, ce qu'elle doit éviter d'alourdir, et ce qui la distingue des autres dates de la période. Mentionne les éléments secondaires uniquement s'ils apportent une nuance réelle. key_days, best_days et watch_days doivent rester des repères courts. Ils ne doivent pas contenir de mini-lecture autonome. Quand une date est importante, favorable ou sensible, l'explication complète doit apparaître dans l'entrée daily_timeline correspondante. best_windows et watch_windows sont des plages horaires. Pour chaque fenêtre, indique un usage concret lié à la période: envoyer, confirmer, écouter, cadrer, différer, se retirer, reprendre, terminer, ou vérifier. Ne produis jamais une phrase de remplissage interchangeable. domain_sections doit contenir 3 à 5 domaines réellement distincts. Chaque domaine doit apporter un angle que les journées ne répètent pas déjà. Si deux domaines se recoupent, fusionne-les ou choisis le plus utile pour la personne. advice et strategy doivent synthétiser une méthode d'usage. Ils ne doivent pas refaire la liste des dates. Ils doivent expliquer comment utiliser les fenêtres favorables, comment traverser les moments sensibles, et comment garder une marge de manœuvre. Utilise les libellés français présents dans la requête. N'affiche aucun code interne. Respecte les preuves fournies. Développe les sections publiques afin d'atteindre {} à {} mots publics. Retourne uniquement le JSON conforme au schéma. Requête JSON:\n{compact}",
+                    "Construis horoscope_period_response_v1 Premium pour la requête JSON fournie. La valeur Premium doit venir de quatre éléments: 1. une vue d'ensemble qui donne le mouvement réel de la période; 2. des journées clairement différenciées, chacune avec son rôle propre; 3. des fenêtres horaires utilisables, non génériques; 4. une stratégie finale qui aide la personne à piloter la semaine sans répéter le calendrier. Avant de rédiger, déduis silencieusement l'angle éditorial de la semaine: ce qui monte en intensité; ce qui devient plus simple; ce qui demande de la prudence; ce qui peut être décidé, reporté, allégé ou confirmé; la différence entre les journées qui semblent proches. Utilise editorial_brief quand il est présent: il donne le rôle humain, la fonction narrative, la situation lecteur, le mode d'action et l'angle à ne pas répéter pour chaque date. editorial_brief est une aide interne de différenciation: ne recopie jamais directement public_role, narrative_function, reader_situation ou avoid_angle_reuse. Transforme-les en scène humaine naturelle. Les titres publics doivent rester courts, lisibles et non méta. Interdit dans la sortie: nouvelle facette, répéter le même conseil, fonction narrative, changer l'usage, priorité liée à. Pour chaque daily_timeline, garde le thème principal du daily_plan, mais transforme-le en situation humaine. Le texte principal et le conseil doivent rester alignés avec ce thème principal; si tu utilises un signal secondaire du même jour, garde-le en nuance courte et ne déplace pas l'axe de la journée. Termine toujours chaque phrase: aucune parenthèse ouverte, aucun exemple coupé, aucune fin sur par ex. Explique ce que la personne peut faire de cette journée, ce qu'elle doit éviter d'alourdir, et ce qui la distingue des autres dates de la période. Mentionne les éléments secondaires uniquement s'ils apportent une nuance réelle. key_days, best_days et watch_days doivent rester des repères courts, naturels et non mécaniques. Ne recopie jamais les situations associées sous forme de liste. Interdit dans ces raisons: autour de vérifier, autour de attendre, appuis concrets aide, Appui concret :, est un point d'appui pour, demande de ralentir sur, priorité liée à, ou une construction de type thème + aide à. Transforme la donnée en phrase courte et lisible: date, rôle, puis une seule action concrète. Exemple de style: Une discussion peut monter trop vite. Vérifiez délai, charge et cadre avant de promettre. Quand une date est importante, favorable ou sensible, l'explication complète doit apparaître dans l'entrée daily_timeline correspondante, pas être répétée dans key_days ou watch_days. best_windows et watch_windows sont des plages horaires. Pour chaque fenêtre, indique un usage concret lié à la période: confirmer une ressource, fermer une tâche, demander une preuve, envoyer un message ciblé, cadrer une réponse, différer une promesse, se retirer, reprendre ou terminer. Ne produis jamais une phrase de remplissage interchangeable comme Ce créneau peut servir..., Ce créneau se prête..., ou Ce créneau aide.... domain_sections doit contenir 3 à 5 domaines réellement distincts. Chaque domaine doit apporter un angle transverse que les journées ne répètent pas déjà. N'utilise pas de structure répétée comme Dans ce domaine..., Cette énergie devient utile..., les repères les plus utiles consistent..., ni Et à choisir le bon niveau d'engagement. Écris chaque domaine comme une mini-lecture naturelle: à quoi sert ce domaine dans la semaine, quelle nuance personnelle il éclaire, et quel geste évite de tout alourdir. Si deux domaines se recoupent, fusionne-les ou choisis le plus utile pour la personne. advice et strategy doivent synthétiser une méthode d'usage riche et pratique. Ils ne doivent pas refaire la liste des dates. Ils doivent expliquer comment utiliser les fenêtres favorables, comment traverser les moments sensibles, comment transformer une promesse vague en preuve concrète, et comment garder une marge de manœuvre. Utilise les libellés français présents dans la requête, mais remplace les taxonomies publiques lourdes par des mots naturels quand nécessaire: relationnel, lien personnel, besoin affectif, cadre, appui concret. N'affiche aucun code interne. Respecte les preuves fournies. Développe les sections publiques afin d'atteindre {} à {} mots publics. Retourne uniquement le JSON conforme au schéma. Requête JSON:\n{compact}",
                     limits.target_min, limits.target_max
                 ),
             },
@@ -2573,6 +2625,15 @@ fn period_writer_messages(request: &Value) -> Result<Vec<PromptMessage>, Generat
 }
 
 #[doc(hidden)]
+pub fn period_writer_prompt_text_for_test(request: &Value) -> Result<String, GenerationError> {
+    Ok(period_writer_messages(request)?
+        .into_iter()
+        .map(|message| message.content)
+        .collect::<Vec<_>>()
+        .join("\n\n"))
+}
+
+#[doc(hidden)]
 pub fn fake_period_writer_response(request: &Value) -> Result<Value, GenerationError> {
     if is_free_period_request(request) {
         return fake_free_period_writer_response(request);
@@ -2590,8 +2651,8 @@ pub fn fake_period_writer_response(request: &Value) -> Result<Value, GenerationE
             let text = ensure_period_personalization_text(
                 &period_public_day_text(day, index),
                 &format!(
-                    "Vos repères personnels aident ici à agir plus simplement autour de {}.",
-                    period_public_focus_text(day)
+                    "Vos repères personnels aident ici à choisir un geste plus simple. {}",
+                    naturalize_period_focus(&period_public_focus_text(day))
                 ),
             );
             json!({
@@ -2668,6 +2729,7 @@ pub fn fake_period_writer_response(request: &Value) -> Result<Value, GenerationE
         });
         response["quality"]["period_contract"] = json!("premium_next_7_days");
     }
+    repair_period_response_shape(request, &mut response);
     Ok(response)
 }
 
@@ -2788,7 +2850,11 @@ pub fn repair_period_response_shape(request: &Value, response: &mut Value) {
     normalize_period_week_overview_repetition(response);
     normalize_period_repetitive_public_phrases(response);
     dedupe_period_daily_timeline_texts(request, response);
+    repair_period_mechanical_public_blocks(request, response);
     enforce_period_domain_personalization(request, response);
+    enforce_premium_period_advice_synthesis(request, response);
+    restore_period_response_evidence_from_request(request, response);
+    normalize_period_public_strings(response);
 
     let provider = response["quality"]["provider"]
         .as_str()
@@ -2810,6 +2876,327 @@ pub fn repair_period_response_shape(request: &Value, response: &mut Value) {
         "fallback_used": fallback_used,
         "period_contract": "horoscope_period_response_v1"
     });
+}
+
+fn restore_period_response_evidence_from_request(request: &Value, response: &mut Value) {
+    if is_free_period_request(request) {
+        return;
+    }
+    let ordered_evidence = request["evidence"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|item| item["evidence_key"].as_str())
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    if ordered_evidence.is_empty() {
+        return;
+    }
+    let first_evidence_key = ordered_evidence
+        .first()
+        .map(|key| json!([key]))
+        .unwrap_or_else(|| json!([]));
+
+    restore_period_array_evidence_by_date(response, "daily_timeline", request, "daily_plans");
+    restore_period_array_evidence_by_date(response, "key_days", request, "key_days");
+    restore_period_array_evidence_by_date(response, "best_days", request, "best_days");
+    restore_period_array_evidence_by_date(response, "watch_days", request, "watch_days");
+    restore_period_domain_evidence(response, request);
+    response["evidence_summary"] =
+        sanitize_period_evidence_summary(response.get("evidence_summary"), request);
+
+    let watch_status = response["watch_summary"]["status"]
+        .as_str()
+        .unwrap_or("none");
+    if watch_status == "none" {
+        response["watch_summary"]["evidence_keys"] = json!([]);
+    } else {
+        let fallback_keys =
+            non_empty_string_array_value(request["watch_summary_plan"].get("evidence_keys"))
+                .or_else(|| first_non_empty_period_array_evidence(response.get("watch_days")));
+        if let Some(keys) = fallback_keys {
+            response["watch_summary"]["evidence_keys"] = keys;
+        }
+    }
+
+    if is_premium_period_request(request) {
+        restore_period_window_evidence(response, request, "best_windows");
+        restore_period_window_evidence(response, request, "watch_windows");
+        response["strategy"]["evidence_keys"] =
+            non_empty_string_array_value(request["strategy"].get("evidence_keys"))
+                .unwrap_or(first_evidence_key);
+    }
+}
+
+fn repair_period_mechanical_public_blocks(request: &Value, response: &mut Value) {
+    let plans_by_date = request["daily_plans"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|plan| Some((plan.get("date")?.as_str()?.to_string(), plan.clone())))
+        .collect::<HashMap<_, _>>();
+    if let Some(days) = response
+        .get_mut("daily_timeline")
+        .and_then(Value::as_array_mut)
+    {
+        for (index, day) in days.iter_mut().enumerate() {
+            let date = day.get("date").and_then(Value::as_str).unwrap_or("");
+            let plan = plans_by_date
+                .get(date)
+                .cloned()
+                .unwrap_or_else(|| day.clone());
+            if day
+                .get("text")
+                .and_then(Value::as_str)
+                .is_some_and(period_public_block_needs_rewrite)
+            {
+                day["text"] = json!(sanitize_period_public_string(&period_public_day_text(
+                    &plan, index
+                )));
+            }
+            if day
+                .get("advice")
+                .and_then(Value::as_str)
+                .is_some_and(period_public_block_needs_rewrite)
+            {
+                day["advice"] = json!(sanitize_period_public_string(&period_public_day_advice(
+                    &plan
+                )));
+            }
+        }
+    }
+
+    for field in ["key_days", "best_days", "watch_days"] {
+        let fallback_by_date = request[field]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|marker| Some((marker.get("date")?.as_str()?.to_string(), marker.clone())))
+            .collect::<HashMap<_, _>>();
+        let Some(markers) = response.get_mut(field).and_then(Value::as_array_mut) else {
+            continue;
+        };
+        for marker in markers {
+            let reason_needs_rewrite = marker
+                .get("reason")
+                .and_then(Value::as_str)
+                .is_some_and(period_public_block_needs_rewrite);
+            if !reason_needs_rewrite {
+                continue;
+            }
+            let date = marker.get("date").and_then(Value::as_str).unwrap_or("");
+            if let Some(fallback) = fallback_by_date
+                .get(date)
+                .and_then(|item| item.get("reason"))
+            {
+                marker["reason"] = json!(sanitize_period_public_string(
+                    fallback
+                        .as_str()
+                        .unwrap_or("Gardez ce repère comme point de contrôle.")
+                ));
+            }
+        }
+    }
+}
+
+fn period_public_block_needs_rewrite(text: &str) -> bool {
+    let lower = text.to_lowercase();
+    lower.contains(". ,")
+        || lower.contains("vérifiez vérifier")
+        || lower.contains("posez une priorité claire liée à")
+        || period_starts_with_raw_focus_list(&lower)
+}
+
+fn period_starts_with_raw_focus_list(lower: &str) -> bool {
+    [
+        "avec vérifier",
+        "avec réduire",
+        "avec nommer",
+        "avec tenir",
+        "avec préparer",
+        "avec choisir",
+        "avec accorder",
+        "avec terminer",
+        "avec alléger",
+        "avec refuser",
+        "avec confirmer",
+        "en partant de vérifier",
+        "en partant de réduire",
+        "en partant de nommer",
+        "en partant de tenir",
+        "en partant de préparer",
+        "en partant de choisir",
+        "en partant de accorder",
+        "en partant d'accorder",
+        "à travers vérifier",
+        "à travers réduire",
+        "à travers nommer",
+    ]
+    .iter()
+    .any(|fragment| lower.contains(fragment))
+}
+
+fn first_non_empty_period_array_evidence(value: Option<&Value>) -> Option<Value> {
+    value
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|item| non_empty_string_array_value(item.get("evidence_keys")))
+        .next()
+}
+
+fn restore_period_array_evidence_by_date(
+    response: &mut Value,
+    response_field: &str,
+    request: &Value,
+    request_field: &str,
+) {
+    let fallback = request[request_field]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    let fallback_by_date = fallback
+        .iter()
+        .filter_map(|item| Some((item.get("date")?.as_str()?.to_string(), item.clone())))
+        .collect::<HashMap<_, _>>();
+    let Some(items) = response
+        .get_mut(response_field)
+        .and_then(Value::as_array_mut)
+    else {
+        return;
+    };
+    for (index, item) in items.iter_mut().enumerate() {
+        let item_date = item.get("date").and_then(Value::as_str);
+        let fallback_by_index = fallback.get(index).filter(|fallback| {
+            item_date.is_none() || fallback.get("date").and_then(Value::as_str) == item_date
+        });
+        let fallback = item
+            .get("date")
+            .and_then(Value::as_str)
+            .and_then(|date| fallback_by_date.get(date))
+            .or(fallback_by_index);
+        if let Some(keys) =
+            fallback.and_then(|item| non_empty_string_array_value(item.get("evidence_keys")))
+        {
+            item["evidence_keys"] = keys;
+        }
+    }
+}
+
+fn restore_period_domain_evidence(response: &mut Value, request: &Value) {
+    let fallback = request["domain_sections"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    let by_domain = fallback
+        .iter()
+        .filter_map(|item| Some((item.get("domain")?.as_str()?.to_string(), item.clone())))
+        .collect::<HashMap<_, _>>();
+    let by_title = fallback
+        .iter()
+        .filter_map(|item| Some((normalized_text(item.get("title")?.as_str()?), item.clone())))
+        .collect::<HashMap<_, _>>();
+    let Some(items) = response["domain_sections"].as_array_mut() else {
+        return;
+    };
+    for (index, item) in items.iter_mut().enumerate() {
+        let has_identity = item.get("domain").and_then(Value::as_str).is_some()
+            || item.get("title").and_then(Value::as_str).is_some();
+        let fallback_by_index = fallback.get(index).filter(|_| !has_identity);
+        let fallback = item
+            .get("domain")
+            .and_then(Value::as_str)
+            .and_then(|domain| by_domain.get(domain))
+            .or_else(|| {
+                item.get("title")
+                    .and_then(Value::as_str)
+                    .and_then(|title| by_title.get(&normalized_text(title)))
+            })
+            .or(fallback_by_index);
+        if let Some(keys) =
+            fallback.and_then(|item| non_empty_string_array_value(item.get("evidence_keys")))
+        {
+            item["evidence_keys"] = keys;
+        }
+    }
+}
+
+fn restore_period_window_evidence(response: &mut Value, request: &Value, field: &str) {
+    let fallback = request[field].as_array().cloned().unwrap_or_default();
+    let by_identity = fallback
+        .iter()
+        .filter_map(|item| Some((period_window_identity(item)?, item.clone())))
+        .collect::<HashMap<_, _>>();
+    let Some(items) = response.get_mut(field).and_then(Value::as_array_mut) else {
+        return;
+    };
+    for (index, item) in items.iter_mut().enumerate() {
+        let fallback_by_index = fallback.get(index).filter(|fallback| {
+            fallback.get("date").and_then(Value::as_str) == item.get("date").and_then(Value::as_str)
+        });
+        let fallback = period_window_identity(item)
+            .and_then(|identity| by_identity.get(&identity))
+            .or(fallback_by_index);
+        let Some(fallback) = fallback else {
+            continue;
+        };
+        if let Some(keys) = non_empty_string_array_value(fallback.get("evidence_keys")) {
+            item["evidence_keys"] = keys;
+        }
+        item["source_snapshot_keys"] = fallback["source_snapshot_keys"].clone();
+    }
+}
+
+fn normalize_period_public_strings(response: &mut Value) {
+    normalize_period_public_strings_value(response, None);
+}
+
+fn normalize_period_public_strings_value(value: &mut Value, key: Option<&str>) {
+    if period_public_string_normalization_excluded_key(key) {
+        return;
+    }
+    match value {
+        Value::String(text) => {
+            *text = sanitize_period_public_string(text);
+        }
+        Value::Array(items) => {
+            for item in items {
+                normalize_period_public_strings_value(item, key);
+            }
+        }
+        Value::Object(map) => {
+            for (child_key, child) in map {
+                normalize_period_public_strings_value(child, Some(child_key));
+            }
+        }
+        _ => {}
+    }
+}
+
+fn period_public_string_normalization_excluded_key(key: Option<&str>) -> bool {
+    matches!(
+        key,
+        Some(
+            "contract_version"
+                | "service_code"
+                | "date"
+                | "status"
+                | "period_resolution"
+                | "start_datetime_local"
+                | "start_datetime_utc"
+                | "end_datetime_local"
+                | "end_datetime_utc"
+                | "timezone"
+                | "period_profile_code"
+                | "evidence_key"
+                | "evidence_keys"
+                | "source_snapshot_keys"
+                | "quality"
+                | "provider"
+                | "model"
+                | "period_contract"
+        )
+    )
 }
 
 fn reprocess_horoscope_daily_payload(response: Value) -> Value {
@@ -2899,7 +3286,7 @@ fn enforce_period_overview_personalization(response: &mut Value) {
     if period_text_has_personalization(&format!("{text} {trajectory}")) {
         return;
     }
-    let addition = "Les priorités de la semaine prennent appui sur vos repères personnels pour relier les jours clés à une trajectoire plus lisible.";
+    let addition = "Les priorités de la semaine partent de vos repères personnels pour passer d'un appui concret à une validation plus claire des rôles.";
     response["week_overview"]["text"] = json!(sanitize_period_public_string(&format!(
         "{} {}",
         text.trim(),
@@ -2967,15 +3354,47 @@ fn enforce_premium_period_advice_synthesis(request: &Value, response: &mut Value
     .flatten()
     .collect::<Vec<_>>()
     .join(" ");
-    if explicit_date_count(&advice_text) == 0 {
+    if explicit_date_count(&advice_text) == 0 && !period_premium_advice_is_too_generic(response) {
         return;
     }
-    response["advice"] = json!({
-        "main": "Utilisez la timeline pour comprendre le rythme quotidien, puis les fenêtres déjà listées pour choisir quand agir ou ralentir.",
-        "best_use": "Réserver les fenêtres favorables déjà listées aux échanges utiles, aux décisions courtes et aux actions concrètes.",
-        "avoid": "Transformer les repères datés en nouveau calendrier de consignes."
-    });
-    response["strategy"] = sanitize_period_strategy(None, request);
+    response["advice"] = premium_period_default_advice();
+    if explicit_date_count(&advice_text) > 0 {
+        response["strategy"] = sanitize_period_strategy(None, request);
+    }
+}
+
+fn period_premium_advice_is_too_generic(response: &Value) -> bool {
+    let main = response
+        .pointer("/advice/main")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let best_use = response
+        .pointer("/advice/best_use")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let avoid = response
+        .pointer("/advice/avoid")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let joined = format!("{main} {best_use} {avoid}").to_lowercase();
+    simple_public_word_count(&joined) < 32
+        || joined.contains("gardez une progression simple")
+        || joined.contains("utiliser les appuis")
+        || joined.contains("transformer un signal quotidien")
+}
+
+fn simple_public_word_count(text: &str) -> usize {
+    text.split_whitespace()
+        .filter(|word| word.chars().any(char::is_alphabetic))
+        .count()
+}
+
+fn premium_period_default_advice() -> Value {
+    json!({
+        "main": "Travaillez par gestes courts : une preuve à obtenir, une charge à réduire, un message à formuler, puis une pause avant de rouvrir le sujet.",
+        "best_use": "Réservez les fenêtres favorables aux actions qui laissent une trace claire : confirmation, échéance, accord écrit, ressource vérifiée ou tâche fermée.",
+        "avoid": "Évitez les promesses larges, les réponses en chaîne et les discussions longues tant que le cadre, le responsable et la prochaine étape ne sont pas explicites."
+    })
 }
 
 fn repair_free_period_response_shape(request: &Value, response: &mut Value) {
@@ -3154,11 +3573,24 @@ fn sanitize_period_week_overview(value: Option<&Value>) -> Value {
         .and_then(|v| v.get("trajectory"))
         .and_then(Value::as_str)
         .unwrap_or("Clarifier, ajuster, puis consolider.");
+    let trajectory = normalize_period_trajectory_text(trajectory);
     json!({
         "title": sanitize_period_public_string(value.and_then(|v| v.get("title")).and_then(Value::as_str).unwrap_or("Vue d'ensemble")),
         "text": sanitize_period_public_string(&ensure_period_explicit_personalization_text(text, "Les priorités de la semaine prennent appui sur vos repères personnels sans perdre leur rythme concret.")),
-        "trajectory": sanitize_period_public_string(&ensure_period_explicit_personalization_text(trajectory, "Le mouvement relie vos repères personnels, les appuis émotionnels et les choix à consolider."))
+        "trajectory": sanitize_period_public_string(&ensure_period_explicit_personalization_text(trajectory, "Le mouvement part de vos repères personnels pour sécuriser le concret, vérifier les engagements, puis valider les rôles avec plus de clarté."))
     })
+}
+
+fn normalize_period_trajectory_text(text: &str) -> &str {
+    let lower = text.to_lowercase();
+    if lower.contains("le mouvement relie vos repères personnels")
+        || lower.contains("les appuis émotionnels et les choix à consolider")
+        || lower.contains("zones personnelles")
+    {
+        "Le mouvement va d'une sécurisation pratique vers une vérification des engagements, puis vers une validation plus collective si les rôles sont clairs."
+    } else {
+        text
+    }
 }
 
 fn sanitize_period_advice(value: Option<&Value>) -> Value {
@@ -3223,6 +3655,19 @@ fn sanitize_period_markers(value: Option<&Value>, fallback: &Value) -> Value {
                             .filter(|reason| !reason.trim().is_empty())
                     })
                     .map_or(Value::Null, |reason| json!(reason));
+                let fallback_reason_text = fallback_item
+                    .get("reason")
+                    .and_then(Value::as_str)
+                    .filter(|reason| !reason.trim().is_empty())
+                    .filter(|reason| !period_marker_reason_is_suspect(reason));
+                let reason = generated_item
+                    .and_then(|item| item.get("reason"))
+                    .and_then(Value::as_str)
+                    .filter(|reason| !reason.trim().is_empty())
+                    .filter(|reason| !period_marker_reason_is_suspect(reason))
+                    .or(fallback_reason_text)
+                    .map(ToOwned::to_owned)
+                    .unwrap_or_else(|| naturalized_period_marker_fallback_reason(&fallback_item));
                 json!({
                     "date": fallback_item["date"],
                     "title": sanitize_period_public_string(
@@ -3232,20 +3677,50 @@ fn sanitize_period_markers(value: Option<&Value>, fallback: &Value) -> Value {
                             .or_else(|| fallback_item.get("title").and_then(Value::as_str))
                             .unwrap_or("Jour")
                     ),
-                    "reason": sanitize_period_public_string(
-                        generated_item
-                            .and_then(|item| item.get("reason"))
-                            .and_then(Value::as_str)
-                            .filter(|reason| !reason.trim().is_empty())
-                            .or_else(|| fallback_item.get("reason").and_then(Value::as_str))
-                            .unwrap_or("Ce jour donne un repère à retenir pour ajuster une priorité de la période.")
-                    ),
+                    "reason": sanitize_period_public_string(&reason),
                     "evidence_keys": non_empty_string_array_value(fallback_item.get("evidence_keys")).unwrap_or_else(|| json!([])),
                     "fallback_reason": fallback_reason
                 })
             })
             .collect(),
     )
+}
+
+fn naturalized_period_marker_fallback_reason(marker: &Value) -> String {
+    let title = marker
+        .get("title")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_lowercase();
+    let date_label = marker
+        .get("date")
+        .and_then(Value::as_str)
+        .map(public_day_label)
+        .unwrap_or_else(|| "Ce jour".to_string());
+    if title.contains("vigilance") {
+        format!(
+            "{date_label} demande de ralentir avant d'engager une réponse, une promesse ou une décision."
+        )
+    } else if title.contains("favorable") || title.contains("appui") || title.contains("meilleur") {
+        format!(
+            "{date_label} aide à sécuriser une ressource, une preuve ou une tâche pratique sans rouvrir tout le dossier."
+        )
+    } else {
+        format!(
+            "{date_label} donne un repère concret pour ajuster une priorité sans isoler la journée du reste de la période."
+        )
+    }
+}
+
+fn period_marker_reason_is_suspect(reason: &str) -> bool {
+    let lower = reason.to_lowercase();
+    lower.contains("autour de vérifier")
+        || lower.contains("autour de attendre")
+        || lower.contains(": appuis concrets aide")
+        || lower.contains("appui concret :")
+        || lower.contains("est un point d'appui pour")
+        || lower.contains("demande de ralentir sur")
+        || lower.contains(". .")
 }
 
 fn sanitize_period_daily_timeline(value: Option<&Value>, request: &Value) -> Value {
@@ -3350,11 +3825,14 @@ fn sanitize_period_domain_sections(value: Option<&Value>, request: &Value) -> Va
                             .unwrap_or("Organisation")
                     ),
                     "text": sanitize_period_public_string(
-                        &section
+                        &rewrite_period_domain_template_text(
+                            &section
                             .get("text")
                             .and_then(Value::as_str)
                             .map(|text| ensure_period_explicit_personalization_text(text, &period_public_domain_interpretive_sentence(fallback.unwrap_or(&section))))
-                            .unwrap_or_else(|| fallback.map(period_public_domain_text).unwrap_or_else(|| period_public_domain_text(&section)))
+                            .unwrap_or_else(|| fallback.map(period_public_domain_text).unwrap_or_else(|| period_public_domain_text(&section))),
+                            fallback.unwrap_or(&section),
+                        )
                     ),
                     "evidence_keys": fallback
                         .and_then(|fallback| non_empty_string_array_value(fallback.get("evidence_keys")))
@@ -3416,10 +3894,12 @@ fn sanitize_period_window_from_fallback(window: &Value, fallback: &Value, field:
         "evidence_keys": fallback["evidence_keys"]
     });
     if field == "best_windows" {
+        let generated_reason = window
+            .get("reason")
+            .and_then(Value::as_str)
+            .filter(|reason| !period_best_window_reason_is_generic(reason));
         out["reason"] = json!(sanitize_period_public_string(
-            window
-                .get("reason")
-                .and_then(Value::as_str)
+            generated_reason
                 .or_else(|| fallback.get("reason").and_then(Value::as_str))
                 .unwrap_or("Ce créneau aide à poser une action simple et vérifiable.")
         ));
@@ -3434,6 +3914,20 @@ fn sanitize_period_window_from_fallback(window: &Value, fallback: &Value, field:
         ));
     }
     out
+}
+
+fn period_best_window_reason_is_generic(reason: &str) -> bool {
+    let lower = reason.to_lowercase();
+    [
+        "ce créneau peut servir à poser une action simple et vérifiable",
+        "ce créneau se prête à un échange plus simple et mieux ajusté",
+        "ce créneau aide à transformer l'élan en action courte",
+        "ce créneau favorise une formulation plus nette",
+        "ce créneau aide à trier et décider sans disperser l'attention",
+        "ce créneau aide à consolider ce qui a déjà été compris",
+    ]
+    .iter()
+    .any(|fragment| lower.contains(fragment))
 }
 
 fn sanitize_period_strategy(value: Option<&Value>, request: &Value) -> Value {
@@ -3483,31 +3977,32 @@ fn period_public_day_text(day: &Value, index: usize) -> String {
         .or_else(|| day.get("theme").and_then(Value::as_str))
         .unwrap_or("priorité");
     let focus = period_public_focus_text(day);
+    let focus_sentence = period_daily_focus_sentence(&focus);
     match period_style_code(day) {
         "relation" => format!(
-            "{day_label} adoucit le thème {theme} en repartant de {focus}. Une attente ou une parole simple peut détendre l'échange sans chercher un accord de façade."
+            "{day_label} adoucit le thème {theme}. {focus_sentence} Une attente ou une parole simple peut détendre l'échange sans chercher un accord de façade."
         ),
         "action" => format!(
-            "{day_label} donne du relief au thème {theme}. En partant de {focus}, une action courte vaut mieux qu'une série de réponses dispersées."
+            "{day_label} donne du relief au thème {theme}. {focus_sentence} Une action courte vaut mieux qu'une série de réponses dispersées."
         ),
         "clarity" => format!(
-            "{day_label} aide à nommer ce qui compte dans le thème {theme}. Avec {focus}, le tri devient plus simple et les choix gagnent en lisibilité."
+            "{day_label} aide à nommer ce qui compte dans le thème {theme}. {focus_sentence} Le tri devient plus simple et les choix gagnent en lisibilité."
         ),
         "communication" => format!(
-            "{day_label} remet le thème {theme} dans les mots justes. En partant de {focus}, une formulation directe peut éviter plusieurs malentendus."
+            "{day_label} remet le thème {theme} dans les mots justes. {focus_sentence} Une formulation directe peut éviter plusieurs malentendus."
         ),
         "integration" => format!(
-            "{day_label} invite à relier le thème {theme} à ce qui a déjà été compris. En partant de {focus}, il devient plus simple de consolider sans ouvrir trop de nouveaux fronts."
+            "{day_label} invite à relier le thème {theme} à ce qui a déjà été compris. {focus_sentence} Il devient plus simple de consolider sans ouvrir trop de nouveaux fronts."
         ),
         _ => match index {
             0 => format!(
-                "{day_label} ouvre la période sur le thème {theme}. À travers {focus}, il s'agit surtout de remettre de l'ordre dans ce qui circule déjà, sans tout contrôler."
+                "{day_label} ouvre la période sur le thème {theme}. {focus_sentence} Il s'agit surtout de remettre de l'ordre dans ce qui circule déjà, sans tout contrôler."
             ),
             5 => format!(
-                "{day_label} ramène le thème {theme} vers une priorité réaliste. En partant de {focus}, il devient plus facile de choisir ce qui mérite d'être tenu jusqu'au bout."
+                "{day_label} ramène le thème {theme} vers une priorité réaliste. {focus_sentence} Il devient plus facile de choisir ce qui mérite d'être tenu jusqu'au bout."
             ),
             _ => format!(
-                "{day_label} recentre le thème {theme}. Avec {focus}, le plus utile consiste à poser un repère clair avant d'élargir le mouvement."
+                "{day_label} recentre le thème {theme}. {focus_sentence} Le plus utile consiste à poser un repère clair avant d'élargir le mouvement."
             ),
         },
     }
@@ -3515,13 +4010,23 @@ fn period_public_day_text(day: &Value, index: usize) -> String {
 
 fn period_public_day_advice(day: &Value) -> String {
     let focus = period_public_focus_text(day);
+    let parts = period_focus_parts(&focus, 2);
     match period_style_code(day) {
-        "relation" => format!("Privilégiez un geste relationnel simple autour de {focus}, sans chercher à traiter tous les sujets."),
+        "relation" => format!(
+            "Privilégiez un geste relationnel simple. {} N'essayez pas de traiter tous les sujets.",
+            naturalize_period_focus(&focus)
+        ),
         "action" => format!("Transformez cette priorité en une action vérifiable, puis laissez le reste en attente."),
-        "clarity" => format!("Nommez ce qui compte vraiment pour {focus}, même si la décision reste progressive."),
+        "clarity" => "Nommez ce qui compte vraiment, puis gardez une décision progressive et vérifiable.".to_string(),
         "communication" => format!("Formulez une demande courte et vérifiable, puis écoutez la réponse sans surinterpréter."),
         "integration" => format!("Reliez ce travail d'intégration à une habitude déjà solide et consolidez-la avant d'ajouter autre chose."),
-        _ => format!("Posez une priorité claire liée à {focus}, puis avancez par un geste mesuré."),
+        _ => match parts.as_slice() {
+            [one] => format!("Commencez par {one}, puis avancez par un geste mesuré."),
+            [one, two, ..] => {
+                format!("Commencez par {one}, puis limitez la suite à {two}.")
+            }
+            [] => "Posez une priorité claire, puis avancez par un geste mesuré.".to_string(),
+        },
     }
 }
 
@@ -3543,19 +4048,18 @@ fn period_public_domain_text(section: &Value) -> String {
         .and_then(Value::as_str)
         .or_else(|| section.get("domain").and_then(Value::as_str))
         .unwrap_or("Ce domaine");
-    let focus = period_public_focus_text(section);
-    format!(
-        "{domain} devient un terrain concret cette semaine. Les repères les plus utiles consistent à {focus}, choisir une priorité lisible, agir sans raideur et garder le fil entre les journées."
-    )
+    let focus = period_clean_focus_fragment(&period_public_focus_text(section));
+    let focus_sentence = period_domain_focus_sentence(&focus);
+    format!("{domain} ouvre un fil pratique de la semaine. {focus_sentence} Gardez ce repère personnel comme un point de tri, pas comme une obligation de plus.")
 }
 
 fn period_public_personalization_sentence(item: &Value) -> String {
     period_public_interpretive_sentence(item)
 }
 
-fn period_public_interpretive_sentence(item: &Value) -> String {
-    let focus = period_public_focus_text(item);
-    format!("Concrètement, {focus} donne une scène utile pour choisir le bon geste du jour.")
+fn period_public_interpretive_sentence(_item: &Value) -> String {
+    "Vos repères personnels aident ici à choisir le bon geste du jour sans ouvrir trop de sujets."
+        .to_string()
 }
 
 fn period_public_domain_personalization_sentence(item: &Value) -> String {
@@ -3563,10 +4067,113 @@ fn period_public_domain_personalization_sentence(item: &Value) -> String {
 }
 
 fn period_public_domain_interpretive_sentence(item: &Value) -> String {
-    let focus = period_public_focus_text(item);
-    format!(
-        "Dans ce domaine, les repères les plus utiles consistent à {focus} et à choisir le bon niveau d'engagement."
-    )
+    let focus = period_clean_focus_fragment(&period_public_focus_text(item));
+    let domain = item
+        .get("title")
+        .and_then(Value::as_str)
+        .or_else(|| item.get("domain").and_then(Value::as_str))
+        .unwrap_or("Ce domaine");
+    let focus_sentence = period_domain_focus_sentence(&focus);
+    format!("Dans {domain}, {focus_sentence} Ce repère personnel suffit à donner une direction claire sans alourdir toute la semaine.")
+}
+
+fn period_daily_focus_sentence(focus: &str) -> String {
+    let parts = period_focus_parts(focus, 2);
+    match parts.as_slice() {
+        [] => "Le geste utile reste simple et vérifiable.".to_string(),
+        [one] => format!("Le geste utile consiste à {one}."),
+        [one, two, ..] => format!("Le geste utile consiste à {one}, puis à {two}."),
+    }
+}
+
+fn period_clean_focus_fragment(focus: &str) -> String {
+    focus
+        .trim()
+        .trim_end_matches(|ch: char| ch == '.' || ch == ';' || ch == ',' || ch.is_whitespace())
+        .trim()
+        .to_string()
+}
+
+fn period_domain_focus_sentence(focus: &str) -> String {
+    let parts = period_focus_parts(focus, 2);
+    match parts.as_slice() {
+        [] => "Le plus utile est de choisir un repère simple et vérifiable.".to_string(),
+        [one] => format!("Le plus utile est {}.", period_de_action(one)),
+        [one, two, ..] => format!(
+            "Le plus utile est {}, puis {}.",
+            period_de_action(one),
+            period_de_action(two)
+        ),
+    }
+}
+
+fn period_de_action(action: &str) -> String {
+    let trimmed = action.trim();
+    if trimmed.is_empty() {
+        return "de choisir un repère simple".to_string();
+    }
+    let first = trimmed
+        .chars()
+        .next()
+        .map(|ch| ch.to_lowercase().to_string())
+        .unwrap_or_default();
+    if matches!(
+        first.as_str(),
+        "a" | "à"
+            | "â"
+            | "e"
+            | "é"
+            | "è"
+            | "ê"
+            | "ë"
+            | "i"
+            | "î"
+            | "ï"
+            | "o"
+            | "ô"
+            | "u"
+            | "ù"
+            | "û"
+            | "ü"
+            | "y"
+            | "h"
+    ) {
+        format!("d'{trimmed}")
+    } else {
+        format!("de {trimmed}")
+    }
+}
+
+fn period_focus_parts(focus: &str, limit: usize) -> Vec<String> {
+    period_clean_focus_fragment(focus)
+        .split(',')
+        .map(str::trim)
+        .filter(|part| !part.is_empty())
+        .take(limit)
+        .map(ToOwned::to_owned)
+        .collect()
+}
+
+fn rewrite_period_domain_template_text(text: &str, fallback: &Value) -> String {
+    if period_domain_template_fragment(text).is_some() {
+        period_public_domain_text(fallback)
+    } else {
+        text.to_string()
+    }
+}
+
+fn period_domain_template_fragment(text: &str) -> Option<&'static str> {
+    let lower = text.to_lowercase();
+    for fragment in [
+        "dans ce domaine, les repères les plus utiles consistent",
+        "et à choisir le bon niveau d'engagement",
+        "dans ce domaine, vos repères personnels liés à",
+    ] {
+        if lower.contains(fragment) {
+            return Some(fragment);
+        }
+    }
+    None
 }
 
 fn period_style_code(item: &Value) -> &str {
@@ -3631,11 +4238,102 @@ fn period_public_focus_from_hint(raw: &str) -> String {
 }
 
 fn sanitize_period_public_string(text: &str) -> String {
-    reprocess_horoscope_period("fr", json!(text), None)
+    let reprocessed = reprocess_horoscope_period("fr", json!(text), None)
         .payload
         .as_str()
         .unwrap_or(text)
-        .to_string()
+        .to_string();
+    let repaired = repair_period_truncated_public_tail(&reprocessed);
+    repair_period_mechanical_public_fragments(&repaired)
+}
+
+fn repair_period_mechanical_public_fragments(text: &str) -> String {
+    let mut repaired = text.to_string();
+    for (pattern, replacement) in period_mechanical_public_fragment_replacements() {
+        repaired = pattern.replace_all(&repaired, *replacement).into_owned();
+    }
+    repaired
+}
+
+fn period_mechanical_public_fragment_replacements() -> &'static [(Regex, &'static str)] {
+    static REPLACEMENTS: OnceLock<Vec<(Regex, &'static str)>> = OnceLock::new();
+    REPLACEMENTS
+        .get_or_init(|| {
+            [
+                (r"(?i)\bautour\s+de\s+vérifier\b", "pour vérifier"),
+                (r"(?i)\bautour\s+d['’]attendre\b", "avant d'attendre"),
+                (r"(?i)\bautour\s+de\s+attendre\b", "avant d'attendre"),
+                (
+                    r"(?i):\s*appuis\s+concrets\s+aide\b",
+                    " : cet appui aide",
+                ),
+                (r"(?i)\bappui\s+concret\s*:", "Point d'appui :"),
+                (
+                    r"(?i)\best\s+un\s+point\s+d['’]appui\s+pour\s+appuis\s+concrets\b",
+                    "aide à sécuriser un appui concret",
+                ),
+                (
+                    r"(?i)\best\s+un\s+point\s+d['’]appui\s+pour\s+liens,\s*valeur\s+et\s+attachement\b",
+                    "aide à clarifier un lien personnel",
+                ),
+                (
+                    r"(?i)\best\s+un\s+point\s+d['’]appui\s+pour\s+énergie\s+mentale\b",
+                    "aide à cadrer l'énergie mentale",
+                ),
+                (
+                    r"(?i)\best\s+un\s+point\s+d['’]appui\s+pour\s+engagements\s+et\s+limites\b",
+                    "aide à vérifier les engagements et les limites",
+                ),
+                (
+                    r"(?i)\best\s+un\s+point\s+d['’]appui\s+pour\s+échanges\s+à\s+cadrer\b",
+                    "aide à cadrer les échanges",
+                ),
+                (
+                    r"(?i)\best\s+un\s+point\s+d['’]appui\s+pour\b",
+                    "aide à clarifier",
+                ),
+                (
+                    r"(?i)\bdemande\s+de\s+ralentir\s+sur\b",
+                    "demande de ralentir avant",
+                ),
+                (
+                    r"(?i)\bcette\s+énergie\s+devient\s+utile\s+quand\s+elle\s+sert\s+à\b",
+                    "Ce domaine aide surtout à",
+                ),
+                (r"\.\s+\.", "."),
+                (r"\.\s*,", ","),
+                (r"\s+\.", "."),
+            ]
+            .into_iter()
+            .map(|(pattern, replacement)| {
+                (
+                    Regex::new(pattern).expect("period mechanical fragment regex"),
+                    replacement,
+                )
+            })
+            .collect()
+        })
+        .as_slice()
+}
+
+fn repair_period_truncated_public_tail(text: &str) -> String {
+    let trimmed = text.trim();
+    let lower = trimmed.to_lowercase();
+    for marker in ["(par ex.", "(par exemple", "(ex."] {
+        if let Some(index) = lower.rfind(marker) {
+            if !trimmed[index..].contains(')') {
+                let mut repaired = trimmed[..index]
+                    .trim_end()
+                    .trim_end_matches([',', ';', ':'])
+                    .to_string();
+                if !repaired.ends_with(['.', '!', '?']) {
+                    repaired.push('.');
+                }
+                return repaired;
+            }
+        }
+    }
+    trimmed.to_string()
 }
 
 fn sanitize_period_evidence_summary(value: Option<&Value>, request: &Value) -> Value {
@@ -3792,10 +4490,12 @@ fn ensure_period_response_minimum_words(request: &Value, response: &mut Value) {
                 .find(|plan| plan.get("domain").and_then(Value::as_str) == Some(domain));
             if let Some(plan) = plan {
                 if let Some(text) = section.get_mut("text") {
-                    append_period_value_sentence(
-                        text,
-                        &period_public_domain_personalization_sentence(plan),
-                    );
+                    if !text.as_str().is_some_and(period_text_has_personalization) {
+                        append_period_value_sentence(
+                            text,
+                            &period_public_domain_personalization_sentence(plan),
+                        );
+                    }
                 }
             }
         }
@@ -5427,13 +6127,22 @@ fn validate_period_best_windows_not_generic(windows: &[Value]) -> Result<(), Gen
         .filter_map(|window| window["title"].as_str())
         .filter(|title| normalized_text(title) == "fenêtre favorable")
         .count();
-    if generic_titles > 0 || (windows.len() >= 3 && (titles.len() < 2 || best_for_sets.len() < 2)) {
+    let generic_reasons = windows
+        .iter()
+        .filter_map(|window| window["reason"].as_str())
+        .filter(|reason| period_best_window_reason_is_generic(reason))
+        .count();
+    if generic_titles > 0
+        || generic_reasons > 0
+        || (windows.len() >= 3 && (titles.len() < 2 || best_for_sets.len() < 2))
+    {
         return Err(quality_error(
             "HOROSCOPE_PERIOD_PREMIUM_WINDOWS_TOO_GENERIC",
             json!({
                 "title_count": titles.len(),
                 "best_for_count": best_for_sets.len(),
-                "generic_titles": generic_titles
+                "generic_titles": generic_titles,
+                "generic_reasons": generic_reasons
             }),
         ));
     }
@@ -5682,6 +6391,12 @@ fn validate_period_public_text(public_text: &str) -> Result<(), GenerationError>
             json!({ "fragment": fragment }),
         ));
     }
+    if let Some(fragment) = period_truncated_example_fragment(public_text) {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_BROKEN_SENTENCE",
+            json!({ "fragment": fragment }),
+        ));
+    }
     if let Some(fragment) = period_lowercase_sentence_start(public_text) {
         return Err(quality_error(
             "HOROSCOPE_PERIOD_BROKEN_SENTENCE",
@@ -5725,10 +6440,50 @@ fn validate_period_public_text(public_text: &str) -> Result<(), GenerationError>
             json!({ "reason": "french_elision_violation" }),
         ));
     }
+    if !french_glued_compound_violations(public_text).is_empty() {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_FRENCH_TYPOGRAPHY_FAILED",
+            json!({ "reason": "french_glued_compound" }),
+        ));
+    }
     if period_has_bad_french_colon_spacing(public_text) {
         return Err(quality_error(
             "HOROSCOPE_PERIOD_FRENCH_TYPOGRAPHY_FAILED",
             json!({ "reason": "colon_spacing" }),
+        ));
+    }
+    if lower.contains(". .") || lower.contains(". ,") {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_FRENCH_TYPOGRAPHY_FAILED",
+            json!({ "reason": "double_punctuation" }),
+        ));
+    }
+    if lower.contains("vérifiez vérifier") {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_MECHANICAL_PUBLIC_TEXT",
+            json!({ "reason": "repeated_verification_verb" }),
+        ));
+    }
+    if period_marker_reason_is_suspect(public_text) {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_MECHANICAL_PUBLIC_TEXT",
+            json!({ "reason": "serialized_situation_hint" }),
+        ));
+    }
+    if lower
+        .matches("cette énergie devient utile quand elle sert à")
+        .count()
+        > 1
+    {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_MECHANICAL_PUBLIC_TEXT",
+            json!({ "reason": "repeated_domain_template" }),
+        ));
+    }
+    if let Some(fragment) = period_domain_template_fragment(public_text) {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_META_PERSONALIZATION_LEAK",
+            json!({ "forbidden": fragment }),
         ));
     }
     for forbidden in [
@@ -5846,6 +6601,19 @@ fn period_broken_sentence_fragment(public_text: &str) -> Option<String> {
             .join(" ");
         if period_is_broken_sentence_tail(&tail) {
             return Some(tail);
+        }
+    }
+    None
+}
+
+fn period_truncated_example_fragment(public_text: &str) -> Option<String> {
+    let lower = public_text.to_lowercase();
+    for marker in ["(par ex.", "(par exemple", "(ex."] {
+        if let Some(index) = lower.rfind(marker) {
+            let tail = &public_text[index..];
+            if !tail.contains(')') {
+                return Some(tail.chars().take(48).collect::<String>());
+            }
         }
     }
     None

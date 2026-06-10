@@ -28,19 +28,41 @@ function Invoke-SimplifiedE2ePsql {
 
     $user = if ($env:POSTGRES_USER) { $env:POSTGRES_USER } else { "postgres" }
     $db = if ($env:POSTGRES_DB) { $env:POSTGRES_DB } else { $user }
-    Push-Location $RepoRoot
-    try {
-        $prev = $ErrorActionPreference
-        $ErrorActionPreference = "Continue"
-        $out = docker compose exec -T postgres psql -U $user -d $db -v ON_ERROR_STOP=1 -t -A -c $Sql 2>&1
-        $ErrorActionPreference = $prev
-        if ($LASTEXITCODE -ne 0) {
-            throw ($out | Out-String)
-        }
-        return ($out | Out-String).Trim()
-    } finally {
-        Pop-Location
+    $psi = [System.Diagnostics.ProcessStartInfo]::new()
+    $psi.FileName = "docker"
+    $psi.WorkingDirectory = $RepoRoot
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.RedirectStandardInput = $true
+    foreach ($arg in @(
+        "compose",
+        "exec",
+        "-T",
+        "postgres",
+        "psql",
+        "-U",
+        $user,
+        "-d",
+        $db,
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-t",
+        "-A"
+    )) {
+        [void]$psi.ArgumentList.Add($arg)
     }
+    $process = [System.Diagnostics.Process]::Start($psi)
+    $process.StandardInput.WriteLine($Sql)
+    $process.StandardInput.Close()
+    $stdout = $process.StandardOutput.ReadToEnd()
+    $stderr = $process.StandardError.ReadToEnd()
+    $process.WaitForExit()
+    if ($process.ExitCode -ne 0) {
+        throw (($stdout + $stderr) | Out-String)
+    }
+    return ($stdout | Out-String).Trim()
 }
 
 function New-SimplifiedE2eDollarQuotedSql {

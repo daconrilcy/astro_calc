@@ -14,7 +14,7 @@ use astral_llm_domain::{
 };
 use serde_json::{json, Value};
 
-use crate::french_typography::restore_french_elisions;
+use crate::french_typography::{restore_french_elisions, restore_french_glued_compounds};
 use crate::reading_script_guard::sanitize_text_for_french_script;
 use crate::summary_ux_rules::{count_words, split_sentences_fr};
 
@@ -572,8 +572,10 @@ impl TextRetreatmentProcessor for TypographyProcessor {
         let mut outcome = ProcessorOutcome::default();
         mutate_public_text_strings(payload, "$", &mut |path, text| {
             let (fixed, changed) = restore_french_elisions(text);
+            let (fixed, glued_changed) = restore_french_glued_compounds(&fixed);
             let fixed = normalize_french_colon_spacing(&fixed);
-            if changed || fixed != text {
+            let fixed = normalize_double_period_spacing(&fixed);
+            if changed || glued_changed || fixed != text {
                 outcome.changed_paths.push(path.to_string());
                 Some(fixed)
             } else {
@@ -582,6 +584,14 @@ impl TextRetreatmentProcessor for TypographyProcessor {
         });
         outcome
     }
+}
+
+fn normalize_double_period_spacing(text: &str) -> String {
+    let mut out = text.to_string();
+    while out.contains(". .") {
+        out = out.replace(". .", ".");
+    }
+    out
 }
 
 pub struct SentenceAndLengthProcessor;

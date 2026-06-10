@@ -1,3 +1,54 @@
+# Simplified E2E fake provider restore - 2026-06-10
+
+## Scope
+
+Fixed the Docker-backed PostgreSQL helper used by simplified natal E2E provider switching when local `psql` is unavailable.
+
+## Behavior
+
+- `scripts/lib/simplified_e2e_llm_provider.ps1` now invokes `docker compose exec -T postgres psql ...` through `System.Diagnostics.ProcessStartInfo` with stdout/stderr explicitly redirected.
+- SQL is written to `psql` through stdin instead of `-c <sql>`, avoiding both the PowerShell `StandardOutputEncoding` failure and Windows command-line length failures during large profile JSON restoration.
+
+## Validation
+
+- `Invoke-SimplifiedE2ePsql -Sql "SELECT 1;"` through the Docker fallback path.
+- `Invoke-SimplifiedE2ePsql` with a 40,000-character SQL payload through the Docker fallback path.
+
+# Premium 7-day horoscope finishing guards - 2026-06-10
+
+## Scope
+
+Hardened the final public text cleanup for `horoscope_premium_next_7_days_natal` after a real Premium run exposed glued French compounds and residual template wording in domain sections.
+
+## Behavior
+
+- French typography reprocessing now restores glued compounds such as `rendezvous`, `bouclezla`, `laissezle`, `faitesle`, `retirezvous`, `réduisezle`, `allégezle`, `phraseclé`, and common imperative forms glued to `le`, `la`, or `vous`.
+- Period validation rejects those glued compounds with `HOROSCOPE_PERIOD_FRENCH_TYPOGRAPHY_FAILED` if they reach public text.
+- Period typography reprocessing normalizes accidental `. .` double punctuation.
+- The Premium period prompt now explicitly asks for correct French compounds and forbids glued imperative forms before generation.
+- Premium `best_days` and `watch_days` fallback reasons now transform associated situations into short natural sentences instead of serializing `autour de vérifier...` lists.
+- The Premium period prompt now tells the model to transform associated situations into natural marker reasons instead of copying list fragments.
+- Period validation rejects mechanical public marker patterns such as `autour de vérifier`, `autour de attendre`, `: appuis concrets aide`, and `. .`.
+- Premium domain sections no longer repair toward repeated `Dans ce domaine...` or `Cette énergie est utile...` templates.
+- The Premium period prompt now forbids repeated domain templates such as `Dans ce domaine...`, `Cette énergie devient utile...`, and `les repères les plus utiles consistent...`.
+- Domain section repair rewrites those templates into a transverse reading sentence based on the canonical domain focus.
+- Weak trajectory wording such as `Le mouvement relie vos repères personnels, les appuis émotionnels et les choix à consolider` is normalized into a concrete weekly arc.
+- Fake period writer output now runs through the same shape repair path as provider output, so local fake smokes cannot bypass marker/domain naturalization.
+- Additional finishing pass now repairs truncated example tails such as `(par ex.` and rejects them if they survive public validation.
+- French glued compound repair now covers `utilisezles`, `revenezy`, `arrêtezvous` and `joursclés`.
+- Premium marker reasons are condensed to avoid repeating full associated-situation lists in `key_days` and `watch_days`.
+- Premium best-day reasons avoid taxonomy wording like `point d'appui pour appuis concrets`.
+- Premium best-window reasons replace generic filler with concrete uses such as confirming a resource, closing a task, requesting proof or sending a targeted message.
+- Premium advice fallback now provides a denser method of use instead of short generic guidance.
+
+## Validation
+
+- `cargo test -p astral_llm_api --test horoscope_v1_tests`
+- `cargo test -p astral_llm_application --test text_reprocessing_application_tests`
+- `cargo test -p astral_llm_application french_typography`
+- `.\scripts\test_horoscope_basic_next_7_days_fake.ps1`
+- `.\scripts\test_horoscope_premium_next_7_days_fake.ps1`
+
 # LLM model alias cleanup - 2026-06-10
 
 ## Scope
@@ -258,11 +309,20 @@ Refactored the deterministic generation model for `horoscope_premium_next_7_days
 - Integration and horoscope fake smoke scripts now assert the completed job quality provider is `fake`, including idempotent replay for the integration jobs smoke.
 - `FakeProvider` now treats a provider schema containing full reading fields (`summary` + `chapters`) as a full `natal_reading_v1` request even when a `chapter_code` is present for prompt context. This prevents the async `natal_simplified` smoke from returning a chapter-only JSON that fails schema validation.
 - `scripts/lib/horoscope_e2e_fake_provider.ps1` now also enables fake at the Docker environment level for API and worker during horoscope fake smokes. Daily horoscope smoke suites wrap their fake jobs with this helper, so `docker_update_integration_stack.ps1` can continue through the daily and period fake suites without consuming OpenAI quota.
+- Premium period provider responses now run a final evidence realignment pass before validation. Public `evidence_keys` and window `source_snapshot_keys` for daily timeline, day markers, domain sections, best/watch windows, watch summary, strategy, and evidence summary are restored only from the canonical interpretation request, preventing real LLM omissions from failing with `HOROSCOPE_PERIOD_EVIDENCE_MISSING` while still rejecting invented raw response evidence.
+- Premium period public text now normalizes mechanical fragments before validation, including serialized situation hints such as `autour de vérifier`, `Appui concret :`, `est un point d'appui pour ...`, repeated `Cette énergie devient utile quand elle sert à`, and double punctuation. Domain fallback wording was also rewritten to avoid template-like `donne un angle transversal` / `gagne en valeur` phrasing.
+- The mechanical text cleanup now uses case-insensitive regexes, accepts straight and typographic apostrophes, and runs as a final recursive public-string pass before validation while skipping contract/enumeration fields such as `status`, dates, evidence keys, period resolution and quality metadata.
+- Domain fallback copy now limits the raw focus list to the first actionable items and writes a natural cross-domain mini-reading instead of serializing every associated situation.
+- Evidence restoration fallback by index is now constrained by date for day-based arrays and by missing domain/title identity for domain sections, so valid-but-wrong provider evidence is not silently reassigned to an unrelated public block.
+- Premium period fallback copy now naturalizes raw focus lists before they reach `daily_timeline`, `key_days`, `best_days`, and `watch_days`, avoiding repeated verbs such as `Vérifiez vérifier` and punctuation artifacts such as `. ,`.
+- Premium period public expansion no longer appends a domain personalization sentence when the domain text already contains a personal marker, preventing duplicated `Dans ...` follow-up sentences.
+- Premium prompt and editorial fallback wording now avoid the taxonomic public phrase `priorité liée à`.
 
 ## Validation
 
 - `cargo test -p astral_llm_api --test horoscope_v1_tests horoscope_premium_next_7_days`
 - `cargo test -p astral_llm_api --test horoscope_v1_tests`
+- `.\scripts\test_horoscope_premium_next_7_days_fake.ps1`
 - `cargo test -p astral_llm_api --test contracts_publish_tests`
 - `cargo test -p astral_llm_api --test integration_jobs_tests`
 - `cargo test -p astral_llm_providers fake_provider_returns_full_reading_when_full_schema_has_chapter_code`
