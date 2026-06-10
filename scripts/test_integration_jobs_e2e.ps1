@@ -4,11 +4,16 @@
 
 .EXAMPLE
     .\scripts\test_integration_jobs_e2e.ps1
+
+.EXAMPLE
+    .\scripts\test_integration_jobs_e2e.ps1 -AllowRealProvider
 #>
 param(
     [string]$LlmBase = "http://127.0.0.1:8081",
     [int]$PollTimeoutSec = 300,
-    [int]$PollIntervalMs = 2000
+    [int]$PollIntervalMs = 2000,
+    [switch]$AllowRealProvider,
+    [switch]$AllowProductFakeOverride
 )
 
 $ErrorActionPreference = "Stop"
@@ -40,6 +45,17 @@ function Invoke-JobPost {
 
 Write-Host "=== Integration jobs E2E (natal_simplified) ===" -ForegroundColor Cyan
 Wait-LlmReady -Base $LlmBase
+
+$providers = Invoke-RestMethod -Uri "$LlmBase/v1/providers" -Method Get -Headers $authHeaders -TimeoutSec 10
+$defaultProvider = [string]$providers.default_provider
+$defaultModel = [string]$providers.default_model
+Write-Host "Provider runtime default_provider=$defaultProvider default_model=$defaultModel"
+if (-not $AllowRealProvider -and -not $AllowProductFakeOverride -and $defaultProvider -ne "fake") {
+    throw "Integration jobs E2E is a local smoke and expects default_provider=fake. Current default_provider='$defaultProvider', default_model='$defaultModel'. Reconfigure the LLM runtime to fake, run through docker_update_integration_stack.ps1 so it applies the natal_prompter fake override, or rerun with -AllowRealProvider to intentionally use the real provider."
+}
+if (-not $AllowRealProvider -and $AllowProductFakeOverride -and $defaultProvider -ne "fake") {
+    Write-Host "OK product-level fake override assumed for natal_prompter; global default_provider remains '$defaultProvider'." -ForegroundColor Yellow
+}
 
 # 1. Catalogue
 $services = Invoke-RestMethod -Uri "$LlmBase/v1/services" -Method Get
@@ -110,6 +126,9 @@ while ((Get-Date) -lt $deadline -and -not $terminal) {
     if ($status.status -in @("completed", "failed", "safety_rejected")) {
         $terminal = $true
         if ($status.status -ne "completed") {
+            if ($status.error.code -eq "PROVIDER_RATE_LIMITED") {
+                throw "job failed because the real LLM provider rate-limited the request. Use the fake provider for this smoke, or rerun later with -AllowRealProvider. Status: $($status | ConvertTo-Json -Depth 5)"
+            }
             throw "job failed: $($status | ConvertTo-Json -Depth 5)"
         }
         if (-not $status.result) {

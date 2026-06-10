@@ -5,11 +5,19 @@ use std::sync::OnceLock;
 use regex::{Captures, Regex};
 
 static ELISION_RE: OnceLock<Regex> = OnceLock::new();
+static BAD_ELISION_RE: OnceLock<Regex> = OnceLock::new();
 
 fn elision_re() -> &'static Regex {
     ELISION_RE.get_or_init(|| {
         Regex::new(r"(?i)\b(l|d|j|m|n|t|s|c|qu) ([aeiouyhAEIOUYHÉÈÊÀÂËÏÎÔÙÛÜéèêàâëïîôùûü])")
             .expect("elision regex")
+    })
+}
+
+fn bad_elision_re() -> &'static Regex {
+    BAD_ELISION_RE.get_or_init(|| {
+        Regex::new(r"(?i)\b(l|d|j|m|n|t|s|c|qu)['’]([bcdfgjklmnpqrstvwxzç])")
+            .expect("bad elision regex")
     })
 }
 
@@ -37,6 +45,11 @@ pub fn french_elision_violations(text: &str) -> Vec<String> {
         let particle = caps.get(1).map(|m| m.as_str()).unwrap_or("");
         let next = caps.get(2).map(|m| m.as_str()).unwrap_or("");
         violations.push(format!("missing elision: {particle} {next}"));
+    }
+    for caps in bad_elision_re().captures_iter(text) {
+        let particle = caps.get(1).map(|m| m.as_str()).unwrap_or("");
+        let next = caps.get(2).map(|m| m.as_str()).unwrap_or("");
+        violations.push(format!("bad elision: {particle}'{next}"));
     }
     violations
 }
@@ -68,5 +81,11 @@ mod tests {
         let (out, changed) = restore_french_elisions(input);
         assert!(!changed);
         assert_eq!(out, input);
+    }
+
+    #[test]
+    fn detects_bad_elision_before_consonant() {
+        let violations = french_elision_violations("La semaine permet d’réaccorder le cadre.");
+        assert!(violations.iter().any(|item| item == "bad elision: d'r"));
     }
 }

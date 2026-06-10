@@ -23,6 +23,7 @@ param(
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\astral_http_auth.ps1")
+. (Join-Path $PSScriptRoot "lib\simplified_e2e_llm_provider.ps1")
 Import-AstralDotEnv -RepoRoot $repoRoot
 
 function Invoke-Step {
@@ -139,7 +140,20 @@ try {
             & (Join-Path $repoRoot "scripts\test_time_window_service.ps1")
         }
         Invoke-Step "Integration jobs E2E smoke" {
-            & (Join-Path $repoRoot "scripts\test_integration_jobs_e2e.ps1") -LlmBase $LlmUrl
+            $simplifiedFakeProviderArmed = $false
+            try {
+                Enable-SimplifiedE2eFakeLlmProvider -RepoRoot $repoRoot
+                $simplifiedFakeProviderArmed = $true
+                Wait-HttpReady -Url "$LlmUrl/health/ready" -TimeoutSec $ReadyTimeoutSec
+                & (Join-Path $repoRoot "scripts\test_integration_jobs_e2e.ps1") `
+                    -LlmBase $LlmUrl `
+                    -AllowProductFakeOverride
+            } finally {
+                if ($simplifiedFakeProviderArmed) {
+                    Restore-SimplifiedE2eLlmProvider -RepoRoot $repoRoot
+                    Wait-HttpReady -Url "$LlmUrl/health/ready" -TimeoutSec $ReadyTimeoutSec
+                }
+            }
         }
         Invoke-Step "Horoscope free daily full test suite" {
             & (Join-Path $repoRoot "scripts\test_horoscope_free_daily_all.ps1") -BaseUrl $LlmUrl -CalculatorUrl $CalculatorUrl

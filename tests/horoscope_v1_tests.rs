@@ -2082,6 +2082,20 @@ fn horoscope_period_rejects_meta_personalization_language() {
 }
 
 #[test]
+fn horoscope_period_rejects_mechanical_personalization_fragment() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response["domain_sections"][0]["text"] = serde_json::json!(
+        "Dans ce domaine, vos repères personnels liés à nommer ce qui compte, préserver un lien utile, refuser un accord de façade."
+    );
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_META_PERSONALIZATION_LEAK"
+    );
+}
+
+#[test]
 fn horoscope_period_daily_text_uses_distinct_sentence_patterns() {
     let request = period_interpretation_request();
     let mut response = period_response_from_request(&request);
@@ -2147,6 +2161,19 @@ fn horoscope_period_french_typography_colon_spacing() {
     let mut response = period_response_from_request(&request);
     response["week_overview"]["text"] =
         serde_json::json!("La semaine avance clairement: le thème natal reste présent.");
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_FRENCH_TYPOGRAPHY_FAILED"
+    );
+}
+
+#[test]
+fn horoscope_premium_next_7_days_rejects_bad_french_elision() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    response["week_overview"]["text"] =
+        serde_json::json!("La semaine permet d’réaccorder le cadre avant de confirmer.");
     let err = validate_period_response_evidence(&request, &response).unwrap_err();
     assert_eq!(
         err.detail().message,
@@ -2989,11 +3016,11 @@ fn horoscope_premium_next_7_days_repair_restores_domain_personalization_after_cl
     assert!(response["domain_sections"][0]["text"]
         .as_str()
         .unwrap()
-        .contains("repères personnels"));
+        .contains("repères les plus utiles"));
     assert!(response["domain_sections"][1]["text"]
         .as_str()
         .unwrap()
-        .contains("repères personnels"));
+        .contains("repères les plus utiles"));
 }
 
 #[test]
@@ -3061,7 +3088,7 @@ fn horoscope_premium_next_7_days_repair_personalizes_generic_domain_sections() {
         assert!(section["text"]
             .as_str()
             .unwrap()
-            .contains("repères personnels"));
+            .contains("repères les plus utiles"));
     }
 
     let mut fallback_response = premium_period_response_from_request(&request);

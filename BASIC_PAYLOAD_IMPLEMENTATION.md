@@ -233,10 +233,22 @@ Refactored the deterministic generation model for `horoscope_premium_next_7_days
 - The period interpretation request schema now requires the Premium selection metadata emitted on each `period_event`: `theme_density_score`, `fact_type`, `transiting_object`, `natal_target`, `natal_house`, `natal_focus_hint`, and `personalization_hint`.
 - Editorial arc/role seed wording no longer carries copyable meta phrases such as `Nouvelle facette` or `changer l'usage` in `editorial_brief`.
 - Premium validation now also rejects those editorial meta phrases across the full public response, while keeping the dedicated window error for `watch_windows`.
+- Period public validation now rejects French elision errors such as `d’réaccorder` with `HOROSCOPE_PERIOD_FRENCH_TYPOGRAPHY_FAILED`.
+- Period public validation rejects mechanical personalization fragments such as `vos repères personnels liés à`.
+- The Premium writer prompt now requires secondary same-day signals to remain short nuances; the daily text and advice must stay aligned with the main `daily_plan` theme.
+- `scripts/test_integration_jobs_e2e.ps1` now guards the local async smoke against accidental real-provider usage: it expects `default_provider=fake` unless `-AllowRealProvider` is passed, and reports OpenAI rate limits as external provider failures.
+- `scripts/docker_update_integration_stack.ps1` now wraps the integration jobs smoke with a temporary fake-provider override for both `natal_prompter` defaults and the `natal_simplified` interpretation profile, restarts API/worker so async jobs use fake, then restores the configured product/profile models before continuing the remaining smokes.
+- `FakeProvider` now treats a provider schema containing full reading fields (`summary` + `chapters`) as a full `natal_reading_v1` request even when a `chapter_code` is present for prompt context. This prevents the async `natal_simplified` smoke from returning a chapter-only JSON that fails schema validation.
+- `scripts/lib/horoscope_e2e_fake_provider.ps1` now also enables fake at the Docker environment level for API and worker during horoscope fake smokes. Daily horoscope smoke suites wrap their fake jobs with this helper, so `docker_update_integration_stack.ps1` can continue through the daily and period fake suites without consuming OpenAI quota.
 
 ## Validation
 
 - `cargo test -p astral_llm_api --test horoscope_v1_tests horoscope_premium_next_7_days`
 - `cargo test -p astral_llm_api --test horoscope_v1_tests`
 - `cargo test -p astral_llm_api --test contracts_publish_tests`
+- `cargo test -p astral_llm_api --test integration_jobs_tests`
+- `cargo test -p astral_llm_providers fake_provider_returns_full_reading_when_full_schema_has_chapter_code`
 - `python scripts\import_json_db_to_postgres.py --dry-run`
+- `.\scripts\test_horoscope_free_daily_all.ps1 -SkipRustChecks`
+- `.\scripts\test_horoscope_premium_daily_all.ps1 -SkipRustChecks`
+- `.\scripts\docker_update_integration_stack.ps1 -SkipBuild -SkipImport -SkipCatalogueSubmit`

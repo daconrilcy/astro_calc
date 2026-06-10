@@ -47,15 +47,16 @@ impl LlmProvider for FakeProvider {
         request: ProviderGenerationRequest,
     ) -> Result<ProviderGenerationResponse, LlmProviderError> {
         crate::http::with_timeout(request.timeout, async {
-            let json =
-                if request.metadata.chapter_code.as_deref() == Some(READING_SUMMARY_STEP_CODE) {
-                    serde_json::to_value(build_summary_response())
-                } else if request.metadata.chapter_code.is_some() {
-                    serde_json::to_value(build_chapter_response(&request))
-                } else {
-                    serde_json::to_value(build_full_reading(&request))
-                }
-                .map_err(|e| LlmProviderError::InvalidResponse(e.to_string()))?;
+            let json = if is_full_reading_request(&request) {
+                serde_json::to_value(build_full_reading(&request))
+            } else if request.metadata.chapter_code.as_deref() == Some(READING_SUMMARY_STEP_CODE) {
+                serde_json::to_value(build_summary_response())
+            } else if request.metadata.chapter_code.is_some() {
+                serde_json::to_value(build_chapter_response(&request))
+            } else {
+                serde_json::to_value(build_full_reading(&request))
+            }
+            .map_err(|e| LlmProviderError::InvalidResponse(e.to_string()))?;
 
             Ok(ProviderGenerationResponse {
                 raw_text: json.to_string(),
@@ -71,6 +72,16 @@ impl LlmProvider for FakeProvider {
         })
         .await
     }
+}
+
+fn is_full_reading_request(request: &ProviderGenerationRequest) -> bool {
+    let Some(schema) = request.structured_schema.as_ref() else {
+        return false;
+    };
+    let Some(properties) = schema.get("properties").and_then(|v| v.as_object()) else {
+        return false;
+    };
+    properties.contains_key("chapters") && properties.contains_key("summary")
 }
 
 fn build_summary_response() -> SummaryProviderResponse {
@@ -478,6 +489,50 @@ mod tests {
             .and_then(|v| v.get("code"))
             .and_then(|v| v.as_str());
         assert_eq!(code, Some("career"));
+    }
+
+    #[tokio::test]
+    async fn fake_provider_returns_full_reading_when_full_schema_has_chapter_code() {
+        let provider = FakeProvider;
+        let request = ProviderGenerationRequest {
+            model: "fake-model".to_string(),
+            messages: vec![PromptMessage {
+                role: PromptRole::User,
+                content: "test".to_string(),
+            }],
+            structured_schema: Some(serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "schema_version": { "type": "string" },
+                    "language": { "type": "string" },
+                    "reading_type": { "type": "string" },
+                    "summary": { "type": "object" },
+                    "chapters": { "type": "array" },
+                    "legal": { "type": "object" },
+                    "quality": { "type": "object" }
+                }
+            })),
+            reasoning_effort: Some(ReasoningEffort::Low),
+            temperature: Some(0.4),
+            max_output_tokens: Some(1000),
+            safety_mode: astral_llm_domain::SafetyMode::PlatformRulesOnly,
+            timeout: Duration::from_secs(5),
+            metadata: GenerationMetadata {
+                run_id: "run-1".to_string(),
+                request_id: None,
+                product_code: "natal_prompter".to_string(),
+                chapter_code: Some("career".into()),
+            },
+        };
+
+        let response = provider.generate(request).await.expect("fake ok");
+        let json = response.parsed_json.as_ref().expect("parsed json");
+        assert!(json.get("chapters").is_some());
+        assert!(json.get("summary").is_some());
+        assert_eq!(
+            json.pointer("/chapters/0/code").and_then(|v| v.as_str()),
+            Some("career")
+        );
     }
 
     #[tokio::test]

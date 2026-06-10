@@ -2548,7 +2548,7 @@ fn period_writer_messages(request: &Value) -> Result<Vec<PromptMessage>, Generat
             PromptMessage {
                 role: PromptRole::User,
                 content: format!(
-                    "Construis horoscope_period_response_v1 Premium pour la requête JSON fournie. La valeur Premium doit venir de quatre éléments: 1. une vue d'ensemble qui donne le mouvement réel de la période; 2. des journées clairement différenciées, chacune avec son rôle propre; 3. des fenêtres horaires utilisables, non génériques; 4. une stratégie finale qui aide la personne à piloter la semaine sans répéter le calendrier. Avant de rédiger, déduis silencieusement l'angle éditorial de la semaine: ce qui monte en intensité; ce qui devient plus simple; ce qui demande de la prudence; ce qui peut être décidé, reporté, allégé ou confirmé; la différence entre les journées qui semblent proches. Utilise editorial_brief quand il est présent: il donne le rôle humain, la fonction narrative, la situation lecteur, le mode d'action et l'angle à ne pas répéter pour chaque date. editorial_brief est une aide interne de différenciation: ne recopie jamais directement public_role, narrative_function, reader_situation ou avoid_angle_reuse. Transforme-les en scène humaine naturelle. Les titres publics doivent rester courts, lisibles et non méta. Interdit dans la sortie: nouvelle facette, répéter le même conseil, fonction narrative, changer l'usage. Pour chaque daily_timeline, garde le thème principal du daily_plan, mais transforme-le en situation humaine. Explique ce que la personne peut faire de cette journée, ce qu'elle doit éviter d'alourdir, et ce qui la distingue des autres dates de la période. Mentionne les éléments secondaires uniquement s'ils apportent une nuance réelle. key_days, best_days et watch_days doivent rester des repères courts. Ils ne doivent pas contenir de mini-lecture autonome. Quand une date est importante, favorable ou sensible, l'explication complète doit apparaître dans l'entrée daily_timeline correspondante. best_windows et watch_windows sont des plages horaires. Pour chaque fenêtre, indique un usage concret lié à la période: envoyer, confirmer, écouter, cadrer, différer, se retirer, reprendre, terminer, ou vérifier. Ne produis jamais une phrase de remplissage interchangeable. domain_sections doit contenir 3 à 5 domaines réellement distincts. Chaque domaine doit apporter un angle que les journées ne répètent pas déjà. Si deux domaines se recoupent, fusionne-les ou choisis le plus utile pour la personne. advice et strategy doivent synthétiser une méthode d'usage. Ils ne doivent pas refaire la liste des dates. Ils doivent expliquer comment utiliser les fenêtres favorables, comment traverser les moments sensibles, et comment garder une marge de manœuvre. Utilise les libellés français présents dans la requête. N'affiche aucun code interne. Respecte les preuves fournies. Développe les sections publiques afin d'atteindre {} à {} mots publics. Retourne uniquement le JSON conforme au schéma. Requête JSON:\n{compact}",
+                    "Construis horoscope_period_response_v1 Premium pour la requête JSON fournie. La valeur Premium doit venir de quatre éléments: 1. une vue d'ensemble qui donne le mouvement réel de la période; 2. des journées clairement différenciées, chacune avec son rôle propre; 3. des fenêtres horaires utilisables, non génériques; 4. une stratégie finale qui aide la personne à piloter la semaine sans répéter le calendrier. Avant de rédiger, déduis silencieusement l'angle éditorial de la semaine: ce qui monte en intensité; ce qui devient plus simple; ce qui demande de la prudence; ce qui peut être décidé, reporté, allégé ou confirmé; la différence entre les journées qui semblent proches. Utilise editorial_brief quand il est présent: il donne le rôle humain, la fonction narrative, la situation lecteur, le mode d'action et l'angle à ne pas répéter pour chaque date. editorial_brief est une aide interne de différenciation: ne recopie jamais directement public_role, narrative_function, reader_situation ou avoid_angle_reuse. Transforme-les en scène humaine naturelle. Les titres publics doivent rester courts, lisibles et non méta. Interdit dans la sortie: nouvelle facette, répéter le même conseil, fonction narrative, changer l'usage. Pour chaque daily_timeline, garde le thème principal du daily_plan, mais transforme-le en situation humaine. Le texte principal et le conseil doivent rester alignés avec ce thème principal; si tu utilises un signal secondaire du même jour, garde-le en nuance courte et ne déplace pas l'axe de la journée. Explique ce que la personne peut faire de cette journée, ce qu'elle doit éviter d'alourdir, et ce qui la distingue des autres dates de la période. Mentionne les éléments secondaires uniquement s'ils apportent une nuance réelle. key_days, best_days et watch_days doivent rester des repères courts. Ils ne doivent pas contenir de mini-lecture autonome. Quand une date est importante, favorable ou sensible, l'explication complète doit apparaître dans l'entrée daily_timeline correspondante. best_windows et watch_windows sont des plages horaires. Pour chaque fenêtre, indique un usage concret lié à la période: envoyer, confirmer, écouter, cadrer, différer, se retirer, reprendre, terminer, ou vérifier. Ne produis jamais une phrase de remplissage interchangeable. domain_sections doit contenir 3 à 5 domaines réellement distincts. Chaque domaine doit apporter un angle que les journées ne répètent pas déjà. Si deux domaines se recoupent, fusionne-les ou choisis le plus utile pour la personne. advice et strategy doivent synthétiser une méthode d'usage. Ils ne doivent pas refaire la liste des dates. Ils doivent expliquer comment utiliser les fenêtres favorables, comment traverser les moments sensibles, et comment garder une marge de manœuvre. Utilise les libellés français présents dans la requête. N'affiche aucun code interne. Respecte les preuves fournies. Développe les sections publiques afin d'atteindre {} à {} mots publics. Retourne uniquement le JSON conforme au schéma. Requête JSON:\n{compact}",
                     limits.target_min, limits.target_max
                 ),
             },
@@ -3545,7 +3545,7 @@ fn period_public_domain_text(section: &Value) -> String {
         .unwrap_or("Ce domaine");
     let focus = period_public_focus_text(section);
     format!(
-        "{domain} devient un terrain concret cette semaine. Avec vos repères personnels liés à {focus}, la bonne échelle consiste à choisir une priorité lisible, agir sans raideur et garder le fil entre les journées."
+        "{domain} devient un terrain concret cette semaine. Les repères les plus utiles consistent à {focus}, choisir une priorité lisible, agir sans raideur et garder le fil entre les journées."
     )
 }
 
@@ -3565,7 +3565,7 @@ fn period_public_domain_personalization_sentence(item: &Value) -> String {
 fn period_public_domain_interpretive_sentence(item: &Value) -> String {
     let focus = period_public_focus_text(item);
     format!(
-        "Dans ce domaine, vos repères personnels liés à {focus} aident à choisir le bon niveau d'engagement."
+        "Dans ce domaine, les repères les plus utiles consistent à {focus} et à choisir le bon niveau d'engagement."
     )
 }
 
@@ -5710,6 +5710,7 @@ fn validate_period_public_text(public_text: &str) -> Result<(), GenerationError>
         "thème natal comme fil directeur",
         "le point d'appui concerne",
         "repère personnel concret sans devenir",
+        "vos repères personnels liés à",
     ] {
         if lower.contains(forbidden) {
             return Err(quality_error(
@@ -5717,6 +5718,12 @@ fn validate_period_public_text(public_text: &str) -> Result<(), GenerationError>
                 json!({ "forbidden": forbidden }),
             ));
         }
+    }
+    if !french_elision_violations(public_text).is_empty() {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_FRENCH_TYPOGRAPHY_FAILED",
+            json!({ "reason": "french_elision_violation" }),
+        ));
     }
     if period_has_bad_french_colon_spacing(public_text) {
         return Err(quality_error(

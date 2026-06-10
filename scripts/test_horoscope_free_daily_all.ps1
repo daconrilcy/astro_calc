@@ -17,6 +17,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+. "$PSScriptRoot\lib\astral_http_auth.ps1"
+. "$PSScriptRoot\lib\horoscope_e2e_fake_provider.ps1"
+Import-AstralDotEnv -RepoRoot $repoRoot
 
 function Invoke-Step {
     param(
@@ -53,16 +56,26 @@ try {
     }
 
     if (-not $SkipSmoke) {
-        Invoke-Step "Horoscope Basic Daily fake smoke non-regression" {
-            & (Join-Path $repoRoot "scripts\test_horoscope_basic_daily_fake.ps1") `
-                -BaseUrl $BaseUrl `
-                -CalculatorUrl $CalculatorUrl
-        }
+        $horoscopeFakeProviderArmed = $false
+        try {
+            Enable-HoroscopeE2eFakeLlmProvider -RepoRoot $repoRoot
+            $horoscopeFakeProviderArmed = $true
 
-        Invoke-Step "Horoscope Free Daily fake smoke" {
-            & (Join-Path $repoRoot "scripts\test_horoscope_free_daily_fake.ps1") `
-                -BaseUrl $BaseUrl `
-                -CalculatorUrl $CalculatorUrl
+            Invoke-Step "Horoscope Basic Daily fake smoke non-regression" {
+                & (Join-Path $repoRoot "scripts\test_horoscope_basic_daily_fake.ps1") `
+                    -BaseUrl $BaseUrl `
+                    -CalculatorUrl $CalculatorUrl
+            }
+
+            Invoke-Step "Horoscope Free Daily fake smoke" {
+                & (Join-Path $repoRoot "scripts\test_horoscope_free_daily_fake.ps1") `
+                    -BaseUrl $BaseUrl `
+                    -CalculatorUrl $CalculatorUrl
+            }
+        } finally {
+            if ($horoscopeFakeProviderArmed) {
+                Restore-HoroscopeE2eLlmProvider -RepoRoot $repoRoot
+            }
         }
     }
 } finally {
