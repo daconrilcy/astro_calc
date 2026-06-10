@@ -1,0 +1,105 @@
+{
+  "name": "horoscope_period_public_themes",
+  "structure": {
+    "theme_code": "string, primary key",
+    "public_label": "string",
+    "domain_title": "string",
+    "domain_focus": "string",
+    "best_day_title": "string",
+    "watch_window_title": "string",
+    "watch_window_point": "string",
+    "is_enabled": "boolean",
+    "sort_order": "integer",
+    "unique_key": ["theme_code"]
+  },
+  "data": [
+    {
+      "theme_code": "organization",
+      "public_label": "appuis concrets",
+      "domain_title": "Appuis concrets",
+      "domain_focus": "Installer des repères simples, hiérarchiser ce qui mérite l'attention et rendre les tâches plus soutenables.",
+      "best_day_title": "Jour le plus structurant",
+      "watch_window_title": "Éviter de tout relancer d'un coup",
+      "watch_window_point": "Gardez une marge avant d'ouvrir un nouveau sujet pratique.",
+      "is_enabled": true,
+      "sort_order": 10
+    },
+    {
+      "theme_code": "routine",
+      "public_label": "rythme quotidien",
+      "domain_title": "Rythme quotidien",
+      "domain_focus": "Rendre les habitudes plus soutenables sans rigidifier toute la semaine.",
+      "best_day_title": "Jour le plus structurant",
+      "watch_window_title": "Garder une marge dans le rythme",
+      "watch_window_point": "N'ajoutez pas une contrainte si le rythme ordinaire demande déjà un ajustement.",
+      "is_enabled": true,
+      "sort_order": 20
+    },
+    {
+      "theme_code": "relationship",
+      "public_label": "liens, valeur et attachement",
+      "domain_title": "Liens, valeur et attachement",
+      "domain_focus": "Observer la qualité du lien, les attentes implicites et la manière de répondre sans suradapter.",
+      "best_day_title": "Meilleur jour relationnel",
+      "watch_window_title": "Préserver une marge relationnelle",
+      "watch_window_point": "Ne surinterprétez pas une réaction ou un silence.",
+      "is_enabled": true,
+      "sort_order": 30
+    },
+    {
+      "theme_code": "energy",
+      "public_label": "énergie mentale",
+      "domain_title": "Énergie mentale",
+      "domain_focus": "Canaliser l'élan dans des choix courts, assumés et compatibles avec le rythme personnel.",
+      "best_day_title": "Meilleur jour d'action",
+      "watch_window_title": "Canaliser la réaction",
+      "watch_window_point": "Ralentissez avant d'agir sous impulsion.",
+      "is_enabled": true,
+      "sort_order": 40
+    },
+    {
+      "theme_code": "clarity",
+      "public_label": "cap à nommer",
+      "domain_title": "Cap à mettre au net",
+      "domain_focus": "Mettre en lumière ce qui compte vraiment avant de conclure ou de promettre.",
+      "best_day_title": "Jour de clarté",
+      "watch_window_title": "Reporter une conclusion trop nette",
+      "watch_window_point": "Reportez une conclusion si les informations restent incomplètes.",
+      "is_enabled": true,
+      "sort_order": 50
+    },
+    {
+      "theme_code": "communication",
+      "public_label": "échanges à cadrer",
+      "domain_title": "Échanges à cadrer",
+      "domain_focus": "Privilégier les messages utiles, les décisions formulées clairement et les échanges qui font avancer.",
+      "best_day_title": "Meilleur jour d'action",
+      "watch_window_title": "Limiter les réponses trop rapides",
+      "watch_window_point": "Évitez de répondre trop vite si l'échange devient tendu.",
+      "is_enabled": true,
+      "sort_order": 60
+    },
+    {
+      "theme_code": "integration",
+      "public_label": "engagements et limites",
+      "domain_title": "Engagements et limites",
+      "domain_focus": "Relier les avancées de la semaine à ce qui reste tenable, préciser les responsabilités et alléger les engagements trop lourds.",
+      "best_day_title": "Jour de consolidation",
+      "watch_window_title": "Ne pas surcharger l'engagement",
+      "watch_window_point": "Vérifiez ce qui reste soutenable avant de transformer l'impression en décision.",
+      "is_enabled": true,
+      "sort_order": 70
+    },
+    {
+      "theme_code": "default",
+      "public_label": "priorité principale",
+      "domain_title": "Priorité utile",
+      "domain_focus": "Garder une priorité simple, visible et reliée à la situation réelle.",
+      "best_day_title": "Jour favorable",
+      "watch_window_title": "Ralentir avant de répondre",
+      "watch_window_point": "Gardez une marge avant de transformer l'impression en décision définitive.",
+      "is_enabled": true,
+      "sort_order": 999
+    }
+  ]
+}

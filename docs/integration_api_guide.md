@@ -215,8 +215,8 @@ Difference produit :
 
 Chaque window Premium reference `source_snapshot_keys`. `best_days` et
 `watch_days` restent des dates globales ; `best_windows` et `watch_windows`
-localisent des plages horaires. Le profil `premium_rich` vise 2200 mots et
-bloque au-dela de 3200 mots.
+localisent des plages horaires. Le profil `premium_rich` vise 1600 a 2600 mots
+et bloque au-dela de 3200 mots.
 `best_days` Premium retourne jusqu'a 3 dates, sans forcer une troisieme date
 faible : deux dates sont valides si seules deux ressortent clairement apres
 scoring, deduplication et exclusions.

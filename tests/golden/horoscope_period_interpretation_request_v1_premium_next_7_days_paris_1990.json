@@ -249,7 +249,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-07:2026-06-07:00:00:venus:trine:natal_moon"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "venus",
+      "natal_target": "natal_moon",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-07:2026-06-07:06:00:mars:square:natal_mercury",
@@ -264,7 +269,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-07:2026-06-07:06:00:mars:square:natal_mercury"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "mars",
+      "natal_target": "natal_mercury",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-07:2026-06-07:12:00:mercury:trine:natal_mars",
@@ -279,7 +289,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-07:2026-06-07:12:00:mercury:trine:natal_mars"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "mercury",
+      "natal_target": "natal_mars",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-07:2026-06-07:18:00:sun:sextile:natal_venus",
@@ -294,7 +309,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-07:2026-06-07:18:00:sun:sextile:natal_venus"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "sun",
+      "natal_target": "natal_venus",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-08:2026-06-08:00:00:moon:natal_house:6",
@@ -309,7 +329,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-08:2026-06-08:00:00:moon:natal_house:6"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "moon_house_by_day",
+      "transiting_object": "moon",
+      "natal_target": null,
+      "natal_house": 6
     },
     {
       "event_key": "event:period:2026-06-08:2026-06-08:06:00:jupiter:trine:natal_saturn",
@@ -324,7 +349,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-08:2026-06-08:06:00:jupiter:trine:natal_saturn"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "jupiter",
+      "natal_target": "natal_saturn",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-08:2026-06-08:12:00:saturn:opposition:natal_sun",
@@ -339,7 +369,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-08:2026-06-08:12:00:saturn:opposition:natal_sun"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "saturn",
+      "natal_target": "natal_sun",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-08:2026-06-08:18:00:venus:trine:natal_moon",
@@ -354,7 +389,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-08:2026-06-08:18:00:venus:trine:natal_moon"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "venus",
+      "natal_target": "natal_moon",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-09:2026-06-09:00:00:mars:square:natal_mercury",
@@ -369,7 +409,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-09:2026-06-09:00:00:mars:square:natal_mercury"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "mars",
+      "natal_target": "natal_mercury",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-09:2026-06-09:06:00:mercury:trine:natal_mars",
@@ -384,7 +429,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-09:2026-06-09:06:00:mercury:trine:natal_mars"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "mercury",
+      "natal_target": "natal_mars",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-09:2026-06-09:12:00:sun:sextile:natal_venus",
@@ -399,7 +449,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-09:2026-06-09:12:00:sun:sextile:natal_venus"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "sun",
+      "natal_target": "natal_venus",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-09:2026-06-09:18:00:moon:natal_house:6",
@@ -414,7 +469,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-09:2026-06-09:18:00:moon:natal_house:6"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "moon_house_by_day",
+      "transiting_object": "moon",
+      "natal_target": null,
+      "natal_house": 6
     },
     {
       "event_key": "event:period:2026-06-10:2026-06-10:00:00:jupiter:trine:natal_saturn",
@@ -429,7 +489,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-10:2026-06-10:00:00:jupiter:trine:natal_saturn"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "jupiter",
+      "natal_target": "natal_saturn",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-10:2026-06-10:06:00:saturn:opposition:natal_sun",
@@ -444,7 +509,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-10:2026-06-10:06:00:saturn:opposition:natal_sun"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "saturn",
+      "natal_target": "natal_sun",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-10:2026-06-10:12:00:venus:trine:natal_moon",
@@ -459,7 +529,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-10:2026-06-10:12:00:venus:trine:natal_moon"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "venus",
+      "natal_target": "natal_moon",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-10:2026-06-10:18:00:mars:square:natal_mercury",
@@ -474,7 +549,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-10:2026-06-10:18:00:mars:square:natal_mercury"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "mars",
+      "natal_target": "natal_mercury",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-11:2026-06-11:00:00:mercury:trine:natal_mars",
@@ -489,7 +569,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-11:2026-06-11:00:00:mercury:trine:natal_mars"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "mercury",
+      "natal_target": "natal_mars",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-11:2026-06-11:06:00:sun:sextile:natal_venus",
@@ -504,7 +589,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-11:2026-06-11:06:00:sun:sextile:natal_venus"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "sun",
+      "natal_target": "natal_venus",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-11:2026-06-11:12:00:moon:natal_house:6",
@@ -519,7 +609,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-11:2026-06-11:12:00:moon:natal_house:6"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "moon_house_by_day",
+      "transiting_object": "moon",
+      "natal_target": null,
+      "natal_house": 6
     },
     {
       "event_key": "event:period:2026-06-11:2026-06-11:18:00:jupiter:trine:natal_saturn",
@@ -534,7 +629,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-11:2026-06-11:18:00:jupiter:trine:natal_saturn"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "jupiter",
+      "natal_target": "natal_saturn",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-12:2026-06-12:00:00:saturn:opposition:natal_sun",
@@ -549,7 +649,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-12:2026-06-12:00:00:saturn:opposition:natal_sun"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "saturn",
+      "natal_target": "natal_sun",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-12:2026-06-12:06:00:venus:trine:natal_moon",
@@ -564,7 +669,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-12:2026-06-12:06:00:venus:trine:natal_moon"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "venus",
+      "natal_target": "natal_moon",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-12:2026-06-12:12:00:mars:square:natal_mercury",
@@ -579,7 +689,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-12:2026-06-12:12:00:mars:square:natal_mercury"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "mars",
+      "natal_target": "natal_mercury",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-12:2026-06-12:18:00:mercury:trine:natal_mars",
@@ -594,7 +709,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-12:2026-06-12:18:00:mercury:trine:natal_mars"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "mercury",
+      "natal_target": "natal_mars",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-13:2026-06-13:00:00:sun:sextile:natal_venus",
@@ -609,7 +729,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-13:2026-06-13:00:00:sun:sextile:natal_venus"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "sun",
+      "natal_target": "natal_venus",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-13:2026-06-13:06:00:moon:natal_house:6",
@@ -624,7 +749,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-13:2026-06-13:06:00:moon:natal_house:6"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "moon_house_by_day",
+      "transiting_object": "moon",
+      "natal_target": null,
+      "natal_house": 6
     },
     {
       "event_key": "event:period:2026-06-13:2026-06-13:12:00:jupiter:trine:natal_saturn",
@@ -639,7 +769,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-13:2026-06-13:12:00:jupiter:trine:natal_saturn"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "jupiter",
+      "natal_target": "natal_saturn",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-13:2026-06-13:18:00:saturn:opposition:natal_sun",
@@ -654,7 +789,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-13:2026-06-13:18:00:saturn:opposition:natal_sun"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "saturn",
+      "natal_target": "natal_sun",
+      "natal_house": null
     }
   ],
   "main_events": [
@@ -671,7 +811,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-07:2026-06-07:00:00:venus:trine:natal_moon"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "venus",
+      "natal_target": "natal_moon",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-07:2026-06-07:06:00:mars:square:natal_mercury",
@@ -686,7 +831,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-07:2026-06-07:06:00:mars:square:natal_mercury"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "mars",
+      "natal_target": "natal_mercury",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-07:2026-06-07:12:00:mercury:trine:natal_mars",
@@ -701,7 +851,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-07:2026-06-07:12:00:mercury:trine:natal_mars"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "mercury",
+      "natal_target": "natal_mars",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-07:2026-06-07:18:00:sun:sextile:natal_venus",
@@ -716,7 +871,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-07:2026-06-07:18:00:sun:sextile:natal_venus"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "sun",
+      "natal_target": "natal_venus",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-08:2026-06-08:00:00:moon:natal_house:6",
@@ -731,7 +891,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-08:2026-06-08:00:00:moon:natal_house:6"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "moon_house_by_day",
+      "transiting_object": "moon",
+      "natal_target": null,
+      "natal_house": 6
     },
     {
       "event_key": "event:period:2026-06-08:2026-06-08:06:00:jupiter:trine:natal_saturn",
@@ -746,7 +911,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-08:2026-06-08:06:00:jupiter:trine:natal_saturn"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "jupiter",
+      "natal_target": "natal_saturn",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-08:2026-06-08:12:00:saturn:opposition:natal_sun",
@@ -761,7 +931,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-08:2026-06-08:12:00:saturn:opposition:natal_sun"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "saturn",
+      "natal_target": "natal_sun",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-08:2026-06-08:18:00:venus:trine:natal_moon",
@@ -776,7 +951,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-08:2026-06-08:18:00:venus:trine:natal_moon"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "venus",
+      "natal_target": "natal_moon",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-09:2026-06-09:00:00:mars:square:natal_mercury",
@@ -791,7 +971,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-09:2026-06-09:00:00:mars:square:natal_mercury"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "mars",
+      "natal_target": "natal_mercury",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-09:2026-06-09:06:00:mercury:trine:natal_mars",
@@ -806,7 +991,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-09:2026-06-09:06:00:mercury:trine:natal_mars"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "mercury",
+      "natal_target": "natal_mars",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-09:2026-06-09:12:00:sun:sextile:natal_venus",
@@ -821,7 +1011,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-09:2026-06-09:12:00:sun:sextile:natal_venus"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "sun",
+      "natal_target": "natal_venus",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-09:2026-06-09:18:00:moon:natal_house:6",
@@ -836,7 +1031,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-09:2026-06-09:18:00:moon:natal_house:6"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "moon_house_by_day",
+      "transiting_object": "moon",
+      "natal_target": null,
+      "natal_house": 6
     },
     {
       "event_key": "event:period:2026-06-10:2026-06-10:00:00:jupiter:trine:natal_saturn",
@@ -851,7 +1051,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-10:2026-06-10:00:00:jupiter:trine:natal_saturn"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "jupiter",
+      "natal_target": "natal_saturn",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-10:2026-06-10:06:00:saturn:opposition:natal_sun",
@@ -866,7 +1071,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-10:2026-06-10:06:00:saturn:opposition:natal_sun"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "saturn",
+      "natal_target": "natal_sun",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-10:2026-06-10:12:00:venus:trine:natal_moon",
@@ -881,7 +1091,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-10:2026-06-10:12:00:venus:trine:natal_moon"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "venus",
+      "natal_target": "natal_moon",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-10:2026-06-10:18:00:mars:square:natal_mercury",
@@ -896,7 +1111,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-10:2026-06-10:18:00:mars:square:natal_mercury"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "mars",
+      "natal_target": "natal_mercury",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-11:2026-06-11:00:00:mercury:trine:natal_mars",
@@ -911,7 +1131,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-11:2026-06-11:00:00:mercury:trine:natal_mars"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "mercury",
+      "natal_target": "natal_mars",
+      "natal_house": null
     },
     {
       "event_key": "event:period:2026-06-11:2026-06-11:06:00:sun:sextile:natal_venus",
@@ -926,7 +1151,12 @@
       "personalization_hint": "Personnaliser ce signal par une priorite concrete.",
       "evidence_keys": [
         "period:2026-06-11:2026-06-11:06:00:sun:sextile:natal_venus"
-      ]
+      ],
+      "theme_density_score": 0.72,
+      "fact_type": "transit_to_natal",
+      "transiting_object": "sun",
+      "natal_target": "natal_venus",
+      "natal_house": null
     }
   ],
   "key_days": [],
@@ -1661,4 +1891,3 @@
     }
   ]
 }
-

@@ -650,7 +650,7 @@ Regles publiques :
   `watch_summary.status = low` decrit une vigilance douce. `status = none`
   n'est utilise que sans signal exploitable. `watch_windows` peut donc etre non
   vide avec `watch_days = []` uniquement en statut `low`.
-- Le profil `premium_rich` vise 2200 mots et impose une limite dure de 3200 mots.
+- Le profil `premium_rich` vise 1600 a 2600 mots et impose une limite dure de 3200 mots.
 - Les `best_windows` Premium doivent avoir des titres et `best_for`
   differencies ; le titre generique `Fenetre favorable` est refuse.
 

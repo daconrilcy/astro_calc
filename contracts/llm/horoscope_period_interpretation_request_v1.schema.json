@@ -93,6 +93,7 @@
     "watch_windows": { "type": "array", "maxItems": 3, "items": { "$ref": "#/definitions/watch_window" } },
     "strategy": { "$ref": "#/definitions/strategy" },
     "premium_scores": { "type": "object" },
+    "editorial_brief": { "$ref": "#/definitions/editorial_brief" },
     "daily_plans": {
       "type": "array",
       "maxItems": 7,
@@ -157,7 +158,24 @@
     },
     "period_event": {
       "type": "object",
-      "required": ["event_key", "event_type", "date", "snapshot_key", "theme_code", "tone", "score", "evidence_keys"],
+      "required": [
+        "event_key",
+        "event_type",
+        "date",
+        "snapshot_key",
+        "theme_code",
+        "tone",
+        "aspect",
+        "score",
+        "theme_density_score",
+        "fact_type",
+        "transiting_object",
+        "natal_target",
+        "natal_house",
+        "natal_focus_hint",
+        "personalization_hint",
+        "evidence_keys"
+      ],
       "additionalProperties": false,
       "properties": {
         "event_key": { "type": "string" },
@@ -168,6 +186,11 @@
         "tone": { "type": "string" },
         "aspect": { "type": ["string", "null"] },
         "score": { "type": "number" },
+        "theme_density_score": { "type": "number" },
+        "fact_type": { "type": ["string", "null"] },
+        "transiting_object": { "type": ["string", "null"] },
+        "natal_target": { "type": ["string", "null"] },
+        "natal_house": { "type": ["integer", "null"] },
         "natal_focus_hint": { "type": ["string", "null"] },
         "personalization_hint": { "type": ["string", "null"] },
         "evidence_keys": { "type": "array", "minItems": 1, "items": { "type": "string" } }
@@ -202,6 +225,42 @@
         "natal_focus_hint": { "type": "string" },
         "personalization_hint": { "type": "string" },
         "evidence_keys": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+      }
+    },
+    "editorial_brief": {
+      "type": "object",
+      "required": ["purpose", "days"],
+      "additionalProperties": false,
+      "properties": {
+        "purpose": { "type": "string" },
+        "days": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 7,
+          "items": { "$ref": "#/definitions/editorial_day" }
+        }
+      }
+    },
+    "editorial_day": {
+      "type": "object",
+      "required": [
+        "date",
+        "public_role",
+        "narrative_function",
+        "reader_situation",
+        "action_mode",
+        "contrast_with_previous_day",
+        "avoid_angle_reuse"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "date": { "type": "string" },
+        "public_role": { "type": "string" },
+        "narrative_function": { "type": "string" },
+        "reader_situation": { "type": "string" },
+        "action_mode": { "type": "string" },
+        "contrast_with_previous_day": { "type": "string" },
+        "avoid_angle_reuse": { "type": "string" }
       }
     },
     "domain_section": {

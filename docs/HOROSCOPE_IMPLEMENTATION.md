@@ -1014,7 +1014,7 @@ Pour Premium, `best_days` peut contenir jusqu'a 3 dates distinctes, mais peut
 rester a 2 si seules deux dates ressortent clairement apres scoring,
 deduplication de theme et exclusions `key_days`/`watch_days`.
 
-Le profil `premium_rich` vise 2200 mots et impose une limite dure a 3200 mots.
+Le profil `premium_rich` vise 1600 a 2600 mots et impose une limite dure a 3200 mots.
 La reponse Premium doit contenir `strategy`, `best_windows`, des
 `watch_windows` evidencées quand des signaux exploitables existent, exactement 7
 entrees `daily_timeline`, 3 a 5 `domain_sections`, `advice`,

@@ -1,0 +1,78 @@
+{
+  "name": "horoscope_period_editorial_arcs",
+  "structure": {
+    "arc_code": "string, primary key",
+    "theme_code": "string",
+    "occurrence_index": "integer",
+    "public_role_template": "string",
+    "narrative_function_template": "string",
+    "reader_situation": "string",
+    "action_mode": "string",
+    "avoid_angle_template": "string",
+    "is_enabled": "boolean",
+    "sort_order": "integer",
+    "unique_key": ["theme_code", "occurrence_index"]
+  },
+  "data": [
+    {
+      "arc_code": "integration_1_friction",
+      "theme_code": "integration",
+      "occurrence_index": 1,
+      "public_role_template": "Premier point de friction autour de {theme_label}, ne pas accepter trop vite ce qui pèserait ensuite.",
+      "narrative_function_template": "ouvrir l'arc des engagements en montrant où le cadre commence à résister.",
+      "reader_situation": "Une discussion peut monter trop vite; ralentissez avant de répondre ou de promettre.",
+      "action_mode": "ralentir",
+      "avoid_angle_template": "Ne pas répéter un conseil de prudence général; montrer la première confrontation au cadre.",
+      "is_enabled": true,
+      "sort_order": 10
+    },
+    {
+      "arc_code": "integration_2_reality_test",
+      "theme_code": "integration",
+      "occurrence_index": 2,
+      "public_role_template": "Test de réalité sur {theme_label}, ajuster une promesse, une charge ou un délai.",
+      "narrative_function_template": "transformer la tension en vérification concrète de ce qui tient vraiment.",
+      "reader_situation": "Une charge concrète ou familiale peut demander un recadrage plus sobre.",
+      "action_mode": "recadrer",
+      "avoid_angle_template": "Ne pas refaire la friction précédente; centrer la journée sur le test de réalité.",
+      "is_enabled": true,
+      "sort_order": 20
+    },
+    {
+      "arc_code": "integration_3_recovery",
+      "theme_code": "integration",
+      "occurrence_index": 3,
+      "public_role_template": "Temps de récupération dans {theme_label}, alléger sans tout renégocier à chaud.",
+      "narrative_function_template": "faire redescendre la pression et digérer ce qui a été cadré.",
+      "reader_situation": "Un engagement doit être allégé en silence plutôt que renégocié dans l'urgence.",
+      "action_mode": "récupérer",
+      "avoid_angle_template": "Ne pas refaire un arbitrage; faire respirer la journée par le retrait et l'allègement.",
+      "is_enabled": true,
+      "sort_order": 30
+    },
+    {
+      "arc_code": "integration_4_closure",
+      "theme_code": "integration",
+      "occurrence_index": 4,
+      "public_role_template": "Clôture utile pour {theme_label}, confirmer seulement si le cadre est clair.",
+      "narrative_function_template": "fermer l'arc en validant ce qui peut l'être sans porter le reste.",
+      "reader_situation": "Un projet collectif peut être confirmé seulement si chacun sait ce qu'il porte.",
+      "action_mode": "valider",
+      "avoid_angle_template": "Ne pas répéter l'allègement; montrer la validation possible et ses conditions.",
+      "is_enabled": true,
+      "sort_order": 40
+    },
+    {
+      "arc_code": "default_repeat",
+      "theme_code": "default",
+      "occurrence_index": 2,
+      "public_role_template": "Retour de {theme_label}, à traiter par un geste plus précis que la fois précédente.",
+      "narrative_function_template": "déplacer l'attention vers une scène de vie différente et plus précise.",
+      "reader_situation": "La même priorité revient, mais elle demande cette fois un geste plus précis et moins large.",
+      "action_mode": "différencier",
+      "avoid_angle_template": "Ne pas reprendre le même angle; déplacer la scène, l'usage et la décision.",
+      "is_enabled": true,
+      "sort_order": 999
+    }
+  ]
+}

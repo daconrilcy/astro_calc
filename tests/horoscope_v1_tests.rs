@@ -1822,13 +1822,14 @@ fn horoscope_period_provider_payload_rejects_missing_domain_text_before_repair()
 }
 
 #[test]
-fn horoscope_period_provider_payload_accepts_low_watch_summary_before_repair() {
+fn horoscope_period_provider_payload_accepts_none_watch_summary_without_tension() {
     let public = validate_period_public_request(&period_public_payload()).unwrap();
     let request =
         build_period_interpretation_request(&public, &premium_period_context_only_calculation())
             .unwrap();
     let response = premium_period_response_from_request(&request);
-    assert_eq!(response["watch_summary"]["status"], "low");
+    assert_eq!(response["watch_summary"]["status"], "none");
+    assert!(response["watch_windows"].as_array().unwrap().is_empty());
     validate_period_provider_public_payload(&response).unwrap();
 }
 
@@ -2532,13 +2533,13 @@ fn horoscope_premium_next_7_days_builds_watch_windows_or_none() {
 }
 
 #[test]
-fn horoscope_premium_next_7_days_context_only_builds_low_watch_windows() {
+fn horoscope_premium_next_7_days_context_only_does_not_build_fake_watch_windows() {
     let public = validate_period_public_request(&period_public_payload()).unwrap();
     let request =
         build_period_interpretation_request(&public, &premium_period_context_only_calculation())
             .unwrap();
-    assert_eq!(request["watch_summary_plan"]["status"], "low");
-    assert!(!request["watch_windows"].as_array().unwrap().is_empty());
+    assert_eq!(request["watch_summary_plan"]["status"], "none");
+    assert!(request["watch_windows"].as_array().unwrap().is_empty());
     assert!(!request["best_windows"].as_array().unwrap().is_empty());
     let mut response = premium_period_response_from_request(&request);
     repair_period_response_shape(&request, &mut response);
@@ -2546,22 +2547,22 @@ fn horoscope_premium_next_7_days_context_only_builds_low_watch_windows() {
 }
 
 #[test]
-fn horoscope_premium_next_7_days_builds_low_watch_windows_without_strong_tension() {
+fn horoscope_premium_next_7_days_returns_no_watch_windows_without_true_tension() {
     let public = validate_period_public_request(&period_public_payload()).unwrap();
     let request =
         build_period_interpretation_request(&public, &premium_period_context_only_calculation())
             .unwrap();
     assert_eq!(request["watch_days"].as_array().unwrap().len(), 0);
-    assert_eq!(request["watch_summary_plan"]["status"], "low");
-    assert!(!request["watch_windows"].as_array().unwrap().is_empty());
-    assert!(!request["watch_summary_plan"]["evidence_keys"]
+    assert_eq!(request["watch_summary_plan"]["status"], "none");
+    assert!(request["watch_windows"].as_array().unwrap().is_empty());
+    assert!(request["watch_summary_plan"]["evidence_keys"]
         .as_array()
         .unwrap()
         .is_empty());
 }
 
 #[test]
-fn horoscope_premium_next_7_days_low_watch_windows_reference_existing_snapshots() {
+fn horoscope_premium_next_7_days_watch_windows_reference_existing_snapshots_when_present() {
     let public = validate_period_public_request(&period_public_payload()).unwrap();
     let request =
         build_period_interpretation_request(&public, &premium_period_context_only_calculation())
@@ -2589,7 +2590,7 @@ fn horoscope_premium_next_7_days_low_watch_windows_reference_existing_snapshots(
 }
 
 #[test]
-fn horoscope_premium_next_7_days_low_watch_windows_do_not_overlap_best_windows() {
+fn horoscope_premium_next_7_days_watch_windows_do_not_overlap_best_windows_when_present() {
     let public = validate_period_public_request(&period_public_payload()).unwrap();
     let request =
         build_period_interpretation_request(&public, &premium_period_context_only_calculation())
@@ -2712,6 +2713,34 @@ fn horoscope_period_provider_schema_matches_service_shape() {
     ] {
         assert!(premium_properties.contains_key(field));
         assert!(premium_required.contains(field));
+    }
+}
+
+#[test]
+fn horoscope_period_event_schema_requires_premium_selection_metadata() {
+    let schema: serde_json::Value = serde_json::from_str(include_str!(
+        "../contracts/llm/horoscope_period_interpretation_request_v1.schema.json"
+    ))
+    .unwrap();
+    let required = schema["definitions"]["period_event"]["required"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|value| value.as_str())
+        .collect::<std::collections::HashSet<_>>();
+    for field in [
+        "theme_density_score",
+        "fact_type",
+        "transiting_object",
+        "natal_target",
+        "natal_house",
+        "natal_focus_hint",
+        "personalization_hint",
+    ] {
+        assert!(
+            required.contains(field),
+            "period_event must require {field}"
+        );
     }
 }
 
@@ -3478,9 +3507,252 @@ fn horoscope_premium_next_7_days_daily_theme_distribution_is_not_over_dominated_
     }
     let max_count = counts.values().copied().max().unwrap_or(0);
     assert!(
-        max_count <= 5,
-        "expected premium daily theme distribution not to exceed 5/7 when alternatives exist: {counts:?}"
+        max_count <= 3,
+        "expected premium daily theme distribution not to exceed 3/7 when alternatives exist: {counts:?}"
     );
+}
+
+#[test]
+fn horoscope_premium_next_7_days_adds_editorial_brief_with_distinct_day_roles() {
+    let request = premium_period_interpretation_request();
+    let days = request["editorial_brief"]["days"].as_array().unwrap();
+    assert_eq!(days.len(), 7);
+
+    let action_modes = days
+        .iter()
+        .filter_map(|day| day["action_mode"].as_str())
+        .collect::<std::collections::HashSet<_>>();
+    assert!(
+        action_modes.len() >= 4,
+        "expected editorial action modes to guide real day differentiation: {action_modes:?}"
+    );
+
+    for day in days {
+        assert!(!day["public_role"].as_str().unwrap().is_empty());
+        assert!(!day["narrative_function"].as_str().unwrap().is_empty());
+        assert!(!day["reader_situation"].as_str().unwrap().is_empty());
+        assert!(!day["contrast_with_previous_day"]
+            .as_str()
+            .unwrap()
+            .is_empty());
+        assert!(!day["avoid_angle_reuse"].as_str().unwrap().is_empty());
+    }
+}
+
+#[test]
+fn horoscope_premium_next_7_days_editorial_brief_has_unique_reader_situations() {
+    let request = premium_period_interpretation_request();
+    let situations = request["editorial_brief"]["days"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|day| day["reader_situation"].as_str())
+        .collect::<Vec<_>>();
+    let unique = situations
+        .iter()
+        .copied()
+        .collect::<std::collections::HashSet<_>>();
+    assert_eq!(
+        situations.len(),
+        unique.len(),
+        "reader_situation entries must be human-distinct, not repeated templates: {situations:?}"
+    );
+}
+
+#[test]
+fn horoscope_premium_next_7_days_uses_public_usage_domains() {
+    let request = premium_period_interpretation_request();
+    let serialized = serde_json::to_string(&request).unwrap();
+    assert!(
+        !serialized.contains("Intégration") && !serialized.contains("intégration"),
+        "period request should not expose abstract integration label publicly"
+    );
+    assert!(
+        serialized.contains("Engagements et limites")
+            || serialized.contains("engagements et limites"),
+        "expected usage-oriented public domain label"
+    );
+}
+
+#[test]
+fn horoscope_premium_next_7_days_watch_windows_are_not_duplicate_prompts() {
+    let request = premium_period_interpretation_request();
+    let mut seen = std::collections::HashSet::new();
+    for window in request["watch_windows"].as_array().unwrap() {
+        let key = format!(
+            "{}|{}",
+            window["title"].as_str().unwrap_or(""),
+            window["watch_point"].as_str().unwrap_or("")
+        );
+        assert!(
+            seen.insert(key.clone()),
+            "watch window title/watch_point pair must not be duplicated: {key}"
+        );
+    }
+}
+
+#[test]
+fn horoscope_premium_next_7_days_watch_windows_do_not_use_editorial_arc_titles() {
+    let request = premium_period_interpretation_request();
+    let serialized = serde_json::to_string(&request["watch_windows"])
+        .unwrap()
+        .to_lowercase();
+    for forbidden in [
+        "nouvelle facette",
+        "répéter le même conseil",
+        "fonction narrative",
+        "changer l'usage",
+        "changer l’usage",
+    ] {
+        assert!(
+            !serialized.contains(forbidden),
+            "watch window leaked editorial scaffold: {forbidden}"
+        );
+    }
+}
+
+#[test]
+fn horoscope_premium_next_7_days_rejects_meta_watch_window_title() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    if response["watch_windows"].as_array().unwrap().is_empty() {
+        response["watch_summary"]["status"] = serde_json::json!("active");
+        response["watch_windows"] = serde_json::json!([{
+            "date": request["period_resolution"]["included_dates"][0],
+            "time_range_label": "12:00–18:00",
+            "source_snapshot_keys": request["scan_plan"]["snapshots"][2]["snapshot_key"].as_str().map(|key| vec![key]).unwrap_or_default(),
+            "title": "Nouvelle facette de appuis concrets, changer l'usage concret plutôt que répéter le même conseil.",
+            "theme": "appuis concrets",
+            "tone": "concentré",
+            "watch_point": "Rester sur la fonction narrative.",
+            "evidence_keys": request["evidence"][0]["evidence_key"].as_str().map(|key| vec![key]).unwrap_or_default()
+        }]);
+    } else {
+        response["watch_windows"][0]["title"] = serde_json::json!(
+            "Nouvelle facette de appuis concrets, changer l'usage concret plutôt que répéter le même conseil."
+        );
+    }
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_PREMIUM_WINDOW_META_LEAK"
+    );
+}
+
+#[test]
+fn horoscope_premium_next_7_days_allows_natural_usage_concret_phrase() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    response["week_overview"]["text"] = serde_json::json!(
+        "La semaine gagne en usage concret quand vous transformez les signaux en choix simples."
+    );
+    validate_period_response_evidence(&request, &response).unwrap();
+}
+
+#[test]
+fn horoscope_premium_next_7_days_rejects_meta_public_text_outside_windows() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    response["week_overview"]["text"] = serde_json::json!(
+        "Nouvelle facette de la semaine, à traiter comme fonction narrative plutôt que comme lecture publique."
+    );
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_PREMIUM_PUBLIC_META_LEAK"
+    );
+}
+
+#[test]
+fn horoscope_premium_next_7_days_request_hints_are_scene_based_not_meta_instructions() {
+    let request = premium_period_interpretation_request();
+    let serialized = serde_json::to_string(&request).unwrap().to_lowercase();
+    for forbidden in [
+        "personnaliser ce signal",
+        "relier ce signal",
+        "plutôt que rester sur un conseil générique",
+        "sans devenir une explication abstraite",
+    ] {
+        assert!(
+            !serialized.contains(forbidden),
+            "interpretation request leaked meta hint: {forbidden}"
+        );
+    }
+    assert!(
+        serialized.contains("situations associées"),
+        "expected scene-based hints in interpretation request"
+    );
+}
+
+#[test]
+fn horoscope_premium_next_7_days_markers_use_editorial_roles_not_raw_theme_sentences() {
+    let request = premium_period_interpretation_request();
+    let markers = ["key_days", "watch_days"]
+        .into_iter()
+        .flat_map(|field| request[field].as_array().into_iter().flatten())
+        .collect::<Vec<_>>();
+    let mut watch_reasons = std::collections::HashSet::new();
+    for marker in markers {
+        let reason = marker["reason"].as_str().unwrap_or("");
+        assert!(!reason.contains(" y pèse davantage"), "{reason}");
+        assert!(
+            !reason.contains("peut rendre les réactions plus rapides"),
+            "{reason}"
+        );
+        if marker["title"].as_str() == Some("Jour de vigilance") {
+            assert!(
+                watch_reasons.insert(reason.to_string()),
+                "watch day reasons must not repeat: {reason}"
+            );
+        }
+    }
+}
+
+#[test]
+fn horoscope_period_rejects_editorial_scaffolding_phrase() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response["daily_timeline"][0]["text"] = serde_json::json!(
+        "Avec vos repères, la journée gagne un repère personnel concret sans devenir une explication abstraite."
+    );
+
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_META_PERSONALIZATION_LEAK"
+    );
+}
+
+#[test]
+fn horoscope_non_premium_period_requests_do_not_add_editorial_brief() {
+    let basic = period_interpretation_request();
+    assert!(basic.get("editorial_brief").is_none());
+
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let calculation = free_period_calculation();
+    let free = build_period_interpretation_request(&public, &calculation).unwrap();
+    assert!(free.get("editorial_brief").is_none());
+}
+
+#[test]
+fn horoscope_premium_next_7_days_uses_less_forced_word_target() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    response["quality"]["provider"] = serde_json::json!("openai");
+    response["week_overview"]["text"] = serde_json::json!(vec![
+            "Cette phrase allonge volontairement la lecture premium sans changer les preuves.";
+            520
+        ]
+    .join(" "));
+
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_WORD_COUNT_OUT_OF_RANGE"
+    );
+    let details = err.detail().details.as_ref().unwrap();
+    assert_eq!(details["target_words_min"], 1600);
+    assert_eq!(details["hard_limit_words"], 3200);
 }
 
 #[test]

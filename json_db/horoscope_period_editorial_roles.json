@@ -1,0 +1,150 @@
+{
+  "name": "horoscope_period_editorial_roles",
+  "structure": {
+    "rule_code": "string, primary key",
+    "theme_code": "string|null",
+    "tone_code": "string|null",
+    "marker_role": "string|null",
+    "action_mode": "string",
+    "public_role_template": "string",
+    "reader_situation": "string",
+    "avoid_angle_template": "string",
+    "is_enabled": "boolean",
+    "sort_order": "integer",
+    "unique_key": ["rule_code"]
+  },
+  "data": [
+    {
+      "rule_code": "marker_vigilance",
+      "theme_code": null,
+      "tone_code": null,
+      "marker_role": "vigilance",
+      "action_mode": "cadrer",
+      "public_role_template": "Journée de prudence sur {theme_label}, à traiter sans surcharger la décision.",
+      "reader_situation": "Un échange ou une obligation demande une limite explicite et proportionnée.",
+      "avoid_angle_template": "Ne pas refaire un conseil général de {theme_label}; garder l'angle sur l'action '{action_mode}'.",
+      "is_enabled": true,
+      "sort_order": 10
+    },
+    {
+      "rule_code": "marker_appui",
+      "theme_code": null,
+      "tone_code": null,
+      "marker_role": "appui",
+      "action_mode": "confirmer",
+      "public_role_template": "Journée d'appui pour faire avancer {theme_label} avec un geste net.",
+      "reader_situation": "Un choix ou une confirmation peut avancer si le geste reste simple et vérifiable.",
+      "avoid_angle_template": "Ne pas transformer l'appui de {theme_label} en optimisme vague; garder le geste précis à poser.",
+      "is_enabled": true,
+      "sort_order": 20
+    },
+    {
+      "rule_code": "marker_repere",
+      "theme_code": null,
+      "tone_code": null,
+      "marker_role": "repère",
+      "action_mode": "prioriser",
+      "public_role_template": "Journée repère pour comprendre où {theme_label} organise la période.",
+      "reader_situation": "Une priorité doit être nommée avant d'ouvrir d'autres sujets.",
+      "avoid_angle_template": "Ne pas répéter le repère de {theme_label}; montrer ce qu'il change dans la journée.",
+      "is_enabled": true,
+      "sort_order": 30
+    },
+    {
+      "rule_code": "tone_careful",
+      "theme_code": null,
+      "tone_code": "careful",
+      "marker_role": null,
+      "action_mode": "cadrer",
+      "public_role_template": "Journée de vigilance douce pour garder {theme_label} à une taille maîtrisable.",
+      "reader_situation": "Une réponse, une promesse ou une charge mérite une limite avant validation.",
+      "avoid_angle_template": "Ne pas répéter une prudence générale; préciser ce qui doit être cadré dans {theme_label}.",
+      "is_enabled": true,
+      "sort_order": 40
+    },
+    {
+      "rule_code": "theme_relationship",
+      "theme_code": "relationship",
+      "tone_code": null,
+      "marker_role": null,
+      "action_mode": "pacifier",
+      "public_role_template": "Journée relationnelle pour rendre {theme_label} plus simple à vivre.",
+      "reader_situation": "Une relation gagne à être abordée par un geste simple plutôt qu'une explication longue.",
+      "avoid_angle_template": "Ne pas refaire un conseil relationnel général; garder le geste de pacification.",
+      "is_enabled": true,
+      "sort_order": 50
+    },
+    {
+      "rule_code": "theme_communication",
+      "theme_code": "communication",
+      "tone_code": null,
+      "marker_role": null,
+      "action_mode": "mettre au net",
+      "public_role_template": "Journée de mise au net pour rendre {theme_label} plus vérifiable.",
+      "reader_situation": "Un message, une information ou une demande doit devenir plus précis.",
+      "avoid_angle_template": "Ne pas refaire un conseil de communication; montrer ce qui doit être mis au net.",
+      "is_enabled": true,
+      "sort_order": 60
+    },
+    {
+      "rule_code": "theme_energy",
+      "theme_code": "energy",
+      "tone_code": null,
+      "marker_role": null,
+      "action_mode": "agir",
+      "public_role_template": "Journée d'action mesurée pour remettre {theme_label} en circulation.",
+      "reader_situation": "Une action courte permet de sortir d'une tension sans tout régler.",
+      "avoid_angle_template": "Ne pas répéter l'idée d'énergie; préciser l'action courte à privilégier.",
+      "is_enabled": true,
+      "sort_order": 70
+    },
+    {
+      "rule_code": "theme_clarity",
+      "theme_code": "clarity",
+      "tone_code": null,
+      "marker_role": null,
+      "action_mode": "décider",
+      "public_role_template": "Journée de discernement pour faire avancer {theme_label} sans précipitation.",
+      "reader_situation": "Une priorité peut être choisie si elle reste concrète et réversible.",
+      "avoid_angle_template": "Ne pas refaire un conseil de lucidité; indiquer la décision proportionnée.",
+      "is_enabled": true,
+      "sort_order": 80
+    },
+    {
+      "rule_code": "theme_integration",
+      "theme_code": "integration",
+      "tone_code": null,
+      "marker_role": null,
+      "action_mode": "alléger",
+      "public_role_template": "Journée d'intégration pour alléger {theme_label} au lieu d'ajouter une couche.",
+      "reader_situation": "Une tâche ou une attente prend trop de place et peut être réduite.",
+      "avoid_angle_template": "Ne pas répéter l'intégration comme idée abstraite; montrer ce qui s'allège.",
+      "is_enabled": true,
+      "sort_order": 90
+    },
+    {
+      "rule_code": "theme_organization",
+      "theme_code": "organization",
+      "tone_code": null,
+      "marker_role": null,
+      "action_mode": "terminer",
+      "public_role_template": "Journée pratique pour clôturer {theme_label} avant d'ajouter autre chose.",
+      "reader_situation": "Une tâche pratique peut être clôturée pour libérer l'attention.",
+      "avoid_angle_template": "Ne pas refaire un conseil d'organisation; garder l'angle de clôture.",
+      "is_enabled": true,
+      "sort_order": 100
+    },
+    {
+      "rule_code": "default",
+      "theme_code": null,
+      "tone_code": null,
+      "marker_role": null,
+      "action_mode": "prioriser",
+      "public_role_template": "Journée de transition pour ajuster {theme_label} sans répéter la veille.",
+      "reader_situation": "Une priorité liée à {theme_label} doit rester simple, visible et limitée.",
+      "avoid_angle_template": "Ne pas refaire un conseil général de {theme_label}; garder l'angle sur l'action '{action_mode}'.",
+      "is_enabled": true,
+      "sort_order": 999
+    }
+  ]
+}

@@ -11,119 +11,119 @@
     {
       "focus_code": "natal_moon",
       "label_fr": "votre sensibilité et vos besoins émotionnels",
-      "hint_fr": "Relier ce signal à la manière de se sentir en sécurité, de réagir et de chercher du réconfort.",
+      "hint_fr": "Situations associées : attendre que l'émotion retombe, nommer un besoin simple, chercher un appui rassurant, éviter une réponse défensive.",
       "is_active": true,
       "sort_order": 10
     },
     {
       "focus_code": "natal_mercury",
       "label_fr": "votre manière de penser et de communiquer",
-      "hint_fr": "Relier ce signal aux mots, aux décisions rapides, aux échanges et à la clarté mentale.",
+      "hint_fr": "Situations associées : préparer un message court, différer une réponse rapide, vérifier une information, trier deux options concrètes.",
       "is_active": true,
       "sort_order": 20
     },
     {
       "focus_code": "natal_venus",
       "label_fr": "votre rapport à l'attachement, au plaisir et à la valeur",
-      "hint_fr": "Relier ce signal aux préférences, aux liens, à l'harmonie et à ce qui compte vraiment.",
+      "hint_fr": "Situations associées : nommer ce qui compte, accorder une attente affective, préserver un lien utile, refuser un accord de façade.",
       "is_active": true,
       "sort_order": 30
     },
     {
       "focus_code": "natal_mars",
       "label_fr": "votre façon d'agir, de défendre vos choix et de mobiliser l'énergie",
-      "hint_fr": "Relier ce signal à l'action, aux limites, à l'affirmation et à la gestion de l'effort.",
+      "hint_fr": "Situations associées : choisir une action courte, poser une limite claire, doser l'effort, éviter une réaction trop brusque.",
       "is_active": true,
       "sort_order": 40
     },
     {
       "focus_code": "natal_saturn",
       "label_fr": "votre rapport à la responsabilité, au temps et aux limites",
-      "hint_fr": "Relier ce signal à la consolidation, aux engagements, aux contraintes utiles et à la maturité.",
+      "hint_fr": "Situations associées : vérifier un délai, réduire une promesse, refuser une charge supplémentaire, confirmer seulement si le cadre est clair.",
       "is_active": true,
       "sort_order": 50
     },
     {
       "focus_code": "natal_house_1",
       "label_fr": "votre manière de vous affirmer",
-      "hint_fr": "Relier ce signal à l'élan personnel, à l'image de soi et à l'initiative.",
+      "hint_fr": "Situations associées : reprendre l'initiative, choisir une posture plus nette, éviter de se justifier trop longtemps, commencer par un geste visible.",
       "is_active": true,
       "sort_order": 101
     },
     {
       "focus_code": "natal_house_2",
       "label_fr": "vos ressources, vos appuis et votre sécurité concrète",
-      "hint_fr": "Relier ce signal aux moyens disponibles, à la valeur personnelle et aux priorités matérielles.",
+      "hint_fr": "Situations associées : vérifier une ressource, réduire une dépense d'énergie, sécuriser un appui concret, choisir ce qui vaut vraiment l'effort.",
       "is_active": true,
       "sort_order": 102
     },
     {
       "focus_code": "natal_house_3",
       "label_fr": "vos échanges, vos apprentissages et vos décisions courtes",
-      "hint_fr": "Relier ce signal aux messages, aux déplacements, aux proches et à la circulation des idées.",
+      "hint_fr": "Situations associées : cadrer un message, simplifier un déplacement, répondre à un proche, éviter de multiplier les explications.",
       "is_active": true,
       "sort_order": 103
     },
     {
       "focus_code": "natal_house_4",
       "label_fr": "vos bases intimes, familiales ou émotionnelles",
-      "hint_fr": "Relier ce signal au foyer, aux racines, à la récupération et au sentiment d'ancrage.",
+      "hint_fr": "Situations associées : protéger un temps de récupération, alléger une contrainte familiale, revenir à une base stable, éviter de décider sous fatigue.",
       "is_active": true,
       "sort_order": 104
     },
     {
       "focus_code": "natal_house_5",
       "label_fr": "votre créativité, votre plaisir et votre expression personnelle",
-      "hint_fr": "Relier ce signal à l'élan créatif, à la joie, aux envies et à ce qui demande à s'exprimer.",
+      "hint_fr": "Situations associées : choisir une envie simple, exprimer une idée sans forcer, garder une part de plaisir, éviter d'en faire une performance.",
       "is_active": true,
       "sort_order": 105
     },
     {
       "focus_code": "natal_house_6",
       "label_fr": "vos habitudes, votre rythme de travail et votre équilibre quotidien",
-      "hint_fr": "Relier ce signal aux routines, à l'organisation, à la santé pratique et aux tâches utiles.",
+      "hint_fr": "Situations associées : terminer une tâche utile, alléger une routine, préserver le rythme du corps, éviter d'empiler les obligations.",
       "is_active": true,
       "sort_order": 106
     },
     {
       "focus_code": "natal_house_7",
       "label_fr": "vos relations directes et votre manière de composer avec l'autre",
-      "hint_fr": "Relier ce signal aux alliances, aux ajustements relationnels, aux demandes explicites et au face-à-face.",
+      "hint_fr": "Situations associées : formuler une demande explicite, reprendre un accord, écouter l'autre sans suradapter, poser une limite relationnelle.",
       "is_active": true,
       "sort_order": 107
     },
     {
       "focus_code": "natal_house_8",
       "label_fr": "vos transformations, vos attachements profonds et vos partages sensibles",
-      "hint_fr": "Relier ce signal à la confiance, aux ressources partagées, aux transitions et aux zones plus intenses.",
+      "hint_fr": "Situations associées : vérifier une confiance, mettre un partage au net, traverser une transition sans forcer, éviter une réaction de contrôle.",
       "is_active": true,
       "sort_order": 108
     },
     {
       "focus_code": "natal_house_9",
       "label_fr": "votre vision, vos apprentissages larges et votre besoin de sens",
-      "hint_fr": "Relier ce signal aux convictions, aux horizons, aux projets de formation et à la prise de recul.",
+      "hint_fr": "Situations associées : reprendre de la hauteur, vérifier une conviction, réorienter un projet d'apprentissage, éviter de conclure trop vite.",
       "is_active": true,
       "sort_order": 109
     },
     {
       "focus_code": "natal_house_10",
       "label_fr": "votre trajectoire professionnelle et votre place visible",
-      "hint_fr": "Relier ce signal aux responsabilités publiques, aux objectifs, à la réputation et au cap à tenir.",
+      "hint_fr": "Situations associées : tenir un objectif visible, préciser une responsabilité, réviser une attente professionnelle, éviter de porter seul le cadre.",
       "is_active": true,
       "sort_order": 110
     },
     {
       "focus_code": "natal_house_11",
       "label_fr": "vos projets collectifs, vos soutiens et vos réseaux",
-      "hint_fr": "Relier ce signal aux groupes, aux alliances élargies, aux projets partagés et aux perspectives d'avenir.",
+      "hint_fr": "Situations associées : préciser un rôle collectif, vérifier un soutien, confirmer une étape partagée, éviter de promettre pour tout le groupe.",
       "is_active": true,
       "sort_order": 111
     },
     {
       "focus_code": "natal_house_12",
       "label_fr": "vos besoins de retrait, d'intégration et de repos intérieur",
-      "hint_fr": "Relier ce signal au recul, à la récupération, aux processus discrets et à ce qui se prépare en coulisse.",
+      "hint_fr": "Situations associées : se retirer avant de répondre, récupérer en silence, préparer une suite discrète, éviter d'expliquer trop tôt.",
       "is_active": true,
       "sort_order": 112
     }

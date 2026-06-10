@@ -1,3 +1,23 @@
+# Premium 7-day horoscope editorial direction - 2026-06-10
+
+Refactored `horoscope_premium_next_7_days_natal` writer guidance to reduce mechanical prose.
+
+## Follow-up: narrative arcs and usage domains
+
+- Added `json_db/horoscope_period_editorial_arcs.json` so repeated period themes receive distinct narrative functions, especially recurring `integration` signals: friction, reality test, recovery, and closure.
+- Added `json_db/horoscope_period_public_themes.json` so public labels and domains use usage-oriented wording such as `Engagements et limites`, `Échanges à cadrer`, `Appuis concrets`, and `Énergie mentale`.
+- Watch windows now reuse the editorial arc for repeated themes, preventing duplicated `title` + `watch_point` pairs.
+- Premium tests now assert unique `reader_situation` values, usage-oriented public domains, and non-duplicated watch-window prompts.
+
+## Changes
+
+- Added a Premium-only `editorial_brief` to the period interpretation request. It gives each of the 7 dates a human role, narrative function, reader situation, action mode, contrast with the previous day, and angle to avoid reusing.
+- Added canonical editorial role data in `json_db/horoscope_period_editorial_roles.json`, consumed by the runtime instead of hardcoded role mappings.
+- Replaced the Premium period prompt's lexical anti-repetition instructions with editorial orchestration: distinct day functions, usable windows, non-duplicative domains, and strategy synthesis.
+- Adjusted Premium period generation temperature from `0.4` to `0.55` while keeping structured output validation.
+- Updated `premium_rich` word targets from `2200-3200` to `1600-2600`, with the hard limit still at `3200`, to reduce forced filler when source signals are not dense enough.
+- Added regression coverage in `tests/horoscope_v1_tests.rs`.
+
 # Premium 7-day horoscope readability - 2026-06-09
 
 ## Follow-up: LLM-owned marker wording and evidence basis
@@ -193,3 +213,30 @@ Fixed the local fake smoke path for `horoscope_premium_next_7_days_natal`, which
 - `docker compose up -d --build astral_llm_api astral_llm_worker`
 - `.\scripts\test_horoscope_premium_next_7_days_all.ps1 -SkipRustChecks`
 - `.\scripts\test_horoscope_period_all.ps1 -SkipRustChecks`
+
+# Horoscope Premium 7 days generation refactor - 2026-06-10
+
+## Scope
+
+Refactored the deterministic generation model for `horoscope_premium_next_7_days_natal` to make the Premium period reading less mechanical and to prevent internal editorial scaffolding from leaking into public windows.
+
+## Behavior
+
+- `build_period_watch_windows` now returns no watch windows when there is no true vigilance event. Neutral/context events are no longer recycled into artificial low-risk windows.
+- Watch window titles and watch points always come from public theme labels (`horoscope_period_public_themes.json`) instead of editorial arc templates.
+- Premium daily planning caps repeated use of the same theme at 3 days when alternatives exist.
+- `period_event_score` is now a selection score without repetition bonus. Repetition density remains available separately as `theme_density_score` for period-level analysis.
+- Period events now keep internal metadata (`fact_type`, `transiting_object`, `natal_target`, `natal_house`) so selection can avoid presenting retreat-heavy houses such as 8/12 as ordinary best-day candidates.
+- `build_period_best_windows` prefers distinct themes and distinct dates before using a fill pass.
+- Premium validation rejects meta watch-window wording such as `nouvelle facette`, `répéter le même conseil`, `fonction narrative`, and `changer l'usage`.
+- The Premium prompt now states that `editorial_brief` is internal guidance and must not be copied directly into public text.
+- The period interpretation request schema now requires the Premium selection metadata emitted on each `period_event`: `theme_density_score`, `fact_type`, `transiting_object`, `natal_target`, `natal_house`, `natal_focus_hint`, and `personalization_hint`.
+- Editorial arc/role seed wording no longer carries copyable meta phrases such as `Nouvelle facette` or `changer l'usage` in `editorial_brief`.
+- Premium validation now also rejects those editorial meta phrases across the full public response, while keeping the dedicated window error for `watch_windows`.
+
+## Validation
+
+- `cargo test -p astral_llm_api --test horoscope_v1_tests horoscope_premium_next_7_days`
+- `cargo test -p astral_llm_api --test horoscope_v1_tests`
+- `cargo test -p astral_llm_api --test contracts_publish_tests`
+- `python scripts\import_json_db_to_postgres.py --dry-run`
