@@ -1469,6 +1469,8 @@ Tables creees automatiquement **uniquement** si :
 | `ASTRAL_LLM_LOG_FILE` | — | Fichier append (ex. `output/logs/astral_llm_api.log`) en plus de stdout |
 | `ASTRAL_LLM_LOG_COMPILED_PROMPTS` | `true` | Journalise le prompt compile (`target=astral_llm.prompt`, champ `compiled_prompt`) |
 | `ASTRAL_LLM_PROMPT_LOG_DIR` | `output/logs/prompts` | Fichier `.txt` par appel LLM : `{dir}/{run_id}/{chapter}_{attempt}.txt` |
+| `ASTRAL_LLM_STORE_RAW_PROVIDER_OUTPUTS` | `true` hors production, `false` en production | Stocke la sortie brute provider avant tout post-traitement ; mettre `false` dans `.env` pour désactiver |
+| `ASTRAL_LLM_RAW_PROVIDER_OUTPUT_DIR` | `output/logs/raw_llm_outputs` | Fichier `.json` par appel LLM : `{dir}/{run_id}/{chapter}_{provider}_{timestamp}_{trace_id}_raw_provider_response.json` |
 
 Chaque generation emet des evenements correles par `run_id` (et `request_id` si present) :
 
@@ -1482,6 +1484,14 @@ Chaque generation emet des evenements correles par `run_id` (et `request_id` si 
 - Tracing : cible `astral_llm.prompt`, champ `compiled_prompt` (actif si `ASTRAL_LLM_LOG_LEVEL=debug` ou filtre dedie).
 - Fichiers : `ASTRAL_LLM_PROMPT_LOG_DIR` (defaut `output/logs/prompts/{run_id}/{chapter}_{attempt}.txt`, summary → `summary_summary.txt`).
 - Module : `astral_llm_application::prompt_trace` (appele depuis `ChapterOrchestrator`, `GenerateReadingUseCase`, `SummarySynthesizer`).
+
+**Sorties brutes provider** (`ASTRAL_LLM_STORE_RAW_PROVIDER_OUTPUTS`) :
+
+- Activees par defaut en `ASTRAL_LLM_ENV=local` et `test`, desactivees par defaut en `production`.
+- Fichiers : `ASTRAL_LLM_RAW_PROVIDER_OUTPUT_DIR` (defaut `output/logs/raw_llm_outputs/{run_id}/{chapter}_{provider}_{timestamp}_{trace_id}_raw_provider_response.json`), sans ecrasement entre appels du meme run.
+- Le fichier contient `trace_id`, `created_at_epoch_ms`, `raw_text`, `parsed_json` si disponible, provider, modele, usage tokens et metadonnees provider.
+- Pour les jobs d'integration horoscope, `{run_id}` correspond au `run_id` public retourne par `POST /v1/jobs`, afin de comparer directement sortie brute LLM et resultat final.
+- Ces fichiers sont des artefacts d'audit dev : ils peuvent contenir la reponse utilisateur finale avant nettoyage et doivent rester desactives ou controles en environnement partage/production.
 
 #### Audit PostgreSQL
 

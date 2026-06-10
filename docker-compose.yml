@@ -78,6 +78,8 @@ services:
       - astral_net
     ports:
       - "8081:8081"
+    volumes:
+      - ./output:/app/output
     depends_on:
       postgres:
         condition: service_healthy
@@ -112,6 +114,8 @@ services:
         condition: service_started
       astral_llm_api:
         condition: service_started
+    volumes:
+      - ./output:/app/output
 
   mercure:
     image: dunglas/mercure:v0.16

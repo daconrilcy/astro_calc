@@ -58,6 +58,7 @@ pub mod provider_circuit_breaker;
 pub mod provider_factory;
 pub mod provider_router;
 pub mod provider_schema_compiler;
+pub mod raw_provider_trace;
 pub mod reading_quality_validator;
 pub mod request_validator;
 pub mod response_validator;

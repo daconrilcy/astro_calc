@@ -1194,7 +1194,7 @@ fn sanitize_period_broken_sentences(text: &str) -> String {
     if sentences.len() <= 1 {
         let trimmed = text.trim().trim_end_matches(['.', '!', '?']);
         if period_is_broken_sentence_tail(trimmed) {
-            return "Vos repères personnels gardent un appui concret pour avancer avec mesure."
+            return "Gardez une priorité concrète, une échéance claire et une preuve simple avant d'élargir."
                 .to_string();
         }
         return text.to_string();

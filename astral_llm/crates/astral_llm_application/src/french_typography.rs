@@ -9,6 +9,14 @@ static BAD_ELISION_RE: OnceLock<Regex> = OnceLock::new();
 static GLUED_IMPERATIVE_RE: OnceLock<Regex> = OnceLock::new();
 
 const GLUED_COMPOUND_FIXES: &[(&str, &str)] = &[
+    ("aprèsmidi", "après-midi"),
+    ("Aprèsmidi", "Après-midi"),
+    ("apresmidi", "après-midi"),
+    ("Apresmidi", "Après-midi"),
+    ("qu’estce", "qu’est-ce"),
+    ("Qu’estce", "Qu’est-ce"),
+    ("qu'estce", "qu'est-ce"),
+    ("Qu'estce", "Qu'est-ce"),
     ("rendezvous", "rendez-vous"),
     ("Rendezvous", "Rendez-vous"),
     ("bouclezla", "bouclez-la"),
@@ -27,6 +35,12 @@ const GLUED_COMPOUND_FIXES: &[(&str, &str)] = &[
     ("Allegezle", "Allégez-le"),
     ("allégezle", "allégez-le"),
     ("Allégezle", "Allégez-le"),
+    ("allègerez", "allégez"),
+    ("Allègerez", "Allégez"),
+    ("allegerez", "allégez"),
+    ("Allegerez", "Allégez"),
+    ("allége la", "allégez la"),
+    ("Allége la", "Allégez la"),
     ("terminezla", "terminez-la"),
     ("Terminezla", "Terminez-la"),
     ("diminuezle", "diminuez-le"),
@@ -45,6 +59,8 @@ const GLUED_COMPOUND_FIXES: &[(&str, &str)] = &[
     ("Arretezvous", "Arrêtez-vous"),
     ("formulezle", "formulez-le"),
     ("Formulezle", "Formulez-le"),
+    ("mesurezl", "mesurez-la"),
+    ("Mesurezl", "Mesurez-la"),
     ("utilisezles", "utilisez-les"),
     ("Utilisezles", "Utilisez-les"),
     ("revenezy", "revenez-y"),
@@ -55,6 +71,11 @@ const GLUED_COMPOUND_FIXES: &[(&str, &str)] = &[
     ("Jourscles", "Jours clés"),
     ("phraseclé", "phrase-clé"),
     ("Phraseclé", "Phrase-clé"),
+    ("demipromesses", "demi-promesses"),
+    ("Demipromesses", "Demi-promesses"),
+    ("demi promesses", "demi-promesses"),
+    ("Demi promesses", "Demi-promesses"),
+    ("Evitez", "Évitez"),
 ];
 
 fn elision_re() -> &'static Regex {
@@ -198,6 +219,15 @@ mod tests {
         assert!(out.contains("Utilisez-les"));
         assert!(out.contains("revenez-y"));
         assert!(out.contains("arrêtez-vous"));
+        assert!(french_glued_compound_violations(&out).is_empty());
+        let (out, changed) = restore_french_glued_compounds(
+            "Aprèsmidi, qu’estce qui compte ? Mesurezl en minutes, sans demipromesses.",
+        );
+        assert!(changed);
+        assert!(out.contains("Après-midi"));
+        assert!(out.contains("qu’est-ce"));
+        assert!(out.contains("Mesurez-la"));
+        assert!(out.contains("demi-promesses"));
         assert!(french_glued_compound_violations(&out).is_empty());
     }
 }

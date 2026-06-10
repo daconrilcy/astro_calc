@@ -170,7 +170,8 @@ async fn main() {
         };
 
         let _ = jobs.touch_heartbeat(job.job_id, stale_secs).await;
-        let outcome = orchestrator.execute(&validated).await;
+        let public_run_id = job.run_id.to_string();
+        let outcome = orchestrator.execute(&validated, Some(&public_run_id)).await;
         match outcome {
             Ok(result) => {
                 let gen_run_id = Uuid::parse_str(&result.run_id).ok();

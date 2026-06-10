@@ -1946,7 +1946,7 @@ fn horoscope_period_repair_replaces_single_broken_sentence() {
     validate_period_response_evidence(&request, &response).unwrap();
     assert_eq!(
         response["advice"]["main"].as_str().unwrap(),
-        "Vos repères personnels gardent un appui concret pour avancer avec mesure."
+        "Gardez une priorité concrète, une échéance claire et une preuve simple avant d'élargir."
     );
 }
 
@@ -2039,6 +2039,68 @@ fn horoscope_period_rejects_mechanical_lisible_phrase() {
 }
 
 #[test]
+fn horoscope_period_rejects_broken_consiste_a_de_phrase() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response["domain_sections"][0]["text"] =
+        serde_json::json!("Le domaine consiste à de choisir une priorité concrète.");
+
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_BROKEN_FRENCH_FRAGMENT"
+    );
+}
+
+#[test]
+fn horoscope_period_rejects_direction_claire_domain_template() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response["domain_sections"][0]["text"] =
+        serde_json::json!("Organisation donne une direction claire. Gardez un repère simple.");
+
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_INTERNAL_GUIDANCE_LEAK"
+    );
+}
+
+#[test]
+fn horoscope_period_rejects_generic_domain_fallback_sentence() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response["domain_sections"][0]["text"] = serde_json::json!(
+        "Ce domaine donne une manière d'utiliser la semaine sans disperser l'énergie."
+    );
+
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_INTERNAL_GUIDANCE_LEAK"
+    );
+}
+
+#[test]
+fn horoscope_period_rejects_abstract_daily_personalization_fallback() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response["daily_timeline"][0]["text"] = serde_json::json!(
+        "Vos repères personnels aident ici à choisir le bon geste du jour sans ouvrir trop de sujets."
+    );
+
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_INTERNAL_GUIDANCE_LEAK"
+    );
+}
+
+#[test]
 fn horoscope_period_internal_hints_do_not_use_copyable_writer_instructions() {
     let request = period_interpretation_request();
     let serialized = serde_json::to_string(&request["daily_plans"]).unwrap();
@@ -2114,6 +2176,7 @@ fn horoscope_premium_next_7_days_repair_rewrites_domain_templates_and_weak_traje
     let domain = response["domain_sections"][0]["text"].as_str().unwrap();
     assert!(!domain.contains("Dans ce domaine"));
     assert!(!domain.contains("choisir le bon niveau d'engagement"));
+    assert!(!domain.contains("Le plus utile est"));
     assert!(domain.contains("ouvre un fil pratique"));
 }
 
@@ -2226,12 +2289,22 @@ fn horoscope_premium_next_7_days_prompt_prevents_typography_and_template_regress
         "Respecte la typographie française",
         "rendez-vous",
         "phrase-clé",
+        "après-midi",
+        "qu'est-ce",
+        "demi-promesses",
         "utilisez-les",
         "revenez-y",
         "jours clés",
         "arrêtez-vous",
+        "mesurez-la",
         "terminez-la",
         "accordez-vous",
+        "revient",
+        "allégez",
+        "allègerez",
+        "La journée dynamique",
+        "la même priorité revint",
+        "Stabiliser Tester limites Agir par gestes courts",
         "aucune parenthèse ouverte",
         "Ne recopie jamais les situations associées sous forme de liste",
         "autour de vérifier",
@@ -2240,6 +2313,9 @@ fn horoscope_premium_next_7_days_prompt_prevents_typography_and_template_regress
         "est un point d'appui pour",
         "Ce créneau peut servir",
         "N'utilise pas de structure répétée comme Dans ce domaine",
+        "Dans X, Le plus utile",
+        "X donne une direction claire",
+        "consiste à de",
         "Cette énergie devient utile",
         "les repères les plus utiles consistent",
         "mini-lecture naturelle",
@@ -2256,17 +2332,21 @@ fn horoscope_period_repair_fixes_glued_french_compounds() {
     let request = premium_period_interpretation_request();
     let mut response = premium_period_response_from_request(&request);
     response["daily_timeline"][0]["text"] = serde_json::json!(
-        "Confirmez un rendezvous, laissezle reposer, terminezla, puis faitesle valider sans pression."
+        "Confirmez un rendezvous aprèsmidi, laissezle reposer, terminezla, puis faitesle valider sans pression."
     );
     response["strategy"]["recovery"] = serde_json::json!(
-        "Si un engagement pèse, diminuezle, déléguezla, transformezle, allégezle et retirezvous avant de répondre. Autorisezvous une pause, utilisezles, revenezy et arrêtezvous."
+        "Si un engagement pèse, diminuezle, déléguezla, transformezle, allégezle, allègerez, allége la charge, puis retirezvous avant de répondre. Autorisezvous une pause, utilisezles, revenezy et arrêtezvous."
+    );
+    response["strategy"]["best_use"] = serde_json::json!(
+        "Demandez qu’estce qui manque, mesurezl en minutes et évitez les demipromesses."
     );
     response["domain_sections"][0]["text"] =
-        serde_json::json!("Les joursclés demandent une preuve simple.");
+        serde_json::json!("Les joursclés demandent une preuve simple. Evitez de rouvrir le sujet.");
     repair_period_response_shape(&request, &mut response);
     validate_period_response_evidence(&request, &response).unwrap();
     let public = serde_json::to_string(&response).unwrap();
     assert!(public.contains("rendez-vous"));
+    assert!(public.contains("après-midi"));
     assert!(public.contains("laissez-le"));
     assert!(public.contains("terminez-la"));
     assert!(public.contains("faites-le"));
@@ -2274,13 +2354,19 @@ fn horoscope_period_repair_fixes_glued_french_compounds() {
     assert!(public.contains("déléguez-la"));
     assert!(public.contains("transformez-le"));
     assert!(public.contains("allégez-le"));
+    assert!(public.contains("allégez, allégez la charge, puis"));
     assert!(public.contains("retirez-vous"));
     assert!(public.contains("Autorisez-vous"));
     assert!(public.contains("utilisez-les"));
     assert!(public.contains("revenez-y"));
     assert!(public.contains("arrêtez-vous"));
+    assert!(public.contains("qu’est-ce"));
+    assert!(public.contains("mesurez-la"));
+    assert!(public.contains("demi-promesses"));
     assert!(public.contains("jours clés"));
+    assert!(public.contains("Évitez de rouvrir"));
     assert!(!public.contains("rendezvous"));
+    assert!(!public.contains("aprèsmidi"));
     assert!(!public.contains("laissezle"));
     assert!(!public.contains("terminezla"));
     assert!(!public.contains("faitesle"));
@@ -2288,12 +2374,42 @@ fn horoscope_period_repair_fixes_glued_french_compounds() {
     assert!(!public.contains("déléguezla"));
     assert!(!public.contains("transformezle"));
     assert!(!public.contains("allégezle"));
+    assert!(!public.contains("allègerez"));
+    assert!(!public.contains("allége la charge"));
     assert!(!public.contains("retirezvous"));
     assert!(!public.contains("Autorisezvous"));
     assert!(!public.contains("utilisezles"));
     assert!(!public.contains("revenezy"));
     assert!(!public.contains("arrêtezvous"));
+    assert!(!public.contains("qu’estce"));
+    assert!(!public.contains("mesurezl"));
+    assert!(!public.contains("demipromesses"));
     assert!(!public.contains("joursclés"));
+    assert!(!public.contains("Evitez"));
+}
+
+#[test]
+fn horoscope_period_repair_preserves_correct_french_compounds() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    response["week_overview"]["text"] = serde_json::json!(
+        "Dans l’après-midi, demandez : qu’est-ce qui tient vraiment ? Mesurez-la en minutes et évitez les demi-promesses."
+    );
+
+    repair_period_response_shape(&request, &mut response);
+    validate_period_response_evidence(&request, &response).unwrap();
+
+    let public = serde_json::to_string(&response).unwrap();
+    assert!(public.contains("l’après-midi"));
+    assert!(public.contains("qu’est-ce"));
+    assert!(public.contains("Mesurez-la"));
+    assert!(public.contains("demi-promesses"));
+    for forbidden in ["aprèsmidi", "qu’estce", "mesurezl", "demipromesses"] {
+        assert!(
+            !public.contains(forbidden),
+            "post-processing should not create {forbidden}"
+        );
+    }
 }
 
 #[test]
@@ -2334,6 +2450,22 @@ fn horoscope_period_rejects_mechanical_marker_reason_patterns() {
 }
 
 #[test]
+fn horoscope_period_rejects_watch_wording_in_best_days() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    response["best_days"][0]["reason"] = serde_json::json!(
+        "Mercredi 10/06 aide à sécuriser une base concrète. Avant de promettre davantage, traitez deux points : délai et charge."
+    );
+
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_MECHANICAL_PUBLIC_TEXT"
+    );
+}
+
+#[test]
 fn horoscope_period_repair_rewrites_mechanical_marker_reasons() {
     let request = premium_period_interpretation_request();
     let mut response = premium_period_response_from_request(&request);
@@ -2354,7 +2486,19 @@ fn horoscope_period_repair_rewrites_mechanical_marker_reasons() {
     assert!(!public.contains("Appui concret :"));
     assert!(!public.contains("est un point d'appui pour"));
     assert!(!public.contains(". ."));
-    assert!(public.contains("Avant de promettre davantage") || public.contains("Traitez d'abord"));
+    let best_reason = response["best_days"][0]["reason"].as_str().unwrap();
+    let watch_reason = response["watch_days"][0]["reason"].as_str().unwrap();
+    assert!(
+        best_reason.contains("ouvre une opportunité")
+            || best_reason.contains("aide à sécuriser")
+            || best_reason.contains("ressource")
+    );
+    assert!(!best_reason.contains("Avant de promettre davantage"));
+    assert!(!best_reason.contains("autour de"));
+    assert!(!best_reason.contains("consolider nommer"));
+    assert!(!best_reason.contains("consolider vérifier"));
+    assert!(!best_reason.contains("rendre concret tenir"));
+    assert!(watch_reason.contains("Vérifiez") || watch_reason.contains("demande de ralentir"));
 }
 
 #[test]
@@ -2379,10 +2523,18 @@ fn horoscope_period_repair_naturalizes_fallback_lists_and_repeated_verbs() {
     assert!(!public.contains(". ,"));
     assert!(!public.contains("Posez une priorité claire liée à"));
     assert!(!public.contains("Avec vérifier une ressource, réduire une dépense"));
+    assert!(!response["best_days"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|marker| marker["reason"]
+            .as_str()
+            .unwrap_or("")
+            .contains("Avant de promettre davantage")));
     assert!(
         public.contains("Le geste utile consiste")
             || public.contains("Traitez d'abord ce point")
-            || public.contains("Avant de promettre davantage")
+            || public.contains("Gardez deux repères concrets")
     );
 }
 
@@ -2409,6 +2561,82 @@ fn horoscope_period_repair_rewrites_mechanical_public_fragments_outside_markers(
     assert!(!public.contains("est un point d'appui pour"));
     assert!(!public.contains("point d’appui pour"));
     assert!(!public.contains("Cette énergie devient utile quand elle sert à"));
+}
+
+#[test]
+fn horoscope_period_repair_rewrites_latest_premium_public_polish_fragments() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    response["week_overview"]["text"] = serde_json::json!(
+        "Utilisezles comme repères. La même priorité revint sous une forme plus précise."
+    );
+    response["week_overview"]["trajectory"] = serde_json::json!(
+        "Stabiliser Tester limites Agir par gestes courts Le mouvement part de vos repères personnels pour sécuriser le concret, vérifier les engagements, puis valider les rôles avec plus de clarté."
+    );
+    response["week_overview"]["title"] = serde_json::json!(
+        "Ouvrir par un repère visible trancher et prouver vérifier et réduire les engagements"
+    );
+    response["daily_timeline"][1]["text"] = serde_json::json!(
+        "La journée dynamique un premier frottement entre l'enthousiasme et la réalité des limites."
+    );
+    response["daily_timeline"][2]["text"] =
+        serde_json::json!("Mardi est la journée de clarté : le Soleil dynamique un cap à nommer.");
+    response["domain_sections"][1]["text"] = serde_json::json!(
+        "Dans Organisation quotidienne, Le plus utile est de fermer une tâche, puis de garder une marge."
+    );
+    response["domain_sections"][2]["text"] = serde_json::json!(
+        "Dans Échanges à cadrer, Le plus utile est de choisir une action courte, puis de poser une limite claire."
+    );
+    response["domain_sections"][3]["text"] = serde_json::json!(
+        "Dans Cap à mettre au net, Le plus utile est de nommer ce qui compte, puis d'accorder une attente affective."
+    );
+    response["domain_sections"][4]["text"] = serde_json::json!(
+        "Dans Énergie mentale, Le plus utile est de préparer un message court, puis de différer une réponse rapide."
+    );
+    response["domain_sections"][0]["text"] = serde_json::json!(
+        "Préparez des interventions courtes, dites précisément ce que vous demandez et suspendre la discussion si elle s'éparpille."
+    );
+
+    repair_period_response_shape(&request, &mut response);
+    validate_period_response_evidence(&request, &response).unwrap();
+
+    let public = serde_json::to_string(&response).unwrap();
+    assert!(public.contains("Utilisez-les"));
+    assert!(public.to_lowercase().contains("la même priorité revient"));
+    assert!(public.contains("La journée crée un premier frottement"));
+    assert!(public.contains(
+        "Le mouvement suit trois étapes : stabiliser, tester les limites, puis agir par gestes courts."
+    ));
+    assert!(public.contains(
+        "Ouvrir par un repère visible ; trancher et prouver ; vérifier et réduire les engagements."
+    ));
+    assert!(public.contains(
+        "Le mouvement part d'un appui pratique, passe par une vérification des engagements, puis se termine par une validation plus claire des rôles."
+    ));
+    assert!(public.contains("le Soleil dynamise un cap à nommer"));
+    assert!(public.contains("et suspendez la discussion"));
+    assert!(public.contains("Dans les échanges, le plus efficace consiste"));
+    assert!(public.contains("Pour mettre le cap au net"));
+    assert!(public.contains("Votre avantage mental vient d'un geste bref"));
+    for forbidden in [
+        "utilisezles",
+        "revint",
+        "La journée dynamique un premier frottement",
+        "Soleil dynamique un",
+        "Stabiliser Tester limites Agir par gestes courts",
+        "visible trancher et prouver vérifier",
+        "et suspendre la discussion",
+        "Dans Organisation quotidienne, Le plus utile",
+        "Dans Échanges à cadrer, Le plus utile",
+        "Dans Cap à mettre au net, Le plus utile",
+        "Dans Énergie mentale, Le plus utile",
+        "Le mouvement part de vos repères personnels pour sécuriser le concret",
+    ] {
+        assert!(
+            !public.contains(forbidden),
+            "public text should not contain {forbidden}"
+        );
+    }
 }
 
 #[test]
@@ -2489,6 +2717,22 @@ fn horoscope_period_rejects_broken_french_fragments() {
         "Les moments où tout s’dynamique demandent une reprise simple, avec une preuve astrologique claire et un conseil concret."
     );
     let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_BROKEN_FRENCH_FRAGMENT"
+    );
+}
+
+#[test]
+fn horoscope_period_rejects_broken_best_day_action_assembly() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    response["best_days"][0]["reason"] = serde_json::json!(
+        "Mardi 09/06 offre un bon appui. Appuyez-vous dessus pour consolider nommer ce qui compte."
+    );
+
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+
     assert_eq!(
         err.detail().message,
         "HOROSCOPE_PERIOD_BROKEN_FRENCH_FRAGMENT"
@@ -3344,14 +3588,48 @@ fn horoscope_premium_next_7_days_repair_restores_domain_personalization_after_cl
     repair_period_response_shape(&request, &mut response);
     validate_period_response_evidence(&request, &response).unwrap();
 
-    assert!(response["domain_sections"][0]["text"]
-        .as_str()
-        .unwrap()
-        .contains("direction claire"));
-    assert!(response["domain_sections"][1]["text"]
-        .as_str()
-        .unwrap()
-        .contains("direction claire"));
+    let first = response["domain_sections"][0]["text"].as_str().unwrap();
+    let second = response["domain_sections"][1]["text"].as_str().unwrap();
+    assert!(
+        period_test_contains_domain_support_sentence(first),
+        "first domain was: {first}"
+    );
+    assert!(period_test_contains_domain_support_sentence(second));
+    assert!(!first.contains("direction claire"));
+    assert!(!second.contains("direction claire"));
+}
+
+#[test]
+fn horoscope_premium_next_7_days_domain_personalization_does_not_duplicate_focus_support() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    response["domain_sections"][0]["text"] = serde_json::json!(
+        "Appuis concrets ouvre un fil pratique de la semaine. Le bon appui est de vérifier une ressource. Gardez ce point de tri concret, pas comme une obligation de plus."
+    );
+
+    repair_period_response_shape(&request, &mut response);
+    validate_period_response_evidence(&request, &response).unwrap();
+
+    let text = response["domain_sections"][0]["text"].as_str().unwrap();
+    assert_eq!(text.matches("Le bon appui est").count(), 1);
+    assert!(text.contains("suite concrète"));
+}
+
+#[test]
+fn horoscope_premium_next_7_days_domain_repair_dedupes_repeated_support_sentence() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    response["domain_sections"][0]["text"] = serde_json::json!(
+        "Cap à mettre au net ouvre un fil pratique de la semaine. Le bon appui est de nommer ce qui compte, puis d'accorder une attente affective. Gardez ce point de tri concret, pas comme une obligation de plus. Votre avantage vient d'un échange court, cadré, puis refermé au bon moment. Le bon appui est de nommer ce qui compte, puis d'accorder une attente affective. Gardez un geste simple à poser, une limite à nommer et une suite concrète à tenir sans charger le reste."
+    );
+
+    repair_period_response_shape(&request, &mut response);
+    validate_period_response_evidence(&request, &response).unwrap();
+
+    let text = response["domain_sections"][0]["text"].as_str().unwrap();
+    assert_eq!(text.matches("Le bon appui est").count(), 1);
+    assert!(text.contains("Votre avantage vient d'un échange court"));
+    assert!(text.contains("suite concrète"));
 }
 
 #[test]
@@ -3415,12 +3693,17 @@ fn horoscope_premium_next_7_days_repair_personalizes_generic_domain_sections() {
     repair_period_response_shape(&request, &mut response);
     validate_period_response_evidence(&request, &response).unwrap();
 
+    let mut introductions = std::collections::HashSet::new();
     for section in response["domain_sections"].as_array().unwrap() {
-        assert!(section["text"]
-            .as_str()
-            .unwrap()
-            .contains("direction claire"));
+        let text = section["text"].as_str().unwrap();
+        assert!(period_test_contains_domain_support_sentence(text));
+        assert!(!text.contains("direction claire"));
+        introductions.insert(text.split('.').next().unwrap_or(text).to_string());
     }
+    assert!(
+        introductions.len() > 1,
+        "domain fallbacks should not repeat the same introductory sentence"
+    );
     let public = serde_json::to_string(&response["domain_sections"]).unwrap();
     assert!(!public.contains("de accorder"));
     assert!(!public.contains("de éviter"));
@@ -3441,6 +3724,38 @@ fn horoscope_premium_next_7_days_repair_personalizes_generic_domain_sections() {
         .collect::<serde_json::Value>();
     repair_period_response_shape(&request, &mut fallback_response);
     validate_period_response_evidence(&request, &fallback_response).unwrap();
+}
+
+#[test]
+fn horoscope_premium_next_7_days_domain_fallback_avoids_double_prepositions() {
+    let mut request = premium_period_interpretation_request();
+    request["domain_sections"][0]["personalization_hint"] =
+        serde_json::json!("de choisir une priorité simple, d'éviter une promesse floue");
+    let mut response = premium_period_response_from_request(&request);
+    response["domain_sections"][0]["text"] = serde_json::json!(
+        "Ce domaine donne une manière d'utiliser la semaine sans disperser l'énergie."
+    );
+
+    repair_period_response_shape(&request, &mut response);
+    validate_period_response_evidence(&request, &response).unwrap();
+
+    let public = response["domain_sections"][0]["text"].as_str().unwrap();
+    assert!(period_test_contains_domain_support_sentence(public));
+    assert!(public.contains("de choisir une priorité simple"));
+    assert!(!public.contains("consiste à de"));
+    assert!(!public.contains("est de de"));
+    assert!(!public.contains("est d'de"));
+}
+
+fn period_test_contains_domain_support_sentence(text: &str) -> bool {
+    [
+        "Le plus concret est",
+        "Le bon appui est",
+        "Le geste à garder est",
+        "La bonne mesure reste",
+    ]
+    .iter()
+    .any(|needle| text.contains(needle))
 }
 
 #[test]
@@ -3742,6 +4057,26 @@ fn premium_best_days_can_return_two_when_only_two_clear_dates_after_exclusions()
 
     let best_days = response["best_days"].as_array().unwrap();
     assert_eq!(best_days.len(), 2);
+    let best_reason_openings = best_days
+        .iter()
+        .filter_map(|day| day["reason"].as_str())
+        .filter_map(|reason| reason.split('.').next())
+        .map(str::trim)
+        .collect::<std::collections::HashSet<_>>();
+    assert!(
+        best_reason_openings.len() > 1,
+        "best_days opportunity reasons should not repeat the same opening sentence"
+    );
+    let best_reason_supports = best_days
+        .iter()
+        .filter_map(|day| day["reason"].as_str())
+        .filter_map(|reason| reason.split('.').nth(1))
+        .map(str::trim)
+        .collect::<std::collections::HashSet<_>>();
+    assert!(
+        best_reason_supports.len() > 1,
+        "best_days opportunity reasons should not repeat the same support sentence"
+    );
 
     let key_dates = request["key_days"]
         .as_array()
@@ -4204,6 +4539,57 @@ fn horoscope_period_public_response_requires_natal_personalization() {
     }
     let err = validate_period_response_evidence(&request, &response).unwrap_err();
     assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_EVIDENCE_MISSING");
+}
+
+#[test]
+fn horoscope_period_repair_restores_overview_and_daily_personalization() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    response["week_overview"]["text"] =
+        serde_json::json!("La semaine avance par étapes concrètes et demandes successives.");
+    response["week_overview"]["trajectory"] =
+        serde_json::json!("Le début pose une base, le milieu teste le rythme, la fin consolide.");
+    for (index, day) in response["daily_timeline"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .enumerate()
+    {
+        day["text"] = serde_json::json!(format!(
+            "Cette journée avance dans une progression générale numéro {}.",
+            index + 1
+        ));
+    }
+
+    repair_period_response_shape(&request, &mut response);
+    validate_period_response_evidence(&request, &response).unwrap();
+
+    let week_text = format!(
+        "{} {}",
+        response["week_overview"]["text"].as_str().unwrap(),
+        response["week_overview"]["trajectory"].as_str().unwrap()
+    );
+    assert!(
+        week_text.contains("vos priorités")
+            || week_text.contains("qui fait quoi")
+            || week_text.contains("quelle preuve")
+            || week_text.contains("votre agenda"),
+        "week_text was: {week_text}"
+    );
+    assert!(!week_text.contains("repères personnels"));
+    let personalized_days = response["daily_timeline"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|day| {
+            let text = day["text"].as_str().unwrap_or("");
+            text.contains("Pour vous")
+                || text.contains("Votre agenda")
+                || text.contains("qui fait quoi")
+                || text.contains("preuve concrète")
+        })
+        .count();
+    assert!(personalized_days >= 4);
 }
 
 #[test]

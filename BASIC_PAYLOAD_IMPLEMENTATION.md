@@ -113,7 +113,7 @@ Improved the editorial structure of `horoscope_premium_next_7_days_natal`.
 - The Premium period prompt now enforces a clearer reading flow: overview, short period markers, daily timeline, domains, hourly windows, then strategy.
 - Premium advice and strategy are synthesis sections only; they must not introduce new explicit dates after the timeline and windows have already listed the dated details.
 - Domain section post-processing restores canonical evidence by domain, title, or original section order when the model renames a domain or returns empty evidence arrays.
-- Overview and domain post-processing now add an explicit `repères personnels` anchor when the provider returns text that is astrologically plausible but too implicit for the natal personalization guard.
+- Overview and domain post-processing now add concrete personal anchors (`vos priorités`, `votre agenda`, owner/deadline/proof criteria) when the provider returns text that is astrologically plausible but too implicit for the natal personalization guard.
 
 ## Tests
 
@@ -317,11 +317,24 @@ Refactored the deterministic generation model for `horoscope_premium_next_7_days
 - Premium period fallback copy now naturalizes raw focus lists before they reach `daily_timeline`, `key_days`, `best_days`, and `watch_days`, avoiding repeated verbs such as `Vérifiez vérifier` and punctuation artifacts such as `. ,`.
 - Premium period public expansion no longer appends a domain personalization sentence when the domain text already contains a personal marker, preventing duplicated `Dans ...` follow-up sentences.
 - Premium prompt and editorial fallback wording now avoid the taxonomic public phrase `priorité liée à`.
+- Premium period final cleanup now directly reapplies glued French compound repair on every public string, including `utilisezles` in overview fields.
+- French typography cleanup now also repairs real-run glued forms such as `aprèsmidi`, `qu’estce`, `mesurezl`, and `demipromesses`.
+- Premium period cleanup rewrites the latest real-run polish fragments: `La journée dynamique...`, `revint`, raw `Stabiliser Tester limites...` trajectories, abstract `Le mouvement part de vos repères...` trajectories, and `Dans X, Le plus utile...` domain appendices.
+- Premium prompt now explicitly warns against those malformed formulations before generation.
+- Premium domain fallback wording no longer uses the repeated `Le plus utile est...` cadence.
+- Premium domain personalization fallback no longer emits `<domain> donne une direction claire`; generic domain filler is replaced instead of appended, support sentences vary by domain, validation blocks the exact generic fallback plus broken `consiste à de` phrasing, and typography cleanup rewrites `allègerez` to `allégez`.
+- Premium period marker wording now separates opportunity wording for `best_days` from risk wording for `watch_days`; repaired best/watch marker openings vary by date to avoid repeated card phrasing; `best_days` rejects `Avant de promettre davantage`, daily personalization fallback uses a concrete proof/owner/deadline criterion, domain fallback endings no longer start with the domain title, typography cleanup rewrites `allége la charge` to `allégez la charge`, and the service test UI displays `Stratégie`.
+- Premium period final personalization hardening now runs after public-string normalization and restores accepted, concrete overview/daily anchors without using meta `repères personnels` wording, preventing `HOROSCOPE_PERIOD_EVIDENCE_MISSING` failures caused by `week_overview_missing_natal_personalization` or too few personalized daily entries.
+- Premium domain personalization now appends only a short personal tail when the domain already contains a concrete support sentence, preventing duplicated `Le bon appui est...` / `Le geste à garder est...` domain wording.
+- Premium domain public normalization now deduplicates repeated support sentences inside a domain section after every repair pass, making the personalization hardening idempotent.
+- Premium best-day fallback wording now uses colon-led action phrases instead of malformed assemblies such as `consolider nommer` or `rendre concret tenir`; validation rejects those fragments if a provider returns them.
+- Premium public cleanup now repairs real-run grammar fragments such as `Soleil dynamique un`, `et suspendre la discussion`, and compact unpunctuated trajectories before validation.
+- Raw LLM provider outputs are now stored before post-processing in unique files under `output/logs/raw_llm_outputs/{run_id}/...` by default outside production. Set `ASTRAL_LLM_STORE_RAW_PROVIDER_OUTPUTS=false` in `.env` to disable, or override `ASTRAL_LLM_RAW_PROVIDER_OUTPUT_DIR`. These are dev audit artifacts and may contain uncleaned generated text.
 
 ## Validation
 
 - `cargo test -p astral_llm_api --test horoscope_v1_tests horoscope_premium_next_7_days`
-- `cargo test -p astral_llm_api --test horoscope_v1_tests`
+- `cargo test -p astral_llm_api --test horoscope_v1_tests` (264 tests, final premium wording and personalization polish)
 - `.\scripts\test_horoscope_premium_next_7_days_fake.ps1`
 - `cargo test -p astral_llm_api --test contracts_publish_tests`
 - `cargo test -p astral_llm_api --test integration_jobs_tests`

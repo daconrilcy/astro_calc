@@ -564,7 +564,7 @@
     addArraySections(sections, "Domaine", payload.domain_sections, ["text"]);
     addArraySections(sections, "Fenetre favorable", payload.best_windows, ["reason", "advice"]);
     addArraySections(sections, "Fenetre de vigilance", payload.watch_windows, ["reason", "advice"]);
-    addObjectAdvice(sections, payload.strategy, "Strategie");
+    addObjectAdvice(sections, payload.strategy, "Stratégie");
 
     return sections.filter((section) => section.paragraphs.length > 0 || section.items);
   }

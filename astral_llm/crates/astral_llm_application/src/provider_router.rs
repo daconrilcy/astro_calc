@@ -198,6 +198,19 @@ impl ProviderRouter {
                     Ok(response) => {
                         self.circuit_breaker.record_success(&provider_kind);
                         let fallback_used = provider_kind != requested_provider;
+                        if let Some(path) = crate::raw_provider_trace::log_raw_provider_response(
+                            &provider_request,
+                            &provider_kind,
+                            &response,
+                            fallback_used,
+                        ) {
+                            tracing::debug!(
+                                run_id = %provider_request.metadata.run_id,
+                                provider = provider_kind.as_str(),
+                                path = %path.display(),
+                                "raw provider output written to file"
+                            );
+                        }
                         return Ok(ProviderRouteResult {
                             response,
                             requested_provider: requested_provider.clone(),
@@ -308,8 +321,32 @@ mod tests {
     use super::*;
     use astral_llm_providers::{FakeProvider, GenerationMetadata, PromptMessage, PromptRole};
 
+    struct EnvGuard {
+        key: &'static str,
+        previous: Option<String>,
+    }
+
+    impl EnvGuard {
+        fn set(key: &'static str, value: &str) -> Self {
+            let previous = std::env::var(key).ok();
+            std::env::set_var(key, value);
+            Self { key, previous }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            match &self.previous {
+                Some(value) => std::env::set_var(self.key, value),
+                None => std::env::remove_var(self.key),
+            }
+        }
+    }
+
     #[tokio::test]
     async fn routes_to_fake_provider() {
+        let _raw_trace_guard =
+            EnvGuard::set(crate::raw_provider_trace::RAW_PROVIDER_TRACE_ENV, "false");
         let map = build_provider_map(vec![Arc::new(FakeProvider)]);
         let registry = Arc::new(ModelCapabilityRegistry::bootstrap());
         let router = ProviderRouter::new(

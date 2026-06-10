@@ -219,7 +219,15 @@ ASTRAL_LLM_DEFAULT_PROVIDER=fake     # fake = pas d'appel OpenAI (tests locaux)
 ASTRAL_LLM_DEFAULT_MODEL=fake-model
 ASTRAL_LLM_ENABLE_PERSISTENCE=false  # ignoré en Docker : Compose force true
 ASTRAL_LLM_REQUEST_TIMEOUT_MS=120000
+ASTRAL_LLM_STORE_RAW_PROVIDER_OUTPUTS=false  # optionnel : désactive les sorties brutes LLM en dev
 ```
+
+Par défaut hors production, les sorties brutes provider sont stockées dans
+`output/logs/raw_llm_outputs/{run_id}/...` avant tout post-traitement. Le
+`docker-compose.yml` monte `./output:/app/output` pour les rendre visibles
+depuis Windows. Ces fichiers sont des artefacts d'audit dev et peuvent contenir
+le texte LLM avant nettoyage ; gardez `ASTRAL_LLM_STORE_RAW_PROVIDER_OUTPUTS=false`
+dans un environnement partage si ces traces ne doivent pas etre conservees.
 
 Pour des **vraies** générations OpenAI :
 

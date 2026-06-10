@@ -52,17 +52,18 @@ impl<'a> UnifiedReadingOrchestrator<'a> {
     pub async fn execute(
         &self,
         job: &ValidatedIntegrationJob,
+        public_run_id: Option<&str>,
     ) -> Result<UnifiedReadingResult, GenerationError> {
         match job.service_code.as_str() {
-            HOROSCOPE_SERVICE_CODE => self.run_horoscope(job).await,
-            HOROSCOPE_FREE_DAILY_SERVICE_CODE => self.run_free_horoscope(job).await,
+            HOROSCOPE_SERVICE_CODE => self.run_horoscope(job, public_run_id).await,
+            HOROSCOPE_FREE_DAILY_SERVICE_CODE => self.run_free_horoscope(job, public_run_id).await,
             HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE => {
-                self.run_premium_horoscope(job).await
+                self.run_premium_horoscope(job, public_run_id).await
             }
             HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE
             | HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE
             | HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE => {
-                self.run_period_horoscope(job).await
+                self.run_period_horoscope(job, public_run_id).await
             }
             SIMPLIFIED_PROFILE => self.run_simplified(job).await,
             other if other.ends_with("_from_payload") => self.run_from_payload(job).await,
@@ -78,12 +79,16 @@ impl<'a> UnifiedReadingOrchestrator<'a> {
     async fn run_horoscope(
         &self,
         job: &ValidatedIntegrationJob,
+        public_run_id: Option<&str>,
     ) -> Result<UnifiedReadingResult, GenerationError> {
-        let run_id = Uuid::new_v4().to_string();
+        let run_id = public_run_id
+            .map(str::to_string)
+            .unwrap_or_else(|| Uuid::new_v4().to_string());
         let result = HoroscopeBasicDailyNatalOrchestrator::execute(
             self.calculator,
             self.use_case,
             &job.payload,
+            Some(&run_id),
         )
         .await?;
         Ok(UnifiedReadingResult {
@@ -95,11 +100,18 @@ impl<'a> UnifiedReadingOrchestrator<'a> {
     async fn run_free_horoscope(
         &self,
         job: &ValidatedIntegrationJob,
+        public_run_id: Option<&str>,
     ) -> Result<UnifiedReadingResult, GenerationError> {
-        let run_id = Uuid::new_v4().to_string();
-        let result =
-            HoroscopeFreeDailyOrchestrator::execute(self.calculator, self.use_case, &job.payload)
-                .await?;
+        let run_id = public_run_id
+            .map(str::to_string)
+            .unwrap_or_else(|| Uuid::new_v4().to_string());
+        let result = HoroscopeFreeDailyOrchestrator::execute(
+            self.calculator,
+            self.use_case,
+            &job.payload,
+            Some(&run_id),
+        )
+        .await?;
         Ok(UnifiedReadingResult {
             run_id,
             outcome: UnifiedReadingOutcome::Json(result),
@@ -109,12 +121,16 @@ impl<'a> UnifiedReadingOrchestrator<'a> {
     async fn run_premium_horoscope(
         &self,
         job: &ValidatedIntegrationJob,
+        public_run_id: Option<&str>,
     ) -> Result<UnifiedReadingResult, GenerationError> {
-        let run_id = Uuid::new_v4().to_string();
+        let run_id = public_run_id
+            .map(str::to_string)
+            .unwrap_or_else(|| Uuid::new_v4().to_string());
         let result = HoroscopePremiumDailyLocalOrchestrator::execute(
             self.calculator,
             self.use_case,
             &job.payload,
+            Some(&run_id),
         )
         .await?;
         Ok(UnifiedReadingResult {
@@ -126,13 +142,17 @@ impl<'a> UnifiedReadingOrchestrator<'a> {
     async fn run_period_horoscope(
         &self,
         job: &ValidatedIntegrationJob,
+        public_run_id: Option<&str>,
     ) -> Result<UnifiedReadingResult, GenerationError> {
-        let run_id = Uuid::new_v4().to_string();
+        let run_id = public_run_id
+            .map(str::to_string)
+            .unwrap_or_else(|| Uuid::new_v4().to_string());
         let result = HoroscopePeriodNatalOrchestrator::execute(
             &job.service_code,
             self.calculator,
             self.use_case,
             &job.payload,
+            Some(&run_id),
         )
         .await?;
         Ok(UnifiedReadingResult {
