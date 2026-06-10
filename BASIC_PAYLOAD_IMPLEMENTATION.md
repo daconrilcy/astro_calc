@@ -1,5 +1,21 @@
 # Premium 7-day horoscope readability - 2026-06-09
 
+## Follow-up: LLM-owned marker wording and evidence basis
+
+- Premium `key_days`, `best_days`, and `watch_days` wording is preserved from the provider when valid; marker dates and `evidence_keys` stay canonical from the request so provider-invented keys cannot pass through repair.
+- The Premium prompt now asks the LLM to make marked days understandable inside the matching `daily_timeline` entry, without code-side prose rewriting.
+- `evidence_summary` is explicitly treated as the section of evidence keys used to support the interpretation; repair keeps canonical dates and keys while preserving provider labels when valid.
+- Premium `domain_sections` now keep canonical evidence keys and re-check natal/personal anchoring after cleanup so compacting cannot remove the required personalization.
+- Domain section validation relies on canonical `evidence_keys`; it no longer rejects natural domain prose only because it avoids a narrow personalization keyword list.
+- Mechanical wording such as `devient plus lisible` is now rejected by validation so the provider regenerates naturally instead of being rewritten by code.
+- Premium validation keeps checking that public evidence keys are canonical; repetition avoidance is handled by prompt constraints, not by code-side prose or key rewriting.
+- The Premium period prompt now explicitly bans mechanical wording such as structural signal language, “thème ... lisible”, “relief principal”, “timeline”, and trajectory phrasing.
+- Formatting and typographic reprocessing remains limited to cleanup/guard behavior; it does not rewrite provider style into canned prose.
+
+## Tests
+
+- Added regression coverage in `tests/horoscope_v1_tests.rs`.
+
 ## Scope
 
 Improved the editorial structure of `horoscope_premium_next_7_days_natal`.

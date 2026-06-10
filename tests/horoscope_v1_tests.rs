@@ -1838,6 +1838,27 @@ fn horoscope_period_real_response_rejects_too_short_public_text() {
     let mut response = period_response_from_request(&request);
     response["quality"]["provider"] = serde_json::json!("openai");
     response["quality"]["model"] = serde_json::json!("gpt-5.4-mini");
+    response["week_overview"]["text"] =
+        serde_json::json!("Vos repères personnels restent le point d'appui.");
+    response["week_overview"]["trajectory"] = serde_json::json!("Avancer par étapes.");
+    for (index, day) in response["daily_timeline"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .enumerate()
+    {
+        day["text"] = serde_json::json!(format!(
+            "Ce jour {} garde vos repères personnels.",
+            index + 1
+        ));
+        day["advice"] = serde_json::json!("Avancer simplement.");
+    }
+    for section in response["domain_sections"].as_array_mut().unwrap() {
+        section["text"] = serde_json::json!("Ce domaine reste relié à vos repères personnels.");
+    }
+    response["advice"]["main"] = serde_json::json!("Gardez une priorité.");
+    response["advice"]["best_use"] = serde_json::json!("Agir simplement.");
+    response["advice"]["avoid"] = serde_json::json!("Forcer.");
     let err = validate_period_response_evidence(&request, &response).unwrap_err();
     assert_eq!(
         err.detail().message,
@@ -1969,7 +1990,7 @@ fn horoscope_period_repair_capitalizes_lowercase_sentence_starts() {
     let request = period_interpretation_request();
     let mut response = period_response_from_request(&request);
     response["week_overview"]["text"] = serde_json::json!(
-        "La semaine avance avec un repère natal. une priorité devient plus lisible. le rythme reste concret."
+        "La semaine avance avec un repère natal. une priorité se précise. le rythme reste concret."
     );
     repair_period_response_shape(&request, &mut response);
     validate_period_response_evidence(&request, &response).unwrap();
@@ -1999,6 +2020,21 @@ fn horoscope_period_public_text_does_not_contain_writer_instructions() {
             "public response leaked writer instruction: {forbidden}"
         );
     }
+}
+
+#[test]
+fn horoscope_period_rejects_mechanical_lisible_phrase() {
+    let request = period_interpretation_request();
+    let mut response = period_response_from_request(&request);
+    response["domain_sections"][0]["text"] =
+        serde_json::json!("La semaine devient plus lisible quand vous triez les priorités.");
+
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_INTERNAL_GUIDANCE_LEAK"
+    );
 }
 
 #[test]
@@ -2775,11 +2811,177 @@ fn horoscope_premium_next_7_days_markers_explain_their_role() {
         .to_lowercase();
 
     assert!(!marker_text.contains("sert de repère utile pour comprendre une priorité concrète"));
+    assert!(!marker_text.contains("concentre le relief principal"));
+    assert!(!marker_text.contains("devient plus lisible"));
+    assert!(!marker_text.contains("timeline quotidienne"));
     assert!(
-        marker_text.contains("timeline quotidienne")
-            || marker_text.contains("point de passage")
-            || marker_text.contains("ralentir la réponse")
+        marker_text.contains("jour clé")
+            || marker_text.contains("geste précis")
+            || marker_text.contains("avant de répondre")
     );
+}
+
+#[test]
+fn horoscope_premium_next_7_days_repair_preserves_provider_marker_prose() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    response["key_days"][0]["reason"] = serde_json::json!(
+        "Mercredi demande de choisir une conversation à traiter franchement, puis de garder une marge avant d'élargir la décision."
+    );
+
+    repair_period_response_shape(&request, &mut response);
+    validate_period_response_evidence(&request, &response).unwrap();
+
+    assert_eq!(
+        response["key_days"][0]["reason"],
+        "Mercredi demande de choisir une conversation à traiter franchement, puis de garder une marge avant d'élargir la décision."
+    );
+}
+
+#[test]
+fn horoscope_premium_next_7_days_repair_keeps_canonical_marker_evidence() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    let canonical_date = response["key_days"][0]["date"].clone();
+    let canonical_keys = response["key_days"][0]["evidence_keys"].clone();
+    response["key_days"][0]["date"] = serde_json::json!("2026-06-30");
+    response["key_days"][0]["evidence_keys"] = serde_json::json!(["period:invented"]);
+    response["key_days"][0]["reason"] = serde_json::json!(
+        "Mercredi demande de choisir une conversation à traiter franchement, puis de garder une marge avant d'élargir la décision."
+    );
+
+    repair_period_response_shape(&request, &mut response);
+    validate_period_response_evidence(&request, &response).unwrap();
+
+    assert_eq!(response["key_days"][0]["date"], canonical_date);
+    assert_eq!(response["key_days"][0]["evidence_keys"], canonical_keys);
+    assert_eq!(
+        response["key_days"][0]["reason"],
+        "Mercredi demande de choisir une conversation à traiter franchement, puis de garder une marge avant d'élargir la décision."
+    );
+}
+
+#[test]
+fn horoscope_premium_next_7_days_repair_keeps_canonical_evidence_summary_keys() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    let canonical_date = response["evidence_summary"][0]["date"].clone();
+    let canonical_key = response["evidence_summary"][0]["evidence_key"].clone();
+    response["evidence_summary"][0]["date"] = serde_json::json!("2026-06-30");
+    response["evidence_summary"][0]["evidence_key"] = serde_json::json!("period:invented");
+    response["evidence_summary"][0]["label"] = serde_json::json!(
+        "Une conversation précise peut être cadrée sans rouvrir tout le dossier."
+    );
+
+    repair_period_response_shape(&request, &mut response);
+    validate_period_response_evidence(&request, &response).unwrap();
+
+    assert_eq!(response["evidence_summary"][0]["date"], canonical_date);
+    assert_eq!(
+        response["evidence_summary"][0]["evidence_key"],
+        canonical_key
+    );
+    assert_eq!(
+        response["evidence_summary"][0]["label"],
+        "Une conversation précise peut être cadrée sans rouvrir tout le dossier."
+    );
+}
+
+#[test]
+fn horoscope_premium_next_7_days_repair_keeps_llm_evidence_summary_selection() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    response["evidence_summary"] = serde_json::json!([
+        {
+            "date": request["evidence"][0]["date"],
+            "evidence_key": request["evidence"][0]["evidence_key"],
+            "label": "Premier appui concret choisi pour la lecture"
+        },
+        {
+            "date": request["evidence"][3]["date"],
+            "evidence_key": request["evidence"][3]["evidence_key"],
+            "label": "Deuxième appui concret choisi pour la lecture"
+        }
+    ]);
+
+    repair_period_response_shape(&request, &mut response);
+    validate_period_response_evidence(&request, &response).unwrap();
+
+    let summary = response["evidence_summary"].as_array().unwrap();
+    assert_eq!(summary.len(), 2);
+    assert_eq!(
+        summary[0]["label"],
+        "Premier appui concret choisi pour la lecture"
+    );
+    assert_eq!(
+        summary[1]["label"],
+        "Deuxième appui concret choisi pour la lecture"
+    );
+}
+
+#[test]
+fn horoscope_premium_next_7_days_repair_keeps_canonical_domain_evidence() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    let canonical_keys = response["domain_sections"][0]["evidence_keys"].clone();
+    response["domain_sections"][0]["evidence_keys"] = serde_json::json!(["period:invented"]);
+    response["domain_sections"][0]["text"] = serde_json::json!(
+        "Ce domaine demande de cadrer une conversation précise avec vos repères personnels, sans rouvrir tous les sujets."
+    );
+
+    repair_period_response_shape(&request, &mut response);
+    validate_period_response_evidence(&request, &response).unwrap();
+
+    assert_eq!(
+        response["domain_sections"][0]["evidence_keys"],
+        canonical_keys
+    );
+    assert!(response["domain_sections"][0]["text"]
+        .as_str()
+        .unwrap()
+        .starts_with(
+            "Ce domaine demande de cadrer une conversation précise avec vos repères personnels, sans rouvrir tous les sujets."
+        ));
+}
+
+#[test]
+fn horoscope_premium_next_7_days_repair_restores_domain_personalization_after_cleanup() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    response["domain_sections"][0]["text"] = serde_json::json!(
+        "La semaine commence par un besoin net de remettre l'ordre dans vos priorités, puis elle vous demande de le rendre visible, concret et tenable."
+    );
+    response["domain_sections"][1]["text"] =
+        serde_json::json!("Les moments les plus lisibles de la semaine aident à distinguer le vrai désir de la simple habitude.");
+
+    repair_period_response_shape(&request, &mut response);
+    validate_period_response_evidence(&request, &response).unwrap();
+
+    assert!(response["domain_sections"][0]["text"]
+        .as_str()
+        .unwrap()
+        .contains("repères personnels"));
+    assert!(response["domain_sections"][1]["text"]
+        .as_str()
+        .unwrap()
+        .contains("repères personnels"));
+}
+
+#[test]
+fn horoscope_premium_next_7_days_accepts_natural_domain_personalization() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    response["domain_sections"][0]["text"] = serde_json::json!(
+        "L'organisation de la semaine tient mieux si vous partez de vous-même et de ce qui doit être visible."
+    );
+    response["domain_sections"][1]["text"] =
+        serde_json::json!("Le coeur de la semaine consiste à remettre les choses à leur place sans alourdir votre agenda.");
+    response["domain_sections"][2]["text"] = serde_json::json!(
+        "La semaine gagne en clarté quand vous nommez vos priorités avant de répondre."
+    );
+
+    repair_period_response_shape(&request, &mut response);
+    validate_period_response_evidence(&request, &response).unwrap();
 }
 
 #[test]
