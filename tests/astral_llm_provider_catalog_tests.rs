@@ -75,7 +75,7 @@ fn subtask_tier_allowed_for_summary_context() {
         vec!["openai".into()],
         vec![ModelCapability {
             provider: ProviderKind::OpenAi,
-            model: "gpt-5.4-nano".into(),
+            model: "gpt-5-nano".into(),
             supports_json_schema_strict: true,
             supports_json_object: true,
             supports_reasoning_effort: true,
@@ -104,7 +104,7 @@ fn subtask_tier_allowed_for_summary_context() {
         .validate_engine_for_context(
             ModelRouteContext::Subtask,
             &ProviderKind::OpenAi,
-            "gpt-5.4-nano",
+            "gpt-5-nano",
             false,
         )
         .is_ok());
@@ -112,7 +112,7 @@ fn subtask_tier_allowed_for_summary_context() {
         .validate_engine_for_context(
             ModelRouteContext::PrimaryReading,
             &ProviderKind::OpenAi,
-            "gpt-5.4-nano",
+            "gpt-5-nano",
             false,
         )
         .is_err());
@@ -120,7 +120,7 @@ fn subtask_tier_allowed_for_summary_context() {
         .validate_request_capabilities(
             ModelRouteContext::Subtask,
             &ProviderKind::OpenAi,
-            "gpt-5.4-nano",
+            "gpt-5-nano",
             None,
             true,
         )
@@ -129,7 +129,7 @@ fn subtask_tier_allowed_for_summary_context() {
         .validate_request_capabilities(
             ModelRouteContext::PrimaryReading,
             &ProviderKind::OpenAi,
-            "gpt-5.4-nano",
+            "gpt-5-nano",
             None,
             true,
         )

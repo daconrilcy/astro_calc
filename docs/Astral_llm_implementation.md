@@ -77,7 +77,7 @@ ASTRAL_LLM_ENABLE_PERSISTENCE=true                       # audit + idempotence
 ASTRAL_LLM_DB_AUTO_MIGRATE=true                          # cree les tables au boot de l'API
 OPENAI_API_KEY=sk-...                                    # test reel Premium
 ASTRAL_LLM_DEFAULT_PROVIDER=openai
-ASTRAL_LLM_DEFAULT_MODEL=gpt-5.4-mini
+ASTRAL_LLM_DEFAULT_MODEL=gpt-5-mini
 ASTRAL_LLM_PROMPT_LOG_DIR=output/logs/prompts
 ```
 
@@ -128,7 +128,7 @@ Soumettre les quatre profils fournis (detail et profil custom : **Tutoriel 1**, 
 ```powershell
 # Defauts produit en base (chapitres + summary)
 .\scripts\set_product_llm_models.ps1 -Show
-.\scripts\set_product_llm_models.ps1 -Product natal_prompter -Chapters gpt-5.4-mini -Summary gpt-5-nano
+.\scripts\set_product_llm_models.ps1 -Product natal_prompter -Chapters gpt-5-mini -Summary gpt-5-nano
 ```
 
 Les caps et modeles par tier viennent aussi de `chapter_models` dans chaque JSON sous `config/natal_interpretation_profiles/`.
@@ -182,7 +182,7 @@ Prerequis : `OPENAI_API_KEY`, payload **riche** (pas seulement `domain_scores`).
   -TimeoutSec 600
 ```
 
-Reference validee (2026-06-04) : run `f79c04a7-d0ff-4d7a-b32e-42fd7fef7d80` — ~42 s, 5 chapitres `gpt-5.4-mini` + summary `gpt-5-nano`, sortie `output\premium_reading_real.json`.
+Reference validee (2026-06-04) : run `f79c04a7-d0ff-4d7a-b32e-42fd7fef7d80` — ~42 s, 5 chapitres `gpt-5-mini` + summary `gpt-5-nano`, sortie `output\premium_reading_real.json`.
 
 Consulter le resultat :
 
@@ -313,7 +313,7 @@ Bloc **`chapter_models`** (obligatoire) :
 ```json
 "chapter_models": {
   "default_provider": "openai",
-  "default_model": "gpt-5.4-mini",
+  "default_model": "gpt-5-mini",
   "summary_model": "gpt-5-nano"
 }
 ```
@@ -829,7 +829,7 @@ Recette E2E attendue : **12/12** calculateur, **7/7** lectures, **5/5** négatif
 
 - Assertions : `Assert-SimplifiedStrictOpenAiQuality` (longueurs, whitelist `astro_basis`, regex anti-ASC/maisons, cas `ambiguous_core_identity`, **`confidence=low`** équinoxe).
 - Artefacts horodatés : `output/natal_simplified_openai/{timestamp}/` (`quality_summary.json`, lectures JSON).
-- Dernier smoke certifié post-durcissement : `output/natal_simplified_openai/2026-06-06T125816Z/` (7/7, `gate_passed: true`, `gpt-5.4-mini`).
+- Dernier smoke certifié post-durcissement : `output/natal_simplified_openai/2026-06-06T125816Z/` (7/7, `gate_passed: true`, `gpt-5-mini`).
 - Privacy provider : `ASTRAL_LLM_ALLOW_CROSS_PROVIDER_FALLBACK=false` par défaut ; pas de journalisation Rust dédiée au contenu prompt/réponse simplified (audit manuel via artefacts E2E `-UseReal`).
 
 Golden fixtures :
@@ -892,13 +892,13 @@ Configuration operationnelle (sans toucher au code Rust) :
 Exemple fichier :
 
 ```text
-natal_prompter	gpt-5.4-mini	gpt-5-nano	openai
+natal_prompter	gpt-5-mini	gpt-5-nano	openai
 ```
 
 Exemple CLI (sans modifier le fichier) :
 
 ```powershell
-.\scripts\set_product_llm_models.ps1 -Product natal_prompter -Chapters gpt-5.4-mini -Summary gpt-5-nano
+.\scripts\set_product_llm_models.ps1 -Product natal_prompter -Chapters gpt-5-mini -Summary gpt-5-nano
 .\scripts\manage_natal_interpretation_profiles.ps1 -Submit -Path config\natal_interpretation_profiles\natal_premium.json
 ```
 
@@ -908,7 +908,7 @@ Comportement runtime :
 - **Summary** : colonne SQL `economic_model` (si `engine.model` absent).
 - **Test ponctuel** (sans changer la base) : `engine.model`, `engine.summary_model`, ou `generate_premium_reading_e2e.ps1 -Model` / `-SummaryModel`.
 
-Valeurs Premium actuelles (2026-06-04) : chapitres `gpt-5.4-mini`, summary `gpt-5-nano`.
+Valeurs Premium actuelles (2026-06-04) : chapitres `gpt-5-mini`, summary `gpt-5-nano`.
 
 ### Referentiels canoniques (base)
 
@@ -1178,7 +1178,7 @@ Modes `response_contract.generation_mode` (alignes sur le profil d'interpretatio
 | `astro_basis` gate | min 6 refs/chapitre domaine ; min **4** refs pour `synthesis` (`ReadingQualityValidator` + script E2E) |
 | Repetition max | `max_repeated_trigrams` = **5** |
 | `max_output_tokens` | **30000** (profil) |
-| Modeles | chapitres astro + `synthesis` : `default_model` (`gpt-5.4-mini`) ; summary court : `summary_model` (`gpt-5-nano` via `resolve_subtask_engine`) |
+| Modeles | chapitres astro + `synthesis` : `default_model` (`gpt-5-mini`) ; summary court : `summary_model` (`gpt-5-nano` via `resolve_subtask_engine`) |
 
 **Comportement runtime specifique** :
 
@@ -1569,7 +1569,7 @@ cargo test -p astral_llm_domain
 ```txt
 OpenAI V1 prod              : CLOS
 Evidence Planner            : CLOS
-Benchmark OpenAI            : CLOS (gpt-5.4-mini + gpt-5-nano)
+Benchmark OpenAI            : CLOS (gpt-5-mini + gpt-5-nano)
 natal_premium_plus v2       : CLOS (run 673f2950, 5 537 mots, summary UX + audit SQL OK)
 Multi-provider certification: REPORTEE
 Next product work           : evidence enrichment + style refinement
@@ -1586,13 +1586,13 @@ Next product work           : evidence enrichment + style refinement
 | **astral_llm V1-production-public OpenAI** | **CLOS** | Gateway + orchestration Premium certifies sur OpenAI |
 | **Premium interpretatif riche OpenAI** | **VALIDÉ PRODUIT** | Evidence Planner clos ; E2E rich OpenAI OK (run certif. `744fccda`) |
 | **Chantier Evidence Planner** | **CLOS** | Plus de correction structurelle prevue ; maintenance bugs seulement |
-| **Benchmark OpenAI (cout / latence / qualite)** | **CLOS** | Choix prod : chapitres `gpt-5.4-mini`, summary `gpt-5-nano` ; voir `config/llm_product_models.conf` |
+| **Benchmark OpenAI (cout / latence / qualite)** | **CLOS** | Choix prod : chapitres `gpt-5-mini`, summary `gpt-5-nano` ; voir `config/llm_product_models.conf` |
 | **`natal_premium_plus` v2 final certification** | **CLOS** | Run `673f2950` — 5 537 mots, summary UX compact + hardening + audit SQL ; sortie `premium_plus_reading_e2e.json` |
 | **Certification Mistral / Anthropic** | **REPORTEE** | Adapters presents ; certification multi-provider a une etape ulterieure |
 
 **References E2E produit** :
 
-- **Certification V1 (2026-06-05)** : run `744fccda-98b2-4565-a687-ecd9b9567730` — ~33 s, 5 chapitres `gpt-5.4-mini` + summary `gpt-5-nano`, 6 steps `generated`, `request-premium-rich.json`, sortie `output/premium_reading_e2e.json`.
+- **Certification V1 (2026-06-05)** : run `744fccda-98b2-4565-a687-ecd9b9567730` — ~33 s, 5 chapitres `gpt-5-mini` + summary `gpt-5-nano`, 6 steps `generated`, `request-premium-rich.json`, sortie `output/premium_reading_e2e.json`.
 - Premium OpenAI (2026-06-04) : run `f79c04a7-d0ff-4d7a-b32e-42fd7fef7d80` — ~42 s, 5 chapitres + summary, sortie `output/premium_reading_real.json`.
 - Premium historique : run `0619a1e8-4069-4f89-b6ea-db14f32f38ea` — ~47 s, 6 steps `generated`, libelles maîtrise humanises.
 - **Premium Plus final certification** (2026-06-05) : run `673f2950-cca8-45fd-a572-2f1b5d69d753` — **5 537 mots** (corps), 9 chapitres, summary UX compact (64 mots / 2 phrases), gates polish + summary hardening + audit SQL (`0 repair_too_short`) ; sortie `output/premium_plus_reading_e2e.json`. Revalider : `.\scripts\test_natal_premium_plus_profile.ps1`.
@@ -1625,7 +1625,7 @@ AstroLabelHumanizer, test_natal_premium_plus_profile.ps1
 
 ### Prochain travail produit (hors perimetre clos)
 
-1. ~~**OpenAI** : comparer cout / latence / qualite par modele sur le meme golden E2E~~ — **clos** : chapitres `gpt-5.4-mini`, summary `gpt-5-nano` (produit `natal_prompter` + profils JSON). Outils : `scripts/benchmark_premium_e2e_models.ps1`, `scripts/summarize_benchmark_runs.ps1` ; config : `config/llm_product_models.conf` + `set_product_llm_models.ps1`.
+1. ~~**OpenAI** : comparer cout / latence / qualite par modele sur le meme golden E2E~~ — **clos** : chapitres `gpt-5-mini`, summary `gpt-5-nano` (produit `natal_prompter` + profils JSON). Outils : `scripts/benchmark_premium_e2e_models.ps1`, `scripts/summarize_benchmark_runs.ps1` ; config : `config/llm_product_models.conf` + `set_product_llm_models.ps1`.
 2. ~~**Mistral / Anthropic**~~ — **reporte** (etape ulterieure) : adapters deja presents ; certification (smoke + E2E Premium) a planifier plus tard si besoin multi-provider.
 3. ~~**Certification E2E `natal_premium_plus` v1**~~ — **clos** (2026-06-05) : run `fe811176`, seuils 420/550. ~~**v2**~~ — **clos** (2026-06-05) : run `e76a8156`, **5 517 mots** (`premium_plus_reading_e2e_v2d.json`). ~~**Final polish (P3e)**~~ — **clos** (2026-06-05) : run `31d81052`, **5 582 mots**. ~~**Summary hardening + UX compact**~~ — **clos** (2026-06-05) : run `673f2950`, **5 537 mots**, certification finale ; sortie `premium_plus_reading_e2e.json`.
 4. **Referentiel evidence** *(actif)* : enrichir progressivement les slots (noeuds, phases lunaires, dignites mineures, patterns d'aspects) via tables canoniques — pas de constantes en code.
@@ -1686,7 +1686,7 @@ Le payload astro Premium doit inclure des placements/aspects (via `planets`, `po
 
 **Clos**
 
-- Benchmark OpenAI : cout / latence / qualite par modele sur E2E Premium (`gpt-5.4-mini` / `gpt-5-nano`)
+- Benchmark OpenAI : cout / latence / qualite par modele sur E2E Premium (`gpt-5-mini` / `gpt-5-nano`)
 - Certification E2E `natal_premium_plus` v1 : run `fe811176`. v2 : run `e76a8156` (5 517 mots). Final polish (P3e) : run `31d81052` (5 582 mots). Certification finale : run `673f2950` (5 537 mots, summary UX + hardening)
 
 **Reporte**
@@ -1720,7 +1720,7 @@ Le payload astro Premium doit inclure des placements/aspects (via `planets`, `po
 16. Polish final : libelles `ruler:*` humanises ; cap supporting par `semantic_fact_key` (`max_supporting_semantic_chapters = 3`)
 17. **Evidence Planner clos** — Premium interpretatif riche OpenAI **VALIDÉ PRODUIT** (E2E `0619a1e8`, 2026-06-04)
 18. `EditorialValidator`, `READING_QUALITY_FAILED`, crate `astral_llm_api` lib pour tests
-19. **Benchmark OpenAI cout / latence / qualite** — choix prod `gpt-5.4-mini` (chapitres) + `gpt-5-nano` (summary)
+19. **Benchmark OpenAI cout / latence / qualite** — choix prod `gpt-5-mini` (chapitres) + `gpt-5-nano` (summary)
 20. **Profil `natal_premium_plus` v1** — lecture longue 8 domaines + `synthesis` ; sequence fixe ; E2E certifie (`fe811176`, seuils 420/550)
 21. **Profil `natal_premium_plus` v2** — certifie E2E OpenAI (`e76a8156`, 2026-06-05) : seuils **520/720/850**, `body_structure` 6 §, repairs, humanizer balance/modality/sect/`house_emphasis` ; **5 517 mots**
 22. **Premium Plus v2 final polish (P3e)** — **CLOSED** (`31d81052`, 2026-06-05) : `llm_house_axis_labels`, summary retry/fallback, `paragraph_opening_raw_placement`, anti-boilerplate symbolique, gates E2E + audit SQL ; **5 582 mots**

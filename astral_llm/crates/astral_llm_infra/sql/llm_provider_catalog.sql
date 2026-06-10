@@ -51,7 +51,7 @@ SET reasoning_effort_subtask = 'none',
     reasoning_effort_primary = 'low',
     reasoning_effort_oracle = 'medium'
 WHERE provider = 'openai'
-  AND model IN ('gpt-5.4', 'gpt-5.4-mini', 'gpt-5.4-nano', 'gpt-5.5', 'gpt-5.5-pro', 'gpt-5.1');
+  AND model IN ('gpt-5.4', 'gpt-5-mini', 'gpt-5-nano', 'gpt-5.5', 'gpt-5.5-pro', 'gpt-5.1');
 
 CREATE TABLE IF NOT EXISTS llm_generation_benchmark_usages (
     usage_code TEXT PRIMARY KEY,
@@ -128,11 +128,9 @@ CROSS JOIN (VALUES
     ('gpt-5.5', 'frontier actuel — qualite Premium maximale', 'production_candidate', true, true, 1050000, 128000),
     ('gpt-5.5-pro', 'oracle qualite — lent, sans streaming, benchmark ponctuel', 'oracle_only', true, false, 1050000, 128000),
     ('gpt-5.4', 'frontier abordable — Premium reasoning', 'production_candidate', true, true, 1050000, 128000),
-    ('gpt-5.4-mini', 'mini frontier — candidat production probable', 'production_candidate', true, true, 400000, 128000),
-    ('gpt-5.4-nano', 'nano — summary, validation, repair, Basic high-volume', 'subtask_candidate', true, true, 400000, 128000),
+    ('gpt-5-mini', 'mini frontier — candidat production probable', 'production_candidate', true, true, 400000, 128000),
+    ('gpt-5-nano', 'nano — summary, validation, repair, Basic high-volume', 'subtask_candidate', true, true, 400000, 128000),
     ('gpt-5.1', 'reasoning precedent — comparer si gpt-5.4 instable', 'benchmark_compare', true, true, 1050000, 128000),
-    ('gpt-5-mini', 'low-cost production — Basic et sous-taches', 'production_candidate', true, true, 400000, 128000),
-    ('gpt-5-nano', 'tres rapide — summarization, classification', 'subtask_candidate', true, true, 400000, 128000),
     ('gpt-4.1', 'baseline actuelle — non-reasoning fort', 'baseline', false, true, 1000000, 32000),
     ('gpt-4.1-mini', 'comparaison cout/latence vs gpt-5-mini', 'subtask_candidate', false, true, 1000000, 32000)
 ) AS v(model, notes, tier, reasoning, streaming, max_in, max_out)
@@ -156,8 +154,8 @@ UPDATE llm_provider_models
 SET is_active = false, updated_at = NOW()
 WHERE provider = 'openai'
   AND model NOT IN (
-    'gpt-5.5', 'gpt-5.5-pro', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.4-nano',
-    'gpt-5.1', 'gpt-5-mini', 'gpt-5-nano', 'gpt-4.1', 'gpt-4.1-mini'
+    'gpt-5.5', 'gpt-5.5-pro', 'gpt-5.4', 'gpt-5-mini', 'gpt-5-nano',
+    'gpt-5.1', 'gpt-4.1', 'gpt-4.1-mini'
   );
 
 -- Moteur par produit (bootstrap). Pour changer les modeles au quotidien :
@@ -182,7 +180,7 @@ INSERT INTO llm_product_default_engine (
     product_code, default_provider, default_model, economic_model, high_quality_model, oracle_model, notes
 ) VALUES
     (
-        'natal_prompter', 'openai', 'gpt-5.4-mini', 'gpt-5-nano', 'gpt-5.4', 'gpt-5.5',
+        'natal_prompter', 'openai', 'gpt-5-mini', 'gpt-5-nano', 'gpt-5.4', 'gpt-5.5',
         'moteur natal_prompter ; modeles par profil JSON ; override rapide via conf'
     )
 ON CONFLICT (product_code) DO UPDATE SET
@@ -232,9 +230,8 @@ CREATE TABLE IF NOT EXISTS llm_product_allowed_models (
 -- natal_prompter : modeles autorises (provider = code catalogue openai / fake)
 INSERT INTO llm_product_allowed_models (product_code, provider, model, notes) VALUES
     ('natal_prompter', 'openai', 'gpt-4.1', 'baseline'),
-    ('natal_prompter', 'openai', 'gpt-5-mini', 'economique / summary'),
     ('natal_prompter', 'openai', 'gpt-5-nano', 'summary ultra-low-cost'),
-    ('natal_prompter', 'openai', 'gpt-5.4-mini', 'production probable'),
+    ('natal_prompter', 'openai', 'gpt-5-mini', 'production probable'),
     ('natal_prompter', 'openai', 'gpt-5.4', 'qualite/prix'),
     ('natal_prompter', 'openai', 'gpt-5.5', 'qualite max raisonnable'),
     ('natal_prompter', 'openai', 'gpt-5.5-pro', 'oracle benchmark explicite'),
@@ -247,20 +244,17 @@ UPDATE llm_product_allowed_models SET is_active = false
 WHERE product_code IN ('natal_basic', 'natal_premium');
 
 INSERT INTO llm_generation_benchmark_usage_models (usage_code, provider, model, priority, notes) VALUES
-    ('premium_chapter_orchestrated', 'openai', 'gpt-5.4-mini', 10, 'production Premium par defaut'),
+    ('premium_chapter_orchestrated', 'openai', 'gpt-5-mini', 10, 'production Premium par defaut'),
     ('premium_chapter_orchestrated', 'openai', 'gpt-4.1', 20, 'baseline historique'),
     ('premium_chapter_orchestrated', 'openai', 'gpt-5.4', 30, 'qualite/prix Premium'),
     ('premium_chapter_orchestrated', 'openai', 'gpt-5.5', 40, 'qualite maximale raisonnable'),
     ('premium_high_end', 'openai', 'gpt-5.5', 10, NULL),
     ('premium_high_end', 'openai', 'gpt-5.5-pro', 20, 'oracle — runs ponctuels'),
     ('basic_short_reading', 'openai', 'gpt-5-mini', 10, NULL),
-    ('basic_short_reading', 'openai', 'gpt-5.4-mini', 20, NULL),
     ('basic_short_reading', 'openai', 'gpt-4.1-mini', 30, NULL),
     ('summary_synthesizer', 'openai', 'gpt-5-nano', 10, 'Premium summary prod'),
     ('summary_synthesizer', 'openai', 'gpt-5-mini', 20, NULL),
-    ('summary_synthesizer', 'openai', 'gpt-5.4-nano', 30, NULL),
     ('repair_validation_reformulation', 'openai', 'gpt-5-nano', 10, NULL),
-    ('repair_validation_reformulation', 'openai', 'gpt-5.4-nano', 20, NULL),
     ('repair_validation_reformulation', 'openai', 'gpt-5-mini', 30, NULL),
     ('oracle_quality', 'openai', 'gpt-5.5-pro', 10, 'benchmark ponctuel')
 ON CONFLICT (usage_code, provider, model) DO UPDATE SET
@@ -307,10 +301,10 @@ SET supports_temperature = false
 WHERE provider = 'openai'
   AND model IN (
     'gpt-5-mini', 'gpt-5-nano', 'gpt-5.5', 'gpt-5.5-pro',
-    'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.4-nano', 'gpt-5.1'
+    'gpt-5.4', 'gpt-5.1'
   );
 
--- gpt-5.4 / gpt-5.4-mini : l'API OpenAI rejette temperature (400) — seuls gpt-4.1* la supportent.
+-- gpt-5.4 / gpt-5-mini : l'API OpenAI rejette temperature (400) — seuls gpt-4.1* la supportent.
 UPDATE llm_provider_models
 SET supports_temperature = true
 WHERE provider = 'openai'

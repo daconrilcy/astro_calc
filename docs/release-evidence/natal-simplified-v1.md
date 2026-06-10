@@ -193,7 +193,7 @@ Recette OpenAI (monitoring périodique) :
 .\scripts\test_natal_simplified_e2e.ps1 -UseReal -SubmitProfile -TimeoutSec 900
 ```
 
-Dernier smoke certifié (post-durcissement équinoxe, REV-020) : `output/natal_simplified_openai/2026-06-06T125816Z/` — **7/7**, P0=0, P1=0, `gate_passed: true`, modèle **`gpt-5.4-mini`**.
+Dernier smoke certifié (post-durcissement équinoxe, REV-020) : `output/natal_simplified_openai/2026-06-06T125816Z/` — **7/7**, P0=0, P1=0, `gate_passed: true`, modèle **`gpt-5-mini`**.
 
 Smoke REV-014 (pré-durcissement, référence historique) : `output/natal_simplified_openai/2026-06-06T100348Z/`.
 

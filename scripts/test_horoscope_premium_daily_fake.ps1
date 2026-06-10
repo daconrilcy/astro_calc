@@ -63,6 +63,9 @@ for ($i = 0; $i -lt 30; $i++) {
     Start-Sleep -Seconds 2
     $status = Invoke-RestMethod -Method Get -Uri "$BaseUrl/v1/jobs/$($submit.run_id)" -Headers $headers
     if ($status.status -eq "completed") {
+        if ([string]$status.result.reading.quality.provider -ne "fake") {
+            throw "Premium horoscope fake smoke expected provider=fake, got $($status.result.reading.quality.provider)"
+        }
         if ($status.result.reading.contract_version -ne "horoscope_response_v1") {
             throw "Unexpected horoscope contract version"
         }

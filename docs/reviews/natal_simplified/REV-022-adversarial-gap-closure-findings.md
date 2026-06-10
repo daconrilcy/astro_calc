@@ -16,7 +16,7 @@ Périmètre : clôture écarts plan + durcissement équinoxe (3 couches).
 | R22-03 | P2 | Fallback ne corrige pas `chapter.code` avant re-harden | `apply_simplified_body_fallback` force `chapter.code = chapter_code` | **Fixed** |
 | R22-04 | P2 | `harden` ne ciblait que `chapters[0]` | Cible `ambiguous_core_identity` par code, sinon index 0 | **Fixed** |
 | R22-05 | — | Livraison git incomplète (hors `cef6e65`) | Commit `1a5ca2c` durcissement + doc + REV-018…022 | **Fixed** |
-| R22-06 | — | Smoke OpenAI revalidé post-merge local | Run utilisateur `2026-06-06T125816Z` — 7/7, `gate_passed: true`, `gpt-5.4-mini` | **Fixed** |
+| R22-06 | — | Smoke OpenAI revalidé post-merge local | Run utilisateur `2026-06-06T125816Z` — 7/7, `gate_passed: true`, `gpt-5-mini` | **Fixed** |
 
 ## Tests gate
 

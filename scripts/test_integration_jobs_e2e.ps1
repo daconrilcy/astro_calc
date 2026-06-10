@@ -134,6 +134,13 @@ while ((Get-Date) -lt $deadline -and -not $terminal) {
         if (-not $status.result) {
             throw "completed job must include result"
         }
+        $usedProvider = [string]$status.result.reading.quality.used_provider
+        if ([string]::IsNullOrWhiteSpace($usedProvider)) {
+            $usedProvider = [string]$status.result.reading.reading.quality.used_provider
+        }
+        if (-not $AllowRealProvider -and $usedProvider -ne "fake") {
+            throw "Integration jobs E2E expected fake provider, got '$usedProvider'"
+        }
     }
 }
 if (-not $terminal) {
@@ -148,6 +155,13 @@ if ($done.StatusCode -ne 200) {
 $doneBody = $done.Content | ConvertFrom-Json
 if (-not $doneBody.result) {
     throw "200 replay must include result"
+}
+$replayProvider = [string]$doneBody.result.reading.quality.used_provider
+if ([string]::IsNullOrWhiteSpace($replayProvider)) {
+    $replayProvider = [string]$doneBody.result.reading.reading.quality.used_provider
+}
+if (-not $AllowRealProvider -and $replayProvider -ne "fake") {
+    throw "completed replay expected fake provider, got '$replayProvider'"
 }
 Write-Host "OK completed replay 200 with result"
 

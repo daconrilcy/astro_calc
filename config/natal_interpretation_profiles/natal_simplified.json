@@ -10,7 +10,7 @@
   "default_domain_count": 1,
   "chapter_models": {
     "default_provider": "openai",
-    "default_model": "gpt-5.4-mini",
+    "default_model": "gpt-5-mini",
     "summary_model": "gpt-5-nano"
   },
   "chapter_types": ["identity", "ambiguous_core_identity"],

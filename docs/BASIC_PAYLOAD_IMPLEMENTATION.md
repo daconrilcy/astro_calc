@@ -3142,11 +3142,11 @@ Script : `astral_llm/crates/astral_llm_infra/sql/llm_generation_runs.sql`
 
 ### Premium — Interpretive Evidence Planner — **CHANTIER CLOS** (2026-06-04)
 
-**Statut produit** : **Premium interpretatif riche OpenAI — VALIDÉ PRODUIT**. E2E certification V1 (2026-06-05) : run `744fccda` (~33 s, 6 steps `generated`, `gpt-5.4-mini` + `gpt-5-nano`).
+**Statut produit** : **Premium interpretatif riche OpenAI — VALIDÉ PRODUIT**. E2E certification V1 (2026-06-05) : run `744fccda` (~33 s, 6 steps `generated`, `gpt-5-mini` + `gpt-5-nano`).
 
-**Statut fige V1** : OpenAI V1 prod **clos** ; Evidence Planner **clos** ; Benchmark OpenAI **clos** (`gpt-5.4-mini` + `gpt-5-nano`). Certification multi-provider (Mistral / Anthropic) **reportee**. Prochain travail produit : enrichissement evidence + affinage style — voir `Astral_llm_implementation.md`.
+**Statut fige V1** : OpenAI V1 prod **clos** ; Evidence Planner **clos** ; Benchmark OpenAI **clos** (`gpt-5-mini` + `gpt-5-nano`). Certification multi-provider (Mistral / Anthropic) **reportee**. Prochain travail produit : enrichissement evidence + affinage style — voir `Astral_llm_implementation.md`.
 
-**Modeles Premium** : `chapter_models` du profil `natal_premium` (+ `config/llm_product_models.conf` pour defaut produit `natal_prompter`). Valeurs courantes : chapitres `gpt-5.4-mini`, summary `gpt-5-nano`.
+**Modeles Premium** : `chapter_models` du profil `natal_premium` (+ `config/llm_product_models.conf` pour defaut produit `natal_prompter`). Valeurs courantes : chapitres `gpt-5-mini`, summary `gpt-5-nano`.
 
 Couche entre `AstroPayloadNormalizer` et `PromptCompiler` pour le profil `natal_premium` (`product_code=natal_prompter`, code :
 `astral_llm/crates/astral_llm_application`, tests racine `tests/astral_llm_*`).

@@ -1,3 +1,19 @@
+# LLM model alias cleanup - 2026-06-10
+
+## Scope
+
+Replaced deprecated OpenAI model aliases across tracked code, configuration, tests, contracts, scripts, and documentation.
+
+## Behavior
+
+- The legacy 5.4 mini alias is now `gpt-5-mini`.
+- The legacy 5.4 nano alias is now `gpt-5-nano`.
+- Product defaults, natal interpretation profiles, provider catalogue seeds, Docker defaults, benchmark scripts, and test expectations now use the updated aliases.
+
+## Validation
+
+- No tracked occurrences of the legacy mini/nano 5.4 aliases.
+
 # Premium 7-day horoscope editorial direction - 2026-06-10
 
 Refactored `horoscope_premium_next_7_days_natal` writer guidance to reduce mechanical prose.
@@ -238,6 +254,8 @@ Refactored the deterministic generation model for `horoscope_premium_next_7_days
 - The Premium writer prompt now requires secondary same-day signals to remain short nuances; the daily text and advice must stay aligned with the main `daily_plan` theme.
 - `scripts/test_integration_jobs_e2e.ps1` now guards the local async smoke against accidental real-provider usage: it expects `default_provider=fake` unless `-AllowRealProvider` is passed, and reports OpenAI rate limits as external provider failures.
 - `scripts/docker_update_integration_stack.ps1` now wraps the integration jobs smoke with a temporary fake-provider override for both `natal_prompter` defaults and the `natal_simplified` interpretation profile, restarts API/worker so async jobs use fake, then restores the configured product/profile models before continuing the remaining smokes.
+- `scripts/docker_update_integration_stack.ps1` no longer exposes the `-RunRealHoroscopePeriodE2E` path. The update wrapper only runs deterministic fake/local smoke suites.
+- Integration and horoscope fake smoke scripts now assert the completed job quality provider is `fake`, including idempotent replay for the integration jobs smoke.
 - `FakeProvider` now treats a provider schema containing full reading fields (`summary` + `chapters`) as a full `natal_reading_v1` request even when a `chapter_code` is present for prompt context. This prevents the async `natal_simplified` smoke from returning a chapter-only JSON that fails schema validation.
 - `scripts/lib/horoscope_e2e_fake_provider.ps1` now also enables fake at the Docker environment level for API and worker during horoscope fake smokes. Daily horoscope smoke suites wrap their fake jobs with this helper, so `docker_update_integration_stack.ps1` can continue through the daily and period fake suites without consuming OpenAI quota.
 

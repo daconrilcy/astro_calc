@@ -28,7 +28,7 @@ docker compose up -d --build astral_llm_api
 | Artefacts | `output/natal_simplified_openai/2026-06-06T125816Z/` |
 | Cas | **7/7** |
 | `gate_passed` | **true** |
-| Modèle | **`gpt-5.4-mini`** |
+| Modèle | **`gpt-5-mini`** |
 | Équinoxe `date_only_equinox_window` | `ambiguous_core_identity`, `confidence=low`, run `e5a36301-37f9-4410-89cc-84c4596eed5d`, `fallback_used=false` |
 
 Gate REV-020 : **OK**.

@@ -35,7 +35,7 @@ if (-not (Test-Path -LiteralPath $OutputDir)) {
 $models = @(
     @{ Model = "gpt-4.1"; Label = "baseline" },
     @{ Model = "gpt-5-mini"; Label = "economique" },
-    @{ Model = "gpt-5.4-mini"; Label = "production_probable" },
+    @{ Model = "gpt-5-mini"; Label = "production_probable" },
     @{ Model = "gpt-5.4"; Label = "premium_qualite_prix" },
     @{ Model = "gpt-5.5"; Label = "qualite_max_raisonnable" }
 )

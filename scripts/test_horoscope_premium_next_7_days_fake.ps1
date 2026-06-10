@@ -109,6 +109,9 @@ if (-not $completed) {
 
 $reading = $completed.result.reading
 $interpretation = $completed.result.interpretation_request
+if ([string]$reading.quality.provider -ne "fake") {
+    throw "Horoscope premium period fake smoke expected provider=fake, got $($reading.quality.provider)"
+}
 if ($reading.contract_version -ne "horoscope_period_response_v1") {
     throw "Unexpected period horoscope contract version: $($reading.contract_version)"
 }

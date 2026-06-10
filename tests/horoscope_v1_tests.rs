@@ -1838,7 +1838,7 @@ fn horoscope_period_real_response_rejects_too_short_public_text() {
     let request = period_interpretation_request();
     let mut response = period_response_from_request(&request);
     response["quality"]["provider"] = serde_json::json!("openai");
-    response["quality"]["model"] = serde_json::json!("gpt-5.4-mini");
+    response["quality"]["model"] = serde_json::json!("gpt-5-mini");
     response["week_overview"]["text"] =
         serde_json::json!("Vos repères personnels restent le point d'appui.");
     response["week_overview"]["trajectory"] = serde_json::json!("Avancer par étapes.");
@@ -1872,7 +1872,7 @@ fn horoscope_period_real_response_rejects_text_above_hard_limit() {
     let request = period_interpretation_request();
     let mut response = period_response_from_request(&request);
     response["quality"]["provider"] = serde_json::json!("openai");
-    response["quality"]["model"] = serde_json::json!("gpt-5.4-mini");
+    response["quality"]["model"] = serde_json::json!("gpt-5-mini");
     let repeated = (0..1600).map(|_| "mot").collect::<Vec<_>>().join(" ");
     response["week_overview"]["text"] = serde_json::json!(repeated);
     let err = validate_period_response_evidence(&request, &response).unwrap_err();

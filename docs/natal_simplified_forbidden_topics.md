@@ -107,7 +107,7 @@ Activée par `Assert-SimplifiedStrictOpenAiQuality` dans `scripts/lib/simplified
 
 Recette certifiée REV-014 (2026-06-06, pré-durcissement) : **7/7** cas positifs, P0=0, P1=0. Artefacts : `output/natal_simplified_openai/2026-06-06T100348Z/`.
 
-Recertification post-durcissement équinoxe (REV-020, 2026-06-06) : **7/7**, `gate_passed: true`, modèle `gpt-5.4-mini`. Artefacts : `output/natal_simplified_openai/2026-06-06T125816Z/`.
+Recertification post-durcissement équinoxe (REV-020, 2026-06-06) : **7/7**, `gate_passed: true`, modèle `gpt-5-mini`. Artefacts : `output/natal_simplified_openai/2026-06-06T125816Z/`.
 
 `quality_summary.json` est agrégé dynamiquement par `test_natal_simplified_e2e.ps1 -UseReal` (compteurs P0/P1, warnings P2, `gate_passed`, `model` via `default_model` de `GET /v1/providers`, détails dans `quality_metrics.raw.json`). Fonctionne aussi avec `-NoSaveOutputs` (artefacts qualité seuls).
 

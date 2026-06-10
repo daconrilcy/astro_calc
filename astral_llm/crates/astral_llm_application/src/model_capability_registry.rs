@@ -260,7 +260,7 @@ fn fake_capability() -> ModelCapability {
 fn openai_gpt54_mini_capability() -> ModelCapability {
     ModelCapability {
         provider: ProviderKind::OpenAi,
-        model: "gpt-5.4-mini".into(),
+        model: "gpt-5-mini".into(),
         supports_json_schema_strict: true,
         supports_json_object: true,
         supports_reasoning_effort: true,

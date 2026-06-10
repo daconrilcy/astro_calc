@@ -230,12 +230,12 @@ mod tests {
         };
         let defaults = EngineDefaults {
             provider: ProviderKind::OpenAi,
-            model: "gpt-5.4-mini".into(),
+            model: "gpt-5-mini".into(),
         };
 
         let resolved = resolve_engine_params(&params, &defaults, 60_000);
         assert_eq!(resolved.provider, ProviderKind::OpenAi);
-        assert_eq!(resolved.model, "gpt-5.4-mini");
+        assert_eq!(resolved.model, "gpt-5-mini");
         assert_eq!(resolved.timeout_ms, Some(60_000));
     }
 
@@ -248,7 +248,7 @@ mod tests {
             .push(ProductGenerationPolicy {
                 product_code: "natal_prompter".into(),
                 default_provider: Some(ProviderKind::OpenAi),
-                default_model: Some("gpt-5.4-mini".into()),
+                default_model: Some("gpt-5-mini".into()),
                 ..ProductGenerationPolicy::bootstrap_natal_prompter()
             });
         let global = EngineDefaults {
@@ -260,14 +260,14 @@ mod tests {
             &catalog,
             &minimal_request("natal_prompter", Some("natal_premium")),
         );
-        assert_eq!(merged.model, "gpt-5.4-mini");
+        assert_eq!(merged.model, "gpt-5-mini");
 
         let params = EngineParams {
             allow_fallback: true,
             ..Default::default()
         };
         let resolved = resolve_engine_params(&params, &merged, 60_000);
-        assert_eq!(resolved.model, "gpt-5.4-mini");
+        assert_eq!(resolved.model, "gpt-5-mini");
     }
 
     #[test]
@@ -295,7 +295,7 @@ mod tests {
     fn subtask_uses_economic_model_when_primary_not_specified() {
         let policy = ProductGenerationPolicy {
             product_code: "natal_prompter".into(),
-            default_model: Some("gpt-5.4-mini".into()),
+            default_model: Some("gpt-5-mini".into()),
             economic_model: Some("gpt-5-mini".into()),
             ..ProductGenerationPolicy::bootstrap_natal_prompter()
         };
@@ -306,7 +306,7 @@ mod tests {
             },
             &EngineDefaults {
                 provider: ProviderKind::OpenAi,
-                model: "gpt-5.4-mini".into(),
+                model: "gpt-5-mini".into(),
             },
             60_000,
         );
@@ -336,7 +336,7 @@ mod tests {
             },
             &EngineDefaults {
                 provider: ProviderKind::OpenAi,
-                model: "gpt-5.4-mini".into(),
+                model: "gpt-5-mini".into(),
             },
             60_000,
         );
@@ -366,7 +366,7 @@ mod tests {
             },
             &EngineDefaults {
                 provider: ProviderKind::OpenAi,
-                model: "gpt-5.4-mini".into(),
+                model: "gpt-5-mini".into(),
             },
             60_000,
         );
@@ -396,6 +396,6 @@ mod tests {
             &catalog,
             &minimal_request("natal_prompter", Some("natal_premium")),
         );
-        assert_eq!(merged.model, "gpt-5.4-mini");
+        assert_eq!(merged.model, "gpt-5-mini");
     }
 }

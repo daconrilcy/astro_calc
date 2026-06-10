@@ -40,7 +40,7 @@ Corps `POST /v1/readings/generate` :
   },
   "engine": {
     "provider": "openai",
-    "model": "gpt-5.4-mini",
+    "model": "gpt-5-mini",
     "allow_fallback": true
   },
   "response_contract": {
