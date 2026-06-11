@@ -15,6 +15,7 @@
     "detail_profile_code": "string|null, FK -> horoscope_detail_profiles.detail_profile_code",
     "scan_profile_code": "string|null, FK -> horoscope_scan_profiles.scan_profile_code",
     "detail_level": "string|null",
+    "generation_mode": "string",
     "max_words_target": "integer|null",
     "max_words_hard_limit": "integer|null"
   },
@@ -34,6 +35,7 @@
       "detail_profile_code": null,
       "scan_profile_code": null,
       "detail_level": null,
+      "generation_mode": "legacy_v1",
       "max_words_target": null,
       "max_words_hard_limit": null
     },
@@ -52,6 +54,7 @@
       "detail_profile_code": null,
       "scan_profile_code": null,
       "detail_level": null,
+      "generation_mode": "legacy_v1",
       "max_words_target": null,
       "max_words_hard_limit": null
     },
@@ -70,6 +73,7 @@
       "detail_profile_code": null,
       "scan_profile_code": null,
       "detail_level": "premium_rich",
+      "generation_mode": "legacy_v1",
       "max_words_target": 2500,
       "max_words_hard_limit": 3200
     },
@@ -88,6 +92,7 @@
       "detail_profile_code": "free_compact",
       "scan_profile_code": "daily_noon_7_days",
       "detail_level": "free_compact",
+      "generation_mode": "semantic_brief_v2",
       "max_words_target": 250,
       "max_words_hard_limit": 450
     },
@@ -106,6 +111,7 @@
       "detail_profile_code": "basic_standard",
       "scan_profile_code": "daily_noon_7_days",
       "detail_level": "basic_standard",
+      "generation_mode": "semantic_brief_v2",
       "max_words_target": 1200,
       "max_words_hard_limit": 1500
     },
@@ -124,6 +130,7 @@
       "detail_profile_code": "premium_rich",
       "scan_profile_code": "six_hour_7_days",
       "detail_level": "premium_rich",
+      "generation_mode": "semantic_brief_v2",
       "max_words_target": 2200,
       "max_words_hard_limit": 3200
     }

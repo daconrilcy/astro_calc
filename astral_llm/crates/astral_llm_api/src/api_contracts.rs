@@ -24,6 +24,7 @@ pub fn contracts_index() -> Value {
             "horoscope_basic_daily_natal_request_v1": "/v1/schemas/horoscope_basic_daily_natal_request_v1",
             "horoscope_premium_daily_local_request_v1": "/v1/schemas/horoscope_premium_daily_local_request_v1",
             "horoscope_period_natal_request_v1": "/v1/schemas/horoscope_period_natal_request_v1",
+            "horoscope_period_writer_request_v2": "/v1/schemas/horoscope_period_writer_request_v2",
             "horoscope_period_response_v1": "/v1/schemas/horoscope_period_response_v1",
             "horoscope_response_v1": "/v1/schemas/horoscope_response_v1"
         },
@@ -54,6 +55,7 @@ pub fn load_published_schema(version: &str) -> Option<Value> {
         "horoscope_period_interpretation_request_v1" => {
             "horoscope_period_interpretation_request_v1.schema.json"
         }
+        "horoscope_period_writer_request_v2" => "horoscope_period_writer_request_v2.schema.json",
         "horoscope_period_response_v1" => "horoscope_period_response_v1.schema.json",
         "horoscope_response_v1" => "horoscope_response_v1.schema.json",
         "horoscope_interpretation_request_v1" => "horoscope_interpretation_request_v1.schema.json",

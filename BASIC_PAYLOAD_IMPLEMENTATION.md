@@ -1,3 +1,28 @@
+# Horoscope Period V2 semantic brief - 2026-06-11
+
+## Scope
+
+Implemented the first `semantic_brief_v2` path for all horoscope `next_7_days_natal` services: free, basic and premium.
+
+## Behavior
+
+- `json_db/horoscope_services.json` now carries `generation_mode = "semantic_brief_v2"` for all three 7-day period services.
+- `HoroscopePeriodNatalOrchestrator` routes by `generation_mode`, preserving legacy V1 as rollback.
+- V2 builds `horoscope_period_writer_request_v2` from atomic evidence, events and `semantic_brief` instead of public-like `daily_plans` or editorial prose.
+- V2 supports `target_language_code` (`fr`, `en`, `es`, `de`) while temporarily accepting legacy `target_language`.
+- V2 accepts bounded `astrologer_persona` values that cannot override safety, schema or evidence.
+- V2 fake provider, response repair and postprocess avoid legacy co-writing functions.
+- Adversarial review hardened the V2 path: exact semantic brief keys, atomic window candidates, no legacy language requirement, no V2 prompt language fallback, targeted quality retry, and no public prose added by V2 repair/postprocess.
+- Detailed tracking lives in `docs/horoscope_period_v2_migration.md`.
+
+## Validation
+
+- `cargo check -p astral_llm_application`
+- `cargo test -p astral_llm_api --test horoscope_v1_tests`
+- `cargo test -p astral_llm_api --test contracts_publish_tests`
+- `cargo test -p astral_llm_application`
+- `python scripts\import_json_db_to_postgres.py --dry-run --output target\astral_json_db_import_v2.sql`
+
 # Simplified E2E fake provider restore - 2026-06-10
 
 ## Scope
