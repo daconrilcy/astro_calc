@@ -19,6 +19,8 @@ Ce document decrit l'implementation actuelle du payload moteur route par
 
 ## Note horoscope
 
+- 2026-06-11 : le pipeline horoscope period `next_7_days_natal` introduit `semantic_brief_v2` pour free, basic et premium. Rust calcule, score et structure les faits, le LLM redige la sortie publique `horoscope_period_response_v1`, et le postprocess V2 reste limite au nettoyage technique. La review adversariale a verrouille les cles exactes du brief, les fenetres atomiques, la compat langue, l'absence de fallback langue dans le prompt V2, le retry qualite cible et l'absence de prose publique ajoutee par Rust en V2. Suivi detaille : `docs/horoscope_period_v2_migration.md`.
+
 Le cadrage du futur module horoscope est documente dans
 [`docs/HOROSCOPE_IMPLEMENTATION.md`](HOROSCOPE_IMPLEMENTATION.md). Les
 developpements horoscope doivent s'y referer pour l'architecture, les contrats,
@@ -3381,10 +3383,13 @@ Durcissement Docker/import :
   jusqu'à 300 s, et couvre le replay idempotent cross-service en `409`.
 - `scripts/docker_update_integration_stack.ps1` automatise le cycle complet :
   `docker compose up -d --build`, import `json_db`, soumission catalogue,
+  **sync LLM** (`config/natal_interpretation_profiles/*.json` +
+  `config/llm_product_models.conf` via `scripts/lib/sync_llm_catalog.ps1`),
   restart LLM API/worker, readiness HTTP, catalogue public et smoke jobs E2E.
-  Options utiles : `-SkipBuild`, `-SkipImport`, `-SkipCatalogueSubmit`,
-  `-SkipSmoke`, `-RunRustChecks`. Avec `-SkipBuild`, le demarrage passe par
-  `docker compose up -d --no-build` pour eviter un warning Compose parasite.
+  Options utiles : `-SkipBuild`, `-SkipImport`, `-SkipLlmSync`,
+  `-SkipCatalogueSubmit`, `-SkipSmoke`, `-RunRustChecks`. Avec `-SkipBuild`, le
+  demarrage passe par `docker compose up -d --no-build` pour eviter un warning
+  Compose parasite.
 
 ### Endpoints
 

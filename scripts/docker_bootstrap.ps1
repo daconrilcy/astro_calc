@@ -10,6 +10,7 @@ param(
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\astral_http_auth.ps1")
+. (Join-Path $PSScriptRoot "lib\sync_llm_catalog.ps1")
 Import-AstralDotEnv -RepoRoot $repoRoot
 
 function Wait-HttpOk {
@@ -80,12 +81,7 @@ if (-not (Wait-HttpOk "$CalculatorUrl/health/live")) {
 Write-Host "  OK" -ForegroundColor Green
 
 Write-Host "`n[3/5] Referentiels LLM (profils + modeles)"
-$profileDir = Join-Path $repoRoot "config\natal_interpretation_profiles"
-Get-ChildItem -LiteralPath $profileDir -Filter "*.json" | ForEach-Object {
-    Write-Host "  submit $($_.Name)"
-    & (Join-Path $repoRoot "scripts\manage_natal_interpretation_profiles.ps1") -Submit -Path $_.FullName
-}
-& (Join-Path $repoRoot "scripts\set_product_llm_models.ps1")
+Sync-AstralLlmCatalog -RepoRoot $repoRoot
 Write-Host "  OK" -ForegroundColor Green
 
 Write-Host "`n[4/5] Reload astral_llm_api (catalogue en memoire)"

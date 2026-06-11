@@ -7,6 +7,9 @@
 
 .EXAMPLE
     .\scripts\docker_update_integration_stack.ps1 -SkipBuild -SkipImport
+
+.EXAMPLE
+    .\scripts\docker_update_integration_stack.ps1 -SkipLlmSync
 #>
 param(
     [string]$CalculatorUrl = "http://127.0.0.1:8080",
@@ -14,6 +17,7 @@ param(
     [int]$ReadyTimeoutSec = 120,
     [switch]$SkipBuild,
     [switch]$SkipImport,
+    [switch]$SkipLlmSync,
     [switch]$SkipCatalogueSubmit,
     [switch]$SkipSmoke,
     [switch]$RunRustChecks
@@ -23,6 +27,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\astral_http_auth.ps1")
 . (Join-Path $PSScriptRoot "lib\simplified_e2e_llm_provider.ps1")
+. (Join-Path $PSScriptRoot "lib\sync_llm_catalog.ps1")
 Import-AstralDotEnv -RepoRoot $repoRoot
 
 function Invoke-Step {
@@ -97,6 +102,12 @@ try {
     if (-not $SkipCatalogueSubmit) {
         Invoke-Step "Submit integration services catalogue" {
             & (Join-Path $repoRoot "scripts\manage_integration_services.ps1") -Submit
+        }
+    }
+
+    if (-not $SkipLlmSync) {
+        Invoke-Step "Sync LLM catalog (interpretation profiles + product models)" {
+            Sync-AstralLlmCatalog -RepoRoot $repoRoot
         }
     }
 
