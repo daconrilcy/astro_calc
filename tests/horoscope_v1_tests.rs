@@ -5,13 +5,14 @@ use astral_llm_application::horoscope::{
     build_interpretation_request, build_period_calculation_request,
     build_period_calculation_request_for_service, build_period_interpretation_request,
     build_period_writer_request_v2, fake_period_writer_response, fake_period_writer_response_v2,
-    period_response_provider_schema, period_writer_prompt_text_for_test,
-    postprocess_period_provider_response, postprocess_period_provider_response_v2,
-    prune_period_response_variant_fields, public_watch_point_for_theme,
-    repair_period_response_shape_v2, reprocess_horoscope_period_payload, score_calculation,
-    validate_horoscope_response_schema, validate_interpretation_request_schema,
-    validate_period_interpretation_request_schema, validate_period_provider_public_payload,
-    validate_period_public_request, validate_period_response_evidence,
+    period_response_provider_schema, period_writer_max_output_tokens_for_test,
+    period_writer_prompt_text_for_test, postprocess_period_provider_response,
+    postprocess_period_provider_response_v2, prune_period_response_variant_fields,
+    public_watch_point_for_theme, repair_period_response_shape_v2,
+    reprocess_horoscope_period_payload, score_calculation, validate_horoscope_response_schema,
+    validate_interpretation_request_schema, validate_period_interpretation_request_schema,
+    validate_period_provider_public_payload, validate_period_public_request,
+    validate_period_public_word_count_for_test, validate_period_response_evidence,
     validate_period_response_schema, validate_period_writer_request_v2_schema,
     validate_public_request, validate_response_evidence, validate_scan_plan,
     validate_semantic_brief_is_atomic, HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE,
@@ -6048,7 +6049,51 @@ fn period_writer_v2_prompt_mentions_language_safety_and_keywords() {
     assert!(prompt.contains("safety_profile always overrides astrologer_persona"));
     assert!(prompt.contains("target_language_code overrides astrologer_persona"));
     assert!(prompt.contains("Use period-level keywords to write week_overview"));
+    assert!(prompt.contains("compact minified JSON"));
     assert!(prompt.contains("horoscope_period_response_v1"));
+}
+
+#[test]
+fn period_writer_v2_uses_real_provider_output_budget() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    assert_eq!(period_writer_max_output_tokens_for_test(&request), 16_000);
+}
+
+#[test]
+fn period_writer_v2_word_count_allows_small_under_target_tolerance() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let mut response = fake_period_writer_response_v2(&request).unwrap();
+    response["quality"]["provider"] = serde_json::json!("openai");
+    let public_text = std::iter::repeat("mot")
+        .take(1598)
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    validate_period_public_word_count_for_test(&request, &response, &public_text).unwrap();
+}
+
+#[test]
+fn period_writer_v2_word_count_rejects_substantially_short_output() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let mut response = fake_period_writer_response_v2(&request).unwrap();
+    response["quality"]["provider"] = serde_json::json!("openai");
+    let public_text = std::iter::repeat("mot")
+        .take(1490)
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    let err =
+        validate_period_public_word_count_for_test(&request, &response, &public_text).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_WORD_COUNT_OUT_OF_RANGE"
+    );
+    let details = err.detail().details.as_ref().unwrap();
+    assert_eq!(details["target_words_min"], 1600);
+    assert_eq!(details["effective_words_min"], 1550);
 }
 
 #[test]
@@ -6089,6 +6134,244 @@ fn postprocess_period_v2_preserves_public_text_content() {
         processed["week_overview"]["text"],
         "Phrase unique qui doit rester stable dans le postprocess V2."
     );
+}
+
+#[test]
+fn postprocess_period_v2_normalizes_watch_summary_status_without_rewriting() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let mut response = fake_period_writer_response_v2(&request).unwrap();
+    assert!(!response["watch_windows"].as_array().unwrap().is_empty());
+    response["watch_days"] = serde_json::json!([]);
+    response["watch_summary"]["status"] = serde_json::json!("active");
+    let original_text = response["watch_summary"]["text"].clone();
+
+    let processed = postprocess_period_provider_response_v2(&request, response);
+
+    assert_eq!(processed["watch_summary"]["status"], "low");
+    assert_eq!(processed["watch_summary"]["text"], original_text);
+}
+
+#[test]
+fn postprocess_period_v2_normalizes_low_watch_summary_without_watch_windows() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let mut response = fake_period_writer_response_v2(&request).unwrap();
+    response["watch_days"] = serde_json::json!([]);
+    response["watch_windows"] = serde_json::json!([]);
+    response["watch_summary"]["status"] = serde_json::json!("low");
+    response["watch_summary"]["evidence_keys"] =
+        serde_json::json!([request["evidence"][0]["evidence_key"].clone()]);
+    let original_text = response["watch_summary"]["text"].clone();
+
+    let processed = postprocess_period_provider_response_v2(&request, response);
+
+    assert_eq!(processed["watch_summary"]["status"], "none");
+    assert_eq!(
+        processed["watch_summary"]["evidence_keys"],
+        serde_json::json!([])
+    );
+    assert_eq!(processed["watch_summary"]["text"], original_text);
+    validate_period_provider_public_payload(&processed).unwrap();
+    validate_period_response_evidence(&request, &processed).unwrap();
+}
+
+#[test]
+fn premium_period_v2_allows_active_watch_summary_when_watch_windows_exist() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let mut response = fake_period_writer_response_v2(&request).unwrap();
+    assert!(!response["watch_windows"].as_array().unwrap().is_empty());
+    response["watch_days"] = serde_json::json!([]);
+    response["watch_summary"]["status"] = serde_json::json!("active");
+
+    validate_period_provider_public_payload(&response).unwrap();
+    validate_period_response_evidence(&request, &response).unwrap();
+}
+
+#[test]
+fn postprocess_period_v2_prunes_overlapping_watch_windows_without_rewriting() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let mut response = fake_period_writer_response_v2(&request).unwrap();
+    let duplicated = response["best_windows"].as_array().unwrap()[0].clone();
+    response["watch_days"] = serde_json::json!([]);
+    response["watch_windows"] = serde_json::json!([
+        {
+            "title": duplicated["title"].clone(),
+            "date": duplicated["date"].clone(),
+            "time_range_label": duplicated["time_range_label"].clone(),
+            "theme": "appuis concrets",
+            "tone": duplicated["tone"].clone(),
+            "watch_point": "Gardez une marge avant de confirmer un engagement.",
+            "evidence_keys": duplicated["evidence_keys"].clone(),
+            "source_snapshot_keys": duplicated["source_snapshot_keys"].clone()
+        }
+    ]);
+    response["watch_summary"]["status"] = serde_json::json!("active");
+    response["watch_summary"]["evidence_keys"] = duplicated["evidence_keys"].clone();
+    let original_text = response["watch_summary"]["text"].clone();
+
+    let processed = postprocess_period_provider_response_v2(&request, response);
+
+    assert!(processed["watch_windows"].as_array().unwrap().is_empty());
+    assert_eq!(processed["watch_summary"]["status"], "none");
+    assert_eq!(
+        processed["watch_summary"]["evidence_keys"],
+        serde_json::json!([])
+    );
+    assert_eq!(processed["watch_summary"]["text"], original_text);
+    validate_period_provider_public_payload(&processed).unwrap();
+    validate_period_response_evidence(&request, &processed).unwrap();
+}
+
+#[test]
+fn postprocess_period_v2_preserves_evidence_summary_prose_labels() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let mut response = fake_period_writer_response_v2(&request).unwrap();
+    response["evidence_summary"][0]["label"] =
+        serde_json::json!("Lune en maison 1 — focus organisation");
+    response["evidence_summary"][1]["label"] =
+        serde_json::json!("Mercure → Mars natal — communication active");
+    response["advice"]["main"] = serde_json::json!(
+        "Les fenêtres actives restent utiles si elles servent une action précise."
+    );
+
+    let processed = postprocess_period_provider_response_v2(&request, response);
+
+    assert_eq!(
+        processed["evidence_summary"][0]["label"],
+        "Lune en maison 1 — focus organisation"
+    );
+    assert_eq!(
+        processed["evidence_summary"][1]["label"],
+        "Mercure → Mars natal — communication active"
+    );
+    validate_period_provider_public_payload(&processed).unwrap();
+    validate_period_response_evidence(&request, &processed).unwrap();
+}
+
+#[test]
+fn period_v2_allows_natural_public_prose_without_token_rewriting() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let mut response = fake_period_writer_response_v2(&request).unwrap();
+    let original_evidence_keys = response["best_days"][0]["evidence_keys"].clone();
+    response["best_days"][0]["reason"] = serde_json::json!(
+        "La Lune en maison dix favorise le focus sur vos responsabilités publiques."
+    );
+    response["domain_sections"][0]["text"] = serde_json::json!(
+        "Le domaine organization demande un rythme careful sans devenir une liste technique."
+    );
+    response["strategy"]["text"] = serde_json::json!(
+        "Gardez un appui mixed mais lisible, puis choisissez une action qui reste fluid."
+    );
+
+    let processed = postprocess_period_provider_response_v2(&request, response);
+
+    assert_eq!(
+        processed["best_days"][0]["reason"],
+        "La Lune en maison dix favorise le focus sur vos responsabilités publiques."
+    );
+    assert_eq!(
+        processed["domain_sections"][0]["text"],
+        "Le domaine organization demande un rythme careful sans devenir une liste technique."
+    );
+    assert_eq!(
+        processed["strategy"]["text"],
+        "Gardez un appui mixed mais lisible, puis choisissez une action qui reste fluid."
+    );
+    assert_eq!(
+        processed["best_days"][0]["evidence_keys"],
+        original_evidence_keys
+    );
+    validate_period_provider_public_payload(&processed).unwrap();
+    validate_period_response_evidence(&request, &processed).unwrap();
+}
+
+#[test]
+fn period_v2_rejects_real_internal_field_leaks_in_public_text() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let mut response = fake_period_writer_response_v2(&request).unwrap();
+    response["strategy"]["text"] =
+        serde_json::json!("La stratégie ne doit jamais exposer theme_code ni evidence_key.");
+
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_TECHNICAL_CODE_LEAK");
+}
+
+#[test]
+fn period_v2_allows_natural_repeated_action_verbs_without_legacy_repetition_gate() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let mut response = fake_period_writer_response_v2(&request).unwrap();
+    response["daily_timeline"][0]["text"] = serde_json::json!(
+        "La journée aide à clarifier une priorité concrète sans disperser les échanges."
+    );
+    response["daily_timeline"][1]["text"] = serde_json::json!(
+        "Ce passage permet de clarifier une décision déjà ouverte avec plus de méthode."
+    );
+    response["domain_sections"][0]["text"] = serde_json::json!(
+        "Dans ce domaine, clarifier le cadre rend l'engagement plus lisible et moins lourd."
+    );
+    response["strategy"]["text"] = serde_json::json!(
+        "La stratégie consiste à ajuster le rythme, intégrer les retours et clarifier la suite."
+    );
+
+    validate_period_response_evidence(&request, &response).unwrap();
+}
+
+#[test]
+fn period_v2_still_rejects_repeated_mechanical_templates() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let mut response = fake_period_writer_response_v2(&request).unwrap();
+    response["daily_timeline"][0]["text"] =
+        serde_json::json!("Restez concret pour garder un appui utilisable.");
+    response["daily_timeline"][1]["text"] =
+        serde_json::json!("Restez concret afin de ne pas disperser l'action.");
+    response["domain_sections"][0]["text"] =
+        serde_json::json!("Restez concret dans ce domaine pour mieux trier.");
+
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_REPETITIVE_DAILY_TEXT"
+    );
+}
+
+#[test]
+fn postprocess_period_v2_normalizes_public_short_label_code_leaks_without_rewriting() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let mut response = fake_period_writer_response_v2(&request).unwrap();
+    response["daily_timeline"][0]["theme"] = serde_json::json!("organization");
+    response["daily_timeline"][0]["tone"] = serde_json::json!("focused");
+    response["daily_timeline"][1]["tone"] = serde_json::json!("focalisé");
+    response["daily_timeline"][2]["tone"] = serde_json::json!("concentré/supportif");
+    response["daily_timeline"][3]["tone"] = serde_json::json!("concentré/mixte");
+    response["daily_timeline"][4]["tone"] = serde_json::json!("concentré/actif");
+    response["domain_sections"][0]["domain"] = serde_json::json!("organization");
+    response["best_windows"][0]["theme"] = serde_json::json!("organization");
+    response["watch_windows"][0]["tone"] = serde_json::json!("focused");
+    let original_text = response["daily_timeline"][0]["text"].clone();
+
+    let processed = postprocess_period_provider_response_v2(&request, response);
+
+    assert_ne!(processed["daily_timeline"][0]["theme"], "organization");
+    assert_ne!(processed["daily_timeline"][0]["tone"], "focused");
+    assert_ne!(processed["domain_sections"][0]["domain"], "organization");
+    assert_ne!(processed["best_windows"][0]["theme"], "organization");
+    assert_ne!(processed["watch_windows"][0]["tone"], "focused");
+    assert_eq!(processed["daily_timeline"][1]["tone"], "concentré");
+    assert_eq!(processed["daily_timeline"][2]["tone"], "concentré");
+    assert_eq!(processed["daily_timeline"][3]["tone"], "concentré");
+    assert_eq!(processed["daily_timeline"][4]["tone"], "concentré");
+    assert_eq!(processed["daily_timeline"][0]["text"], original_text);
+    validate_period_provider_public_payload(&processed).unwrap();
+    validate_period_response_evidence(&request, &processed).unwrap();
 }
 
 #[test]

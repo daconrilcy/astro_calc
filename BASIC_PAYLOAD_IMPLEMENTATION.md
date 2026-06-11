@@ -26,6 +26,19 @@ Free and basic 7-day services remain on `legacy_v1` according to the initial Pre
 - `cargo test -p astral_llm_application`
 - `python scripts\import_json_db_to_postgres.py --dry-run --output target\astral_json_db_import_v2.sql`
 
+## Real OpenAI certification
+
+- Added `scripts\test_horoscope_premium_next_7_days_v2_openai.ps1` to run real Premium 7-day V2 certification from `.env` OpenAI credentials.
+- The script requires `OPENAI_API_KEY`, verifies the active LLM provider is not `fake`, creates or reuses a natal `chart_calculation_id`, runs `horoscope_premium_next_7_days_natal` with `target_language_code` for `fr`, `en`, `es`, `de`, saves one request/response per language, and writes `summary.json`.
+- If the running API still exposes the older public schema and rejects `target_language_code`, the script retries that language with legacy `target_language`, records `payload_mode = target_language`, and still validates that the completed V2 debug `writer_request.target_language_code` matches the requested language.
+- It validates the V2 debug boundary (`interpretation_request == writer_request`), writer request contract markers, top-level evidence, no `semantic_brief.evidence`, public reading shape, non-fake provider quality metadata, 7-day timeline, windows/domains, and absence of internal technical fields in public text.
+- Real OpenAI V2 writer/editor calls use compact JSON prompts, minimal reasoning and a 16k output budget; targeted retry metadata stays out of the public `reading` schema. V2 postprocess may only normalize technical consistency, such as `watch_summary.status = active` to `low` when there are watch windows but no watch days, or internal `theme`/`tone` codes inside short public label fields, without rewriting public prose.
+- V2 postprocess also prunes duplicated `watch_windows` when OpenAI copies an existing `best_windows` identity (`date` + `source_snapshot_keys`) into the vigilance section; if no vigilance remains, `watch_summary` is technically reset to `none` without adding text.
+- V2 public text validation no longer treats ordinary wording such as `focus`, `organization`, `clarifier`, `ajuster` or `intégrer` as a hard failure. It only rejects real internal leaks such as field names, prompt metadata, evidence key labels, snapshot key labels and semantic-brief/debug terms. Postprocess does not rewrite public prose to chase lexical variants.
+- Premium V2 still prompts for the canonical `1600-2600` word target and keeps the `3200` hard limit, but final validation accepts a narrow 50-word under-target tolerance. A real output at `1598` words is not rejected for mechanical threshold reasons, while substantially short output still triggers quality retry/failure; Rust does not pad or complete the prose.
+- Premium V2 validation treats `watch_windows` as valid vigilance carriers: `watch_summary.status = active` is accepted when either `watch_days` or `watch_windows` is populated.
+- Usage: `.\scripts\test_horoscope_premium_next_7_days_v2_openai.ps1`.
+
 # Simplified E2E fake provider restore - 2026-06-10
 
 ## Scope

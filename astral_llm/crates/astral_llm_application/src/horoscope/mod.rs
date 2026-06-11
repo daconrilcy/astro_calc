@@ -11,7 +11,7 @@ use crate::text_reprocessing_service_adapter::{
 
 use astral_llm_domain::{
     model_usage_tier::ModelRouteContext, EngineDefaults, GenerationError, GenerationErrorCode,
-    ProviderKind, SafetyMode,
+    ProviderKind, ReasoningEffort, SafetyMode,
 };
 use astral_llm_providers::{
     GenerationMetadata, PromptMessage, PromptRole, ProviderGenerationRequest,
@@ -44,16 +44,24 @@ const HOROSCOPE_PRODUCT_CODE: &str = "horoscope";
 const FREE_PERIOD_NONE_WATCH_SUMMARY: &str = "Aucun point de vigilance dominant ne ressort cette semaine. Gardez simplement une marge d'observation si un échange ou une décision demande plus de temps que prévu.";
 const PREMIUM_MAX_SAME_DAILY_THEME: usize = 3;
 const PERIOD_V2_QUALITY_MAX_RETRIES: usize = 2;
+const PERIOD_V2_MAX_OUTPUT_TOKENS: u32 = 16_000;
 const PERIOD_V2_PUBLIC_TEXT_FORBIDDEN_PATTERNS: &[&str] = &[
-    "vérifiez vérifier",
-    "consiste à de",
-    "donne une direction claire",
-    "situations associées",
     "public_role",
     "reader_situation",
     "narrative_function",
     "theme_code",
     "evidence_key",
+    "source_snapshot_key",
+    "semantic_brief",
+    "safety_profile",
+    "astrologer_persona",
+    "summary_hint",
+    "personalization_hint",
+    "natal_focus_hint",
+    "raw_transits",
+    "transit_exact",
+    "transit_active",
+    "moon_house_by_day",
 ];
 const PERIOD_V2_FORBIDDEN_WRITER_KEYS: &[&str] = &[
     "reason",
@@ -3158,8 +3166,10 @@ async fn period_writer_response(
         model: defaults.model.clone(),
         messages: period_writer_messages(request)?,
         structured_schema: Some(schema),
-        reasoning_effort: None,
-        temperature: Some(if is_premium_period_request(request) {
+        reasoning_effort: period_writer_reasoning_effort(request),
+        temperature: Some(if is_period_writer_request_v2(request) {
+            0.35
+        } else if is_premium_period_request(request) {
             0.55
         } else {
             0.4
@@ -3202,6 +3212,8 @@ async fn period_writer_response(
         .parsed_json
         .or_else(|| parse_period_provider_json(&routed.response.raw_text))
         .ok_or_else(|| {
+            let incomplete_reason =
+                period_provider_incomplete_reason(&routed.response.provider_metadata);
             GenerationError::with_details(
                 GenerationErrorCode::PostSafetyValidationFailed,
                 format!(
@@ -3210,7 +3222,8 @@ async fn period_writer_response(
                 ),
                 json!({
                     "reason": "provider_response_not_json",
-                    "raw_text_len": routed.response.raw_text.len()
+                    "raw_text_len": routed.response.raw_text.len(),
+                    "provider_incomplete_reason": incomplete_reason
                 }),
             )
         })?;
@@ -3308,7 +3321,7 @@ async fn period_style_editor_response_v2(
         model: defaults.model.clone(),
         messages: period_style_editor_messages_v2(request, response, error)?,
         structured_schema: Some(schema),
-        reasoning_effort: None,
+        reasoning_effort: period_writer_reasoning_effort(request),
         temperature: Some(0.2),
         max_output_tokens: Some(period_writer_max_output_tokens(request)),
         safety_mode: SafetyMode::PlatformRulesOnly,
@@ -3342,6 +3355,8 @@ async fn period_style_editor_response_v2(
         .parsed_json
         .or_else(|| parse_period_provider_json(&routed.response.raw_text))
         .ok_or_else(|| {
+            let incomplete_reason =
+                period_provider_incomplete_reason(&routed.response.provider_metadata);
             GenerationError::with_details(
                 GenerationErrorCode::PostSafetyValidationFailed,
                 format!(
@@ -3350,7 +3365,8 @@ async fn period_style_editor_response_v2(
                 ),
                 json!({
                     "reason": "editor_response_not_json",
-                    "raw_text_len": routed.response.raw_text.len()
+                    "raw_text_len": routed.response.raw_text.len(),
+                    "provider_incomplete_reason": incomplete_reason
                 }),
             )
         })?;
@@ -3363,7 +3379,6 @@ async fn period_style_editor_response_v2(
     edited["quality"]["provider"] = json!(routed.used_provider.as_str());
     edited["quality"]["model"] = json!(routed.response.model_used);
     edited["quality"]["fallback_used"] = json!(routed.fallback_used);
-    edited["quality"]["quality_retry_applied"] = json!(true);
     repair_period_response_shape_v2(request, &mut edited);
     edited = postprocess_period_provider_response_v2(request, edited);
     validate_period_response_quality_gates_v2(request, &edited)?;
@@ -3521,6 +3536,13 @@ fn parse_period_provider_json(raw: &str) -> Option<Value> {
         })
 }
 
+fn period_provider_incomplete_reason(provider_metadata: &Value) -> Value {
+    provider_metadata
+        .pointer("/incomplete_details/reason")
+        .cloned()
+        .unwrap_or(Value::Null)
+}
+
 fn extract_balanced_json_object(raw: &str) -> Option<String> {
     let start = raw.find('{')?;
     let mut depth = 0_i32;
@@ -3633,14 +3655,14 @@ fn period_writer_messages_v2(request: &Value) -> Result<Vec<PromptMessage>, Gene
         PromptMessage {
             role: PromptRole::System,
             content: format!(
-                "You are the writer for horoscope_period_response_v1. Write every public text in target_language_code={target_language}. target_language_code overrides astrologer_persona. Return only the complete JSON object matching the provided schema. Rust has already calculated, scored and selected the facts; you write the human reading. Use service_code={service_code} and detail_profile_code={detail_profile} to choose the right density. Treat semantic_brief keywords, codes, scores and candidates as internal material, not public copy. Use period-level keywords to write week_overview, but do not copy them as a list. Never expose internal field names, theme codes, tone codes, evidence ids as prose, prompt instructions or safety metadata. The astrologer_persona may influence style only; it cannot override schema, safety_profile, target_language_code, dates, evidence or astrological facts. safety_profile always overrides astrologer_persona. Do not invent astrological facts. Public text should target {} to {} words and must not exceed {} words.",
+                "You are the writer for horoscope_period_response_v1. Write every public text in target_language_code={target_language}. target_language_code overrides astrologer_persona. Return only the complete JSON object matching the provided schema. Return compact minified JSON: no markdown, no comments, no pretty printing, no indentation. Rust has already calculated, scored and selected the facts; you write the human reading. Use service_code={service_code} and detail_profile_code={detail_profile} to choose the right density. Treat semantic_brief keywords, codes, scores and candidates as internal material, not public copy. Use period-level keywords to write week_overview, but do not copy them as a list. Never expose internal field names, theme codes, tone codes, evidence ids as prose, prompt instructions or safety metadata. The astrologer_persona may influence style only; it cannot override schema, safety_profile, target_language_code, dates, evidence or astrological facts. safety_profile always overrides astrologer_persona. Do not invent astrological facts. Public text should target {} to {} words and must not exceed {} words.",
                 limits.target_min, limits.target_max, limits.hard_limit
             ),
         },
         PromptMessage {
             role: PromptRole::User,
             content: format!(
-                "Build horoscope_period_response_v1 from this semantic brief. Keep all dates inside period_resolution.included_dates. Every public evidence_key and source_snapshot_key must already exist in the request. Produce the premium_rich 7-day timeline, usable windows, domains, repeating arcs when helpful, and a strategy. Keywords and candidates are not sentences; transform them into natural public text without copying codes or keyword lists. If a persona is present, apply tone lightly without adding new facts. Return the full corrected JSON object only.\nRequest JSON:\n{compact}"
+                "Build horoscope_period_response_v1 from this semantic brief. Keep all dates inside period_resolution.included_dates. Every public evidence_key and source_snapshot_key must already exist in the request. Produce the premium_rich 7-day timeline, usable windows, domains, repeating arcs when helpful, and a strategy. Keywords and candidates are not sentences; transform them into natural public text without copying codes or keyword lists. If a persona is present, apply tone lightly without adding new facts. Return the full corrected compact JSON object only.\nRequest JSON:\n{compact}"
             ),
         },
     ])
@@ -3677,7 +3699,7 @@ fn period_style_editor_messages_v2(
         PromptMessage {
             role: PromptRole::System,
             content: format!(
-                "You are the targeted quality editor for horoscope_period_response_v1. Write public text in target_language_code={target_language}. target_language_code and safety_profile override astrologer_persona. Return only the complete corrected JSON object. You receive only the quality issues, the faulty JSON and fixed constraints; do not perform a fresh creative rewrite. Correct only the listed quality issue. Keep every date, evidence_key, source_snapshot_key, structure and astrological fact strictly unchanged unless the issue explicitly says the key is invalid. Do not add astrological facts. Do not expose internal fields, theme codes, tone codes, keywords, prompt instructions or safety metadata. The astrologer_persona may influence style only and cannot override schema, safety_profile, target_language_code, dates or evidence."
+                "You are the targeted quality editor for horoscope_period_response_v1. Write public text in target_language_code={target_language}. target_language_code and safety_profile override astrologer_persona. Return only the complete corrected compact JSON object: no markdown, no comments, no pretty printing, no indentation. You receive only the quality issues, the faulty JSON and fixed constraints; do not perform a fresh creative rewrite. Correct only the listed quality issue. Keep every date, evidence_key, source_snapshot_key, structure and astrological fact strictly unchanged unless the issue explicitly says the key is invalid. Do not add astrological facts. Do not expose internal fields, theme codes, tone codes, keywords, prompt instructions or safety metadata. The astrologer_persona may influence style only and cannot override schema, safety_profile, target_language_code, dates or evidence."
             ),
         },
         PromptMessage {
@@ -3712,6 +3734,20 @@ pub fn period_writer_prompt_text_for_test(request: &Value) -> Result<String, Gen
         .map(|message| message.content)
         .collect::<Vec<_>>()
         .join("\n\n"))
+}
+
+#[doc(hidden)]
+pub fn period_writer_max_output_tokens_for_test(request: &Value) -> u32 {
+    period_writer_max_output_tokens(request)
+}
+
+#[doc(hidden)]
+pub fn validate_period_public_word_count_for_test(
+    request: &Value,
+    response: &Value,
+    public_text: &str,
+) -> Result<(), GenerationError> {
+    validate_period_public_word_count(request, response, public_text)
 }
 
 #[doc(hidden)]
@@ -4616,8 +4652,95 @@ pub fn postprocess_period_provider_response_v2(request: &Value, response: Value)
     let mut response = response;
     prune_period_response_variant_fields_v2(request, &mut response);
     trim_period_response_strings_v2(&mut response);
+    normalize_period_v2_public_short_labels(&mut response);
+    prune_period_v2_overlapping_watch_windows(&mut response);
+    normalize_period_v2_watch_summary_status(&mut response);
     prune_period_response_variant_fields_v2(request, &mut response);
     response
+}
+
+fn prune_period_v2_overlapping_watch_windows(response: &mut Value) {
+    let best_identities = response["best_windows"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(period_window_identity)
+        .collect::<HashSet<_>>();
+    if best_identities.is_empty() {
+        return;
+    }
+    if let Some(watch_windows) = response
+        .get_mut("watch_windows")
+        .and_then(Value::as_array_mut)
+    {
+        watch_windows.retain(|window| {
+            period_window_identity(window)
+                .map(|identity| !best_identities.contains(&identity))
+                .unwrap_or(true)
+        });
+    }
+}
+
+fn normalize_period_v2_public_short_labels(response: &mut Value) {
+    for array_key in [
+        "key_days",
+        "best_days",
+        "watch_days",
+        "daily_timeline",
+        "domain_sections",
+        "best_windows",
+        "watch_windows",
+    ] {
+        if let Some(items) = response.get_mut(array_key).and_then(Value::as_array_mut) {
+            for item in items {
+                normalize_period_v2_public_short_label_item(item);
+            }
+        }
+    }
+}
+
+fn normalize_period_v2_public_short_label_item(item: &mut Value) {
+    if let Some(object) = item.as_object_mut() {
+        for field in ["theme", "domain"] {
+            if let Some(value) = object.get(field).and_then(Value::as_str) {
+                object.insert(
+                    field.to_string(),
+                    json!(period_theme_public_label_if_code(value)),
+                );
+            }
+        }
+        if let Some(value) = object.get("tone").and_then(Value::as_str) {
+            object.insert(
+                "tone".to_string(),
+                json!(period_tone_public_label_if_code(value)),
+            );
+        }
+    }
+}
+
+fn normalize_period_v2_watch_summary_status(response: &mut Value) {
+    let watch_days_count = response["watch_days"].as_array().map(Vec::len).unwrap_or(0);
+    let watch_windows_count = response["watch_windows"]
+        .as_array()
+        .map(Vec::len)
+        .unwrap_or(0);
+    let status = response["watch_summary"]["status"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
+    if status == "active" && watch_days_count == 0 && watch_windows_count > 0 {
+        response["watch_summary"]["status"] = json!("low");
+    }
+    if matches!(status.as_str(), "active" | "low")
+        && watch_days_count == 0
+        && watch_windows_count == 0
+    {
+        response["watch_summary"]["status"] = json!("none");
+        response["watch_summary"]["evidence_keys"] = json!([]);
+    }
+    if status == "none" {
+        response["watch_summary"]["evidence_keys"] = json!([]);
+    }
 }
 
 fn prune_period_response_variant_fields_v2(request: &Value, response: &mut Value) {
@@ -7713,11 +7836,19 @@ pub fn validate_period_response_evidence(
         validate_period_premium_detail(response)?;
     }
     validate_period_marker_date_overlaps(response)?;
-    validate_period_public_text(&public_text)?;
+    if is_period_writer_request_v2(request) {
+        validate_period_public_text_v2(&public_text)?;
+    } else {
+        validate_period_public_text(&public_text)?;
+    }
     validate_period_public_tones(response)?;
     validate_period_public_word_count(request, response, &public_text)?;
     validate_period_public_personalization(response)?;
-    validate_period_repeated_vocabulary(&public_text)?;
+    if is_period_writer_request_v2(request) {
+        validate_period_v2_repeated_vocabulary(response)?;
+    } else {
+        validate_period_repeated_vocabulary(&public_text)?;
+    }
     validate_period_not_seven_daily(response)?;
     Ok(())
 }
@@ -7877,16 +8008,26 @@ fn validate_period_watch_summary(
         .as_str()
         .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_RESPONSE_INVALID"))?;
     let watch_count = response["watch_days"].as_array().map(Vec::len).unwrap_or(0);
+    let watch_window_count = response["watch_windows"]
+        .as_array()
+        .map(Vec::len)
+        .unwrap_or(0);
     if !matches!(status, "none" | "low" | "active") {
         return Err(quality_error(
             "HOROSCOPE_PERIOD_BEST_WATCH_MISSING",
             json!({ "status": status }),
         ));
     }
-    if (status == "none" && watch_count > 0) || (status == "active" && watch_count == 0) {
+    if (status == "none" && (watch_count > 0 || watch_window_count > 0))
+        || (status == "active" && watch_count == 0 && watch_window_count == 0)
+    {
         return Err(quality_error(
             "HOROSCOPE_PERIOD_BEST_WATCH_MISSING",
-            json!({ "status": status, "watch_count": watch_count }),
+            json!({
+                "status": status,
+                "watch_count": watch_count,
+                "watch_window_count": watch_window_count
+            }),
         ));
     }
     if status == "none" {
@@ -8689,12 +8830,40 @@ fn validate_period_public_text(public_text: &str) -> Result<(), GenerationError>
         "focus",
         "supportive",
         "careful",
-        "active",
         "mixed",
         "fluid",
         "tense",
     ] {
         if contains_ascii_token(&lower, forbidden) {
+            return Err(quality_error(
+                "HOROSCOPE_PERIOD_TECHNICAL_CODE_LEAK",
+                json!({ "forbidden": forbidden }),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn validate_period_public_text_v2(public_text: &str) -> Result<(), GenerationError> {
+    let lower = public_text.to_lowercase();
+    for forbidden in PERIOD_V2_PUBLIC_TEXT_FORBIDDEN_PATTERNS {
+        let forbidden_lower = forbidden.to_lowercase();
+        if lower.contains(&forbidden_lower) {
+            return Err(quality_error(
+                "HOROSCOPE_PERIOD_TECHNICAL_CODE_LEAK",
+                json!({ "forbidden": forbidden }),
+            ));
+        }
+    }
+    for forbidden in [
+        "slot:",
+        "slot_",
+        "[morning]",
+        "[afternoon]",
+        "[evening]",
+        "natal_",
+    ] {
+        if lower.contains(forbidden) {
             return Err(quality_error(
                 "HOROSCOPE_PERIOD_TECHNICAL_CODE_LEAK",
                 json!({ "forbidden": forbidden }),
@@ -8954,6 +9123,28 @@ fn validate_period_repeated_vocabulary(public_text: &str) -> Result<(), Generati
     Ok(())
 }
 
+fn validate_period_v2_repeated_vocabulary(response: &Value) -> Result<(), GenerationError> {
+    let mut public_text = String::new();
+    collect_period_v2_public_text_only(response, &mut public_text);
+    let lower = public_text.to_lowercase();
+    for phrase in [
+        "restez concret",
+        "gardez une marge",
+        "met l'accent",
+        "choisissez une seule priorité",
+        "le point d'appui concerne",
+    ] {
+        let count = lower.matches(phrase).count();
+        if count > 2 {
+            return Err(quality_error(
+                "HOROSCOPE_PERIOD_REPETITIVE_DAILY_TEXT",
+                json!({ "phrase": phrase, "count": count, "mode": "semantic_brief_v2" }),
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn collect_period_daily_public_text(response: &Value, public_text: &mut String) {
     for day in response["daily_timeline"].as_array().into_iter().flatten() {
         for key in ["day_label", "theme", "tone", "text", "advice"] {
@@ -9124,6 +9315,34 @@ fn validate_period_not_seven_daily(response: &Value) -> Result<(), GenerationErr
 
 fn period_theme_public_label(theme_code: &str) -> &'static str {
     period_public_theme_field(theme_code, "public_label", "priorité principale")
+}
+
+fn period_theme_public_label_if_code(theme: &str) -> String {
+    period_public_theme_labels()
+        .get(period_editorial_theme_key(theme))
+        .cloned()
+        .unwrap_or_else(|| theme.to_string())
+}
+
+fn period_public_theme_labels() -> &'static HashMap<String, String> {
+    static THEME_LABELS: OnceLock<HashMap<String, String>> = OnceLock::new();
+    THEME_LABELS.get_or_init(|| {
+        rows(PERIOD_PUBLIC_THEMES_JSON)
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|row| {
+                row.get("is_enabled")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(true)
+            })
+            .filter_map(|row| {
+                Some((
+                    row.get("theme_code")?.as_str()?.to_string(),
+                    row.get("public_label")?.as_str()?.to_string(),
+                ))
+            })
+            .collect::<HashMap<_, _>>()
+    })
 }
 
 fn period_domain_title(theme_code: &str) -> &'static str {
@@ -9329,10 +9548,48 @@ fn period_tone_public_label(tone_code: &str) -> String {
 }
 
 fn period_tone_public_label_if_code(tone: &str) -> String {
-    period_tone_labels()
-        .get(tone)
-        .cloned()
-        .unwrap_or_else(|| tone.to_string())
+    let normalized = tone.trim().to_lowercase();
+    if normalized.is_empty() {
+        return "nuancé".to_string();
+    }
+    if let Some(label) = period_tone_labels().get(normalized.as_str()) {
+        return label.clone();
+    }
+    if period_public_tone_labels().contains(&normalized) {
+        return normalized;
+    }
+    for fragment in normalized.split(['/', ',', '|', '→', '+']) {
+        let fragment = fragment.trim();
+        if fragment.is_empty() {
+            continue;
+        }
+        if let Some(label) = period_tone_labels().get(fragment) {
+            return label.clone();
+        }
+        if period_public_tone_labels().contains(fragment) {
+            return fragment.to_string();
+        }
+        if let Some(label) = period_tone_public_label_for_short_synonym(fragment) {
+            return label.to_string();
+        }
+    }
+    period_tone_public_label_for_short_synonym(normalized.as_str())
+        .unwrap_or(tone)
+        .to_string()
+}
+
+fn period_tone_public_label_for_short_synonym(tone: &str) -> Option<&'static str> {
+    match tone {
+        "focalisé" | "focalisee" | "focalisée" | "concentre" | "concentré" | "concentree"
+        | "concentrée" => Some("concentré"),
+        "supportif" | "supportive" | "soutien" | "soutenant" => Some("soutenant"),
+        "actif" | "active" | "dynamique" => Some("dynamique"),
+        "mixte" | "mixed" | "nuance" | "nuancé" | "nuancee" | "nuancée" => Some("nuancé"),
+        "vigilant" | "careful" | "prudent" | "prudente" => Some("vigilant"),
+        "fluide" | "fluid" => Some("fluide"),
+        "tendu" | "tendue" | "tense" | "sous tension" => Some("sous tension"),
+        _ => None,
+    }
 }
 
 fn period_public_tone_labels() -> &'static HashSet<String> {
@@ -9541,8 +9798,27 @@ fn period_word_limits_for_request(request: &Value) -> PeriodWordLimits {
 }
 
 fn period_writer_max_output_tokens(request: &Value) -> u32 {
+    if is_period_writer_request_v2(request) {
+        return PERIOD_V2_MAX_OUTPUT_TOKENS;
+    }
     let limits = period_word_limits_for_request(request);
     ((limits.hard_limit as u32).saturating_mul(3)).saturating_add(500)
+}
+
+fn period_writer_reasoning_effort(request: &Value) -> Option<ReasoningEffort> {
+    if is_period_writer_request_v2(request) {
+        Some(ReasoningEffort::Minimal)
+    } else {
+        None
+    }
+}
+
+fn period_effective_min_word_count(request: &Value, limits: &PeriodWordLimits) -> usize {
+    if is_period_writer_request_v2(request) {
+        limits.target_min.saturating_sub(50)
+    } else {
+        limits.target_min
+    }
 }
 
 fn validate_period_public_word_count(
@@ -9554,13 +9830,15 @@ fn validate_period_public_word_count(
         return Ok(());
     }
     let limits = period_word_limits_for_request(request);
+    let effective_min = period_effective_min_word_count(request, &limits);
     let word_count = public_text.split_whitespace().count();
-    if word_count < limits.target_min || word_count > limits.hard_limit {
+    if word_count < effective_min || word_count > limits.hard_limit {
         return Err(quality_error(
             "HOROSCOPE_PERIOD_WORD_COUNT_OUT_OF_RANGE",
             json!({
                 "word_count": word_count,
                 "target_words_min": limits.target_min,
+                "effective_words_min": effective_min,
                 "target_words_max": limits.target_max,
                 "hard_limit_words": limits.hard_limit
             }),

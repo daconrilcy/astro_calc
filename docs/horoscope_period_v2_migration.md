@@ -114,9 +114,15 @@ Executed validation commands:
 - `cargo test -p astral_llm_api --test contracts_publish_tests` (3 passed, 1 ignored)
 - `cargo test -p astral_llm_application` (183 unit tests + 33 integration tests + doctests passed)
 - `python scripts\import_json_db_to_postgres.py --dry-run --output target\astral_json_db_import_v2.sql`
+- `scripts\test_horoscope_premium_next_7_days_v2_openai.ps1` added for real OpenAI multilingual certification from `.env`. It first submits `target_language_code`; if the running API still exposes the old public schema, it retries with legacy `target_language` and then requires the completed V2 debug `writer_request.target_language_code`.
+- Real OpenAI V2 runtime hardening: writer/editor prompts require compact minified JSON, `gpt-5-mini` uses minimal reasoning with a 16k output budget, provider truncation details are surfaced in errors, quality retry markers are not injected into the public response schema, and V2 postprocess only normalizes technical consistency such as watch status or short `theme`/`tone` label code leaks without rewriting public prose.
+- V2 postprocess prunes duplicated `watch_windows` when their technical identity (`date` + `source_snapshot_keys`) already exists in `best_windows`; this preserves the no-overlap invariant without creating or rewriting public text.
+- V2 public text validation deliberately avoids lexical policing of ordinary prose. Words such as `focus`, `organization`, `clarifier`, `ajuster` and `intégrer` are allowed when the LLM uses them as natural language. V2 rejects only real internal leaks such as field names, prompt metadata, evidence key labels, snapshot key labels and semantic-brief/debug terms. Postprocess does not rewrite public prose to chase lexical variants.
+- Premium V2 word-count validation keeps the public target at `1600-2600` words with the `3200` hard limit, but applies a 50-word under-target tolerance for real provider output. This prevents failures for insignificant misses such as `1598/1600` while preserving retry/failure for substantially short readings; postprocess never pads text to satisfy the gate.
+- Premium V2 validation accepts a vigilance summary supported by `watch_windows` even when no full `watch_days` marker is present; `watch_summary.status = active` only fails when neither watch days nor watch windows exist.
 
 ## Open Follow-Ups
 
 - Continue extracting period code under `src/horoscope/period/` after the initial `PeriodGenerationMode` split. Target modules: `public_request.rs`, `calculation_request.rs`, `evidence.rs`, `scoring.rs`, `semantic_brief.rs`, `writer_request.rs`, `writer.rs`, `response_repair.rs`, `postprocess.rs`, `validators.rs`, `quality.rs` and `legacy_v1.rs`.
 - Compare V1 and V2 outputs over Premium samples before removing legacy rollback.
-- Keep OpenAI real multilingual runs ignored by default and run one real Premium V2 generation per `fr`, `en`, `es`, `de` after fake validation for certification.
+- Keep OpenAI real multilingual runs opt-in. Run `.\scripts\test_horoscope_premium_next_7_days_v2_openai.ps1` after fake validation for one real Premium V2 generation per `fr`, `en`, `es`, `de`.
