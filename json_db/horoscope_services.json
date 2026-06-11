@@ -92,7 +92,7 @@
       "detail_profile_code": "free_compact",
       "scan_profile_code": "daily_noon_7_days",
       "detail_level": "free_compact",
-      "generation_mode": "semantic_brief_v2",
+      "generation_mode": "legacy_v1",
       "max_words_target": 250,
       "max_words_hard_limit": 450
     },
@@ -111,7 +111,7 @@
       "detail_profile_code": "basic_standard",
       "scan_profile_code": "daily_noon_7_days",
       "detail_level": "basic_standard",
-      "generation_mode": "semantic_brief_v2",
+      "generation_mode": "legacy_v1",
       "max_words_target": 1200,
       "max_words_hard_limit": 1500
     },

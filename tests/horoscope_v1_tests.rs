@@ -14,8 +14,8 @@ use astral_llm_application::horoscope::{
     validate_period_public_request, validate_period_response_evidence,
     validate_period_response_schema, validate_period_writer_request_v2_schema,
     validate_public_request, validate_response_evidence, validate_scan_plan,
-    HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE, HOROSCOPE_FREE_DAILY_SERVICE_CODE,
-    HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+    validate_semantic_brief_is_atomic, HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+    HOROSCOPE_FREE_DAILY_SERVICE_CODE, HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
     HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE, HOROSCOPE_SERVICE_CODE,
 };
@@ -5626,49 +5626,87 @@ fn contains_key_recursive(value: &serde_json::Value, key: &str) -> bool {
     }
 }
 
-#[test]
-fn period_writer_v2_builds_for_free_basic_and_premium() {
-    let public = validate_period_public_request(&period_public_payload()).unwrap();
-    let cases = [
-        (
-            HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
-            free_period_calculation(),
-            "free_compact",
-        ),
-        (
-            HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE,
-            period_calculation(),
-            "basic_standard",
-        ),
-        (
-            HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE,
-            premium_period_calculation(),
-            "premium_rich",
-        ),
-    ];
+fn horoscope_service_generation_mode_from_seed(service_code: &str) -> String {
+    let seed: serde_json::Value =
+        serde_json::from_str(include_str!("../json_db/horoscope_services.json")).unwrap();
+    seed["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["service_code"] == service_code)
+        .and_then(|row| row["generation_mode"].as_str())
+        .unwrap()
+        .to_string()
+}
 
-    for (service_code, calculation, detail_profile_code) in cases {
-        let request = build_period_writer_request_v2(&public, &calculation).unwrap();
-        validate_period_writer_request_v2_schema(&request).unwrap();
-        assert_eq!(
-            request["contract_version"],
-            "horoscope_period_writer_request_v2"
-        );
-        assert_eq!(request["generation_mode"], "semantic_brief_v2");
-        assert_eq!(request["service_code"], service_code);
-        assert_eq!(request["detail_profile_code"], detail_profile_code);
-        assert_eq!(
-            request["output_contract_version"],
-            "horoscope_period_response_v1"
-        );
-        assert_eq!(
-            request["semantic_brief"]["daily_signal_summary"]
-                .as_array()
-                .unwrap()
-                .len(),
-            7
-        );
-    }
+#[test]
+fn period_generation_mode_seed_routes_only_premium_7_days_to_v2() {
+    assert_eq!(
+        horoscope_service_generation_mode_from_seed(HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE),
+        "legacy_v1"
+    );
+    assert_eq!(
+        horoscope_service_generation_mode_from_seed(HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE),
+        "legacy_v1"
+    );
+    assert_eq!(
+        horoscope_service_generation_mode_from_seed(
+            HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE
+        ),
+        "semantic_brief_v2"
+    );
+}
+
+#[test]
+fn period_writer_v2_builds_for_premium_only() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    validate_period_writer_request_v2_schema(&request).unwrap();
+    validate_semantic_brief_is_atomic(&request).unwrap();
+    assert_eq!(
+        request["contract_version"],
+        "horoscope_period_writer_request_v2"
+    );
+    assert_eq!(request["generation_mode"], "semantic_brief_v2");
+    assert_eq!(
+        request["service_code"],
+        HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE
+    );
+    assert_eq!(request["detail_profile_code"], "premium_rich");
+    assert_eq!(
+        request["output_contract_version"],
+        "horoscope_period_response_v1"
+    );
+    assert_eq!(
+        request["semantic_brief"]["daily_signal_summary"]
+            .as_array()
+            .unwrap()
+            .len(),
+        7
+    );
+    assert_eq!(request["astrologer_persona"], serde_json::Value::Null);
+    assert!(request["safety_profile"]["forbid_medical_guidance"]
+        .as_bool()
+        .unwrap());
+    assert!(request["safety_profile"]["forbid_fatalism"]
+        .as_bool()
+        .unwrap());
+    assert!(request["safety_profile"]["forbid_financial_promises"]
+        .as_bool()
+        .unwrap());
+    assert!(request["safety_profile"]["forbid_certain_predictions"]
+        .as_bool()
+        .unwrap());
+}
+
+#[test]
+fn period_writer_v2_rejects_non_premium_service_code() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let err = build_period_writer_request_v2(&public, &free_period_calculation()).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_WRITER_V2_PREMIUM_ONLY"
+    );
 }
 
 #[test]
@@ -5689,13 +5727,24 @@ fn period_writer_v2_semantic_brief_has_no_public_plan_fields() {
             "best_day_candidates",
             "daily_signal_summary",
             "domain_candidates",
-            "evidence",
+            "dominant_keywords",
             "key_day_candidates",
+            "period_arc_keywords",
             "repeating_arcs",
             "watch_day_candidates",
+            "week_intensity",
+            "week_tone_codes",
             "window_candidates"
         ]
     );
+    assert!(brief.get("evidence").is_none());
+    assert!(!brief["period_arc_keywords"].as_array().unwrap().is_empty());
+    assert!(!brief["dominant_keywords"].as_array().unwrap().is_empty());
+    assert!(!brief["week_tone_codes"].as_array().unwrap().is_empty());
+    assert!(matches!(
+        brief["week_intensity"].as_str().unwrap(),
+        "low" | "medium" | "high"
+    ));
 
     for forbidden in [
         "daily_plans",
@@ -5706,6 +5755,14 @@ fn period_writer_v2_semantic_brief_has_no_public_plan_fields() {
         "natal_focus_hint",
         "focus",
         "reason",
+        "human_label",
+        "reader_situation",
+        "narrative_function",
+        "title",
+        "text",
+        "advice",
+        "best_for",
+        "evidence",
     ] {
         assert!(
             !contains_key_recursive(brief, forbidden),
@@ -5715,26 +5772,117 @@ fn period_writer_v2_semantic_brief_has_no_public_plan_fields() {
 }
 
 #[test]
-fn period_public_request_accepts_target_language_code_and_persona() {
-    let payload = serde_json::json!({
-        "anchor_date": "2026-06-07",
-        "timezone": "Europe/Paris",
-        "target_language_code": "en",
-        "chart_calculation_id": "123",
-        "audience_level": "general",
-        "astrologer_persona": {
-            "persona_id": "modern_grounded",
-            "tone": ["clear", "warm"],
-            "lexical_field": ["rhythm", "support"],
-            "priority_domains": ["relationships"],
-            "avoid_style": ["fatalistic"]
+fn period_writer_v2_sanitizes_top_level_evidence_only() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    assert!(request["semantic_brief"].get("evidence").is_none());
+    let evidence = request["evidence"].as_array().unwrap();
+    assert!(!evidence.is_empty());
+    for item in evidence {
+        let keys = item
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect::<Vec<_>>();
+        for expected in [
+            "evidence_key",
+            "date",
+            "snapshot_key",
+            "fact_type",
+            "transiting_object",
+            "aspect",
+            "natal_target",
+            "natal_house",
+            "theme_code",
+            "tone_code",
+            "score",
+        ] {
+            assert!(
+                keys.contains(&expected),
+                "missing evidence field {expected}"
+            );
         }
+        assert_eq!(keys.len(), 11);
+    }
+    for forbidden in [
+        "human_label",
+        "personalization_hint",
+        "natal_focus_hint",
+        "reader_situation",
+        "narrative_function",
+    ] {
+        assert!(
+            !contains_key_recursive(&request["evidence"], forbidden),
+            "evidence leaked {forbidden}"
+        );
+    }
+}
+
+#[test]
+fn period_writer_v2_persona_is_transmitted_when_provided() {
+    let mut payload = period_public_payload();
+    payload["astrologer_persona"] = serde_json::json!({
+        "persona_id": "modern_grounded",
+        "tone": ["clear", "warm"],
+        "lexical_field": ["rhythm"],
+        "priority_domains": ["relationships"],
+        "avoid_style": ["fatalistic"],
+        "interpretation_style": "direct and practical"
     });
+    let public = validate_period_public_request(&payload).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    assert_eq!(
+        request["astrologer_persona"]["persona_id"],
+        "modern_grounded"
+    );
+    validate_period_writer_request_v2_schema(&request).unwrap();
+}
+
+#[test]
+fn period_public_request_accepts_target_language_code_and_persona() {
+    for language in ["fr", "en", "es", "de"] {
+        let payload = serde_json::json!({
+            "anchor_date": "2026-06-07",
+            "timezone": "Europe/Paris",
+            "target_language_code": language,
+            "chart_calculation_id": "123",
+            "audience_level": "general",
+            "astrologer_persona": {
+                "persona_id": "modern_grounded",
+                "tone": ["clear", "warm"],
+                "lexical_field": ["rhythm", "support"],
+                "priority_domains": ["relationships"],
+                "avoid_style": ["fatalistic"]
+            }
+        });
+        let public = validate_period_public_request(&payload).unwrap();
+        assert_eq!(public.target_language, language);
+        assert_eq!(
+            serde_json::to_value(public.target_language_code).unwrap(),
+            language
+        );
+    }
+}
+
+#[test]
+fn period_public_request_target_language_code_takes_precedence_over_legacy_language() {
+    let mut payload = period_public_payload();
+    payload["target_language"] = serde_json::json!("de");
+    payload["target_language_code"] = serde_json::json!("en");
     let public = validate_period_public_request(&payload).unwrap();
     assert_eq!(public.target_language, "en");
     assert_eq!(
         serde_json::to_value(public.target_language_code).unwrap(),
         "en"
+    );
+    assert_eq!(
+        public.language_compat_warning.as_ref().unwrap()["legacy_target_language_ignored"],
+        true
+    );
+    assert_eq!(
+        public.language_compat_warning.as_ref().unwrap()["target_language"],
+        "de"
     );
 }
 
@@ -5764,6 +5912,42 @@ fn period_public_request_rejects_unsupported_language_and_persona_injection() {
 }
 
 #[test]
+fn period_public_request_rejects_unknown_persona_fields_and_size_limits() {
+    let mut payload = period_public_payload();
+    payload["astrologer_persona"] = serde_json::json!({
+        "tone": ["clear"],
+        "prompt": "write around the schema"
+    });
+    assert!(validate_period_public_request(&payload).is_err());
+
+    let mut payload = period_public_payload();
+    payload["astrologer_persona"] = serde_json::json!({
+        "tone": ["clear", "warm", "precise", "direct", "soft", "grounded", "practical", "poetic", "extra"]
+    });
+    assert!(validate_period_public_request(&payload).is_err());
+
+    let mut payload = period_public_payload();
+    payload["astrologer_persona"] = serde_json::json!({
+        "persona_id": "x".repeat(121)
+    });
+    assert!(validate_period_public_request(&payload).is_err());
+
+    let mut payload = period_public_payload();
+    payload["astrologer_persona"] = serde_json::json!({
+        "persona_id": "modern_grounded",
+        "directiveness": "high"
+    });
+    assert!(validate_period_public_request(&payload).is_err());
+
+    let mut payload = period_public_payload();
+    payload["astrologer_persona"] = serde_json::json!({
+        "persona_id": "modern_grounded",
+        "metaphor_level": "low"
+    });
+    assert!(validate_period_public_request(&payload).is_err());
+}
+
+#[test]
 fn period_writer_v2_window_candidates_keep_atomic_codes() {
     let public = validate_period_public_request(&period_public_payload()).unwrap();
     let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
@@ -5782,6 +5966,70 @@ fn period_writer_v2_window_candidates_keep_atomic_codes() {
 }
 
 #[test]
+fn period_writer_v2_accepts_time_range_label_dash_variants() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let mut request =
+        build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    request["semantic_brief"]["window_candidates"][0]["time_range_label"] =
+        serde_json::json!("00:00-06:00");
+    validate_period_writer_request_v2_schema(&request).unwrap();
+    request["semantic_brief"]["window_candidates"][0]["time_range_label"] =
+        serde_json::json!("00:00–06:00");
+    validate_period_writer_request_v2_schema(&request).unwrap();
+}
+
+#[test]
+fn period_writer_v2_atomic_validator_rejects_legacy_fields_and_public_phrases() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let mut request =
+        build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    request["semantic_brief"]["daily_signal_summary"][0]["reason"] =
+        serde_json::json!("Phrase publique interdite.");
+    assert!(validate_period_writer_request_v2_schema(&request).is_err());
+
+    let mut request =
+        build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    request["semantic_brief"]["dominant_keywords"][0] =
+        serde_json::json!("ce signal demande une clarification concrète importante");
+    assert!(validate_semantic_brief_is_atomic(&request).is_err());
+}
+
+#[test]
+fn period_writer_v2_atomic_validator_checks_references() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+
+    let mut duplicate_evidence = request.clone();
+    let first_key = duplicate_evidence["evidence"][0]["evidence_key"].clone();
+    duplicate_evidence["evidence"][1]["evidence_key"] = first_key;
+    assert!(validate_semantic_brief_is_atomic(&duplicate_evidence).is_err());
+
+    let mut missing_evidence = request.clone();
+    missing_evidence["semantic_brief"]["best_day_candidates"][0]["evidence_keys"][0] =
+        serde_json::json!("missing-evidence-key");
+    assert!(validate_semantic_brief_is_atomic(&missing_evidence).is_err());
+
+    let mut bad_date = request.clone();
+    bad_date["semantic_brief"]["daily_signal_summary"][0]["date"] = serde_json::json!("2099-01-01");
+    assert!(validate_semantic_brief_is_atomic(&bad_date).is_err());
+
+    let mut bad_snapshot = request;
+    bad_snapshot["semantic_brief"]["window_candidates"][0]["source_snapshot_keys"][0] =
+        serde_json::json!("2099-01-01:00:00");
+    assert!(validate_semantic_brief_is_atomic(&bad_snapshot).is_err());
+}
+
+#[test]
+fn period_writer_v2_schema_rejects_unexpected_semantic_subobject_keys() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let mut request =
+        build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    request["semantic_brief"]["daily_signal_summary"][0]["unexpected"] =
+        serde_json::json!("unexpected");
+    assert!(validate_period_writer_request_v2_schema(&request).is_err());
+}
+
+#[test]
 fn period_writer_v2_prompt_mentions_language_safety_and_keywords() {
     let payload = serde_json::json!({
         "anchor_date": "2026-06-07",
@@ -5791,19 +6039,23 @@ fn period_writer_v2_prompt_mentions_language_safety_and_keywords() {
         "audience_level": "general"
     });
     let public = validate_period_public_request(&payload).unwrap();
-    let request = build_period_writer_request_v2(&public, &period_calculation()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
     let prompt = period_writer_prompt_text_for_test(&request).unwrap();
     assert!(prompt.contains("target_language_code=de"));
     assert!(prompt.contains("keywords"));
     assert!(prompt.contains("persona"));
     assert!(prompt.contains("safety"));
+    assert!(prompt.contains("safety_profile always overrides astrologer_persona"));
+    assert!(prompt.contains("target_language_code overrides astrologer_persona"));
+    assert!(prompt.contains("Use period-level keywords to write week_overview"));
     assert!(prompt.contains("horoscope_period_response_v1"));
 }
 
 #[test]
 fn period_writer_v2_prompt_rejects_missing_target_language_code() {
     let public = validate_period_public_request(&period_public_payload()).unwrap();
-    let mut request = build_period_writer_request_v2(&public, &period_calculation()).unwrap();
+    let mut request =
+        build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
     request
         .as_object_mut()
         .unwrap()
@@ -5817,24 +6069,18 @@ fn period_writer_v2_prompt_rejects_missing_target_language_code() {
 }
 
 #[test]
-fn fake_period_writer_v2_passes_schema_and_evidence_for_all_levels() {
+fn fake_period_writer_v2_passes_schema_and_evidence_for_premium() {
     let public = validate_period_public_request(&period_public_payload()).unwrap();
-    for calculation in [
-        free_period_calculation(),
-        period_calculation(),
-        premium_period_calculation(),
-    ] {
-        let request = build_period_writer_request_v2(&public, &calculation).unwrap();
-        let response = fake_period_writer_response_v2(&request).unwrap();
-        validate_period_response_schema(&response).unwrap();
-        validate_period_response_evidence(&request, &response).unwrap();
-    }
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let response = fake_period_writer_response_v2(&request).unwrap();
+    validate_period_response_schema(&response).unwrap();
+    validate_period_response_evidence(&request, &response).unwrap();
 }
 
 #[test]
 fn postprocess_period_v2_preserves_public_text_content() {
     let public = validate_period_public_request(&period_public_payload()).unwrap();
-    let request = build_period_writer_request_v2(&public, &period_calculation()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
     let mut response = fake_period_writer_response_v2(&request).unwrap();
     response["week_overview"]["text"] =
         serde_json::json!("Phrase unique qui doit rester stable dans le postprocess V2.");
@@ -5848,13 +6094,13 @@ fn postprocess_period_v2_preserves_public_text_content() {
 #[test]
 fn repair_period_v2_does_not_add_public_prose() {
     let public = validate_period_public_request(&period_public_payload()).unwrap();
-    let request = build_period_writer_request_v2(&public, &period_calculation()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
     let mut response = serde_json::json!({});
     repair_period_response_shape_v2(&request, &mut response);
     assert_eq!(response["contract_version"], "horoscope_period_response_v1");
     assert_eq!(
         response["service_code"],
-        HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE
+        HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE
     );
     assert!(response.get("week_overview").is_none());
     assert!(response.get("daily_timeline").is_none());

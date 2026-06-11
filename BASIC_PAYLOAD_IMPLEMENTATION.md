@@ -2,17 +2,20 @@
 
 ## Scope
 
-Implemented the first `semantic_brief_v2` path for all horoscope `next_7_days_natal` services: free, basic and premium.
+Implemented the first active `semantic_brief_v2` path for `horoscope_premium_next_7_days_natal`.
+Free and basic 7-day services remain on `legacy_v1` according to the initial Premium-only brief.
 
 ## Behavior
 
-- `json_db/horoscope_services.json` now carries `generation_mode = "semantic_brief_v2"` for all three 7-day period services.
+- `json_db/horoscope_services.json` now carries `generation_mode = "semantic_brief_v2"` only for Premium 7 days; free/basic 7 days carry `legacy_v1`.
 - `HoroscopePeriodNatalOrchestrator` routes by `generation_mode`, preserving legacy V1 as rollback.
-- V2 builds `horoscope_period_writer_request_v2` from atomic evidence, events and `semantic_brief` instead of public-like `daily_plans` or editorial prose.
-- V2 supports `target_language_code` (`fr`, `en`, `es`, `de`) while temporarily accepting legacy `target_language`.
-- V2 accepts bounded `astrologer_persona` values that cannot override safety, schema or evidence.
-- V2 fake provider, response repair and postprocess avoid legacy co-writing functions.
-- Adversarial review hardened the V2 path: exact semantic brief keys, atomic window candidates, no legacy language requirement, no V2 prompt language fallback, targeted quality retry, and no public prose added by V2 repair/postprocess.
+- Premium V2 builds `horoscope_period_writer_request_v2` from atomic evidence, events and `semantic_brief` instead of public-like `daily_plans` or editorial prose.
+- V2 supports `target_language_code` (`fr`, `en`, `es`, `de`) while temporarily accepting legacy `target_language`; if both diverge, `target_language_code` wins and the V2 debug envelope records `legacy_target_language_ignored`.
+- V2 accepts bounded `astrologer_persona` values that cannot override safety, schema, evidence, dates or target language. The Rust payload and V2 schema expose the same persona fields only: `persona_id`, `tone`, `lexical_field`, `priority_domains`, `avoid_style` and `interpretation_style`. The writer request always includes `astrologer_persona`, using `null` when absent.
+- `semantic_brief_v2` is internal writing input only: it contains period-level keywords/tone/intensity plus atomic daily/candidate material, never `semantic_brief.evidence` or public prose. Sanitized `evidence` stays top-level and candidates reference it only through `evidence_keys`.
+- Premium V2 fake provider, response repair and postprocess avoid legacy co-writing functions.
+- Adversarial review hardened the V2 path: Premium-only schema constants, exact semantic brief keys, atomic window candidates, strict evidence sanitization, no legacy language requirement, no V2 prompt language fallback, targeted issue-based quality retry validated by V2 gates, and no public prose added by V2 repair/postprocess.
+- UI consumers must read only `$.result.reading`; `calculation`, `interpretation_request`, V2 `writer_request`, `semantic_brief`, `evidence` and quality diagnostics are debug-only.
 - Detailed tracking lives in `docs/horoscope_period_v2_migration.md`.
 
 ## Validation
