@@ -1,5 +1,28 @@
 # Horoscope Period V2 semantic brief - 2026-06-11
 
+## Horoscope application module split - 2026-06-12
+
+Refactored `astral_llm_application/src/horoscope/mod.rs` into focused
+`horoscope` submodules without changing public API names or response contracts.
+
+- Kept `horoscope/mod.rs` as a lightweight module facade with compatibility
+  `pub use` exports for the existing integration tests and orchestrator calls.
+- Split shared concerns into local modules for service codes, types, schemas,
+  reference data, text helpers, errors, writer engine defaults and
+  orchestrators.
+- Moved daily horoscope responsibilities under `horoscope/daily/` and period
+  responsibilities under `horoscope/period/`.
+- Reused existing application services for French typography and text
+  reprocessing instead of creating duplicate global helpers.
+
+Validation:
+
+- `cargo check -p astral_llm_application`
+- `cargo test -p astral_llm_api --test horoscope_v1_tests`
+- `cargo test -p astral_llm_api --test contracts_publish_tests`
+- `cargo test -p astral_llm_application --test text_reprocessing_application_tests`
+- `cargo test -p astral_llm_application french_typography`
+
 ## Premium 7-day V2 contract-only gates - 2026-06-12
 
 Refactored `horoscope_premium_next_7_days_natal` V2 validation so public prose
