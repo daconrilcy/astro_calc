@@ -1,5 +1,33 @@
 # Horoscope Period V2 semantic brief - 2026-06-11
 
+## Premium 7-day V2 contract-only gates - 2026-06-12
+
+Refactored `horoscope_premium_next_7_days_natal` V2 validation so public prose
+is no longer accepted or rejected by hardcoded lexical markers.
+
+- Added `validate_period_response_contract_gates_v2()` for schema, dates,
+  evidence keys, source snapshot keys, watch coherence, Premium sections,
+  window overlap and word-count validation.
+- Routed `semantic_brief_v2` retries and final orchestrator validation through
+  the V2 contract gate instead of the legacy evidence/public-text validator.
+- Added `period_v2_editorial_audit()` in the debug envelope as non-blocking
+  metadata; it is not injected into `reading.quality`.
+- Added explicit V2 identity checks so the response `service_code` and
+  `period_resolution` must match the writer request.
+- Removed the V2 forbidden-public-pattern validator from the blocking path and
+  updated tests so old lexical failures are audited, not rejected.
+- Stopped V2 watch-summary postprocess from replacing `status = none` text with
+  hardcoded public prose.
+- Stopped V2 postprocess from replacing time/title mismatches with hardcoded
+  window titles; the mismatch is now audit-only.
+- Kept legacy Premium window repair behavior intact while V2 keeps provider
+  prose and lets contract failures trigger retries.
+
+Validation:
+
+- `cargo fmt`
+- `cargo test -p astral_llm_api --test horoscope_v1_tests`
+
 ## Horoscope test helpers relocation - 2026-06-12
 
 ### Scope

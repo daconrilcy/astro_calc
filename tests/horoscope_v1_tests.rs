@@ -5,18 +5,19 @@ use astral_llm_application::horoscope::{
     build_interpretation_request, build_period_calculation_request,
     build_period_calculation_request_for_service, build_period_interpretation_request,
     build_period_writer_request_v2, fake_period_writer_response, fake_period_writer_response_v2,
-    period_response_provider_schema, period_v2_quality_audit, period_writer_max_output_tokens,
-    period_writer_messages, postprocess_period_provider_response,
+    period_response_provider_schema, period_v2_editorial_audit, period_v2_quality_audit,
+    period_writer_max_output_tokens, period_writer_messages, postprocess_period_provider_response,
     postprocess_period_provider_response_v2, prune_period_response_variant_fields,
     public_watch_point_for_theme, repair_period_response_shape_v2,
     reprocess_horoscope_period_payload, score_calculation, validate_horoscope_response_schema,
     validate_interpretation_request_schema, validate_period_interpretation_request_schema,
     validate_period_provider_public_payload, validate_period_public_request,
-    validate_period_public_word_count, validate_period_response_evidence,
-    validate_period_response_schema, validate_period_writer_request_v2_schema,
-    validate_public_request, validate_response_evidence, validate_scan_plan,
-    validate_semantic_brief_is_atomic, HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE,
-    HOROSCOPE_FREE_DAILY_SERVICE_CODE, HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+    validate_period_public_word_count, validate_period_response_contract_gates_v2,
+    validate_period_response_evidence, validate_period_response_schema,
+    validate_period_writer_request_v2_schema, validate_public_request, validate_response_evidence,
+    validate_scan_plan, validate_semantic_brief_is_atomic,
+    HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE, HOROSCOPE_FREE_DAILY_SERVICE_CODE,
+    HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
     HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE, HOROSCOPE_SERVICE_CODE,
 };
@@ -1617,11 +1618,15 @@ fn horoscope_premium_period_v2_postprocess_normalizes_objective_editorial_issues
 
     let response = postprocess_period_provider_response_v2(&request, response);
 
-    assert!(!response["best_windows"][0]["title"]
-        .as_str()
-        .unwrap()
-        .to_lowercase()
-        .contains("matin"));
+    assert_eq!(
+        response["best_windows"][0]["title"],
+        "Matinée organisée pour conclure"
+    );
+    let audit = period_v2_editorial_audit(&request, &response);
+    assert_eq!(audit["mode"], "non_blocking");
+    assert!(audit["window_title_time_mismatches"]
+        .as_array()
+        .is_some_and(|items| !items.is_empty()));
     assert_eq!(response["watch_summary"]["status"], "none");
     assert!(response["watch_summary"]["evidence_keys"]
         .as_array()
@@ -1629,7 +1634,7 @@ fn horoscope_premium_period_v2_postprocess_normalizes_objective_editorial_issues
         .is_empty());
     assert_eq!(
         response["watch_summary"]["text"],
-        "Aucun point de vigilance dominant ne ressort cette semaine. Gardez simplement une marge d'observation si un échange ou une décision demande plus de temps que prévu."
+        "Jupiter demande une vigilance de fond malgré tout."
     );
     assert!(response["strategy"]["recovery"]
         .as_str()
@@ -6185,13 +6190,13 @@ fn period_writer_v2_uses_real_provider_output_budget() {
 }
 
 #[test]
-fn period_writer_v2_word_count_allows_small_under_target_tolerance() {
+fn period_writer_v2_word_count_allows_compact_semantic_brief_output() {
     let public = validate_period_public_request(&period_public_payload()).unwrap();
     let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
     let mut response = fake_period_writer_response_v2(&request).unwrap();
     response["quality"]["provider"] = serde_json::json!("openai");
     let public_text = std::iter::repeat("mot")
-        .take(1598)
+        .take(911)
         .collect::<Vec<_>>()
         .join(" ");
 
@@ -6205,7 +6210,7 @@ fn period_writer_v2_word_count_rejects_substantially_short_output() {
     let mut response = fake_period_writer_response_v2(&request).unwrap();
     response["quality"]["provider"] = serde_json::json!("openai");
     let public_text = std::iter::repeat("mot")
-        .take(1490)
+        .take(899)
         .collect::<Vec<_>>()
         .join(" ");
 
@@ -6216,7 +6221,7 @@ fn period_writer_v2_word_count_rejects_substantially_short_output() {
     );
     let details = err.detail().details.as_ref().unwrap();
     assert_eq!(details["target_words_min"], 1600);
-    assert_eq!(details["effective_words_min"], 1500);
+    assert_eq!(details["effective_words_min"], 900);
 }
 
 #[test]
@@ -6414,15 +6419,106 @@ fn period_v2_allows_natural_public_prose_without_token_rewriting() {
 }
 
 #[test]
-fn period_v2_rejects_real_internal_field_leaks_in_public_text() {
+fn period_v2_audits_real_internal_field_leaks_without_blocking() {
     let public = validate_period_public_request(&period_public_payload()).unwrap();
     let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
     let mut response = fake_period_writer_response_v2(&request).unwrap();
     response["strategy"]["text"] =
         serde_json::json!("La stratégie ne doit jamais exposer theme_code ni evidence_key.");
 
-    let err = validate_period_response_evidence(&request, &response).unwrap_err();
-    assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_TECHNICAL_CODE_LEAK");
+    validate_period_response_evidence(&request, &response).unwrap();
+    let audit = period_v2_editorial_audit(&request, &response);
+    assert_eq!(audit["mode"], "non_blocking");
+}
+
+#[test]
+fn premium_v2_contract_accepts_without_old_natal_keyword_markers() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let mut response = fake_period_writer_response_v2(&request).unwrap();
+    for day in response["daily_timeline"].as_array_mut().unwrap() {
+        day["text"] = serde_json::json!(
+            "Cette étape aide à choisir une priorité simple, à poser un cadre clair et à garder une suite vérifiable."
+        );
+    }
+    response["week_overview"]["text"] = serde_json::json!(
+        "La période demande de transformer plusieurs signaux en décisions sobres, lisibles et vérifiables."
+    );
+    response["week_overview"]["trajectory"] = serde_json::json!(
+        "Le mouvement avance d'un tri initial vers une action plus précise, puis vers une consolidation."
+    );
+
+    validate_period_response_contract_gates_v2(&request, &response).unwrap();
+}
+
+#[test]
+fn premium_v2_contract_accepts_formerly_generic_best_window_reason() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let mut response = fake_period_writer_response_v2(&request).unwrap();
+    response["best_windows"][0]["reason"] =
+        serde_json::json!("Ce créneau peut servir à poser une action simple et vérifiable.");
+
+    validate_period_response_contract_gates_v2(&request, &response).unwrap();
+}
+
+#[test]
+fn premium_v2_contract_rejects_unknown_source_snapshot_key() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let mut response = fake_period_writer_response_v2(&request).unwrap();
+    response["best_windows"][0]["source_snapshot_keys"] = serde_json::json!(["2026-06-13:unknown"]);
+
+    let err = validate_period_response_contract_gates_v2(&request, &response).unwrap_err();
+    assert_eq!(
+        err.detail().message,
+        "HOROSCOPE_PERIOD_PREMIUM_WINDOWS_MISSING"
+    );
+}
+
+#[test]
+fn premium_v2_contract_rejects_unknown_evidence_key() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let mut response = fake_period_writer_response_v2(&request).unwrap();
+    response["daily_timeline"][0]["evidence_keys"] = serde_json::json!(["invented_key"]);
+
+    let err = validate_period_response_contract_gates_v2(&request, &response).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_EVIDENCE_MISSING");
+}
+
+#[test]
+fn premium_v2_contract_rejects_response_service_mismatch() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let mut request =
+        build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let response = fake_period_writer_response_v2(&request).unwrap();
+    request["service_code"] = serde_json::json!(HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE);
+
+    let err = validate_period_response_contract_gates_v2(&request, &response).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_RESPONSE_INVALID");
+}
+
+#[test]
+fn premium_v2_contract_rejects_response_period_resolution_mismatch() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let mut response = fake_period_writer_response_v2(&request).unwrap();
+    response["period_resolution"]["included_dates"][0] = serde_json::json!("2026-06-30");
+
+    let err = validate_period_response_contract_gates_v2(&request, &response).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH");
+}
+
+#[test]
+fn premium_v2_contract_allows_active_watch_summary_with_watch_days_only() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let mut response = fake_period_writer_response_v2(&request).unwrap();
+    response["watch_windows"] = serde_json::json!([]);
+    response["watch_summary"]["status"] = serde_json::json!("active");
+
+    validate_period_response_contract_gates_v2(&request, &response).unwrap();
 }
 
 #[test]
@@ -6447,7 +6543,7 @@ fn period_v2_allows_natural_repeated_action_verbs_without_legacy_repetition_gate
 }
 
 #[test]
-fn period_v2_still_rejects_repeated_mechanical_templates() {
+fn period_v2_audits_repeated_mechanical_templates_without_blocking() {
     let public = validate_period_public_request(&period_public_payload()).unwrap();
     let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
     let mut response = fake_period_writer_response_v2(&request).unwrap();
@@ -6458,11 +6554,10 @@ fn period_v2_still_rejects_repeated_mechanical_templates() {
     response["domain_sections"][0]["text"] =
         serde_json::json!("Restez concret dans ce domaine pour mieux trier.");
 
-    let err = validate_period_response_evidence(&request, &response).unwrap_err();
-    assert_eq!(
-        err.detail().message,
-        "HOROSCOPE_PERIOD_REPETITIVE_DAILY_TEXT"
-    );
+    validate_period_response_evidence(&request, &response).unwrap();
+    let audit = period_v2_editorial_audit(&request, &response);
+    assert_eq!(audit["mode"], "non_blocking");
+    assert!(audit["top_repeated_terms"].is_array());
 }
 
 #[test]

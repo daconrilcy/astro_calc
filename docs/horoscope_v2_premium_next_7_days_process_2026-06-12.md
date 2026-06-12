@@ -87,15 +87,14 @@ flowchart TD
     AW --> AX["repair_period_response_shape_v2()\nastral_llm/crates/astral_llm_application/src/horoscope/mod.rs"]
     AX --> AY["postprocess_period_provider_response_v2()\nastral_llm/crates/astral_llm_application/src/horoscope/mod.rs"]
 
-    AS --> AZ["V2 quality gates"]
-    AY --> AZ["V2 quality gates"]
+    AS --> AZ["V2 contract gates"]
+    AY --> AZ["V2 contract gates"]
 
     AZ --> BA["validate_period_response_quality_gates_v2()\nastral_llm/crates/astral_llm_application/src/horoscope/mod.rs"]
-    BA --> BB["validate_period_response_schema()\nastral_llm/crates/astral_llm_application/src/horoscope/mod.rs"]
-    BB --> BC["validate_period_response_evidence()\nastral_llm/crates/astral_llm_application/src/horoscope/mod.rs"]
-    BC --> BD["validate_period_public_quality_v2()\nastral_llm/crates/astral_llm_application/src/horoscope/mod.rs"]
+    BA --> BB["validate_period_response_contract_gates_v2()\nastral_llm/crates/astral_llm_application/src/horoscope/mod.rs"]
+    BB --> BC["schema + dates + evidence_keys + source_snapshot_keys + Premium sections + word count"]
 
-    BD --> BE{"Quality OK ?"}
+    BC --> BE{"Contract OK ?"}
     BE -->|"yes"| BF["Return response to orchestrator\nHoroscopePeriodNatalOrchestrator::execute()\nastral_llm/crates/astral_llm_application/src/horoscope/mod.rs"]
 
     BE -->|"no and retries left"| BG["period_style_editor_response_v2()\nastral_llm/crates/astral_llm_application/src/horoscope/mod.rs"]
@@ -105,9 +104,9 @@ flowchart TD
 
     BE -->|"no and retries exhausted"| BJ["Error HOROSCOPE_PERIOD_V2_QUALITY_FAILED\nastral_llm/crates/astral_llm_application/src/horoscope/mod.rs"]
 
-    BF --> BK["Final schema/evidence validation\nvalidate_period_response_schema()\nvalidate_period_response_evidence()\nastral_llm/crates/astral_llm_application/src/horoscope/mod.rs"]
+    BF --> BK["Final V2 contract validation\nvalidate_period_response_contract_gates_v2()\nastral_llm/crates/astral_llm_application/src/horoscope/mod.rs"]
 
-    BK --> BL["Build debug envelope:\ncalculation + interpretation_request + writer_request + reading\nHoroscopePeriodNatalOrchestrator::execute()\nastral_llm/crates/astral_llm_application/src/horoscope/mod.rs"]
+    BK --> BL["Build debug envelope:\ncalculation + interpretation_request + writer_request + reading + period_v2_editorial_audit\nHoroscopePeriodNatalOrchestrator::execute()\nastral_llm/crates/astral_llm_application/src/horoscope/mod.rs"]
 
     BL --> BM["Worker marks job completed\njobs.mark_completed()\nastral_llm/crates/astral_llm_worker/src/main.rs"]
 
@@ -121,3 +120,5 @@ Notes :
 - `semantic_brief_v2` est actif uniquement pour `horoscope_premium_next_7_days_natal`.
 - La sortie publique attendue reste `horoscope_period_response_v1`.
 - `calculation`, `interpretation_request`, `writer_request`, `semantic_brief`, `evidence` et diagnostics qualite sont des donnees internes/debug ; les consommateurs UI doivent lire `$.result.reading`.
+- Le chemin `semantic_brief_v2` ne bloque plus sur des mots, fragments ou phrases hardcodes dans le texte public. Ces signaux appartiennent a `debug.period_v2_editorial_audit`, en mode `non_blocking`.
+- Le retry editor V2 est declenche uniquement par une erreur contractuelle : schema, dates, evidence, snapshots, sections Premium, coherence des fenetres ou word count provider reel.
