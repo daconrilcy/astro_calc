@@ -1,5 +1,58 @@
 # Horoscope Period V2 semantic brief - 2026-06-11
 
+## Premium 7-day V2 naturalized evidence guard - 2026-06-12
+
+### Scope
+
+Fixed a false negative in the Premium 7-day V2 post-safety evidence validator
+after real run `cb3d7119-53be-4560-816e-e67dd4affe00` failed with
+`HOROSCOPE_PERIOD_EVIDENCE_MISSING` for
+`week_overview_missing_natal_personalization`.
+
+### Behavior
+
+- The public reading already contained astrological/natal anchors, but the
+  personalization detector only accepted a narrow set of explicit UX phrases.
+- The detector now accepts naturalized astrological markers such as natal,
+  Lune, Soleil, Venus, Mars, Mercure, Jupiter, Saturne, carre and opposition
+  as valid personalization evidence.
+- The public contract remains unchanged; this only adjusts validation of
+  generated Premium 7-day V2 readings.
+
+### Validation
+
+- Added a regression test in `tests/horoscope_v1_tests.rs` using the same
+  Jupiter/Saturn overview style seen in the failed real run.
+
+## Premium 7-day V2 test UI catalog replacement - 2026-06-12
+
+### Scope
+
+Replaced the public test UI/catalog entry for `horoscope_premium_next_7_days_natal`
+with the explicit `Horoscope Premium 7 prochains jours V2` wording while keeping
+the service code and public response contract unchanged.
+
+### Behavior
+
+- `json_db/llm_integration_services.json` now advertises the Premium 7-day service
+  as V2 and uses `payload.target_language_code = "fr"` in its example request.
+- The service test UI builds horoscope payloads with `target_language_code` and
+  keeps the readable display path on `$.result.reading`; debug envelopes remain
+  technical inspection material only.
+- The fake Premium 7-day smoke script submits `target_language_code` while keeping
+  its debug assertions as technical validation, not as UI display guidance.
+- `docs/integration_api_guide.md` documents the V2 section and the UI rule to
+  consume only `$.result.reading`.
+- `scripts/docker_update_integration_stack.ps1` fails early if the local
+  catalogue no longer exposes the Premium 7-day V2 label, unchanged public
+  contracts, or the `target_language_code` example payload.
+
+### Validation
+
+- Added catalog assertions in `tests/integration_services_tests.rs` for the V2
+  label, V2-compatible example payload, unchanged contracts, beta availability
+  and sort order.
+
 ## Premium 7-day V2 editorial quality iteration - 2026-06-11
 
 ### Scope

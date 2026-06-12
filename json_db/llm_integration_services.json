@@ -475,8 +475,8 @@
       "service_code": "horoscope_premium_next_7_days_natal",
       "profile_code": "natal_premium",
       "product_code": "horoscope",
-      "label_fr": "Horoscope premium 7 prochains jours",
-      "description_fr": "Horoscope de periode premium personnalise sur theme natal pour piloter les 7 prochains jours avec scan 6h, fenetres favorables, vigilance et strategie.",
+      "label_fr": "Horoscope Premium 7 prochains jours V2",
+      "description_fr": "Horoscope de periode Premium V2 personnalise sur theme natal pour piloter les 7 prochains jours avec scan 6h, fenetres favorables, vigilance et strategie.",
       "orchestration_mode": "horoscope_period_natal",
       "calculation_mode": "none",
       "service_request_contract": "integration_job_request_v1",
@@ -495,7 +495,7 @@
         "payload": {
           "anchor_date": "2026-06-07",
           "timezone": "Europe/Paris",
-          "target_language": "fr",
+          "target_language_code": "fr",
           "chart_calculation_id": "123",
           "audience_level": "general"
         }

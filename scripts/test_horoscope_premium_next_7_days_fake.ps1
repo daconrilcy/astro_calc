@@ -73,7 +73,7 @@ $bodyObject = @{
     payload = @{
         anchor_date = $AnchorDate
         timezone = "Europe/Paris"
-        target_language = "fr"
+        target_language_code = "fr"
         chart_calculation_id = $chartCalculationId
         audience_level = "general"
     }

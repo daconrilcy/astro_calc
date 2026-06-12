@@ -4662,6 +4662,20 @@ fn horoscope_period_public_response_requires_natal_personalization() {
 }
 
 #[test]
+fn horoscope_premium_next_7_days_accepts_naturalized_astrological_personalization() {
+    let request = premium_period_interpretation_request();
+    let mut response = premium_period_response_from_request(&request);
+    response["week_overview"]["text"] = serde_json::json!(
+        "Trajectoire de la semaine : commencez par installer un cadre léger, testez des choix et changez de rythme au milieu de la période pour trier ce qui mérite d'être conservé. Le défi récurrent est d'équilibrer désir d'élargir avec Jupiter et nécessité de rester réaliste avec Saturne."
+    );
+    response["week_overview"]["trajectory"] = serde_json::json!(
+        "La semaine s'ouvre sur l'organisation, passe par un pivot de tri, puis par une consolidation avant une clôture réaliste."
+    );
+
+    validate_period_response_evidence(&request, &response).unwrap();
+}
+
+#[test]
 fn horoscope_period_repair_restores_overview_and_daily_personalization() {
     let request = premium_period_interpretation_request();
     let mut response = premium_period_response_from_request(&request);

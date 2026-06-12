@@ -4137,8 +4137,15 @@ pub fn fake_period_writer_response_v2(request: &Value) -> Result<Value, Generati
         "quality": quality_v2(service_code, request, 7)
     });
     if is_premium_period_service(service_code) {
-        response["best_windows"] = json!(window_markers_from_candidates_v2(request, "best"));
-        response["watch_windows"] = json!(window_markers_from_candidates_v2(request, "watch"));
+        let best_windows = window_markers_from_candidates_v2(request, "best", &HashSet::new());
+        let best_window_identities = best_windows
+            .iter()
+            .filter_map(period_window_identity)
+            .collect::<HashSet<_>>();
+        let watch_windows =
+            window_markers_from_candidates_v2(request, "watch", &best_window_identities);
+        response["best_windows"] = json!(best_windows);
+        response["watch_windows"] = json!(watch_windows);
         response["strategy"] = json!({
             "title": "Stratégie de semaine",
             "text": "Utilisez les meilleurs créneaux pour agir court et les moments de vigilance pour ralentir avant de répondre. La stratégie consiste à alterner décision, mise au net et récupération sans transformer la semaine en suite d'urgences.",
@@ -4184,7 +4191,11 @@ fn day_markers_from_candidates_v2(
     out
 }
 
-fn window_markers_from_candidates_v2(request: &Value, candidate_type: &str) -> Vec<Value> {
+fn window_markers_from_candidates_v2(
+    request: &Value,
+    candidate_type: &str,
+    excluded_identities: &HashSet<String>,
+) -> Vec<Value> {
     let all_windows = request
         .pointer("/semantic_brief/window_candidates")
         .and_then(Value::as_array)
@@ -4200,13 +4211,31 @@ fn window_markers_from_candidates_v2(request: &Value, candidate_type: &str) -> V
                 tone != "careful"
             }
         })
+        .filter(|window| {
+            period_window_identity(window)
+                .map(|identity| !excluded_identities.contains(&identity))
+                .unwrap_or(true)
+        })
         .collect::<Vec<_>>();
     if windows.is_empty() {
-        windows = all_windows.iter().take(1).collect();
+        windows = all_windows
+            .iter()
+            .filter(|window| {
+                period_window_identity(window)
+                    .map(|identity| !excluded_identities.contains(&identity))
+                    .unwrap_or(true)
+            })
+            .take(1)
+            .collect();
     }
+    let limit = if candidate_type == "best" && windows.len() > 1 {
+        2
+    } else {
+        3
+    };
     windows
         .into_iter()
-        .take(3)
+        .take(limit)
         .enumerate()
         .map(|(index, window)| {
             if candidate_type == "watch" {
@@ -9433,7 +9462,22 @@ fn period_text_has_personalization(text: &str) -> bool {
         "votre agenda",
         "zone natale",
         "zones natales",
+        "natal",
+        "natale",
         "maison",
+        "lune",
+        "soleil",
+        "vénus",
+        "venus",
+        "mars",
+        "mercure",
+        "jupiter",
+        "saturne",
+        "carré",
+        "carre",
+        "opposition",
+        "opposé",
+        "oppose",
         "sensibilité",
         "besoins émotionnels",
         "communiquer",

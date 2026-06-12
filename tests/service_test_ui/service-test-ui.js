@@ -104,7 +104,7 @@
     const code = service.service_code;
     const base = {
       timezone: input.timezone,
-      target_language: input.language,
+      target_language_code: input.language,
       chart_calculation_id: String(chartCalculationId),
       audience_level: input.audience === "expert" ? "expert" : "general",
     };

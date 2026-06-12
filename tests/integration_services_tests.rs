@@ -149,3 +149,37 @@ fn natal_simplified_supports_mercure_in_seed() {
     let services = load_seed_services();
     assert!(services.get("natal_simplified").unwrap().supports_mercure);
 }
+
+#[test]
+fn premium_next_7_days_catalog_exposes_v2_ui_entry_without_contract_change() {
+    let services = load_seed_services();
+    let premium = services
+        .get("horoscope_premium_next_7_days_natal")
+        .expect("horoscope_premium_next_7_days_natal in seed");
+
+    assert_eq!(premium.label_fr, "Horoscope Premium 7 prochains jours V2");
+    assert_eq!(
+        premium.payload_contract,
+        "horoscope_period_natal_request_v1"
+    );
+    assert_eq!(
+        premium.reading_output_contract,
+        "horoscope_period_response_v1"
+    );
+    assert_eq!(premium.availability, ServiceAvailability::Beta);
+    assert_eq!(premium.sort_order, 240);
+
+    let payload = premium
+        .example_request_json
+        .as_ref()
+        .and_then(|json| json.get("payload"))
+        .expect("premium example payload");
+    assert_eq!(
+        payload.get("target_language_code").and_then(|v| v.as_str()),
+        Some("fr")
+    );
+    assert!(
+        payload.get("target_language").is_none(),
+        "premium V2 example must not expose legacy target_language"
+    );
+}

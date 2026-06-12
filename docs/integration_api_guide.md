@@ -120,7 +120,7 @@ Respecter `poll_after_ms`. Statut terminal `completed` inclut `result` (envelopp
 | `horoscope_premium_daily_local_2h_slots` | horoscope quotidien local 12 créneaux | **beta** |
 | `horoscope_free_next_7_days_natal` | horoscope Free compact des 7 prochains jours | **active** |
 | `horoscope_basic_next_7_days_natal` | horoscope Basic des 7 prochains jours | **beta** |
-| `horoscope_premium_next_7_days_natal` | horoscope Premium des 7 prochains jours | **beta** |
+| `horoscope_premium_next_7_days_natal` | horoscope Premium des 7 prochains jours V2 | **beta** |
 
 ### Horoscope Premium quotidien local
 
@@ -184,11 +184,14 @@ libelles publics francais. Les codes internes (`theme_code`, `period:`,
 `natal_`, `transit_exact`, `transit_active`, etc.) restent dans les payloads
 internes ou les champs de preuve, pas dans les textes publics.
 
-### Horoscope Premium 7 prochains jours
+### Horoscope Premium 7 prochains jours V2
 
 Le service Premium period reutilise le meme payload public que le Basic period,
 mais le catalogue impose `detail_profile_code = premium_rich` et
-`scan_profile_code = six_hour_7_days`.
+`scan_profile_code = six_hour_7_days`. La mouture V2 conserve le contrat public
+`horoscope_period_response_v1` : le scan 6h alimente les fenetres favorables, les
+fenetres de vigilance et la strategie de semaine, sans exposer les materiaux
+internes de redaction.
 
 ```json
 {
@@ -196,12 +199,17 @@ mais le catalogue impose `detail_profile_code = premium_rich` et
   "payload": {
     "anchor_date": "2026-06-07",
     "timezone": "Europe/Paris",
-    "target_language": "fr",
+    "target_language_code": "fr",
     "chart_calculation_id": "123",
     "audience_level": "general"
   }
 }
 ```
+
+Regle UI : afficher uniquement `$.result.reading`. Ne jamais consommer ni
+afficher comme modele produit `calculation`, `interpretation_request`,
+`writer_request`, `semantic_brief`, `evidence` ou `quality_checks` ; ces champs
+sont reserves au debug technique.
 
 Difference produit :
 

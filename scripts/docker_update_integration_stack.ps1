@@ -70,10 +70,35 @@ function Assert-RequiredEnv {
     }
 }
 
+function Assert-PremiumNext7V2Catalogue {
+    $cataloguePath = Join-Path $repoRoot "json_db\llm_integration_services.json"
+    $catalogue = Get-Content -Path $cataloguePath -Raw | ConvertFrom-Json
+    $service = @($catalogue.data | Where-Object { $_.service_code -eq "horoscope_premium_next_7_days_natal" })[0]
+    if ($null -eq $service) {
+        throw "Service horoscope_premium_next_7_days_natal is missing from $cataloguePath"
+    }
+    if ($service.label_fr -ne "Horoscope Premium 7 prochains jours V2") {
+        throw "Expected Premium next 7 days V2 label, got '$($service.label_fr)'"
+    }
+    if ($service.payload_contract -ne "horoscope_period_natal_request_v1" -or $service.reading_output_contract -ne "horoscope_period_response_v1") {
+        throw "Premium next 7 days public contracts changed unexpectedly"
+    }
+    $payload = $service.example_request_json.payload
+    if ($payload.target_language_code -ne "fr") {
+        throw "Premium next 7 days example payload must use target_language_code = fr"
+    }
+    if ($payload.PSObject.Properties.Name -contains "target_language") {
+        throw "Premium next 7 days example payload must not use legacy target_language"
+    }
+}
+
 Push-Location $repoRoot
 try {
     Write-Host "== Docker integration stack update ==" -ForegroundColor Cyan
     Assert-RequiredEnv
+    Invoke-Step "Premium next 7 days V2 catalogue check" {
+        Assert-PremiumNext7V2Catalogue
+    }
 
     if (-not $SkipBuild) {
         Invoke-Step "Build and start containers" {
