@@ -73,6 +73,9 @@
     "semantic_brief": {
       "type": "object",
       "required": [
+        "editorial_arc",
+        "editorial_angles",
+        "section_roles",
         "period_arc_keywords",
         "dominant_keywords",
         "week_tone_codes",
@@ -87,6 +90,14 @@
       ],
       "additionalProperties": false,
       "properties": {
+        "editorial_arc": { "$ref": "#/definitions/editorial_arc" },
+        "editorial_angles": {
+          "type": "array",
+          "minItems": 7,
+          "maxItems": 7,
+          "items": { "$ref": "#/definitions/editorial_angle" }
+        },
+        "section_roles": { "$ref": "#/definitions/section_roles" },
         "period_arc_keywords": { "$ref": "#/definitions/short_keyword_array" },
         "dominant_keywords": { "$ref": "#/definitions/short_keyword_array" },
         "week_tone_codes": {
@@ -187,6 +198,65 @@
       "maxItems": 20,
       "uniqueItems": true,
       "items": { "$ref": "#/definitions/persona_term" }
+    },
+    "brief_text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "editorial_arc": {
+      "type": "object",
+      "required": ["purpose", "days"],
+      "additionalProperties": false,
+      "properties": {
+        "purpose": { "$ref": "#/definitions/brief_text" },
+        "days": {
+          "type": "array",
+          "minItems": 7,
+          "maxItems": 7,
+          "items": {
+            "type": "object",
+            "required": ["date", "phase", "editorial_function"],
+            "additionalProperties": false,
+            "properties": {
+              "date": { "$ref": "#/definitions/date" },
+              "phase": { "type": "string", "maxLength": 64 },
+              "editorial_function": { "$ref": "#/definitions/brief_text" }
+            }
+          }
+        }
+      }
+    },
+    "editorial_angle": {
+      "type": "object",
+      "required": ["date", "angle_code", "angle_hint", "avoid_repetition_hint"],
+      "additionalProperties": false,
+      "properties": {
+        "date": { "$ref": "#/definitions/date" },
+        "angle_code": { "type": "string", "maxLength": 64 },
+        "angle_hint": { "$ref": "#/definitions/brief_text" },
+        "avoid_repetition_hint": { "$ref": "#/definitions/brief_text" }
+      }
+    },
+    "section_roles": {
+      "type": "object",
+      "required": [
+        "overview_role",
+        "timeline_role",
+        "domains_role",
+        "best_window_role",
+        "watch_window_role",
+        "strategy_role"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "overview_role": { "$ref": "#/definitions/brief_text" },
+        "timeline_role": { "$ref": "#/definitions/brief_text" },
+        "domains_role": { "$ref": "#/definitions/brief_text" },
+        "best_window_role": { "$ref": "#/definitions/brief_text" },
+        "watch_window_role": { "$ref": "#/definitions/brief_text" },
+        "strategy_role": { "$ref": "#/definitions/brief_text" }
+      }
     },
     "daily_signal_summary": {
       "type": "object",

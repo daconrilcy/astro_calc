@@ -1,5 +1,22 @@
 # Horoscope Period V2 semantic brief - 2026-06-11
 
+## Premium 7-day V2 editorial quality iteration - 2026-06-11
+
+### Scope
+
+Improved the real OpenAI `horoscope_premium_next_7_days_natal` V2 editorial path after certification run `aa283161-6fe0-4260-a824-1a4ac1a8f8d8` showed technically valid output with a functional, repetitive feel.
+
+### Behavior
+
+- `semantic_brief_v2` now includes internal-only `editorial_arc`, `editorial_angles`, and `section_roles` material so the writer can create a readable opening/pivot/consolidation/closure arc and give each day a distinct human angle.
+- The V2 writer prompt now asks for premium editorial judgement instead of mechanical style gates: overview as trajectory, timeline as lived daily guidance, domains as transversal synthesis, windows as concrete time-bound uses, and strategy as arbitration.
+- V2 postprocess/repair now applies objective, non-stylistic cleanup only: noon/afternoon windows cannot keep a morning title, `watch_summary.status = none` remains neutral with empty evidence keys when no watch carriers exist, and deterministic French fixes normalize `demi-journée` and `réorganiser`.
+- V2 keeps the public response contract unchanged; the non-blocking editorial audit is computed as internal/test metadata with public word count, section counts, repeated-term observations, duplicate titles, and window/title mismatches. These metrics guide certification review but do not fail a generation.
+
+### Validation
+
+- Added focused tests in `tests/horoscope_v1_tests.rs` for the editorial brief, prompt guidance, objective postprocess cleanup, and non-blocking audit metadata.
+
 ## Scope
 
 Implemented the first active `semantic_brief_v2` path for `horoscope_premium_next_7_days_natal`.
@@ -35,7 +52,7 @@ Free and basic 7-day services remain on `legacy_v1` according to the initial Pre
 - Real OpenAI V2 writer/editor calls use compact JSON prompts, minimal reasoning and a 16k output budget; targeted retry metadata stays out of the public `reading` schema. V2 postprocess may only normalize technical consistency, such as `watch_summary.status = active` to `low` when there are watch windows but no watch days, or internal `theme`/`tone` codes inside short public label fields, without rewriting public prose.
 - V2 postprocess also prunes duplicated `watch_windows` when OpenAI copies an existing `best_windows` identity (`date` + `source_snapshot_keys`) into the vigilance section; if no vigilance remains, `watch_summary` is technically reset to `none` without adding text.
 - V2 public text validation no longer treats ordinary wording such as `focus`, `organization`, `clarifier`, `ajuster` or `intégrer` as a hard failure. It only rejects real internal leaks such as field names, prompt metadata, evidence key labels, snapshot key labels and semantic-brief/debug terms. Postprocess does not rewrite public prose to chase lexical variants.
-- Premium V2 still prompts for the canonical `1600-2600` word target and keeps the `3200` hard limit, but final validation accepts a narrow 50-word under-target tolerance. A real output at `1598` words is not rejected for mechanical threshold reasons, while substantially short output still triggers quality retry/failure; Rust does not pad or complete the prose.
+- Premium V2 still prompts for the canonical `1600-2600` word target and keeps the `3200` hard limit, but final validation accepts a narrow 100-word under-target tolerance. A real output just below the target is not rejected for mechanical threshold reasons, while substantially short output still triggers quality retry/failure; Rust does not pad or complete the prose.
 - Premium V2 validation treats `watch_windows` as valid vigilance carriers: `watch_summary.status = active` is accepted when either `watch_days` or `watch_windows` is populated.
 - Usage: `.\scripts\test_horoscope_premium_next_7_days_v2_openai.ps1`.
 

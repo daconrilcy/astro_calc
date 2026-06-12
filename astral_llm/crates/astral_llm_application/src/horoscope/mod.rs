@@ -63,6 +63,12 @@ const PERIOD_V2_PUBLIC_TEXT_FORBIDDEN_PATTERNS: &[&str] = &[
     "transit_active",
     "moon_house_by_day",
 ];
+const PERIOD_V2_OBJECTIVE_TEXT_REPLACEMENTS: &[(&str, &str)] = &[
+    ("demie-journée", "demi-journée"),
+    ("demie journée", "demi-journée"),
+    ("reorganiser", "réorganiser"),
+    ("Reorganiser", "Réorganiser"),
+];
 const PERIOD_V2_FORBIDDEN_WRITER_KEYS: &[&str] = &[
     "reason",
     "focus",
@@ -1422,6 +1428,9 @@ fn build_period_semantic_brief(
         ));
     }
     Ok(json!({
+        "editorial_arc": build_period_editorial_arc_v2(&included_dates),
+        "editorial_angles": build_period_editorial_angles_v2(&daily_signal_summary),
+        "section_roles": build_period_premium_section_roles_v2(),
         "period_arc_keywords": period_arc_keywords,
         "dominant_keywords": dominant_keywords,
         "week_tone_codes": week_tone_codes,
@@ -1434,6 +1443,137 @@ fn build_period_semantic_brief(
         "domain_candidates": build_domain_candidates_v2(evidence, detail.max_domain_sections),
         "repeating_arcs": build_repeating_arcs_v2(events)
     }))
+}
+
+fn build_period_editorial_arc_v2(included_dates: &[&str]) -> Value {
+    let days = included_dates
+        .iter()
+        .enumerate()
+        .map(|(index, date)| {
+            let phase = match index {
+                0 => "ouverture",
+                1 | 2 => "mise_en_mouvement",
+                3 => "pivot",
+                4 | 5 => "consolidation",
+                _ => "cloture",
+            };
+            let function = match index {
+                0 => "installer le cadre de la semaine sans tout décider",
+                1 | 2 => "mettre les premiers choix en pratique",
+                3 => "changer de rythme et trier ce qui mérite d'être gardé",
+                4 | 5 => "intégrer les apprentissages et alléger les promesses",
+                _ => "rendre visible ce qui est prêt et préparer la suite",
+            };
+            json!({
+                "date": date,
+                "phase": phase,
+                "editorial_function": function
+            })
+        })
+        .collect::<Vec<_>>();
+    json!({
+        "purpose": "Donner une trajectoire lisible: ouverture, pivot, consolidation, clôture.",
+        "days": days
+    })
+}
+
+fn build_period_editorial_angles_v2(daily_signal_summary: &[Value]) -> Vec<Value> {
+    let mut used_angles = HashSet::<String>::new();
+    daily_signal_summary
+        .iter()
+        .enumerate()
+        .map(|(index, day)| {
+            let theme = day["theme_codes"]
+                .as_array()
+                .and_then(|items| items.first())
+                .and_then(Value::as_str)
+                .unwrap_or("organization");
+            let angle = period_editorial_angle_v2(theme, index, &mut used_angles);
+            json!({
+                "date": day["date"],
+                "angle_code": angle.0,
+                "angle_hint": angle.1,
+                "avoid_repetition_hint": period_editorial_repetition_hint_v2(theme)
+            })
+        })
+        .collect()
+}
+
+fn period_editorial_angle_v2(
+    theme: &str,
+    index: usize,
+    used_angles: &mut HashSet<String>,
+) -> (&'static str, &'static str) {
+    let preferred = match period_editorial_theme_key(theme) {
+        "relationship" => (
+            "relation",
+            "pacifier un lien ou formuler une attente sans mise en scène",
+        ),
+        "communication" => (
+            "clarification",
+            "dire moins mais mieux, avec une demande ou une preuve précise",
+        ),
+        "energy" => ("action", "transformer l'élan en geste court et réversible"),
+        "integration" => (
+            "consolidation",
+            "laisser mûrir avant d'élargir le mouvement",
+        ),
+        "clarity" => ("nomination", "nommer ce qui compte avant de choisir"),
+        _ => (
+            "organisation",
+            "mettre de l'ordre dans une priorité observable",
+        ),
+    };
+    if used_angles.insert(preferred.0.to_string()) {
+        return preferred;
+    }
+    let fallback = match index {
+        0 => (
+            "ouverture",
+            "installer le cadre sans fermer trop vite les options",
+        ),
+        1 | 2 => (
+            "mise_en_pratique",
+            "tester une décision dans un geste limité",
+        ),
+        3 => ("pivot", "changer de rythme et sélectionner l'essentiel"),
+        4 | 5 => (
+            "integration",
+            "relier ce qui a été compris à une action réaliste",
+        ),
+        _ => (
+            "finalisation",
+            "conclure ce qui est prêt et préparer la suite",
+        ),
+    };
+    used_angles.insert(fallback.0.to_string());
+    fallback
+}
+
+fn period_editorial_repetition_hint_v2(theme: &str) -> &'static str {
+    match period_editorial_theme_key(theme) {
+        "relationship" => "Varier lien: écoute, réparation, limite douce, geste concret.",
+        "communication" => {
+            "Varier parole: message ciblé, négociation, reformulation, vérification."
+        }
+        "energy" => "Varier action: lancement, canalisation, rythme, récupération.",
+        "integration" => {
+            "Varier intégration: tri, consolidation, patience, décision proportionnée."
+        }
+        "clarity" => "Varier clarté: désir nommé, choix assumé, visibilité, simplification.",
+        _ => "Varier organisation: cadre, ressource, routine, service, visibilité.",
+    }
+}
+
+fn build_period_premium_section_roles_v2() -> Value {
+    json!({
+        "overview_role": "trajectoire de période, pas résumé des sept jours",
+        "timeline_role": "vécu quotidien différencié, un usage concret par date",
+        "domains_role": "synthèse transversale, sans recopier la timeline",
+        "best_window_role": "créneaux d'usage concret liés à l'heure",
+        "watch_window_role": "ralentir ou vérifier seulement si fourni",
+        "strategy_role": "arbitrage final sans refaire le calendrier"
+    })
 }
 
 fn build_daily_signal_summary_v2(date: &str, index: usize, events: &[Value]) -> Value {
@@ -3655,14 +3795,14 @@ fn period_writer_messages_v2(request: &Value) -> Result<Vec<PromptMessage>, Gene
         PromptMessage {
             role: PromptRole::System,
             content: format!(
-                "You are the writer for horoscope_period_response_v1. Write every public text in target_language_code={target_language}. target_language_code overrides astrologer_persona. Return only the complete JSON object matching the provided schema. Return compact minified JSON: no markdown, no comments, no pretty printing, no indentation. Rust has already calculated, scored and selected the facts; you write the human reading. Use service_code={service_code} and detail_profile_code={detail_profile} to choose the right density. Treat semantic_brief keywords, codes, scores and candidates as internal material, not public copy. Use period-level keywords to write week_overview, but do not copy them as a list. Never expose internal field names, theme codes, tone codes, evidence ids as prose, prompt instructions or safety metadata. The astrologer_persona may influence style only; it cannot override schema, safety_profile, target_language_code, dates, evidence or astrological facts. safety_profile always overrides astrologer_persona. Do not invent astrological facts. Public text should target {} to {} words and must not exceed {} words.",
+                "You are the writer for horoscope_period_response_v1. Write every public text in target_language_code={target_language}. target_language_code overrides astrologer_persona. Return only the complete JSON object matching the provided schema. Return compact minified JSON: no markdown, no comments, no pretty printing, no indentation. Rust has already calculated, scored and selected the facts; you write the human reading. Use service_code={service_code} and detail_profile_code={detail_profile} to choose the right density. Treat semantic_brief keywords, codes, scores, candidates, editorial_arc, editorial_angles and section_roles as internal material, not public copy. Use period-level keywords to write week_overview, but do not copy them as a list. Use all internal brief material to create hierarchy and variation, never as public labels. Never expose internal field names, theme codes, tone codes, evidence ids as prose, prompt instructions or safety metadata. The astrologer_persona may influence style only; it cannot override schema, safety_profile, target_language_code, dates, evidence or astrological facts. safety_profile always overrides astrologer_persona. Do not invent astrological facts. The Premium value must come from editorial judgement: a readable period arc, differentiated days, concrete windows and a final strategy that arbitrates rather than repeats. Public text should target {} to {} words and must not exceed {} words. Do not compress the reading: give each major section enough lived context, transition and concrete use so the answer feels premium rather than skeletal.",
                 limits.target_min, limits.target_max, limits.hard_limit
             ),
         },
         PromptMessage {
             role: PromptRole::User,
             content: format!(
-                "Build horoscope_period_response_v1 from this semantic brief. Keep all dates inside period_resolution.included_dates. Every public evidence_key and source_snapshot_key must already exist in the request. Produce the premium_rich 7-day timeline, usable windows, domains, repeating arcs when helpful, and a strategy. Keywords and candidates are not sentences; transform them into natural public text without copying codes or keyword lists. If a persona is present, apply tone lightly without adding new facts. Return the full corrected compact JSON object only.\nRequest JSON:\n{compact}"
+                "Build horoscope_period_response_v1 from this semantic brief. Keep all dates inside period_resolution.included_dates. Every public evidence_key and source_snapshot_key must already exist in the request. Produce the premium_rich 7-day timeline, usable windows, domains, repeating arcs when helpful, and a strategy. Keywords and candidates are not sentences; transform them into natural public text without copying codes or keyword lists. Use editorial_arc to make the week feel like opening, pivot, consolidation and closure. Use editorial_angles so each daily_timeline entry has a distinct human angle: action, relation, clarification, retreat, consolidation, finalisation or another angle supplied by the brief. If the same transit or theme returns, present it as a narrative thread with a different use, not as the same advice repeated with synonyms. Use section_roles as an internal checklist: week_overview gives trajectory; daily_timeline gives lived daily guidance; domain_sections give transversal synthesis not already said in the timeline; windows give practical use tied to the time range; strategy gives arbitration without relisting dates. Develop the public prose naturally: week_overview should carry the arc, each daily_timeline item should include a concrete situation and adjustment, each domain should synthesize several days, and strategy should close with usable tradeoffs. Window titles must match their time_range_label: do not call a noon or afternoon window a morning. If watch_days and watch_windows are both empty, watch_summary.status must be none, evidence_keys empty, and the text must stay neutral: no hidden vigilance or implied watch signal. In French, use deterministic clean forms such as demi-journée and réorganiser. If a persona is present, apply tone lightly without adding new facts. Return the full corrected compact JSON object only.\nRequest JSON:\n{compact}"
             ),
         },
     ])
@@ -4653,6 +4793,7 @@ pub fn postprocess_period_provider_response_v2(request: &Value, response: Value)
     prune_period_response_variant_fields_v2(request, &mut response);
     trim_period_response_strings_v2(&mut response);
     normalize_period_v2_public_short_labels(&mut response);
+    normalize_period_v2_window_titles(&mut response);
     prune_period_v2_overlapping_watch_windows(&mut response);
     normalize_period_v2_watch_summary_status(&mut response);
     prune_period_response_variant_fields_v2(request, &mut response);
@@ -4724,23 +4865,235 @@ fn normalize_period_v2_watch_summary_status(response: &mut Value) {
         .as_array()
         .map(Vec::len)
         .unwrap_or(0);
-    let status = response["watch_summary"]["status"]
+    let original_status = response["watch_summary"]["status"]
         .as_str()
         .unwrap_or("")
         .to_string();
-    if status == "active" && watch_days_count == 0 && watch_windows_count > 0 {
+    if original_status == "active" && watch_days_count == 0 && watch_windows_count > 0 {
         response["watch_summary"]["status"] = json!("low");
     }
-    if matches!(status.as_str(), "active" | "low")
+    if matches!(original_status.as_str(), "active" | "low")
         && watch_days_count == 0
         && watch_windows_count == 0
     {
         response["watch_summary"]["status"] = json!("none");
         response["watch_summary"]["evidence_keys"] = json!([]);
     }
-    if status == "none" {
+    if original_status == "none" {
         response["watch_summary"]["evidence_keys"] = json!([]);
     }
+    if original_status == "none"
+        && response["watch_summary"]["status"].as_str() == Some("none")
+        && watch_days_count == 0
+        && watch_windows_count == 0
+    {
+        response["watch_summary"]["text"] = json!(FREE_PERIOD_NONE_WATCH_SUMMARY);
+        response["watch_summary"]["evidence_keys"] = json!([]);
+    }
+}
+
+fn normalize_period_v2_window_titles(response: &mut Value) {
+    for field in ["best_windows", "watch_windows"] {
+        let Some(windows) = response.get_mut(field).and_then(Value::as_array_mut) else {
+            continue;
+        };
+        for window in windows {
+            let range = window
+                .get("time_range_label")
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            let title = window.get("title").and_then(Value::as_str).unwrap_or("");
+            if period_window_title_conflicts_with_time(range, title) {
+                window["title"] = json!(period_window_time_compatible_title(range, field));
+            }
+        }
+    }
+}
+
+fn period_window_title_conflicts_with_time(time_range_label: &str, title: &str) -> bool {
+    let lower_title = title.to_lowercase();
+    if !lower_title.contains("matin") {
+        return false;
+    }
+    period_window_start_hour(time_range_label).is_some_and(|hour| hour >= 12)
+}
+
+fn period_window_start_hour(time_range_label: &str) -> Option<u32> {
+    let start = time_range_label
+        .split(['–', '-', '—'])
+        .next()
+        .unwrap_or("")
+        .trim();
+    start
+        .split(':')
+        .next()
+        .and_then(|hour| hour.trim().parse::<u32>().ok())
+}
+
+fn period_window_time_compatible_title(time_range_label: &str, field: &str) -> &'static str {
+    let supportive = field == "best_windows";
+    match period_window_start_hour(time_range_label) {
+        Some(12..=13) if supportive => "Fenêtre utile de mi-journée",
+        Some(12..=13) => "Point de vérification de mi-journée",
+        Some(14..=18) if supportive => "Fenêtre utile d'après-midi",
+        Some(14..=18) => "Point de vérification d'après-midi",
+        _ if supportive => "Fenêtre utile",
+        _ => "Point de vérification",
+    }
+}
+
+#[doc(hidden)]
+pub fn period_v2_quality_audit_for_test(response: &Value) -> Value {
+    period_v2_quality_audit(response)
+}
+
+fn period_v2_quality_audit(response: &Value) -> Value {
+    let mut public_text = String::new();
+    collect_period_v2_public_text_only(response, &mut public_text);
+    json!({
+        "mode": "non_blocking",
+        "public_word_count": simple_public_word_count(&public_text),
+        "section_word_counts": period_v2_section_word_counts(response),
+        "top_repeated_terms": period_v2_top_repeated_terms(&public_text, 8),
+        "duplicate_titles": period_v2_duplicate_titles(response),
+        "window_title_time_mismatches": period_v2_window_title_time_mismatches(response)
+    })
+}
+
+fn period_v2_section_word_counts(response: &Value) -> Value {
+    let mut counts = serde_json::Map::new();
+    for (label, pointer) in [
+        ("week_overview", "/week_overview/text"),
+        ("strategy", "/strategy/text"),
+        ("advice", "/advice/main"),
+        ("watch_summary", "/watch_summary/text"),
+    ] {
+        let count = response
+            .pointer(pointer)
+            .and_then(Value::as_str)
+            .map(simple_public_word_count)
+            .unwrap_or(0);
+        counts.insert(label.to_string(), json!(count));
+    }
+    for field in [
+        "daily_timeline",
+        "domain_sections",
+        "best_windows",
+        "watch_windows",
+    ] {
+        let total = response[field]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|item| {
+                let mut text = String::new();
+                for key in ["title", "text", "reason", "watch_point", "advice"] {
+                    if let Some(value) = item.get(key).and_then(Value::as_str) {
+                        text.push_str(value);
+                        text.push(' ');
+                    }
+                }
+                simple_public_word_count(&text)
+            })
+            .sum::<usize>();
+        counts.insert(field.to_string(), json!(total));
+    }
+    Value::Object(counts)
+}
+
+fn period_v2_top_repeated_terms(public_text: &str, limit: usize) -> Value {
+    let mut counts = HashMap::<String, usize>::new();
+    for raw in public_text
+        .split(|ch: char| !ch.is_alphanumeric() && ch != '\'' && ch != '’')
+        .map(|word| word.trim_matches(['\'', '’']).to_lowercase())
+        .filter(|word| word.chars().count() > 4)
+        .filter(|word| !period_v2_audit_stopword(word))
+    {
+        *counts.entry(raw).or_default() += 1;
+    }
+    let mut items = counts.into_iter().collect::<Vec<_>>();
+    items.sort_by(|left, right| right.1.cmp(&left.1).then_with(|| left.0.cmp(&right.0)));
+    Value::Array(
+        items
+            .into_iter()
+            .take(limit)
+            .map(|(term, count)| json!({ "term": term, "count": count }))
+            .collect(),
+    )
+}
+
+fn period_v2_audit_stopword(word: &str) -> bool {
+    matches!(
+        word,
+        "cette"
+            | "votre"
+            | "leurs"
+            | "faire"
+            | "entre"
+            | "comme"
+            | "quand"
+            | "pourra"
+            | "avant"
+            | "après"
+            | "jours"
+            | "semaine"
+    )
+}
+
+fn period_v2_duplicate_titles(response: &Value) -> Value {
+    let mut counts = HashMap::<String, usize>::new();
+    for field in [
+        "key_days",
+        "best_days",
+        "watch_days",
+        "daily_timeline",
+        "domain_sections",
+        "best_windows",
+        "watch_windows",
+    ] {
+        for item in response[field].as_array().into_iter().flatten() {
+            if let Some(title) = item
+                .get("title")
+                .or_else(|| item.get("day_label"))
+                .and_then(Value::as_str)
+            {
+                *counts.entry(normalized_text(title)).or_default() += 1;
+            }
+        }
+    }
+    Value::Array({
+        let mut items = counts
+            .into_iter()
+            .filter(|(_, count)| *count > 1)
+            .collect::<Vec<_>>();
+        items.sort_by(|left, right| right.1.cmp(&left.1).then_with(|| left.0.cmp(&right.0)));
+        items
+            .into_iter()
+            .map(|(title, count)| json!({ "title": title, "count": count }))
+            .collect()
+    })
+}
+
+fn period_v2_window_title_time_mismatches(response: &Value) -> Value {
+    let mut mismatches = Vec::new();
+    for field in ["best_windows", "watch_windows"] {
+        for window in response[field].as_array().into_iter().flatten() {
+            let range = window
+                .get("time_range_label")
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            let title = window.get("title").and_then(Value::as_str).unwrap_or("");
+            if period_window_title_conflicts_with_time(range, title) {
+                mismatches.push(json!({
+                    "field": field,
+                    "date": window["date"],
+                    "time_range_label": range,
+                    "title": title
+                }));
+            }
+        }
+    }
+    Value::Array(mismatches)
 }
 
 fn prune_period_response_variant_fields_v2(request: &Value, response: &mut Value) {
@@ -5093,13 +5446,16 @@ pub fn repair_period_response_shape_v2(request: &Value, response: &mut Value) {
     }
     prune_period_response_variant_fields_v2(request, response);
     trim_period_response_strings_v2(response);
+    normalize_period_v2_public_short_labels(response);
+    normalize_period_v2_window_titles(response);
+    normalize_period_v2_watch_summary_status(response);
     restore_period_response_technical_keys_v2(request, response);
 }
 
 fn trim_period_response_strings_v2(value: &mut Value) {
     match value {
         Value::String(text) => {
-            *text = text.trim().to_string();
+            *text = normalize_period_v2_objective_public_text(text.trim());
         }
         Value::Array(items) => {
             for item in items {
@@ -5113,6 +5469,12 @@ fn trim_period_response_strings_v2(value: &mut Value) {
         }
         _ => {}
     }
+}
+
+fn normalize_period_v2_objective_public_text(text: &str) -> String {
+    PERIOD_V2_OBJECTIVE_TEXT_REPLACEMENTS
+        .iter()
+        .fold(text.to_string(), |acc, (from, to)| acc.replace(from, to))
 }
 
 fn restore_period_response_technical_keys_v2(request: &Value, response: &mut Value) {
@@ -9815,7 +10177,7 @@ fn period_writer_reasoning_effort(request: &Value) -> Option<ReasoningEffort> {
 
 fn period_effective_min_word_count(request: &Value, limits: &PeriodWordLimits) -> usize {
     if is_period_writer_request_v2(request) {
-        limits.target_min.saturating_sub(50)
+        limits.target_min.saturating_sub(100)
     } else {
         limits.target_min
     }
