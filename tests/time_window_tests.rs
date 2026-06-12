@@ -68,6 +68,75 @@ fn next_7_days_resolves_from_anchor_inclusive_to_end_exclusive() {
 }
 
 #[test]
+fn next_7_days_exposes_included_dates_from_resolved_window() {
+    let resolved = resolver()
+        .resolve(&request("next_7_days", "2026-06-07"))
+        .expect("window should resolve");
+
+    assert_eq!(
+        resolved.included_dates(),
+        [
+            "2026-06-07",
+            "2026-06-08",
+            "2026-06-09",
+            "2026-06-10",
+            "2026-06-11",
+            "2026-06-12",
+            "2026-06-13"
+        ]
+    );
+}
+
+#[test]
+fn iso_week_and_workweek_expose_included_dates_from_resolved_window() {
+    let week = resolver()
+        .resolve(&request("current_week_monday_sunday", "2026-06-03"))
+        .expect("week should resolve");
+    let workweek = resolver()
+        .resolve(&request("current_workweek_monday_friday", "2026-06-07"))
+        .expect("workweek should resolve");
+
+    assert_eq!(
+        week.included_dates(),
+        [
+            "2026-06-01",
+            "2026-06-02",
+            "2026-06-03",
+            "2026-06-04",
+            "2026-06-05",
+            "2026-06-06",
+            "2026-06-07"
+        ]
+    );
+    assert_eq!(
+        workweek.included_dates(),
+        [
+            "2026-06-01",
+            "2026-06-02",
+            "2026-06-03",
+            "2026-06-04",
+            "2026-06-05"
+        ]
+    );
+}
+
+#[test]
+fn resolved_window_exposes_canonical_utc_boundaries() {
+    let resolved = resolver()
+        .resolve(&request("next_7_days", "2026-06-07"))
+        .expect("window should resolve");
+
+    assert_eq!(
+        resolved.start_datetime_utc().unwrap(),
+        "2026-06-06T22:00:00+00:00"
+    );
+    assert_eq!(
+        resolved.end_datetime_utc().unwrap(),
+        "2026-06-13T22:00:00+00:00"
+    );
+}
+
+#[test]
 fn iso_week_duration_comes_from_profile_definition() {
     let mut profile = profile("current_week_monday_sunday");
     profile.duration_days = Some(3);
@@ -226,6 +295,10 @@ fn custom_date_range_is_inclusive_input_normalized_to_exclusive_end() {
         "2026-06-13 00:00:00"
     );
     assert_eq!(resolved.duration_days, 3);
+    assert_eq!(
+        resolved.included_dates(),
+        ["2026-06-10", "2026-06-11", "2026-06-12"]
+    );
 }
 
 #[test]

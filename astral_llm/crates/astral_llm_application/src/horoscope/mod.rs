@@ -12,7 +12,7 @@ use astral_llm_domain::{
 use astral_llm_providers::{
     GenerationMetadata, PromptMessage, PromptRole, ProviderGenerationRequest,
 };
-use chrono::{Datelike, Duration, NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
+use chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
 use chrono_tz::Tz;
 use jsonschema::JSONSchema;
 use regex::Regex;

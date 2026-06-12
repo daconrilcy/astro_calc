@@ -3532,6 +3532,10 @@ a fin exclusive.
 - Sortie normalisee : `start_datetime_local`, `end_datetime_local`, `timezone`,
   `duration_days`, `end_exclusive = true`, avec `included_days` pour les profils
   semaine/workweek.
+- Les adaptateurs horoscope period consomment cette resolution comme source
+  canonique : dates incluses et bornes UTC viennent de `astral_time_window`, le
+  module horoscope conserve uniquement le `scan_plan`, le scoring, le writer et
+  les validations metier.
 
 Regles principales : `next_N_days` inclut la date d'ancrage et termine a J+N a
 00:00 locale ; les semaines utilisent le lundi ISO ; `custom_date_range` recoit

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use chrono::{Datelike, Duration, NaiveDate, NaiveDateTime};
+use chrono::{Datelike, Duration, NaiveDate, NaiveDateTime, TimeZone};
 use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -57,6 +57,16 @@ pub enum PeriodWindowError {
     InvalidDate { field: &'static str, value: String },
     #[error("invalid timezone: {0}")]
     InvalidTimezone(String),
+    #[error("ambiguous local datetime for {field} in timezone {timezone}")]
+    AmbiguousLocalDateTime {
+        field: &'static str,
+        timezone: String,
+    },
+    #[error("nonexistent local datetime for {field} in timezone {timezone}")]
+    NonexistentLocalDateTime {
+        field: &'static str,
+        timezone: String,
+    },
     #[error("custom_date_range requires custom_start_date and custom_end_date")]
     MissingCustomDateRange,
     #[error("custom_end_date must be greater than or equal to custom_start_date")]
@@ -66,6 +76,35 @@ pub enum PeriodWindowError {
         profile_code: String,
         reason: String,
     },
+}
+
+impl ResolvedPeriodWindow {
+    pub fn included_dates(&self) -> Vec<String> {
+        let start_date = self.start_datetime_local.date();
+        (0..self.duration_days)
+            .map(|offset| {
+                (start_date + Duration::days(offset))
+                    .format("%Y-%m-%d")
+                    .to_string()
+            })
+            .collect()
+    }
+
+    pub fn start_datetime_utc(&self) -> Result<String, PeriodWindowError> {
+        local_datetime_to_utc_with_field(
+            &self.timezone,
+            self.start_datetime_local,
+            "start_datetime_local",
+        )
+    }
+
+    pub fn end_datetime_utc(&self) -> Result<String, PeriodWindowError> {
+        local_datetime_to_utc_with_field(
+            &self.timezone,
+            self.end_datetime_local,
+            "end_datetime_local",
+        )
+    }
 }
 
 impl PeriodWindowResolver {
@@ -198,6 +237,27 @@ fn parse_date(field: &'static str, value: &str) -> Result<NaiveDate, PeriodWindo
         field,
         value: value.to_string(),
     })
+}
+
+fn local_datetime_to_utc_with_field(
+    timezone: &str,
+    local: NaiveDateTime,
+    field: &'static str,
+) -> Result<String, PeriodWindowError> {
+    let tz = timezone
+        .parse::<Tz>()
+        .map_err(|_| PeriodWindowError::InvalidTimezone(timezone.to_string()))?;
+    match tz.from_local_datetime(&local) {
+        chrono::LocalResult::Single(value) => Ok(value.with_timezone(&chrono::Utc).to_rfc3339()),
+        chrono::LocalResult::Ambiguous(_, _) => Err(PeriodWindowError::AmbiguousLocalDateTime {
+            field,
+            timezone: timezone.to_string(),
+        }),
+        chrono::LocalResult::None => Err(PeriodWindowError::NonexistentLocalDateTime {
+            field,
+            timezone: timezone.to_string(),
+        }),
+    }
 }
 
 fn iso_week_monday(date: NaiveDate) -> NaiveDate {

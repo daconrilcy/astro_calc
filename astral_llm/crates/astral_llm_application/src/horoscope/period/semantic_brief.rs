@@ -21,6 +21,7 @@ pub fn build_period_writer_request_v2(
         .get("period_resolution")
         .cloned()
         .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_CALCULATION_FAILED"))?;
+    validate_period_writer_v2_next_7_days_contract(&period_resolution)?;
     let scan_plan = calculation
         .get("scan_plan")
         .cloned()
@@ -60,6 +61,22 @@ pub fn build_period_writer_request_v2(
     validate_period_writer_request_v2_schema(&request)?;
     Ok(request)
 }
+
+pub(crate) fn validate_period_writer_v2_next_7_days_contract(
+    period_resolution: &Value,
+) -> Result<(), GenerationError> {
+    if period_resolution["period_profile_code"].as_str() != Some("next_7_days") {
+        return Err(horoscope_error("HOROSCOPE_PERIOD_PROFILE_UNSUPPORTED"));
+    }
+    let included_dates = period_resolution["included_dates"]
+        .as_array()
+        .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH"))?;
+    if included_dates.len() != 7 || period_resolution["duration_days"].as_i64() != Some(7) {
+        return Err(horoscope_error("HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH"));
+    }
+    Ok(())
+}
+
 pub(crate) fn sanitize_writer_v2_evidence(items: &[Value]) -> Vec<Value> {
     items        .iter()        .map(|item| {            json!({                "evidence_key": item["evidence_key"],                "snapshot_key": item["snapshot_key"],                "date": item["date"],                "fact_type": item["fact_type"],                "transiting_object": item["transiting_object"],                "aspect": item["aspect"],                "natal_target": item["natal_target"],                "natal_house": item["natal_house"],                "theme_code": item["theme_code"],                "tone_code": item["tone"],                "score": item["score"]            })        })        .collect()
 }
@@ -76,9 +93,7 @@ pub(crate) fn build_period_semantic_brief(
         .flatten()
         .filter_map(Value::as_str)
         .collect::<Vec<_>>();
-    if included_dates.len() != 7 {
-        return Err(horoscope_error("HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH"));
-    }
+    validate_period_writer_v2_next_7_days_contract(period_resolution)?;
     let daily_signal_summary = included_dates
         .iter()
         .enumerate()

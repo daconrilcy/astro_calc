@@ -339,7 +339,7 @@ pub(crate) fn period_service_profile(
     service_code: &str,
 ) -> Result<ServiceProfile, GenerationError> {
     let profile = service_profile(service_code)?;
-    if profile.period_profile_code.as_deref() != Some("next_7_days")
+    if profile.period_profile_code.is_none()
         || profile.detail_profile_code.is_none()
         || profile.scan_profile_code.is_none()
     {

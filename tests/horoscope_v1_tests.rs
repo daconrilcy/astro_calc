@@ -1072,6 +1072,47 @@ fn horoscope_period_next_7_days_has_7_included_dates() {
 }
 
 #[test]
+fn horoscope_period_resolution_uses_service_catalog_profile() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    for service_code in [
+        HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+        HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+        HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+    ] {
+        let request = build_period_calculation_request_for_service(service_code, &public).unwrap();
+        let resolution = &request["period_resolution"];
+        assert_eq!(resolution["period_profile_code"], "next_7_days");
+        assert_eq!(resolution["anchor_date"], "2026-06-07");
+        assert_eq!(resolution["start_datetime_local"], "2026-06-07T00:00:00");
+        assert_eq!(resolution["end_datetime_local"], "2026-06-14T00:00:00");
+        assert_eq!(
+            resolution["start_datetime_utc"],
+            "2026-06-06T22:00:00+00:00"
+        );
+        assert_eq!(resolution["end_datetime_utc"], "2026-06-13T22:00:00+00:00");
+        assert_eq!(resolution["duration_days"], 7);
+        assert_eq!(resolution["included_dates"].as_array().unwrap().len(), 7);
+    }
+}
+
+#[test]
+fn horoscope_period_resolution_maps_time_window_timezone_errors() {
+    let mut public = validate_period_public_request(&period_public_payload()).unwrap();
+    public.timezone = "Europe/Atlantis".to_string();
+
+    let err = build_period_calculation_request_for_service(
+        HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+        &public,
+    )
+    .unwrap_err();
+
+    assert!(err
+        .detail()
+        .message
+        .starts_with("HOROSCOPE_PERIOD_TIMEZONE_REQUIRED"));
+}
+
+#[test]
 fn horoscope_period_scan_plan_has_unique_snapshot_keys() {
     let public = validate_period_public_request(&period_public_payload()).unwrap();
     let request = build_period_calculation_request(&public).unwrap();
@@ -5834,6 +5875,34 @@ fn period_writer_v2_rejects_non_premium_service_code() {
         err.detail().message,
         "HOROSCOPE_PERIOD_WRITER_V2_PREMIUM_ONLY"
     );
+}
+
+#[test]
+fn period_writer_v2_rejects_non_next_7_days_period_resolution() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let mut calculation = premium_period_calculation();
+    calculation["period_resolution"]["period_profile_code"] = serde_json::json!("next_14_days");
+    calculation["period_resolution"]["duration_days"] = serde_json::json!(14);
+    calculation["period_resolution"]["included_dates"] = serde_json::json!([
+        "2026-06-07",
+        "2026-06-08",
+        "2026-06-09",
+        "2026-06-10",
+        "2026-06-11",
+        "2026-06-12",
+        "2026-06-13",
+        "2026-06-14",
+        "2026-06-15",
+        "2026-06-16",
+        "2026-06-17",
+        "2026-06-18",
+        "2026-06-19",
+        "2026-06-20"
+    ]);
+
+    let err = build_period_writer_request_v2(&public, &calculation).unwrap_err();
+
+    assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_PROFILE_UNSUPPORTED");
 }
 
 #[test]
