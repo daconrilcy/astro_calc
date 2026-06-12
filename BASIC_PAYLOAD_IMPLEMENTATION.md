@@ -1,5 +1,23 @@
 # Horoscope Period V2 semantic brief - 2026-06-11
 
+## Horoscope test helpers relocation - 2026-06-12
+
+### Scope
+
+Moved horoscope-specific test helper logic out of
+`astral_llm_application/src/horoscope/mod.rs`.
+
+### Behavior
+
+- Removed `_for_test` wrapper functions from the application horoscope module.
+- Exposed the underlying period writer/audit/word-count functions under their
+  production names for integration-test coverage.
+- Kept the prompt text aggregation helper local to `tests/horoscope_v1_tests.rs`.
+
+### Validation
+
+- `cargo test -p astral_llm_api --test horoscope_v1_tests`
+
 ## Premium 7-day V2 naturalized evidence guard - 2026-06-12
 
 ### Scope

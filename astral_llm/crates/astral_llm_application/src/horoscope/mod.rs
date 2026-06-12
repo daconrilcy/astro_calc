@@ -3714,7 +3714,7 @@ fn extract_balanced_json_object(raw: &str) -> Option<String> {
     None
 }
 
-fn period_writer_messages(request: &Value) -> Result<Vec<PromptMessage>, GenerationError> {
+pub fn period_writer_messages(request: &Value) -> Result<Vec<PromptMessage>, GenerationError> {
     if is_period_writer_request_v2(request) {
         return period_writer_messages_v2(request);
     }
@@ -3865,29 +3865,6 @@ fn period_writer_v2_required_str<'a>(
             json!({ "missing_or_invalid_field": field }),
         )
     })
-}
-
-#[doc(hidden)]
-pub fn period_writer_prompt_text_for_test(request: &Value) -> Result<String, GenerationError> {
-    Ok(period_writer_messages(request)?
-        .into_iter()
-        .map(|message| message.content)
-        .collect::<Vec<_>>()
-        .join("\n\n"))
-}
-
-#[doc(hidden)]
-pub fn period_writer_max_output_tokens_for_test(request: &Value) -> u32 {
-    period_writer_max_output_tokens(request)
-}
-
-#[doc(hidden)]
-pub fn validate_period_public_word_count_for_test(
-    request: &Value,
-    response: &Value,
-    public_text: &str,
-) -> Result<(), GenerationError> {
-    validate_period_public_word_count(request, response, public_text)
 }
 
 #[doc(hidden)]
@@ -4971,12 +4948,7 @@ fn period_window_time_compatible_title(time_range_label: &str, field: &str) -> &
     }
 }
 
-#[doc(hidden)]
-pub fn period_v2_quality_audit_for_test(response: &Value) -> Value {
-    period_v2_quality_audit(response)
-}
-
-fn period_v2_quality_audit(response: &Value) -> Value {
+pub fn period_v2_quality_audit(response: &Value) -> Value {
     let mut public_text = String::new();
     collect_period_v2_public_text_only(response, &mut public_text);
     json!({
@@ -10203,7 +10175,7 @@ fn period_word_limits_for_request(request: &Value) -> PeriodWordLimits {
         .unwrap_or_else(period_basic_word_limits)
 }
 
-fn period_writer_max_output_tokens(request: &Value) -> u32 {
+pub fn period_writer_max_output_tokens(request: &Value) -> u32 {
     if is_period_writer_request_v2(request) {
         return PERIOD_V2_MAX_OUTPUT_TOKENS;
     }
@@ -10227,7 +10199,7 @@ fn period_effective_min_word_count(request: &Value, limits: &PeriodWordLimits) -
     }
 }
 
-fn validate_period_public_word_count(
+pub fn validate_period_public_word_count(
     request: &Value,
     response: &Value,
     public_text: &str,

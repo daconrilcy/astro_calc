@@ -5,24 +5,34 @@ use astral_llm_application::horoscope::{
     build_interpretation_request, build_period_calculation_request,
     build_period_calculation_request_for_service, build_period_interpretation_request,
     build_period_writer_request_v2, fake_period_writer_response, fake_period_writer_response_v2,
-    period_response_provider_schema, period_v2_quality_audit_for_test,
-    period_writer_max_output_tokens_for_test, period_writer_prompt_text_for_test,
-    postprocess_period_provider_response, postprocess_period_provider_response_v2,
-    prune_period_response_variant_fields, public_watch_point_for_theme,
-    repair_period_response_shape_v2, reprocess_horoscope_period_payload, score_calculation,
-    validate_horoscope_response_schema, validate_interpretation_request_schema,
-    validate_period_interpretation_request_schema, validate_period_provider_public_payload,
-    validate_period_public_request, validate_period_public_word_count_for_test,
-    validate_period_response_evidence, validate_period_response_schema,
-    validate_period_writer_request_v2_schema, validate_public_request, validate_response_evidence,
-    validate_scan_plan, validate_semantic_brief_is_atomic,
-    HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE, HOROSCOPE_FREE_DAILY_SERVICE_CODE,
-    HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+    period_response_provider_schema, period_v2_quality_audit, period_writer_max_output_tokens,
+    period_writer_messages, postprocess_period_provider_response,
+    postprocess_period_provider_response_v2, prune_period_response_variant_fields,
+    public_watch_point_for_theme, repair_period_response_shape_v2,
+    reprocess_horoscope_period_payload, score_calculation, validate_horoscope_response_schema,
+    validate_interpretation_request_schema, validate_period_interpretation_request_schema,
+    validate_period_provider_public_payload, validate_period_public_request,
+    validate_period_public_word_count, validate_period_response_evidence,
+    validate_period_response_schema, validate_period_writer_request_v2_schema,
+    validate_public_request, validate_response_evidence, validate_scan_plan,
+    validate_semantic_brief_is_atomic, HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+    HOROSCOPE_FREE_DAILY_SERVICE_CODE, HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
     HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE, HOROSCOPE_SERVICE_CODE,
 };
 use astral_llm_application::IntegrationJobValidator;
 use astral_llm_domain::integration::{CalculationMode, IntegrationService, ServiceAvailability};
+use astral_llm_domain::GenerationError;
+
+fn period_writer_prompt_text_for_test(
+    request: &serde_json::Value,
+) -> Result<String, GenerationError> {
+    Ok(period_writer_messages(request)?
+        .into_iter()
+        .map(|message| message.content)
+        .collect::<Vec<_>>()
+        .join("\n\n"))
+}
 
 fn horoscope_service() -> IntegrationService {
     IntegrationService {
@@ -1643,7 +1653,7 @@ fn horoscope_premium_period_v2_editorial_audit_is_non_blocking_metadata() {
         &request,
         fake_period_writer_response_v2(&request).unwrap(),
     );
-    let audit = period_v2_quality_audit_for_test(&response);
+    let audit = period_v2_quality_audit(&response);
 
     assert_eq!(audit["mode"], "non_blocking");
     assert!(audit["public_word_count"].as_u64().unwrap() > 0);
@@ -6171,7 +6181,7 @@ fn period_writer_v2_prompt_mentions_language_safety_and_keywords() {
 fn period_writer_v2_uses_real_provider_output_budget() {
     let public = validate_period_public_request(&period_public_payload()).unwrap();
     let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
-    assert_eq!(period_writer_max_output_tokens_for_test(&request), 16_000);
+    assert_eq!(period_writer_max_output_tokens(&request), 16_000);
 }
 
 #[test]
@@ -6185,7 +6195,7 @@ fn period_writer_v2_word_count_allows_small_under_target_tolerance() {
         .collect::<Vec<_>>()
         .join(" ");
 
-    validate_period_public_word_count_for_test(&request, &response, &public_text).unwrap();
+    validate_period_public_word_count(&request, &response, &public_text).unwrap();
 }
 
 #[test]
@@ -6199,8 +6209,7 @@ fn period_writer_v2_word_count_rejects_substantially_short_output() {
         .collect::<Vec<_>>()
         .join(" ");
 
-    let err =
-        validate_period_public_word_count_for_test(&request, &response, &public_text).unwrap_err();
+    let err = validate_period_public_word_count(&request, &response, &public_text).unwrap_err();
     assert_eq!(
         err.detail().message,
         "HOROSCOPE_PERIOD_WORD_COUNT_OUT_OF_RANGE"
