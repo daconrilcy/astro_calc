@@ -55,6 +55,10 @@ name = "payload_tests"
 path = "../tests/payload_tests.rs"
 
 [[test]]
+name = "payload_shared_characterization_tests"
+path = "../tests/payload_shared_characterization_tests.rs"
+
+[[test]]
 name = "runtime_tests"
 path = "../tests/runtime_tests.rs"
 

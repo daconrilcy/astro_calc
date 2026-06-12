@@ -5,6 +5,7 @@ use crate::domain::{
     BasicAngleFact, BasicChartEmphasis, BasicDignity, BasicHouseAxisEmphasis, BasicHouseAxisScore,
     BasicRulershipContext, BasicSignal, HouseAxisReference, ObjectPositionFact,
 };
+use crate::payload_shared::visibility::is_angle_role;
 
 use super::json::position_context;
 
@@ -416,15 +417,19 @@ fn is_luminary(position: &ObjectPositionFact) -> bool {
 }
 
 fn is_angle(position: &ObjectPositionFact) -> bool {
-    position_context(position, "object_context")
-        .and_then(|context| {
-            context
-                .get("role")
-                .and_then(|value| value.as_str())
-                .map(str::to_string)
-        })
-        .as_deref()
-        == Some("angle")
+    let role = position_context(position, "object_context").and_then(|context| {
+        context
+            .get("role")
+            .and_then(|value| value.as_str())
+            .map(str::to_string)
+    });
+    let role_label = position_context(position, "object_context").and_then(|context| {
+        context
+            .get("role_label")
+            .and_then(|value| value.as_str())
+            .map(str::to_string)
+    });
+    is_angle_role(role.as_deref(), role_label.as_deref())
         || position
             .facts_json
             .as_ref()

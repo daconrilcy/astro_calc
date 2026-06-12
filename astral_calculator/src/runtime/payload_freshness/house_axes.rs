@@ -1,6 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::domain::{BasicHouseAxisEmphasis, BasicPayload, BasicSignal};
+use crate::payload_shared::house_axes::canonical_axis;
+use crate::payload_shared::text::{
+    has_text, has_unique_non_empty_strings, is_normalized_score, push_unique,
+};
 
 use super::emphasis::product_scoring_snapshot;
 
@@ -68,8 +72,13 @@ fn has_current_axis(
     if axis.houses.len() != 2
         || axis.theme_codes.len() != 2
         || axis.house_scores.len() != 2
-        || axis.houses != reference.houses
-        || axis.theme_codes != reference.theme_codes
+        || axis.houses != reference.houses.to_vec()
+        || axis.theme_codes
+            != reference
+                .theme_codes
+                .into_iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
     {
         return false;
     }
@@ -98,14 +107,14 @@ fn has_current_axis(
         && expected_polarity_balance != "weak_axis"
         && axis.polarity_balance == expected_polarity_balance
         && !axis.reasons.is_empty()
-        && axis.reasons.iter().all(|reason| !reason.trim().is_empty())
+        && axis.reasons.iter().all(|reason| has_text(reason))
         && has_unique_non_empty_strings(&axis.source_signal_keys)
         && has_unique_non_empty_strings(&axis.source_context_keys)
         && axis
             .source_signal_keys
             .iter()
             .chain(axis.source_context_keys.iter())
-            .all(|key| !key.trim().is_empty())
+            .all(|key| has_text(key))
         && axis.interpretive_hint == expected_interpretive_hint(axis)
         && has_current_cross_axis_aspect_context(axis, signals_by_key, position_house_by_object)
         && axis.house_scores.iter().enumerate().all(|(index, score)| {
@@ -113,7 +122,7 @@ fn has_current_axis(
                 && score.theme_code == axis.theme_codes[index]
                 && axis_score_is_valid(score.score)
                 && !score.reasons.is_empty()
-                && score.reasons.iter().all(|reason| !reason.trim().is_empty())
+                && score.reasons.iter().all(|reason| has_text(reason))
         })
 }
 
@@ -186,42 +195,7 @@ fn signal_object_codes(signal: &BasicSignal) -> Vec<String> {
 }
 
 fn axis_score_is_valid(score: f64) -> bool {
-    score.is_finite() && (0.0..=1.0).contains(&score)
-}
-
-fn has_unique_non_empty_strings(values: &[String]) -> bool {
-    let mut seen = std::collections::HashSet::new();
-    values
-        .iter()
-        .all(|value| !value.trim().is_empty() && seen.insert(value.as_str()))
-}
-
-fn push_unique(target: &mut Vec<String>, value: String) {
-    if !target.iter().any(|existing| existing == &value) {
-        target.push(value);
-    }
-}
-
-struct CanonicalAxis {
-    houses: Vec<i32>,
-    theme_codes: Vec<String>,
-}
-
-fn canonical_axis(axis_code: &str) -> Option<CanonicalAxis> {
-    let (houses, theme_codes) = match axis_code {
-        "self_relationship" => ([1, 7], ["identity", "relationships"]),
-        "resources_sharing" => ([2, 8], ["resources", "shared_resources"]),
-        "local_distant" => ([3, 9], ["communication", "beliefs"]),
-        "private_public" => ([4, 10], ["roots", "career"]),
-        "creation_collective" => ([5, 11], ["creativity", "community"]),
-        "control_surrender" => ([6, 12], ["work_health", "inner_world"]),
-        _ => return None,
-    };
-
-    Some(CanonicalAxis {
-        houses: houses.to_vec(),
-        theme_codes: theme_codes.into_iter().map(ToString::to_string).collect(),
-    })
+    is_normalized_score(score)
 }
 
 fn polarity_balance(first_score: f64, second_score: f64) -> String {

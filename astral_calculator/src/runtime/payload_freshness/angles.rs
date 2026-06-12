@@ -1,6 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::domain::{BasicPayload, BasicSignal};
+use crate::payload_shared::aspect::{angle_object_codes, structural_axis_pairs};
+use crate::payload_shared::text::has_text;
 
 pub(super) fn has_current_angles(payload: &BasicPayload) -> bool {
     let angles_by_code: HashMap<&str, &crate::domain::BasicAngleFact> = payload
@@ -15,12 +17,12 @@ pub(super) fn has_current_angles(payload: &BasicPayload) -> bool {
         && canonical_angle_is_valid(&angles_by_code, "mc", "ic", "vertical")
         && canonical_angle_is_valid(&angles_by_code, "ic", "mc", "vertical")
         && payload.angles.iter().all(|angle| {
-            !angle.angle_code.trim().is_empty()
-                && !angle.angle_name.trim().is_empty()
-                && !angle.axis.trim().is_empty()
-                && !angle.opposite_angle_code.trim().is_empty()
-                && !angle.sign_code.trim().is_empty()
-                && !angle.sign_name.trim().is_empty()
+            has_text(&angle.angle_code)
+                && has_text(&angle.angle_name)
+                && has_text(&angle.axis)
+                && has_text(&angle.opposite_angle_code)
+                && has_text(&angle.sign_code)
+                && has_text(&angle.sign_name)
                 && (1..=12).contains(&angle.house_number)
                 && angle.longitude_deg >= 0.0
                 && angle.longitude_deg < 360.0
@@ -82,35 +84,16 @@ pub(super) fn structural_axis_pairs_from_payload(
         .iter()
         .map(|angle| (angle.axis.clone(), angle.angle_code.clone()))
         .collect::<Vec<_>>();
-    let mut pairs = HashSet::new();
-
-    for left_index in 0..angle_positions.len() {
-        for right_index in (left_index + 1)..angle_positions.len() {
-            let (left_axis, left_code) = &angle_positions[left_index];
-            let (right_axis, right_code) = &angle_positions[right_index];
-            if !left_axis.trim().is_empty() && left_axis == right_axis {
-                pairs.insert(normalized_pair(left_code, right_code));
-            }
-        }
-    }
-
-    pairs
+    structural_axis_pairs(&angle_positions)
 }
 
 pub(super) fn angle_object_codes_from_payload(payload: &BasicPayload) -> HashSet<String> {
-    payload
+    let angle_codes = payload
         .angles
         .iter()
         .map(|angle| angle.angle_code.clone())
-        .collect()
-}
-
-pub(super) fn normalized_pair(left: &str, right: &str) -> (String, String) {
-    if left <= right {
-        (left.to_string(), right.to_string())
-    } else {
-        (right.to_string(), left.to_string())
-    }
+        .collect::<Vec<_>>();
+    angle_object_codes(&angle_codes)
 }
 
 fn canonical_angle_is_valid(

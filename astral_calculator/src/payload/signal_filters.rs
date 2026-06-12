@@ -1,4 +1,7 @@
 use crate::domain::BasicSignal;
+use crate::payload_shared::aspect::{
+    aspect_code, is_marked_structural_axis, object_pair_from_aspect_signal,
+};
 use std::collections::HashSet;
 pub(super) fn is_interpretive_tension_aspect(signal: &BasicSignal) -> bool {
     if !is_interpretive_aspect_signal(signal) {
@@ -33,18 +36,7 @@ pub(super) fn is_interpretive_aspect_signal(signal: &BasicSignal) -> bool {
 }
 
 pub(super) fn is_structural_axis_signal(signal: &BasicSignal) -> bool {
-    signal
-        .aspect_context
-        .as_ref()
-        .and_then(|context| context.get("is_structural_axis"))
-        .and_then(|value| value.as_bool())
-        .unwrap_or(false)
-        || signal
-            .evidence
-            .as_ref()
-            .and_then(|evidence| evidence.get("is_structural_axis"))
-            .and_then(|value| value.as_bool())
-            .unwrap_or(false)
+    is_marked_structural_axis(signal)
 }
 
 pub(super) fn is_structural_axis_signal_for_pairs(
@@ -75,45 +67,6 @@ pub(super) fn is_angle_to_angle_aspect_signal(
     object_pair_from_aspect_signal(signal).is_some_and(|(source, target)| {
         angle_object_codes.contains(&source) && angle_object_codes.contains(&target)
     })
-}
-
-fn aspect_code(signal: &BasicSignal) -> Option<&str> {
-    signal
-        .evidence
-        .as_ref()
-        .and_then(|evidence| evidence.get("aspect_code"))
-        .and_then(|value| value.as_str())
-        .or_else(|| signal.signal_key.split(':').nth(3))
-}
-
-fn object_pair_from_aspect_signal(signal: &BasicSignal) -> Option<(String, String)> {
-    let evidence_pair = signal.evidence.as_ref().and_then(|evidence| {
-        let source = evidence
-            .get("source_object_code")
-            .and_then(|value| value.as_str())?;
-        let target = evidence
-            .get("target_object_code")
-            .and_then(|value| value.as_str())?;
-        Some(normalized_pair(source, target))
-    });
-    if evidence_pair.is_some() {
-        return evidence_pair;
-    }
-
-    let parts = signal.signal_key.split(':').collect::<Vec<_>>();
-    if parts.len() >= 4 {
-        Some(normalized_pair(parts[1], parts[2]))
-    } else {
-        None
-    }
-}
-
-pub(super) fn normalized_pair(left: &str, right: &str) -> (String, String) {
-    if left <= right {
-        (left.to_string(), right.to_string())
-    } else {
-        (right.to_string(), left.to_string())
-    }
 }
 
 fn aspect_context_str<'a>(signal: &'a BasicSignal, key: &str) -> Option<&'a str> {

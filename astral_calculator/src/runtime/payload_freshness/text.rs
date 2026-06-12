@@ -1,5 +1,7 @@
 pub(super) fn has_text(value: &Option<String>) -> bool {
-    value.as_deref().is_some_and(|text| !text.trim().is_empty())
+    value
+        .as_deref()
+        .is_some_and(crate::payload_shared::text::has_text)
 }
 
 pub(super) fn has_current_aspect_hint(value: &Option<String>) -> bool {

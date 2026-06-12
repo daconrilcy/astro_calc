@@ -1,5 +1,33 @@
 # Horoscope Period V2 semantic brief - 2026-06-11
 
+## Payload shared invariants refactor - 2026-06-12
+
+Refactored shared payload invariants without changing payload generation,
+runtime freshness validation, or payload reuse decisions.
+
+- Added an internal `astral_calculator/src/payload_shared/` module for pure,
+  shared helpers only: contract constants, aspect pair normalization/extraction,
+  horizon and sect mapping, canonical house-axis definitions, and small text or
+  score predicates.
+- Kept `astral_calculator/src/payload/` as the payload builder layer and
+  `astral_calculator/src/runtime/payload_freshness/` as the persisted payload
+  validator layer.
+- Rewired duplicated helpers in `angles`, `signal_filters`, `aspects`,
+  `chart_context`, `placements`, `house_axes`, and accidental dignity checks to
+  the shared module when the rule was byte-for-byte equivalent.
+- Deliberately left builder-only and validator-only orchestration logic local to
+  each module to stay KISS and avoid abstracting divergent behavior.
+- Added characterization coverage in
+  `tests/payload_shared_characterization_tests.rs` for shared angle filtering,
+  shared visibility or sect mapping, and canonical house-axis behavior through
+  public payload APIs.
+
+Validation:
+
+- `cargo test -p astral_calculator --test payload_tests`
+- `cargo test -p astral_calculator --test runtime_tests`
+- `cargo test -p astral_calculator --test contract_basic_v8_tests`
+
 ## Horoscope application module split - 2026-06-12
 
 Refactored `astral_llm_application/src/horoscope/mod.rs` into focused

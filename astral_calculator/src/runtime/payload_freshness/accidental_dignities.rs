@@ -4,6 +4,8 @@ use crate::domain::{
     BasicAccidentalDignityCondition, BasicAccidentalDignityEvaluation, BasicObjectPosition,
     BasicPayload, BasicSignal,
 };
+use crate::payload_shared::contract::CONTRACT_VERSION_V13;
+use crate::payload_shared::text::{has_text, is_normalized_score};
 
 use crate::catalog::overall_polarity_for_score_with_bands;
 
@@ -11,7 +13,7 @@ const SCORE_TOLERANCE: f64 = 0.001;
 const ANGLE_ORB_TOLERANCE_DEG: f64 = 0.01;
 
 pub(super) fn has_current_accidental_dignities(payload: &BasicPayload) -> bool {
-    payload.chart_context.payload_contract.contract_version == "natal_structured_v13"
+    payload.chart_context.payload_contract.contract_version == CONTRACT_VERSION_V13
         && has_valid_accidental_dignities_block(payload)
         && payload
             .positions
@@ -63,20 +65,20 @@ fn has_valid_evaluation(
     evaluation: &BasicAccidentalDignityEvaluation,
     signal_keys: &HashSet<&str>,
 ) -> bool {
-    !evaluation.object_code.trim().is_empty()
-        && !evaluation.object_name.trim().is_empty()
-        && (0.0..=1.0).contains(&evaluation.overall_score)
+    has_text(&evaluation.object_code)
+        && has_text(&evaluation.object_name)
+        && is_normalized_score(evaluation.overall_score)
         && valid_overall_polarity(payload, evaluation.overall_polarity.as_str())
         && overall_polarity_matches_score(
             payload,
             evaluation.overall_score,
             &evaluation.overall_polarity,
         )
-        && !evaluation.expression_quality.trim().is_empty()
+        && has_text(&evaluation.expression_quality)
         && evaluation
             .related_signal_key
             .as_ref()
-            .is_none_or(|key| !key.trim().is_empty() && signal_keys.contains(key.as_str()))
+            .is_none_or(|key| has_text(key) && signal_keys.contains(key.as_str()))
         && !evaluation.conditions.is_empty()
         && evaluation.conditions.iter().all(has_valid_condition)
         && has_unique_condition_codes(evaluation)
@@ -90,13 +92,13 @@ fn has_valid_evaluation(
 }
 
 fn has_valid_condition(condition: &BasicAccidentalDignityCondition) -> bool {
-    !condition.condition_code.trim().is_empty()
+    has_text(&condition.condition_code)
         && valid_condition_family(condition.condition_family.as_str())
         && valid_polarity(condition.polarity.as_str())
-        && (0.0..=1.0).contains(&condition.strength_score)
+        && is_normalized_score(condition.strength_score)
         && (-1.0..=1.0).contains(&condition.score_delta)
         && condition.source.is_object()
-        && !condition.interpretive_hint.trim().is_empty()
+        && has_text(&condition.interpretive_hint)
 }
 
 fn has_unique_condition_codes(evaluation: &BasicAccidentalDignityEvaluation) -> bool {
@@ -131,10 +133,10 @@ fn expression_quality_matches_polarity(
 
 fn has_current_position_accidental_context(position: &BasicObjectPosition) -> bool {
     position.accidental_dignity_context.iter().all(|summary| {
-        !summary.condition_code.trim().is_empty()
+        has_text(&summary.condition_code)
             && valid_condition_family(summary.condition_family.as_str())
             && valid_polarity(summary.polarity.as_str())
-            && (0.0..=1.0).contains(&summary.strength_score)
+            && is_normalized_score(summary.strength_score)
     })
 }
 

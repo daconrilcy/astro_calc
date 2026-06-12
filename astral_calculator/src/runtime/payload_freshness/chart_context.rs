@@ -1,5 +1,13 @@
 use crate::catalog::accidental_polarity_bands_are_valid;
 use crate::domain::{BasicChartContext, BasicObjectPosition, BasicPayload};
+use crate::payload_shared::contract::{
+    CALCULATION_SCOPE_FULL_NATAL, CHART_TYPE_NATAL, CONTRACT_VERSION_V13,
+    INTERPRETATION_SCOPE_STRUCTURED, PROJECTION_DEPTH_RICH,
+};
+use crate::payload_shared::text::{has_text, is_normalized_score};
+use crate::payload_shared::visibility::{
+    chart_sect_for_sun_horizon, horizon_position_for_altitude, is_angle_role, is_horizon_position,
+};
 
 use super::json;
 
@@ -13,16 +21,16 @@ pub(super) fn has_current_chart_context(payload: &BasicPayload) -> bool {
 fn has_chart_context(payload: &BasicPayload) -> bool {
     let context = &payload.chart_context;
 
-    context.chart_type == "natal"
+    context.chart_type == CHART_TYPE_NATAL
         && context.zodiacal_reference_system_id > 0
         && context.coordinate_reference_system_id > 0
         && context.house_system_id > 0
         && context.reference_version_id > 0
         && context.reference_version_id == payload.reference_version_id
-        && context.payload_contract.contract_version == "natal_structured_v13"
-        && context.payload_contract.calculation_scope == "full_natal"
-        && context.payload_contract.interpretation_scope == "structured_interpretation"
-        && context.payload_contract.projection_depth == "rich"
+        && context.payload_contract.contract_version == CONTRACT_VERSION_V13
+        && context.payload_contract.calculation_scope == CALCULATION_SCOPE_FULL_NATAL
+        && context.payload_contract.interpretation_scope == INTERPRETATION_SCOPE_STRUCTURED
+        && context.payload_contract.projection_depth == PROJECTION_DEPTH_RICH
         && context
             .calculation_reliability
             .birth_time_precision_required
@@ -37,11 +45,7 @@ fn has_chart_context(payload: &BasicPayload) -> bool {
             .sun_horizon_position
             .as_deref()
             .is_some_and(is_horizon_position)
-        && context
-            .sect
-            .source
-            .as_deref()
-            .is_some_and(|source| !source.trim().is_empty())
+        && context.sect.source.as_deref().is_some_and(has_text)
         && context.hemisphere_emphasis.count_scope == "mobile_chart_objects_only"
         && context.hemisphere_emphasis.above_horizon_count >= 0
         && context.hemisphere_emphasis.below_horizon_count >= 0
@@ -65,8 +69,7 @@ fn has_valid_v13_scoring_snapshots(context: &BasicChartContext) -> bool {
         && accidental_polarity_bands_are_valid(&accidental.polarity_bands)
         && product.sign_house_emphasis_min_score >= 0.0
         && product.object_emphasis_min_score >= 0.0
-        && product.aspect_min_strength >= 0.0
-        && product.aspect_min_strength <= 1.0
+        && is_normalized_score(product.aspect_min_strength)
         && product.max_dominant_signs > 0
         && product.max_dominant_houses > 0
         && product.max_dominant_objects > 0
@@ -97,10 +100,6 @@ fn has_current_visibility_context(position: &BasicObjectPosition) -> bool {
         }
 }
 
-fn is_horizon_position(value: &str) -> bool {
-    matches!(value, "above_horizon" | "below_horizon" | "on_horizon")
-}
-
 fn has_consistent_calculated_altitude(
     horizon_position: Option<&str>,
     altitude_deg: Option<f64>,
@@ -120,16 +119,6 @@ fn has_consistent_angle_visibility(value: &serde_json::Value, source: Option<&st
             .get("altitude_deg")
             .is_some_and(|value| value.is_null())
         && value.get("is_visible").is_some_and(|value| value.is_null())
-}
-
-fn horizon_position_for_altitude(altitude_deg: f64) -> &'static str {
-    if altitude_deg > 0.0 {
-        "above_horizon"
-    } else if altitude_deg < 0.0 {
-        "below_horizon"
-    } else {
-        "on_horizon"
-    }
 }
 
 fn has_consistent_sun_sect(payload: &BasicPayload) -> bool {
@@ -197,20 +186,16 @@ fn visibility_source(position: &BasicObjectPosition) -> Option<&str> {
         .and_then(|value| value.as_str())
 }
 
-fn chart_sect_for_sun_horizon(horizon_position: &str) -> Option<&'static str> {
-    match horizon_position {
-        "above_horizon" => Some("day"),
-        "below_horizon" => Some("night"),
-        "on_horizon" => Some("all"),
-        _ => None,
-    }
-}
-
 fn is_angle(position: &BasicObjectPosition) -> bool {
-    position
+    let role = position
         .object_context
         .as_ref()
         .and_then(|context| context.get("role"))
-        .and_then(|value| value.as_str())
-        == Some("angle")
+        .and_then(|value| value.as_str());
+    let role_label = position
+        .object_context
+        .as_ref()
+        .and_then(|context| context.get("role_label"))
+        .and_then(|value| value.as_str());
+    is_angle_role(role, role_label)
 }

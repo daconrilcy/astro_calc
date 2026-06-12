@@ -6,6 +6,13 @@ use crate::domain::{
     BasicHemisphereEmphasis, BasicPayloadContract, BasicProductScoringSnapshot, BasicSectContext,
     NatalChartInput, ObjectPositionFact,
 };
+use crate::payload_shared::contract::{
+    CALCULATION_SCOPE_FULL_NATAL, CHART_TYPE_NATAL, INTERPRETATION_SCOPE_STRUCTURED,
+    PROJECTION_DEPTH_RICH,
+};
+use crate::payload_shared::visibility::{
+    chart_sect_for_sun_horizon, horizon_position_for_altitude, is_angle_role,
+};
 
 const ABOVE_HORIZON: &str = "above_horizon";
 const BELOW_HORIZON: &str = "below_horizon";
@@ -28,16 +35,16 @@ pub(super) fn build_chart_context(
     let hemisphere_emphasis = build_hemisphere_emphasis(positions);
 
     BasicChartContext {
-        chart_type: "natal".to_string(),
+        chart_type: CHART_TYPE_NATAL.to_string(),
         zodiacal_reference_system_id: input.zodiacal_reference_system_id,
         coordinate_reference_system_id: input.coordinate_reference_system_id,
         house_system_id: input.house_system_id,
         reference_version_id: input.reference_version_id,
         payload_contract: BasicPayloadContract {
             contract_version: contract_version.to_string(),
-            calculation_scope: "full_natal".to_string(),
-            interpretation_scope: "structured_interpretation".to_string(),
-            projection_depth: "rich".to_string(),
+            calculation_scope: CALCULATION_SCOPE_FULL_NATAL.to_string(),
+            interpretation_scope: INTERPRETATION_SCOPE_STRUCTURED.to_string(),
+            projection_depth: PROJECTION_DEPTH_RICH.to_string(),
         },
         calculation_reliability: BasicCalculationReliability {
             birth_time_precision_required: true,
@@ -108,7 +115,7 @@ fn build_hemisphere_emphasis(positions: &[ObjectPositionFact]) -> BasicHemispher
 fn horizon_position_code(position: &ObjectPositionFact) -> Option<String> {
     if !is_angle(position) {
         if let Some(altitude) = position.altitude_deg {
-            return Some(horizon_position_code_for_altitude(altitude).to_string());
+            return Some(horizon_position_for_altitude(altitude).to_string());
         }
     }
 
@@ -180,23 +187,8 @@ fn visibility_source(position: &ObjectPositionFact) -> String {
     }
 }
 
-fn horizon_position_code_for_altitude(altitude: f64) -> &'static str {
-    if altitude > 0.0 {
-        ABOVE_HORIZON
-    } else if altitude < 0.0 {
-        BELOW_HORIZON
-    } else {
-        ON_HORIZON
-    }
-}
-
 fn chart_sect_from_sun_horizon(horizon_position: &str) -> Option<String> {
-    match horizon_position {
-        ABOVE_HORIZON => Some("day".to_string()),
-        BELOW_HORIZON => Some("night".to_string()),
-        ON_HORIZON => Some("all".to_string()),
-        _ => None,
-    }
+    chart_sect_for_sun_horizon(horizon_position).map(str::to_string)
 }
 
 fn hemisphere_hint(above_horizon_count: i32, below_horizon_count: i32) -> Option<String> {
@@ -227,13 +219,19 @@ fn angle_horizon_position(position: &ObjectPositionFact) -> Option<&'static str>
 }
 
 fn is_angle(position: &ObjectPositionFact) -> bool {
-    position
+    let role = position
         .facts_json
         .as_ref()
         .and_then(|facts| facts.get("object_context"))
         .and_then(|context| context.get("role"))
-        .and_then(|value| value.as_str())
-        == Some("angle")
+        .and_then(|value| value.as_str());
+    let role_label = position
+        .facts_json
+        .as_ref()
+        .and_then(|facts| facts.get("object_context"))
+        .and_then(|context| context.get("role_label"))
+        .and_then(|value| value.as_str());
+    is_angle_role(role, role_label)
         || position
             .facts_json
             .as_ref()

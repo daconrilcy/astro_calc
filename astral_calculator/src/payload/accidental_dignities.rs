@@ -8,6 +8,7 @@ use crate::domain::{
     BasicAccidentalDignityContextSummary, BasicAccidentalDignityEvaluation, BasicChartEmphasis,
     BasicSignal, ObjectPositionFact, ObjectSectAffinityReference,
 };
+use crate::payload_shared::visibility::is_angle_role;
 
 use super::chart_context;
 use super::json::position_context;
@@ -346,18 +347,19 @@ fn angle_longitudes_from_positions(positions: &[ObjectPositionFact]) -> HashMap<
 }
 
 fn is_angle(position: &ObjectPositionFact) -> bool {
-    let Some(context) = position_context(position, "object_context") else {
-        return false;
-    };
-    let role = context
-        .get("role")
-        .and_then(|value| value.as_str())
-        .unwrap_or_default();
-    let role_label = context
-        .get("role_label")
-        .and_then(|value| value.as_str())
-        .unwrap_or_default();
-    role == "angle" || role_label == "Angle"
+    let role = position_context(position, "object_context").and_then(|context| {
+        context
+            .get("role")
+            .and_then(|value| value.as_str())
+            .map(str::to_string)
+    });
+    let role_label = position_context(position, "object_context").and_then(|context| {
+        context
+            .get("role_label")
+            .and_then(|value| value.as_str())
+            .map(str::to_string)
+    });
+    is_angle_role(role.as_deref(), role_label.as_deref())
 }
 
 fn zodiac_distance(left: f64, right: f64) -> f64 {

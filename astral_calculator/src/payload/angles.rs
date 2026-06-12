@@ -1,8 +1,8 @@
 use crate::domain::{BasicAngleFact, ObjectPositionFact};
+use crate::payload_shared::aspect::{angle_object_codes, structural_axis_pairs};
 use std::collections::{HashMap, HashSet};
 
 use super::json::position_context;
-use super::signal_filters::normalized_pair;
 pub(super) fn build_payload_angles(positions: &[ObjectPositionFact]) -> Vec<BasicAngleFact> {
     let angle_object_codes: HashMap<String, String> = positions
         .iter()
@@ -95,31 +95,16 @@ pub(super) fn structural_axis_pairs_from_positions(
         })
         .collect();
 
-    structural_axis_pairs(angle_positions)
+    structural_axis_pairs(&angle_positions)
 }
 
 pub(super) fn angle_object_codes_from_positions(
     positions: &[ObjectPositionFact],
 ) -> HashSet<String> {
-    positions
+    let angle_codes = positions
         .iter()
         .filter(|position| position_context(position, "angle_context").is_some())
         .map(|position| position.object_code.clone())
-        .collect()
-}
-
-fn structural_axis_pairs(angle_positions: Vec<(String, String)>) -> HashSet<(String, String)> {
-    let mut pairs = HashSet::new();
-
-    for left_index in 0..angle_positions.len() {
-        for right_index in (left_index + 1)..angle_positions.len() {
-            let (left_axis, left_code) = &angle_positions[left_index];
-            let (right_axis, right_code) = &angle_positions[right_index];
-            if left_axis == right_axis {
-                pairs.insert(normalized_pair(left_code, right_code));
-            }
-        }
-    }
-
-    pairs
+        .collect::<Vec<_>>();
+    angle_object_codes(&angle_codes)
 }

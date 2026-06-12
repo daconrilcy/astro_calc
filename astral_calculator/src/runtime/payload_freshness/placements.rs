@@ -1,14 +1,23 @@
 use crate::domain::{BasicObjectPosition, BasicSignal};
+use crate::payload_shared::text::{has_text, is_normalized_score};
+use crate::payload_shared::visibility::{
+    horizon_position_for_altitude, is_angle_role, is_horizon_position,
+};
 
 use super::json;
 
 pub(super) fn has_current_position_context(position: &BasicObjectPosition) -> bool {
-    let is_angle = position
+    let role = position
         .object_context
         .as_ref()
         .and_then(|context| context.get("role"))
-        .and_then(|value| value.as_str())
-        == Some("angle")
+        .and_then(|value| value.as_str());
+    let role_label = position
+        .object_context
+        .as_ref()
+        .and_then(|context| context.get("role_label"))
+        .and_then(|value| value.as_str());
+    let is_angle = is_angle_role(role, role_label)
         || position
             .object_context
             .as_ref()
@@ -34,11 +43,10 @@ fn has_current_accidental_dignity_context(position: &BasicObjectPosition, is_ang
         return position.accidental_dignity_context.is_empty();
     }
     position.accidental_dignity_context.iter().all(|summary| {
-        !summary.condition_code.trim().is_empty()
-            && !summary.condition_family.trim().is_empty()
-            && !summary.polarity.trim().is_empty()
-            && summary.strength_score.is_finite()
-            && (0.0..=1.0).contains(&summary.strength_score)
+        has_text(&summary.condition_code)
+            && has_text(&summary.condition_family)
+            && has_text(&summary.polarity)
+            && is_normalized_score(summary.strength_score)
     })
 }
 
@@ -91,18 +99,4 @@ fn has_current_mobile_visibility_context(value: Option<&serde_json::Value>) -> b
         && altitude_deg
             .map(horizon_position_for_altitude)
             .is_some_and(|expected| horizon_position == Some(expected))
-}
-
-fn is_horizon_position(value: &str) -> bool {
-    matches!(value, "above_horizon" | "below_horizon" | "on_horizon")
-}
-
-fn horizon_position_for_altitude(altitude_deg: f64) -> &'static str {
-    if altitude_deg > 0.0 {
-        "above_horizon"
-    } else if altitude_deg < 0.0 {
-        "below_horizon"
-    } else {
-        "on_horizon"
-    }
 }
