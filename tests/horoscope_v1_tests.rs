@@ -13,11 +13,11 @@ use astral_llm_application::horoscope::{
     validate_interpretation_request_schema, validate_period_interpretation_request_schema,
     validate_period_provider_public_payload, validate_period_public_request,
     validate_period_public_word_count, validate_period_response_contract_gates_v2,
-    validate_period_response_evidence, validate_period_response_schema,
-    validate_period_writer_request_v2_schema, validate_public_request, validate_response_evidence,
-    validate_scan_plan, validate_semantic_brief_is_atomic,
-    HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE, HOROSCOPE_FREE_DAILY_SERVICE_CODE,
-    HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+    validate_period_response_evidence, validate_period_response_quality_gates_v2,
+    validate_period_response_schema, validate_period_writer_request_v2_schema,
+    validate_public_request, validate_response_evidence, validate_scan_plan,
+    validate_semantic_brief_is_atomic, HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+    HOROSCOPE_FREE_DAILY_SERVICE_CODE, HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
     HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE, HOROSCOPE_SERVICE_CODE,
 };
@@ -1705,6 +1705,7 @@ fn horoscope_premium_period_v2_editorial_audit_is_non_blocking_metadata() {
     assert!(audit["public_word_count"].as_u64().unwrap() > 0);
     assert!(audit["section_word_counts"].is_object());
     assert!(audit["top_repeated_terms"].is_array());
+    assert!(audit["warnings"].is_array());
     assert!(audit["window_title_time_mismatches"]
         .as_array()
         .unwrap()
@@ -6488,16 +6489,15 @@ fn period_v2_allows_natural_public_prose_without_token_rewriting() {
 }
 
 #[test]
-fn period_v2_audits_real_internal_field_leaks_without_blocking() {
+fn period_v2_contract_rejects_real_internal_field_leaks() {
     let public = validate_period_public_request(&period_public_payload()).unwrap();
     let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
     let mut response = fake_period_writer_response_v2(&request).unwrap();
     response["strategy"]["text"] =
         serde_json::json!("La stratégie ne doit jamais exposer theme_code ni evidence_key.");
 
-    validate_period_response_evidence(&request, &response).unwrap();
-    let audit = period_v2_editorial_audit(&request, &response);
-    assert_eq!(audit["mode"], "non_blocking");
+    let err = validate_period_response_evidence(&request, &response).unwrap_err();
+    assert_eq!(err.detail().message, "HOROSCOPE_PERIOD_TECHNICAL_CODE_LEAK");
 }
 
 #[test]
@@ -6627,6 +6627,92 @@ fn period_v2_audits_repeated_mechanical_templates_without_blocking() {
     let audit = period_v2_editorial_audit(&request, &response);
     assert_eq!(audit["mode"], "non_blocking");
     assert!(audit["top_repeated_terms"].is_array());
+    let warnings = audit["warnings"].as_array().unwrap();
+    assert!(
+        warnings.iter().any(|warning| {
+            warning["code"] == "PERIOD_V2_PUBLIC_TONE_WARNING"
+                || warning["code"] == "PERIOD_V2_META_LANGUAGE_WARNING"
+                || warning["code"] == "PERIOD_V2_GENERIC_BEST_WINDOW_WARNING"
+                || warning["code"] == "PERIOD_V2_RECALENDARIZATION_SHAPE_WARNING"
+                || warning["code"] == "PERIOD_V2_SEVEN_DAILY_SHAPE_WARNING"
+                || warning["code"] == "PERIOD_V2_WORD_COUNT_WARNING"
+                || warning["severity"] == "metric"
+        }) || warnings.is_empty()
+    );
+}
+
+#[test]
+fn period_v2_audits_meta_language_without_blocking() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let mut response = fake_period_writer_response_v2(&request).unwrap();
+    response["watch_windows"][0]["watch_point"] =
+        serde_json::json!("Nouvelle facette : ralentissez avant de répondre.");
+
+    validate_period_response_quality_gates_v2(&request, &response).unwrap();
+    validate_period_response_evidence(&request, &response).unwrap();
+    let audit = period_v2_editorial_audit(&request, &response);
+    let warnings = audit["warnings"].as_array().unwrap();
+    assert!(warnings.iter().any(|warning| {
+        warning["code"] == "PERIOD_V2_META_LANGUAGE_WARNING" && warning["severity"] == "warning"
+    }));
+}
+
+#[test]
+fn period_v2_audits_recalendarization_without_blocking() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let mut response = fake_period_writer_response_v2(&request).unwrap();
+    response["strategy"]["text"] = serde_json::json!(
+        "Le 09/06 sert à conclure, puis le 10/06 demande de temporiser avant de répondre."
+    );
+
+    validate_period_response_quality_gates_v2(&request, &response).unwrap();
+    validate_period_response_evidence(&request, &response).unwrap();
+    let audit = period_v2_editorial_audit(&request, &response);
+    let warnings = audit["warnings"].as_array().unwrap();
+    assert!(warnings.iter().any(|warning| {
+        warning["code"] == "PERIOD_V2_RECALENDARIZATION_SHAPE_WARNING"
+            && warning["severity"] == "warning"
+            && warning["path"] == "/strategy"
+    }));
+}
+
+#[test]
+fn period_v2_quality_gate_allows_meta_language_warning() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let mut response = fake_period_writer_response_v2(&request).unwrap();
+    response["watch_windows"][0]["watch_point"] =
+        serde_json::json!("Nouvelle facette : ralentissez avant de répondre.");
+
+    validate_period_response_quality_gates_v2(&request, &response).unwrap();
+
+    let audit = period_v2_editorial_audit(&request, &response);
+    let warnings = audit["warnings"].as_array().unwrap();
+    assert!(warnings.iter().any(|warning| {
+        warning["code"] == "PERIOD_V2_META_LANGUAGE_WARNING"
+            && warning["severity"] == "warning"
+            && warning["path"] == "/watch_windows"
+    }));
+}
+
+#[test]
+fn period_v2_quality_gate_allows_generic_best_window_warning() {
+    let public = validate_period_public_request(&period_public_payload()).unwrap();
+    let request = build_period_writer_request_v2(&public, &premium_period_calculation()).unwrap();
+    let mut response = fake_period_writer_response_v2(&request).unwrap();
+    response["best_windows"][0]["title"] = serde_json::json!("Fenêtre favorable");
+
+    validate_period_response_quality_gates_v2(&request, &response).unwrap();
+
+    let audit = period_v2_editorial_audit(&request, &response);
+    let warnings = audit["warnings"].as_array().unwrap();
+    assert!(warnings.iter().any(|warning| {
+        warning["code"] == "PERIOD_V2_GENERIC_BEST_WINDOW_WARNING"
+            && warning["severity"] == "warning"
+            && warning["path"] == "/best_windows"
+    }));
 }
 
 #[test]

@@ -1,9 +1,15 @@
 use super::*;
-#[derive(Debug, Clone, Serialize)]
-pub(crate) struct PeriodV2QualityIssue {
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum PeriodV2QualitySeverity {
+    Warning,
+    Metric,
+}
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub(crate) struct PeriodV2QualityWarning {
     pub(crate) path: String,
     pub(crate) code: String,
-    pub(crate) severity: String,
+    pub(crate) severity: PeriodV2QualitySeverity,
     pub(crate) message: String,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

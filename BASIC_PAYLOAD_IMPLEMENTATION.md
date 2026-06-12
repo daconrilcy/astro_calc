@@ -1,3 +1,37 @@
+# Horoscope Period V2 hard/soft validation split - 2026-06-13
+
+## Scope
+
+Refactored only the `SemanticBriefV2` post-generation validation path for
+`horoscope period` so deterministic contract checks remain blocking while
+editorial heuristics become non-blocking audit warnings.
+
+## Behavior
+
+- Kept the public `horoscope_period_response_v1` contract unchanged.
+- Reduced `validate_period_response_contract_gates_v2()` to hard gates only:
+  schema, request/response identity, period dates, evidence keys,
+  snapshot-source keys, marker overlaps, watch/domain/evidence packaging,
+  Premium structure, and manifest word-count violations.
+- Added a dedicated V2 hard gate for real technical leaks in public text, such
+  as field names or internal identifiers like `theme_code`, `evidence_key`,
+  `snapshot_key`, `scan_plan`, and similar non-publishable strings.
+- Split Premium detail validation into:
+  - structural blocking checks for required Premium blocks and minimum shape;
+  - non-blocking audit warnings for re-calendarization in `advice` and
+    `strategy`.
+- Added typed V2 audit warnings with stable codes and enum severity:
+  `PeriodV2QualitySeverity` and `PeriodV2QualityWarning`.
+- Enriched `period_v2_editorial_audit()` with a `warnings` array while keeping
+  the existing non-blocking metrics.
+- Ensured `validate_period_response_quality_gates_v2()` and the V2 retry loop
+  only react to hard failures; warnings never trigger
+  `period_style_editor_response_v2()`.
+
+## Validation
+
+- `cargo test -p astral_llm_api --test horoscope_v1_tests`
+
 # Horoscope Period V2 semantic brief - 2026-06-11
 
 ## Payload shared invariants refactor - 2026-06-12

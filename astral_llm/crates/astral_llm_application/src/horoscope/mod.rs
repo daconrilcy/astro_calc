@@ -56,8 +56,8 @@ pub use period::{
     reprocess_horoscope_period_payload, validate_period_interpretation_request_schema,
     validate_period_provider_public_payload, validate_period_public_request,
     validate_period_public_word_count, validate_period_response_contract_gates_v2,
-    validate_period_response_evidence, validate_period_response_schema,
-    validate_period_writer_request_v2_schema, validate_scan_plan,
+    validate_period_response_evidence, validate_period_response_quality_gates_v2,
+    validate_period_response_schema, validate_period_writer_request_v2_schema, validate_scan_plan,
     validate_semantic_brief_is_atomic,
 };
 pub use reference_data::public_watch_point_for_theme;

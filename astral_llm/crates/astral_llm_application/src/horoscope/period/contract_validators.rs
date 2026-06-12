@@ -24,13 +24,11 @@ pub fn validate_period_response_contract_gates_v2(
             &snapshot_keys,
         )?;
         validate_period_premium_strategy(response, &evidence)?;
-        validate_period_premium_detail(response)?;
+        validate_period_premium_detail_structure(response)?;
     }
-    validate_period_public_tones(response)?;
-    let mut public_text = String::new();
-    collect_period_public_text(response, &mut public_text);
+    let public_text = collect_period_v2_public_text(response);
+    validate_period_v2_public_text_forbidden_technical_leaks(&public_text)?;
     validate_period_public_word_count(request, response, &public_text)?;
-    validate_period_not_seven_daily(response)?;
     Ok(())
 }
 pub(crate) fn validate_period_response_identity_contract_v2(

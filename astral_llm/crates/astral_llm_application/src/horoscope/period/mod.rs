@@ -32,7 +32,9 @@ pub use postprocess::{
     reprocess_horoscope_period_payload,
 };
 pub use public_request::validate_period_public_request;
-pub use quality::{period_v2_editorial_audit, period_v2_quality_audit};
+pub use quality::{
+    period_v2_editorial_audit, period_v2_quality_audit, validate_period_response_quality_gates_v2,
+};
 pub use response_repair::{
     prune_period_response_variant_fields, repair_period_response_shape,
     repair_period_response_shape_v2,

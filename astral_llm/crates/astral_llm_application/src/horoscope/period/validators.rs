@@ -753,6 +753,34 @@ pub(crate) fn validate_period_premium_strategy(
     validate_period_evidence_keys(evidence, strategy["evidence_keys"].as_array())
 }
 pub(crate) fn validate_period_premium_detail(response: &Value) -> Result<(), GenerationError> {
+    validate_period_premium_detail_structure(response)?;
+    let advice_and_strategy_text = [
+        response.pointer("/advice/main").and_then(Value::as_str),
+        response.pointer("/advice/best_use").and_then(Value::as_str),
+        response.pointer("/advice/avoid").and_then(Value::as_str),
+        response.pointer("/strategy/text").and_then(Value::as_str),
+        response
+            .pointer("/strategy/best_use")
+            .and_then(Value::as_str),
+        response
+            .pointer("/strategy/recovery")
+            .and_then(Value::as_str),
+    ]
+    .into_iter()
+    .flatten()
+    .collect::<Vec<_>>()
+    .join(" ");
+    if explicit_date_count(&advice_and_strategy_text) > 0 {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_PREMIUM_ADVICE_RECALENDARIZED",
+            Value::Null,
+        ));
+    }
+    Ok(())
+}
+pub(crate) fn validate_period_premium_detail_structure(
+    response: &Value,
+) -> Result<(), GenerationError> {
     if response["best_windows"]
         .as_array()
         .map(Vec::len)
@@ -777,28 +805,6 @@ pub(crate) fn validate_period_premium_detail(response: &Value) -> Result<(), Gen
     {
         return Err(quality_error(
             "HOROSCOPE_PERIOD_PREMIUM_INSUFFICIENT_DETAIL",
-            Value::Null,
-        ));
-    }
-    let advice_and_strategy_text = [
-        response.pointer("/advice/main").and_then(Value::as_str),
-        response.pointer("/advice/best_use").and_then(Value::as_str),
-        response.pointer("/advice/avoid").and_then(Value::as_str),
-        response.pointer("/strategy/text").and_then(Value::as_str),
-        response
-            .pointer("/strategy/best_use")
-            .and_then(Value::as_str),
-        response
-            .pointer("/strategy/recovery")
-            .and_then(Value::as_str),
-    ]
-    .into_iter()
-    .flatten()
-    .collect::<Vec<_>>()
-    .join(" ");
-    if explicit_date_count(&advice_and_strategy_text) > 0 {
-        return Err(quality_error(
-            "HOROSCOPE_PERIOD_PREMIUM_ADVICE_RECALENDARIZED",
             Value::Null,
         ));
     }

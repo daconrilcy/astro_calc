@@ -97,7 +97,7 @@ pub(crate) async fn period_writer_response_with_quality_loop(
                 return Err(GenerationError::with_details(
                     GenerationErrorCode::PostSafetyValidationFailed,
                     "HOROSCOPE_PERIOD_V2_QUALITY_FAILED",
-                    json!({                        "attempts": attempt + 1,                        "max_retries": PERIOD_V2_QUALITY_MAX_RETRIES,                        "issues": [period_v2_quality_issue("/", "quality_failed", "error", &err.detail().message)]                    }),
+                    json!({                        "attempts": attempt + 1,                        "max_retries": PERIOD_V2_QUALITY_MAX_RETRIES,                        "issues": [period_v2_failure_issue("/", "quality_failed", "error", &err.detail().message)]                    }),
                 ));
             }
         }
