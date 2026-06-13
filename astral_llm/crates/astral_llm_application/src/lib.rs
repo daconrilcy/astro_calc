@@ -114,7 +114,7 @@ pub use reading_quality_validator::{
     ReadingQualityValidator,
 };
 pub use response_validator::ResponseValidator;
-pub use safety_guard::SafetyGuard;
+pub use safety_guard::{ensure_symbolic_framing_text, SafetyGuard};
 pub use safety_resolver::SafetyResolver;
 pub use schema_registry::SchemaRegistry;
 pub use text_reprocessing::{

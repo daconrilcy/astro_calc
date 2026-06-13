@@ -593,3 +593,9 @@ Refactored the deterministic generation model for `horoscope_premium_next_7_days
 - Conservation de `category`, `rule_id` et `violations` dans `llm_jobs.error_json` au lieu de ne renvoyer que `code` et `message`.
 - Documentation du champ optionnel `error.details` dans `contracts/llm/integration_job_status_v1.schema.json`.
 - Ajout de tests unitaires sur `job_error_from_reading` pour verrouiller la serialisation des erreurs `safety_rejected` et `failed`.
+
+## Hardening du cadrage symbolique natal
+
+- Ajout d'un helper applicatif `ensure_symbolic_framing_text` pour injecter un cadrage interpretatif court quand un chapitre natal n'en contient pas explicitement.
+- Application du helper avant la validation safety des chapitres et de la synthese finale afin d'eviter les `SAFETY_REJECTED` fragiles du type `missing symbolic/interpretive framing`.
+- Ajout de tests de non-regression sur un texte de type `growth_path` trop affirmatif et sur l'idempotence quand le cadrage existe deja.

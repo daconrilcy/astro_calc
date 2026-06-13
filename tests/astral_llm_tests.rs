@@ -3,8 +3,9 @@
 use std::sync::Arc;
 
 use astral_llm_application::{
-    build_provider_map, GenerateReadingUseCase, ModelCapabilityRegistry, PromptCompiler,
-    ProviderCircuitBreaker, ProviderRouter, ResponseValidator, SchemaRegistry,
+    build_provider_map, ensure_symbolic_framing_text, GenerateReadingUseCase,
+    ModelCapabilityRegistry, PromptCompiler, ProviderCircuitBreaker, ProviderRouter,
+    ResponseValidator, SchemaRegistry,
 };
 use astral_llm_domain::{
     astrologer_profile::{JargonLevel, ToneProfile, WordingStyle},
@@ -288,4 +289,25 @@ async fn rejects_excessive_domain_count_for_basic_product() {
 
     let response = use_case.execute(request).await;
     assert!(matches!(response, GenerateReadingResponse::Failed(_)));
+}
+
+#[test]
+fn symbolic_framing_is_injected_for_growth_path_like_text() {
+    let catalog = test_catalog();
+    let text = "Ensemble, ces indices esquissent un chemin de croissance fonde sur l'introspection active et l'apprentissage communicatif.";
+
+    let reframed = ensure_symbolic_framing_text(text, "fr", &catalog);
+
+    assert!(reframed.contains("Sur le plan symbolique"));
+    assert!(reframed.contains("suggere"));
+}
+
+#[test]
+fn symbolic_framing_is_not_duplicated_when_already_present() {
+    let catalog = test_catalog();
+    let text = "En lecture symbolique, ces elements suggerent une dynamique a explorer.";
+
+    let reframed = ensure_symbolic_framing_text(text, "fr", &catalog);
+
+    assert_eq!(reframed, text);
 }

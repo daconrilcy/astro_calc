@@ -170,6 +170,23 @@ impl SafetyGuard {
     }
 }
 
+pub fn ensure_symbolic_framing_text(
+    text: &str,
+    language: &str,
+    catalog: &SharedCanonicalCatalog,
+) -> String {
+    if has_symbolic_framing(text, catalog) {
+        return text.to_string();
+    }
+
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return symbolic_framing_sentence(language).to_string();
+    }
+
+    format!("{trimmed} {}", symbolic_framing_sentence(language))
+}
+
 fn collect_text(reading: &NatalReadingResponse) -> String {
     let mut parts = vec![
         reading.summary.title.clone(),
@@ -227,6 +244,15 @@ fn has_builtin_interpretive_framing(body: &str) -> bool {
     ]
     .iter()
     .any(|marker| lower.contains(marker))
+}
+
+fn symbolic_framing_sentence(language: &str) -> &'static str {
+    match language {
+        "fr" => {
+            "Sur le plan symbolique, cela suggere des tendances a relire a la lumiere de votre experience."
+        }
+        _ => "Symbolically, this suggests tendencies to read alongside lived experience.",
+    }
 }
 
 #[cfg(test)]
@@ -289,5 +315,26 @@ mod tests {
         let result =
             SafetyGuard::validate_response(&reading, &policy, &[], &catalog_with_symbolic());
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn ensure_symbolic_framing_text_appends_sentence_when_missing() {
+        let catalog = catalog_with_symbolic();
+        let text = "Ensemble, ces indices esquissent un chemin de croissance fonde sur l'introspection active.";
+
+        let reframed = ensure_symbolic_framing_text(text, "fr", &catalog);
+
+        assert!(reframed.contains("Sur le plan symbolique"));
+        assert!(has_symbolic_framing(&reframed, &catalog));
+    }
+
+    #[test]
+    fn ensure_symbolic_framing_text_keeps_existing_framing() {
+        let catalog = catalog_with_symbolic();
+        let text = "En lecture symbolique, ces elements suggerent une dynamique a explorer.";
+
+        let reframed = ensure_symbolic_framing_text(text, "fr", &catalog);
+
+        assert_eq!(reframed, text);
     }
 }

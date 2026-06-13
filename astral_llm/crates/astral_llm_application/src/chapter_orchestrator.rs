@@ -1329,6 +1329,12 @@ impl<'a> ChapterOrchestrator<'a> {
             astro_facts,
         );
 
+        reading_chapter.body = crate::safety_guard::ensure_symbolic_framing_text(
+            &reading_chapter.body,
+            &request.product_context.user_language,
+            self.catalog,
+        );
+
         AstroBasisValidator::validate_chapter_with_pack(
             &reading_chapter,
             astro_facts,

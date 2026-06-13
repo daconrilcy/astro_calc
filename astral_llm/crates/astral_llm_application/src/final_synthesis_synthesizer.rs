@@ -228,6 +228,12 @@ impl<'a> FinalSynthesisSynthesizer<'a> {
             product_policy,
         )?;
 
+        reading_chapter.body = crate::safety_guard::ensure_symbolic_framing_text(
+            &reading_chapter.body,
+            &request.product_context.user_language,
+            self.catalog,
+        );
+
         if let Some(pack) = chapter_pack {
             ChapterEvidenceCoherence::validate_premium(
                 &reading_chapter,
