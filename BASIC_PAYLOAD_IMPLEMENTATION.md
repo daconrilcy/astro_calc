@@ -610,3 +610,9 @@ Refactored the deterministic generation model for `horoscope_premium_next_7_days
 - Correction du planner Premium pour autoriser une requirement `blocking` a reintroduire une evidence pourtant marquee dans `prior_avoid` quand c'est necessaire pour satisfaire le contrat du chapitre.
 - Nettoyage de `avoid_repeating` apres selection afin qu'aucune evidence active ne reste simultanement dans la liste d'evitement.
 - Ajout d'un test de non-regression sur `emotional_life` pour garantir qu'un `moon aspect` disponible est bien inclus quand `emotional_moon_aspects` est requis.
+
+## Compatibilite payload horoscope UI de test
+
+- Correction du generateur `tests/service_test_ui/service-test-ui.js` pour n'envoyer `target_language_code` que pour `horoscope_premium_next_7_days_natal`.
+- Les autres payloads horoscope de l'UI de test reviennent a `target_language`, conforme aux contrats publics legacy encore valides en schema.
+- Mise a jour du test HTML embarque pour verrouiller la distinction entre periode Premium V2 et services horoscope legacy.

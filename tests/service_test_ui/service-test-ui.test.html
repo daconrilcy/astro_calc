@@ -51,8 +51,8 @@
       const horoscope = api.buildHoroscopePayload({ service_code: "horoscope_premium_daily_local_2h_slots" }, input, 123);
       assert("payload horoscope id", horoscope.chart_calculation_id === "123");
       assert("payload horoscope date", horoscope.date === "2026-06-09");
-      assert("payload horoscope langue v2", horoscope.target_language_code === "fr");
-      assert("payload horoscope sans langue legacy", !Object.prototype.hasOwnProperty.call(horoscope, "target_language"));
+      assert("payload horoscope langue legacy", horoscope.target_language === "fr");
+      assert("payload horoscope sans langue v2", !Object.prototype.hasOwnProperty.call(horoscope, "target_language_code"));
       assert("payload horoscope premium location", horoscope.location.label === "Paris, France");
 
       const period = api.buildHoroscopePayload({ service_code: "horoscope_premium_next_7_days_natal" }, input, 456);
@@ -60,6 +60,10 @@
       assert("payload horoscope premium v2 langue", period.target_language_code === "fr");
       assert("payload horoscope premium v2 sans legacy", !Object.prototype.hasOwnProperty.call(period, "target_language"));
       assert("payload horoscope audience publique", period.audience_level === "general");
+
+      const freePeriod = api.buildHoroscopePayload({ service_code: "horoscope_free_next_7_days_natal" }, input, 654);
+      assert("payload horoscope periode legacy langue", freePeriod.target_language === "fr");
+      assert("payload horoscope periode legacy sans v2", !Object.prototype.hasOwnProperty.call(freePeriod, "target_language_code"));
 
       const expertPeriod = api.buildHoroscopePayload({ service_code: "horoscope_free_next_7_days_natal" }, { ...input, audience: "expert" }, 456);
       assert("payload horoscope audience expert", expertPeriod.audience_level === "expert");

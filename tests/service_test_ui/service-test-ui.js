@@ -104,10 +104,14 @@
     const code = service.service_code;
     const base = {
       timezone: input.timezone,
-      target_language_code: input.language,
       chart_calculation_id: String(chartCalculationId),
       audience_level: input.audience === "expert" ? "expert" : "general",
     };
+    if (usesHoroscopeTargetLanguageCode(service)) {
+      base.target_language_code = input.language;
+    } else {
+      base.target_language = input.language;
+    }
 
     if (code.includes("next_7_days")) {
       return {
@@ -131,6 +135,10 @@
     }
 
     return payload;
+  }
+
+  function usesHoroscopeTargetLanguageCode(service) {
+    return service.service_code === "horoscope_premium_next_7_days_natal";
   }
 
   function buildJobBody(service, payload, input) {
