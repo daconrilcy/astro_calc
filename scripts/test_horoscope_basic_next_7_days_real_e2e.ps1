@@ -251,7 +251,7 @@ if (-not $status -or $status.status -ne "completed") {
 $reading = $status.result.reading
 $calculation = $status.result.calculation
 $interpretation = $status.result.interpretation_request
-if ($reading.contract_version -ne "horoscope_period_response_v1") {
+if ($reading.contract_version -ne "horoscope_period_response") {
     throw "Unexpected reading contract: $($reading.contract_version)"
 }
 if (@($reading.daily_timeline).Count -ne 7) {

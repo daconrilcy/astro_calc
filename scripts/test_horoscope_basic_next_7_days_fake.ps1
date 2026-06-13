@@ -114,7 +114,7 @@ $reading = $completed.result.reading
 if ([string]$reading.quality.provider -ne "fake") {
     throw "Horoscope period fake smoke expected provider=fake, got $($reading.quality.provider)"
 }
-if ($reading.contract_version -ne "horoscope_period_response_v1") {
+if ($reading.contract_version -ne "horoscope_period_response") {
     throw "Unexpected period horoscope contract version: $($reading.contract_version)"
 }
 if ($reading.service_code -ne "horoscope_basic_next_7_days_natal") {

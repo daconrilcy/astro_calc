@@ -1,0 +1,167 @@
+{
+  "contract_version": "horoscope_period_interpretation_request",
+  "service_code": "horoscope_free_next_7_days_natal",
+  "period_resolution": {
+    "period_profile_code": "next_7_days",
+    "anchor_date": "2026-06-07",
+    "timezone": "Europe/Paris",
+    "start_datetime_local": "2026-06-07T00:00:00",
+    "end_datetime_local": "2026-06-14T00:00:00",
+    "start_datetime_utc": "2026-06-06T22:00:00+00:00",
+    "end_datetime_utc": "2026-06-13T22:00:00+00:00",
+    "end_exclusive": true,
+    "duration_days": 7,
+    "included_dates": [
+      "2026-06-07",
+      "2026-06-08",
+      "2026-06-09",
+      "2026-06-10",
+      "2026-06-11",
+      "2026-06-12",
+      "2026-06-13"
+    ],
+    "included_days": []
+  },
+  "scan_plan": {
+    "scan_profile_code": "daily_noon_7_days",
+    "granularity": "daily_noon",
+    "snapshot_count": 7,
+    "snapshots": [
+      {
+        "snapshot_key": "2026-06-07:noon",
+        "date": "2026-06-07",
+        "reference_time_local": "12:00",
+        "reference_datetime_local": "2026-06-07T12:00:00",
+        "reference_datetime_utc": "2026-06-07T10:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-08:noon",
+        "date": "2026-06-08",
+        "reference_time_local": "12:00",
+        "reference_datetime_local": "2026-06-08T12:00:00",
+        "reference_datetime_utc": "2026-06-08T10:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-09:noon",
+        "date": "2026-06-09",
+        "reference_time_local": "12:00",
+        "reference_datetime_local": "2026-06-09T12:00:00",
+        "reference_datetime_utc": "2026-06-09T10:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-10:noon",
+        "date": "2026-06-10",
+        "reference_time_local": "12:00",
+        "reference_datetime_local": "2026-06-10T12:00:00",
+        "reference_datetime_utc": "2026-06-10T10:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-11:noon",
+        "date": "2026-06-11",
+        "reference_time_local": "12:00",
+        "reference_datetime_local": "2026-06-11T12:00:00",
+        "reference_datetime_utc": "2026-06-11T10:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-12:noon",
+        "date": "2026-06-12",
+        "reference_time_local": "12:00",
+        "reference_datetime_local": "2026-06-12T12:00:00",
+        "reference_datetime_utc": "2026-06-12T10:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-13:noon",
+        "date": "2026-06-13",
+        "reference_time_local": "12:00",
+        "reference_datetime_local": "2026-06-13T12:00:00",
+        "reference_datetime_utc": "2026-06-13T10:00:00+00:00"
+      }
+    ]
+  },
+  "target_language": "fr",
+  "detail_profile_code": "free_compact",
+  "week_overview_plan": {
+    "dominant_theme": "organization",
+    "tone": "focused",
+    "trajectory_hint": "Construire une tendance compacte, sans timeline quotidienne.",
+    "evidence_keys": [
+      "period:2026-06-07:2026-06-07:noon:moon:natal_house:6"
+    ]
+  },
+  "period_events": [
+    {
+      "event_key": "event:period:2026-06-07:2026-06-07:noon:moon:natal_house:6",
+      "event_type": "moon_house_by_day",
+      "date": "2026-06-07",
+      "snapshot_key": "2026-06-07:noon",
+      "theme_code": "organization",
+      "tone": "focused",
+      "aspect": null,
+      "score": 1,
+      "natal_focus_hint": "Repère d'organisation concret.",
+      "personalization_hint": "Relier le conseil à une priorité observable.",
+      "evidence_keys": [
+        "period:2026-06-07:2026-06-07:noon:moon:natal_house:6"
+      ],
+      "theme_density_score": 1,
+      "fact_type": "moon_house_by_day",
+      "transiting_object": null,
+      "natal_target": null,
+      "natal_house": null
+    }
+  ],
+  "main_events": [
+    {
+      "event_key": "event:period:2026-06-07:2026-06-07:noon:moon:natal_house:6",
+      "event_type": "moon_house_by_day",
+      "date": "2026-06-07",
+      "snapshot_key": "2026-06-07:noon",
+      "theme_code": "organization",
+      "tone": "focused",
+      "aspect": null,
+      "score": 1,
+      "natal_focus_hint": "Repère d'organisation concret.",
+      "personalization_hint": "Relier le conseil à une priorité observable.",
+      "evidence_keys": [
+        "period:2026-06-07:2026-06-07:noon:moon:natal_house:6"
+      ],
+      "theme_density_score": 1,
+      "fact_type": "moon_house_by_day",
+      "transiting_object": null,
+      "natal_target": null,
+      "natal_house": null
+    }
+  ],
+  "key_days": [
+    {
+      "date": "2026-06-07",
+      "title": "Jour à retenir",
+      "reason": "Un repère utile ressort pour comprendre la tendance sans détailler chaque journée.",
+      "evidence_keys": [
+        "period:2026-06-07:2026-06-07:noon:moon:natal_house:6"
+      ]
+    }
+  ],
+  "best_days": [],
+  "watch_days": [],
+  "watch_summary_plan": {
+    "status": "none",
+    "text": "Aucun point de vigilance dominant ne ressort cette semaine. Gardez simplement une marge d'observation si un échange ou une décision demande plus de temps que prévu.",
+    "evidence_keys": []
+  },
+  "daily_plans": [],
+  "domain_sections": [],
+  "evidence": [
+    {
+      "evidence_key": "period:2026-06-07:2026-06-07:noon:moon:natal_house:6",
+      "date": "2026-06-07",
+      "fact_type": "moon_house_by_day",
+      "source": "golden",
+      "theme_code": "organization",
+      "human_label": "La Lune met en avant un repère d'organisation concret.",
+      "natal_focus_label": "organisation",
+      "natal_focus_hint": "Repère d'organisation concret.",
+      "personalization_hint": "Priorité observable."
+    }
+  ]
+}

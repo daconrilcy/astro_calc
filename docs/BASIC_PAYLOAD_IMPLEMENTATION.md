@@ -1,4 +1,4 @@
-﻿# Implementation du payload moteur route basic
+# Implementation du payload moteur route basic
 
 ## Workspace Cargo
 
@@ -19,7 +19,7 @@ Ce document decrit l'implementation actuelle du payload moteur route par
 
 ## Note horoscope
 
-- 2026-06-11 : le pipeline horoscope period `next_7_days_natal` introduit `semantic_brief_v2` comme chemin actif uniquement pour `horoscope_premium_next_7_days_natal`. Free et basic 7 days restent en `legacy_v1` selon le brief initial Premium-only. Rust calcule, score et structure les faits, le LLM redige la sortie publique `horoscope_period_response_v1`, et le postprocess V2 reste limite au nettoyage technique. La review adversariale a verrouille le contrat Premium-only, les cles exactes du brief, les materiaux de periode pour `week_overview`, les fenetres atomiques, `evidence` top-level uniquement, `astrologer_persona` toujours present et nullable, la compat langue, l'absence de fallback langue dans le prompt V2, le retry qualite cible et l'absence de prose publique ajoutee par Rust en V2. `semantic_brief_v2` est un input de redaction interne, jamais un contrat UI ; l'UI consomme uniquement `$.result.reading`. Suivi detaille : `docs/horoscope_period_v2_migration.md`.
+- 2026-06-11 : le pipeline horoscope period `next_7_days_natal` introduit `semantic_brief_v2` comme chemin actif uniquement pour `horoscope_premium_next_7_days_natal`. Free et basic 7 days restent en `legacy_v1` selon le brief initial Premium-only. Rust calcule, score et structure les faits, le LLM redige la sortie publique `horoscope_period_response`, et le postprocess V2 reste limite au nettoyage technique. La review adversariale a verrouille le contrat Premium-only, les cles exactes du brief, les materiaux de periode pour `week_overview`, les fenetres atomiques, `evidence` top-level uniquement, `astrologer_persona` toujours present et nullable, la compat langue, l'absence de fallback langue dans le prompt V2, le retry qualite cible et l'absence de prose publique ajoutee par Rust en V2. `semantic_brief_v2` est un input de redaction interne, jamais un contrat UI ; l'UI consomme uniquement `$.result.reading`. Suivi detaille : `docs/horoscope_period_v2_migration.md`.
 
 Le cadrage du futur module horoscope est documente dans
 [`docs/HOROSCOPE_IMPLEMENTATION.md`](HOROSCOPE_IMPLEMENTATION.md). Les
@@ -62,7 +62,7 @@ verrouillent cette non-regression.
 
 La version Premium period `horoscope_premium_next_7_days_natal` est une extension
 du flux horoscope period, pas du payload route basic natal historique. Elle
-reutilise `horoscope_period_natal_request_v1`, impose ses profils depuis le
+reutilise `horoscope_period_natal_request`, impose ses profils depuis le
 catalogue (`premium_rich`, `six_hour_7_days`) et ajoute windows/strategy dans la
 couche application. Le calculateur continue de produire uniquement des faits.
 Depuis le durcissement real E2E, ce service exige des champs UTC normalises,

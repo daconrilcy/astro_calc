@@ -12,7 +12,7 @@ pub fn build_calculation_request_for_service(
     validate_public_request_for_service(service_code, request)?;
     let refs = ReferenceData::load(service_code)?;
     let slots = slot_profiles(service_code)?;
-    let mut out = json!({        "contract_version": "horoscope_calculation_request_v1",        "service_code": service_code,        "chart_calculation_id": request.chart_calculation_id,        "period": {            "date": request.date,            "timezone": request.timezone        },        "slots": slots.into_iter().map(|slot| json!({            "slot_code": slot.slot_code,            "start_local_time": slot.start_local_time,            "end_local_time": slot.end_local_time,            "reference_local_time": slot.reference_local_time        })).collect::<Vec<_>>()    });
+    let mut out = json!({        "contract_version": "horoscope_calculation_request",        "service_code": service_code,        "chart_calculation_id": request.chart_calculation_id,        "period": {            "date": request.date,            "timezone": request.timezone        },        "slots": slots.into_iter().map(|slot| json!({            "slot_code": slot.slot_code,            "start_local_time": slot.start_local_time,            "end_local_time": slot.end_local_time,            "reference_local_time": slot.reference_local_time        })).collect::<Vec<_>>()    });
     if service_code == HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE {
         out["location"] = serde_json::to_value(
             request

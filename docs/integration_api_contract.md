@@ -257,9 +257,9 @@ Les routes legacy sync documentées par service via `supports_sync_legacy` et `e
 
 - `service_code` : `horoscope_basic_daily_natal_3_slots`
 - `availability` : `beta`
-- `payload_contract` : `horoscope_basic_daily_natal_request_v1`
-- `calculation_output_contract` : `horoscope_calculation_response_v1`
-- `reading_output_contract` : `horoscope_response_v1`
+- `payload_contract` : `horoscope_basic_daily_natal_request`
+- `calculation_output_contract` : `horoscope_calculation_response`
+- `reading_output_contract` : `horoscope_response`
 
 Exemple `POST /v1/jobs` :
 
@@ -289,7 +289,7 @@ Exemple `GET /v1/jobs/{run_id}` complete :
     "calculation": {},
     "interpretation_request": {},
     "reading": {
-      "contract_version": "horoscope_response_v1",
+      "contract_version": "horoscope_response",
       "service_code": "horoscope_basic_daily_natal_3_slots",
       "summary": {
         "title": "Une journée à ajuster avec précision",
@@ -333,9 +333,9 @@ Erreurs possibles : `HOROSCOPE_PAYLOAD_INVALID`,
 
 - `service_code` : `horoscope_free_daily`
 - `availability` : `beta`
-- `payload_contract` : `horoscope_daily_natal_request_v1`
-- `calculation_output_contract` : `horoscope_calculation_response_v1`
-- `reading_output_contract` : `horoscope_response_v1`
+- `payload_contract` : `horoscope_daily_natal_request`
+- `calculation_output_contract` : `horoscope_calculation_response`
+- `reading_output_contract` : `horoscope_response`
 
 `horoscope_free_daily` est personnalise natal en V1 : `chart_calculation_id` est
 obligatoire et `birth_data` inline est refuse. Ce service n'est pas un horoscope
@@ -388,7 +388,7 @@ Exemple `GET /v1/jobs/{run_id}` complete :
     "calculation": {},
     "interpretation_request": {},
     "reading": {
-      "contract_version": "horoscope_response_v1",
+      "contract_version": "horoscope_response",
       "service_code": "horoscope_free_daily",
       "summary": {
         "title": "Votre tendance du jour",
@@ -419,9 +419,9 @@ Erreurs possibles : `HOROSCOPE_PAYLOAD_INVALID`,
 ### Service `horoscope_premium_daily_local_2h_slots`
 
 - `availability` : `beta`
-- `payload_contract` : `horoscope_premium_daily_local_request_v1`
-- `calculation_output_contract` : `horoscope_calculation_response_v1`
-- `reading_output_contract` : `horoscope_response_v1`
+- `payload_contract` : `horoscope_premium_daily_local_request`
+- `calculation_output_contract` : `horoscope_calculation_response`
+- `reading_output_contract` : `horoscope_response`
 - Endpoint : `POST /v1/jobs`
 
 Premium V1 est un horoscope quotidien local personnalise en 12 creneaux publics
@@ -483,7 +483,7 @@ Positionnement produit : Free = comprendre la tendance. Ce service reste natal
 personnalise et synthetique ; il ne publie pas la timeline Basic ni les
 fenetres/strategie Premium.
 
-Payload : `horoscope_period_natal_request_v1`.
+Payload : `horoscope_period_natal_request`.
 
 Contraintes :
 
@@ -513,7 +513,7 @@ Shape reponse publique :
 
 ```json
 {
-  "contract_version": "horoscope_period_response_v1",
+  "contract_version": "horoscope_period_response",
   "service_code": "horoscope_free_next_7_days_natal",
   "period_resolution": {},
   "summary": { "title": "Vos 7 prochains jours", "text": "..." },
@@ -542,9 +542,9 @@ Validation fake :
 ### Service `horoscope_basic_next_7_days_natal`
 
 - `availability` : `beta`
-- `payload_contract` : `horoscope_period_natal_request_v1`
-- `calculation_output_contract` : `horoscope_period_calculation_response_v1`
-- `reading_output_contract` : `horoscope_period_response_v1`
+- `payload_contract` : `horoscope_period_natal_request`
+- `calculation_output_contract` : `horoscope_period_calculation_response`
+- `reading_output_contract` : `horoscope_period_response`
 - Endpoint : `POST /v1/jobs`
 
 Ce service est un horoscope de periode Basic personnalise sur theme natal. Il
@@ -602,9 +602,9 @@ Erreurs possibles :
 ### Service `horoscope_premium_next_7_days_natal`
 
 - `availability` : `beta`
-- `payload_contract` : `horoscope_period_natal_request_v1`
-- `calculation_output_contract` : `horoscope_period_calculation_response_v1`
-- `reading_output_contract` : `horoscope_period_response_v1`
+- `payload_contract` : `horoscope_period_natal_request`
+- `calculation_output_contract` : `horoscope_period_calculation_response`
+- `reading_output_contract` : `horoscope_period_response`
 - `detail_profile_code` : `premium_rich`
 - `scan_profile_code` : `six_hour_7_days`
 - Endpoint : `POST /v1/jobs`
@@ -658,7 +658,7 @@ Reponse abregee :
 
 ```json
 {
-  "contract_version": "horoscope_period_response_v1",
+  "contract_version": "horoscope_period_response",
   "service_code": "horoscope_premium_next_7_days_natal",
   "period_resolution": {},
   "week_overview": {},

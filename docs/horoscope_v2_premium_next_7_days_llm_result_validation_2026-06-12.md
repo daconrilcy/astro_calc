@@ -33,7 +33,7 @@ produire `HOROSCOPE_PERIOD_V2_QUALITY_FAILED`.
 ## Validations bloquantes
 
 - `validate_period_response_schema()` : JSON Schema
-  `horoscope_period_response_v1`.
+  `horoscope_period_response`.
 - `contract_version` et `service_code` attendus.
 - `period_resolution.included_dates` contient exactement 7 dates.
 - `daily_timeline` contient exactement 7 dates uniques, toutes dans la

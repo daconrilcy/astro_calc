@@ -1,6 +1,4 @@
-use crate::french_typography::{
-    french_elision_violations, french_glued_compound_violations, restore_french_glued_compounds,
-};
+use crate::french_typography::restore_french_glued_compounds;
 use crate::generate_reading_use_case::GenerateReadingUseCase;
 use crate::text_reprocessing_service_adapter::{
     reprocess_horoscope_daily, reprocess_horoscope_period,
@@ -47,18 +45,16 @@ pub use orchestrators::{
 pub(crate) use period::*;
 pub use period::{
     build_period_calculation_request, build_period_calculation_request_for_service,
-    build_period_interpretation_request, build_period_writer_request_v2,
-    fake_period_writer_response, fake_period_writer_response_v2, period_response_provider_schema,
-    period_v2_editorial_audit, period_v2_quality_audit, period_writer_max_output_tokens,
-    period_writer_messages, period_writer_reasoning_effort, postprocess_period_provider_response,
-    postprocess_period_provider_response_v2, prune_period_response_variant_fields,
-    repair_period_response_shape, repair_period_response_shape_v2,
+    build_period_interpretation_request, build_period_writer_request, fake_period_writer_response,
+    period_editorial_audit, period_quality_audit, period_response_provider_schema,
+    period_writer_max_output_tokens, period_writer_messages, period_writer_reasoning_effort,
+    postprocess_period_provider_response, repair_period_response_shape,
     reprocess_horoscope_period_payload, validate_period_interpretation_request_schema,
     validate_period_provider_public_payload, validate_period_public_request,
-    validate_period_public_word_count, validate_period_response_contract_gates_v2,
-    validate_period_response_evidence, validate_period_response_quality_gates_v2,
-    validate_period_response_schema, validate_period_writer_request_v2_schema, validate_scan_plan,
-    validate_semantic_brief_is_atomic,
+    validate_period_public_word_count, validate_period_response_contract,
+    validate_period_response_contract_gates, validate_period_response_evidence,
+    validate_period_response_quality_gates, validate_period_response_schema,
+    validate_period_writer_request_schema, validate_scan_plan, validate_semantic_brief_is_atomic,
 };
 pub use reference_data::public_watch_point_for_theme;
 pub(crate) use reference_data::*;

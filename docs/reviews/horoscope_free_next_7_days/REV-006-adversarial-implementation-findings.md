@@ -2,7 +2,7 @@
 
 Findings:
 
-- P1: `horoscope_period_response_v1` had been relaxed globally for all period
+- P1: `horoscope_period_response` had been relaxed globally for all period
   services. This allowed a Basic/Premium response to pass schema validation
   without the full period shape. Fixed with service-conditional schema rules:
   Free compact shape, Basic timeline shape, Premium windows/strategy shape.

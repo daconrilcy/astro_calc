@@ -1,7 +1,7 @@
 use super::*;
 
 pub(crate) fn repair_daily_response_shape(request: &Value, response: &mut Value) {
-    response["contract_version"] = json!("horoscope_response_v1");
+    response["contract_version"] = json!("horoscope_response");
     if response
         .get("service_code")
         .and_then(Value::as_str)

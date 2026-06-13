@@ -1,29 +1,12 @@
 use super::*;
 
-pub fn validate_semantic_brief_is_atomic(value: &Value) -> Result<(), GenerationError> {
-    if !is_period_writer_request_v2(value) {
-        return Ok(());
-    }
-    if value["service_code"].as_str() != Some(HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE) {
-        return Err(period_v2_request_error(
-            "HOROSCOPE_PERIOD_WRITER_V2_PREMIUM_ONLY",
-            json!({ "service_code": value["service_code"] }),
-        ));
-    }
-    if contains_key_recursive(value, "human_label") {
-        return Err(period_v2_request_error(
-            "HOROSCOPE_PERIOD_WRITER_REQUEST_V2_LEGACY_FIELD",
-            json!({ "field": "human_label" }),
-        ));
-    }
+pub fn validate_semantic_brief_references_only(value: &Value) -> Result<(), GenerationError> {
     let semantic = value.get("semantic_brief").ok_or_else(|| {
         period_v2_request_error(
-            "HOROSCOPE_PERIOD_WRITER_REQUEST_V2_INVALID",
+            "HOROSCOPE_PERIOD_WRITER_REQUEST_INVALID",
             json!({ "missing": "semantic_brief" }),
         )
     })?;
-    validate_semantic_brief_forbidden_keys(semantic)?;
-    validate_semantic_brief_strings(semantic, "")?;
     let included_dates = value["period_resolution"]["included_dates"]
         .as_array()
         .into_iter()
@@ -67,112 +50,6 @@ pub fn validate_semantic_brief_is_atomic(value: &Value) -> Result<(), Generation
 }
 pub(crate) fn period_v2_request_error(message: &str, details: Value) -> GenerationError {
     GenerationError::with_details(GenerationErrorCode::InvalidInput, message, details)
-}
-pub(crate) fn validate_semantic_brief_forbidden_keys(value: &Value) -> Result<(), GenerationError> {
-    match value {
-        Value::Object(object) => {
-            for (key, child) in object {
-                if PERIOD_V2_FORBIDDEN_WRITER_KEYS.contains(&key.as_str()) {
-                    return Err(period_v2_request_error(
-                        "HOROSCOPE_PERIOD_WRITER_REQUEST_V2_LEGACY_FIELD",
-                        json!({ "field": key }),
-                    ));
-                }
-                validate_semantic_brief_forbidden_keys(child)?;
-            }
-        }
-        Value::Array(items) => {
-            for item in items {
-                validate_semantic_brief_forbidden_keys(item)?;
-            }
-        }
-        _ => {}
-    }
-    Ok(())
-}
-pub(crate) fn validate_semantic_brief_strings(
-    value: &Value,
-    field_name: &str,
-) -> Result<(), GenerationError> {
-    match value {
-        Value::Object(object) => {
-            for (key, child) in object {
-                validate_semantic_brief_strings(child, key)?;
-            }
-        }
-        Value::Array(items) => {
-            for item in items {
-                validate_semantic_brief_strings(item, field_name)?;
-            }
-        }
-        Value::String(text) => {
-            if field_name != "time_range_label"
-                && field_name != "signature_code"
-                && text.chars().count() > 100
-            {
-                return Err(period_v2_request_error(
-                    "HOROSCOPE_PERIOD_WRITER_REQUEST_V2_PROSE_LEAK",
-                    json!({ "field": field_name, "reason": "string_too_long" }),
-                ));
-            }
-            if is_period_v2_keyword_field(field_name) {
-                validate_period_v2_keyword_fragment(field_name, text)?;
-            }
-        }
-        _ => {}
-    }
-    Ok(())
-}
-pub(crate) fn is_period_v2_keyword_field(field_name: &str) -> bool {
-    matches!(
-        field_name,
-        "keywords"
-            | "usage_keywords"
-            | "dominant_keywords"
-            | "period_arc_keywords"
-            | "opportunity_keywords"
-            | "risk_keywords"
-            | "avoid_keywords"
-    )
-}
-pub(crate) fn validate_period_v2_keyword_fragment(
-    field_name: &str,
-    text: &str,
-) -> Result<(), GenerationError> {
-    if text
-        .chars()
-        .any(|ch| matches!(ch, '.' | '!' | '?' | ':' | ';' | '\n' | '\r'))
-    {
-        return Err(period_v2_request_error(
-            "HOROSCOPE_PERIOD_WRITER_REQUEST_V2_KEYWORD_PROSE",
-            json!({ "field": field_name, "keyword": text, "reason": "punctuation" }),
-        ));
-    }
-    let word_count = text.split_whitespace().count();
-    let lower = text.to_lowercase();
-    let padded = format!(" {lower} ");
-    let likely_public_sentence = word_count > 5
-        && [
-            " donne ",
-            " apporte ",
-            " permet ",
-            " invite ",
-            " consiste ",
-            " vérifiez ",
-            " aide ",
-            " soutient ",
-            " demande ",
-            " ouvre ",
-        ]
-        .iter()
-        .any(|needle| padded.contains(needle));
-    if likely_public_sentence {
-        return Err(period_v2_request_error(
-            "HOROSCOPE_PERIOD_WRITER_REQUEST_V2_KEYWORD_PROSE",
-            json!({ "field": field_name, "keyword": text, "reason": "likely_sentence" }),
-        ));
-    }
-    Ok(())
 }
 pub(crate) fn validate_semantic_brief_references(
     value: &Value,
@@ -244,15 +121,4 @@ pub(crate) fn validate_semantic_brief_references(
         _ => {}
     }
     Ok(())
-}
-pub(crate) fn contains_key_recursive(value: &Value, needle: &str) -> bool {
-    match value {
-        Value::Object(object) => object
-            .iter()
-            .any(|(key, child)| key == needle || contains_key_recursive(child, needle)),
-        Value::Array(items) => items
-            .iter()
-            .any(|item| contains_key_recursive(item, needle)),
-        _ => false,
-    }
 }

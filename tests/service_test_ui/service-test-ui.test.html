@@ -72,7 +72,7 @@
       assert("enveloppe audience conforme", job.audience_level === "beginner");
 
       assert("detection horoscope par code", api.isHoroscopeService({ service_code: "horoscope_free_daily" }));
-      assert("detection horoscope par contrat", api.isHoroscopeService({ service_code: "x", contracts: { payload: "horoscope_period_natal_request_v1" } }));
+      assert("detection horoscope par contrat", api.isHoroscopeService({ service_code: "x", contracts: { payload: "horoscope_period_natal_request" } }));
       assert("natal non horoscope", !api.isHoroscopeService({ service_code: "natal_basic", calculation_mode: "full_natal" }));
       assert("projection premium riche", api.projectionLevelForService({ service_code: "natal_premium", interpretation_profile_code: "natal_premium" }) === "rich");
       assert("projection basic compacte", api.projectionLevelForService({ service_code: "natal_basic", interpretation_profile_code: "natal_basic" }) === "compact");

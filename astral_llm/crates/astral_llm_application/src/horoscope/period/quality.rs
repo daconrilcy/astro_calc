@@ -20,16 +20,16 @@ pub(crate) fn period_v2_failure_issue(
         "message": message
     })
 }
-pub fn validate_period_response_quality_gates_v2(
+pub fn validate_period_response_quality_gates(
     request: &Value,
     response: &Value,
 ) -> Result<(), GenerationError> {
-    if !is_period_writer_request_v2(request) {
+    if !is_period_writer_request(request) {
         return Ok(());
     }
-    validate_period_response_contract_gates_v2(request, response)
+    validate_period_response_contract_gates(request, response)
 }
-pub(crate) async fn period_style_editor_response_v2(
+pub(crate) async fn period_style_editor_response(
     use_case: &GenerateReadingUseCase,
     request: &Value,
     response: &Value,
@@ -38,12 +38,12 @@ pub(crate) async fn period_style_editor_response_v2(
 ) -> Result<Value, GenerationError> {
     let defaults = horoscope_writer_engine_defaults(use_case);
     if defaults.provider == ProviderKind::Fake {
-        return fake_period_writer_response_v2(request);
+        return fake_period_writer_response_from_writer_request(request);
     }
     let schema = period_response_provider_schema(request)?;
     let provider_request = ProviderGenerationRequest {
         model: defaults.model.clone(),
-        messages: period_style_editor_messages_v2(request, response, error)?,
+        messages: period_style_editor_messages(request, response, error)?,
         structured_schema: Some(schema),
         reasoning_effort: period_writer_reasoning_effort(request),
         temperature: Some(0.2),
@@ -59,7 +59,7 @@ pub(crate) async fn period_style_editor_response_v2(
                 .as_str()
                 .unwrap_or(HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE)
                 .to_string(),
-            chapter_code: Some("period_v2_quality_retry".to_string()),
+            chapter_code: Some("period_quality_retry".to_string()),
         },
     };
     let routed = use_case
@@ -84,17 +84,17 @@ pub(crate) async fn period_style_editor_response_v2(
     edited["quality"]["model"] = json!(routed.response.model_used);
     edited["quality"]["fallback_used"] = json!(routed.fallback_used);
     repair_period_response_shape_v2(request, &mut edited);
-    edited = postprocess_period_provider_response_v2(request, edited);
-    validate_period_response_quality_gates_v2(request, &edited)?;
+    edited = postprocess_period_provider_response(request, edited);
+    validate_period_response_quality_gates(request, &edited)?;
     Ok(edited)
 }
-pub fn period_v2_quality_audit(response: &Value) -> Value {
-    period_v2_quality_audit_with_request(None, response)
+pub fn period_quality_audit(response: &Value) -> Value {
+    period_quality_audit_with_request(None, response)
 }
-pub fn period_v2_editorial_audit(request: &Value, response: &Value) -> Value {
-    period_v2_quality_audit_with_request(Some(request), response)
+pub fn period_editorial_audit(request: &Value, response: &Value) -> Value {
+    period_quality_audit_with_request(Some(request), response)
 }
-pub(crate) fn period_v2_quality_audit_with_request(
+pub(crate) fn period_quality_audit_with_request(
     request: Option<&Value>,
     response: &Value,
 ) -> Value {
@@ -106,27 +106,27 @@ pub(crate) fn period_v2_quality_audit_with_request(
         "top_repeated_terms": period_v2_top_repeated_terms(&public_text, 8),
         "duplicate_titles": period_v2_duplicate_titles(response),
         "window_title_time_mismatches": period_v2_window_title_time_mismatches(response),
-        "warnings": period_v2_quality_warnings_json(request, response, &public_text)
+        "warnings": period_quality_warnings_json(request, response, &public_text)
     })
 }
 pub(crate) fn collect_period_v2_public_text(response: &Value) -> String {
     let mut public_text = String::new();
-    collect_period_v2_public_text_only(response, &mut public_text);
+    collect_period_public_text_only(response, &mut public_text);
     public_text
 }
-pub(crate) fn period_v2_quality_warnings_json(
+pub(crate) fn period_quality_warnings_json(
     request: Option<&Value>,
     response: &Value,
     public_text: &str,
 ) -> Value {
     Value::Array(
-        period_v2_collect_quality_warnings(request, response, public_text)
+        period_collect_quality_warnings(request, response, public_text)
             .into_iter()
             .map(|warning| serde_json::to_value(warning).unwrap_or_else(|_| json!({})))
             .collect(),
     )
 }
-pub(crate) fn period_v2_collect_quality_warnings(
+pub(crate) fn period_collect_quality_warnings(
     request: Option<&Value>,
     response: &Value,
     public_text: &str,
@@ -245,6 +245,16 @@ pub(crate) fn period_v2_seven_daily_shape_warnings(
         )];
     }
     Vec::new()
+}
+pub(crate) fn validate_period_not_seven_daily(response: &Value) -> Result<(), GenerationError> {
+    let day_count = response["daily_timeline"].as_array().map(Vec::len).unwrap_or(0);
+    if day_count != 7 {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_TIMELINE_MISSING",
+            json!({ "timeline_count": day_count }),
+        ));
+    }
+    Ok(())
 }
 pub(crate) fn period_v2_recalendarization_warnings(
     response: &Value,

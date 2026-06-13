@@ -23,7 +23,7 @@ pub fn build_period_calculation_request_for_service(
     )?;
     validate_scan_plan(&period_resolution, &scan_plan)?;
     Ok(
-        json!({        "contract_version": "horoscope_period_calculation_request_v1",        "service_code": service_code,        "chart_calculation_id": public.chart_calculation_id,        "period_resolution": period_resolution,        "scan_plan": scan_plan    }),
+        json!({        "contract_version": "horoscope_period_calculation_request",        "service_code": service_code,        "chart_calculation_id": public.chart_calculation_id,        "period_resolution": period_resolution,        "scan_plan": scan_plan    }),
     )
 }
 pub(crate) fn resolve_horoscope_period_window(

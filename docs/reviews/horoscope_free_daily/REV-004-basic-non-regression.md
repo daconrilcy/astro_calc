@@ -3,7 +3,7 @@
 ## Checklist
 
 - [x] Basic conserve `service_code = horoscope_basic_daily_natal_3_slots`.
-- [x] Basic conserve `payload_contract = horoscope_basic_daily_natal_request_v1`.
+- [x] Basic conserve `payload_contract = horoscope_basic_daily_natal_request`.
 - [x] Basic conserve trois slots publics.
 - [x] Basic conserve les labels `Matin`, `Apres-midi`, `Soir`.
 - [x] Basic conserve les guards inter-slots.

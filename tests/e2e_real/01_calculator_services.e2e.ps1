@@ -19,8 +19,8 @@ foreach ($schema in @(
     "astro_engine_response_v1",
     "astro_simplified_natal_request_v1",
     "astro_simplified_natal_response_v1",
-    "horoscope_calculation_request_v1",
-    "horoscope_calculation_response_v1"
+    "horoscope_calculation_request",
+    "horoscope_calculation_response"
 )) {
     $schemaResponse = Invoke-RestMethod -Uri "$CalculatorUrl/v1/schemas/$schema" -Method Get -Headers $headers
     if (-not $schemaResponse.title -and -not $schemaResponse.'$schema') {
@@ -53,7 +53,7 @@ Write-Host "OK POST /v1/calculations/natal/simplified"
 $horoscopeRequest = New-E2EHoroscopeCalculationRequest -RepoRoot $repoRoot -ChartCalculationId $chartCalculationId
 $horoscope = Invoke-AstralJson -Method Post -Uri "$CalculatorUrl/v1/calculations/horoscope/daily-natal" `
     -Headers $headers -Body $horoscopeRequest
-if ($horoscope.contract_version -ne "horoscope_calculation_response_v1") {
+if ($horoscope.contract_version -ne "horoscope_calculation_response") {
     throw "Unexpected horoscope calculation contract"
 }
 if (-not $horoscope.slots -or $horoscope.slots.Count -lt 1) {

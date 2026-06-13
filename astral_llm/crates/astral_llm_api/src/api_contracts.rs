@@ -20,13 +20,13 @@ pub fn contracts_index() -> Value {
             "integration_service_v1": "/v1/schemas/integration_service_v1",
             "integration_service_contract_v1": "/v1/schemas/integration_service_contract_v1"
             ,
-            "horoscope_daily_natal_request_v1": "/v1/schemas/horoscope_daily_natal_request_v1",
-            "horoscope_basic_daily_natal_request_v1": "/v1/schemas/horoscope_basic_daily_natal_request_v1",
-            "horoscope_premium_daily_local_request_v1": "/v1/schemas/horoscope_premium_daily_local_request_v1",
-            "horoscope_period_natal_request_v1": "/v1/schemas/horoscope_period_natal_request_v1",
-            "horoscope_period_writer_request_v2": "/v1/schemas/horoscope_period_writer_request_v2",
-            "horoscope_period_response_v1": "/v1/schemas/horoscope_period_response_v1",
-            "horoscope_response_v1": "/v1/schemas/horoscope_response_v1"
+            "horoscope_daily_natal_request": "/v1/schemas/horoscope_daily_natal_request",
+            "horoscope_basic_daily_natal_request": "/v1/schemas/horoscope_basic_daily_natal_request",
+            "horoscope_premium_daily_local_request": "/v1/schemas/horoscope_premium_daily_local_request",
+            "horoscope_period_natal_request": "/v1/schemas/horoscope_period_natal_request",
+            "horoscope_period_writer_request": "/v1/schemas/horoscope_period_writer_request",
+            "horoscope_period_response": "/v1/schemas/horoscope_period_response",
+            "horoscope_response": "/v1/schemas/horoscope_response"
         },
         "openapi": "/openapi.yaml"
     })
@@ -44,32 +44,32 @@ pub fn load_published_schema(version: &str) -> Option<Value> {
         "integration_job_status_v1" => "integration_job_status_v1.schema.json",
         "integration_service_v1" => "integration_service_v1.schema.json",
         "integration_service_contract_v1" => "integration_service_contract_v1.schema.json",
-        "horoscope_daily_natal_request_v1" => "horoscope_daily_natal_request_v1.schema.json",
-        "horoscope_basic_daily_natal_request_v1" => {
-            "horoscope_basic_daily_natal_request_v1.schema.json"
+        "horoscope_daily_natal_request" => "horoscope_daily_natal_request.schema.json",
+        "horoscope_basic_daily_natal_request" => {
+            "horoscope_basic_daily_natal_request.schema.json"
         }
-        "horoscope_premium_daily_local_request_v1" => {
-            "horoscope_premium_daily_local_request_v1.schema.json"
+        "horoscope_premium_daily_local_request" => {
+            "horoscope_premium_daily_local_request.schema.json"
         }
-        "horoscope_period_natal_request_v1" => "horoscope_period_natal_request_v1.schema.json",
-        "horoscope_period_interpretation_request_v1" => {
-            "horoscope_period_interpretation_request_v1.schema.json"
+        "horoscope_period_natal_request" => "horoscope_period_natal_request.schema.json",
+        "horoscope_period_interpretation_request" => {
+            "horoscope_period_interpretation_request.schema.json"
         }
-        "horoscope_period_writer_request_v2" => "horoscope_period_writer_request_v2.schema.json",
-        "horoscope_period_response_v1" => "horoscope_period_response_v1.schema.json",
-        "horoscope_response_v1" => "horoscope_response_v1.schema.json",
-        "horoscope_interpretation_request_v1" => "horoscope_interpretation_request_v1.schema.json",
-        "horoscope_calculation_request_v1" => {
-            "../calculator/horoscope_calculation_request_v1.schema.json"
+        "horoscope_period_writer_request" => "horoscope_period_writer_request.schema.json",
+        "horoscope_period_response" => "horoscope_period_response.schema.json",
+        "horoscope_response" => "horoscope_response.schema.json",
+        "horoscope_interpretation_request" => "horoscope_interpretation_request.schema.json",
+        "horoscope_calculation_request" => {
+            "../calculator/horoscope_calculation_request.schema.json"
         }
-        "horoscope_calculation_response_v1" => {
-            "../calculator/horoscope_calculation_response_v1.schema.json"
+        "horoscope_calculation_response" => {
+            "../calculator/horoscope_calculation_response.schema.json"
         }
-        "horoscope_period_calculation_request_v1" => {
-            "../calculator/horoscope_period_calculation_request_v1.schema.json"
+        "horoscope_period_calculation_request" => {
+            "../calculator/horoscope_period_calculation_request.schema.json"
         }
-        "horoscope_period_calculation_response_v1" => {
-            "../calculator/horoscope_period_calculation_response_v1.schema.json"
+        "horoscope_period_calculation_response" => {
+            "../calculator/horoscope_period_calculation_response.schema.json"
         }
         "astro_simplified_natal_request_v1" => {
             "../calculator/astro_simplified_natal_request_v1.schema.json"

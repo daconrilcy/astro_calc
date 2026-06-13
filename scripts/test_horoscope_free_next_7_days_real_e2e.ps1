@@ -248,7 +248,7 @@ $interpretation = $status.result.interpretation_request
 if (-not $reading -or -not $calculation -or -not $interpretation) {
     throw "Real Free period response must include reading, calculation and interpretation_request"
 }
-if ($reading.contract_version -ne "horoscope_period_response_v1") {
+if ($reading.contract_version -ne "horoscope_period_response") {
     throw "Unexpected reading contract: $($reading.contract_version)"
 }
 if ($reading.service_code -ne "horoscope_free_next_7_days_natal") {

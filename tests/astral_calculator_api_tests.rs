@@ -35,7 +35,7 @@ async fn build_test_state() -> Option<AppState> {
 #[test]
 fn horoscope_period_calculator_from_positions_never_uses_fake_source() {
     let request: HoroscopePeriodCalculationRequest = serde_json::from_value(serde_json::json!({
-        "contract_version": "horoscope_period_calculation_request_v1",
+        "contract_version": "horoscope_period_calculation_request",
         "service_code": "horoscope_basic_next_7_days_natal",
         "chart_calculation_id": "123",
         "period_resolution": {
@@ -241,7 +241,7 @@ fn horoscope_period_calculator_outputs_context_fact_when_no_valid_aspect() {
 #[test]
 fn horoscope_period_calculator_request_normalizes_utc_fields() {
     let request: HoroscopePeriodCalculationRequest = serde_json::from_value(serde_json::json!({
-        "contract_version": "horoscope_period_calculation_request_v1",
+        "contract_version": "horoscope_period_calculation_request",
         "service_code": "horoscope_basic_next_7_days_natal",
         "chart_calculation_id": "123",
         "period_resolution": {
@@ -332,7 +332,7 @@ fn horoscope_period_calculator_request_rejects_snapshot_outside_period() {
 
 fn period_calculator_request() -> HoroscopePeriodCalculationRequest {
     serde_json::from_value(serde_json::json!({
-        "contract_version": "horoscope_period_calculation_request_v1",
+        "contract_version": "horoscope_period_calculation_request",
         "service_code": "horoscope_basic_next_7_days_natal",
         "chart_calculation_id": "123",
         "period_resolution": {

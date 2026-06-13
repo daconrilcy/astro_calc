@@ -362,14 +362,14 @@ function Assert-PremiumV2Result {
             $resultKeys = @($result.PSObject.Properties.Name)
         }
         $interpretationContract = [string]$result.interpretation_request.contract_version
-        throw "Result for '$Language' must include calculation, interpretation_request, writer_request and reading. Got keys=[$($resultKeys -join ', ')], interpretation_contract='$interpretationContract'. If writer_request is missing or interpretation_contract is not horoscope_period_writer_request_v2, restart astral_llm_api/worker with the latest code and re-import json_db so Premium 7 days uses semantic_brief_v2."
+        throw "Result for '$Language' must include calculation, interpretation_request, writer_request and reading. Got keys=[$($resultKeys -join ', ')], interpretation_contract='$interpretationContract'. If writer_request is missing or interpretation_contract is not horoscope_period_writer_request, restart astral_llm_api/worker with the latest code and re-import json_db so Premium 7 days uses semantic_brief_v2."
     }
     if ((ConvertTo-StableJson $result.interpretation_request) -ne (ConvertTo-StableJson $result.writer_request)) {
         throw "V2 debug alias mismatch for '$Language': interpretation_request != writer_request."
     }
 
     $writer = $result.writer_request
-    if ($writer.contract_version -ne "horoscope_period_writer_request_v2") {
+    if ($writer.contract_version -ne "horoscope_period_writer_request") {
         throw "Unexpected writer contract for '$Language': $($writer.contract_version)"
     }
     if ($writer.service_code -ne "horoscope_premium_next_7_days_natal") {
@@ -381,7 +381,7 @@ function Assert-PremiumV2Result {
     if ($writer.target_language_code -ne $Language) {
         throw "Unexpected target_language_code for '$Language': $($writer.target_language_code)"
     }
-    if ($writer.output_contract_version -ne "horoscope_period_response_v1") {
+    if ($writer.output_contract_version -ne "horoscope_period_response") {
         throw "Unexpected output contract for '$Language': $($writer.output_contract_version)"
     }
     if ($null -eq $writer.semantic_brief -or $writer.semantic_brief.PSObject.Properties.Name -contains "evidence") {
@@ -392,7 +392,7 @@ function Assert-PremiumV2Result {
     }
 
     $reading = $result.reading
-    if ($reading.contract_version -ne "horoscope_period_response_v1") {
+    if ($reading.contract_version -ne "horoscope_period_response") {
         throw "Unexpected reading contract for '$Language': $($reading.contract_version)"
     }
     if ($reading.service_code -ne "horoscope_premium_next_7_days_natal") {

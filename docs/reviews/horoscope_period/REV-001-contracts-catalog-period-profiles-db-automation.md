@@ -3,7 +3,7 @@
 Findings checked:
 
 - The public service is `horoscope_basic_next_7_days_natal`.
-- Public payload uses `horoscope_period_natal_request_v1` and does not allow profile overrides.
+- Public payload uses `horoscope_period_natal_request` and does not allow profile overrides.
 - `horoscope_services.json` carries `period_profile_code`, `detail_profile_code` and `scan_profile_code`.
 - `horoscope_detail_profiles.json` and `horoscope_scan_profiles.json` are imported by the generic `json_db` importer.
 - `llm_integration_services.json` publishes the service as `beta`.

@@ -5,11 +5,11 @@ Status: closed.
 Checks:
 
 - Public contract name is documented:
-  `horoscope_premium_daily_local_request_v1`.
+  `horoscope_premium_daily_local_request`.
 - Public service code is documented:
   `horoscope_premium_daily_local_2h_slots`.
 - Premium response shape is documented as a branch of
-  `horoscope_response_v1`.
+  `horoscope_response`.
 - Errors and non-objectives remain aligned with implementation.
 
 Findings:

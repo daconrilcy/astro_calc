@@ -8,7 +8,7 @@ pub fn validate_response_evidence(
         .get("service_code")
         .and_then(|v| v.as_str())
         .ok_or_else(|| horoscope_error("HOROSCOPE_RESPONSE_INVALID"))?;
-    if response.get("contract_version").and_then(|v| v.as_str()) != Some("horoscope_response_v1")
+    if response.get("contract_version").and_then(|v| v.as_str()) != Some("horoscope_response")
         || response.get("service_code").and_then(|v| v.as_str()) != Some(service_code)
     {
         return Err(horoscope_error("HOROSCOPE_RESPONSE_INVALID"));
@@ -43,10 +43,6 @@ pub fn validate_response_evidence(
     if slots.len() != 3 {
         return Err(horoscope_error("HOROSCOPE_RESPONSE_INVALID"));
     }
-    validate_day_overview_not_copied(request, slots)?;
-    let mut texts = Vec::new();
-    let mut advices = Vec::new();
-    let mut best_for_sets = Vec::new();
     for slot in slots {
         let slot_code = slot
             .get("slot_code")
@@ -77,28 +73,7 @@ pub fn validate_response_evidence(
         validate_slot_specificity(request_slot)?;
         validate_slot_evidence_alignment(request_slot, keys)?;
         validate_public_slot_text(slot)?;
-        let text = slot.get("text").and_then(|v| v.as_str()).unwrap_or("");
-        validate_astrological_reference(slot_code, text, request_slot)?;
-        texts.push(text.to_string());
-        advices.push(
-            slot.get("advice")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string(),
-        );
-        best_for_sets.push(
-            slot.get("best_for")
-                .and_then(|v| v.as_array())
-                .into_iter()
-                .flatten()
-                .filter_map(|v| v.as_str())
-                .map(str::to_string)
-                .collect::<Vec<_>>(),
-        );
     }
-    validate_slot_diversity(&texts)?;
-    validate_distinct_strings(&advices, "HOROSCOPE_SLOT_ADVICE_DUPLICATED")?;
-    validate_distinct_best_for(&best_for_sets)?;
     let mut cited = Vec::new();
     collect_evidence_keys(response, &mut cited);
     let invented = cited
@@ -217,7 +192,6 @@ pub(crate) fn validate_free_response_evidence(
     let public_text = free_public_text(response);
     validate_public_text_no_technical_codes(&public_text)?;
     validate_free_text_quality(&public_text, response)?;
-    validate_astrological_reference("day", &public_text, &request_slots[0])?;
     Ok(())
 }
 

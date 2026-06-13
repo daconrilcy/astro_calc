@@ -493,17 +493,17 @@ fn service_mapping_notes(service: &IntegrationService) -> Vec<&'static str> {
         astral_llm_domain::CalculationMode::None => {
             if service.service_code == "horoscope_basic_daily_natal_3_slots" {
                 vec![
-                    "payload = horoscope_basic_daily_natal_request_v1",
+                    "payload = horoscope_basic_daily_natal_request",
                     "orchestration: calculator horoscope facts -> deterministic scoring -> fake horoscope response",
                 ]
             } else if service.service_code == "horoscope_free_daily" {
                 vec![
-                    "payload = horoscope_daily_natal_request_v1",
+                    "payload = horoscope_daily_natal_request",
                     "orchestration: calculator horoscope facts -> deterministic scoring -> single free daily fake horoscope response",
                 ]
             } else if service.service_code == "horoscope_premium_daily_local_2h_slots" {
                 vec![
-                    "payload = horoscope_premium_daily_local_request_v1",
+                    "payload = horoscope_premium_daily_local_request",
                     "orchestration: calculator local horoscope facts -> deterministic premium scoring -> structured premium fake horoscope response",
                 ]
             } else if service.service_code == "horoscope_free_next_7_days_natal"
@@ -511,7 +511,7 @@ fn service_mapping_notes(service: &IntegrationService) -> Vec<&'static str> {
                 || service.service_code == "horoscope_premium_next_7_days_natal"
             {
                 vec![
-                    "payload = horoscope_period_natal_request_v1",
+                    "payload = horoscope_period_natal_request",
                     "orchestration: time window resolver -> scan plan -> calculator period facts -> deterministic period scoring -> structured period fake horoscope response",
                 ]
             } else {

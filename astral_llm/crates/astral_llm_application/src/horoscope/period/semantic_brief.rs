@@ -1,5 +1,5 @@
 use super::*;
-pub fn build_period_writer_request_v2(
+pub fn build_period_writer_request(
     public: &HoroscopePeriodPublicRequest,
     calculation: &Value,
 ) -> Result<Value, GenerationError> {
@@ -8,9 +8,6 @@ pub fn build_period_writer_request_v2(
         .and_then(Value::as_str)
         .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_CALCULATION_FAILED"))?;
     validate_period_service_code(service_code)?;
-    if service_code != HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE {
-        return Err(horoscope_error("HOROSCOPE_PERIOD_WRITER_V2_PREMIUM_ONLY"));
-    }
     let service_profile = period_service_profile(service_code)?;
     let detail_profile_code = service_profile
         .detail_profile_code
@@ -56,9 +53,20 @@ pub fn build_period_writer_request_v2(
             )
         })?
         .unwrap_or(Value::Null);
-    let request = json!({        "contract_version": "horoscope_period_writer_request_v2",        "service_code": service_code,        "generation_mode": PeriodGenerationMode::SemanticBriefV2.as_str(),        "target_language_code": language.as_str(),        "astrologer_persona": astrologer_persona,        "period_resolution": period_resolution,        "scan_plan": scan_plan,        "detail_profile_code": detail_profile_code,        "semantic_brief": semantic_brief,        "evidence": evidence,        "safety_profile": astrology_public_safety_profile(),        "output_contract_version": "horoscope_period_response_v1"    });
-    validate_semantic_brief_is_atomic(&request)?;
-    validate_period_writer_request_v2_schema(&request)?;
+    let request = json!({
+        "contract_version": "horoscope_period_writer_request",
+        "service_code": service_code,
+        "target_language_code": language.as_str(),
+        "astrologer_persona": astrologer_persona,
+        "period_resolution": period_resolution,
+        "scan_plan": scan_plan,
+        "detail_profile_code": detail_profile_code,
+        "semantic_brief": semantic_brief,
+        "evidence": evidence,
+        "safety_profile": astrology_public_safety_profile(),
+        "output_contract_version": "horoscope_period_response"
+    });
+    validate_period_writer_request_schema(&request)?;
     Ok(request)
 }
 
@@ -504,226 +512,10 @@ pub(crate) fn period_role_hint(index: usize) -> &'static str {
 pub(crate) fn astrology_public_safety_profile() -> Value {
     json!({        "domain": "astrology_public_guidance",        "forbid_medical_guidance": true,        "forbid_fatalism": true,        "forbid_financial_promises": true,        "forbid_certain_predictions": true,        "persona_cannot_override_safety": true,        "evidence_keys_must_come_from_request": true    })
 }
-pub(crate) fn build_period_editorial_brief(
-    daily_plans: &[Value],
-    key_days: &[Value],
-    best_days: &[Value],
-    watch_days: &[Value],
-) -> Value {
-    let key_dates = marker_dates(key_days);
-    let best_dates = marker_dates(best_days);
-    let watch_dates = marker_dates(watch_days);
-    let mut theme_occurrences = HashMap::<String, usize>::new();
-    let days = daily_plans        .iter()        .enumerate()        .map(|(index, day)| {            let date = day["date"].as_str().unwrap_or("");            let theme = day["theme_code"].as_str().unwrap_or("organization");            let tone = day["tone"].as_str().unwrap_or("focused");            let occurrence_index = {                let count = theme_occurrences                    .entry(period_editorial_theme_key(theme).to_string())                    .or_default();                *count += 1;                *count            };            let previous_theme = index                .checked_sub(1)                .and_then(|idx| daily_plans.get(idx))                .and_then(|value| value["theme_code"].as_str());            let marker_role = period_editorial_marker_role(                date,                &key_dates,                &best_dates,                &watch_dates,            );            let public_rule = period_editorial_rule(theme, tone, marker_role);            let action_rule = period_editorial_rule(theme, tone, "transition");            let arc_rule = period_editorial_arc_rule(theme, occurrence_index);            let public_rule = arc_rule.clone().or(public_rule);            let action_rule = arc_rule.clone().or(action_rule);            let action_mode = period_editorial_rule_field(&action_rule, "action_mode", "prioriser");            json!({                "date": date,                "public_role": period_editorial_public_role(&public_rule, theme),                "narrative_function": period_editorial_narrative_function(&arc_rule, index, theme, marker_role),                "reader_situation": period_editorial_reader_situation(&action_rule, theme, action_mode),                "action_mode": action_mode,                "contrast_with_previous_day": period_editorial_contrast(previous_theme, theme, index),                "avoid_angle_reuse": period_editorial_avoid_angle(&action_rule, theme, action_mode)            })        })        .collect::<Vec<_>>();
-    json!({        "purpose": "Différencier les 7 journées par leur fonction humaine dans la semaine, pas seulement par des mots différents.",        "days": days    })
-}
-pub(crate) fn marker_dates(markers: &[Value]) -> HashSet<String> {
-    markers
-        .iter()
-        .filter_map(|day| day["date"].as_str().map(str::to_string))
-        .collect()
-}
-pub(crate) fn period_editorial_marker_role(
-    date: &str,
-    key_dates: &HashSet<String>,
-    best_dates: &HashSet<String>,
-    watch_dates: &HashSet<String>,
-) -> &'static str {
-    if watch_dates.contains(date) {
-        "vigilance"
-    } else if best_dates.contains(date) {
-        "appui"
-    } else if key_dates.contains(date) {
-        "repère"
-    } else {
-        "transition"
-    }
-}
-pub(crate) fn period_editorial_rule(theme: &str, tone: &str, marker_role: &str) -> Option<Value> {
-    let theme = period_editorial_theme_key(theme);
-    let rows = rows(PERIOD_EDITORIAL_ROLES_JSON).ok()?;
-    if marker_role != "transition" {
-        if let Some(row) = rows.iter().find(|row| {
-            row.get("is_enabled")
-                .and_then(Value::as_bool)
-                .unwrap_or(true)
-                && row.get("marker_role").and_then(Value::as_str) == Some(marker_role)
-        }) {
-            return Some(row.clone());
-        }
-    }
-    rows.iter()
-        .find(|row| {
-            row.get("is_enabled")
-                .and_then(Value::as_bool)
-                .unwrap_or(true)
-                && row.get("theme_code").and_then(Value::as_str) == Some(theme)
-                && row.get("marker_role").map_or(true, Value::is_null)
-        })
-        .or_else(|| {
-            rows.iter().find(|row| {
-                row.get("is_enabled")
-                    .and_then(Value::as_bool)
-                    .unwrap_or(true)
-                    && row.get("tone_code").and_then(Value::as_str) == Some(tone)
-                    && row.get("theme_code").map_or(true, Value::is_null)
-                    && row.get("marker_role").map_or(true, Value::is_null)
-            })
-        })
-        .or_else(|| {
-            rows.iter()
-                .find(|row| row.get("rule_code").and_then(Value::as_str) == Some("default"))
-        })
-        .cloned()
-}
 pub(crate) fn period_editorial_theme_key(theme: &str) -> &str {
     if theme == "routine" {
         "organization"
     } else {
         theme
     }
-}
-pub(crate) fn period_editorial_arc_rule(theme: &str, occurrence_index: usize) -> Option<Value> {
-    let rows = rows(PERIOD_EDITORIAL_ARCS_JSON).ok()?;
-    let theme = period_editorial_theme_key(theme);
-    rows.iter()
-        .find(|row| {
-            row.get("is_enabled")
-                .and_then(Value::as_bool)
-                .unwrap_or(true)
-                && row.get("theme_code").and_then(Value::as_str) == Some(theme)
-                && row
-                    .get("occurrence_index")
-                    .and_then(Value::as_u64)
-                    .map(|value| value as usize)
-                    == Some(occurrence_index)
-        })
-        .or_else(|| {
-            if occurrence_index < 2 {
-                None
-            } else {
-                rows.iter().find(|row| {
-                    row.get("is_enabled")
-                        .and_then(Value::as_bool)
-                        .unwrap_or(true)
-                        && row.get("theme_code").and_then(Value::as_str) == Some("default")
-                })
-            }
-        })
-        .cloned()
-}
-pub(crate) fn period_editorial_rule_field<'a>(
-    rule: &'a Option<Value>,
-    field: &str,
-    fallback: &'a str,
-) -> &'a str {
-    rule.as_ref()
-        .and_then(|row| row.get(field))
-        .and_then(Value::as_str)
-        .unwrap_or(fallback)
-}
-pub(crate) fn period_editorial_template(
-    template: &str,
-    theme_label: &str,
-    action_mode: &str,
-) -> String {
-    template
-        .replace("{theme_label}", theme_label)
-        .replace("{action_mode}", action_mode)
-}
-pub(crate) fn period_editorial_public_role(rule: &Option<Value>, theme: &str) -> String {
-    let theme_label = period_theme_public_label(theme);
-    let template = period_editorial_rule_field(
-        rule,
-        "public_role_template",
-        "Journée de transition pour ajuster {theme_label} sans répéter la veille.",
-    );
-    let action_mode = period_editorial_rule_field(rule, "action_mode", "prioriser");
-    period_editorial_template(template, theme_label, action_mode)
-}
-pub(crate) fn period_editorial_narrative_function(
-    rule: &Option<Value>,
-    index: usize,
-    theme: &str,
-    marker_role: &str,
-) -> String {
-    if let Some(template) = rule
-        .as_ref()
-        .and_then(|row| row.get("narrative_function_template"))
-        .and_then(Value::as_str)
-    {
-        return period_editorial_template(
-            template,
-            period_theme_public_label(theme),
-            period_editorial_rule_field(rule, "action_mode", marker_role),
-        );
-    }
-    let position = match index {
-        0 => "ouvrir la semaine",
-        1 | 2 => "mettre le premier choix en pratique",
-        3 | 4 => "réviser le rythme sans disperser l'attention",
-        _ => "préparer la suite de la période",
-    };
-    format!(
-        "{position} en donnant à {} un usage {}.",
-        period_theme_public_label(theme),
-        marker_role
-    )
-}
-pub(crate) fn period_editorial_reader_situation(
-    rule: &Option<Value>,
-    theme: &str,
-    action_mode: &str,
-) -> String {
-    let theme_label = period_theme_public_label(theme);
-    let template = period_editorial_rule_field(
-        rule,
-        "reader_situation",
-        "Ce repère doit rester simple, visible et limité.",
-    );
-    naturalize_period_reader_situation(&period_editorial_template(
-        template,
-        theme_label,
-        action_mode,
-    ))
-}
-pub(crate) fn naturalize_period_reader_situation(text: &str) -> String {
-    let lower = text.to_lowercase();
-    if lower.starts_with("une priorité liée à ") {
-        "Ce repère doit rester simple, visible et limité.".to_string()
-    } else {
-        text.to_string()
-    }
-}
-pub(crate) fn period_editorial_contrast(
-    previous_theme: Option<&str>,
-    theme: &str,
-    index: usize,
-) -> String {
-    let text = match previous_theme {
-        None => "Point d'entrée de la semaine: installer le mouvement sans tout décider.".into(),
-        Some(previous) if previous == theme => format!(
-            "Même fond que la veille, mais avec un usage différent de {} pour éviter le doublon.",
-            period_theme_public_label(theme)
-        ),
-        Some(previous) => format!(
-            "Déplace l'attention de {} vers {}.",
-            period_theme_public_label(previous),
-            period_theme_public_label(theme)
-        ),
-    };
-    if index == 6 {
-        format!("{text} Cette date doit aussi préparer la suite.")
-    } else {
-        text
-    }
-}
-pub(crate) fn period_editorial_avoid_angle(
-    rule: &Option<Value>,
-    theme: &str,
-    action_mode: &str,
-) -> String {
-    let theme_label = period_theme_public_label(theme);
-    let template = period_editorial_rule_field(        rule,        "avoid_angle_template",        "Ne pas refaire un conseil général de {theme_label}; garder l'angle sur l'action '{action_mode}'.",    );
-    period_editorial_template(template, theme_label, action_mode)
 }

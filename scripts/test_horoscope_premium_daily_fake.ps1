@@ -66,7 +66,7 @@ for ($i = 0; $i -lt 30; $i++) {
         if ([string]$status.result.reading.quality.provider -ne "fake") {
             throw "Premium horoscope fake smoke expected provider=fake, got $($status.result.reading.quality.provider)"
         }
-        if ($status.result.reading.contract_version -ne "horoscope_response_v1") {
+        if ($status.result.reading.contract_version -ne "horoscope_response") {
             throw "Unexpected horoscope contract version"
         }
         if ($status.result.reading.service_code -ne "horoscope_premium_daily_local_2h_slots") {

@@ -160,11 +160,11 @@ fn premium_next_7_days_catalog_exposes_v2_ui_entry_without_contract_change() {
     assert_eq!(premium.label_fr, "Horoscope Premium 7 prochains jours V2");
     assert_eq!(
         premium.payload_contract,
-        "horoscope_period_natal_request_v1"
+        "horoscope_period_natal_request"
     );
     assert_eq!(
         premium.reading_output_contract,
-        "horoscope_period_response_v1"
+        "horoscope_period_response"
     );
     assert_eq!(premium.availability, ServiceAvailability::Beta);
     assert_eq!(premium.sort_order, 240);

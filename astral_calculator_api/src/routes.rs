@@ -275,10 +275,10 @@ async fn calculate_horoscope_daily_natal(
 
     if let Err(errors) = state
         .schema_registry
-        .validate("horoscope_calculation_request_v1", &payload)
+        .validate("horoscope_calculation_request", &payload)
     {
         return validation_failed(
-            "Request does not match horoscope_calculation_request_v1.",
+            "Request does not match horoscope_calculation_request.",
             Some(json!({ "errors": errors })),
         );
     }
@@ -287,7 +287,7 @@ async fn calculate_horoscope_daily_natal(
         Ok(value) => value,
         Err(err) => {
             return validation_failed(
-                "Request does not match horoscope_calculation_request_v1.",
+                "Request does not match horoscope_calculation_request.",
                 Some(json!({ "errors": [err.to_string()] })),
             )
         }
@@ -307,11 +307,11 @@ async fn calculate_horoscope_daily_natal(
             };
             if let Err(errors) = state
                 .schema_registry
-                .validate("horoscope_calculation_response_v1", &value)
+                .validate("horoscope_calculation_response", &value)
             {
                 error!(?errors, "horoscope response failed schema validation");
                 return internal_error(
-                    "Engine produced a response that does not match horoscope_calculation_response_v1.",
+                    "Engine produced a response that does not match horoscope_calculation_response.",
                 );
             }
             Json(response).into_response()
@@ -335,10 +335,10 @@ async fn calculate_horoscope_period_natal(
 
     if let Err(errors) = state
         .schema_registry
-        .validate("horoscope_period_calculation_request_v1", &payload)
+        .validate("horoscope_period_calculation_request", &payload)
     {
         return validation_failed(
-            "Request does not match horoscope_period_calculation_request_v1.",
+            "Request does not match horoscope_period_calculation_request.",
             Some(json!({ "errors": errors })),
         );
     }
@@ -347,7 +347,7 @@ async fn calculate_horoscope_period_natal(
         Ok(value) => value,
         Err(err) => {
             return validation_failed(
-                "Request does not match horoscope_period_calculation_request_v1.",
+                "Request does not match horoscope_period_calculation_request.",
                 Some(json!({ "errors": [err.to_string()] })),
             )
         }
@@ -371,14 +371,14 @@ async fn calculate_horoscope_period_natal(
             };
             if let Err(errors) = state
                 .schema_registry
-                .validate("horoscope_period_calculation_response_v1", &value)
+                .validate("horoscope_period_calculation_response", &value)
             {
                 error!(
                     ?errors,
                     "horoscope period response failed schema validation"
                 );
                 return internal_error(
-                    "Engine produced a response that does not match horoscope_period_calculation_response_v1.",
+                    "Engine produced a response that does not match horoscope_period_calculation_response.",
                 );
             }
             Json(response).into_response()

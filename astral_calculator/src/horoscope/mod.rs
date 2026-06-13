@@ -235,7 +235,7 @@ pub fn calculate_horoscope_daily_natal(
         .collect();
 
     HoroscopeCalculationResponse {
-        contract_version: "horoscope_calculation_response_v1".into(),
+        contract_version: "horoscope_calculation_response".into(),
         service_code,
         period: request.period,
         slots,
@@ -294,7 +294,7 @@ pub fn calculate_horoscope_period_natal_from_transits(
         .collect::<Vec<_>>();
 
     HoroscopePeriodCalculationResponse {
-        contract_version: "horoscope_period_calculation_response_v1".into(),
+        contract_version: "horoscope_period_calculation_response".into(),
         service_code: request.service_code,
         period_resolution: request.period_resolution,
         scan_plan: request.scan_plan,

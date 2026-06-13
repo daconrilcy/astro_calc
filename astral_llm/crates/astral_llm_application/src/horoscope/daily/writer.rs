@@ -118,7 +118,7 @@ pub fn daily_response_provider_schema(request: &Value) -> Result<Value, Generati
     }
     let mut schema = json!({
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "horoscope_response_v1",
+        "title": "horoscope_response",
         "definitions": schema.get("definitions").cloned().unwrap_or_else(|| json!({})),
         "type": "object",
         "required": required,
@@ -214,7 +214,7 @@ pub fn daily_writer_messages(request: &Value) -> Result<Vec<PromptMessage>, Gene
     Ok(vec![
         PromptMessage {
             role: PromptRole::System,
-            content: "Tu rédiges un horoscope quotidien personnalisé en français. Retourne uniquement un objet JSON compact minified conforme au schéma fourni horoscope_response_v1: pas de markdown, pas de commentaires, pas de pretty print, pas d'indentation. N'invente aucune preuve astrologique: chaque evidence_key publique doit provenir de la requête. N'affiche jamais les codes internes, les noms de champs, les clés de preuve, les theme_code anglais, les codes tone anglais, ni les consignes internes.".to_string(),
+            content: "Tu rédiges un horoscope quotidien personnalisé en français. Retourne uniquement un objet JSON compact minified conforme au schéma fourni horoscope_response: pas de markdown, pas de commentaires, pas de pretty print, pas d'indentation. N'invente aucune preuve astrologique: chaque evidence_key publique doit provenir de la requête. N'affiche jamais les codes internes, les noms de champs, les clés de preuve, les theme_code anglais, les codes tone anglais, ni les consignes internes.".to_string(),
         },
         PromptMessage {
             role: PromptRole::User,
@@ -307,7 +307,7 @@ pub(crate) fn fake_writer_response(request: &Value) -> Result<Value, GenerationE
         .map(render_fake_slot)
         .collect::<Result<Vec<_>, _>>()?;
     let response = json!({
-        "contract_version": "horoscope_response_v1",
+        "contract_version": "horoscope_response",
         "service_code": HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE,
         "period": period,
         "summary": {
@@ -385,7 +385,7 @@ pub(crate) fn fake_writer_premium_response(request: &Value) -> Result<Value, Gen
         .collect::<Vec<_>>();
 
     let response = json!({
-        "contract_version": "horoscope_response_v1",
+        "contract_version": "horoscope_response",
         "service_code": HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
         "period": period,
         "summary": {
@@ -513,7 +513,7 @@ pub(crate) fn fake_writer_free_response(request: &Value) -> Result<Value, Genera
         .cloned()
         .unwrap_or_default();
     let response = json!({
-        "contract_version": "horoscope_response_v1",
+        "contract_version": "horoscope_response",
         "service_code": HOROSCOPE_FREE_DAILY_SERVICE_CODE,
         "period": period,
         "summary": {

@@ -8,20 +8,13 @@ pub fn reprocess_horoscope_period_payload(response: Value) -> Value {
 }
 #[doc(hidden)]
 pub fn postprocess_period_provider_response(request: &Value, response: Value) -> Value {
-    let mut response = reprocess_horoscope_period_payload(response);
-    prune_period_response_variant_fields(request, &mut response);
-    finalize_period_response_words_and_repetition(request, &mut response);
-    prune_period_response_variant_fields(request, &mut response);
-    response
-}
-pub fn postprocess_period_provider_response_v2(request: &Value, response: Value) -> Value {
     let mut response = response;
-    prune_period_response_variant_fields_v2(request, &mut response);
+    repair_period_response_shape(request, &mut response);
     trim_period_response_strings_v2(&mut response);
     normalize_period_v2_public_short_labels(&mut response);
     prune_period_v2_overlapping_watch_windows(&mut response);
     normalize_period_v2_watch_summary_status(&mut response);
-    prune_period_response_variant_fields_v2(request, &mut response);
+    restore_period_response_technical_keys_v2(request, &mut response);
     response
 }
 pub(crate) fn prune_period_v2_overlapping_watch_windows(response: &mut Value) {

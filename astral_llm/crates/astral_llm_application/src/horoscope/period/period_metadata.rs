@@ -32,14 +32,6 @@ pub(crate) fn period_public_theme_labels() -> &'static HashMap<String, String> {
 pub(crate) fn period_domain_title(theme_code: &str) -> &'static str {
     period_public_theme_field(theme_code, "domain_title", "Priorité utile")
 }
-pub(crate) fn period_domain_focus(theme_code: &str, personalization: &str) -> String {
-    let focus = period_public_theme_field(
-        theme_code,
-        "domain_focus",
-        "Garder une priorité simple, visible et reliée à la situation réelle.",
-    );
-    format!("{focus} {personalization}")
-}
 pub(crate) fn period_public_theme_field(
     theme_code: &str,
     field: &str,
@@ -130,72 +122,6 @@ pub(crate) fn period_natal_focus_labels() -> &'static HashMap<String, PeriodNata
             .collect()
     })
 }
-#[derive(Clone)]
-pub(crate) struct PeriodStyleVariant {
-    pub(crate) code: String,
-    pub(crate) avoid_terms: Value,
-}
-pub(crate) fn period_style_variant_for_theme(theme: &str) -> PeriodStyleVariant {
-    let code = match theme {
-        "relationship" => "relation",
-        "energy" => "action",
-        "communication" => "communication",
-        "clarity" => "clarity",
-        "integration" => "integration",
-        "routine" => "perspective",
-        _ => "anchor",
-    };
-    period_style_variants()
-        .get(code)
-        .cloned()
-        .unwrap_or_else(|| PeriodStyleVariant {
-            code: code.to_string(),
-            avoid_terms: json!(["restez concret", "gardez une marge"]),
-        })
-}
-pub(crate) fn period_style_variants() -> &'static HashMap<String, PeriodStyleVariant> {
-    static VARIANTS: OnceLock<HashMap<String, PeriodStyleVariant>> = OnceLock::new();
-    VARIANTS.get_or_init(|| {
-        serde_json::from_str::<Value>(PERIOD_STYLE_VARIANTS_JSON)
-            .ok()
-            .and_then(|value| value.get("data").and_then(Value::as_array).cloned())
-            .into_iter()
-            .flatten()
-            .filter(|row| {
-                row.get("is_active")
-                    .and_then(Value::as_bool)
-                    .unwrap_or(true)
-            })
-            .filter_map(|row| {
-                let code = row.get("style_variant_code")?.as_str()?.to_string();
-                Some((
-                    code.clone(),
-                    PeriodStyleVariant {
-                        code,
-                        avoid_terms: row.get("avoid_terms").cloned().unwrap_or_else(|| json!([])),
-                    },
-                ))
-            })
-            .collect()
-    })
-}
-pub(crate) fn period_event_personalization_hint(event: &Value) -> &str {
-    event["theme_code"].as_str().map_or(        "Situations associées : choisir une priorité simple, vérifier une limite, alléger une charge.",        |theme| match theme {            "relationship" => "Situations associées : répondre à une attente, préserver un lien, ajuster un accord.",            "energy" => "Situations associées : agir court, doser l'effort, éviter une réaction brusque.",            "communication" => "Situations associées : préparer un message, différer une réponse, vérifier une information.",            "clarity" => "Situations associées : nommer ce qui compte, trier deux options, éviter de conclure trop vite.",            "integration" => "Situations associées : vérifier un délai, réduire une promesse, confirmer seulement si le cadre est clair.",            _ => "Situations associées : choisir une priorité simple, vérifier une limite, alléger une charge.",        },    )
-}
-pub(crate) fn period_advice_hint(theme: &str, natal_focus_hint: &str) -> String {
-    let advice = match theme {
-        "relationship" => {
-            "Cherchez une réponse relationnelle précise plutôt qu'un accord de façade."
-        }
-        "energy" => "Choisissez une action courte, assumée et proportionnée.",
-        "communication" => "Formulez le message utile avant d'élargir la discussion.",
-        "clarity" => "Nommez ce qui compte avant de décider.",
-        "integration" => "Reliez ce qui avance à une limite ou un engagement réaliste.",
-        "routine" => "Allégez une habitude avant d'en ajouter une autre.",
-        _ => "Hiérarchisez une priorité et laissez le reste au second plan.",
-    };
-    format!("{advice} {natal_focus_hint}")
-}
 pub(crate) fn period_tone_public_label(tone_code: &str) -> String {
     period_tone_labels()
         .get(tone_code)
@@ -271,35 +197,6 @@ pub(crate) fn period_tone_labels() -> &'static HashMap<String, String> {
             .collect::<HashMap<_, _>>()
     })
 }
-pub(crate) fn normalize_period_public_tones(request: &Value, response: &mut Value) {
-    let tone_by_date = request["daily_plans"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|day| {
-            Some((
-                day.get("date")?.as_str()?.to_string(),
-                period_tone_public_label(day.get("tone")?.as_str()?),
-            ))
-        })
-        .collect::<HashMap<_, _>>();
-    if let Some(days) = response
-        .get_mut("daily_timeline")
-        .and_then(Value::as_array_mut)
-    {
-        for day in days {
-            if let Some(date) = day.get("date").and_then(Value::as_str) {
-                if let Some(label) = tone_by_date.get(date) {
-                    day["tone"] = json!(label);
-                    continue;
-                }
-            }
-            if let Some(tone) = day.get("tone").and_then(Value::as_str) {
-                day["tone"] = json!(period_tone_public_label_if_code(tone));
-            }
-        }
-    }
-}
 pub(crate) fn validate_period_public_tones(response: &Value) -> Result<(), GenerationError> {
     let allowed = period_public_tone_labels();
     for day in response["daily_timeline"].as_array().into_iter().flatten() {
@@ -323,7 +220,6 @@ pub(crate) struct PeriodWordLimits {
 }
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct PeriodDetailProfile {
-    pub(crate) max_main_events: usize,
     pub(crate) max_evidence: usize,
     pub(crate) max_key_days: usize,
     pub(crate) max_best_days: usize,
@@ -333,11 +229,8 @@ pub(crate) struct PeriodDetailProfile {
     pub(crate) max_watch_windows: usize,
     pub(crate) include_best_days: bool,
     pub(crate) include_watch_days: bool,
-    pub(crate) include_daily_timeline: bool,
-    pub(crate) include_domain_sections: bool,
     pub(crate) include_best_windows: bool,
     pub(crate) include_watch_windows: bool,
-    pub(crate) include_strategy_section: bool,
     pub(crate) word_limits: PeriodWordLimits,
 }
 pub(crate) fn period_detail_profile(
@@ -359,10 +252,6 @@ pub(crate) fn period_detail_profile(
         4
     };
     Ok(PeriodDetailProfile {
-        max_main_events: row
-            .get("max_main_events")
-            .and_then(Value::as_u64)
-            .unwrap_or(8) as usize,
         max_evidence: row
             .get("max_evidence")
             .and_then(Value::as_u64)
@@ -393,24 +282,12 @@ pub(crate) fn period_detail_profile(
             .get("include_watch_days")
             .and_then(Value::as_bool)
             .unwrap_or(true),
-        include_daily_timeline: row
-            .get("include_daily_timeline")
-            .and_then(Value::as_bool)
-            .unwrap_or(true),
-        include_domain_sections: row
-            .get("include_domain_sections")
-            .and_then(Value::as_bool)
-            .unwrap_or(true),
         include_best_windows: row
             .get("include_best_windows")
             .and_then(Value::as_bool)
             .unwrap_or(false),
         include_watch_windows: row
             .get("include_watch_windows")
-            .and_then(Value::as_bool)
-            .unwrap_or(false),
-        include_strategy_section: row
-            .get("include_strategy_section")
             .and_then(Value::as_bool)
             .unwrap_or(false),
         word_limits: PeriodWordLimits {
@@ -442,7 +319,7 @@ pub(crate) fn period_word_limits_for_request(request: &Value) -> PeriodWordLimit
         .unwrap_or_else(period_basic_word_limits)
 }
 pub fn period_writer_max_output_tokens(request: &Value) -> u32 {
-    if is_period_writer_request_v2(request) {
+    if is_period_writer_request(request) {
         return PERIOD_V2_MAX_OUTPUT_TOKENS;
     }
     let limits = period_word_limits_for_request(request);
@@ -450,7 +327,7 @@ pub fn period_writer_max_output_tokens(request: &Value) -> u32 {
 }
 #[doc(hidden)]
 pub fn period_writer_reasoning_effort(request: &Value) -> Option<ReasoningEffort> {
-    if is_period_writer_request_v2(request) || is_free_period_request(request) {
+    if is_period_writer_request(request) || is_free_period_request(request) {
         Some(ReasoningEffort::Minimal)
     } else {
         match request["service_code"].as_str() {
@@ -460,7 +337,7 @@ pub fn period_writer_reasoning_effort(request: &Value) -> Option<ReasoningEffort
     }
 }
 pub(crate) fn period_effective_min_word_count(request: &Value, limits: &PeriodWordLimits) -> usize {
-    if is_period_writer_request_v2(request) {
+    if is_period_writer_request(request) {
         limits.target_min.saturating_sub(700)
     } else {
         limits.target_min

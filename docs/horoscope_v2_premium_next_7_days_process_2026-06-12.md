@@ -32,7 +32,7 @@ flowchart TD
 
     N --> O["POST /v1/calculations/horoscope/period/natal\ncalculate_horoscope_period_natal()\nastral_calculator_api/src/routes.rs"]
 
-    O --> P["schema_registry.validate('horoscope_period_calculation_request_v1')\nastral_calculator_api/src/routes.rs"]
+    O --> P["schema_registry.validate('horoscope_period_calculation_request')\nastral_calculator_api/src/routes.rs"]
     P --> Q["ensure_horoscope_natal_chart_ready()\nastral_calculator_api/src/routes.rs"]
     Q --> R["RuntimeService::calculate_horoscope_period_natal()\nastral_calculator/src/runtime/service.rs"]
 
@@ -48,9 +48,9 @@ flowchart TD
 
     Y --> Y1["nearest_major_aspect()\nperiod_max_major_aspect_orb_deg()\nperiod_theme_for()\nperiod_tone_for()\nnormalize_deg()\nastral_calculator/src/horoscope/mod.rs"]
 
-    Y1 --> Z["HoroscopePeriodCalculationResponse\ncontract_version = horoscope_period_calculation_response_v1\nastral_calculator/src/horoscope/mod.rs"]
+    Y1 --> Z["HoroscopePeriodCalculationResponse\ncontract_version = horoscope_period_calculation_response\nastral_calculator/src/horoscope/mod.rs"]
 
-    Z --> AA["Calculator API validates response schema\nschema_registry.validate('horoscope_period_calculation_response_v1')\nastral_calculator_api/src/routes.rs"]
+    Z --> AA["Calculator API validates response schema\nschema_registry.validate('horoscope_period_calculation_response')\nastral_calculator_api/src/routes.rs"]
 
     AA --> AB["Back to HoroscopePeriodNatalOrchestrator::execute()\nastral_llm/crates/astral_llm_application/src/horoscope/mod.rs"]
 
@@ -118,7 +118,7 @@ flowchart TD
 Notes :
 
 - `semantic_brief_v2` est actif uniquement pour `horoscope_premium_next_7_days_natal`.
-- La sortie publique attendue reste `horoscope_period_response_v1`.
+- La sortie publique attendue reste `horoscope_period_response`.
 - `calculation`, `interpretation_request`, `writer_request`, `semantic_brief`, `evidence` et diagnostics qualite sont des donnees internes/debug ; les consommateurs UI doivent lire `$.result.reading`.
 - Le chemin `semantic_brief_v2` ne bloque plus sur des mots, fragments ou phrases hardcodes dans le texte public. Ces signaux appartiennent a `debug.period_v2_editorial_audit`, en mode `non_blocking`.
 - Le retry editor V2 est declenche uniquement par une erreur contractuelle : schema, dates, evidence, snapshots, sections Premium, coherence des fenetres ou word count provider reel.

@@ -128,7 +128,7 @@ fn text_reprocessing_horoscope_basic_daily_does_not_add_root_advice() {
         TextTarget::HoroscopeDailyResponse,
         vec![Op::BuildFallback],
         json!({
-            "contract_version": "horoscope_response_v1",
+            "contract_version": "horoscope_response",
             "service_code": "horoscope_basic_daily_natal_3_slots",
             "slots": []
         }),

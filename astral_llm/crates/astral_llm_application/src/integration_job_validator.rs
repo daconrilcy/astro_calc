@@ -53,24 +53,24 @@ impl IntegrationJobValidator {
                 "astro_engine_request_v1.schema.json",
             ),
             (
-                "horoscope_basic_daily_natal_request_v1",
+                "horoscope_basic_daily_natal_request",
                 contracts_llm_dir(),
-                "horoscope_basic_daily_natal_request_v1.schema.json",
+                "horoscope_basic_daily_natal_request.schema.json",
             ),
             (
-                "horoscope_daily_natal_request_v1",
+                "horoscope_daily_natal_request",
                 contracts_llm_dir(),
-                "horoscope_daily_natal_request_v1.schema.json",
+                "horoscope_daily_natal_request.schema.json",
             ),
             (
-                "horoscope_premium_daily_local_request_v1",
+                "horoscope_premium_daily_local_request",
                 contracts_llm_dir(),
-                "horoscope_premium_daily_local_request_v1.schema.json",
+                "horoscope_premium_daily_local_request.schema.json",
             ),
             (
-                "horoscope_period_natal_request_v1",
+                "horoscope_period_natal_request",
                 contracts_llm_dir(),
-                "horoscope_period_natal_request_v1.schema.json",
+                "horoscope_period_natal_request.schema.json",
             ),
         ] {
             let schema = load_schema(filename, dir);

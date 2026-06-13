@@ -1,15 +1,12 @@
 use super::*;
 pub(crate) const INTERPRETATION_REQUEST_SCHEMA_JSON: &str =
-    include_str!("../../../../../contracts/llm/horoscope_interpretation_request_v1.schema.json");
+    include_str!("../../../../../contracts/llm/horoscope_interpretation_request.schema.json");
 pub(crate) const RESPONSE_SCHEMA_JSON: &str =
-    include_str!("../../../../../contracts/llm/horoscope_response_v1.schema.json");
-pub(crate) const PERIOD_INTERPRETATION_REQUEST_SCHEMA_JSON: &str = include_str!(
-    "../../../../../contracts/llm/horoscope_period_interpretation_request_v1.schema.json"
-);
-pub(crate) const PERIOD_WRITER_REQUEST_V2_SCHEMA_JSON: &str =
-    include_str!("../../../../../contracts/llm/horoscope_period_writer_request_v2.schema.json");
+    include_str!("../../../../../contracts/llm/horoscope_response.schema.json");
+pub(crate) const PERIOD_WRITER_REQUEST_SCHEMA_JSON: &str =
+    include_str!("../../../../../contracts/llm/horoscope_period_writer_request.schema.json");
 pub(crate) const PERIOD_RESPONSE_SCHEMA_JSON: &str =
-    include_str!("../../../../../contracts/llm/horoscope_period_response_v1.schema.json");
+    include_str!("../../../../../contracts/llm/horoscope_period_response.schema.json");
 pub fn validate_interpretation_request_schema(value: &Value) -> Result<(), GenerationError> {
     validate_schema(
         interpretation_request_schema,
@@ -47,13 +44,9 @@ pub(crate) fn response_schema() -> &'static JSONSchema {
     static SCHEMA: OnceLock<JSONSchema> = OnceLock::new();
     SCHEMA.get_or_init(|| compile_schema(RESPONSE_SCHEMA_JSON))
 }
-pub(crate) fn period_interpretation_request_schema() -> &'static JSONSchema {
+pub(crate) fn period_writer_request_schema() -> &'static JSONSchema {
     static SCHEMA: OnceLock<JSONSchema> = OnceLock::new();
-    SCHEMA.get_or_init(|| compile_schema(PERIOD_INTERPRETATION_REQUEST_SCHEMA_JSON))
-}
-pub(crate) fn period_writer_request_v2_schema() -> &'static JSONSchema {
-    static SCHEMA: OnceLock<JSONSchema> = OnceLock::new();
-    SCHEMA.get_or_init(|| compile_schema(PERIOD_WRITER_REQUEST_V2_SCHEMA_JSON))
+    SCHEMA.get_or_init(|| compile_schema(PERIOD_WRITER_REQUEST_SCHEMA_JSON))
 }
 pub(crate) fn period_response_schema() -> &'static JSONSchema {
     static SCHEMA: OnceLock<JSONSchema> = OnceLock::new();

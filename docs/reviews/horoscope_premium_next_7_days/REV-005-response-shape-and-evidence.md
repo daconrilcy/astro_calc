@@ -2,7 +2,7 @@
 
 ## Contexte
 
-La reponse Premium etend `horoscope_period_response_v1`.
+La reponse Premium etend `horoscope_period_response`.
 
 ## Checks
 

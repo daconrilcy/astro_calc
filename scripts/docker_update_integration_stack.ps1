@@ -80,7 +80,7 @@ function Assert-PremiumNext7V2Catalogue {
     if ($service.label_fr -ne "Horoscope Premium 7 prochains jours V2") {
         throw "Expected Premium next 7 days V2 label, got '$($service.label_fr)'"
     }
-    if ($service.payload_contract -ne "horoscope_period_natal_request_v1" -or $service.reading_output_contract -ne "horoscope_period_response_v1") {
+    if ($service.payload_contract -ne "horoscope_period_natal_request" -or $service.reading_output_contract -ne "horoscope_period_response") {
         throw "Premium next 7 days public contracts changed unexpectedly"
     }
     $payload = $service.example_request_json.payload

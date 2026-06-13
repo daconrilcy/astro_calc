@@ -1,0 +1,71 @@
+{
+  "contract_version": "horoscope_response",
+  "service_code": "horoscope_basic_daily_natal_3_slots",
+  "period": {
+    "date": "2026-06-06",
+    "timezone": "Europe/Paris"
+  },
+  "summary": {
+    "title": "Une journée à ajuster avec précision",
+    "text": "La journée avance en trois temps distincts : organiser le cadre, ralentir les réactions, puis rouvrir une parole plus souple. Les preuves astrologiques retenues dessinent une progression concrète sans transformer le climat du jour en promesse événementielle."
+  },
+  "slots": [
+    {
+      "slot_code": "morning",
+      "title": "Matin",
+      "theme": "Organisation",
+      "tone": "focused",
+      "text": "La Lune met l'accent sur l'organisation et les gestes utiles. C'est un bon moment pour clarifier une priorité concrète, ranger une tâche ou reprendre un point simple sans ouvrir trop de sujets à la fois.",
+      "advice": "Choisissez une action vérifiable et terminez-la avant de passer à la suivante.",
+      "best_for": ["organization", "routine"],
+      "watch_point": "Évitez d'ouvrir trop de sujets à la fois.",
+      "evidence_keys": ["slot:morning:moon:natal_house:6"]
+    },
+    {
+      "slot_code": "afternoon",
+      "title": "Après-midi",
+      "theme": "Limites émotionnelles",
+      "tone": "careful",
+      "text": "Un contact tendu entre Mars et la Lune natale peut rendre l'après-midi plus réactif. Ce créneau demande de ralentir les réponses, surtout si une discussion devient imprécise ou chargée.",
+      "advice": "Si une tension monte, reformulez d'abord ce que vous avez compris avant de répondre.",
+      "best_for": ["reformulation", "boundaries"],
+      "watch_point": "Attendez que l'émotion se calme avant de répondre.",
+      "evidence_keys": ["slot:afternoon:mars:square:natal_moon"]
+    },
+    {
+      "slot_code": "evening",
+      "title": "Soir",
+      "theme": "Dialogue",
+      "tone": "softer",
+      "text": "Vénus soutient Mercure natal et adoucit le climat relationnel du soir. L'enjeu n'est pas de tout résoudre, mais de rouvrir un échange simple, concret et moins défensif.",
+      "advice": "Revenez sur un point précis plutôt que sur toute l'histoire.",
+      "best_for": ["dialogue", "repair"],
+      "watch_point": "Ne rouvrez pas tous les sujets en même temps.",
+      "evidence_keys": ["slot:evening:venus:trine:natal_mercury"]
+    }
+  ],
+  "watch_points": ["Réactivité émotionnelle en milieu de journée"],
+  "opportunities": ["Conversation plus fluide en fin de journée"],
+  "evidence_summary": [
+    {
+      "evidence_key": "slot:afternoon:mars:square:natal_moon",
+      "theme_code": "emotional_boundaries"
+    },
+    {
+      "evidence_key": "slot:morning:moon:natal_house:6",
+      "theme_code": "daily_care"
+    },
+    {
+      "evidence_key": "slot:evening:venus:trine:natal_mercury",
+      "theme_code": "supportive_dialogue"
+    }
+  ],
+  "quality": {
+    "provider": "fake",
+    "evidence_guard": "passed",
+    "evidence_coverage": 1.0,
+    "slot_diversity_passed": true,
+    "french_typography_passed": true,
+    "generic_language_passed": true
+  }
+}

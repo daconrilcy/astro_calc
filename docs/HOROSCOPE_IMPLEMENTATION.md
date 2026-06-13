@@ -125,11 +125,11 @@ Payload public V1 :
 
 Contrats dedies :
 
-- `horoscope_period_natal_request_v1` ;
-- `horoscope_period_calculation_request_v1` ;
-- `horoscope_period_calculation_response_v1` ;
-- `horoscope_period_interpretation_request_v1` ;
-- `horoscope_period_response_v1`.
+- `horoscope_period_natal_request` ;
+- `horoscope_period_calculation_request` ;
+- `horoscope_period_calculation_response` ;
+- `horoscope_period_interpretation_request` ;
+- `horoscope_period_response`.
 
 La reponse publique contient `week_overview`, `key_days`, `best_days`,
 `watch_days`, `watch_summary`, `daily_timeline[7]`, `domain_sections`, `advice`,
@@ -344,7 +344,7 @@ une erreur typee :
 
 Le service horoscope peut utiliser le theme natal comme reference, mais il ne
 consomme pas directement `llm_projection_natal_v1` comme payload principal. Il
-doit construire un contrat dedie `horoscope_interpretation_request_v1`.
+doit construire un contrat dedie `horoscope_interpretation_request`.
 
 Les champs `summary`, `interpretive_hint` ou `reading_plan` du natal ne doivent
 pas etre recopies tels quels dans la reponse horoscope.
@@ -396,7 +396,7 @@ Le routage doit s'appuyer sur le catalogue
 Le validateur d'integration valide :
 
 1. l'enveloppe `integration_job_request_v1` ;
-2. le payload `horoscope_basic_daily_natal_request_v1`.
+2. le payload `horoscope_basic_daily_natal_request`.
 
 Le routage d'execution doit ajouter un cas explicite dans
 `unified_reading_orchestrator` ou dans le routeur de services d'integration
@@ -455,11 +455,11 @@ Les contrats doivent preceder les endpoints et les branchements worker.
 
 | Contrat | Role |
 |---------|------|
-| `horoscope_basic_daily_natal_request_v1` | Payload metier public du service V1. |
-| `horoscope_calculation_request_v1` | Requete envoyee par l'orchestrateur au calculateur. |
-| `horoscope_calculation_response_v1` | Vue audit complete des faits deterministes produits par le calculateur. |
-| `horoscope_interpretation_request_v1` | Vue courte, filtree, scoree, destinee au LLM. |
-| `horoscope_response_v1` | Reponse finale publique du service horoscope. |
+| `horoscope_basic_daily_natal_request` | Payload metier public du service V1. |
+| `horoscope_calculation_request` | Requete envoyee par l'orchestrateur au calculateur. |
+| `horoscope_calculation_response` | Vue audit complete des faits deterministes produits par le calculateur. |
+| `horoscope_interpretation_request` | Vue courte, filtree, scoree, destinee au LLM. |
+| `horoscope_response` | Reponse finale publique du service horoscope. |
 
 Ces schemas doivent etre places dans `contracts/` selon la responsabilite :
 
@@ -474,7 +474,7 @@ referentiel et les tests golden.
 
 ## Contrat calculateur horoscope
 
-`horoscope_calculation_response_v1` doit retourner au minimum :
+`horoscope_calculation_response` doit retourner au minimum :
 
 - `period` ;
 - `slots[]` ;
@@ -499,7 +499,7 @@ la projection, le scoring et la shortlist utilisee pour la redaction.
 
 ## Payload LLM horoscope
 
-`horoscope_interpretation_request_v1` est une projection courte et filtree.
+`horoscope_interpretation_request` est une projection courte et filtree.
 
 Contraintes anti raw dump :
 
@@ -546,7 +546,7 @@ slot:evening:venus:trine:natal_mercury
 ```
 
 La reponse LLM ne peut citer que des `evidence_key` fournies dans
-`horoscope_interpretation_request_v1`.
+`horoscope_interpretation_request`.
 
 ## Scoring
 
@@ -582,15 +582,15 @@ Si aucun signal ne depasse les seuils de shortlist :
   general, ou echouer avec `HOROSCOPE_NO_SIGNIFICANT_SIGNAL`.
 
 Pour V1 Basic, la recommandation est un fallback sobre si ce comportement est
-inscrit dans `horoscope_response_v1`.
+inscrit dans `horoscope_response`.
 
 ## Reponse publique
 
-Structure cible minimale de `horoscope_response_v1` :
+Structure cible minimale de `horoscope_response` :
 
 ```json
 {
-  "contract_version": "horoscope_response_v1",
+  "contract_version": "horoscope_response",
   "service_code": "horoscope_basic_daily_natal_3_slots",
   "period": {
     "date": "2026-06-06",
@@ -797,15 +797,15 @@ Fake calculator V1 :
 
 Fake LLM V1 :
 
-- retourne une reponse conforme `horoscope_response_v1` ;
+- retourne une reponse conforme `horoscope_response` ;
 - cite uniquement les `evidence_key` fournies ;
 - permet de tester les refus de preuve astrologique inventee.
 
 Goldens a prevoir :
 
-- `horoscope_calculation_response_v1_basic_daily_paris_1990.json` ;
-- `horoscope_interpretation_request_v1_basic_daily_paris_1990.json` ;
-- `horoscope_response_v1_basic_daily_fake.json`.
+- `horoscope_calculation_response_basic_daily_paris_1990.json` ;
+- `horoscope_interpretation_request_basic_daily_paris_1990.json` ;
+- `horoscope_response_basic_daily_fake.json`.
 
 Le golden LLM fake doit etre stable. Le golden OpenAI reel ne doit pas etre
 bloquant.
@@ -907,7 +907,7 @@ les tests, sans appel fournisseur OpenAI.
 
 Refactor V1 applique :
 
-- `horoscope_interpretation_request_v1` porte maintenant `day_overview` et
+- `horoscope_interpretation_request` porte maintenant `day_overview` et
   `slots[]` ; pour `horoscope_basic_daily_natal_3_slots`, `slots[]` pilote la
   redaction des trois moments.
 - Chaque slot porte `specificity`, `theme_code`, `tone`, `intensity`,
@@ -919,7 +919,7 @@ Refactor V1 applique :
   formulations generiques, les references astrologiques absentes, les conseils
   ou `best_for` dupliques, les fuites de codes techniques et les incoherences
   evidence / slot.
-- `horoscope_response_v1` est enrichi de champs compatibles par slot :
+- `horoscope_response` est enrichi de champs compatibles par slot :
   `theme`, `tone`, `best_for`, `watch_point`, et de flags qualite.
 - Le service reste en `beta` tant que les validations fake, goldens, guards et
   reviews adversariales cadrent le perimetre.
@@ -930,7 +930,7 @@ Plan et reviews :
 
 Le service `horoscope_premium_next_7_days_natal` etend le service period Basic
 sans nouvelle infrastructure async. Il reutilise `POST /v1/jobs`, le worker, le
-polling et le contrat public `horoscope_period_natal_request_v1`.
+polling et le contrat public `horoscope_period_natal_request`.
 
 Matrice period :
 
@@ -951,9 +951,9 @@ Configuration catalogue :
 - `period_profile_code = next_7_days`
 - `detail_profile_code = free_compact`
 - `scan_profile_code = daily_noon_7_days`
-- `payload_contract = horoscope_period_natal_request_v1`
-- `calculation_output_contract = horoscope_period_calculation_response_v1`
-- `reading_output_contract = horoscope_period_response_v1`
+- `payload_contract = horoscope_period_natal_request`
+- `calculation_output_contract = horoscope_period_calculation_response`
+- `reading_output_contract = horoscope_period_response`
 - `requires_natal_chart = true`, `requires_timezone = true`, `requires_location = false`
 - `availability = active`
 

@@ -13,7 +13,7 @@ Central rule:
 
 ## Initial State
 
-- The legacy period pipeline builds `horoscope_period_interpretation_request_v1`.
+- The legacy period pipeline builds `horoscope_period_interpretation_request`.
 - Legacy request fields include public-like editorial material such as `daily_plans`, `domain_sections`, `editorial_brief`, `summary_hint`, `personalization_hint`, `focus` and `reason`.
 - Legacy postprocess contains several public-text repair and personalization functions used to compensate for mechanical provider output.
 - Existing V1 functions and goldens remain available as rollback and regression fixtures.
@@ -33,7 +33,7 @@ Only Premium 7 days carries `generation_mode = "semantic_brief_v2"` in `json_db/
 - Added `TargetLanguageCode` with `fr`, `en`, `es`, `de`.
 - Kept temporary compatibility with legacy `target_language`; when both fields are provided and diverge, `target_language_code` wins and V2 debug output records `legacy_target_language_ignored`.
 - Added bounded `astrologer_persona` validation aligned with the V2 schema. Public payloads no longer accept legacy persona knobs such as `directiveness` or `metaphor_level`.
-- Added `horoscope_period_writer_request_v2` contract.
+- Added `horoscope_period_writer_request` contract.
 - Added V2 writer request construction through `build_period_writer_request_v2`.
 - Added `semantic_brief` construction from scored period evidence and events.
 - Routed `HoroscopePeriodNatalOrchestrator` by service `generation_mode`.
@@ -55,8 +55,8 @@ Only Premium 7 days carries `generation_mode = "semantic_brief_v2"` in `json_db/
 
 ## Contracts
 
-- Public response remains `horoscope_period_response_v1`.
-- New internal writer request is `horoscope_period_writer_request_v2`.
+- Public response remains `horoscope_period_response`.
+- New internal writer request is `horoscope_period_writer_request`.
 - V2 writer request is strict and includes:
   - `contract_version`
   - `service_code`

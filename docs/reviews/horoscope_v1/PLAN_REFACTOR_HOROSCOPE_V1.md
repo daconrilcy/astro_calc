@@ -32,8 +32,8 @@ writer, les guards, les schemas, les goldens et la documentation.
 Avant toute modification fonctionnelle, capturer :
 
 - le texte final produit ;
-- le `horoscope_interpretation_request_v1` envoye au fake writer ou au LLM ;
-- le `horoscope_response_v1` final.
+- le `horoscope_interpretation_request` envoye au fake writer ou au LLM ;
+- le `horoscope_response` final.
 
 But : distinguer clairement les defauts de matiere, de projection et de
 redaction.
@@ -61,7 +61,7 @@ Ne pas ecraser les changements existants :
 - Ajouter des tests rouges avant correction ; ils doivent demontrer les defauts
   actuels et peuvent etre commites ou isoles dans une premiere passe.
 - Introduire `SlotInterpretationPlan` comme unite centrale de projection par slot.
-- Dans `horoscope_interpretation_request_v1`, `slots[]` devient la source
+- Dans `horoscope_interpretation_request`, `slots[]` devient la source
   obligatoire de redaction pour `horoscope_basic_daily_natal_3_slots`.
 - `main_signals` et `dominant_themes` peuvent rester pour compatibilite interne,
   mais ne doivent plus piloter directement la redaction des trois moments.
@@ -114,7 +114,7 @@ Regles bloquantes :
 
 ## Payload Limits
 
-`horoscope_interpretation_request_v1` doit imposer des limites mesurables :
+`horoscope_interpretation_request` doit imposer des limites mesurables :
 
 - `slots.length = 3` pour `horoscope_basic_daily_natal_3_slots` ;
 - `main_signals` par slot limite par le referentiel ;
@@ -138,10 +138,10 @@ Pendant le refactor, le service doit rester en `planned` ou `beta` controle. Il
 ne doit pas passer en `active` tant que les tests fake, les goldens, les guards
 qualite et les reviews adversariales ne sont pas clos.
 
-Les changements de `horoscope_interpretation_request_v1` sont internes au
+Les changements de `horoscope_interpretation_request` sont internes au
 workflow horoscope.
 
-Les changements de `horoscope_response_v1` doivent rester compatibles si le
+Les changements de `horoscope_response` doivent rester compatibles si le
 contrat est deja consomme. Toute suppression, renommage ou modification de type
 dans la reponse publique impose un bump de version ou une note de compatibilite
 explicite.
@@ -204,7 +204,7 @@ Ne pas essayer de resoudre par le prompt ce qui doit etre resolu par le payload.
 
 - Les trois slots ont des themes, tons, conseils, `best_for` et preuves
   distincts quand les signaux le permettent.
-- `horoscope_interpretation_request_v1.slots[]` pilote la redaction des trois
+- `horoscope_interpretation_request.slots[]` pilote la redaction des trois
   moments.
 - `day_overview` n'est pas recopie comme texte de slot.
 - Une reponse repetitive echoue.

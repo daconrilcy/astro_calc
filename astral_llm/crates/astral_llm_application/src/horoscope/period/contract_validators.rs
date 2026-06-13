@@ -1,17 +1,24 @@
 use super::*;
-pub fn validate_period_response_contract_gates_v2(
+pub fn validate_period_response_contract_gates(
     request: &Value,
     response: &Value,
 ) -> Result<(), GenerationError> {
     validate_period_response_schema(response)?;
-    validate_period_response_identity_contract_v2(request, response)?;
+    validate_period_response_identity_contract(request, response)?;
     let included = period_included_dates_from_request(request)?;
     let evidence = period_evidence_keys_from_request(request)?;
+    if is_free_period_request(request) {
+        validate_free_period_forbidden_leaks(response)?;
+        validate_free_period_required_fields(response)?;
+        let public_text = collect_period_v2_public_text(response);
+        validate_period_public_word_count(request, response, &public_text)?;
+        return validate_free_period_response_evidence(request, response);
+    }
     let snapshot_keys = period_snapshot_keys_from_request(request)?;
-    validate_period_timeline_contract_v2(response, &included, &evidence)?;
-    validate_period_day_markers_contract_v2(response, "key_days", &included, &evidence)?;
-    validate_period_day_markers_contract_v2(response, "best_days", &included, &evidence)?;
-    validate_period_day_markers_contract_v2(response, "watch_days", &included, &evidence)?;
+    validate_period_timeline_contract(response, &included, &evidence)?;
+    validate_period_day_markers_contract(response, "key_days", &included, &evidence)?;
+    validate_period_day_markers_contract(response, "best_days", &included, &evidence)?;
+    validate_period_day_markers_contract(response, "watch_days", &included, &evidence)?;
     validate_period_marker_date_overlaps(response)?;
     validate_period_watch_summary(response, &evidence)?;
     validate_period_domain_sections(response, &evidence)?;
@@ -31,7 +38,7 @@ pub fn validate_period_response_contract_gates_v2(
     validate_period_public_word_count(request, response, &public_text)?;
     Ok(())
 }
-pub(crate) fn validate_period_response_identity_contract_v2(
+pub(crate) fn validate_period_response_identity_contract(
     request: &Value,
     response: &Value,
 ) -> Result<(), GenerationError> {
@@ -106,7 +113,7 @@ pub(crate) fn period_snapshot_keys_from_request(
     }
     Ok(snapshot_keys)
 }
-pub(crate) fn validate_period_timeline_contract_v2(
+pub(crate) fn validate_period_timeline_contract(
     response: &Value,
     included: &HashSet<&str>,
     evidence: &HashSet<&str>,
@@ -143,7 +150,7 @@ pub(crate) fn validate_period_timeline_contract_v2(
     }
     Ok(())
 }
-pub(crate) fn validate_period_day_markers_contract_v2(
+pub(crate) fn validate_period_day_markers_contract(
     response: &Value,
     field: &str,
     included: &HashSet<&str>,

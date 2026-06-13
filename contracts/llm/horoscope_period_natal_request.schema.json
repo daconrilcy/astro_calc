@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "horoscope_period_natal_request",
+  "type": "object",
+  "required": [
+    "anchor_date",
+    "timezone",
+    "chart_calculation_id"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "anchor_date": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "timezone": {
+      "type": "string",
+      "minLength": 1,
+      "examples": ["Europe/Paris"]
+    },
+    "target_language": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 8,
+      "examples": ["fr"]
+    },
+    "target_language_code": {
+      "type": "string",
+      "enum": ["fr", "en", "es", "de"],
+      "default": "fr"
+    },
+    "chart_calculation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "audience_level": {
+      "type": "string",
+      "enum": ["general", "beginner", "intermediate", "expert"],
+      "default": "general"
+    },
+    "astrologer_persona": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "persona_id": { "type": "string", "maxLength": 120 },
+        "tone": { "type": "array", "maxItems": 8, "items": { "type": "string", "maxLength": 120 } },
+        "lexical_field": { "type": "array", "maxItems": 20, "items": { "type": "string", "maxLength": 120 } },
+        "priority_domains": { "type": "array", "maxItems": 12, "items": { "type": "string", "maxLength": 120 } },
+        "avoid_style": { "type": "array", "maxItems": 20, "items": { "type": "string", "maxLength": 120 } },
+        "interpretation_style": { "type": "string", "maxLength": 120 },
+        "directiveness": { "type": "string", "maxLength": 120 },
+        "metaphor_level": { "type": "string", "maxLength": 120 }
+      }
+    }
+  }
+}

@@ -50,20 +50,20 @@ impl SchemaRegistry {
                 "llm_projection_natal_simplified_v1.schema.json",
             ),
             (
-                "horoscope_calculation_request_v1",
-                "horoscope_calculation_request_v1.schema.json",
+                "horoscope_calculation_request",
+                "horoscope_calculation_request.schema.json",
             ),
             (
-                "horoscope_calculation_response_v1",
-                "horoscope_calculation_response_v1.schema.json",
+                "horoscope_calculation_response",
+                "horoscope_calculation_response.schema.json",
             ),
             (
-                "horoscope_period_calculation_request_v1",
-                "horoscope_period_calculation_request_v1.schema.json",
+                "horoscope_period_calculation_request",
+                "horoscope_period_calculation_request.schema.json",
             ),
             (
-                "horoscope_period_calculation_response_v1",
-                "horoscope_period_calculation_response_v1.schema.json",
+                "horoscope_period_calculation_response",
+                "horoscope_period_calculation_response.schema.json",
             ),
         ];
 

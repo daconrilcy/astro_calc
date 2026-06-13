@@ -76,11 +76,11 @@ foreach ($service in $services) {
     $status = Invoke-E2EJobAndWait -LlmUrl $LlmUrl -Headers $llmHeaders -Body $body -PollTimeoutSec $PollTimeoutSec
 
     if ($service.service_code -eq "horoscope_basic_daily_natal_3_slots") {
-        if ($status.result.reading.contract_version -ne "horoscope_response_v1") {
+        if ($status.result.reading.contract_version -ne "horoscope_response") {
             throw "Horoscope service returned unexpected reading contract"
         }
     } elseif ($service.service_code -eq "horoscope_premium_daily_local_2h_slots") {
-        if ($status.result.reading.contract_version -ne "horoscope_response_v1") {
+        if ($status.result.reading.contract_version -ne "horoscope_response") {
             throw "Premium horoscope service returned unexpected reading contract"
         }
         if (-not $status.result.reading.timeline -or $status.result.reading.timeline.Count -ne 12) {

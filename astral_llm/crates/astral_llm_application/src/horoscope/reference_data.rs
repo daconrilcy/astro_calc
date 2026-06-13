@@ -17,12 +17,6 @@ pub(crate) const DETAIL_PROFILES_JSON: &str =
     include_str!("../../../../../json_db/horoscope_detail_profiles.json");
 pub(crate) const NATAL_FOCUS_LABELS_JSON: &str =
     include_str!("../../../../../json_db/horoscope_natal_focus_labels.json");
-pub(crate) const PERIOD_STYLE_VARIANTS_JSON: &str =
-    include_str!("../../../../../json_db/horoscope_period_style_variants.json");
-pub(crate) const PERIOD_EDITORIAL_ROLES_JSON: &str =
-    include_str!("../../../../../json_db/horoscope_period_editorial_roles.json");
-pub(crate) const PERIOD_EDITORIAL_ARCS_JSON: &str =
-    include_str!("../../../../../json_db/horoscope_period_editorial_arcs.json");
 pub(crate) const PERIOD_PUBLIC_THEMES_JSON: &str =
     include_str!("../../../../../json_db/horoscope_period_public_themes.json");
 pub(crate) const THEME_MAPPINGS_JSON: &str =
@@ -80,7 +74,6 @@ pub(crate) struct ServiceProfile {
     pub(crate) period_profile_code: Option<String>,
     pub(crate) detail_profile_code: Option<String>,
     pub(crate) scan_profile_code: Option<String>,
-    pub(crate) generation_mode: Option<String>,
 }
 #[derive(Clone)]
 pub(crate) struct ScanProfile {
@@ -329,10 +322,6 @@ pub(crate) fn service_profile(service_code: &str) -> Result<ServiceProfile, Gene
             .get("scan_profile_code")
             .and_then(|v| v.as_str())
             .map(str::to_string),
-        generation_mode: row
-            .get("generation_mode")
-            .and_then(|v| v.as_str())
-            .map(str::to_string),
     })
 }
 pub(crate) fn period_service_profile(
@@ -346,12 +335,6 @@ pub(crate) fn period_service_profile(
         return Err(horoscope_error("HOROSCOPE_PERIOD_PROFILE_UNSUPPORTED"));
     }
     Ok(profile)
-}
-pub(crate) fn period_generation_mode(
-    service_code: &str,
-) -> Result<PeriodGenerationMode, GenerationError> {
-    let profile = period_service_profile(service_code)?;
-    PeriodGenerationMode::parse(profile.generation_mode.as_deref())
 }
 pub(crate) fn scan_profile(scan_profile_code: &str) -> Result<ScanProfile, GenerationError> {
     let row = rows(SCAN_PROFILES_JSON)?

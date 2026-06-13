@@ -16,7 +16,7 @@ flowchart TD
 
     G["LLM writer<br/>rédaction complète des textes publics"] --> H
 
-    H["Réponse JSON brute<br/>horoscope_period_response_v1"] --> I{"Validation structurelle<br/>JSON valide ?<br/>champs requis ?<br/>dates cohérentes ?"}
+    H["Réponse JSON brute<br/>horoscope_period_response"] --> I{"Validation structurelle<br/>JSON valide ?<br/>champs requis ?<br/>dates cohérentes ?"}
 
     I -- "Non" --> R1["Retry technique<br/>corriger uniquement le JSON<br/>sans changer l'interprétation"]
     R1 --> I

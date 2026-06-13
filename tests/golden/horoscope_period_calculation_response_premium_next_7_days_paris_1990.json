@@ -1,0 +1,1241 @@
+{
+  "contract_version": "horoscope_period_calculation_response",
+  "service_code": "horoscope_premium_next_7_days_natal",
+  "period_resolution": {
+    "period_profile_code": "next_7_days",
+    "anchor_date": "2026-06-07",
+    "timezone": "Europe/Paris",
+    "start_datetime_local": "2026-06-07T00:00:00",
+    "end_datetime_local": "2026-06-14T00:00:00",
+    "start_datetime_utc": "2026-06-06T22:00:00+00:00",
+    "end_datetime_utc": "2026-06-13T22:00:00+00:00",
+    "end_exclusive": true,
+    "duration_days": 7,
+    "included_dates": [
+      "2026-06-07",
+      "2026-06-08",
+      "2026-06-09",
+      "2026-06-10",
+      "2026-06-11",
+      "2026-06-12",
+      "2026-06-13"
+    ],
+    "included_days": []
+  },
+  "scan_plan": {
+    "scan_profile_code": "six_hour_7_days",
+    "granularity": "six_hour",
+    "snapshot_count": 28,
+    "snapshots": [
+      {
+        "snapshot_key": "2026-06-07:00:00",
+        "date": "2026-06-07",
+        "reference_time_local": "00:00",
+        "reference_datetime_local": "2026-06-07T00:00:00",
+        "reference_datetime_utc": "2026-06-06T22:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-07:06:00",
+        "date": "2026-06-07",
+        "reference_time_local": "06:00",
+        "reference_datetime_local": "2026-06-07T06:00:00",
+        "reference_datetime_utc": "2026-06-07T04:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-07:12:00",
+        "date": "2026-06-07",
+        "reference_time_local": "12:00",
+        "reference_datetime_local": "2026-06-07T12:00:00",
+        "reference_datetime_utc": "2026-06-07T10:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-07:18:00",
+        "date": "2026-06-07",
+        "reference_time_local": "18:00",
+        "reference_datetime_local": "2026-06-07T18:00:00",
+        "reference_datetime_utc": "2026-06-07T16:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-08:00:00",
+        "date": "2026-06-08",
+        "reference_time_local": "00:00",
+        "reference_datetime_local": "2026-06-08T00:00:00",
+        "reference_datetime_utc": "2026-06-07T22:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-08:06:00",
+        "date": "2026-06-08",
+        "reference_time_local": "06:00",
+        "reference_datetime_local": "2026-06-08T06:00:00",
+        "reference_datetime_utc": "2026-06-08T04:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-08:12:00",
+        "date": "2026-06-08",
+        "reference_time_local": "12:00",
+        "reference_datetime_local": "2026-06-08T12:00:00",
+        "reference_datetime_utc": "2026-06-08T10:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-08:18:00",
+        "date": "2026-06-08",
+        "reference_time_local": "18:00",
+        "reference_datetime_local": "2026-06-08T18:00:00",
+        "reference_datetime_utc": "2026-06-08T16:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-09:00:00",
+        "date": "2026-06-09",
+        "reference_time_local": "00:00",
+        "reference_datetime_local": "2026-06-09T00:00:00",
+        "reference_datetime_utc": "2026-06-08T22:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-09:06:00",
+        "date": "2026-06-09",
+        "reference_time_local": "06:00",
+        "reference_datetime_local": "2026-06-09T06:00:00",
+        "reference_datetime_utc": "2026-06-09T04:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-09:12:00",
+        "date": "2026-06-09",
+        "reference_time_local": "12:00",
+        "reference_datetime_local": "2026-06-09T12:00:00",
+        "reference_datetime_utc": "2026-06-09T10:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-09:18:00",
+        "date": "2026-06-09",
+        "reference_time_local": "18:00",
+        "reference_datetime_local": "2026-06-09T18:00:00",
+        "reference_datetime_utc": "2026-06-09T16:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-10:00:00",
+        "date": "2026-06-10",
+        "reference_time_local": "00:00",
+        "reference_datetime_local": "2026-06-10T00:00:00",
+        "reference_datetime_utc": "2026-06-09T22:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-10:06:00",
+        "date": "2026-06-10",
+        "reference_time_local": "06:00",
+        "reference_datetime_local": "2026-06-10T06:00:00",
+        "reference_datetime_utc": "2026-06-10T04:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-10:12:00",
+        "date": "2026-06-10",
+        "reference_time_local": "12:00",
+        "reference_datetime_local": "2026-06-10T12:00:00",
+        "reference_datetime_utc": "2026-06-10T10:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-10:18:00",
+        "date": "2026-06-10",
+        "reference_time_local": "18:00",
+        "reference_datetime_local": "2026-06-10T18:00:00",
+        "reference_datetime_utc": "2026-06-10T16:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-11:00:00",
+        "date": "2026-06-11",
+        "reference_time_local": "00:00",
+        "reference_datetime_local": "2026-06-11T00:00:00",
+        "reference_datetime_utc": "2026-06-10T22:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-11:06:00",
+        "date": "2026-06-11",
+        "reference_time_local": "06:00",
+        "reference_datetime_local": "2026-06-11T06:00:00",
+        "reference_datetime_utc": "2026-06-11T04:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-11:12:00",
+        "date": "2026-06-11",
+        "reference_time_local": "12:00",
+        "reference_datetime_local": "2026-06-11T12:00:00",
+        "reference_datetime_utc": "2026-06-11T10:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-11:18:00",
+        "date": "2026-06-11",
+        "reference_time_local": "18:00",
+        "reference_datetime_local": "2026-06-11T18:00:00",
+        "reference_datetime_utc": "2026-06-11T16:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-12:00:00",
+        "date": "2026-06-12",
+        "reference_time_local": "00:00",
+        "reference_datetime_local": "2026-06-12T00:00:00",
+        "reference_datetime_utc": "2026-06-11T22:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-12:06:00",
+        "date": "2026-06-12",
+        "reference_time_local": "06:00",
+        "reference_datetime_local": "2026-06-12T06:00:00",
+        "reference_datetime_utc": "2026-06-12T04:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-12:12:00",
+        "date": "2026-06-12",
+        "reference_time_local": "12:00",
+        "reference_datetime_local": "2026-06-12T12:00:00",
+        "reference_datetime_utc": "2026-06-12T10:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-12:18:00",
+        "date": "2026-06-12",
+        "reference_time_local": "18:00",
+        "reference_datetime_local": "2026-06-12T18:00:00",
+        "reference_datetime_utc": "2026-06-12T16:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-13:00:00",
+        "date": "2026-06-13",
+        "reference_time_local": "00:00",
+        "reference_datetime_local": "2026-06-13T00:00:00",
+        "reference_datetime_utc": "2026-06-12T22:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-13:06:00",
+        "date": "2026-06-13",
+        "reference_time_local": "06:00",
+        "reference_datetime_local": "2026-06-13T06:00:00",
+        "reference_datetime_utc": "2026-06-13T04:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-13:12:00",
+        "date": "2026-06-13",
+        "reference_time_local": "12:00",
+        "reference_datetime_local": "2026-06-13T12:00:00",
+        "reference_datetime_utc": "2026-06-13T10:00:00+00:00"
+      },
+      {
+        "snapshot_key": "2026-06-13:18:00",
+        "date": "2026-06-13",
+        "reference_time_local": "18:00",
+        "reference_datetime_local": "2026-06-13T18:00:00",
+        "reference_datetime_utc": "2026-06-13T16:00:00+00:00"
+      }
+    ]
+  },
+  "snapshots": [
+    {
+      "snapshot_key": "2026-06-07:00:00",
+      "date": "2026-06-07",
+      "reference_datetime_utc": "2026-06-06T22:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-07:2026-06-07:00:00:venus:trine:natal_moon",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "venus",
+          "natal_target": "natal_moon",
+          "aspect": "trine",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-07:06:00",
+      "date": "2026-06-07",
+      "reference_datetime_utc": "2026-06-07T04:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-07:2026-06-07:06:00:mars:square:natal_mercury",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "mars",
+          "natal_target": "natal_mercury",
+          "aspect": "square",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-07:12:00",
+      "date": "2026-06-07",
+      "reference_datetime_utc": "2026-06-07T10:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-07:2026-06-07:12:00:mercury:trine:natal_mars",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "mercury",
+          "natal_target": "natal_mars",
+          "aspect": "trine",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-07:18:00",
+      "date": "2026-06-07",
+      "reference_datetime_utc": "2026-06-07T16:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-07:2026-06-07:18:00:sun:sextile:natal_venus",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "sun",
+          "natal_target": "natal_venus",
+          "aspect": "sextile",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-08:00:00",
+      "date": "2026-06-08",
+      "reference_datetime_utc": "2026-06-07T22:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-08:2026-06-08:00:00:moon:natal_house:6",
+          "fact_type": "moon_house_by_day",
+          "source": "golden_premium",
+          "transiting_object": "moon",
+          "natal_target": null,
+          "aspect": null,
+          "orb_deg": null,
+          "natal_house": 6
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-08:06:00",
+      "date": "2026-06-08",
+      "reference_datetime_utc": "2026-06-08T04:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-08:2026-06-08:06:00:jupiter:trine:natal_saturn",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "jupiter",
+          "natal_target": "natal_saturn",
+          "aspect": "trine",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-08:12:00",
+      "date": "2026-06-08",
+      "reference_datetime_utc": "2026-06-08T10:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-08:2026-06-08:12:00:saturn:opposition:natal_sun",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "saturn",
+          "natal_target": "natal_sun",
+          "aspect": "opposition",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-08:18:00",
+      "date": "2026-06-08",
+      "reference_datetime_utc": "2026-06-08T16:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-08:2026-06-08:18:00:venus:trine:natal_moon",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "venus",
+          "natal_target": "natal_moon",
+          "aspect": "trine",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-09:00:00",
+      "date": "2026-06-09",
+      "reference_datetime_utc": "2026-06-08T22:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-09:2026-06-09:00:00:mars:square:natal_mercury",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "mars",
+          "natal_target": "natal_mercury",
+          "aspect": "square",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-09:06:00",
+      "date": "2026-06-09",
+      "reference_datetime_utc": "2026-06-09T04:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-09:2026-06-09:06:00:mercury:trine:natal_mars",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "mercury",
+          "natal_target": "natal_mars",
+          "aspect": "trine",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-09:12:00",
+      "date": "2026-06-09",
+      "reference_datetime_utc": "2026-06-09T10:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-09:2026-06-09:12:00:sun:sextile:natal_venus",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "sun",
+          "natal_target": "natal_venus",
+          "aspect": "sextile",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-09:18:00",
+      "date": "2026-06-09",
+      "reference_datetime_utc": "2026-06-09T16:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-09:2026-06-09:18:00:moon:natal_house:6",
+          "fact_type": "moon_house_by_day",
+          "source": "golden_premium",
+          "transiting_object": "moon",
+          "natal_target": null,
+          "aspect": null,
+          "orb_deg": null,
+          "natal_house": 6
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-10:00:00",
+      "date": "2026-06-10",
+      "reference_datetime_utc": "2026-06-09T22:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-10:2026-06-10:00:00:jupiter:trine:natal_saturn",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "jupiter",
+          "natal_target": "natal_saturn",
+          "aspect": "trine",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-10:06:00",
+      "date": "2026-06-10",
+      "reference_datetime_utc": "2026-06-10T04:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-10:2026-06-10:06:00:saturn:opposition:natal_sun",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "saturn",
+          "natal_target": "natal_sun",
+          "aspect": "opposition",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-10:12:00",
+      "date": "2026-06-10",
+      "reference_datetime_utc": "2026-06-10T10:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-10:2026-06-10:12:00:venus:trine:natal_moon",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "venus",
+          "natal_target": "natal_moon",
+          "aspect": "trine",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-10:18:00",
+      "date": "2026-06-10",
+      "reference_datetime_utc": "2026-06-10T16:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-10:2026-06-10:18:00:mars:square:natal_mercury",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "mars",
+          "natal_target": "natal_mercury",
+          "aspect": "square",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-11:00:00",
+      "date": "2026-06-11",
+      "reference_datetime_utc": "2026-06-10T22:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-11:2026-06-11:00:00:mercury:trine:natal_mars",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "mercury",
+          "natal_target": "natal_mars",
+          "aspect": "trine",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-11:06:00",
+      "date": "2026-06-11",
+      "reference_datetime_utc": "2026-06-11T04:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-11:2026-06-11:06:00:sun:sextile:natal_venus",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "sun",
+          "natal_target": "natal_venus",
+          "aspect": "sextile",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-11:12:00",
+      "date": "2026-06-11",
+      "reference_datetime_utc": "2026-06-11T10:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-11:2026-06-11:12:00:moon:natal_house:6",
+          "fact_type": "moon_house_by_day",
+          "source": "golden_premium",
+          "transiting_object": "moon",
+          "natal_target": null,
+          "aspect": null,
+          "orb_deg": null,
+          "natal_house": 6
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-11:18:00",
+      "date": "2026-06-11",
+      "reference_datetime_utc": "2026-06-11T16:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-11:2026-06-11:18:00:jupiter:trine:natal_saturn",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "jupiter",
+          "natal_target": "natal_saturn",
+          "aspect": "trine",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-12:00:00",
+      "date": "2026-06-12",
+      "reference_datetime_utc": "2026-06-11T22:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-12:2026-06-12:00:00:saturn:opposition:natal_sun",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "saturn",
+          "natal_target": "natal_sun",
+          "aspect": "opposition",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-12:06:00",
+      "date": "2026-06-12",
+      "reference_datetime_utc": "2026-06-12T04:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-12:2026-06-12:06:00:venus:trine:natal_moon",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "venus",
+          "natal_target": "natal_moon",
+          "aspect": "trine",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-12:12:00",
+      "date": "2026-06-12",
+      "reference_datetime_utc": "2026-06-12T10:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-12:2026-06-12:12:00:mars:square:natal_mercury",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "mars",
+          "natal_target": "natal_mercury",
+          "aspect": "square",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-12:18:00",
+      "date": "2026-06-12",
+      "reference_datetime_utc": "2026-06-12T16:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-12:2026-06-12:18:00:mercury:trine:natal_mars",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "mercury",
+          "natal_target": "natal_mars",
+          "aspect": "trine",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-13:00:00",
+      "date": "2026-06-13",
+      "reference_datetime_utc": "2026-06-12T22:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-13:2026-06-13:00:00:sun:sextile:natal_venus",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "sun",
+          "natal_target": "natal_venus",
+          "aspect": "sextile",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-13:06:00",
+      "date": "2026-06-13",
+      "reference_datetime_utc": "2026-06-13T04:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-13:2026-06-13:06:00:moon:natal_house:6",
+          "fact_type": "moon_house_by_day",
+          "source": "golden_premium",
+          "transiting_object": "moon",
+          "natal_target": null,
+          "aspect": null,
+          "orb_deg": null,
+          "natal_house": 6
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-13:12:00",
+      "date": "2026-06-13",
+      "reference_datetime_utc": "2026-06-13T10:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-13:2026-06-13:12:00:jupiter:trine:natal_saturn",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "jupiter",
+          "natal_target": "natal_saturn",
+          "aspect": "trine",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    },
+    {
+      "snapshot_key": "2026-06-13:18:00",
+      "date": "2026-06-13",
+      "reference_datetime_utc": "2026-06-13T16:00:00+00:00",
+      "sky_snapshot": {
+        "visible_objects": [
+          "sun",
+          "moon",
+          "venus",
+          "mars",
+          "mercury",
+          "jupiter",
+          "saturn"
+        ]
+      },
+      "moon_context": {
+        "moon_sign": "virgo",
+        "natal_house": 6
+      },
+      "transits_to_natal": [
+        {
+          "evidence_key": "period:2026-06-13:2026-06-13:18:00:saturn:opposition:natal_sun",
+          "fact_type": "transit_to_natal",
+          "source": "golden_premium",
+          "transiting_object": "saturn",
+          "natal_target": "natal_sun",
+          "aspect": "opposition",
+          "orb_deg": 0.7,
+          "natal_house": null
+        }
+      ],
+      "current_sky_aspects": [],
+      "natal_house_activations": [],
+      "calculation_warnings": []
+    }
+  ],
+  "calculation_warnings": [],
+  "evidence_keys": [
+    "period:2026-06-07:2026-06-07:00:00:venus:trine:natal_moon",
+    "period:2026-06-07:2026-06-07:06:00:mars:square:natal_mercury",
+    "period:2026-06-07:2026-06-07:12:00:mercury:trine:natal_mars",
+    "period:2026-06-07:2026-06-07:18:00:sun:sextile:natal_venus",
+    "period:2026-06-08:2026-06-08:00:00:moon:natal_house:6",
+    "period:2026-06-08:2026-06-08:06:00:jupiter:trine:natal_saturn",
+    "period:2026-06-08:2026-06-08:12:00:saturn:opposition:natal_sun",
+    "period:2026-06-08:2026-06-08:18:00:venus:trine:natal_moon",
+    "period:2026-06-09:2026-06-09:00:00:mars:square:natal_mercury",
+    "period:2026-06-09:2026-06-09:06:00:mercury:trine:natal_mars",
+    "period:2026-06-09:2026-06-09:12:00:sun:sextile:natal_venus",
+    "period:2026-06-09:2026-06-09:18:00:moon:natal_house:6",
+    "period:2026-06-10:2026-06-10:00:00:jupiter:trine:natal_saturn",
+    "period:2026-06-10:2026-06-10:06:00:saturn:opposition:natal_sun",
+    "period:2026-06-10:2026-06-10:12:00:venus:trine:natal_moon",
+    "period:2026-06-10:2026-06-10:18:00:mars:square:natal_mercury",
+    "period:2026-06-11:2026-06-11:00:00:mercury:trine:natal_mars",
+    "period:2026-06-11:2026-06-11:06:00:sun:sextile:natal_venus",
+    "period:2026-06-11:2026-06-11:12:00:moon:natal_house:6",
+    "period:2026-06-11:2026-06-11:18:00:jupiter:trine:natal_saturn",
+    "period:2026-06-12:2026-06-12:00:00:saturn:opposition:natal_sun",
+    "period:2026-06-12:2026-06-12:06:00:venus:trine:natal_moon",
+    "period:2026-06-12:2026-06-12:12:00:mars:square:natal_mercury",
+    "period:2026-06-12:2026-06-12:18:00:mercury:trine:natal_mars",
+    "period:2026-06-13:2026-06-13:00:00:sun:sextile:natal_venus",
+    "period:2026-06-13:2026-06-13:06:00:moon:natal_house:6",
+    "period:2026-06-13:2026-06-13:12:00:jupiter:trine:natal_saturn",
+    "period:2026-06-13:2026-06-13:18:00:saturn:opposition:natal_sun"
+  ]
+}

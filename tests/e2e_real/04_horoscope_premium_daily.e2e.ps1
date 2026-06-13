@@ -203,7 +203,7 @@ if (-not $service) {
 if ($service.availability -notin @("active", "beta")) {
     throw "Service $serviceCode is not executable in real E2E, availability=$($service.availability)"
 }
-if (-not $service.contracts -or $service.contracts.payload -ne "horoscope_premium_daily_local_request_v1") {
+if (-not $service.contracts -or $service.contracts.payload -ne "horoscope_premium_daily_local_request") {
     throw "Unexpected payload contract in catalogue for $serviceCode"
 }
 Write-Host "OK catalogue exposes $serviceCode availability=$($service.availability)"
@@ -212,16 +212,16 @@ $contract = Invoke-RestMethod -Uri "$LlmUrl/v1/services/$serviceCode/contract" -
 if ($contract.service_code -ne $serviceCode) {
     throw "Contract detail service_code mismatch"
 }
-if ($contract.contracts.payload -ne "horoscope_premium_daily_local_request_v1") {
+if ($contract.contracts.payload -ne "horoscope_premium_daily_local_request") {
     throw "Unexpected payload contract detail for $serviceCode"
 }
-if ($contract.contracts.reading_output -ne "horoscope_response_v1") {
+if ($contract.contracts.reading_output -ne "horoscope_response") {
     throw "Unexpected reading output contract detail for $serviceCode"
 }
 Write-Host "OK contract detail"
 
-$schema = Invoke-RestMethod -Uri "$LlmUrl/v1/schemas/horoscope_premium_daily_local_request_v1" -Method Get -Headers $llmHeaders
-if ($schema.title -ne "horoscope_premium_daily_local_request_v1") {
+$schema = Invoke-RestMethod -Uri "$LlmUrl/v1/schemas/horoscope_premium_daily_local_request" -Method Get -Headers $llmHeaders
+if ($schema.title -ne "horoscope_premium_daily_local_request") {
     throw "Unexpected Premium payload schema title"
 }
 Write-Host "OK Premium payload schema"
@@ -254,7 +254,7 @@ if (-not $result.reading) {
 }
 
 $calculation = $result.calculation
-if ($calculation.contract_version -ne "horoscope_calculation_response_v1") {
+if ($calculation.contract_version -ne "horoscope_calculation_response") {
     throw "Unexpected Premium calculation contract"
 }
 if ($calculation.service_code -ne $serviceCode) {
@@ -295,7 +295,7 @@ if (-not $interpretation.domain_sections -or $interpretation.domain_sections.Cou
 Write-Host "OK Premium interpretation request"
 
 $reading = $result.reading
-if ($reading.contract_version -ne "horoscope_response_v1") {
+if ($reading.contract_version -ne "horoscope_response") {
     throw "Unexpected Premium reading contract"
 }
 if ($reading.service_code -ne $serviceCode) {

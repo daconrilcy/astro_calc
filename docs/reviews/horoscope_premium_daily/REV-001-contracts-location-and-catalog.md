@@ -4,7 +4,7 @@ Status: closed.
 
 Checks:
 
-- `horoscope_premium_daily_local_request_v1` requires `chart_calculation_id`,
+- `horoscope_premium_daily_local_request` requires `chart_calculation_id`,
   `timezone`, `location.latitude` and `location.longitude`.
 - Latitude and longitude are range-limited by schema.
 - `birth_data` inline is rejected by `additionalProperties: false`.
@@ -17,7 +17,7 @@ Checks:
 Findings:
 
 - P1: Premium payload contract was absent from the integration validator.
-  Correction: added `horoscope_premium_daily_local_request_v1` to
+  Correction: added `horoscope_premium_daily_local_request` to
   `IntegrationJobValidator` and API contract publication.
 
 - P1: Service requirements were implicit.

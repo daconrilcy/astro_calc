@@ -1,0 +1,344 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "horoscope_period_response",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "service_code",
+    "period_resolution",
+    "key_days",
+    "watch_summary",
+    "advice",
+    "evidence_summary",
+    "quality"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": { "service_code": { "const": "horoscope_free_next_7_days_natal" } },
+        "required": ["service_code"]
+      },
+      "then": {
+        "required": ["summary", "dominant_theme"],
+        "not": {
+          "anyOf": [
+            { "required": ["week_overview"] },
+            { "required": ["best_days"] },
+            { "required": ["watch_days"] },
+            { "required": ["daily_timeline"] },
+            { "required": ["domain_sections"] },
+            { "required": ["best_windows"] },
+            { "required": ["watch_windows"] },
+            { "required": ["strategy"] }
+          ]
+        },
+        "properties": {
+          "advice": { "type": "string" },
+          "key_days": { "type": "array", "minItems": 1, "maxItems": 2, "items": { "$ref": "#/definitions/day_marker" } },
+          "evidence_summary": { "type": "array", "minItems": 1, "maxItems": 3, "items": { "$ref": "#/definitions/evidence_summary_item" } },
+          "watch_summary": { "$ref": "#/definitions/free_watch_summary" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "service_code": { "const": "horoscope_basic_next_7_days_natal" } },
+        "required": ["service_code"]
+      },
+      "then": {
+        "required": ["week_overview", "best_days", "watch_days", "daily_timeline", "domain_sections"],
+        "not": {
+          "anyOf": [
+            { "required": ["summary"] },
+            { "required": ["dominant_theme"] },
+            { "required": ["best_windows"] },
+            { "required": ["watch_windows"] },
+            { "required": ["strategy"] }
+          ]
+        },
+        "properties": {
+          "advice": {
+            "type": "object",
+            "required": ["main", "best_use", "avoid"],
+            "additionalProperties": false,
+            "properties": {
+              "main": { "type": "string" },
+              "best_use": { "type": "string" },
+              "avoid": { "type": "string" }
+            }
+          },
+          "watch_summary": { "$ref": "#/definitions/watch_summary" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "service_code": { "const": "horoscope_premium_next_7_days_natal" } },
+        "required": ["service_code"]
+      },
+      "then": {
+        "required": ["week_overview", "best_days", "watch_days", "daily_timeline", "domain_sections", "best_windows", "watch_windows", "strategy"],
+        "not": {
+          "anyOf": [
+            { "required": ["summary"] },
+            { "required": ["dominant_theme"] }
+          ]
+        },
+        "properties": {
+          "advice": {
+            "type": "object",
+            "required": ["main", "best_use", "avoid"],
+            "additionalProperties": false,
+            "properties": {
+              "main": { "type": "string" },
+              "best_use": { "type": "string" },
+              "avoid": { "type": "string" }
+            }
+          },
+          "watch_summary": { "$ref": "#/definitions/watch_summary" }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "contract_version": { "type": "string", "const": "horoscope_period_response" },
+    "service_code": {
+      "type": "string",
+      "enum": [
+        "horoscope_free_next_7_days_natal",
+        "horoscope_basic_next_7_days_natal",
+        "horoscope_premium_next_7_days_natal"
+      ]
+    },
+    "period_resolution": { "$ref": "#/definitions/period_resolution" },
+    "summary": {
+      "type": "object",
+      "required": ["title", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string" },
+        "text": { "type": "string" }
+      }
+    },
+    "dominant_theme": {
+      "type": "object",
+      "required": ["theme", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "theme": { "type": "string" },
+        "text": { "type": "string" }
+      }
+    },
+    "week_overview": {
+      "type": "object",
+      "required": ["title", "text", "trajectory"],
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string" },
+        "text": { "type": "string" },
+        "trajectory": { "type": "string" }
+      }
+    },
+    "key_days": { "type": "array", "maxItems": 4, "items": { "$ref": "#/definitions/day_marker" } },
+    "best_days": { "type": "array", "maxItems": 3, "items": { "$ref": "#/definitions/day_marker" } },
+    "watch_days": { "type": "array", "maxItems": 3, "items": { "$ref": "#/definitions/day_marker" } },
+    "watch_summary": {
+      "anyOf": [
+        { "$ref": "#/definitions/watch_summary" },
+        { "$ref": "#/definitions/free_watch_summary" }
+      ]
+    },
+    "best_windows": { "type": "array", "maxItems": 3, "items": { "$ref": "#/definitions/best_window" } },
+    "watch_windows": { "type": "array", "maxItems": 3, "items": { "$ref": "#/definitions/watch_window" } },
+    "daily_timeline": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": { "$ref": "#/definitions/timeline_day" }
+    },
+    "domain_sections": { "type": "array", "minItems": 2, "maxItems": 5, "items": { "$ref": "#/definitions/domain_section" } },
+    "strategy": { "$ref": "#/definitions/strategy" },
+    "advice": {
+      "anyOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "required": ["main", "best_use", "avoid"],
+          "additionalProperties": false,
+          "properties": {
+            "main": { "type": "string" },
+            "best_use": { "type": "string" },
+            "avoid": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "evidence_summary": { "type": "array", "items": { "$ref": "#/definitions/evidence_summary_item" } },
+    "quality": { "$ref": "#/definitions/quality" }
+  },
+  "definitions": {
+    "period_resolution": {
+      "type": "object",
+      "required": [
+        "period_profile_code",
+        "anchor_date",
+        "timezone",
+        "start_datetime_local",
+        "end_datetime_local",
+        "start_datetime_utc",
+        "end_datetime_utc",
+        "end_exclusive",
+        "duration_days",
+        "included_dates",
+        "included_days"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "period_profile_code": { "type": "string" },
+        "anchor_date": { "type": "string" },
+        "timezone": { "type": "string" },
+        "start_datetime_local": { "type": "string" },
+        "end_datetime_local": { "type": "string" },
+        "start_datetime_utc": { "type": "string" },
+        "end_datetime_utc": { "type": "string" },
+        "end_exclusive": { "type": "boolean" },
+        "duration_days": { "type": "integer" },
+        "included_dates": { "type": "array", "items": { "type": "string" } },
+        "included_days": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "day_marker": {
+      "type": "object",
+      "required": ["date", "title", "reason", "evidence_keys", "fallback_reason"],
+      "additionalProperties": false,
+      "properties": {
+        "date": { "type": "string" },
+        "title": { "type": "string" },
+        "reason": { "type": "string" },
+        "evidence_keys": { "type": "array", "items": { "type": "string" } },
+        "fallback_reason": { "type": ["string", "null"] }
+      }
+    },
+    "timeline_day": {
+      "type": "object",
+      "required": ["date", "day_label", "theme", "tone", "text", "advice", "evidence_keys"],
+      "additionalProperties": false,
+      "properties": {
+        "date": { "type": "string" },
+        "day_label": { "type": "string" },
+        "theme": { "type": "string" },
+        "tone": { "type": "string" },
+        "text": { "type": "string" },
+        "advice": { "type": "string" },
+        "evidence_keys": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+      }
+    },
+    "domain_section": {
+      "type": "object",
+      "required": ["domain", "title", "text", "evidence_keys"],
+      "additionalProperties": false,
+      "properties": {
+        "domain": { "type": "string" },
+        "title": { "type": "string" },
+        "text": { "type": "string" },
+        "evidence_keys": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "watch_summary": {
+      "type": "object",
+      "required": ["status", "text", "evidence_keys"],
+      "additionalProperties": false,
+      "properties": {
+        "status": { "type": "string", "enum": ["active", "low", "none"] },
+        "text": { "type": "string" },
+        "evidence_keys": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "free_watch_summary": {
+      "type": "object",
+      "required": ["status", "text", "evidence_keys"],
+      "additionalProperties": false,
+      "properties": {
+        "status": { "type": "string", "enum": ["present", "low", "none"] },
+        "text": { "type": "string" },
+        "evidence_keys": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "best_window": {
+      "type": "object",
+      "required": ["date", "time_range_label", "source_snapshot_keys", "title", "theme", "tone", "reason", "best_for", "evidence_keys"],
+      "additionalProperties": false,
+      "properties": {
+        "date": { "type": "string" },
+        "time_range_label": { "type": "string" },
+        "source_snapshot_keys": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "title": { "type": "string" },
+        "theme": { "type": "string" },
+        "tone": { "type": "string" },
+        "reason": { "type": "string" },
+        "best_for": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "evidence_keys": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "watch_window": {
+      "type": "object",
+      "required": ["date", "time_range_label", "source_snapshot_keys", "title", "theme", "tone", "watch_point", "evidence_keys"],
+      "additionalProperties": false,
+      "properties": {
+        "date": { "type": "string" },
+        "time_range_label": { "type": "string" },
+        "source_snapshot_keys": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "title": { "type": "string" },
+        "theme": { "type": "string" },
+        "tone": { "type": "string" },
+        "watch_point": { "type": "string" },
+        "evidence_keys": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "strategy": {
+      "type": "object",
+      "required": ["title", "text", "best_use", "recovery", "evidence_keys"],
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string" },
+        "text": { "type": "string" },
+        "best_use": { "type": "string" },
+        "recovery": { "type": "string" },
+        "evidence_keys": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "evidence_summary_item": {
+      "type": "object",
+      "required": ["date", "evidence_key", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "date": { "type": "string" },
+        "evidence_key": { "type": "string" },
+        "label": { "type": "string" }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "required": [
+        "daily_timeline_count",
+        "evidence_guard_passed",
+        "best_watch_overlap_passed",
+        "provider",
+        "model",
+        "fallback_used",
+        "period_contract"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "daily_timeline_count": { "type": "integer" },
+        "evidence_guard_passed": { "type": "boolean" },
+        "best_watch_overlap_passed": { "type": "boolean" },
+        "provider": { "type": "string" },
+        "model": { "type": "string" },
+        "fallback_used": { "type": "boolean" },
+        "period_contract": { "type": "string" }
+      }
+    }
+  }
+}

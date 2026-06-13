@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "horoscope_period_calculation_request",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "service_code",
+    "chart_calculation_id",
+    "period_resolution",
+    "scan_plan"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": { "const": "horoscope_period_calculation_request" },
+    "service_code": {
+      "enum": [
+        "horoscope_free_next_7_days_natal",
+        "horoscope_basic_next_7_days_natal",
+        "horoscope_premium_next_7_days_natal"
+      ]
+    },
+    "chart_calculation_id": { "type": "string", "minLength": 1 },
+    "period_resolution": { "type": "object" },
+    "scan_plan": { "type": "object" }
+  }
+}

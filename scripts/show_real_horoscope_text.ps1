@@ -175,7 +175,7 @@ while ((Get-Date) -lt $deadline) {
         if (-not $status.result.reading) {
             throw "Completed job has no result.reading"
         }
-        if ($status.result.reading.contract_version -ne "horoscope_response_v1") {
+        if ($status.result.reading.contract_version -ne "horoscope_response") {
             throw "Unexpected horoscope contract: $($status.result.reading.contract_version)"
         }
 

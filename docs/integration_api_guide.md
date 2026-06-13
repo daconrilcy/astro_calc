@@ -173,7 +173,7 @@ interpretee comme date civile locale.
 }
 ```
 
-La sortie `horoscope_period_response_v1` contient une vue de periode :
+La sortie `horoscope_period_response` contient une vue de periode :
 `week_overview`, `key_days`, `best_days`, `watch_days`, `daily_timeline[7]`,
 `domain_sections`, `advice`, `evidence_summary` et `quality`. Le payload public
 ne fournit pas `period_profile_code`, `detail_profile_code` ou
@@ -189,7 +189,7 @@ internes ou les champs de preuve, pas dans les textes publics.
 Le service Premium period reutilise le meme payload public que le Basic period,
 mais le catalogue impose `detail_profile_code = premium_rich` et
 `scan_profile_code = six_hour_7_days`. La mouture V2 conserve le contrat public
-`horoscope_period_response_v1` : le scan 6h alimente les fenetres favorables, les
+`horoscope_period_response` : le scan 6h alimente les fenetres favorables, les
 fenetres de vigilance et la strategie de semaine, sans exposer les materiaux
 internes de redaction.
 

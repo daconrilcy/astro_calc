@@ -80,54 +80,19 @@ impl HoroscopePeriodNatalOrchestrator {
                     Value::Null,
                 )
             })?;
-        let generation_mode = period_generation_mode(service_code)?;
-        let interpretation = match generation_mode {
-            PeriodGenerationMode::LegacyV1 => {
-                build_period_interpretation_request(&public, &calculation)?
-            }
-            PeriodGenerationMode::SemanticBriefV2 => {
-                build_period_writer_request_v2(&public, &calculation)?
-            }
-        };
-        let mut response = match generation_mode {
-            PeriodGenerationMode::LegacyV1 => {
-                period_writer_response(use_case, &interpretation, run_id).await?
-            }
-            PeriodGenerationMode::SemanticBriefV2 => {
-                period_writer_response_with_quality_loop(use_case, &interpretation, run_id).await?
-            }
-        };
-        if generation_mode == PeriodGenerationMode::LegacyV1 {
-            if is_free_period_request(&interpretation) {
-                prune_period_response_variant_fields(&interpretation, &mut response);
-            } else {
-                enforce_period_public_personalization_from_request(&interpretation, &mut response);
-                enforce_premium_period_advice_synthesis(&interpretation, &mut response);
-                restore_period_response_evidence_from_request(&interpretation, &mut response);
-                normalize_period_public_strings(&mut response);
-                enforce_period_public_personalization_from_request(&interpretation, &mut response);
-            }
-        }
-        match generation_mode {
-            PeriodGenerationMode::LegacyV1 => {
-                if is_free_period_request(&interpretation) {
-                    prune_period_response_variant_fields(&interpretation, &mut response);
-                }
-                validate_period_response_schema(&response)?;
-                validate_period_response_evidence(&interpretation, &response)?;
-            }
-            PeriodGenerationMode::SemanticBriefV2 => {
-                validate_period_response_contract_gates_v2(&interpretation, &response)?;
-            }
-        }
-        let mut result = json!({            "calculation": calculation,            "interpretation_request": interpretation,            "reading": response        });
-        if generation_mode == PeriodGenerationMode::SemanticBriefV2 {
-            result["writer_request"] = result["interpretation_request"].clone();
-            result["debug"]["period_v2_editorial_audit"] =
-                period_v2_editorial_audit(&result["interpretation_request"], &result["reading"]);
-            if let Some(warning) = public.language_compat_warning.clone() {
-                result["debug"]["language_compatibility"] = warning;
-            }
+        let writer_request = build_period_writer_request(&public, &calculation)?;
+        let response =
+            period_writer_response_with_quality_loop(use_case, &writer_request, run_id).await?;
+        validate_period_response_contract(&writer_request, &response)?;
+        let mut result = json!({
+            "calculation": calculation,
+            "writer_request": writer_request,
+            "reading": response
+        });
+        result["debug"]["period_editorial_audit"] =
+            period_editorial_audit(&result["writer_request"], &result["reading"]);
+        if let Some(warning) = public.language_compat_warning.clone() {
+            result["debug"]["language_compatibility"] = warning;
         }
         Ok(result)
     }

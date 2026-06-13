@@ -85,7 +85,7 @@ function New-E2EHoroscopeCalculationRequest {
         throw "No horoscope slots found in json_db/horoscope_time_slot_profiles.json"
     }
     return [ordered]@{
-        contract_version = "horoscope_calculation_request_v1"
+        contract_version = "horoscope_calculation_request"
         service_code = "horoscope_basic_daily_natal_3_slots"
         chart_calculation_id = $ChartCalculationId
         period = [ordered]@{

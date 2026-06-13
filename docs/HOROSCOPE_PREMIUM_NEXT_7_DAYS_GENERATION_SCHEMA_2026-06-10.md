@@ -4,16 +4,16 @@ Schema Mermaid du flux de generation du service `horoscope_premium_next_7_days_n
 
 ```mermaid
 flowchart TD
-    A["Payload public<br/>service_code = horoscope_premium_next_7_days_natal<br/><br/>astral_llm_api/src/integration_routes.rs<br/>contracts/llm/horoscope_period_natal_request_v1.schema.json"] --> B["Validation payload<br/>validate_period_public_request<br/><br/>astral_llm_application/src/horoscope/mod.rs"]
+    A["Payload public<br/>service_code = horoscope_premium_next_7_days_natal<br/><br/>astral_llm_api/src/integration_routes.rs<br/>contracts/llm/horoscope_period_natal_request.schema.json"] --> B["Validation payload<br/>validate_period_public_request<br/><br/>astral_llm_application/src/horoscope/mod.rs"]
     B --> C["Build calculation request<br/>next_7_days + six_hour_7_days<br/><br/>astral_llm_application/src/horoscope/mod.rs<br/>json_db/horoscope_services.json<br/>json_db/horoscope_scan_profiles.json"]
     C --> D["Calculator API<br/><br/>astral_llm_infra/src/calculator_client.rs<br/>astral_calculator/src/runtime/service.rs"]
-    D --> E["Calculation response<br/><br/>astral_calculator/src/horoscope/mod.rs<br/>astral_calculator/schemas/horoscope_period_calculation_response_v1.schema.json"]
+    D --> E["Calculation response<br/><br/>astral_calculator/src/horoscope/mod.rs<br/>astral_calculator/schemas/horoscope_period_calculation_response.schema.json"]
 
     E --> E1["period_resolution<br/>7 dates incluses"]
     E --> E2["scan_plan<br/>28 snapshots<br/>00:00 / 06:00 / 12:00 / 18:00"]
     E --> E3["snapshots<br/>transits_to_natal + evidence_key"]
 
-    E1 --> F["Build interpretation request<br/><br/>astral_llm_application/src/horoscope/mod.rs<br/>contracts/llm/horoscope_period_interpretation_request_v1.schema.json"]
+    E1 --> F["Build interpretation request<br/><br/>astral_llm_application/src/horoscope/mod.rs<br/>contracts/llm/horoscope_period_interpretation_request.schema.json"]
     E2 --> F
     E3 --> F
 
@@ -41,12 +41,12 @@ flowchart TD
     I9 --> J
     G --> J
 
-    J --> K["Provider OpenAI<br/>structured JSON schema<br/><br/>astral_llm_application/src/horoscope/mod.rs<br/>contracts/llm/horoscope_period_response_v1.schema.json"]
-    K --> L["Raw horoscope_period_response_v1<br/><br/>contracts/llm/horoscope_period_response_v1.schema.json"]
+    J --> K["Provider OpenAI<br/>structured JSON schema<br/><br/>astral_llm_application/src/horoscope/mod.rs<br/>contracts/llm/horoscope_period_response.schema.json"]
+    K --> L["Raw horoscope_period_response<br/><br/>contracts/llm/horoscope_period_response.schema.json"]
 
     L --> M["Repair shape<br/>repair_period_response_shape<br/><br/>astral_llm_application/src/horoscope/mod.rs"]
     M --> N["Postprocess<br/>normalisation, tons publics,<br/>personnalisation, repetitions<br/><br/>astral_llm_application/src/horoscope/mod.rs<br/>C:/dev/astral_calculation/json_db/horoscope_period_style_variants.json"]
-    N --> O["Validation schema<br/><br/>astral_llm_application/src/horoscope/mod.rs<br/>contracts/llm/horoscope_period_response_v1.schema.json"]
+    N --> O["Validation schema<br/><br/>astral_llm_application/src/horoscope/mod.rs<br/>contracts/llm/horoscope_period_response.schema.json"]
     O --> P["Validation evidence guard<br/>validate_period_response_evidence<br/><br/>astral_llm_application/src/horoscope/mod.rs"]
     P --> Q["Validation qualite Premium<br/>windows, strategy, domains,<br/>word count, no leaks<br/><br/>astral_llm_application/src/horoscope/mod.rs"]
 
@@ -70,11 +70,11 @@ flowchart TD
 - `astral_llm/crates/astral_llm_infra/src/calculator_client.rs` : appel HTTP vers le calculateur.
 - `astral_calculator/src/runtime/service.rs` : orchestration runtime du calculateur avec snapshots de transits.
 - `astral_calculator/src/horoscope/mod.rs` : calcul period horoscope, snapshots, faits et `evidence_key`.
-- `contracts/llm/horoscope_period_natal_request_v1.schema.json` : contrat public d'entree LLM API.
-- `contracts/llm/horoscope_period_interpretation_request_v1.schema.json` : contrat de requete interne envoyee au writer LLM.
-- `contracts/llm/horoscope_period_response_v1.schema.json` : contrat de sortie de lecture.
-- `astral_calculator/schemas/horoscope_period_calculation_request_v1.schema.json` : contrat de requete calculateur.
-- `astral_calculator/schemas/horoscope_period_calculation_response_v1.schema.json` : contrat de reponse calculateur.
+- `contracts/llm/horoscope_period_natal_request.schema.json` : contrat public d'entree LLM API.
+- `contracts/llm/horoscope_period_interpretation_request.schema.json` : contrat de requete interne envoyee au writer LLM.
+- `contracts/llm/horoscope_period_response.schema.json` : contrat de sortie de lecture.
+- `astral_calculator/schemas/horoscope_period_calculation_request.schema.json` : contrat de requete calculateur.
+- `astral_calculator/schemas/horoscope_period_calculation_response.schema.json` : contrat de reponse calculateur.
 - `json_db/horoscope_services.json` : declaration du service Premium 7 days.
 - `json_db/horoscope_scan_profiles.json` : profil `six_hour_7_days`.
 - `C:\dev\astral_calculation\json_db\horoscope_detail_profiles.json` : profondeur Premium, limites de mots et sections activees.

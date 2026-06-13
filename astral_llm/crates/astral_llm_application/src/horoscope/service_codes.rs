@@ -10,8 +10,6 @@ pub const HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE: &str =
     "horoscope_premium_next_7_days_natal";
 pub const HOROSCOPE_SERVICE_CODE: &str = HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE;
 pub(crate) const HOROSCOPE_PRODUCT_CODE: &str = "horoscope";
-pub(crate) const FREE_PERIOD_NONE_WATCH_SUMMARY: &str = "Aucun point de vigilance dominant ne ressort cette semaine. Gardez simplement une marge d'observation si un échange ou une décision demande plus de temps que prévu.";
-pub(crate) const PREMIUM_MAX_SAME_DAILY_THEME: usize = 3;
 pub(crate) const PERIOD_V2_QUALITY_MAX_RETRIES: usize = 2;
 pub(crate) const PERIOD_V2_MAX_OUTPUT_TOKENS: u32 = 16_000;
 pub(crate) const PERIOD_V2_OBJECTIVE_TEXT_REPLACEMENTS: &[(&str, &str)] = &[
@@ -19,22 +17,6 @@ pub(crate) const PERIOD_V2_OBJECTIVE_TEXT_REPLACEMENTS: &[(&str, &str)] = &[
     ("demie journée", "demi-journée"),
     ("reorganiser", "réorganiser"),
     ("Reorganiser", "Réorganiser"),
-];
-pub(crate) const PERIOD_V2_FORBIDDEN_WRITER_KEYS: &[&str] = &[
-    "reason",
-    "focus",
-    "summary_hint",
-    "personalization_hint",
-    "natal_focus_hint",
-    "human_label",
-    "public_role",
-    "reader_situation",
-    "narrative_function",
-    "title",
-    "text",
-    "advice",
-    "best_for",
-    "evidence",
 ];
 pub(crate) fn service_code_from_value(value: &Value) -> Result<&str, GenerationError> {
     let service_code = value

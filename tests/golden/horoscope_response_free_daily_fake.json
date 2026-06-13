@@ -1,0 +1,23 @@
+{
+  "contract_version": "horoscope_response",
+  "service_code": "horoscope_free_daily",
+  "period": {
+    "date": "2026-06-06",
+    "timezone": "Europe/Paris"
+  },
+  "summary": {
+    "title": "Votre tendance du jour",
+    "text": "La Lune met l'accent sur l'organisation, les priorités simples et les gestes utiles. La journée gagne à rester concrète : choisir une tâche mesurable, clarifier ce qui doit vraiment avancer, puis éviter de multiplier les intentions."
+  },
+  "advice": "Choisissez une action vérifiable et avancez étape par étape.",
+  "watch_point": "Ne cherchez pas à tout régler en même temps.",
+  "evidence_keys": ["slot:day:moon:natal_house:6"],
+  "quality": {
+    "provider": "fake",
+    "evidence_guard": "passed",
+    "evidence_coverage": 1.0,
+    "slot_diversity_passed": "not_applicable",
+    "french_typography_passed": true,
+    "generic_language_passed": true
+  }
+}

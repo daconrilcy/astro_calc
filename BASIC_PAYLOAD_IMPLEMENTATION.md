@@ -1,3 +1,39 @@
+# Horoscope contract-first simplification - 2026-06-13
+
+Simplified horoscope post-LLM validation so daily and period generation now block
+only on output-contract and integration concerns, not on editorial taxonomy or
+mechanical prose heuristics.
+
+- Daily horoscope validation keeps schema and canonical `evidence_keys`, but no
+  longer rejects repeated slot bodies, copied overview phrasing, generic wording
+  or missing explicit astrological vocabulary in each slot.
+- Legacy period horoscope validation keeps schema, date-range, required
+  sections, canonical `evidence_keys` and canonical window snapshot keys, but
+  no longer blocks on repetitive daily phrasing, meta-personalization wording,
+  editorial scaffolding phrases, or recalendarized strategy prose.
+- Premium period blocking validation no longer rejects meta watch-window titles
+  or generic best-window phrasing when the structured contract remains valid.
+- Added [docs/horoscope_generation_architecture.md](docs/horoscope_generation_architecture.md)
+  to freeze the target split:
+  calculator facts -> persona-aware writer request -> LLM prose -> minimal
+  contract validation -> non-blocking editorial audit.
+
+Validation:
+
+- `cargo test -p astral_llm_api --test horoscope_v1_tests`
+
+Adversarial follow-up:
+
+- Removed a false-positive daily lexical gate that rejected the public English
+  word `day`.
+- Removed legacy period blocking on public taxonomy words such as
+  `organization`, `relationship`, `energy`, `clarity`, and `integration`.
+- Hardened the simplification so legacy period editorial rewrites are now
+  `fake`-provider only. Real provider prose keeps its own narrative after shape
+  sanitization and contract repair.
+- Added a regression test proving `repair_period_response_shape` does not
+  rewrite real-provider editorial prose.
+
 # Horoscope Period V2 hard/soft validation split - 2026-06-13
 
 ## Scope
@@ -8,7 +44,7 @@ editorial heuristics become non-blocking audit warnings.
 
 ## Behavior
 
-- Kept the public `horoscope_period_response_v1` contract unchanged.
+- Kept the public `horoscope_period_response` contract unchanged.
 - Reduced `validate_period_response_contract_gates_v2()` to hard gates only:
   schema, request/response identity, period dates, evidence keys,
   snapshot-source keys, marker overlaps, watch/domain/evidence packaging,
@@ -210,7 +246,7 @@ Free and basic 7-day services remain on `legacy_v1` according to the initial Pre
 
 - `json_db/horoscope_services.json` now carries `generation_mode = "semantic_brief_v2"` only for Premium 7 days; free/basic 7 days carry `legacy_v1`.
 - `HoroscopePeriodNatalOrchestrator` routes by `generation_mode`, preserving legacy V1 as rollback.
-- Premium V2 builds `horoscope_period_writer_request_v2` from atomic evidence, events and `semantic_brief` instead of public-like `daily_plans` or editorial prose.
+- Premium V2 builds `horoscope_period_writer_request` from atomic evidence, events and `semantic_brief` instead of public-like `daily_plans` or editorial prose.
 - V2 supports `target_language_code` (`fr`, `en`, `es`, `de`) while temporarily accepting legacy `target_language`; if both diverge, `target_language_code` wins and the V2 debug envelope records `legacy_target_language_ignored`.
 - V2 accepts bounded `astrologer_persona` values that cannot override safety, schema, evidence, dates or target language. The Rust payload and V2 schema expose the same persona fields only: `persona_id`, `tone`, `lexical_field`, `priority_domains`, `avoid_style` and `interpretation_style`. The writer request always includes `astrologer_persona`, using `null` when absent.
 - `semantic_brief_v2` is internal writing input only: it contains period-level keywords/tone/intensity plus atomic daily/candidate material, never `semantic_brief.evidence` or public prose. Sanitized `evidence` stays top-level and candidates reference it only through `evidence_keys`.

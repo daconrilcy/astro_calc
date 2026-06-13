@@ -105,7 +105,7 @@ function Assert-FreeReading {
     if (-not $Status.result.reading) {
         throw "Completed job has no result.reading"
     }
-    if ($Status.result.reading.contract_version -ne "horoscope_response_v1") {
+    if ($Status.result.reading.contract_version -ne "horoscope_response") {
         throw "Unexpected reading contract_version: $($Status.result.reading.contract_version)"
     }
     if ($Status.result.reading.service_code -ne "horoscope_free_daily") {
