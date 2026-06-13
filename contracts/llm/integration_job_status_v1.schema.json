@@ -47,7 +47,11 @@
       "type": ["object", "null"],
       "properties": {
         "code": { "type": "string" },
-        "message": { "type": "string" }
+        "message": { "type": "string" },
+        "details": {
+          "type": ["object", "null"],
+          "description": "Details non bloquants ou techniques sur l'erreur terminale. Pour safety_rejected, contient notamment category, rule_id et violations."
+        }
       }
     }
   }

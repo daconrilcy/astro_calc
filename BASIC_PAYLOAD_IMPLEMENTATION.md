@@ -585,3 +585,11 @@ Refactored the deterministic generation model for `horoscope_premium_next_7_days
 - `.\scripts\test_horoscope_free_daily_all.ps1 -SkipRustChecks`
 - `.\scripts\test_horoscope_premium_daily_all.ps1 -SkipRustChecks`
 - `.\scripts\docker_update_integration_stack.ps1 -SkipBuild -SkipImport -SkipCatalogueSubmit`
+# 2026-06-13
+
+## Observabilite des jobs safety_rejected
+
+- Enrichissement de `error.details` sur `GET /v1/jobs/{run_id}` pour les jobs `safety_rejected`.
+- Conservation de `category`, `rule_id` et `violations` dans `llm_jobs.error_json` au lieu de ne renvoyer que `code` et `message`.
+- Documentation du champ optionnel `error.details` dans `contracts/llm/integration_job_status_v1.schema.json`.
+- Ajout de tests unitaires sur `job_error_from_reading` pour verrouiller la serialisation des erreurs `safety_rejected` et `failed`.
