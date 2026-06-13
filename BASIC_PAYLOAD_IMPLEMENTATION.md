@@ -599,3 +599,8 @@ Refactored the deterministic generation model for `horoscope_premium_next_7_days
 - Ajout d'un helper applicatif `ensure_symbolic_framing_text` pour injecter un cadrage interpretatif court quand un chapitre natal n'en contient pas explicitement.
 - Application du helper avant la validation safety des chapitres et de la synthese finale afin d'eviter les `SAFETY_REJECTED` fragiles du type `missing symbolic/interpretive framing`.
 - Ajout de tests de non-regression sur un texte de type `growth_path` trop affirmatif et sur l'idempotence quand le cadrage existe deja.
+
+## Compatibilite OpenAI reasoning.effort
+
+- Correction defensive dans l'adapter OpenAI : `ReasoningEffort::None` est converti en `minimal` au lieu de serialiser `reasoning.effort = "none"`.
+- Cela evite les echecs `400 unsupported_value` sur des modeles comme `gpt-5-mini`, qui n'acceptent plus `none`.

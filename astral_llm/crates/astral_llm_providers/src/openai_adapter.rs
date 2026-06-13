@@ -161,7 +161,9 @@ fn build_input(messages: &[PromptMessage]) -> Vec<serde_json::Value> {
 
 fn reasoning_effort_str(effort: ReasoningEffort) -> &'static str {
     match effort {
-        ReasoningEffort::None => "none",
+        // Responses API models like gpt-5-mini no longer accept "none".
+        // Keep subtask requests compatible by downgrading to the cheapest supported effort.
+        ReasoningEffort::None => "minimal",
         ReasoningEffort::Minimal => "minimal",
         ReasoningEffort::Low => "low",
         ReasoningEffort::Medium => "medium",
@@ -259,6 +261,7 @@ fn output_has_only_reasoning(payload: &serde_json::Value) -> bool {
 #[cfg(test)]
 mod extract_tests {
     use super::*;
+    use astral_llm_domain::provider::ReasoningEffort;
 
     #[test]
     fn uses_top_level_output_text() {
@@ -294,6 +297,11 @@ mod extract_tests {
         });
         let err = extract_output_text(&payload).unwrap_err().to_string();
         assert!(err.contains("reasoning only"));
+    }
+
+    #[test]
+    fn openai_none_reasoning_effort_is_downgraded_to_minimal() {
+        assert_eq!(reasoning_effort_str(ReasoningEffort::None), "minimal");
     }
 }
 
