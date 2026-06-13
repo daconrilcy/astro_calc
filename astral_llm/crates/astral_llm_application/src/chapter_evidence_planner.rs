@@ -138,6 +138,14 @@ impl ChapterEvidencePlanner {
             avoid_repeating,
         };
 
+        // A blocking requirement may legitimately force reuse of a prior semantic key.
+        // Keep avoid_repeating advisory only for non-selected keys in that case.
+        pack.avoid_repeating.retain(|key| {
+            !pack.core.iter().any(|e| &e.semantic_fact_key == key)
+                && !pack.supporting.iter().any(|e| &e.semantic_fact_key == key)
+                && !pack.nuance.iter().any(|e| &e.semantic_fact_key == key)
+        });
+
         trim_excess_global_filler(&mut pack, chapter_code, policy.min_evidence_per_chapter);
 
         validate_pack_structure(
@@ -428,7 +436,7 @@ fn inject_blocking_requirements(
     nuance: &mut Vec<InterpretiveEvidence>,
     assigned: &mut HashSet<String>,
     assigned_semantic: &mut HashSet<String>,
-    prior_avoid: &HashSet<&str>,
+    _prior_avoid: &HashSet<&str>,
 ) {
     let ctx = PackPushContext {
         prior_usage,
@@ -462,11 +470,10 @@ fn inject_blocking_requirements(
             .into_iter()
             .filter(|e| !assigned.contains(&e.fact_id))
             .filter(|e| !assigned_semantic.contains(&e.semantic_fact_key))
-            .filter(|e| !prior_avoid.contains(e.semantic_fact_key.as_str()))
             .collect();
         if let Some(ev) = best_by_weight(pool) {
-            let _ = push_into_pack(
-                ev,
+            let inserted = push_into_pack(
+                ev.clone(),
                 policy,
                 core,
                 supporting,
@@ -475,6 +482,16 @@ fn inject_blocking_requirements(
                 assigned_semantic,
                 &ctx,
             );
+            if !inserted {
+                let families = collect_families(core, supporting, nuance);
+                let _ = swap_supporting_for_family_diversity(
+                    ev.clone(),
+                    supporting,
+                    assigned,
+                    assigned_semantic,
+                    &families,
+                ) || swap_supporting_for_any(ev, supporting, assigned, assigned_semantic);
+            }
         }
     }
 }
@@ -569,6 +586,7 @@ fn swap_supporting_for_any(
     new_ev: InterpretiveEvidence,
     supporting: &mut Vec<InterpretiveEvidence>,
     assigned: &mut HashSet<String>,
+    assigned_semantic: &mut HashSet<String>,
 ) -> bool {
     let Some((idx, _)) = supporting.iter().enumerate().min_by(|(_, a), (_, b)| {
         a.weight
@@ -578,7 +596,9 @@ fn swap_supporting_for_any(
         return false;
     };
     assigned.remove(&supporting[idx].fact_id);
+    assigned_semantic.remove(&supporting[idx].semantic_fact_key);
     assigned.insert(new_ev.fact_id.clone());
+    assigned_semantic.insert(new_ev.semantic_fact_key.clone());
     supporting[idx] = new_ev;
     true
 }
@@ -588,6 +608,7 @@ fn swap_supporting_for_family_diversity(
     new_ev: InterpretiveEvidence,
     supporting: &mut Vec<InterpretiveEvidence>,
     assigned: &mut HashSet<String>,
+    assigned_semantic: &mut HashSet<String>,
     families: &HashSet<String>,
 ) -> bool {
     let new_family = new_ev.family.as_str().to_string();
@@ -607,7 +628,9 @@ fn swap_supporting_for_family_diversity(
         return false;
     };
     assigned.remove(&supporting[idx].fact_id);
+    assigned_semantic.remove(&supporting[idx].semantic_fact_key);
     assigned.insert(new_ev.fact_id.clone());
+    assigned_semantic.insert(new_ev.semantic_fact_key.clone());
     supporting[idx] = new_ev;
     true
 }
@@ -675,8 +698,13 @@ fn fill_minimums(
                 assigned,
                 assigned_semantic,
                 &ctx,
-            ) || swap_supporting_for_family_diversity(ev, supporting, assigned, &families)
-            {
+            ) || swap_supporting_for_family_diversity(
+                ev,
+                supporting,
+                assigned,
+                assigned_semantic,
+                &families,
+            ) {
                 injected = true;
             }
         }
@@ -704,7 +732,11 @@ fn fill_minimums(
                         assigned_semantic,
                         &ctx,
                     ) || swap_supporting_for_family_diversity(
-                        ev, supporting, assigned, &families,
+                        ev,
+                        supporting,
+                        assigned,
+                        assigned_semantic,
+                        &families,
                     ) {
                         injected = true;
                         break;
@@ -749,7 +781,7 @@ fn fill_minimums(
         ) {
             continue;
         }
-        if swap_supporting_for_any(ev, supporting, assigned) {
+        if swap_supporting_for_any(ev, supporting, assigned, assigned_semantic) {
             continue;
         }
         break;
@@ -784,8 +816,13 @@ fn fill_minimums(
                     assigned_semantic,
                     &ctx,
                 ) {
-                    let _ =
-                        swap_supporting_for_family_diversity(ev, supporting, assigned, &families);
+                    let _ = swap_supporting_for_family_diversity(
+                        ev,
+                        supporting,
+                        assigned,
+                        assigned_semantic,
+                        &families,
+                    );
                 }
             }
         }
@@ -944,10 +981,43 @@ pub fn pack_for_chapter<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use astral_llm_domain::chapter_orchestration::ReadingPlanChapter;
+    use astral_llm_domain::{
+        chapter_orchestration::ReadingPlanChapter,
+        interpretive_evidence::{EvidenceKindFamily, SlotEligibility},
+    };
 
     fn pack_has_semantic(pack: &ChapterEvidencePack, key: &str) -> bool {
         pack.contains_semantic_key(key)
+    }
+
+    fn ev(
+        fact_id: &str,
+        semantic_key: &str,
+        kind_code: &str,
+        family: EvidenceKindFamily,
+        affinity: &[&str],
+        weight: f32,
+        object_code: Option<&str>,
+        house_number: Option<u8>,
+    ) -> InterpretiveEvidence {
+        InterpretiveEvidence {
+            fact_id: fact_id.into(),
+            semantic_fact_key: semantic_key.into(),
+            kind_code: kind_code.into(),
+            family,
+            label: fact_id.into(),
+            interpretive_hint: String::new(),
+            chapter_affinity: affinity.iter().map(|s| s.to_string()).collect(),
+            weight,
+            slot_eligibility: SlotEligibility {
+                can_be_core: true,
+                can_be_supporting: true,
+                can_be_nuance: true,
+            },
+            object_code: object_code.map(str::to_string),
+            sign_code: None,
+            house_number,
+        }
     }
 
     #[test]
@@ -1095,6 +1165,124 @@ mod tests {
             .iter()
             .chain(synthesis.supporting.iter())
             .any(|e| e.kind_code == "dominant_planet" || e.kind_code == "house_emphasis"));
+    }
+
+    #[test]
+    fn blocking_requirement_can_override_prior_avoid_and_pack_capacity() {
+        let mut catalog = astral_llm_infra::CanonicalCatalog::default();
+        catalog.evidence = astral_llm_infra::bootstrap_evidence_catalog();
+        let policy = catalog.evidence.premium_policy.clone();
+        let pool = InterpretiveEvidencePool {
+            contract_version: "test".into(),
+            evidence: vec![
+                ev(
+                    "signal:aspect:moon:pluto:trine",
+                    "aspect:moon:pluto:trine",
+                    "aspect",
+                    EvidenceKindFamily::Aspect,
+                    &["identity", "emotional_life"],
+                    0.95,
+                    Some("moon"),
+                    None,
+                ),
+                ev(
+                    "placement:ascendant:libra:house:1",
+                    "placement:ascendant",
+                    "angle",
+                    EvidenceKindFamily::Placement,
+                    &["identity"],
+                    0.92,
+                    Some("ascendant"),
+                    Some(1),
+                ),
+                ev(
+                    "ruler:angle:ascendant:venus",
+                    "ruler:angle:ascendant:venus",
+                    "house_ruler",
+                    EvidenceKindFamily::Rulership,
+                    &["identity"],
+                    0.85,
+                    Some("venus"),
+                    Some(1),
+                ),
+                ev(
+                    "signal:object_position:moon",
+                    "object_position:moon",
+                    "placement",
+                    EvidenceKindFamily::Placement,
+                    &["emotional_life"],
+                    0.88,
+                    Some("moon"),
+                    Some(4),
+                ),
+                ev(
+                    "placement:ic:aquarius:house:4",
+                    "placement:ic",
+                    "angle",
+                    EvidenceKindFamily::Placement,
+                    &["emotional_life"],
+                    0.74,
+                    Some("ic"),
+                    Some(4),
+                ),
+                ev(
+                    "signal:object_position:sun",
+                    "object_position:sun",
+                    "placement",
+                    EvidenceKindFamily::Placement,
+                    &["identity", "emotional_life"],
+                    0.60,
+                    Some("sun"),
+                    None,
+                ),
+            ],
+        };
+        let plan = astral_llm_domain::chapter_orchestration::ReadingPlan {
+            product_code: "natal_prompter".into(),
+            domain_count: 2,
+            selected_domains: vec!["identity".into(), "emotional_life".into()],
+            chapters: vec![
+                ReadingPlanChapter {
+                    code: "identity".into(),
+                    title: "identity".into(),
+                    min_words: 40,
+                    target_words: 200,
+                    max_words: 500,
+                },
+                ReadingPlanChapter {
+                    code: "emotional_life".into(),
+                    title: "emotional_life".into(),
+                    min_words: 40,
+                    target_words: 200,
+                    max_words: 500,
+                },
+            ],
+        };
+
+        let packs = ChapterEvidencePlanner::plan_all(&pool, &plan, &catalog.evidence, &policy)
+            .expect("plan");
+
+        let identity = packs.iter().find(|p| p.chapter_code == "identity").unwrap();
+        assert!(
+            identity.contains_semantic_key("aspect:moon:pluto:trine"),
+            "identity should consume the shared moon aspect in this fixture"
+        );
+
+        let emotional = packs
+            .iter()
+            .find(|p| p.chapter_code == "emotional_life")
+            .unwrap();
+        assert!(
+            emotional.contains_semantic_key("aspect:moon:pluto:trine"),
+            "emotional_life must still include the blocking moon aspect; ids={:?}",
+            emotional.all_fact_ids()
+        );
+        for avoid in &emotional.avoid_repeating {
+            assert!(
+                !pack_has_semantic(emotional, avoid),
+                "selected blocking evidence must not remain in avoid_repeating: {avoid}"
+            );
+        }
     }
 
     fn premium_plus_request() -> astral_llm_domain::GenerateReadingRequest {

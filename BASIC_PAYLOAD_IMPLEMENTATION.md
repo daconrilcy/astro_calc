@@ -604,3 +604,9 @@ Refactored the deterministic generation model for `horoscope_premium_next_7_days
 
 - Correction defensive dans l'adapter OpenAI : `ReasoningEffort::None` est converti en `minimal` au lieu de serialiser `reasoning.effort = "none"`.
 - Cela evite les echecs `400 unsupported_value` sur des modeles comme `gpt-5-mini`, qui n'acceptent plus `none`.
+
+## Premium evidence planner
+
+- Correction du planner Premium pour autoriser une requirement `blocking` a reintroduire une evidence pourtant marquee dans `prior_avoid` quand c'est necessaire pour satisfaire le contrat du chapitre.
+- Nettoyage de `avoid_repeating` apres selection afin qu'aucune evidence active ne reste simultanement dans la liste d'evitement.
+- Ajout d'un test de non-regression sur `emotional_life` pour garantir qu'un `moon aspect` disponible est bien inclus quand `emotional_moon_aspects` est requis.
