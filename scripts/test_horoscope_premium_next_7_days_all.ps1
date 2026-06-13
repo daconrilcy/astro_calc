@@ -35,8 +35,8 @@ try {
             if ($LASTEXITCODE -ne 0) { throw "astral_time_window tests failed" }
         }
         Invoke-Step "Horoscope Premium Period: Rust service tests" {
-            cargo test -p astral_llm_api --test horoscope_v1_tests horoscope_premium_next_7_days
-            if ($LASTEXITCODE -ne 0) { throw "horoscope_v1_tests premium subset failed" }
+            cargo test -p astral_llm_api --test horoscope_tests horoscope_premium_next_7_days
+            if ($LASTEXITCODE -ne 0) { throw "horoscope_tests premium subset failed" }
         }
         Invoke-Step "Horoscope Premium Period: integration services tests" {
             cargo test -p astral_llm_api --test integration_services_tests

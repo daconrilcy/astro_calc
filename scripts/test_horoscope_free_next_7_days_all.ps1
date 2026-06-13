@@ -31,8 +31,8 @@ try {
             if ($LASTEXITCODE -ne 0) { throw "astral_time_window tests failed" }
         }
         Invoke-Step "horoscope_free_next_7_days_natal: Rust service tests" {
-            cargo test -p astral_llm_api --test horoscope_v1_tests horoscope_free_next_7_days
-            if ($LASTEXITCODE -ne 0) { throw "horoscope_v1_tests free next 7 days subset failed" }
+            cargo test -p astral_llm_api --test horoscope_tests horoscope_free_next_7_days
+            if ($LASTEXITCODE -ne 0) { throw "horoscope_tests free next 7 days subset failed" }
         }
         Invoke-Step "horoscope_free_next_7_days_natal: integration services tests" {
             cargo test -p astral_llm_api --test integration_services_tests

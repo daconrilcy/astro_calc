@@ -28,7 +28,15 @@ if (-not $AssumeFakeProviderConfigured) {
 
 function Assert-HttpReady {
     param([string]$Url)
-    $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 10 -SkipHttpErrorCheck
+    $iwrParams = @{
+        Uri = $Url
+        UseBasicParsing = $true
+        TimeoutSec = 10
+    }
+    if ((Get-Command Invoke-WebRequest).Parameters.ContainsKey("SkipHttpErrorCheck")) {
+        $iwrParams["SkipHttpErrorCheck"] = $true
+    }
+    $response = Invoke-WebRequest @iwrParams
     if ($response.StatusCode -lt 200 -or $response.StatusCode -ge 300) {
         throw "Readiness failed for $Url : HTTP $($response.StatusCode)"
     }
@@ -53,8 +61,8 @@ $service = @($services.services | Where-Object { $_.service_code -eq "horoscope_
 if (-not $service) {
     throw "Service horoscope_basic_next_7_days_natal not listed"
 }
-if ($service.availability -ne "beta") {
-    throw "Service horoscope_basic_next_7_days_natal must be beta for fake smoke, got $($service.availability)"
+if ($service.availability -ne "beta" -and $service.availability -ne "active") {
+    throw "Service horoscope_basic_next_7_days_natal must be beta or active for fake smoke, got $($service.availability)"
 }
 
 $natalRequestPath = Join-Path $repoRoot "contracts\integration\examples\natal_calculation_request_v1.paris_1990.json"
@@ -111,6 +119,10 @@ if (-not $completed) {
 }
 
 $reading = $completed.result.reading
+$writerRequest = $completed.result.writer_request
+if (-not $writerRequest) {
+    $writerRequest = $completed.result.interpretation_request
+}
 if ([string]$reading.quality.provider -ne "fake") {
     throw "Horoscope period fake smoke expected provider=fake, got $($reading.quality.provider)"
 }
@@ -120,11 +132,14 @@ if ($reading.contract_version -ne "horoscope_period_response") {
 if ($reading.service_code -ne "horoscope_basic_next_7_days_natal") {
     throw "Unexpected service_code in reading"
 }
-if (-not $completed.result.interpretation_request.period_resolution) {
-    throw "Missing period_resolution in interpretation request"
+if (-not $writerRequest) {
+    throw "Missing writer_request in completed result"
 }
-if (-not $completed.result.interpretation_request.scan_plan) {
-    throw "Missing scan_plan in interpretation request"
+if (-not $writerRequest.period_resolution) {
+    throw "Missing period_resolution in writer_request"
+}
+if (-not $writerRequest.scan_plan) {
+    throw "Missing scan_plan in writer_request"
 }
 if (@($reading.daily_timeline).Count -ne 7) {
     throw "daily_timeline must contain exactly 7 entries"

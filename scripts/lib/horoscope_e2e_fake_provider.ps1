@@ -64,7 +64,7 @@ function Use-HoroscopeE2eFakeComposeOverride {
 
     $script:HoroscopeFakeComposeOverridePath = Join-Path $RepoRoot "output\horoscope-e2e-fake-provider.override.yml"
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $script:HoroscopeFakeComposeOverridePath) | Out-Null
-    @"
+    $overrideContent = @"
 services:
   astral_llm_api:
     environment:
@@ -76,7 +76,13 @@ services:
       ASTRAL_LLM_ENABLE_FAKE: "true"
       ASTRAL_LLM_DEFAULT_PROVIDER: fake
       ASTRAL_LLM_DEFAULT_MODEL: fake-model
-"@ | Set-Content -LiteralPath $script:HoroscopeFakeComposeOverridePath -Encoding utf8
+"@
+    $tmpPath = "$($script:HoroscopeFakeComposeOverridePath).tmp"
+    if (Test-Path -LiteralPath $tmpPath) {
+        Remove-Item -LiteralPath $tmpPath -Force
+    }
+    $overrideContent | Set-Content -LiteralPath $tmpPath -Encoding utf8
+    Move-Item -LiteralPath $tmpPath -Destination $script:HoroscopeFakeComposeOverridePath -Force
 
     Push-Location $RepoRoot
     try {

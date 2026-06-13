@@ -250,15 +250,18 @@ if (-not $status -or $status.status -ne "completed") {
 
 $reading = $status.result.reading
 $calculation = $status.result.calculation
-$interpretation = $status.result.interpretation_request
+$writerRequest = $status.result.writer_request
+if (-not $writerRequest) {
+    $writerRequest = $status.result.interpretation_request
+}
 if ($reading.contract_version -ne "horoscope_period_response") {
     throw "Unexpected reading contract: $($reading.contract_version)"
 }
 if (@($reading.daily_timeline).Count -ne 7) {
     throw "Real period reading daily_timeline must contain 7 entries"
 }
-if (-not $calculation -or -not $interpretation) {
-    throw "Real period response must include calculation and interpretation_request"
+if (-not $calculation -or -not $writerRequest) {
+    throw "Real period response must include calculation and writer_request"
 }
 
 function Assert-UtcString {
@@ -301,15 +304,21 @@ if ([string]::IsNullOrWhiteSpace([string]$reading.quality.model)) {
 }
 
 $includedDates = New-Object System.Collections.Generic.HashSet[string]
-foreach ($date in @($interpretation.period_resolution.included_dates)) {
+foreach ($date in @($writerRequest.period_resolution.included_dates)) {
     [void]$includedDates.Add([string]$date)
 }
 $allowedEvidenceKeys = New-Object System.Collections.Generic.HashSet[string]
-foreach ($evidence in @($interpretation.evidence)) {
+foreach ($evidence in @($writerRequest.evidence)) {
     [void]$allowedEvidenceKeys.Add([string]$evidence.evidence_key)
 }
 
-$internalTones = @($interpretation.daily_plans | ForEach-Object { [string]$_.tone } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique)
+$internalTones = @(
+    $writerRequest.semantic_brief.daily_signal_summary |
+        ForEach-Object { @($_.tone_codes) } |
+        ForEach-Object { [string]$_ } |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+        Sort-Object -Unique
+)
 if ($internalTones.Count -lt 2) {
     throw "Real period interpretation should expose at least two distinct internal daily tones, got: $($internalTones -join ', ')"
 }
@@ -317,8 +326,8 @@ if ($internalTones.Count -lt 2) {
 $validTensionDates = New-Object System.Collections.Generic.HashSet[string]
 $eventScores = @()
 $previousScore = $null
-foreach ($event in @($interpretation.period_events)) {
-    $tone = [string]$event.tone
+foreach ($event in @($writerRequest.evidence)) {
+    $tone = [string]$event.tone_code
     $aspect = [string]$event.aspect
     $date = [string]$event.date
     $score = [double]$event.score
@@ -527,11 +536,6 @@ foreach ($marker in @($reading.key_days) + @($reading.best_days) + @($reading.wa
     Assert-PublicPeriodTextQuality -Text ([string]$marker.title) -Label "period marker $($marker.date).title"
     Assert-PublicPeriodTextQuality -Text ([string]$marker.reason) -Label "period marker $($marker.date).reason"
     $allPublicText += "$($marker.title) $($marker.reason)"
-}
-foreach ($marker in @($interpretation.key_days) + @($interpretation.best_days) + @($interpretation.watch_days)) {
-    if ($marker.PSObject.Properties.Name -contains "fallback_reason" -and $marker.fallback_reason -eq "") {
-        throw "Period interpretation marker exposes empty fallback_reason for $($marker.date)"
-    }
 }
 foreach ($evidence in @($reading.evidence_summary)) {
     if (-not $includedDates.Contains([string]$evidence.date)) {

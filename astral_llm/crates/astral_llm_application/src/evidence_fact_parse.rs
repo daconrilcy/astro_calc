@@ -40,8 +40,13 @@ pub fn object_codes_from_fact_id(fact_id: &str) -> Vec<String> {
     match parts.first().copied() {
         Some("placement") => placement_object_code(&parts).into_iter().collect(),
         Some("angle") if parts.len() >= 2 => vec![parts[1].to_string()],
+        Some("ruler") if parts.len() >= 4 && parts[1] == "angle" => {
+            vec![parts[2].to_string(), parts[parts.len() - 1].to_string()]
+        }
+        Some("ruler") if parts.len() >= 3 && parts[1] == "ascendant" => {
+            vec!["ascendant".into(), parts[parts.len() - 1].to_string()]
+        }
         Some("ruler") if parts.len() >= 4 => vec![parts[parts.len() - 1].to_string()],
-        Some("ruler") if parts.len() >= 3 && parts[1] == "ascendant" => vec!["ascendant".into()],
         Some("ruler") if parts.len() >= 2 => vec![parts[1].to_string()],
         Some("signal") if parts.len() >= 5 && parts[1] == "aspect" => {
             vec![parts[2].to_string(), parts[3].to_string()]
@@ -97,6 +102,14 @@ mod tests {
         assert_eq!(
             object_codes_from_fact_id("placement:jupiter:cancer:house:8"),
             vec!["jupiter"]
+        );
+        assert_eq!(
+            object_codes_from_fact_id("ruler:angle:descendant:mars"),
+            vec!["descendant", "mars"]
+        );
+        assert_eq!(
+            object_codes_from_fact_id("ruler:angle:mc:sun"),
+            vec!["mc", "sun"]
         );
         assert_eq!(
             object_codes_from_fact_id("signal:aspect:jupiter:uranus:opposition"),

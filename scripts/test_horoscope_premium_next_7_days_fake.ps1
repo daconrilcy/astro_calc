@@ -28,7 +28,18 @@ if (-not $AssumeFakeProviderConfigured) {
 
 function Assert-HttpReady {
     param([string]$Url)
-    Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 10 | Out-Null
+    $iwrParams = @{
+        Uri = $Url
+        UseBasicParsing = $true
+        TimeoutSec = 10
+    }
+    if ((Get-Command Invoke-WebRequest).Parameters.ContainsKey("SkipHttpErrorCheck")) {
+        $iwrParams["SkipHttpErrorCheck"] = $true
+    }
+    $response = Invoke-WebRequest @iwrParams
+    if ($response.StatusCode -lt 200 -or $response.StatusCode -ge 300) {
+        throw "Readiness failed for $Url : HTTP $($response.StatusCode)"
+    }
 }
 
 $headers = New-AstralAuthHeaders -Service llm
@@ -50,8 +61,8 @@ $service = @($services.services | Where-Object { $_.service_code -eq "horoscope_
 if (-not $service) {
     throw "Service horoscope_premium_next_7_days_natal not listed"
 }
-if ($service.availability -ne "beta") {
-    throw "Service horoscope_premium_next_7_days_natal must be beta for fake smoke, got $($service.availability)"
+if ($service.availability -ne "beta" -and $service.availability -ne "active") {
+    throw "Service horoscope_premium_next_7_days_natal must be beta or active for fake smoke, got $($service.availability)"
 }
 
 $natalRequestPath = Join-Path $repoRoot "contracts\integration\examples\natal_calculation_request_v1.paris_1990.json"
@@ -108,7 +119,10 @@ if (-not $completed) {
 }
 
 $reading = $completed.result.reading
-$interpretation = $completed.result.interpretation_request
+$writerRequest = $completed.result.writer_request
+if (-not $writerRequest) {
+    $writerRequest = $completed.result.interpretation_request
+}
 if ([string]$reading.quality.provider -ne "fake") {
     throw "Horoscope premium period fake smoke expected provider=fake, got $($reading.quality.provider)"
 }
@@ -118,10 +132,13 @@ if ($reading.contract_version -ne "horoscope_period_response") {
 if ($reading.service_code -ne "horoscope_premium_next_7_days_natal") {
     throw "Unexpected service_code in reading"
 }
-if ($interpretation.scan_plan.scan_profile_code -ne "six_hour_7_days") {
+if (-not $writerRequest) {
+    throw "Missing writer_request in completed result"
+}
+if ($writerRequest.scan_plan.scan_profile_code -ne "six_hour_7_days") {
     throw "Premium scan profile must be six_hour_7_days"
 }
-if ([int]$interpretation.scan_plan.snapshot_count -ne 28 -or @($interpretation.scan_plan.snapshots).Count -ne 28) {
+if ([int]$writerRequest.scan_plan.snapshot_count -ne 28 -or @($writerRequest.scan_plan.snapshots).Count -ne 28) {
     throw "Premium scan must contain exactly 28 snapshots"
 }
 if (@($reading.daily_timeline).Count -ne 7) {
@@ -137,7 +154,7 @@ if (@($reading.best_windows).Count -lt 1) {
     throw "Premium best_windows must be non-empty"
 }
 
-$snapshotKeys = @($interpretation.scan_plan.snapshots | ForEach-Object { $_.snapshot_key })
+$snapshotKeys = @($writerRequest.scan_plan.snapshots | ForEach-Object { $_.snapshot_key })
 foreach ($field in @("best_windows", "watch_windows")) {
     foreach ($window in @($reading.$field)) {
         if (-not $window.evidence_keys -or @($window.evidence_keys).Count -lt 1) {

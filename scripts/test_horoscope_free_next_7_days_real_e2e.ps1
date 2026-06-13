@@ -244,9 +244,12 @@ if (-not $status -or $status.status -ne "completed") {
 
 $reading = $status.result.reading
 $calculation = $status.result.calculation
-$interpretation = $status.result.interpretation_request
-if (-not $reading -or -not $calculation -or -not $interpretation) {
-    throw "Real Free period response must include reading, calculation and interpretation_request"
+$writerRequest = $status.result.writer_request
+if (-not $writerRequest) {
+    $writerRequest = $status.result.interpretation_request
+}
+if (-not $reading -or -not $calculation -or -not $writerRequest) {
+    throw "Real Free period response must include reading, calculation and writer_request"
 }
 if ($reading.contract_version -ne "horoscope_period_response") {
     throw "Unexpected reading contract: $($reading.contract_version)"
@@ -254,17 +257,14 @@ if ($reading.contract_version -ne "horoscope_period_response") {
 if ($reading.service_code -ne "horoscope_free_next_7_days_natal") {
     throw "Unexpected service_code in reading: $($reading.service_code)"
 }
-if ($interpretation.scan_plan.scan_profile_code -ne "daily_noon_7_days") {
+if ($writerRequest.scan_plan.scan_profile_code -ne "daily_noon_7_days") {
     throw "Free scan profile must be daily_noon_7_days"
 }
-if (@($interpretation.scan_plan.snapshots).Count -ne 7 -or @($calculation.snapshots).Count -ne 7) {
+if (@($writerRequest.scan_plan.snapshots).Count -ne 7 -or @($calculation.snapshots).Count -ne 7) {
     throw "Free period E2E must use exactly 7 daily snapshots"
 }
-if (@($interpretation.daily_plans).Count -ne 0) {
-    throw "Free interpretation request must not expose daily_plans to the writer"
-}
-if (@($interpretation.domain_sections).Count -ne 0) {
-    throw "Free interpretation request must not expose domain_sections to the writer"
+if (-not $writerRequest.semantic_brief) {
+    throw "Free writer_request must expose semantic_brief"
 }
 
 foreach ($field in @("week_overview", "daily_timeline", "best_days", "watch_days", "best_windows", "watch_windows", "domain_sections", "strategy")) {
@@ -286,9 +286,6 @@ if ($keyDays.Count -lt 1 -or $keyDays.Count -gt 2) {
     throw "Free reading key_days must contain 1 to 2 entries, got $($keyDays.Count)"
 }
 foreach ($day in $keyDays) {
-    if ([string]$day.title -ne "Jour à retenir") {
-        throw "Free key day title must be 'Jour à retenir', got '$($day.title)'"
-    }
     if (-not $day.evidence_keys -or @($day.evidence_keys).Count -lt 1) {
         throw "Free key day must reference evidence"
     }
@@ -299,8 +296,8 @@ if ($evidenceSummary.Count -lt 1 -or $evidenceSummary.Count -gt 3) {
     throw "Free evidence_summary must contain 1 to 3 entries, got $($evidenceSummary.Count)"
 }
 $watchStatus = [string]$reading.watch_summary.status
-if ($watchStatus -notin @("none", "low", "present")) {
-    throw "Free watch_summary.status must be none, low or present, got '$watchStatus'"
+if ($watchStatus -notin @("none", "low", "active")) {
+    throw "Free watch_summary.status must be none, low or active, got '$watchStatus'"
 }
 if ($watchStatus -ne "none" -and @($reading.watch_summary.evidence_keys).Count -lt 1) {
     throw "Free watch_summary must reference evidence when status is $watchStatus"

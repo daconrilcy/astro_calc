@@ -6,6 +6,7 @@ pub mod http;
 pub mod mistral_adapter;
 pub mod openai_adapter;
 pub mod provider_trait;
+pub mod response_json;
 pub mod types;
 
 pub use anthropic_adapter::AnthropicProvider;

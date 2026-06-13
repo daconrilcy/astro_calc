@@ -9,6 +9,7 @@ use astral_llm_domain::{
 };
 
 use crate::provider_trait::LlmProvider;
+use crate::response_json::{parse_model_output_json, parse_response_payload};
 use crate::types::{
     PromptMessage, PromptRole, ProviderGenerationRequest, ProviderGenerationResponse, TokenUsage,
 };
@@ -114,10 +115,11 @@ impl MistralProvider {
             return Err(LlmProviderError::Api(format!("{status}: {text}")));
         }
 
-        let payload: serde_json::Value = response
-            .json()
+        let raw_payload = response
+            .text()
             .await
             .map_err(|e| LlmProviderError::InvalidResponse(e.to_string()))?;
+        let payload = parse_response_payload(&raw_payload)?;
 
         let raw_text = payload
             .pointer("/choices/0/message/content")
@@ -125,7 +127,7 @@ impl MistralProvider {
             .ok_or_else(|| LlmProviderError::InvalidResponse("missing content".into()))?
             .to_string();
 
-        let parsed_json = serde_json::from_str(&raw_text).ok();
+        let parsed_json = parse_model_output_json(&raw_text);
         let usage = payload.get("usage").map(parse_usage);
 
         Ok(ProviderGenerationResponse {

@@ -291,6 +291,43 @@ mod tests {
     }
 
     #[test]
+    fn allows_descendant_in_body_when_descendant_ruler_in_basis() {
+        let pack = ChapterEvidencePack {
+            chapter_code: "relationships".into(),
+            core: vec![
+                evidence("signal:object_position:venus"),
+                evidence("ruler:angle:descendant:mars"),
+            ],
+            supporting: vec![],
+            nuance: vec![],
+            avoid_repeating: vec![],
+        };
+        let chapter = ReadingChapter {
+            code: "relationships".into(),
+            title: "t".into(),
+            body: "Le Descendant en Balance colore vos liens, avec Mars comme maître relationnel.".into(),
+            astro_basis: vec![
+                AstroBasisItem {
+                    fact_id: Some("signal:object_position:venus".into()),
+                    label: None,
+                    factor: "Vénus".into(),
+                    interpretive_role: "core".into(),
+                },
+                AstroBasisItem {
+                    fact_id: Some("ruler:angle:descendant:mars".into()),
+                    label: None,
+                    factor: "Maître du Descendant : Mars".into(),
+                    interpretive_role: "supporting".into(),
+                },
+            ],
+            confidence: ConfidenceLevel::Medium,
+            safety_flags: vec![],
+        };
+        let v = ChapterEvidenceCoherence::detect(&chapter, &pack, &catalog(), "fr");
+        assert!(!v.orphan_object_codes.contains(&"descendant".to_string()));
+    }
+
+    #[test]
     fn allows_dominant_planet_in_basis_for_body_mention() {
         let pack = ChapterEvidencePack {
             chapter_code: "synthesis".into(),

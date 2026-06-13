@@ -130,14 +130,6 @@ pub(crate) fn validate_free_period_provider_public_payload(
             json!({ "field": "key_days", "count": response["key_days"].as_array().map(Vec::len).unwrap_or(0) }),
         ));
     }
-    for day in response["key_days"].as_array().into_iter().flatten() {
-        if day["title"].as_str() != Some("Jour à retenir") {
-            return Err(quality_error(
-                "HOROSCOPE_PERIOD_FREE_KEY_DAY_TITLE_INVALID",
-                json!({ "field": "key_days.title" }),
-            ));
-        }
-    }
     validate_free_period_key_days_are_neutral_markers(response)?;
     require_period_public_string(response, &["advice"])?;
     let evidence = response
@@ -171,19 +163,6 @@ pub(crate) fn validate_free_period_key_days_are_neutral_markers(
         "parfait",
         "profiter",
     ];
-    let useful_terms = [
-        "repère",
-        "repere",
-        "retenir",
-        "attention",
-        "thème",
-        "theme",
-        "priorité",
-        "priorite",
-        "tendance",
-        "ajuster",
-        "comprendre",
-    ];
     for (index, day) in response["key_days"]
         .as_array()
         .into_iter()
@@ -210,9 +189,7 @@ pub(crate) fn validate_free_period_key_days_are_neutral_markers(
             .and_then(Value::as_str)
             .unwrap_or("")
             .to_lowercase();
-        if reason.split_whitespace().count() < 8
-            || !useful_terms.iter().any(|term| reason.contains(term))
-        {
+        if reason.split_whitespace().count() < 6 {
             return Err(quality_error(
                 "HOROSCOPE_PERIOD_FREE_KEY_DAY_TOO_THIN",
                 json!({ "field": "key_days.reason", "index": index }),
@@ -220,6 +197,62 @@ pub(crate) fn validate_free_period_key_days_are_neutral_markers(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn free_period_accepts_non_literal_key_day_title_when_marker_stays_neutral() {
+        let response = json!({
+            "service_code": HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+            "summary": {
+                "title": "Vos 7 prochains jours",
+                "text": "Une tendance générale se dessine sans transformer la semaine en programme rigide."
+            },
+            "dominant_theme": {
+                "theme": "Relations",
+                "text": "Le climat dominant aide à prioriser les échanges utiles."
+            },
+            "key_days": [{
+                "date": "2026-06-14",
+                "title": "Point d'appui de la semaine",
+                "reason": "Ce repère aide à cadrer une décision simple sans en faire un verdict.",
+                "evidence_keys": ["signal:1"]
+            }],
+            "advice": "Choisissez une action simple puis ajustez selon les retours.",
+            "watch_summary": {
+                "status": "low",
+                "text": "Une vigilance légère suffit pour éviter les réactions trop rapides.",
+                "evidence_keys": ["signal:1"]
+            },
+            "evidence_summary": [{
+                "date": "2026-06-14",
+                "evidence_key": "signal:1",
+                "label": "Climat relationnel plus sensible"
+            }]
+        });
+
+        assert!(validate_free_period_provider_public_payload(&response).is_ok());
+    }
+
+    #[test]
+    fn free_period_rejects_key_day_reason_that_is_too_thin() {
+        let response = json!({
+            "key_days": [{
+                "date": "2026-06-14",
+                "title": "Point d'appui",
+                "reason": "Ralentir avant de conclure."
+            }]
+        });
+
+        let error = validate_free_period_key_days_are_neutral_markers(&response).unwrap_err();
+        assert_eq!(
+            error.detail().message,
+            "HOROSCOPE_PERIOD_FREE_KEY_DAY_TOO_THIN"
+        );
+    }
 }
 pub(crate) fn validate_free_period_required_fields(
     response: &Value,

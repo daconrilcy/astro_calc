@@ -231,9 +231,12 @@ Assert-CanonicalUtcFields $statusRaw
 
 $reading = $status.result.reading
 $calculation = $status.result.calculation
-$interpretation = $status.result.interpretation_request
-if (-not $reading -or -not $calculation -or -not $interpretation) {
-    throw "Real premium period response must include reading, calculation and interpretation_request"
+$writerRequest = $status.result.writer_request
+if (-not $writerRequest) {
+    $writerRequest = $status.result.interpretation_request
+}
+if (-not $reading -or -not $calculation -or -not $writerRequest) {
+    throw "Real premium period response must include reading, calculation and writer_request"
 }
 if ($reading.contract_version -ne "horoscope_period_response") {
     throw "Unexpected reading contract: $($reading.contract_version)"
@@ -241,16 +244,16 @@ if ($reading.contract_version -ne "horoscope_period_response") {
 if ($reading.service_code -ne "horoscope_premium_next_7_days_natal") {
     throw "Unexpected service_code in reading: $($reading.service_code)"
 }
-if ($interpretation.scan_plan.scan_profile_code -ne "six_hour_7_days") {
+if ($writerRequest.scan_plan.scan_profile_code -ne "six_hour_7_days") {
     throw "Premium scan profile must be six_hour_7_days"
 }
-Assert-ArrayCount $interpretation.scan_plan.snapshots 28 "interpretation.scan_plan.snapshots"
+Assert-ArrayCount $writerRequest.scan_plan.snapshots 28 "writer_request.scan_plan.snapshots"
 Assert-ArrayCount $calculation.scan_plan.snapshots 28 "calculation.scan_plan.snapshots"
 Assert-ArrayCount $calculation.snapshots 28 "calculation.snapshots"
 Assert-ArrayCount $reading.daily_timeline 7 "reading.daily_timeline"
 
 $snapshotsPerDate = @{}
-foreach ($snapshot in @($interpretation.scan_plan.snapshots)) {
+foreach ($snapshot in @($writerRequest.scan_plan.snapshots)) {
     $date = [string]$snapshot.date
     if (-not $snapshotsPerDate.ContainsKey($date)) {
         $snapshotsPerDate[$date] = @()
@@ -264,7 +267,7 @@ foreach ($date in $snapshotsPerDate.Keys) {
     }
 }
 
-$firstSnapshot = @($interpretation.scan_plan.snapshots)[0]
+$firstSnapshot = @($writerRequest.scan_plan.snapshots)[0]
 if ([string]$firstSnapshot.reference_time_local -ne "00:00") {
     throw "First premium snapshot must be local 00:00"
 }
@@ -310,15 +313,15 @@ foreach ($section in @($reading.domain_sections)) {
 }
 
 $includedDates = New-Object System.Collections.Generic.HashSet[string]
-foreach ($date in @($interpretation.period_resolution.included_dates)) {
+foreach ($date in @($writerRequest.period_resolution.included_dates)) {
     [void]$includedDates.Add([string]$date)
 }
 $snapshotKeys = New-Object System.Collections.Generic.HashSet[string]
-foreach ($snapshot in @($interpretation.scan_plan.snapshots)) {
+foreach ($snapshot in @($writerRequest.scan_plan.snapshots)) {
     [void]$snapshotKeys.Add([string]$snapshot.snapshot_key)
 }
 $allowedEvidenceKeys = New-Object System.Collections.Generic.HashSet[string]
-foreach ($evidence in @($interpretation.evidence)) {
+foreach ($evidence in @($writerRequest.evidence)) {
     [void]$allowedEvidenceKeys.Add([string]$evidence.evidence_key)
 }
 

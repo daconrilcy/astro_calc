@@ -35,8 +35,8 @@ Push-Location $repoRoot
 try {
     if (-not $SkipRustChecks) {
         Invoke-Step "Horoscope Free Daily: Rust service tests" {
-            cargo test -p astral_llm_api --test horoscope_v1_tests
-            if ($LASTEXITCODE -ne 0) { throw "horoscope_v1_tests failed" }
+            cargo test -p astral_llm_api --test horoscope_tests
+            if ($LASTEXITCODE -ne 0) { throw "horoscope_tests failed" }
         }
 
         Invoke-Step "Horoscope Free Daily: integration services tests" {
