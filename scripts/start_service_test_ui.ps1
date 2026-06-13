@@ -177,8 +177,12 @@ function Invoke-Geocode {
     }
 
     $query = [System.Web.HttpUtility]::ParseQueryString($Context.Request.Url.Query)
-    $city = ($query["city"] ?? "").Trim()
-    $country = ($query["country"] ?? "").Trim()
+    $city = [string]$query["city"]
+    $country = [string]$query["country"]
+    if ($null -eq $city) { $city = "" }
+    if ($null -eq $country) { $country = "" }
+    $city = $city.Trim()
+    $country = $country.Trim()
     if (-not $city -or -not $country) {
         Send-Json -Context $Context -StatusCode 400 -Body @{ error = @{ code = "INVALID_INPUT"; message = "city and country are required" } }
         return
@@ -237,8 +241,23 @@ function Invoke-Geocode {
 }
 
 try {
+    $contextTask = $listener.GetContextAsync()
     while ($listener.IsListening) {
-        $context = $listener.GetContext()
+        try {
+            if (-not $contextTask.Wait(250)) {
+                continue
+            }
+            $context = $contextTask.GetAwaiter().GetResult()
+            $contextTask = $listener.GetContextAsync()
+        } catch [System.AggregateException] {
+            $inner = $_.Exception.InnerException
+            if ($inner -is [System.ObjectDisposedException] -or $inner -is [System.Net.HttpListenerException]) {
+                break
+            }
+            throw
+        } catch [System.ObjectDisposedException], [System.Net.HttpListenerException] {
+            break
+        }
         try {
             $path = $context.Request.Url.AbsolutePath
             if ($path -eq "/api/llm" -or $path.StartsWith("/api/llm/")) {
@@ -275,7 +294,9 @@ try {
         }
     }
 } finally {
-    $listener.Stop()
+    if ($listener.IsListening) {
+        $listener.Stop()
+    }
     $listener.Close()
     $httpClient.Dispose()
 }

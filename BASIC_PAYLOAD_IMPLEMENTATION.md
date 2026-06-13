@@ -498,6 +498,7 @@ Added a developer-only static UI for manually exercising the real local calculat
 
 - UI files: `tests/service_test_ui/`
 - Launcher/proxy: `scripts/start_service_test_ui.ps1`
+- Shutdown behavior: `scripts/start_service_test_ui.ps1` now polls `HttpListener.GetContextAsync()` every 250 ms and exits cleanly when the listener stops, so the local UI stops quickly even when idle.
 - Browser logic test page: `tests/service_test_ui/service-test-ui.test.html`
 
 Start it with:
