@@ -453,7 +453,10 @@ pub fn period_writer_reasoning_effort(request: &Value) -> Option<ReasoningEffort
     if is_period_writer_request_v2(request) || is_free_period_request(request) {
         Some(ReasoningEffort::Minimal)
     } else {
-        None
+        match request["service_code"].as_str() {
+            Some(HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE) => Some(ReasoningEffort::Minimal),
+            _ => None,
+        }
     }
 }
 pub(crate) fn period_effective_min_word_count(request: &Value, limits: &PeriodWordLimits) -> usize {

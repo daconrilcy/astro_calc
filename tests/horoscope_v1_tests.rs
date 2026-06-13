@@ -1078,6 +1078,59 @@ fn horoscope_free_period_uses_minimal_reasoning_effort() {
 }
 
 #[test]
+fn horoscope_basic_period_provider_schema_constrains_text_lengths() {
+    let request = period_interpretation_request();
+    let schema = period_response_provider_schema(&request).expect("basic provider schema");
+    assert_eq!(
+        schema["properties"]["week_overview"]["properties"]["text"]["maxLength"],
+        serde_json::json!(620)
+    );
+    assert_eq!(
+        schema["properties"]["daily_timeline"]["items"]["properties"]["text"]["maxLength"],
+        serde_json::json!(380)
+    );
+    assert_eq!(
+        schema["properties"]["daily_timeline"]["items"]["properties"]["advice"]["maxLength"],
+        serde_json::json!(180)
+    );
+    assert_eq!(
+        schema["properties"]["domain_sections"]["maxItems"],
+        serde_json::json!(3)
+    );
+    assert_eq!(
+        schema["properties"]["domain_sections"]["items"]["properties"]["text"]["maxLength"],
+        serde_json::json!(420)
+    );
+    assert_eq!(
+        schema["properties"]["advice"]["properties"]["main"]["maxLength"],
+        serde_json::json!(360)
+    );
+    assert_eq!(
+        schema["properties"]["evidence_summary"]["maxItems"],
+        serde_json::json!(5)
+    );
+}
+
+#[test]
+fn horoscope_basic_period_prompt_requests_compact_bounded_json() {
+    let request = period_interpretation_request();
+    let prompt = period_writer_prompt_text_for_test(&request).expect("basic period prompt");
+    assert!(prompt.contains("JSON compact minified"));
+    assert!(prompt.contains("2 à 3 domain_sections seulement"));
+    assert!(prompt.contains("Chaque domain_sections.text doit contenir une phrase courte"));
+    assert!(prompt.contains("Retourne le JSON final complet sur une seule ligne"));
+}
+
+#[test]
+fn horoscope_basic_period_uses_minimal_reasoning_effort() {
+    let request = period_interpretation_request();
+    assert_eq!(
+        period_writer_reasoning_effort(&request),
+        Some(astral_llm_domain::ReasoningEffort::Minimal)
+    );
+}
+
+#[test]
 fn horoscope_premium_next_7_days_requires_chart_calculation_id() {
     let mut payload = period_public_payload();
     payload

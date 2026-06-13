@@ -630,6 +630,12 @@ Refactored the deterministic generation model for `horoscope_premium_next_7_days
 - Passage du `reasoning_effort` a `minimal` sur le flux Free period legacy pour eviter qu'un budget de sortie soit absorbe par le raisonnement avant emission du JSON.
 - Prune final du flux Free legacy dans le writer et l'orchestrateur pour empecher les enrichisseurs communs Basic/Premium de reintroduire `daily_timeline`, `week_overview`, `domain_sections` ou d'autres champs interdits.
 
+## Cadrage amont du period Basic
+
+- Durcissement du writer `horoscope_basic_next_7_days_natal` en amont de generation: prompt exigeant un JSON compact minified, 7 entrees quotidiennes denses mais courtes, 2 a 3 domaines et une synthese bornee.
+- Ajout de contraintes internes `minLength` / `maxLength` et de cardinalites plus strictes dans le schema provider Basic pour eviter les sorties coupees par `max_output_tokens`, sans modifier le contrat JSON public.
+- Passage du `reasoning_effort` a `minimal` sur le flux Basic period legacy afin que le budget provider soit consacre au JSON final.
+
 ## Stabilisation des builds Docker Rust
 
 - Verrouillage des caches BuildKit Cargo dans `docker/astral_calculator_api/Dockerfile`, `docker/astral_llm_api/Dockerfile` et `docker/astral_llm_worker/Dockerfile`.
