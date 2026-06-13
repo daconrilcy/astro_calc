@@ -35,8 +35,8 @@ pub(crate) mod writer_engine;
 pub(crate) use daily::*;
 pub use daily::{
     aggregate_themes, build_calculation_request, build_calculation_request_for_service,
-    build_interpretation_request, score_calculation, validate_public_request,
-    validate_response_evidence,
+    build_interpretation_request, daily_response_provider_schema, daily_writer_messages,
+    score_calculation, validate_public_request, validate_response_evidence,
 };
 pub(crate) use errors::*;
 pub use orchestrators::{
@@ -50,7 +50,7 @@ pub use period::{
     build_period_interpretation_request, build_period_writer_request_v2,
     fake_period_writer_response, fake_period_writer_response_v2, period_response_provider_schema,
     period_v2_editorial_audit, period_v2_quality_audit, period_writer_max_output_tokens,
-    period_writer_messages, postprocess_period_provider_response,
+    period_writer_messages, period_writer_reasoning_effort, postprocess_period_provider_response,
     postprocess_period_provider_response_v2, prune_period_response_variant_fields,
     repair_period_response_shape, repair_period_response_shape_v2,
     reprocess_horoscope_period_payload, validate_period_interpretation_request_schema,

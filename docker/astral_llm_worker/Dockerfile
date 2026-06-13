@@ -3,9 +3,9 @@
 FROM rust:1.95-bookworm AS builder
 WORKDIR /app
 COPY . .
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
-    --mount=type=cache,target=/app/target \
+RUN --mount=type=cache,id=astral-cargo-registry,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,id=astral-cargo-git,target=/usr/local/cargo/git,sharing=locked \
+    --mount=type=cache,id=astral-target-llm-worker,target=/app/target,sharing=locked \
     cargo build --release -p astral_llm_worker && \
     cp /app/target/release/astral_llm_worker /tmp/astral_llm_worker
 

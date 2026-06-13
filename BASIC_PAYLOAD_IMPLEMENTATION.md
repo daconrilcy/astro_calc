@@ -616,3 +616,21 @@ Refactored the deterministic generation model for `horoscope_premium_next_7_days
 - Correction du generateur `tests/service_test_ui/service-test-ui.js` pour n'envoyer `target_language_code` que pour `horoscope_premium_next_7_days_natal`.
 - Les autres payloads horoscope de l'UI de test reviennent a `target_language`, conforme aux contrats publics legacy encore valides en schema.
 - Mise a jour du test HTML embarque pour verrouiller la distinction entre periode Premium V2 et services horoscope legacy.
+
+## Cadrage amont du premium daily local
+
+- Durcissement du writer `horoscope_premium_daily_local_2h_slots` en amont de generation: prompt exigeant un JSON compact minified, des champs courts et une densite strictement bornee par section.
+- Ajout de `maxLength` internes dans le schema provider strict pour `summary`, `advice`, `premium_timeline_slot`, `premium_slot_summary` et `domain_section`, sans modifier le contrat JSON public.
+- Ajout de tests de non-regression sur ces contraintes amont afin d'eviter les reponses tronquees par debordement de longueur.
+
+## Cadrage amont du period Free
+
+- Durcissement du writer `horoscope_free_next_7_days_natal` en amont de generation: prompt exigeant un JSON compact minified et une lecture plus courte, explicitement bornee section par section.
+- Ajout de `minLength` / `maxLength` internes dans le schema provider strict pour `summary`, `dominant_theme`, `key_days`, `advice`, `watch_summary` et `evidence_summary`, sans modifier le contrat JSON public.
+- Passage du `reasoning_effort` a `minimal` sur le flux Free period legacy pour eviter qu'un budget de sortie soit absorbe par le raisonnement avant emission du JSON.
+- Prune final du flux Free legacy dans le writer et l'orchestrateur pour empecher les enrichisseurs communs Basic/Premium de reintroduire `daily_timeline`, `week_overview`, `domain_sections` ou d'autres champs interdits.
+
+## Stabilisation des builds Docker Rust
+
+- Verrouillage des caches BuildKit Cargo dans `docker/astral_calculator_api/Dockerfile`, `docker/astral_llm_api/Dockerfile` et `docker/astral_llm_worker/Dockerfile`.
+- Ajout de `sharing=locked` et de `id=` explicites sur les mounts `registry`, `git` et `target` pour eviter les corruptions de cache concurrentes du type `.cargo-ok already exists`.

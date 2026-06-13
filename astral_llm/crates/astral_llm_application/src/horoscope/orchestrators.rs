@@ -98,14 +98,21 @@ impl HoroscopePeriodNatalOrchestrator {
             }
         };
         if generation_mode == PeriodGenerationMode::LegacyV1 {
-            enforce_period_public_personalization_from_request(&interpretation, &mut response);
-            enforce_premium_period_advice_synthesis(&interpretation, &mut response);
-            restore_period_response_evidence_from_request(&interpretation, &mut response);
-            normalize_period_public_strings(&mut response);
-            enforce_period_public_personalization_from_request(&interpretation, &mut response);
+            if is_free_period_request(&interpretation) {
+                prune_period_response_variant_fields(&interpretation, &mut response);
+            } else {
+                enforce_period_public_personalization_from_request(&interpretation, &mut response);
+                enforce_premium_period_advice_synthesis(&interpretation, &mut response);
+                restore_period_response_evidence_from_request(&interpretation, &mut response);
+                normalize_period_public_strings(&mut response);
+                enforce_period_public_personalization_from_request(&interpretation, &mut response);
+            }
         }
         match generation_mode {
             PeriodGenerationMode::LegacyV1 => {
+                if is_free_period_request(&interpretation) {
+                    prune_period_response_variant_fields(&interpretation, &mut response);
+                }
                 validate_period_response_schema(&response)?;
                 validate_period_response_evidence(&interpretation, &response)?;
             }

@@ -278,9 +278,8 @@ fn map_provider_error(err: LlmProviderError, provider: ProviderKind) -> Generati
     let code = match &err {
         LlmProviderError::Timeout => GenerationErrorCode::ProviderTimeout,
         LlmProviderError::RateLimited => GenerationErrorCode::ProviderRateLimited,
-        LlmProviderError::Http(_) | LlmProviderError::Api(_) => {
-            GenerationErrorCode::ProviderUnavailable
-        }
+        LlmProviderError::Http(_) => GenerationErrorCode::ProviderUnavailable,
+        LlmProviderError::Api(message) => map_api_error_code(message),
         LlmProviderError::InvalidResponse(_) => GenerationErrorCode::InvalidJsonOutput,
         LlmProviderError::Config(_) => GenerationErrorCode::UnsupportedProvider,
     };
@@ -288,16 +287,59 @@ fn map_provider_error(err: LlmProviderError, provider: ProviderKind) -> Generati
     GenerationError::with_details(
         code,
         client_error_message(&code),
-        serde_json::json!({ "provider": provider.as_str() }),
+        provider_error_details(provider, &err),
     )
+}
+
+fn map_api_error_code(message: &str) -> GenerationErrorCode {
+    if message.contains("invalid_json_schema") {
+        return GenerationErrorCode::SchemaValidationFailed;
+    }
+    if message.starts_with("400 ") || message.starts_with("400:") {
+        return GenerationErrorCode::InvalidInput;
+    }
+    GenerationErrorCode::ProviderUnavailable
+}
+
+fn provider_error_details(provider: ProviderKind, err: &LlmProviderError) -> serde_json::Value {
+    let mut details = serde_json::json!({ "provider": provider.as_str() });
+    if let Some(object) = details.as_object_mut() {
+        match err {
+            LlmProviderError::Api(message) => {
+                object.insert("provider_error".to_string(), serde_json::json!(message));
+                if message.contains("invalid_json_schema") {
+                    object.insert(
+                        "provider_error_code".to_string(),
+                        serde_json::json!("invalid_json_schema"),
+                    );
+                } else if message.contains("invalid_request_error") {
+                    object.insert(
+                        "provider_error_code".to_string(),
+                        serde_json::json!("invalid_request_error"),
+                    );
+                }
+            }
+            LlmProviderError::Http(message) | LlmProviderError::InvalidResponse(message) => {
+                object.insert("provider_error".to_string(), serde_json::json!(message));
+            }
+            LlmProviderError::Timeout
+            | LlmProviderError::RateLimited
+            | LlmProviderError::Config(_) => {}
+        }
+    }
+    details
 }
 
 fn client_error_message(code: &GenerationErrorCode) -> &'static str {
     match code {
+        GenerationErrorCode::InvalidInput => "LLM provider rejected the request payload",
         GenerationErrorCode::ProviderTimeout => "LLM provider request timed out",
         GenerationErrorCode::ProviderRateLimited => "LLM provider rate limit exceeded",
         GenerationErrorCode::ProviderUnavailable => "LLM provider temporarily unavailable",
         GenerationErrorCode::InvalidJsonOutput => "LLM provider returned invalid JSON",
+        GenerationErrorCode::SchemaValidationFailed => {
+            "LLM request schema was rejected by provider"
+        }
         GenerationErrorCode::UnsupportedProvider => "requested LLM provider is not available",
         _ => "LLM generation failed",
     }
@@ -390,5 +432,47 @@ mod tests {
             .expect("ok");
         assert!(!result.fallback_used);
         assert!(result.response.parsed_json.is_some());
+    }
+
+    #[test]
+    fn maps_invalid_json_schema_api_error_to_schema_validation_failed() {
+        let err = map_provider_error(
+            LlmProviderError::Api(
+                "400 Bad Request: {\"error\":{\"type\":\"invalid_request_error\",\"code\":\"invalid_json_schema\"}}"
+                    .to_string(),
+            ),
+            ProviderKind::OpenAi,
+        );
+        assert_eq!(
+            err.detail().code,
+            GenerationErrorCode::SchemaValidationFailed
+        );
+        assert_eq!(
+            err.detail().message,
+            "LLM request schema was rejected by provider"
+        );
+        assert_eq!(
+            err.detail().details.as_ref().unwrap()["provider_error_code"],
+            serde_json::json!("invalid_json_schema")
+        );
+    }
+
+    #[test]
+    fn maps_bad_request_api_error_to_invalid_input() {
+        let err = map_provider_error(
+            LlmProviderError::Api(
+                "400 Bad Request: {\"error\":{\"type\":\"invalid_request_error\"}}".to_string(),
+            ),
+            ProviderKind::OpenAi,
+        );
+        assert_eq!(err.detail().code, GenerationErrorCode::InvalidInput);
+        assert_eq!(
+            err.detail().message,
+            "LLM provider rejected the request payload"
+        );
+        assert_eq!(
+            err.detail().details.as_ref().unwrap()["provider_error_code"],
+            serde_json::json!("invalid_request_error")
+        );
     }
 }

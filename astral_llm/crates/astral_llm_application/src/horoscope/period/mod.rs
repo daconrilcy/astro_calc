@@ -26,7 +26,10 @@ pub use calculation_request::{
 pub use contract_validators::validate_period_response_contract_gates_v2;
 pub use free_validators::validate_period_provider_public_payload;
 pub use legacy_v1::build_period_interpretation_request;
-pub use period_metadata::{period_writer_max_output_tokens, validate_period_public_word_count};
+pub use period_metadata::{
+    period_writer_max_output_tokens, period_writer_reasoning_effort,
+    validate_period_public_word_count,
+};
 pub use postprocess::{
     postprocess_period_provider_response, postprocess_period_provider_response_v2,
     reprocess_horoscope_period_payload,

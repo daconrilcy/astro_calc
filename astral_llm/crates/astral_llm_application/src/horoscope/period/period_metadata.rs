@@ -448,8 +448,9 @@ pub fn period_writer_max_output_tokens(request: &Value) -> u32 {
     let limits = period_word_limits_for_request(request);
     ((limits.hard_limit as u32).saturating_mul(3)).saturating_add(500)
 }
-pub(crate) fn period_writer_reasoning_effort(request: &Value) -> Option<ReasoningEffort> {
-    if is_period_writer_request_v2(request) {
+#[doc(hidden)]
+pub fn period_writer_reasoning_effort(request: &Value) -> Option<ReasoningEffort> {
+    if is_period_writer_request_v2(request) || is_free_period_request(request) {
         Some(ReasoningEffort::Minimal)
     } else {
         None

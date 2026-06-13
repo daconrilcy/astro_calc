@@ -82,7 +82,7 @@ pub(crate) async fn daily_writer_response(
     Ok(reprocess_horoscope_daily_payload(response))
 }
 
-pub(crate) fn daily_response_provider_schema(request: &Value) -> Result<Value, GenerationError> {
+pub fn daily_response_provider_schema(request: &Value) -> Result<Value, GenerationError> {
     let schema: Value = serde_json::from_str(RESPONSE_SCHEMA_JSON).map_err(|err| {
         GenerationError::with_details(
             GenerationErrorCode::SchemaValidationFailed,
@@ -148,6 +148,11 @@ pub(crate) fn daily_response_provider_schema(request: &Value) -> Result<Value, G
         });
     }
     if branch_index == 2 {
+        schema["properties"]["advice"]["properties"]["main"]["maxLength"] = json!(180);
+        schema["properties"]["advice"]["properties"]["best_use"]["maxLength"] = json!(160);
+        schema["properties"]["advice"]["properties"]["avoid"]["maxLength"] = json!(160);
+        schema["definitions"]["summary"]["properties"]["title"]["maxLength"] = json!(40);
+        schema["definitions"]["summary"]["properties"]["text"]["maxLength"] = json!(220);
         schema["properties"]["evidence_summary"] = json!({
             "type": "array",
             "items": {
@@ -160,15 +165,33 @@ pub(crate) fn daily_response_provider_schema(request: &Value) -> Result<Value, G
                 }
             }
         });
+        schema["definitions"]["premium_slot_summary"]["properties"]["title"]["maxLength"] =
+            json!(40);
+        schema["definitions"]["premium_slot_summary"]["properties"]["reason"]["maxLength"] =
+            json!(180);
+        schema["definitions"]["premium_timeline_slot"]["properties"]["title"]["maxLength"] =
+            json!(56);
+        schema["definitions"]["premium_timeline_slot"]["properties"]["theme"]["maxLength"] =
+            json!(32);
+        schema["definitions"]["premium_timeline_slot"]["properties"]["tone"]["maxLength"] =
+            json!(24);
+        schema["definitions"]["premium_timeline_slot"]["properties"]["text"]["maxLength"] =
+            json!(180);
+        schema["definitions"]["premium_timeline_slot"]["properties"]["advice"]["maxLength"] =
+            json!(120);
+        schema["definitions"]["premium_timeline_slot"]["properties"]["watch_point"]["maxLength"] =
+            json!(120);
+        schema["definitions"]["premium_timeline_slot"]["properties"]["fallback_reason"]
+            ["maxLength"] = json!(80);
+        schema["definitions"]["domain_section"]["properties"]["title"]["maxLength"] = json!(48);
+        schema["definitions"]["domain_section"]["properties"]["text"]["maxLength"] = json!(220);
     }
     Ok(crate::provider_schema_compiler::prepare_strict_json_schema(
         &schema,
     ))
 }
 
-pub(crate) fn daily_writer_messages(
-    request: &Value,
-) -> Result<Vec<PromptMessage>, GenerationError> {
+pub fn daily_writer_messages(request: &Value) -> Result<Vec<PromptMessage>, GenerationError> {
     let compact = serde_json::to_string(request).map_err(|err| {
         GenerationError::with_details(
             GenerationErrorCode::InvalidInput,
@@ -183,7 +206,7 @@ pub(crate) fn daily_writer_messages(
     let slot_instruction = if service_code == HOROSCOPE_FREE_DAILY_SERVICE_CODE {
         "Produis un horoscope quotidien Free sans slots publics, avec summary, advice, watch_point et evidence_keys uniquement. Le texte public doit citer une référence astrologique issue des preuves, par exemple la Lune, Mars, Vénus, Mercure, un transit, un aspect ou une maison."
     } else if service_code == HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE {
-        "Produis un horoscope quotidien Premium avec timeline, best_slots, watch_slots, domain_sections et advice. Les 12 entrées timeline doivent avoir des titres et angles rédactionnels distincts. Les reason de best_slots et watch_slots doivent être spécifiques au créneau, jamais copiées-collées entre deux créneaux. Dans domain_sections, garde le champ technique domain tel quel, mais n'écris jamais ce code anglais dans title ou text. Évite les formulations mécaniques répétées comme clarifier, concret, tension, ralentir les réponses ou lire par séquences plus de deux fois dans l'ensemble de la lecture."
+        "Produis un horoscope quotidien Premium avec timeline, best_slots, watch_slots, domain_sections et advice. Retourne un JSON compact minified: une seule ligne, sans markdown, sans commentaires, sans indentation. Garde la densité courte et utile: summary.text en 1 à 2 phrases; chaque timeline.text en 1 phrase courte; chaque timeline.advice et watch_point en 1 phrase courte; chaque reason de best_slots et watch_slots en 1 phrase courte liée au créneau; chaque domain_sections.text en 1 à 2 phrases maximum. Les 12 entrées timeline doivent avoir des titres et angles rédactionnels distincts. Les reason de best_slots et watch_slots doivent être spécifiques au créneau, jamais copiées-collées entre deux créneaux. Dans domain_sections, garde le champ technique domain tel quel, mais n'écris jamais ce code anglais dans title ou text. Évite les formulations mécaniques répétées comme clarifier, concret, tension, ralentir les réponses ou lire par séquences plus de deux fois dans l'ensemble de la lecture."
     } else {
         "Produis exactement trois slots publics correspondant aux labels Matin, Après-midi et Soir. Chaque slot.text doit citer une référence astrologique publique issue de ses preuves, par exemple la Lune, Mars, Vénus, Mercure, un transit, un aspect ou une maison."
     };
@@ -191,7 +214,7 @@ pub(crate) fn daily_writer_messages(
     Ok(vec![
         PromptMessage {
             role: PromptRole::System,
-            content: "Tu rédiges un horoscope quotidien personnalisé en français. Retourne uniquement un objet JSON conforme au schéma fourni horoscope_response_v1. N'invente aucune preuve astrologique: chaque evidence_key publique doit provenir de la requête. N'affiche jamais les codes internes, les noms de champs, les clés de preuve, les theme_code anglais, les codes tone anglais, ni les consignes internes.".to_string(),
+            content: "Tu rédiges un horoscope quotidien personnalisé en français. Retourne uniquement un objet JSON compact minified conforme au schéma fourni horoscope_response_v1: pas de markdown, pas de commentaires, pas de pretty print, pas d'indentation. N'invente aucune preuve astrologique: chaque evidence_key publique doit provenir de la requête. N'affiche jamais les codes internes, les noms de champs, les clés de preuve, les theme_code anglais, les codes tone anglais, ni les consignes internes.".to_string(),
         },
         PromptMessage {
             role: PromptRole::User,

@@ -4,9 +4,10 @@ use astral_llm_application::horoscope::{
     aggregate_themes, build_calculation_request, build_calculation_request_for_service,
     build_interpretation_request, build_period_calculation_request,
     build_period_calculation_request_for_service, build_period_interpretation_request,
-    build_period_writer_request_v2, fake_period_writer_response, fake_period_writer_response_v2,
-    period_response_provider_schema, period_v2_editorial_audit, period_v2_quality_audit,
-    period_writer_max_output_tokens, period_writer_messages, postprocess_period_provider_response,
+    build_period_writer_request_v2, daily_response_provider_schema, daily_writer_messages,
+    fake_period_writer_response, fake_period_writer_response_v2, period_response_provider_schema,
+    period_v2_editorial_audit, period_v2_quality_audit, period_writer_max_output_tokens,
+    period_writer_messages, period_writer_reasoning_effort, postprocess_period_provider_response,
     postprocess_period_provider_response_v2, prune_period_response_variant_fields,
     public_watch_point_for_theme, repair_period_response_shape_v2,
     reprocess_horoscope_period_payload, score_calculation, validate_horoscope_response_schema,
@@ -33,6 +34,10 @@ fn period_writer_prompt_text_for_test(
         .map(|message| message.content)
         .collect::<Vec<_>>()
         .join("\n\n"))
+}
+
+fn free_period_writer_request() -> serde_json::Value {
+    free_period_interpretation_request()
 }
 
 fn horoscope_service() -> IntegrationService {
@@ -915,6 +920,16 @@ fn premium_public_watch_point(slot: &serde_json::Value) -> String {
         .unwrap_or_else(|| "Gardez un repère simple et vérifiable.".to_string())
 }
 
+fn daily_writer_prompt_text_for_test(
+    request: &serde_json::Value,
+) -> Result<String, GenerationError> {
+    Ok(daily_writer_messages(request)?
+        .into_iter()
+        .map(|message| message.content)
+        .collect::<Vec<_>>()
+        .join("\n\n"))
+}
+
 #[test]
 fn horoscope_payload_schema_accepts_v1_request() {
     let validator = IntegrationJobValidator::new();
@@ -995,6 +1010,70 @@ fn horoscope_period_payload_schema_accepts_target_language_code_without_legacy_l
     assert_eq!(
         validated.service_code,
         HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE
+    );
+}
+
+#[test]
+fn horoscope_free_period_provider_schema_constrains_text_lengths() {
+    let request = free_period_writer_request();
+    let schema = period_response_provider_schema(&request).expect("free provider schema");
+    assert_eq!(
+        schema["properties"]["summary"]["properties"]["text"]["minLength"],
+        serde_json::json!(420)
+    );
+    assert_eq!(
+        schema["properties"]["summary"]["properties"]["text"]["maxLength"],
+        serde_json::json!(900)
+    );
+    assert_eq!(
+        schema["properties"]["dominant_theme"]["properties"]["text"]["minLength"],
+        serde_json::json!(120)
+    );
+    assert_eq!(
+        schema["properties"]["dominant_theme"]["properties"]["text"]["maxLength"],
+        serde_json::json!(300)
+    );
+    assert_eq!(
+        schema["properties"]["advice"]["minLength"],
+        serde_json::json!(120)
+    );
+    assert_eq!(
+        schema["properties"]["advice"]["maxLength"],
+        serde_json::json!(360)
+    );
+    assert_eq!(
+        schema["properties"]["key_days"]["items"]["properties"]["reason"]["minLength"],
+        serde_json::json!(100)
+    );
+    assert_eq!(
+        schema["properties"]["key_days"]["items"]["properties"]["reason"]["maxLength"],
+        serde_json::json!(240)
+    );
+    assert_eq!(
+        schema["properties"]["watch_summary"]["properties"]["text"]["minLength"],
+        serde_json::json!(110)
+    );
+    assert_eq!(
+        schema["properties"]["watch_summary"]["properties"]["text"]["maxLength"],
+        serde_json::json!(300)
+    );
+}
+
+#[test]
+fn horoscope_free_period_prompt_requests_compact_short_json() {
+    let request = free_period_writer_request();
+    let prompt = period_writer_prompt_text_for_test(&request).expect("free period prompt");
+    assert!(prompt.contains("JSON compact minified"));
+    assert!(prompt.contains("dominant_theme.text en 1 phrase courte"));
+    assert!(prompt.contains("Retourne le JSON final complet sur une seule ligne"));
+}
+
+#[test]
+fn horoscope_free_period_uses_minimal_reasoning_effort() {
+    let request = free_period_writer_request();
+    assert_eq!(
+        period_writer_reasoning_effort(&request),
+        Some(astral_llm_domain::ReasoningEffort::Minimal)
     );
 }
 
@@ -1547,6 +1626,33 @@ fn horoscope_period_postprocess_prunes_summary_added_by_text_reprocessing() {
     assert!(response.get("summary").is_none());
     assert!(response.get("dominant_theme").is_none());
     validate_period_response_schema(&response).unwrap();
+}
+
+#[test]
+fn horoscope_free_next_7_days_final_prune_removes_provider_timeline_leak() {
+    let request = free_period_interpretation_request();
+    let mut response = fake_period_writer_response(&request).unwrap();
+    response["daily_timeline"] = serde_json::json!([
+        {
+            "date": "2026-06-07",
+            "day_label": "Dimanche",
+            "theme": "organisation",
+            "tone": "posé",
+            "text": "Texte quotidien qui ne doit pas rester dans la variante Free.",
+            "advice": "Conseil quotidien interdit en Free.",
+            "evidence_keys": [request["evidence"][0]["evidence_key"].clone()]
+        }
+    ]);
+
+    repair_period_response_shape(&request, &mut response);
+    let mut response = postprocess_period_provider_response(&request, response);
+    prune_period_response_variant_fields(&request, &mut response);
+
+    assert!(response.get("daily_timeline").is_none());
+    assert!(response.get("week_overview").is_none());
+    assert!(response.get("domain_sections").is_none());
+    validate_period_provider_public_payload(&response).unwrap();
+    validate_period_response_evidence(&request, &response).unwrap();
 }
 
 #[test]
@@ -3362,9 +3468,10 @@ fn horoscope_period_provider_schema_matches_service_shape() {
         assert!(!free_properties.contains_key(forbidden));
     }
     assert_eq!(free_properties["advice"]["type"], "string");
+    assert_eq!(free_properties["watch_summary"]["type"], "object");
     assert_eq!(
-        free_properties["watch_summary"]["$ref"],
-        "#/definitions/free_watch_summary"
+        free_properties["watch_summary"]["properties"]["status"]["enum"][0],
+        "present"
     );
 
     let basic = period_interpretation_request();
@@ -5025,6 +5132,41 @@ fn horoscope_premium_builds_12_local_slots_and_uses_service_house_system() {
     assert_eq!(slots[0]["reference_local_time"], "01:00");
     assert_eq!(slots[11]["slot_code"], "slot_22_00");
     assert_eq!(request["location"]["latitude"], 48.8566);
+}
+
+#[test]
+fn horoscope_premium_daily_provider_schema_constrains_text_lengths() {
+    let request = premium_interpretation_request();
+    let schema = daily_response_provider_schema(&request).expect("premium provider schema");
+    assert_eq!(
+        schema["properties"]["summary"]["properties"]["text"]["maxLength"],
+        serde_json::json!(220)
+    );
+    assert_eq!(
+        schema["properties"]["advice"]["properties"]["main"]["maxLength"],
+        serde_json::json!(180)
+    );
+    assert_eq!(
+        schema["properties"]["timeline"]["items"]["properties"]["text"]["maxLength"],
+        serde_json::json!(180)
+    );
+    assert_eq!(
+        schema["properties"]["best_slots"]["items"]["properties"]["reason"]["maxLength"],
+        serde_json::json!(180)
+    );
+    assert_eq!(
+        schema["properties"]["domain_sections"]["items"]["properties"]["text"]["maxLength"],
+        serde_json::json!(220)
+    );
+}
+
+#[test]
+fn horoscope_premium_daily_writer_prompt_requests_compact_short_json() {
+    let request = premium_interpretation_request();
+    let prompt = daily_writer_prompt_text_for_test(&request).expect("daily prompt");
+    assert!(prompt.contains("JSON compact minified"));
+    assert!(prompt.contains("chaque timeline.text en 1 phrase courte"));
+    assert!(prompt.contains("chaque domain_sections.text en 1 à 2 phrases maximum"));
 }
 
 #[test]
