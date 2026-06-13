@@ -635,6 +635,7 @@ Refactored the deterministic generation model for `horoscope_premium_next_7_days
 - Durcissement du writer `horoscope_basic_next_7_days_natal` en amont de generation: prompt exigeant un JSON compact minified, 7 entrees quotidiennes denses mais courtes, 2 a 3 domaines et une synthese bornee.
 - Ajout de contraintes internes `minLength` / `maxLength` et de cardinalites plus strictes dans le schema provider Basic pour eviter les sorties coupees par `max_output_tokens`, sans modifier le contrat JSON public.
 - Passage du `reasoning_effort` a `minimal` sur le flux Basic period legacy afin que le budget provider soit consacre au JSON final.
+- Normalisation deterministe du fragment public mecanique `verifiez verifier` avant validation finale, pour eviter un rejet post-generation sur une formule casse tout en conservant le hard gate anti-fuite technique.
 
 ## Stabilisation des builds Docker Rust
 

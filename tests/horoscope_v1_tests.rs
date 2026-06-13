@@ -2887,6 +2887,9 @@ fn horoscope_period_repair_rewrites_mechanical_public_fragments_outside_markers(
     response["domain_sections"][1]["text"] = serde_json::json!(
         "Cette énergie devient utile quand elle sert à trier deux options. Mardi est un point d’appui pour thème imprévu."
     );
+    response["advice"]["main"] = serde_json::json!(
+        "Vérifiez vérifier une information concrète avant de transformer ce repère en décision durable."
+    );
 
     repair_period_response_shape(&request, &mut response);
     validate_period_response_evidence(&request, &response).unwrap();
@@ -2897,6 +2900,7 @@ fn horoscope_period_repair_rewrites_mechanical_public_fragments_outside_markers(
     assert!(!public.contains("est un point d'appui pour"));
     assert!(!public.contains("point d’appui pour"));
     assert!(!public.contains("Cette énergie devient utile quand elle sert à"));
+    assert!(!public.to_lowercase().contains("vérifiez vérifier"));
 }
 
 #[test]
