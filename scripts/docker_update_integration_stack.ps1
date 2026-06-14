@@ -29,6 +29,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\astral_http_auth.ps1")
 . (Join-Path $PSScriptRoot "lib\simplified_e2e_llm_provider.ps1")
+. (Join-Path $PSScriptRoot "lib\horoscope_e2e_fake_provider.ps1")
 . (Join-Path $PSScriptRoot "lib\sync_llm_catalog.ps1")
 Import-AstralDotEnv -RepoRoot $repoRoot
 
@@ -345,9 +346,12 @@ try {
     if (-not $SkipSmoke) {
         Invoke-Step "Gateway and async smokes (fake provider only)" {
             $fakeProviderArmed = $false
+            $horoscopeFakeProviderArmed = $false
             try {
                 Enable-SimplifiedE2eFakeLlmProvider -RepoRoot $repoRoot
                 $fakeProviderArmed = $true
+                Enable-HoroscopeE2eFakeLlmProvider -RepoRoot $repoRoot
+                $horoscopeFakeProviderArmed = $true
                 Wait-HttpReady -Url "$LlmUrl/health/ready" -TimeoutSec $ReadyTimeoutSec
                 Wait-HttpReady -Url "$GatewayUrl/health/ready" -TimeoutSec $ReadyTimeoutSec
 
@@ -401,8 +405,13 @@ try {
 
                 $executedSuites.Add("Gateway V2 live smokes on /v2/natal/* and /v2/horoscope/*") | Out-Null
             } finally {
+                if ($horoscopeFakeProviderArmed) {
+                    Restore-HoroscopeE2eLlmProvider -RepoRoot $repoRoot
+                }
                 if ($fakeProviderArmed) {
                     Restore-SimplifiedE2eLlmProvider -RepoRoot $repoRoot
+                }
+                if ($horoscopeFakeProviderArmed -or $fakeProviderArmed) {
                     Wait-HttpReady -Url "$LlmUrl/health/ready" -TimeoutSec $ReadyTimeoutSec
                     Wait-HttpReady -Url "$GatewayUrl/health/ready" -TimeoutSec $ReadyTimeoutSec
                 }

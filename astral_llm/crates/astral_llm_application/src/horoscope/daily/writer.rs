@@ -15,7 +15,7 @@ pub async fn daily_writer_response(
         model: defaults.model.clone(),
         messages: daily_writer_messages(request)?,
         structured_schema: Some(schema),
-        reasoning_effort: None,
+        reasoning_effort: Some(ReasoningEffort::Minimal),
         temperature: Some(0.4),
         max_output_tokens: Some(daily_writer_max_output_tokens(request)),
         safety_mode: SafetyMode::PlatformRulesOnly,
@@ -51,23 +51,23 @@ pub async fn daily_writer_response(
         ));
     }
 
-    let mut response = routed
+    let mut response = match routed
         .response
         .parsed_json
+        .clone()
         .or_else(|| parse_period_provider_json(&routed.response.raw_text))
-        .ok_or_else(|| {
-            GenerationError::with_details(
-                GenerationErrorCode::PostSafetyValidationFailed,
-                format!(
-                    "HOROSCOPE_RESPONSE_INVALID: provider_response_not_json raw_text_len={}",
-                    routed.response.raw_text.len()
-                ),
-                json!({
-                    "reason": "provider_response_not_json",
-                    "raw_text_len": routed.response.raw_text.len()
-                }),
+    {
+        Some(response) => response,
+        None => {
+            daily_writer_repair_non_json_response(
+                use_case,
+                request,
+                &routed.response.raw_text,
+                run_id,
             )
-        })?;
+            .await?
+        }
+    };
     if !response
         .get("quality")
         .map_or(false, |value| value.is_object())
@@ -80,6 +80,93 @@ pub async fn daily_writer_response(
     repair_daily_response_shape(request, &mut response);
     repair_premium_daily_editorial_repetition(&mut response);
     Ok(reprocess_horoscope_daily_payload(response))
+}
+
+async fn daily_writer_repair_non_json_response(
+    use_case: &GenerateReadingUseCase,
+    request: &Value,
+    raw_text: &str,
+    run_id: Option<&str>,
+) -> Result<Value, GenerationError> {
+    let defaults = horoscope_writer_engine_defaults(use_case);
+    if defaults.provider == ProviderKind::Fake {
+        return Err(quality_error(
+            "HOROSCOPE_DAILY_REAL_PROVIDER_REQUIRED",
+            json!({ "provider": "fake" }),
+        ));
+    }
+
+    let provider_request = ProviderGenerationRequest {
+        model: defaults.model.clone(),
+        messages: daily_writer_json_repair_messages(request, raw_text)?,
+        structured_schema: Some(daily_response_provider_schema(request)?),
+        reasoning_effort: Some(ReasoningEffort::Minimal),
+        temperature: Some(0.1),
+        max_output_tokens: Some(daily_writer_max_output_tokens(request).max(4000)),
+        safety_mode: SafetyMode::PlatformRulesOnly,
+        timeout: StdDuration::from_secs(180),
+        metadata: GenerationMetadata {
+            run_id: run_id
+                .map(str::to_string)
+                .unwrap_or_else(|| uuid::Uuid::new_v4().to_string()),
+            request_id: None,
+            product_code: request["service_code"]
+                .as_str()
+                .unwrap_or(HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE)
+                .to_string(),
+            chapter_code: Some("daily_json_repair".to_string()),
+        },
+    };
+    let routed = use_case
+        .router
+        .generate(
+            provider_request,
+            defaults.provider.clone(),
+            &defaults.model,
+            false,
+            true,
+            ModelRouteContext::PrimaryReading,
+        )
+        .await?;
+    if routed.used_provider == ProviderKind::Fake {
+        return Err(quality_error(
+            "HOROSCOPE_DAILY_REAL_PROVIDER_REQUIRED",
+            json!({ "provider": "fake" }),
+        ));
+    }
+
+    let mut repaired = routed
+        .response
+        .parsed_json
+        .or_else(|| parse_period_provider_json(&routed.response.raw_text))
+        .ok_or_else(|| {
+            let incomplete_reason =
+                period_provider_incomplete_reason(&routed.response.provider_metadata);
+            GenerationError::with_details(
+                GenerationErrorCode::PostSafetyValidationFailed,
+                format!(
+                    "HOROSCOPE_RESPONSE_INVALID: provider_response_not_json raw_text_len={}",
+                    routed.response.raw_text.len()
+                ),
+                json!({
+                    "reason": "provider_response_not_json",
+                    "raw_text_len": routed.response.raw_text.len(),
+                    "provider_incomplete_reason": incomplete_reason,
+                    "repair_attempted": true
+                }),
+            )
+        })?;
+    if !repaired
+        .get("quality")
+        .map_or(false, |value| value.is_object())
+    {
+        repaired["quality"] = json!({});
+    }
+    repaired["quality"]["provider"] = json!(routed.used_provider.as_str());
+    repaired["quality"]["model"] = json!(routed.response.model_used);
+    repaired["quality"]["fallback_used"] = json!(routed.fallback_used);
+    repaired["quality"]["repair_attempted"] = json!(true);
+    Ok(repaired)
 }
 
 pub fn daily_response_provider_schema(request: &Value) -> Result<Value, GenerationError> {
@@ -225,11 +312,45 @@ pub fn daily_writer_messages(request: &Value) -> Result<Vec<PromptMessage>, Gene
     ])
 }
 
+fn daily_writer_json_repair_messages(
+    request: &Value,
+    raw_text: &str,
+) -> Result<Vec<PromptMessage>, GenerationError> {
+    let compact = serde_json::to_string(request).map_err(|err| {
+        GenerationError::with_details(
+            GenerationErrorCode::InvalidInput,
+            format!("HOROSCOPE_RESPONSE_INVALID: {err}"),
+            Value::Null,
+        )
+    })?;
+    Ok(vec![
+        PromptMessage {
+            role: PromptRole::System,
+            content: "Tu répares une sortie d'horoscope quotidien. Retourne uniquement un objet JSON compact minified conforme au schéma horoscope_response fourni: pas de markdown, pas de commentaire, pas de texte hors JSON. Si la sortie précédente est inutilisable, régénère depuis la requête JSON en respectant les preuves et les champs attendus.".to_string(),
+        },
+        PromptMessage {
+            role: PromptRole::User,
+            content: format!(
+                "La réponse précédente du provider n'était pas un JSON valide. Produit maintenant uniquement le JSON final conforme au schéma.\nRequête JSON:\n{compact}\nSortie invalide précédente:\n{}",
+                truncate_daily_repair_raw_text(raw_text, 6000)
+            ),
+        },
+    ])
+}
+
+fn truncate_daily_repair_raw_text(raw_text: &str, max_chars: usize) -> String {
+    let mut truncated = raw_text.chars().take(max_chars).collect::<String>();
+    if raw_text.chars().count() > max_chars {
+        truncated.push_str("\n[truncated]");
+    }
+    truncated
+}
+
 pub(crate) fn daily_writer_max_output_tokens(request: &Value) -> u32 {
     match request.get("service_code").and_then(Value::as_str) {
-        Some(HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE) => 6000,
-        Some(HOROSCOPE_FREE_DAILY_SERVICE_CODE) => 1800,
-        _ => 3200,
+        Some(HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE) => 12_000,
+        Some(HOROSCOPE_FREE_DAILY_SERVICE_CODE) => 4_000,
+        _ => 8_000,
     }
 }
 

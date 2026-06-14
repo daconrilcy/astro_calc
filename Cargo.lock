@@ -180,6 +180,7 @@ dependencies = [
  "astral_llm_domain",
  "astral_llm_infra",
  "astral_llm_providers",
+ "async-trait",
  "axum",
  "chrono",
  "dotenvy",

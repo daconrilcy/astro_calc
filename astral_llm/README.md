@@ -32,6 +32,36 @@ En `production` : `ASTRAL_LLM_API_KEY` obligatoire, au moins une cle provider re
 | `ASTRAL_LLM_ALLOW_PUBLIC_BIND` | `false` | Requis pour `0.0.0.0` en production |
 | `ASTRAL_LLM_DB_AUTO_MIGRATE` | `true` (local) | Interdit en production |
 
+### Forcer un provider reel en local
+
+Pour que l'UI de test horoscope sorte du chemin `fake`, il faut overrider les
+defaults locaux dans `.env` ou dans l'environnement du process:
+
+```powershell
+ASTRAL_LLM_ENABLE_FAKE=false
+ASTRAL_LLM_DEFAULT_PROVIDER=openai
+ASTRAL_LLM_DEFAULT_MODEL=gpt-5-mini
+OPENAI_API_KEY=sk-...
+```
+
+Variantes:
+
+- `ASTRAL_LLM_DEFAULT_PROVIDER=anthropic` avec `ANTHROPIC_API_KEY`
+- `ASTRAL_LLM_DEFAULT_PROVIDER=mistral` avec `MISTRAL_API_KEY`
+
+Si tu veux bloquer tout repli silencieux pendant le debug local, ajoute aussi:
+
+```powershell
+ASTRAL_LLM_FALLBACK_ENABLED=false
+ASTRAL_LLM_FALLBACK_PROVIDERS=
+```
+
+Le moteur horoscope lit aussi la politique produit `horoscope` depuis
+`llm_product_default_engine`. Si cette ligne vaut `fake` / `fake-model`, elle
+ecrase les variables `.env`. Mettre `config/llm_product_models.conf` a jour puis
+lancer `.\scripts\set_product_llm_models.ps1` et redemarrer `astral_llm_api` /
+`astral_llm_worker`.
+
 ## Crates
 
 | Crate | Role |

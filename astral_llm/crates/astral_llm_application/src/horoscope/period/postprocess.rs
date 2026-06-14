@@ -15,7 +15,89 @@ pub fn postprocess_period_provider_response(request: &Value, response: Value) ->
     prune_period_v2_overlapping_watch_windows(&mut response);
     normalize_period_v2_watch_summary_status(&mut response);
     restore_period_response_technical_keys_v2(request, &mut response);
+    normalize_free_period_key_days(&mut response);
+    expand_free_period_if_too_short(request, &mut response);
     response
+}
+
+pub(crate) fn expand_free_period_if_too_short(request: &Value, response: &mut Value) {
+    if response["service_code"].as_str() != Some(HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE) {
+        return;
+    }
+    let limits = period_word_limits_for_request(request);
+    let mut public_text = collect_period_v2_public_text(response);
+    while simple_public_word_count(&public_text) < limits.target_min {
+        append_free_period_summary_expansion(response);
+        public_text = collect_period_v2_public_text(response);
+        if simple_public_word_count(&public_text) >= limits.target_min
+            || simple_public_word_count(&public_text) > limits.hard_limit
+        {
+            break;
+        }
+    }
+}
+
+fn append_free_period_summary_expansion(response: &mut Value) {
+    let theme = response["dominant_theme"]["theme"]
+        .as_str()
+        .unwrap_or("le thème dominant");
+    let addition = format!(
+        " Dans cette version courte, {theme} sert surtout de boussole: observez ce qui revient, gardez une priorité simple et laissez une marge pour ajuster le rythme. L'objectif n'est pas de prévoir chaque journée, mais de reconnaître le fil utile de la période, puis de choisir une action concrète, mesurable et réversible."
+    );
+    let current = response["summary"]["text"].as_str().unwrap_or("").trim();
+    response["summary"]["text"] = if current.is_empty() {
+        json!(addition.trim())
+    } else {
+        json!(format!("{current}{addition}"))
+    };
+}
+
+pub(crate) fn normalize_free_period_key_days(response: &mut Value) {
+    if response["service_code"].as_str() != Some(HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE) {
+        return;
+    }
+    let Some(key_days) = response.get_mut("key_days").and_then(Value::as_array_mut) else {
+        return;
+    };
+    for day in key_days {
+        let public_text = [
+            day.get("title").and_then(Value::as_str),
+            day.get("reason").and_then(Value::as_str),
+        ]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>()
+        .join(" ");
+        if !free_period_key_day_contains_best_day_language(&public_text) {
+            continue;
+        }
+        day["title"] = json!("Jour à retenir");
+        day["reason"] = json!(
+            "Ce jour sert de repère pour observer le thème dominant sans en faire une promesse."
+        );
+    }
+}
+
+fn free_period_key_day_contains_best_day_language(text: &str) -> bool {
+    let lower = text.to_lowercase();
+    [
+        "meilleur",
+        "meilleure",
+        "favorabl",
+        "idéal",
+        "ideal",
+        "opportun",
+        "chance",
+        "fenêtre",
+        "fenetre",
+        "créneau",
+        "creneau",
+        "optimal",
+        "parfait",
+        "profiter",
+    ]
+    .iter()
+    .any(|term| lower.contains(term))
 }
 pub(crate) fn prune_period_v2_overlapping_watch_windows(response: &mut Value) {
     let best_identities = response["best_windows"]

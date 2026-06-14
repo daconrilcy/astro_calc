@@ -36,8 +36,102 @@ pub(crate) fn repair_daily_response_shape(request: &Value, response: &mut Value)
             .collect::<Vec<_>>()
             .into();
     }
+    repair_daily_public_slot_code_leaks(request, response);
     repair_daily_free_astro_reference(request, response);
     repair_daily_basic_astro_references(request, response);
+}
+
+pub(crate) fn repair_daily_public_slot_code_leaks(request: &Value, response: &mut Value) {
+    let service_code = request.get("service_code").and_then(Value::as_str);
+    if service_code == Some(HOROSCOPE_FREE_DAILY_SERVICE_CODE) {
+        if let Some(summary) = response.get_mut("summary").and_then(Value::as_object_mut) {
+            sanitize_public_text_field(summary, "title", "Jour");
+            sanitize_public_text_field(summary, "text", "Jour");
+        }
+        for key in ["advice", "watch_point"] {
+            if let Some(value) = response.get(key).and_then(Value::as_str) {
+                response[key] = json!(sanitize_slot_public_text(value, "Jour"));
+            }
+        }
+        return;
+    }
+
+    if service_code == Some(HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE) {
+        if let Some(slots) = response.get_mut("slots").and_then(Value::as_array_mut) {
+            for slot in slots {
+                let label = slot
+                    .get("slot_code")
+                    .and_then(Value::as_str)
+                    .map(slot_label)
+                    .unwrap_or("Créneau");
+                sanitize_public_slot_fields(slot, label);
+            }
+        }
+    }
+
+    if service_code == Some(HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE) {
+        for field in ["timeline", "best_slots", "watch_slots"] {
+            if let Some(slots) = response.get_mut(field).and_then(Value::as_array_mut) {
+                for slot in slots {
+                    let label = slot
+                        .get("slot_label")
+                        .and_then(Value::as_str)
+                        .unwrap_or("Créneau")
+                        .to_string();
+                    sanitize_public_slot_fields(slot, &label);
+                }
+            }
+        }
+    }
+}
+
+fn sanitize_public_slot_fields(slot: &mut Value, label: &str) {
+    let Some(object) = slot.as_object_mut() else {
+        return;
+    };
+    for key in ["title", "theme", "tone", "text", "advice", "watch_point", "reason"] {
+        sanitize_public_text_field(object, key, label);
+    }
+}
+
+fn sanitize_public_text_field(
+    object: &mut serde_json::Map<String, Value>,
+    key: &str,
+    label: &str,
+) {
+    let Some(value) = object.get(key).and_then(Value::as_str) else {
+        return;
+    };
+    object.insert(
+        key.to_string(),
+        json!(sanitize_slot_public_text(value, label)),
+    );
+}
+
+fn sanitize_slot_public_text(value: &str, label: &str) -> String {
+    let mut cleaned = value.to_string();
+    for forbidden in [
+        "[morning]",
+        "[afternoon]",
+        "[evening]",
+        "[day]",
+        "slot:morning",
+        "slot:afternoon",
+        "slot:evening",
+        "slot:day",
+    ] {
+        cleaned = cleaned.replace(forbidden, label);
+    }
+    for forbidden in ["slot_code", "slot_", "avoid_"] {
+        cleaned = cleaned.replace(forbidden, "");
+    }
+    cleaned
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .trim_matches(['-', ':', ';', ','])
+        .trim()
+        .to_string()
 }
 
 pub(crate) fn repair_premium_daily_editorial_repetition(response: &mut Value) {

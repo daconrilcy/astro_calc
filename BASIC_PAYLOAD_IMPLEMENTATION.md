@@ -1,3 +1,46 @@
+# Horoscope real-provider local guard - 2026-06-14
+
+Added a local-provider guard for horoscope test runs so the UI and integration
+path are explicit about when a real LLM provider is expected instead of the
+`fake` provider.
+
+- Documented the exact `.env` overrides needed to force a real provider in
+  local debug runs: `ASTRAL_LLM_ENABLE_FAKE=false`, `ASTRAL_LLM_DEFAULT_PROVIDER`
+  set to a real provider, and the matching API key.
+- Added `horoscope` to `config/llm_product_models.conf` so the product-level
+  `llm_product_default_engine` row does not keep overriding the real `.env`
+  provider with `fake`.
+- Updated `scripts/docker_update_integration_stack.ps1` so its local fake smoke
+  phase also enables the temporary horoscope fake override before calling
+  `/v2/horoscope/*`.
+- Added regression coverage in
+  [tests/horoscope_real_provider_guard_tests.rs](tests/horoscope_real_provider_guard_tests.rs)
+  for the daily and period horoscope render paths. The tests use a real-provider
+  fixture and fail if the rendered response falls back to `fake` instead of the
+  configured provider.
+- Added one real-provider JSON repair retry for daily horoscope renders. When a
+  real provider returns text that is not parseable JSON, the API retries once
+  with the same real provider, same model and strict schema instead of falling
+  back to local fake output.
+- Daily horoscope real-provider calls now force minimal reasoning effort and
+  larger output budgets (Free 4k, Basic 8k, Premium 12k tokens) so GPT-5 does
+  not spend the whole output budget on reasoning and return an incomplete
+  response with no assistant JSON text.
+- Daily horoscope post-processing now sanitizes public slot fields so real LLM
+  outputs such as `[morning]`, `slot:morning`, `slot_code`, `slot_` or `avoid_`
+  are replaced/removed before the public leak validator runs.
+- Free period post-processing now neutralizes `key_days` that a real provider
+  phrases as best/favorable windows. They are converted back to neutral
+  "Jour à retenir" markers before the Free period public validator runs.
+- Free period public word-count validation now counts Free-specific fields
+  (`summary`, `dominant_theme`, `advice`, `watch_summary`) and expands a too
+  short real-provider response with neutral guidance before hard validation.
+- Gateway timeout handling now uses `ASTRAL_GATEWAY_REQUEST_TIMEOUT_MS` for the
+  HTTP route timeout instead of a hard-coded 60 seconds, with a 180s default
+  aligned with horoscope provider calls. Gateway LLM HTTP calls retry once only
+  on real timeout cases (`reqwest` timeout or HTTP 408) and never retry
+  validation failures such as HTTP 422.
+
 # Horoscope contract-first simplification - 2026-06-13
 
 Simplified horoscope post-LLM validation so daily and period generation now block

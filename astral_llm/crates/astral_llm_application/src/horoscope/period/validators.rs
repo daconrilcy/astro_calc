@@ -548,6 +548,12 @@ pub(crate) fn is_period_writer_request(request: &Value) -> bool {
 }
 pub(crate) fn collect_period_public_text_only(response: &Value, public_text: &mut String) {
     for pointer in [
+        "/summary/title",
+        "/summary/text",
+        "/dominant_theme/theme",
+        "/dominant_theme/text",
+        "/advice",
+        "/watch_summary/text",
         "/week_overview/title",
         "/week_overview/text",
         "/week_overview/trajectory",

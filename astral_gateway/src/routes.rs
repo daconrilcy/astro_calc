@@ -22,6 +22,10 @@ use crate::{
 use astral_llm_application::{HoroscopePeriodPublicRequest, HoroscopePublicRequest};
 
 pub fn router(state: AppState) -> Router {
+    router_with_timeout(state, std::time::Duration::from_secs(60))
+}
+
+pub fn router_with_timeout(state: AppState, request_timeout: std::time::Duration) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/health/live", get(health))
@@ -42,7 +46,7 @@ pub fn router(state: AppState) -> Router {
         .layer(TraceLayer::new_for_http())
         .layer(TimeoutLayer::with_status_code(
             axum::http::StatusCode::REQUEST_TIMEOUT,
-            std::time::Duration::from_secs(60),
+            request_timeout,
         ))
 }
 
@@ -230,7 +234,10 @@ pub async fn serve(config: AppConfig) -> Result<(), Box<dyn std::error::Error + 
         calculator: Arc::new(calculator),
         llm: Arc::new(llm),
     };
-    let app = router(state);
+    let app = router_with_timeout(
+        state,
+        std::time::Duration::from_millis(config.request_timeout_ms.max(1_000)),
+    );
     let listener = TcpListener::bind(&config.bind_addr).await?;
     tracing::info!(addr = %config.bind_addr, "astral_gateway listening");
     axum::serve(listener, app).await?;

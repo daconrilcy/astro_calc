@@ -1,5 +1,6 @@
 use async_trait::async_trait;
-use reqwest::Client;
+use reqwest::{Client, StatusCode};
+use serde::Serialize;
 use serde_json::Value;
 
 use astral_llm_domain::{GenerateReadingRequest, GenerateReadingResponse};
@@ -51,6 +52,8 @@ pub struct HttpLlmClient {
 }
 
 impl HttpLlmClient {
+    const MAX_TIMEOUT_RETRIES: u8 = 1;
+
     pub fn new(base_url: String, api_key: Option<String>, timeout_ms: u64) -> Result<Self, String> {
         let client = Client::builder()
             .timeout(std::time::Duration::from_millis(timeout_ms.max(1_000)))
@@ -65,33 +68,96 @@ impl HttpLlmClient {
 
     async fn post_internal_json(&self, path: &str, request: &Value) -> Result<Value, GatewayError> {
         let url = format!("{}{}", self.base_url, path);
+        let response = self.send_llm_json_with_timeout_retry(&url, request).await?;
+        response
+            .json::<Value>()
+            .await
+            .map_err(|err| GatewayError::upstream(format!("llm response parse failed: {err}")))
+    }
+
+    async fn send_llm_json_with_timeout_retry<T: Serialize + ?Sized>(
+        &self,
+        url: &str,
+        request: &T,
+    ) -> Result<reqwest::Response, GatewayError> {
+        let mut attempt = 0;
+        loop {
+            let response = self.send_llm_json_once(url, request).await;
+            match response {
+                Ok(response) => return Ok(response),
+                Err(LlmHttpError::Timeout(message))
+                    if attempt < Self::MAX_TIMEOUT_RETRIES =>
+                {
+                    attempt += 1;
+                    tracing::warn!(
+                        attempt,
+                        max_retries = Self::MAX_TIMEOUT_RETRIES,
+                        error = %message,
+                        "llm request timed out, retrying"
+                    );
+                    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+                }
+                Err(LlmHttpError::Timeout(message)) => {
+                    return Err(GatewayError::upstream(format!(
+                        "llm request timed out after {} attempt(s): {message}",
+                        attempt + 1
+                    )));
+                }
+                Err(LlmHttpError::Rejected { status, body }) => {
+                    return Err(GatewayError::upstream(format!(
+                        "llm rejected request: status={} body={}",
+                        status,
+                        truncate_for_error(&body)
+                    )));
+                }
+                Err(LlmHttpError::Transport(message)) => {
+                    return Err(GatewayError::upstream(format!("llm request failed: {message}")));
+                }
+            }
+        }
+    }
+
+    async fn send_llm_json_once<T: Serialize + ?Sized>(
+        &self,
+        url: &str,
+        request: &T,
+    ) -> Result<reqwest::Response, LlmHttpError> {
         let mut builder = self.client.post(url).json(request);
         if let Some(key) = &self.api_key {
             builder = builder
                 .header("X-API-Key", key)
                 .header("Authorization", format!("Bearer {key}"));
         }
-        let response = builder
-            .send()
-            .await
-            .map_err(|err| GatewayError::upstream(format!("llm request failed: {err}")))?;
+        let response = builder.send().await.map_err(|err| {
+            if err.is_timeout() {
+                LlmHttpError::Timeout(err.to_string())
+            } else {
+                LlmHttpError::Transport(err.to_string())
+            }
+        })?;
         let status = response.status();
+        if status == StatusCode::REQUEST_TIMEOUT {
+            let body = response.text().await.unwrap_or_default();
+            return Err(LlmHttpError::Timeout(format!(
+                "status=408 body={}",
+                truncate_for_error(&body)
+            )));
+        }
         if !status.is_success() {
             let body = response
                 .text()
                 .await
                 .unwrap_or_else(|_| "<unreadable body>".to_string());
-            return Err(GatewayError::upstream(format!(
-                "llm rejected request: status={} body={}",
-                status,
-                truncate_for_error(&body)
-            )));
+            return Err(LlmHttpError::Rejected { status, body });
         }
-        response
-            .json::<Value>()
-            .await
-            .map_err(|err| GatewayError::upstream(format!("llm response parse failed: {err}")))
+        Ok(response)
     }
+}
+
+enum LlmHttpError {
+    Timeout(String),
+    Rejected { status: StatusCode, body: String },
+    Transport(String),
 }
 
 #[async_trait]
@@ -101,28 +167,7 @@ impl LlmPort for HttpLlmClient {
         request: &GenerateReadingRequest,
     ) -> Result<GenerateReadingResponse, GatewayError> {
         let url = format!("{}/v1/internal/readings/render", self.base_url);
-        let mut builder = self.client.post(url).json(request);
-        if let Some(key) = &self.api_key {
-            builder = builder
-                .header("X-API-Key", key)
-                .header("Authorization", format!("Bearer {key}"));
-        }
-        let response = builder
-            .send()
-            .await
-            .map_err(|err| GatewayError::upstream(format!("llm request failed: {err}")))?;
-        let status = response.status();
-        if !status.is_success() {
-            let body = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "<unreadable body>".to_string());
-            return Err(GatewayError::upstream(format!(
-                "llm rejected request: status={} body={}",
-                status,
-                truncate_for_error(&body)
-            )));
-        }
+        let response = self.send_llm_json_with_timeout_retry(&url, request).await?;
         let body = response
             .json::<GenerateReadingResponse>()
             .await
