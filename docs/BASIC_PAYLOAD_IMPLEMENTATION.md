@@ -3480,8 +3480,7 @@ Pour `horoscope_free_daily`, `day` est uniquement un slot technique de
 projection. Il ne constitue pas une section publique et ne doit jamais apparaitre
 dans la reponse utilisateur.
 
-Le plan de refactor slot-based et les reviews adversariales sont suivis dans
-[`docs/reviews/horoscope_v1/`](reviews/horoscope_v1/INDEX.md).
+Le refactor slot-based est maintenant integre a l'etat courant de la documentation horoscope.
 
 ## E2E reels Docker dedies (2026-06-06)
 

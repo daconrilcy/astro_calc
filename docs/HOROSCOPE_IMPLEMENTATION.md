@@ -924,8 +924,7 @@ Refactor V1 applique :
 - Le service reste en `beta` tant que les validations fake, goldens, guards et
   reviews adversariales cadrent le perimetre.
 
-Plan et reviews :
-[`docs/reviews/horoscope_v1/INDEX.md`](reviews/horoscope_v1/INDEX.md).
+Plan et reviews historiques V1 ont ete purges ; ce document porte maintenant l'etat courant.
 # Horoscope Premium next 7 days natal
 
 Le service `horoscope_premium_next_7_days_natal` etend le service period Basic
