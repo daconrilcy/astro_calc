@@ -5,7 +5,8 @@ use astral_llm_api::api_contracts::load_published_schema;
 use astral_llm_api::integration_routes::service_has_v1_orchestrator;
 use astral_llm_application::horoscope::{
     build_period_writer_request, fake_period_writer_response, period_writer_messages,
-    validate_period_public_request, validate_period_response_contract,
+    postprocess_period_provider_response, validate_period_public_request,
+    validate_period_response_contract,
     validate_period_writer_request_schema, HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE,
     HOROSCOPE_FREE_DAILY_SERVICE_CODE, HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
@@ -185,13 +186,21 @@ fn period_writer_request_uses_unified_contract_for_all_subscription_levels() {
 
     for (service_code, fixture, detail_profile_code) in fixtures {
         let request = period_writer_request(fixture);
-        assert_eq!(request["contract_version"], "horoscope_period_writer_request");
+        assert_eq!(
+            request["contract_version"],
+            "horoscope_period_writer_request"
+        );
         assert_eq!(request["service_code"], service_code);
         assert_eq!(request["detail_profile_code"], detail_profile_code);
-        assert_eq!(request["output_contract_version"], "horoscope_period_response");
+        assert_eq!(
+            request["output_contract_version"],
+            "horoscope_period_response"
+        );
         assert_eq!(request["target_language_code"], "fr");
         assert!(request["semantic_brief"].is_object());
-        assert!(request["evidence"].as_array().is_some_and(|items| !items.is_empty()));
+        assert!(request["evidence"]
+            .as_array()
+            .is_some_and(|items| !items.is_empty()));
         validate_period_writer_request_schema(&request).expect("writer request schema");
     }
 }
@@ -221,6 +230,118 @@ fn fake_period_writer_response_matches_contract_for_each_period_profile() {
 }
 
 #[test]
+fn period_postprocess_removes_provider_artifact_suffixes() {
+    let request = period_writer_request(
+        "tests/golden/horoscope_period_calculation_response_basic_next_7_days_paris_1990.json",
+    );
+    let mut response = fake_period_writer_response(&request).expect("fake period response");
+    response["week_overview"]["trajectory"] = json!(
+        "ouverture -> mise en mouvement -> pivot -> consolidation -> cloture (verification des limites)\"}'}]}</structured_reading> PMID:INVALID.json. The output seems malformed: I accidentally included extra braces and invalid parts. Need produce valid JSON per schema. Time's up."
+    );
+
+    let processed = postprocess_period_provider_response(&request, response);
+    let trajectory = processed["week_overview"]["trajectory"]
+        .as_str()
+        .expect("trajectory text");
+
+    assert!(trajectory.contains("passage à l'action"));
+    assert!(!trajectory.contains("</structured_reading>"));
+    assert!(!trajectory.contains("PMID:INVALID.json"));
+    assert!(!trajectory.contains("The output seems malformed"));
+    validate_period_response_contract(&request, &processed).expect("processed contract");
+}
+
+#[test]
+fn period_postprocess_repairs_internal_phase_trajectory_artifacts() {
+    let request = period_writer_request(
+        "tests/golden/horoscope_period_calculation_response_basic_next_7_days_paris_1990.json",
+    );
+    let mut response = fake_period_writer_response(&request).expect("fake period response");
+    response["week_overview"]["trajectory"] =
+        json!("ouverture mise_en_mouvement pivot consolidation clôture (prudente) } } (removed)");
+
+    let processed = postprocess_period_provider_response(&request, response);
+    let trajectory = processed["week_overview"]["trajectory"]
+        .as_str()
+        .expect("trajectory text");
+
+    assert!(!trajectory.contains("mise_en_mouvement"));
+    assert!(!trajectory.contains('{'));
+    assert!(!trajectory.contains('}'));
+    assert!(!trajectory.to_lowercase().contains("(removed)"));
+    assert!(trajectory.contains("passage à l'action"));
+    validate_period_response_contract(&request, &processed).expect("processed contract");
+}
+
+#[test]
+fn period_postprocess_runs_text_reprocessing_on_public_fields_only() {
+    let request = period_writer_request(
+        "tests/golden/horoscope_period_calculation_response_basic_next_7_days_paris_1990.json",
+    );
+    let mut response = fake_period_writer_response(&request).expect("fake period response");
+    response["daily_timeline"][0]["text"] = json!("l impression demande d ajuster.");
+    response["daily_timeline"][0]["evidence_keys"] =
+        json!(["period:2026-06-14:2026-06-14:noon:moon:natal_house:10"]);
+
+    let processed = postprocess_period_provider_response(&request, response);
+
+    assert!(processed["daily_timeline"][0]["text"]
+        .as_str()
+        .unwrap_or_default()
+        .contains("l'impression"));
+    assert_eq!(
+        processed["daily_timeline"][0]["evidence_keys"],
+        json!(["period:2026-06-14:2026-06-14:noon:moon:natal_house:10"])
+    );
+}
+
+#[test]
+fn period_postprocess_replaces_em_dash_in_public_text() {
+    let request = period_writer_request(
+        "tests/golden/horoscope_period_calculation_response_basic_next_7_days_paris_1990.json",
+    );
+    let mut response = fake_period_writer_response(&request).expect("fake period response");
+    response["week_overview"]["text"] =
+        json!("La semaine commence par un cadrage — puis avance vers une clarification.");
+
+    let processed = postprocess_period_provider_response(&request, response);
+    let text = processed["week_overview"]["text"]
+        .as_str()
+        .expect("week overview text");
+
+    assert!(text.contains("cadrage - puis"));
+    assert!(!text.contains('—'));
+}
+
+#[test]
+fn period_system_prompts_forbid_meta_comments_about_output() {
+    let basic_request = period_writer_request(
+        "tests/golden/horoscope_period_calculation_response_basic_next_7_days_paris_1990.json",
+    );
+    let premium_request = period_writer_request(
+        "tests/golden/horoscope_period_calculation_response_premium_next_7_days_paris_1990.json",
+    );
+
+    let basic_messages = period_writer_messages(&basic_request).expect("basic prompts");
+    let premium_messages = period_writer_messages(&premium_request).expect("premium prompts");
+
+    let basic_system = &basic_messages[0].content;
+    let premium_system = &premium_messages[0].content;
+
+    for prompt in [basic_system, premium_system] {
+        assert!(prompt.contains("Never comment on the result") || prompt.contains("Ne commente jamais le résultat"));
+        assert!(prompt.contains("JSON"));
+        assert!(prompt.contains("schema") || prompt.contains("schéma"));
+        assert!(prompt.contains("timeout"));
+        assert!(prompt.contains("truncation") || prompt.contains("troncature"));
+        assert!(prompt.contains("meta-commentary") || prompt.contains("méta-commentaire"));
+        assert!(prompt.contains("trajectory must be one natural public sentence"));
+        assert!(prompt.contains("never underscores"));
+        assert!(prompt.contains("(removed)"));
+    }
+}
+
+#[test]
 fn period_writer_prompt_targets_renamed_public_contract() {
     let request = period_writer_request(
         "tests/golden/horoscope_period_calculation_response_premium_next_7_days_paris_1990.json",
@@ -241,6 +362,7 @@ fn renamed_period_response_golden_still_validates() {
     let request = period_writer_request(
         "tests/golden/horoscope_period_calculation_response_premium_next_7_days_paris_1990.json",
     );
-    let response = load_json("tests/golden/horoscope_period_response_premium_next_7_days_fake.json");
+    let response =
+        load_json("tests/golden/horoscope_period_response_premium_next_7_days_fake.json");
     validate_period_response_contract(&request, &response).expect("golden response contract");
 }

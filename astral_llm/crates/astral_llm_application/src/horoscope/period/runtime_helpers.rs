@@ -29,11 +29,13 @@ pub(crate) fn build_period_events(
         .flatten()
         .filter_map(Value::as_str)
         .collect::<HashSet<_>>();
-    let theme_counts = evidence.iter().fold(HashMap::<&str, usize>::new(), |mut counts, item| {
-        let theme = item["theme_code"].as_str().unwrap_or("organization");
-        *counts.entry(theme).or_default() += 1;
-        counts
-    });
+    let theme_counts = evidence
+        .iter()
+        .fold(HashMap::<&str, usize>::new(), |mut counts, item| {
+            let theme = item["theme_code"].as_str().unwrap_or("organization");
+            *counts.entry(theme).or_default() += 1;
+            counts
+        });
     let mut events = Vec::new();
     for item in evidence {
         let date = item["date"]

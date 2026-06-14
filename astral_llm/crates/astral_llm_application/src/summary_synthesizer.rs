@@ -154,7 +154,7 @@ impl<'a> SummarySynthesizer<'a> {
                 SUBTASK_BASE_OUTPUT_TOKENS,
             )),
             safety_mode: resolve_safety_mode(&engine.provider),
-            timeout: Duration::from_millis(engine.timeout_ms.unwrap_or(120_000)),
+            timeout: Duration::from_millis(engine.timeout_ms.unwrap_or(900_000)),
             metadata: GenerationMetadata {
                 run_id: run_id.to_string(),
                 request_id: request.request_id.clone(),

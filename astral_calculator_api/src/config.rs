@@ -34,7 +34,7 @@ impl AppConfig {
             allow_public_bind: env_bool("ASTRAL_CALCULATOR_ALLOW_PUBLIC_BIND", false),
             api_key: env_var("ASTRAL_CALCULATOR_API_KEY"),
             max_body_bytes: parse_env_usize("ASTRAL_CALCULATOR_MAX_BODY_BYTES", 262_144),
-            request_timeout_ms: parse_env_u64("ASTRAL_CALCULATOR_REQUEST_TIMEOUT_MS", 60_000),
+            request_timeout_ms: parse_env_u64("ASTRAL_CALCULATOR_REQUEST_TIMEOUT_MS", 900_000),
             schemas_dir,
             openapi_path,
         }

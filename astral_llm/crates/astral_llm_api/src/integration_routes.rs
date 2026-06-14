@@ -537,9 +537,7 @@ fn horoscope_mapping_notes(public_request_contract: &str) -> Vec<&'static str> {
     }
 }
 
-fn horoscope_daily_requires_location(
-    descriptor: &astral_contracts::ServiceDescriptor,
-) -> bool {
+fn horoscope_daily_requires_location(descriptor: &astral_contracts::ServiceDescriptor) -> bool {
     descriptor.service_code == astral_contracts::HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE
 }
 

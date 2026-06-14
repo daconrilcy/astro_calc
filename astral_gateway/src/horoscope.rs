@@ -5,8 +5,8 @@ use astral_calculator::horoscope::{
     build_horoscope_period_calculation_request_from_public,
 };
 use astral_contracts::{
-    ProductTier, QualityMetadataCommon, ResponseMetadataCommon,
-    HOROSCOPE_FREE_DAILY_SERVICE_CODE, HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+    ProductTier, QualityMetadataCommon, ResponseMetadataCommon, HOROSCOPE_FREE_DAILY_SERVICE_CODE,
+    HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
     HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE,
 };
@@ -67,13 +67,13 @@ impl GenerateHoroscopeDailyReadingUseCase {
                 .map_err(GatewayError::bad_request)?;
         let calculation = self
             .calculator
-            .calculate_horoscope_daily_natal(
-                &serde_json::to_value(&calculation_request).map_err(|err| {
+            .calculate_horoscope_daily_natal(&serde_json::to_value(&calculation_request).map_err(
+                |err| {
                     GatewayError::Internal(format!(
                         "invalid horoscope daily calculation request serialization: {err}"
                     ))
-                })?,
-            )
+                },
+            )?)
             .await?;
         let signals = score_calculation(&calculation)
             .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
@@ -132,13 +132,13 @@ impl GenerateHoroscopePeriodReadingUseCase {
                 .map_err(GatewayError::bad_request)?;
         let calculation = self
             .calculator
-            .calculate_horoscope_period_natal(
-                &serde_json::to_value(&calculation_request).map_err(|err| {
+            .calculate_horoscope_period_natal(&serde_json::to_value(&calculation_request).map_err(
+                |err| {
                     GatewayError::Internal(format!(
                         "invalid horoscope period calculation request serialization: {err}"
                     ))
-                })?,
-            )
+                },
+            )?)
             .await?;
         let writer_request = build_period_writer_request(&public, &calculation)
             .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;

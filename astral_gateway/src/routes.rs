@@ -22,7 +22,12 @@ use crate::{
 use astral_llm_application::{HoroscopePeriodPublicRequest, HoroscopePublicRequest};
 
 pub fn router(state: AppState) -> Router {
-    router_with_timeout(state, std::time::Duration::from_secs(60))
+    router_with_timeout(state, request_timeout_with_margin(900_000))
+}
+
+#[doc(hidden)]
+pub fn request_timeout_with_margin(timeout_ms: u64) -> std::time::Duration {
+    std::time::Duration::from_millis(timeout_ms.max(1_000) + 5_000)
 }
 
 pub fn router_with_timeout(state: AppState, request_timeout: std::time::Duration) -> Router {
@@ -32,7 +37,10 @@ pub fn router_with_timeout(state: AppState, request_timeout: std::time::Duration
         .route("/health/ready", get(health_ready))
         .route("/v2/natal/simplified/free", post(natal_simplified_free))
         .route("/v2/natal/simplified/basic", post(natal_simplified_basic))
-        .route("/v2/natal/simplified/premium", post(natal_simplified_premium))
+        .route(
+            "/v2/natal/simplified/premium",
+            post(natal_simplified_premium),
+        )
         .route("/v2/natal/full/free", post(natal_full_free))
         .route("/v2/natal/full/basic", post(natal_full_basic))
         .route("/v2/natal/full/premium", post(natal_full_premium))
@@ -41,7 +49,10 @@ pub fn router_with_timeout(state: AppState, request_timeout: std::time::Duration
         .route("/v2/horoscope/daily/premium", post(horoscope_daily_premium))
         .route("/v2/horoscope/period/free", post(horoscope_period_free))
         .route("/v2/horoscope/period/basic", post(horoscope_period_basic))
-        .route("/v2/horoscope/period/premium", post(horoscope_period_premium))
+        .route(
+            "/v2/horoscope/period/premium",
+            post(horoscope_period_premium),
+        )
         .with_state(state)
         .layer(TraceLayer::new_for_http())
         .layer(TimeoutLayer::with_status_code(
@@ -76,7 +87,13 @@ async fn natal_simplified_premium(
     State(state): State<AppState>,
     Json(request): Json<NatalReadingRequestV2>,
 ) -> Result<Json<serde_json::Value>, crate::error::GatewayError> {
-    natal_handler(state, NatalVariant::Simplified, ProductTier::Premium, request).await
+    natal_handler(
+        state,
+        NatalVariant::Simplified,
+        ProductTier::Premium,
+        request,
+    )
+    .await
 }
 
 async fn natal_full_free(
@@ -182,8 +199,9 @@ async fn natal_handler(
         .natal_use_case()
         .execute(NatalGatewayPolicy { variant, tier }, request)
         .await?;
-    let payload = serde_json::to_value(response)
-        .map_err(|err| crate::error::GatewayError::Internal(format!("serialization failed: {err}")))?;
+    let payload = serde_json::to_value(response).map_err(|err| {
+        crate::error::GatewayError::Internal(format!("serialization failed: {err}"))
+    })?;
     Ok(Json(payload))
 }
 
@@ -192,14 +210,13 @@ async fn horoscope_daily_handler(
     service_code: &str,
     request: HoroscopePublicRequest,
 ) -> Result<Json<serde_json::Value>, crate::error::GatewayError> {
-    let response = GenerateHoroscopeDailyReadingUseCase::new(
-        state.calculator.clone(),
-        state.llm.clone(),
-    )
-    .execute(service_code, request)
-    .await?;
-    let payload = serde_json::to_value(response)
-        .map_err(|err| crate::error::GatewayError::Internal(format!("serialization failed: {err}")))?;
+    let response =
+        GenerateHoroscopeDailyReadingUseCase::new(state.calculator.clone(), state.llm.clone())
+            .execute(service_code, request)
+            .await?;
+    let payload = serde_json::to_value(response).map_err(|err| {
+        crate::error::GatewayError::Internal(format!("serialization failed: {err}"))
+    })?;
     Ok(Json(payload))
 }
 
@@ -208,14 +225,13 @@ async fn horoscope_period_handler(
     service_code: &str,
     request: HoroscopePeriodPublicRequest,
 ) -> Result<Json<serde_json::Value>, crate::error::GatewayError> {
-    let response = GenerateHoroscopePeriodReadingUseCase::new(
-        state.calculator.clone(),
-        state.llm.clone(),
-    )
-    .execute(service_code, request)
-    .await?;
-    let payload = serde_json::to_value(response)
-        .map_err(|err| crate::error::GatewayError::Internal(format!("serialization failed: {err}")))?;
+    let response =
+        GenerateHoroscopePeriodReadingUseCase::new(state.calculator.clone(), state.llm.clone())
+            .execute(service_code, request)
+            .await?;
+    let payload = serde_json::to_value(response).map_err(|err| {
+        crate::error::GatewayError::Internal(format!("serialization failed: {err}"))
+    })?;
     Ok(Json(payload))
 }
 
@@ -236,7 +252,7 @@ pub async fn serve(config: AppConfig) -> Result<(), Box<dyn std::error::Error + 
     };
     let app = router_with_timeout(
         state,
-        std::time::Duration::from_millis(config.request_timeout_ms.max(1_000)),
+        request_timeout_with_margin(config.request_timeout_ms),
     );
     let listener = TcpListener::bind(&config.bind_addr).await?;
     tracing::info!(addr = %config.bind_addr, "astral_gateway listening");

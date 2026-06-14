@@ -45,9 +45,7 @@ pub fn load_published_schema(version: &str) -> Option<Value> {
         "integration_service_v1" => "integration_service_v1.schema.json",
         "integration_service_contract_v1" => "integration_service_contract_v1.schema.json",
         "horoscope_daily_natal_request" => "horoscope_daily_natal_request.schema.json",
-        "horoscope_basic_daily_natal_request" => {
-            "horoscope_basic_daily_natal_request.schema.json"
-        }
+        "horoscope_basic_daily_natal_request" => "horoscope_basic_daily_natal_request.schema.json",
         "horoscope_premium_daily_local_request" => {
             "horoscope_premium_daily_local_request.schema.json"
         }

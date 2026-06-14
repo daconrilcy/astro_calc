@@ -1,3 +1,22 @@
+# Horoscope period timeout stabilization - 2026-06-14
+
+- Aligned the default/documented request timeouts for `astral_gateway`,
+  `astral_calculator_api`, and `astral_llm_api` to `900000 ms` so
+  `horoscope period` no longer hits a shorter outer timeout while the inner LLM
+  path is still allowed to run.
+- Updated the gateway inbound timeout layer to use the configured timeout plus a
+  `5s` margin, matching the existing LLM API behavior.
+- Kept the generic gateway LLM timeout retry for daily/general calls, but
+  removed it from `render_horoscope_period` so a long period render is not
+  duplicated after an HTTP timeout.
+- Reduced Premium period V2 generation cost by cutting the quality retry budget
+  from `2` retries to `1`, lowering the main writer output budget from `16000`
+  to `12000`, and introducing a dedicated `8000` token budget for the quality
+  editor path.
+- Added targeted regression coverage for gateway retry semantics, gateway
+  timeout margin calculation, period writer/editor token budgets, and the
+  one-retry limit of the period quality loop.
+
 # Horoscope real-provider local guard - 2026-06-14
 
 Added a local-provider guard for horoscope test runs so the UI and integration
@@ -37,8 +56,9 @@ path are explicit about when a real LLM provider is expected instead of the
   (`summary`, `dominant_theme`, `advice`, `watch_summary`) and expands a too
   short real-provider response with neutral guidance before hard validation.
 - Gateway timeout handling now uses `ASTRAL_GATEWAY_REQUEST_TIMEOUT_MS` for the
-  HTTP route timeout instead of a hard-coded 60 seconds, with a 180s default
-  aligned with horoscope provider calls. Gateway LLM HTTP calls retry once only
+  HTTP route timeout instead of a hard-coded 60 seconds, now aligned to the
+  `900000 ms` horoscope-period timeout defaults used across gateway,
+  calculator and LLM. Gateway LLM HTTP calls retry once only
   on real timeout cases (`reqwest` timeout or HTTP 408) and never retry
   validation failures such as HTTP 422.
 
@@ -838,3 +858,15 @@ Exclus du parcours automatique car moteur LLM reel :
 - `test_natal_premium*_profile.ps1`
 - toute suite necessitant `OPENAI_API_KEY`
 - tout appel direct certifiant `POST /v1/internal/readings/render`
+
+## 2026-06-14 - Horoscope period artifact cleanup
+
+- le postprocess 0horoscope period0 retire maintenant les suffixes d'artefacts provider sur les champs publics avant validation, notamment les fragments 0</structured_reading>0 et les auto-commentaires de sortie malformee
+- le postprocess period relance ensuite le pipeline partage de retraitement texte FR pour restaurer la typographie publique sans toucher aux champs techniques comme 0evidence_keys0
+
+- 2026-06-14 : les prompts systeme du flux horoscope period interdisent maintenant explicitement tout meta-commentaire sur le resultat, le JSON, le schema, les erreurs, les timeouts, les troncatures ou le processus de generation, afin de reduire les injections de type auto-commentaire provider.
+
+- 2026-06-14 : le post-processing horoscope period reutilise maintenant la normalisation existante des tirets cadratins pour remplacer les caracteres 0—0 par 0-0 dans les champs publics avant validation finale.
+
+- 2026-06-14 : le champ public 0week_overview.trajectory0 du flux horoscope period est maintenant durci contre la recopie brute de phases internes (mise_en_mouvement) et les residus d'edition (} } (removed)), avec fallback automatique vers une trajectoire publique propre si le contenu reste suspect.
+

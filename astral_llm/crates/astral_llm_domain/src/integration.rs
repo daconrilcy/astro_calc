@@ -161,12 +161,13 @@ impl IntegrationService {
     }
 
     pub fn resolved_orchestration_mode(&self) -> OrchestrationMode {
-        self.orchestration_mode_typed.unwrap_or_else(|| match self.orchestration_mode.as_str() {
-            "calculator_only" => OrchestrationMode::CalculatorOnly,
-            "llm_only" => OrchestrationMode::LlmOnly,
-            "public_gateway" => OrchestrationMode::PublicGateway,
-            "legacy_unified" => OrchestrationMode::LegacyUnified,
-            _ => OrchestrationMode::CalculatorThenLlm,
-        })
+        self.orchestration_mode_typed
+            .unwrap_or_else(|| match self.orchestration_mode.as_str() {
+                "calculator_only" => OrchestrationMode::CalculatorOnly,
+                "llm_only" => OrchestrationMode::LlmOnly,
+                "public_gateway" => OrchestrationMode::PublicGateway,
+                "legacy_unified" => OrchestrationMode::LegacyUnified,
+                _ => OrchestrationMode::CalculatorThenLlm,
+            })
     }
 }

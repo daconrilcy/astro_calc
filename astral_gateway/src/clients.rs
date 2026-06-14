@@ -75,6 +75,19 @@ impl HttpLlmClient {
             .map_err(|err| GatewayError::upstream(format!("llm response parse failed: {err}")))
     }
 
+    async fn post_internal_json_without_retry(
+        &self,
+        path: &str,
+        request: &Value,
+    ) -> Result<Value, GatewayError> {
+        let url = format!("{}{}", self.base_url, path);
+        let response = self.send_llm_json_without_retry(&url, request).await?;
+        response
+            .json::<Value>()
+            .await
+            .map_err(|err| GatewayError::upstream(format!("llm response parse failed: {err}")))
+    }
+
     async fn send_llm_json_with_timeout_retry<T: Serialize + ?Sized>(
         &self,
         url: &str,
@@ -85,9 +98,7 @@ impl HttpLlmClient {
             let response = self.send_llm_json_once(url, request).await;
             match response {
                 Ok(response) => return Ok(response),
-                Err(LlmHttpError::Timeout(message))
-                    if attempt < Self::MAX_TIMEOUT_RETRIES =>
-                {
+                Err(LlmHttpError::Timeout(message)) if attempt < Self::MAX_TIMEOUT_RETRIES => {
                     attempt += 1;
                     tracing::warn!(
                         attempt,
@@ -111,8 +122,31 @@ impl HttpLlmClient {
                     )));
                 }
                 Err(LlmHttpError::Transport(message)) => {
-                    return Err(GatewayError::upstream(format!("llm request failed: {message}")));
+                    return Err(GatewayError::upstream(format!(
+                        "llm request failed: {message}"
+                    )));
                 }
+            }
+        }
+    }
+
+    async fn send_llm_json_without_retry<T: Serialize + ?Sized>(
+        &self,
+        url: &str,
+        request: &T,
+    ) -> Result<reqwest::Response, GatewayError> {
+        match self.send_llm_json_once(url, request).await {
+            Ok(response) => Ok(response),
+            Err(LlmHttpError::Timeout(message)) => Err(GatewayError::upstream(format!(
+                "llm request timed out after 1 attempt(s): {message}"
+            ))),
+            Err(LlmHttpError::Rejected { status, body }) => Err(GatewayError::upstream(format!(
+                "llm rejected request: status={} body={}",
+                status,
+                truncate_for_error(&body)
+            ))),
+            Err(LlmHttpError::Transport(message)) => {
+                Err(GatewayError::upstream(format!("llm request failed: {message}")))
             }
         }
     }
@@ -181,7 +215,7 @@ impl LlmPort for HttpLlmClient {
     }
 
     async fn render_horoscope_period(&self, request: &Value) -> Result<Value, GatewayError> {
-        self.post_internal_json("/v1/internal/horoscope/period/render", request)
+        self.post_internal_json_without_retry("/v1/internal/horoscope/period/render", request)
             .await
     }
 }

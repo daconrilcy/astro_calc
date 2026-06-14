@@ -1,7 +1,9 @@
 use astral_llm_application::{
-    build_provider_map, daily_writer_response, period_writer_response_with_quality_loop,
-    validate_response_evidence, GenerateReadingUseCase, ModelCapabilityRegistry, PromptCompiler,
-    ProviderCircuitBreaker, ProviderRouter, ResponseValidator, SchemaRegistry,
+    build_period_writer_request, build_provider_map, daily_writer_response,
+    period_style_editor_max_output_tokens, period_writer_max_output_tokens,
+    period_writer_response_with_quality_loop, validate_period_public_request,
+    validate_response_evidence, GenerateReadingUseCase, ModelCapabilityRegistry,
+    PromptCompiler, ProviderCircuitBreaker, ProviderRouter, ResponseValidator, SchemaRegistry,
 };
 use astral_llm_domain::provider::ReasoningEffort;
 use astral_llm_domain::{
@@ -105,6 +107,20 @@ impl LlmProvider for SequenceOpenAiProvider {
 
 fn assert_daily_request_keeps_real_provider_budget(request: &ProviderGenerationRequest) {
     if !request.metadata.product_code.contains("daily") {
+        if request.metadata.product_code == "horoscope_premium_next_7_days_natal" {
+            let expected = if request.metadata.chapter_code.as_deref()
+                == Some("period_quality_retry")
+            {
+                8_000
+            } else {
+                12_000
+            };
+            assert_eq!(
+                request.max_output_tokens,
+                Some(expected),
+                "period requests must keep the expected output token budget"
+            );
+        }
         return;
     }
     assert_eq!(request.reasoning_effort, Some(ReasoningEffort::Minimal));
@@ -112,6 +128,37 @@ fn assert_daily_request_keeps_real_provider_budget(request: &ProviderGenerationR
         request.max_output_tokens.unwrap_or_default() >= 4_000,
         "daily horoscope real-provider requests must reserve enough output tokens"
     );
+}
+
+fn build_period_writer_request_fixture() -> Value {
+    let public = validate_period_public_request(&serde_json::json!({
+        "anchor_date": "2026-06-07",
+        "timezone": "Europe/Paris",
+        "target_language": "fr",
+        "target_language_code": "fr",
+        "chart_calculation_id": "chart-1",
+        "audience_level": "general",
+        "astrologer_persona": null
+    }))
+    .expect("public period request");
+    let calculation = load_json_fixture(
+        "tests/golden/horoscope_period_calculation_response_premium_next_7_days_paris_1990.json",
+    );
+    build_period_writer_request(&public, &calculation).expect("writer request")
+}
+
+fn valid_premium_period_response_fixture() -> Value {
+    let mut response =
+        load_json_fixture("tests/golden/horoscope_period_response_premium_next_7_days_fake.json");
+    let evidence_key = response["watch_days"][0]["evidence_keys"][0].clone();
+    response["best_days"] = serde_json::json!([{
+        "date": "2026-06-09",
+        "title": "Mardi 09/06",
+        "reason": "Point d'appui utile pour installer une décision concrète sans surcharge.",
+        "evidence_keys": [evidence_key],
+        "fallback_reason": null
+    }]);
+    response
 }
 
 fn test_catalog() -> Arc<CanonicalCatalog> {
@@ -384,4 +431,79 @@ fn horoscope_product_model_config_does_not_force_fake() {
     assert_ne!(columns[1], "fake-model");
     assert_ne!(columns[2], "fake-model");
     assert_ne!(columns[3], "fake");
+}
+
+#[test]
+fn horoscope_period_uses_distinct_writer_and_quality_editor_budgets() {
+    let request = build_period_writer_request_fixture();
+
+    assert_eq!(period_writer_max_output_tokens(&request), 12_000);
+    assert_eq!(period_style_editor_max_output_tokens(&request), 8_000);
+}
+
+#[tokio::test]
+async fn horoscope_period_quality_loop_stops_after_one_retry() {
+    let request = build_period_writer_request_fixture();
+    let mut invalid_response = valid_premium_period_response_fixture();
+    invalid_response["watch_windows"] = serde_json::json!([]);
+    let mut responses = VecDeque::new();
+    responses.push_back(ProviderGenerationResponse {
+        raw_text: invalid_response.to_string(),
+        parsed_json: Some(invalid_response),
+        usage: Some(TokenUsage {
+            input_tokens: 300,
+            output_tokens: 500,
+        }),
+        provider_metadata: serde_json::json!({ "fixture": true, "attempt": 1 }),
+        model_used: "writer".to_string(),
+        provider_kind: ProviderKind::OpenAi,
+    });
+    responses.push_back(ProviderGenerationResponse {
+        raw_text: serde_json::json!({
+            "contract_version": "horoscope_period_response"
+        })
+        .to_string(),
+        parsed_json: Some({
+            let mut second_invalid = valid_premium_period_response_fixture();
+            second_invalid["watch_windows"] = serde_json::json!([]);
+            second_invalid
+        }),
+        usage: Some(TokenUsage {
+            input_tokens: 200,
+            output_tokens: 400,
+        }),
+        provider_metadata: serde_json::json!({ "fixture": true, "attempt": 2 }),
+        model_used: "editor".to_string(),
+        provider_kind: ProviderKind::OpenAi,
+    });
+    responses.push_back(ProviderGenerationResponse {
+        raw_text: "{}".to_string(),
+        parsed_json: Some(serde_json::json!({})),
+        usage: None,
+        provider_metadata: serde_json::json!({ "unused": true }),
+        model_used: "unused".to_string(),
+        provider_kind: ProviderKind::OpenAi,
+    });
+    let provider = Arc::new(SequenceOpenAiProvider {
+        responses: Mutex::new(responses),
+    });
+    let use_case = test_use_case(provider.clone(), "gpt-5-mini");
+
+    let error = period_writer_response_with_quality_loop(&use_case, &request, None)
+        .await
+        .expect_err("period quality loop must stop after one retry");
+
+    assert!(
+        error.detail().message.contains("HOROSCOPE_PERIOD"),
+        "unexpected error: {}",
+        error.detail().message
+    );
+    assert_eq!(
+        provider
+            .responses
+            .lock()
+            .expect("sequence provider mutex")
+            .len(),
+        1
+    );
 }

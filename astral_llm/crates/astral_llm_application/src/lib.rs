@@ -46,8 +46,8 @@ pub mod engine_reading;
 pub mod final_synthesis_synthesizer;
 pub mod generate_reading_use_case;
 pub mod generation_trace;
-pub mod integration_job_result;
 pub mod integration_job_executor;
+pub mod integration_job_result;
 pub mod integration_job_validator;
 pub mod model_capability_registry;
 pub mod payload_sanitizer;
@@ -89,17 +89,19 @@ pub use generation_trace::GenerationTraceContext;
 pub use horoscope::{
     build_calculation_request_for_service, build_interpretation_request,
     build_period_calculation_request_for_service, build_period_writer_request,
-    daily_writer_response, period_editorial_audit, period_writer_response_with_quality_loop,
-    score_calculation, validate_horoscope_response_schema, validate_period_public_request,
-    validate_period_response_contract, validate_public_request, validate_response_evidence,
-    HoroscopePeriodPublicRequest, HoroscopePublicRequest,
-};
-pub use integration_job_result::{
-    job_error_from_reading, job_status_from_reading, unified_result_envelope,
+    daily_writer_response, period_editorial_audit,
+    period_style_editor_max_output_tokens, period_writer_max_output_tokens,
+    period_writer_response_with_quality_loop, score_calculation,
+    validate_horoscope_response_schema, validate_period_public_request,
+    validate_period_response_contract, validate_public_request,
+    validate_response_evidence, HoroscopePeriodPublicRequest, HoroscopePublicRequest,
 };
 pub use integration_job_executor::{
     supports_integration_service, IntegrationJobExecutor, UnifiedReadingOutcome,
     UnifiedReadingResult,
+};
+pub use integration_job_result::{
+    job_error_from_reading, job_status_from_reading, unified_result_envelope,
 };
 pub use integration_job_validator::{IntegrationJobValidator, ValidatedIntegrationJob};
 pub use interpretation_profile_resolver::{

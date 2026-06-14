@@ -1,6 +1,5 @@
-use astral_llm_application::{
-    daily_writer_response, period_writer_response_with_quality_loop,
-};
+use astral_llm_application::{daily_writer_response, period_writer_response_with_quality_loop};
+use astral_llm_domain::GenerateReadingRequest;
 use astral_llm_domain::GenerationRunContractVersions;
 use axum::{
     extract::State,
@@ -11,7 +10,6 @@ use axum::{
 };
 use serde_json::json;
 use uuid::Uuid;
-use astral_llm_domain::GenerateReadingRequest;
 
 use crate::api_contracts::{
     contracts_index, load_published_schema, openapi_bytes, readiness_details, service_not_ready,
@@ -28,7 +26,10 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/contracts", get(list_contracts))
         .route("/openapi.yaml", get(openapi_spec))
         .route("/v1/readings/validate", post(validate_reading))
-        .route("/v1/internal/readings/render", post(render_reading_internal))
+        .route(
+            "/v1/internal/readings/render",
+            post(render_reading_internal),
+        )
         .route(
             "/v1/internal/horoscope/daily/render",
             post(render_horoscope_daily_internal),

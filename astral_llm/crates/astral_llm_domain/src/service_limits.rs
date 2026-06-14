@@ -18,7 +18,7 @@ impl Default for ServiceLimits {
             max_astro_json_bytes: 512 * 1024,
             max_domain_count: 12,
             max_chapters_per_request: 12,
-            default_request_timeout_ms: 120_000,
+            default_request_timeout_ms: 900_000,
             max_custom_instructions_chars: 2_000,
         }
     }

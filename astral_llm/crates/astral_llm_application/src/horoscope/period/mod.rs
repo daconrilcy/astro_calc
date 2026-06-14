@@ -24,12 +24,10 @@ pub use calculation_request::{
 pub use contract_validators::validate_period_response_contract_gates;
 pub use free_validators::validate_period_provider_public_payload;
 pub use period_metadata::{
-    period_writer_max_output_tokens, period_writer_reasoning_effort,
-    validate_period_public_word_count,
+    period_style_editor_max_output_tokens, period_writer_max_output_tokens,
+    period_writer_reasoning_effort, validate_period_public_word_count,
 };
-pub use postprocess::{
-    postprocess_period_provider_response, reprocess_horoscope_period_payload,
-};
+pub use postprocess::{postprocess_period_provider_response, reprocess_horoscope_period_payload};
 pub use public_request::validate_period_public_request;
 pub use quality::{
     period_editorial_audit, period_quality_audit, validate_period_response_quality_gates,
@@ -65,9 +63,7 @@ pub fn build_period_interpretation_request(
     build_period_writer_request(public, calculation)
 }
 
-pub fn validate_period_interpretation_request_schema(
-    value: &Value,
-) -> Result<(), GenerationError> {
+pub fn validate_period_interpretation_request_schema(value: &Value) -> Result<(), GenerationError> {
     validate_period_writer_request_schema(value)
 }
 

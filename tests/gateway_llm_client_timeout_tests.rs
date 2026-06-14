@@ -10,25 +10,19 @@ use tokio::{
 };
 
 #[tokio::test]
-async fn gateway_llm_client_retries_horoscope_period_on_http_408() {
+async fn gateway_llm_client_does_not_retry_horoscope_period_on_http_408() {
     let attempts = Arc::new(AtomicUsize::new(0));
-    let base_url = spawn_stub(
-        attempts.clone(),
-        vec![
-            StubResponse::new(408, "Request Timeout"),
-            StubResponse::new(200, r#"{"ok":true}"#),
-        ],
-    )
-    .await;
+    let base_url = spawn_stub(attempts.clone(), vec![StubResponse::new(408, "Request Timeout")])
+        .await;
     let client = HttpLlmClient::new(base_url, None, 5_000).expect("client");
 
-    let response = client
+    let error = client
         .render_horoscope_period(&json!({ "request": "period-basic" }))
         .await
-        .expect("retried response");
+        .expect_err("period timeout must not be retried");
 
-    assert_eq!(response, json!({ "ok": true }));
-    assert_eq!(attempts.load(Ordering::SeqCst), 2);
+    assert!(error.to_string().contains("timed out"));
+    assert_eq!(attempts.load(Ordering::SeqCst), 1);
 }
 
 #[tokio::test]
@@ -51,6 +45,28 @@ async fn gateway_llm_client_does_not_retry_horoscope_period_on_validation_422() 
 
     assert!(error.to_string().contains("status=422"));
     assert_eq!(attempts.load(Ordering::SeqCst), 1);
+}
+
+#[tokio::test]
+async fn gateway_llm_client_retries_daily_on_http_408() {
+    let attempts = Arc::new(AtomicUsize::new(0));
+    let base_url = spawn_stub(
+        attempts.clone(),
+        vec![
+            StubResponse::new(408, "Request Timeout"),
+            StubResponse::new(200, r#"{"ok":true}"#),
+        ],
+    )
+    .await;
+    let client = HttpLlmClient::new(base_url, None, 5_000).expect("client");
+
+    let response = client
+        .render_horoscope_daily(&json!({ "request": "daily-basic" }))
+        .await
+        .expect("daily timeout should retry once");
+
+    assert_eq!(response, json!({ "ok": true }));
+    assert_eq!(attempts.load(Ordering::SeqCst), 2);
 }
 
 #[derive(Clone)]

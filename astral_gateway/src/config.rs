@@ -35,7 +35,7 @@ impl AppConfig {
             request_timeout_ms: std::env::var("ASTRAL_GATEWAY_REQUEST_TIMEOUT_MS")
                 .ok()
                 .and_then(|value| value.parse::<u64>().ok())
-                .unwrap_or(180_000),
+                .unwrap_or(900_000),
         }
     }
 }

@@ -41,7 +41,7 @@ pub(crate) async fn period_style_editor_response(
         structured_schema: Some(schema),
         reasoning_effort: period_writer_reasoning_effort(request),
         temperature: Some(0.2),
-        max_output_tokens: Some(period_writer_max_output_tokens(request)),
+        max_output_tokens: Some(period_style_editor_max_output_tokens(request)),
         safety_mode: SafetyMode::PlatformRulesOnly,
         timeout: StdDuration::from_secs(180),
         metadata: GenerationMetadata {
@@ -56,6 +56,12 @@ pub(crate) async fn period_style_editor_response(
             chapter_code: Some("period_quality_retry".to_string()),
         },
     };
+    tracing::warn!(
+        service_code = %request["service_code"].as_str().unwrap_or("unknown"),
+        max_output_tokens = provider_request.max_output_tokens.unwrap_or_default(),
+        issue = %error.detail().message,
+        "horoscope period quality retry requested"
+    );
     let routed = use_case
         .router
         .generate(

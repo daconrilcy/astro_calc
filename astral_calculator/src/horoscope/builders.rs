@@ -8,9 +8,8 @@ use serde_json::{json, Value};
 use super::{
     HoroscopeCalculationRequest, HoroscopeCalculationSlotRequest, HoroscopeLocation,
     HoroscopePeriod, HoroscopePeriodCalculationRequest, HoroscopeScanPlan,
-    HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE,
-    HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE, HOROSCOPE_FREE_DAILY_SERVICE_CODE,
-    HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+    HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE, HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+    HOROSCOPE_FREE_DAILY_SERVICE_CODE, HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
     HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE,
 };
@@ -271,9 +270,15 @@ fn resolve_period_window(
         custom_start_date: None,
         custom_end_date: None,
     };
-    let resolved = resolver.resolve(&request).map_err(map_period_window_error)?;
-    let start_utc = resolved.start_datetime_utc().map_err(map_period_window_error)?;
-    let end_utc = resolved.end_datetime_utc().map_err(map_period_window_error)?;
+    let resolved = resolver
+        .resolve(&request)
+        .map_err(map_period_window_error)?;
+    let start_utc = resolved
+        .start_datetime_utc()
+        .map_err(map_period_window_error)?;
+    let end_utc = resolved
+        .end_datetime_utc()
+        .map_err(map_period_window_error)?;
     Ok(json!({
         "period_profile_code": period_profile_code,
         "anchor_date": anchor_date,
@@ -370,7 +375,9 @@ fn validate_scan_plan_value(period_resolution: &Value, scan_plan: &Value) -> Res
     let end = chrono::DateTime::parse_from_rfc3339(end)
         .map_err(|_| "HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH".to_string())?;
     require_canonical_utc_offset(
-        period_resolution["start_datetime_utc"].as_str().unwrap_or(""),
+        period_resolution["start_datetime_utc"]
+            .as_str()
+            .unwrap_or(""),
     )?;
     require_canonical_utc_offset(period_resolution["end_datetime_utc"].as_str().unwrap_or(""))?;
     let included = period_resolution["included_dates"]

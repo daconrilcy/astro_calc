@@ -1,10 +1,7 @@
-use std::{
-    fs,
-    path::PathBuf,
-};
+use std::{fs, path::PathBuf};
 
-use astral_calculator_api::AppConfig;
 use astral_calculator_api::config::validate_path_within;
+use astral_calculator_api::AppConfig;
 
 fn temp_dir() -> PathBuf {
     let dir = std::env::temp_dir().join("astral_calculator_api_unit_regression_tests");

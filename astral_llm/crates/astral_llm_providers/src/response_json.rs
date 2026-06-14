@@ -14,9 +14,7 @@ pub fn parse_response_payload(raw: &str) -> Result<Value, LlmProviderError> {
                 .and_then(|json| serde_json::from_str::<Value>(&json))
         })
         .map_err(|err| {
-            LlmProviderError::InvalidResponse(format!(
-                "provider payload is not valid JSON: {err}"
-            ))
+            LlmProviderError::InvalidResponse(format!("provider payload is not valid JSON: {err}"))
         })
 }
 
@@ -33,7 +31,9 @@ pub fn parse_model_output_json(raw: &str) -> Option<Value> {
                 .unwrap_or(trimmed);
             serde_json::from_str::<Value>(unfenced).ok()
         })
-        .or_else(|| extract_balanced_json_object(raw).and_then(|json| serde_json::from_str(&json).ok()))
+        .or_else(|| {
+            extract_balanced_json_object(raw).and_then(|json| serde_json::from_str(&json).ok())
+        })
 }
 
 fn extract_balanced_json_object(raw: &str) -> Option<String> {

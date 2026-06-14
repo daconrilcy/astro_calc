@@ -34,6 +34,11 @@ pub(crate) async fn period_writer_response(
             chapter_code: None,
         },
     };
+    tracing::info!(
+        service_code = %request["service_code"].as_str().unwrap_or("unknown"),
+        max_output_tokens = provider_request.max_output_tokens.unwrap_or_default(),
+        "horoscope period writer request"
+    );
     let routed = use_case
         .router
         .generate(
@@ -71,15 +76,31 @@ pub async fn period_writer_response_with_quality_loop(
     run_id: Option<&str>,
 ) -> Result<Value, GenerationError> {
     let mut response = period_writer_response(use_case, request, run_id).await?;
+    let mut retries_used = 0_usize;
     for attempt in 0..=PERIOD_V2_QUALITY_MAX_RETRIES {
         match validate_period_response_quality_gates(request, &response) {
-            Ok(()) => return Ok(response),
+            Ok(()) => {
+                tracing::info!(
+                    service_code = %request["service_code"].as_str().unwrap_or("unknown"),
+                    quality_retries_used = retries_used,
+                    max_retries = PERIOD_V2_QUALITY_MAX_RETRIES,
+                    "horoscope period quality loop completed"
+                );
+                return Ok(response);
+            }
             Err(err) if attempt < PERIOD_V2_QUALITY_MAX_RETRIES => {
-                response =
-                    period_style_editor_response(use_case, request, &response, &err, run_id)
-                        .await?;
+                retries_used += 1;
+                response = period_style_editor_response(use_case, request, &response, &err, run_id)
+                    .await?;
             }
             Err(err) => {
+                tracing::warn!(
+                    service_code = %request["service_code"].as_str().unwrap_or("unknown"),
+                    quality_retries_used = retries_used,
+                    max_retries = PERIOD_V2_QUALITY_MAX_RETRIES,
+                    final_error = %err.detail().message,
+                    "horoscope period quality loop failed"
+                );
                 return Err(GenerationError::with_details(
                     GenerationErrorCode::PostSafetyValidationFailed,
                     "HOROSCOPE_PERIOD_QUALITY_FAILED",
@@ -337,7 +358,7 @@ pub fn period_writer_messages(request: &Value) -> Result<Vec<PromptMessage>, Gen
             PromptMessage {
                 role: PromptRole::System,
                 content: format!(
-                    "Tu écris un horoscope Free des 7 prochains jours en français. Retourne uniquement un JSON compact minifié conforme au schéma fourni, sans markdown ni texte autour. N'expose jamais de codes internes. Le texte public doit rester court, concret et lisible, entre {} et {} mots, sans dépasser {} mots.",
+                    "Tu écris un horoscope Free des 7 prochains jours en français. Retourne uniquement un JSON compact minifié conforme au schéma fourni, sans markdown ni texte autour. N'expose jamais de codes internes. Ne commente jamais le résultat, le JSON, le schéma, la validité, une erreur, un timeout, une troncature, une contrainte, le prompt ou ton propre processus: si quelque chose manque, rends simplement le meilleur JSON final possible sans méta-commentaire. Le texte public doit rester court, concret et lisible, entre {} et {} mots, sans dépasser {} mots.",
                     limits.target_min, limits.target_max, limits.hard_limit
                 ),
             },
@@ -354,7 +375,7 @@ pub fn period_writer_messages(request: &Value) -> Result<Vec<PromptMessage>, Gen
             PromptMessage {
                 role: PromptRole::System,
                 content: format!(
-                    "Tu écris une lecture Premium d'horoscope de période en français et tu retournes uniquement un objet JSON conforme au schéma fourni. Transforme les appuis de la requête en lecture humaine, fluide et utile, sans imposer de lexique canonique après coup. N'invente aucune preuve. Chaque evidence_key et chaque source_snapshot_key doit provenir de la requête. Écris dans un français naturel, précis et incarné. Le texte public doit compter entre {} et {} mots, sans dépasser {} mots.",
+                    "Tu écris une lecture Premium d'horoscope de période en français et tu retournes uniquement un objet JSON conforme au schéma fourni. Transforme les appuis de la requête en lecture humaine, fluide et utile, sans imposer de lexique canonique après coup. N'invente aucune preuve. Chaque evidence_key et chaque source_snapshot_key doit provenir de la requête. N'ajoute jamais de commentaire sur le résultat, le JSON, le schéma, la validité, une erreur, un timeout, une troncature, une contrainte, le prompt ou ton propre processus: s'il y a une difficulté, rends uniquement le meilleur JSON final possible. Écris dans un français naturel, précis et incarné. Le texte public doit compter entre {} et {} mots, sans dépasser {} mots.",
                     limits.target_min, limits.target_max, limits.hard_limit
                 ),
             },
@@ -366,7 +387,7 @@ pub fn period_writer_messages(request: &Value) -> Result<Vec<PromptMessage>, Gen
             },
         ]);
     }
-    Ok(vec![        PromptMessage {            role: PromptRole::System,            content: format!(                "Tu écris une lecture Basic d'horoscope de période en français. Retourne uniquement un JSON compact minified conforme au schéma fourni: pas de markdown, pas de commentaires, pas de pretty print, pas d'indentation. N'invente aucune preuve: chaque evidence_key publique doit provenir de la requête. N'affiche jamais les codes internes, les clés de preuve, les noms techniques de transits, les theme_code anglais, ni les codes tone anglais. La timeline doit couvrir exactement les 7 dates, avec des formulations variées mais courtes. La lecture publique doit compter entre {} et {} mots, sans dépasser {} mots.",                limits.target_min, limits.target_max, limits.hard_limit            ),        },        PromptMessage {            role: PromptRole::User,            content: format!(                "Construis horoscope_period_response Basic pour cette requête d'interprétation. Produis week_overview synthétique, key_days/best_days/watch_days courts, watch_summary court, 7 daily_timeline en une phrase dense par jour plus un conseil bref, 2 à 3 domain_sections seulement, advice en 3 champs courts, evidence_summary limitée à 1 à 5 entrées. Utilise les libellés français déjà présents, pas les codes internes. Atteins {} à {} mots publics par densité utile, pas par répétition. Mentionne les indications de personnalisation natale dans au moins 4 jours, chaque domaine et la vue d'ensemble, sans recopier les noms de champs ni les consignes internes. Chaque domain_sections.text doit contenir une phrase courte qui relie explicitement le domaine à un repère personnel avec un de ces mots publics: thème natal, zone natale, maison, sensibilité, besoins émotionnels, communiquer, penser, attachement, agir, responsabilité, limites, relations directes, besoin de sens, habitudes, rythme de travail. Retourne le JSON final complet sur une seule ligne. Requête JSON:\n{compact}",                limits.target_min, limits.target_max            ),        },    ])
+    Ok(vec![        PromptMessage {            role: PromptRole::System,            content: format!(                "Tu écris une lecture Basic d'horoscope de période en français. Retourne uniquement un JSON compact minified conforme au schéma fourni: pas de markdown, pas de commentaires, pas de pretty print, pas d'indentation. N'invente aucune preuve: chaque evidence_key publique doit provenir de la requête. N'affiche jamais les codes internes, les clés de preuve, les noms techniques de transits, les theme_code anglais, ni les codes tone anglais. Ne commente jamais le résultat, le JSON, le schéma, la validité, une erreur, un timeout, une troncature, une contrainte, le prompt ou ton propre processus: s'il y a une difficulté, rends uniquement le meilleur JSON final possible sans aucun méta-commentaire. La timeline doit couvrir exactement les 7 dates, avec des formulations variées mais courtes. La lecture publique doit compter entre {} et {} mots, sans dépasser {} mots.",                limits.target_min, limits.target_max, limits.hard_limit            ),        },        PromptMessage {            role: PromptRole::User,            content: format!(                "Construis horoscope_period_response Basic pour cette requête d'interprétation. Produis week_overview synthétique, key_days/best_days/watch_days courts, watch_summary court, 7 daily_timeline en une phrase dense par jour plus un conseil bref, 2 à 3 domain_sections seulement, advice en 3 champs courts, evidence_summary limitée à 1 à 5 entrées. Utilise les libellés français déjà présents, pas les codes internes. Atteins {} à {} mots publics par densité utile, pas par répétition. Mentionne les indications de personnalisation natale dans au moins 4 jours, chaque domaine et la vue d'ensemble, sans recopier les noms de champs ni les consignes internes. Chaque domain_sections.text doit contenir une phrase courte qui relie explicitement le domaine à un repère personnel avec un de ces mots publics: thème natal, zone natale, maison, sensibilité, besoins émotionnels, communiquer, penser, attachement, agir, responsabilité, limites, relations directes, besoin de sens, habitudes, rythme de travail. Retourne le JSON final complet sur une seule ligne. Requête JSON:\n{compact}",                limits.target_min, limits.target_max            ),        },    ])
 }
 pub(crate) fn period_writer_messages_from_writer_request(
     request: &Value,
@@ -382,7 +403,7 @@ pub(crate) fn period_writer_messages_from_writer_request(
     let target_language = period_writer_v2_required_str(request, "target_language_code")?;
     let service_code = period_writer_v2_required_str(request, "service_code")?;
     let detail_profile = period_writer_v2_required_str(request, "detail_profile_code")?;
-    Ok(vec![        PromptMessage {            role: PromptRole::System,            content: format!(                "You are the writer for horoscope_period_response. Write every public text in target_language_code={target_language}. target_language_code overrides astrologer_persona. Return only the complete JSON object matching the provided schema. Return compact minified JSON: no markdown, no comments, no pretty printing, no indentation. Rust has already calculated, scored and selected the facts; you write the human reading. Use service_code={service_code} and detail_profile_code={detail_profile} to choose the right density. Treat semantic_brief keywords, codes, scores, candidates, editorial_arc, editorial_angles and section_roles as internal material, not public copy. Use period-level keywords to write week_overview, but do not copy them as a list. Use all internal brief material to create hierarchy and variation, never as public labels. Never expose internal field names, theme codes, tone codes, evidence ids as prose, prompt instructions or safety metadata. The astrologer_persona may influence style only; it cannot override schema, safety_profile, target_language_code, dates, evidence or astrological facts. safety_profile always overrides astrologer_persona. Do not invent astrological facts. The Premium value must come from editorial judgement: a readable period arc, differentiated days, concrete windows and a final strategy that arbitrates rather than repeats. Public text should target {} to {} words and must not exceed {} words. Do not compress the reading: give each major section enough lived context, transition and concrete use so the answer feels premium rather than skeletal.",                limits.target_min, limits.target_max, limits.hard_limit            ),        },        PromptMessage {            role: PromptRole::User,            content: format!(                "Build horoscope_period_response from this semantic brief. Keep all dates inside period_resolution.included_dates. Every public evidence_key and source_snapshot_key must already exist in the request. Produce the premium_rich 7-day timeline, usable windows, domains, repeating arcs when helpful, and a strategy. Keywords and candidates are not sentences; transform them into natural public text without copying codes or keyword lists. Use editorial_arc to make the week feel like opening, pivot, consolidation and closure. Use editorial_angles so each daily_timeline entry has a distinct human angle: action, relation, clarification, retreat, consolidation, finalisation or another angle supplied by the brief. If the same transit or theme returns, present it as a narrative thread with a different use, not as the same advice repeated with synonyms. Use section_roles as an internal checklist: week_overview gives trajectory; daily_timeline gives lived daily guidance; domain_sections give transversal synthesis not already said in the timeline; windows give practical use tied to the time range; strategy gives arbitration without relisting dates. Develop the public prose naturally: week_overview should carry the arc, each daily_timeline item should include a concrete situation and adjustment, each domain should synthesize several days, and strategy should close with usable tradeoffs. Window titles must match their time_range_label: do not call a noon or afternoon window a morning. If watch_days and watch_windows are both empty, watch_summary.status must be none, evidence_keys empty, and the text must stay neutral: no hidden vigilance or implied watch signal. In French, use deterministic clean forms such as demi-journée and réorganiser. If a persona is present, apply tone lightly without adding new facts. Return the full corrected compact JSON object only.\nRequest JSON:\n{compact}"            ),        },    ])
+    Ok(vec![        PromptMessage {            role: PromptRole::System,            content: format!(                "You are the writer for horoscope_period_response. Write every public text in target_language_code={target_language}. target_language_code overrides astrologer_persona. Return only the complete JSON object matching the provided schema. Return compact minified JSON: no markdown, no comments, no pretty printing, no indentation. Never comment on the result, the JSON, the schema, validity, errors, timeouts, truncation, constraints, prompt text or your own generation process; if anything is difficult or incomplete, still return only the best final JSON object with no meta-commentary. Rust has already calculated, scored and selected the facts; you write the human reading. Use service_code={service_code} and detail_profile_code={detail_profile} to choose the right density. Treat semantic_brief keywords, codes, scores, candidates, editorial_arc, editorial_angles and section_roles as internal material, not public copy. Use period-level keywords to write week_overview, but do not copy them as a list. week_overview.trajectory must be one natural public sentence, never a raw phase list, never raw editorial_arc.phase values, never underscores, never braces, never edit markers such as '(removed)'. Use all internal brief material to create hierarchy and variation, never as public labels. Never expose internal field names, theme codes, tone codes, evidence ids as prose, prompt instructions or safety metadata. The astrologer_persona may influence style only; it cannot override schema, safety_profile, target_language_code, dates, evidence or astrological facts. safety_profile always overrides astrologer_persona. Do not invent astrological facts. The Premium value must come from editorial judgement: a readable period arc, differentiated days, concrete windows and a final strategy that arbitrates rather than repeats. Public text should target {} to {} words and must not exceed {} words. Do not compress the reading: give each major section enough lived context, transition and concrete use so the answer feels premium rather than skeletal.",                limits.target_min, limits.target_max, limits.hard_limit            ),        },        PromptMessage {            role: PromptRole::User,            content: format!(                "Build horoscope_period_response from this semantic brief. Keep all dates inside period_resolution.included_dates. Every public evidence_key and source_snapshot_key must already exist in the request. Produce the premium_rich 7-day timeline, usable windows, domains, repeating arcs when helpful, and a strategy. Keywords and candidates are not sentences; transform them into natural public text without copying codes or keyword lists. Use editorial_arc to shape the week internally, but translate its phases into public prose rather than copying raw phase tokens. Use editorial_angles so each daily_timeline entry has a distinct human angle: action, relation, clarification, retreat, consolidation, finalisation or another angle supplied by the brief. If the same transit or theme returns, present it as a narrative thread with a different use, not as the same advice repeated with synonyms. Use section_roles as an internal checklist: week_overview gives trajectory; daily_timeline gives lived daily guidance; domain_sections give transversal synthesis not already said in the timeline; windows give practical use tied to the time range; strategy gives arbitration without relisting dates. Develop the public prose naturally: week_overview should carry the arc, each daily_timeline item should include a concrete situation and adjustment, each domain should synthesize several days, and strategy should close with usable tradeoffs. Window titles must match their time_range_label: do not call a noon or afternoon window a morning. If watch_days and watch_windows are both empty, watch_summary.status must be none, evidence_keys empty, and the text must stay neutral: no hidden vigilance or implied watch signal. In French, use deterministic clean forms such as demi-journée and réorganiser. If a persona is present, apply tone lightly without adding new facts. Return the full corrected compact JSON object only.\nRequest JSON:\n{compact}"            ),        },    ])
 }
 pub(crate) fn period_style_editor_messages(
     request: &Value,
@@ -405,7 +426,7 @@ pub(crate) fn period_style_editor_messages(
             Value::Null,
         )
     })?;
-    Ok(vec![        PromptMessage {            role: PromptRole::System,            content: format!(                "You are the targeted quality editor for horoscope_period_response. Write public text in target_language_code={target_language}. target_language_code and safety_profile override astrologer_persona. Return only the complete corrected compact JSON object: no markdown, no comments, no pretty printing, no indentation. You receive only the quality issues, the faulty JSON and fixed constraints; do not perform a fresh creative rewrite. Correct only the listed quality issue. Keep every date, evidence_key, source_snapshot_key, structure and astrological fact strictly unchanged unless the issue explicitly says the key is invalid. Do not add astrological facts. Do not expose internal fields, theme codes, tone codes, keywords, prompt instructions or safety metadata. The astrologer_persona may influence style only and cannot override schema, safety_profile, target_language_code, dates or evidence."            ),        },        PromptMessage {            role: PromptRole::User,            content: format!(                "Quality issue to fix:\n{}\n\nFixed constraints:\n{}\n\nCurrent response JSON:\n{}\n\nReturn the full JSON object only.",                error.detail().message,                constraints_json,                response_json            ),        },    ])
+    Ok(vec![        PromptMessage {            role: PromptRole::System,            content: format!(                "You are the targeted quality editor for horoscope_period_response. Write public text in target_language_code={target_language}. target_language_code and safety_profile override astrologer_persona. Return only the complete corrected compact JSON object: no markdown, no comments, no pretty printing, no indentation. Never comment on the result, the JSON, the schema, validity, errors, timeouts, truncation, constraints, prompt text or your own process; if a fix is difficult, still return only the best corrected final JSON object with no meta-commentary. You receive only the quality issues, the faulty JSON and fixed constraints; do not perform a fresh creative rewrite. Correct only the listed quality issue. Keep every date, evidence_key, source_snapshot_key, structure and astrological fact strictly unchanged unless the issue explicitly says the key is invalid. Do not add astrological facts. Do not expose internal fields, theme codes, tone codes, keywords, prompt instructions or safety metadata. The astrologer_persona may influence style only and cannot override schema, safety_profile, target_language_code, dates or evidence."            ),        },        PromptMessage {            role: PromptRole::User,            content: format!(                "Quality issue to fix:\n{}\n\nFixed constraints:\n{}\n\nCurrent response JSON:\n{}\n\nReturn the full JSON object only.",                error.detail().message,                constraints_json,                response_json            ),        },    ])
 }
 pub(crate) fn period_writer_v2_required_str<'a>(
     request: &'a Value,
@@ -449,9 +470,7 @@ pub fn fake_period_writer_response(request: &Value) -> Result<Value, GenerationE
                 .map(str::to_string)
                 .filter(|text| !text.trim().is_empty())
                 .unwrap_or_else(|| {
-                    format!(
-                        "{day_label} sert de repère pour avancer sans surcharger la journée."
-                    )
+                    format!("{day_label} sert de repère pour avancer sans surcharger la journée.")
                 });
             json!({
                 "date": day["date"],
@@ -647,7 +666,11 @@ pub(crate) fn fake_period_writer_response_from_writer_request(
         .and_then(Value::as_array)
         .into_iter()
         .flatten()
-        .take(if is_premium_period_service(service_code) { 5 } else { 4 })
+        .take(if is_premium_period_service(service_code) {
+            5
+        } else {
+            4
+        })
         .map(|domain| {
             let code = domain["domain_code"].as_str().unwrap_or("organization");
             json!({
@@ -793,7 +816,11 @@ pub(crate) fn window_markers_from_candidates_v2(
             .take(1)
             .collect();
     }
-    let limit = if candidate_type == "best" && windows.len() > 1 { 2 } else { 3 };
+    let limit = if candidate_type == "best" && windows.len() > 1 {
+        2
+    } else {
+        3
+    };
     windows
         .into_iter()
         .take(limit)
@@ -903,15 +930,13 @@ pub(crate) fn fake_free_period_writer_response(request: &Value) -> Result<Value,
         .cloned()
         .collect::<Vec<_>>();
     let key_days = if key_days.is_empty() {
-        vec![
-            json!({
-                "date": date,
-                "title": public_day_label(date),
-                "reason": format!("Le thème {} ressort plus nettement et donne un repère utile sans en faire un verdict.", theme),
-                "evidence_keys": [evidence_key.clone()],
-                "fallback_reason": null
-            }),
-        ]
+        vec![json!({
+            "date": date,
+            "title": public_day_label(date),
+            "reason": format!("Le thème {} ressort plus nettement et donne un repère utile sans en faire un verdict.", theme),
+            "evidence_keys": [evidence_key.clone()],
+            "fallback_reason": null
+        })]
     } else {
         key_days
     };

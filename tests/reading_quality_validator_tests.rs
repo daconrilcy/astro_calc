@@ -10,8 +10,9 @@ use astral_llm_domain::{
     },
     interpretation_profile::SYNTHESIS_CHAPTER_CODE,
     output_contract::GenerationMode,
-    AstroBasisItem, AstroCalculationPayload, AstrologerProfile, EngineParams, GenerateReadingRequest,
-    JargonLevel, OutputFormat, ProductContext, ResponseContract, ToneProfile, WordingStyle,
+    AstroBasisItem, AstroCalculationPayload, AstrologerProfile, EngineParams,
+    GenerateReadingRequest, JargonLevel, OutputFormat, ProductContext, ResponseContract,
+    ToneProfile, WordingStyle,
 };
 
 fn premium_ctx(profile_code: &str) -> ResolvedInterpretationContext {

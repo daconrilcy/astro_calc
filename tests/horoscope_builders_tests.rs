@@ -24,7 +24,10 @@ fn free_daily_builder_keeps_public_surface_minimal() {
     .expect("daily request");
 
     assert_eq!(request.contract_version, "horoscope_calculation_request");
-    assert_eq!(request.service_code, HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE);
+    assert_eq!(
+        request.service_code,
+        HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE
+    );
     assert!(request.location.is_none());
     assert!(request.house_system_code.is_none());
     assert!(request.slot_profile_code.is_none());
@@ -63,7 +66,10 @@ fn premium_daily_builder_requires_location_and_enables_local_features() {
     assert_eq!(request.slot_profile_code.as_deref(), Some("daily_2h_slots"));
     assert!(request.location.is_some());
     assert_eq!(request.house_system_code.as_deref(), Some("placidus"));
-    assert!(request.calculation_features.iter().any(|feature| feature == "local_chart"));
+    assert!(request
+        .calculation_features
+        .iter()
+        .any(|feature| feature == "local_chart"));
 }
 
 #[test]

@@ -161,8 +161,17 @@ fn text_reprocessing_horoscope_period_generates_expected_json() {
         }),
     ));
 
-    assert_eq!(response.payload["daily_timeline"][0]["theme_code"], "relationship");
-    assert!(response.payload["summary"]["text"].as_str().unwrap().is_empty() == false);
+    assert_eq!(
+        response.payload["daily_timeline"][0]["theme_code"],
+        "relationship"
+    );
+    assert!(
+        response.payload["summary"]["text"]
+            .as_str()
+            .unwrap()
+            .is_empty()
+            == false
+    );
     assert!(response.payload["daily_timeline"][0]["text"]
         .as_str()
         .unwrap()

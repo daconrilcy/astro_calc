@@ -238,7 +238,9 @@ ASTRAL_LLM_API_KEY=ma-cle-llm-secrete
 ASTRAL_LLM_DEFAULT_PROVIDER=fake     # fake = pas d'appel OpenAI (tests locaux)
 ASTRAL_LLM_DEFAULT_MODEL=fake-model
 ASTRAL_LLM_ENABLE_PERSISTENCE=false  # ignoré en Docker : Compose force true
-ASTRAL_LLM_REQUEST_TIMEOUT_MS=120000
+ASTRAL_LLM_REQUEST_TIMEOUT_MS=900000
+ASTRAL_GATEWAY_REQUEST_TIMEOUT_MS=900000
+ASTRAL_CALCULATOR_REQUEST_TIMEOUT_MS=900000
 ASTRAL_LLM_STORE_RAW_PROVIDER_OUTPUTS=false  # optionnel : désactive les sorties brutes LLM en dev
 ASTRAL_LLM_ENABLE_LEGACY_PRODUCT_CODE_SHIM=true
 ```
@@ -255,7 +257,9 @@ Pour des **vraies** générations OpenAI :
 ```env
 ASTRAL_LLM_DEFAULT_PROVIDER=openai
 OPENAI_API_KEY=sk-...
-ASTRAL_LLM_REQUEST_TIMEOUT_MS=900000   # recommandé pour natal_premium_plus
+ASTRAL_LLM_REQUEST_TIMEOUT_MS=900000
+ASTRAL_GATEWAY_REQUEST_TIMEOUT_MS=900000
+ASTRAL_CALCULATOR_REQUEST_TIMEOUT_MS=900000
 ```
 
 Pour planifier ou activer la coupure du shim legacy restant :
@@ -419,7 +423,7 @@ Détails alignés sur [`scripts/docker_compose_smoke.ps1`](../scripts/docker_com
 
 ### E2E Premium / Premium Plus (OpenAI réel)
 
-Test **manuel** avec appels OpenAI facturés (~4–5 min). Nécessite `OPENAI_API_KEY`, `ASTRAL_LLM_API_KEY` et `ASTRAL_LLM_REQUEST_TIMEOUT_MS=900000` dans `.env`.
+Test **manuel** avec appels OpenAI facturés (~4–5 min). Nécessite `OPENAI_API_KEY`, `ASTRAL_LLM_API_KEY` et, pour `horoscope period`, l'alignement `ASTRAL_LLM_REQUEST_TIMEOUT_MS=900000`, `ASTRAL_GATEWAY_REQUEST_TIMEOUT_MS=900000`, `ASTRAL_CALCULATOR_REQUEST_TIMEOUT_MS=900000` dans `.env`.
 
 ```powershell
 .\scripts\docker_premium_openai_e2e.ps1
@@ -867,9 +871,11 @@ Augmentez dans `.env` :
 
 ```env
 ASTRAL_LLM_REQUEST_TIMEOUT_MS=900000
+ASTRAL_GATEWAY_REQUEST_TIMEOUT_MS=900000
+ASTRAL_CALCULATOR_REQUEST_TIMEOUT_MS=900000
 ```
 
-Redémarrez : `docker compose restart astral_llm_api`.
+Redémarrez : `docker compose restart astral_gateway astral_calculator_api astral_llm_api`.
 
 ### Natal simplifié — HTTP 500 / `REFERENCE_DATA_MISSING`
 
@@ -948,7 +954,7 @@ Pour certifier une lecture Premium Plus de bout en bout (hors Docker ou avec sta
 .\scripts\test_natal_premium_plus_profile.ps1
 ```
 
-(Requiert `OPENAI_API_KEY` et `ASTRAL_LLM_REQUEST_TIMEOUT_MS=900000`.)
+(Requiert `OPENAI_API_KEY` et l'alignement `ASTRAL_LLM_REQUEST_TIMEOUT_MS=900000`, `ASTRAL_GATEWAY_REQUEST_TIMEOUT_MS=900000`, `ASTRAL_CALCULATOR_REQUEST_TIMEOUT_MS=900000`.)
 
 ---
 

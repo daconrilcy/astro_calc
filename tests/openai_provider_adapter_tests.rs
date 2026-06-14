@@ -36,7 +36,11 @@ fn request_with_reasoning(reasoning_effort: Option<ReasoningEffort>) -> Provider
 
 async fn spawn_openai_stub(
     response_json: serde_json::Value,
-) -> (String, oneshot::Receiver<serde_json::Value>, tokio::task::JoinHandle<()>) {
+) -> (
+    String,
+    oneshot::Receiver<serde_json::Value>,
+    tokio::task::JoinHandle<()>,
+) {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind stub");
     let address = listener.local_addr().expect("stub addr");
     let (tx, rx) = oneshot::channel();
@@ -116,7 +120,13 @@ async fn openai_provider_uses_top_level_output_text() {
         .expect("provider response");
 
     assert_eq!(response.raw_text, "{\"ok\":true}");
-    assert_eq!(response.parsed_json.as_ref().and_then(|json| json.get("ok")), Some(&serde_json::json!(true)));
+    assert_eq!(
+        response
+            .parsed_json
+            .as_ref()
+            .and_then(|json| json.get("ok")),
+        Some(&serde_json::json!(true))
+    );
     handle.await.expect("stub join");
 }
 
@@ -144,7 +154,11 @@ async fn openai_provider_falls_back_to_output_messages() {
 
     assert_eq!(response.raw_text, "{\"chapter\":\"identity\"}");
     assert_eq!(
-        response.parsed_json.as_ref().and_then(|json| json.get("chapter")).and_then(|value| value.as_str()),
+        response
+            .parsed_json
+            .as_ref()
+            .and_then(|json| json.get("chapter"))
+            .and_then(|value| value.as_str()),
         Some("identity")
     );
     handle.await.expect("stub join");

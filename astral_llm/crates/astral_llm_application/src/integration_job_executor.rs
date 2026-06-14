@@ -60,7 +60,11 @@ impl<'a> IntegrationJobExecutor<'a> {
         }
         if let Some(descriptor) = horoscope_service_descriptor(&service.service_code) {
             return self
-                .run_horoscope_service(job, descriptor.contracts.public_request_contract, public_run_id)
+                .run_horoscope_service(
+                    job,
+                    descriptor.contracts.public_request_contract,
+                    public_run_id,
+                )
                 .await;
         }
 
@@ -225,14 +229,26 @@ pub fn supports_integration_service(service: &IntegrationService) -> bool {
             && matches_orchestration(service, &["interpretation_only", "llm_only"]);
     }
     match service.calculation_mode {
-        CalculationMode::SimplifiedNatal => matches_orchestration(
-            service,
-            &["unified_from_birth", "calculator_then_llm", "legacy_unified"],
-        ) && service.payload_contract == "astro_simplified_natal_request_v1",
-        CalculationMode::FullNatal => matches_orchestration(
-            service,
-            &["unified_from_birth", "calculator_then_llm", "legacy_unified"],
-        ) && service.payload_contract == "astro_engine_request_v1",
+        CalculationMode::SimplifiedNatal => {
+            matches_orchestration(
+                service,
+                &[
+                    "unified_from_birth",
+                    "calculator_then_llm",
+                    "legacy_unified",
+                ],
+            ) && service.payload_contract == "astro_simplified_natal_request_v1"
+        }
+        CalculationMode::FullNatal => {
+            matches_orchestration(
+                service,
+                &[
+                    "unified_from_birth",
+                    "calculator_then_llm",
+                    "legacy_unified",
+                ],
+            ) && service.payload_contract == "astro_engine_request_v1"
+        }
         CalculationMode::None => false,
     }
 }

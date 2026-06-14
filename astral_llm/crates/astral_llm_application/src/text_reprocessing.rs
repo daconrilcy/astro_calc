@@ -1057,7 +1057,7 @@ fn contains_prompt_injection(text: &str) -> bool {
     .any(|pattern| lower.contains(pattern))
 }
 
-fn normalize_em_dashes(text: &str) -> String {
+pub(crate) fn normalize_em_dashes(text: &str) -> String {
     text.replace('—', "-")
 }
 

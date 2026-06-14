@@ -236,6 +236,14 @@ pub fn period_writer_max_output_tokens(request: &Value) -> u32 {
     let limits = period_word_limits_for_request(request);
     ((limits.hard_limit as u32).saturating_mul(3)).saturating_add(500)
 }
+
+#[doc(hidden)]
+pub fn period_style_editor_max_output_tokens(request: &Value) -> u32 {
+    if is_period_writer_request(request) {
+        return PERIOD_V2_EDITOR_MAX_OUTPUT_TOKENS;
+    }
+    period_writer_max_output_tokens(request)
+}
 #[doc(hidden)]
 pub fn period_writer_reasoning_effort(request: &Value) -> Option<ReasoningEffort> {
     if is_period_writer_request(request) || is_free_period_request(request) {

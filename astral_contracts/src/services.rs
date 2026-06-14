@@ -44,8 +44,7 @@ pub const HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE: &str =
     "horoscope_premium_daily_local_2h_slots";
 pub const HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE: &str =
     "horoscope_basic_next_7_days_natal";
-pub const HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE: &str =
-    "horoscope_free_next_7_days_natal";
+pub const HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE: &str = "horoscope_free_next_7_days_natal";
 pub const HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE: &str =
     "horoscope_premium_next_7_days_natal";
 

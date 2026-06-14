@@ -902,7 +902,7 @@ pub fn service_limits_from_env() -> ServiceLimits {
         max_astro_json_bytes: env_usize("ASTRAL_LLM_MAX_ASTRO_JSON_BYTES", 512 * 1024),
         max_domain_count: env_u8("ASTRAL_LLM_MAX_DOMAIN_COUNT", 12),
         max_chapters_per_request: env_u8("ASTRAL_LLM_MAX_CHAPTERS", 12),
-        default_request_timeout_ms: env_u64("ASTRAL_LLM_REQUEST_TIMEOUT_MS", 120_000),
+        default_request_timeout_ms: env_u64("ASTRAL_LLM_REQUEST_TIMEOUT_MS", 900_000),
         max_custom_instructions_chars: env_usize("ASTRAL_LLM_MAX_CUSTOM_INSTRUCTIONS_CHARS", 2_000),
     }
 }

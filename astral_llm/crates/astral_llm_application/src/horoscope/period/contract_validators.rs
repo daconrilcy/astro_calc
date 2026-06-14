@@ -35,6 +35,7 @@ pub fn validate_period_response_contract_gates(
     }
     let public_text = collect_period_v2_public_text(response);
     validate_period_v2_public_text_forbidden_technical_leaks(&public_text)?;
+    validate_period_week_overview_trajectory_public_shape(response)?;
     validate_period_public_word_count(request, response, &public_text)?;
     Ok(())
 }
@@ -58,6 +59,35 @@ pub(crate) fn validate_period_response_identity_contract(
         return Err(quality_error(
             "HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH",
             json!({ "field": "period_resolution" }),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_period_week_overview_trajectory_public_shape(
+    response: &Value,
+) -> Result<(), GenerationError> {
+    let trajectory = response["week_overview"]["trajectory"]
+        .as_str()
+        .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_RESPONSE_INVALID"))?;
+    let lower = trajectory.to_lowercase();
+    let phase_list_like = lower.contains("ouverture")
+        && lower.contains("mise en mouvement")
+        && lower.contains("pivot")
+        && lower.contains("consolidation")
+        && (lower.contains("clôture") || lower.contains("cloture"));
+    for forbidden in ["{", "}", "(removed)", "mise_en_"] {
+        if lower.contains(forbidden) {
+            return Err(quality_error(
+                "HOROSCOPE_PERIOD_TECHNICAL_CODE_LEAK",
+                json!({ "field": "week_overview.trajectory", "forbidden": forbidden }),
+            ));
+        }
+    }
+    if phase_list_like {
+        return Err(quality_error(
+            "HOROSCOPE_PERIOD_TECHNICAL_CODE_LEAK",
+            json!({ "field": "week_overview.trajectory", "forbidden": "raw_phase_list" }),
         ));
     }
     Ok(())

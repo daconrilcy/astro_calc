@@ -113,7 +113,9 @@ async fn gateway_daily_basic_uses_calculator_then_llm() {
 async fn gateway_period_free_uses_calculator_then_llm() {
     let calculator = Arc::new(FixtureCalculator {
         daily: Value::Null,
-        period: read_golden("horoscope_period_calculation_response_free_next_7_days_paris_1990.json"),
+        period: read_golden(
+            "horoscope_period_calculation_response_free_next_7_days_paris_1990.json",
+        ),
     });
     let llm = Arc::new(FixtureLlm {
         daily: Value::Null,

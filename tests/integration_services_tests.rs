@@ -106,7 +106,10 @@ fn integration_service_schemas_publish_api_surface() {
             serde_json::from_str(&fs::read_to_string(dir.join(file)).expect("read schema"))
                 .expect("valid json");
         assert!(
-            schema.get("properties").and_then(|v| v.get("api_surface")).is_some(),
+            schema
+                .get("properties")
+                .and_then(|v| v.get("api_surface"))
+                .is_some(),
             "{file} must expose api_surface"
         );
         let required = schema
@@ -114,7 +117,9 @@ fn integration_service_schemas_publish_api_surface() {
             .and_then(|v| v.as_array())
             .expect("required array");
         assert!(
-            required.iter().any(|value| value.as_str() == Some("api_surface")),
+            required
+                .iter()
+                .any(|value| value.as_str() == Some("api_surface")),
             "{file} must require api_surface"
         );
     }
@@ -201,7 +206,9 @@ fn from_payload_services_have_fixed_profile() {
     ];
 
     for (service_code, profile_code) in expected {
-        let service = services.get(service_code).unwrap_or_else(|| panic!("{service_code}"));
+        let service = services
+            .get(service_code)
+            .unwrap_or_else(|| panic!("{service_code}"));
         assert!(service.is_from_payload());
         assert_eq!(service.profile_code, profile_code);
         assert_eq!(service.payload_contract, "generate_reading_request_v1");
@@ -240,14 +247,8 @@ fn premium_next_7_days_catalog_exposes_v2_ui_entry_without_contract_change() {
         .expect("horoscope_premium_next_7_days_natal in seed");
 
     assert_eq!(premium.label_fr, "Horoscope Premium 7 prochains jours V2");
-    assert_eq!(
-        premium.payload_contract,
-        "horoscope_period_natal_request"
-    );
-    assert_eq!(
-        premium.reading_output_contract,
-        "horoscope_period_response"
-    );
+    assert_eq!(premium.payload_contract, "horoscope_period_natal_request");
+    assert_eq!(premium.reading_output_contract, "horoscope_period_response");
     assert_eq!(premium.availability, ServiceAvailability::Beta);
     assert_eq!(premium.sort_order, 240);
 

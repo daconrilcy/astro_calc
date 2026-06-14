@@ -7,9 +7,7 @@ use astral_llm_application::{
     build_reading_request, build_reading_request_from_engine, validate_engine_response,
     validate_simplified_calculation_request, SIMPLIFIED_PROFILE,
 };
-use astral_llm_domain::{
-    generation_request::AudienceLevel, GenerateReadingRequest,
-};
+use astral_llm_domain::{generation_request::AudienceLevel, GenerateReadingRequest};
 use serde_json::Value;
 
 use crate::{
@@ -83,7 +81,9 @@ impl GenerateNatalReadingUseCase {
             }
             NatalVariant::Full => {
                 let calculation_request = full_calculation_request(&request, &policy)?;
-                self.calculator.calculate_full_natal(&calculation_request).await?
+                self.calculator
+                    .calculate_full_natal(&calculation_request)
+                    .await?
             }
         };
 
@@ -110,7 +110,10 @@ impl GenerateNatalReadingUseCase {
 
 fn simplified_calculation_request(request: &NatalReadingRequestV2) -> Result<Value, GatewayError> {
     let mut birth = serde_json::Map::new();
-    birth.insert("date".to_string(), Value::String(request.birth.date.clone()));
+    birth.insert(
+        "date".to_string(),
+        Value::String(request.birth.date.clone()),
+    );
     if let Some(time) = &request.birth.time {
         birth.insert("time".to_string(), Value::String(time.clone()));
     }
@@ -118,9 +121,12 @@ fn simplified_calculation_request(request: &NatalReadingRequestV2) -> Result<Val
         birth.insert("timezone".to_string(), Value::String(timezone.clone()));
     }
     if let Some(location) = &request.birth.location {
-        birth.insert("location".to_string(), serde_json::to_value(location).map_err(|err| {
-            GatewayError::bad_request(format!("invalid birth.location payload: {err}"))
-        })?);
+        birth.insert(
+            "location".to_string(),
+            serde_json::to_value(location).map_err(|err| {
+                GatewayError::bad_request(format!("invalid birth.location payload: {err}"))
+            })?,
+        );
     }
 
     Ok(serde_json::json!({
@@ -143,16 +149,14 @@ fn full_calculation_request(
         .time
         .clone()
         .ok_or_else(|| GatewayError::bad_request("birth.time is required for full natal"))?;
-    let timezone = request
-        .birth
-        .timezone
-        .clone()
-        .ok_or_else(|| GatewayError::bad_request("birth.timezone is required for full natal"))?;
-    let location = request
-        .birth
-        .location
-        .clone()
-        .ok_or_else(|| GatewayError::bad_request("birth.location is required for full natal"))?;
+    let timezone =
+        request.birth.timezone.clone().ok_or_else(|| {
+            GatewayError::bad_request("birth.timezone is required for full natal")
+        })?;
+    let location =
+        request.birth.location.clone().ok_or_else(|| {
+            GatewayError::bad_request("birth.location is required for full natal")
+        })?;
 
     Ok(serde_json::json!({
         "request_contract_version": "astro_engine_request_v1",
@@ -187,12 +191,10 @@ fn build_llm_request(
 ) -> Result<GenerateReadingRequest, GatewayError> {
     let audience = resolve_audience_level(request, policy)?;
     match policy.variant {
-        NatalVariant::Simplified => build_reading_request(
-            calculation,
-            &request.context.target_language_code,
-            audience,
-        )
-        .map_err(|err| GatewayError::bad_request(err.detail().message.clone())),
+        NatalVariant::Simplified => {
+            build_reading_request(calculation, &request.context.target_language_code, audience)
+                .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))
+        }
         NatalVariant::Full => {
             validate_engine_response(calculation)
                 .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
@@ -213,7 +215,13 @@ fn resolve_audience_level(
     request: &NatalReadingRequestV2,
     policy: &NatalGatewayPolicy,
 ) -> Result<AudienceLevel, GatewayError> {
-    match request.context.audience_level.trim().to_ascii_lowercase().as_str() {
+    match request
+        .context
+        .audience_level
+        .trim()
+        .to_ascii_lowercase()
+        .as_str()
+    {
         "" | "general" => Ok(policy.default_audience_level()),
         "beginner" => Ok(AudienceLevel::Beginner),
         "intermediate" => Ok(AudienceLevel::Intermediate),

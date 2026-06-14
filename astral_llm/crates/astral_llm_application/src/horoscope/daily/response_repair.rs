@@ -89,16 +89,20 @@ fn sanitize_public_slot_fields(slot: &mut Value, label: &str) {
     let Some(object) = slot.as_object_mut() else {
         return;
     };
-    for key in ["title", "theme", "tone", "text", "advice", "watch_point", "reason"] {
+    for key in [
+        "title",
+        "theme",
+        "tone",
+        "text",
+        "advice",
+        "watch_point",
+        "reason",
+    ] {
         sanitize_public_text_field(object, key, label);
     }
 }
 
-fn sanitize_public_text_field(
-    object: &mut serde_json::Map<String, Value>,
-    key: &str,
-    label: &str,
-) {
+fn sanitize_public_text_field(object: &mut serde_json::Map<String, Value>, key: &str, label: &str) {
     let Some(value) = object.get(key).and_then(Value::as_str) else {
         return;
     };

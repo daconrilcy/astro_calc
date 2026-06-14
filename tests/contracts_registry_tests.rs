@@ -33,7 +33,11 @@ fn natal_product_codes_cover_all_variant_tier_pairs() {
         ),
         (NatalVariant::Full, ProductTier::Free, "natal_full_free"),
         (NatalVariant::Full, ProductTier::Basic, "natal_full_basic"),
-        (NatalVariant::Full, ProductTier::Premium, "natal_full_premium"),
+        (
+            NatalVariant::Full,
+            ProductTier::Premium,
+            "natal_full_premium",
+        ),
     ];
 
     for (variant, tier, expected) in cases {
@@ -45,8 +49,14 @@ fn natal_product_codes_cover_all_variant_tier_pairs() {
 #[test]
 fn horoscope_descriptor_lookup_matches_expected_contracts() {
     let daily = horoscope_service_descriptor(HOROSCOPE_FREE_DAILY_SERVICE_CODE).expect("daily");
-    assert_eq!(daily.orchestration_mode, OrchestrationMode::CalculatorThenLlm);
-    assert_eq!(daily.contracts.public_request_contract, "horoscope_daily_request_v2");
+    assert_eq!(
+        daily.orchestration_mode,
+        OrchestrationMode::CalculatorThenLlm
+    );
+    assert_eq!(
+        daily.contracts.public_request_contract,
+        "horoscope_daily_request_v2"
+    );
     assert_eq!(
         daily.contracts.calculator_request_contract,
         "horoscope_calculation_request"
