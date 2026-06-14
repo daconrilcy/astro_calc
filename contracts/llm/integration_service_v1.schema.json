@@ -12,8 +12,8 @@
     "orchestration_mode",
     "calculation_mode",
     "supports_async",
-    "supports_sync_legacy",
     "supports_mercure",
+    "api_surface",
     "contracts",
     "endpoints"
   ],
@@ -35,8 +35,31 @@
     "quality_tier": { "type": ["string", "null"] },
     "async_recommended": { "type": "boolean" },
     "supports_async": { "type": "boolean" },
-    "supports_sync_legacy": { "type": "boolean" },
     "supports_mercure": { "type": "boolean" },
+    "api_surface": {
+      "type": "object",
+      "required": [
+        "async_job_v1_status",
+        "sync_legacy_status",
+        "public_gateway_v2_status",
+        "recommended_entrypoint"
+      ],
+      "properties": {
+        "async_job_v1_status": {
+          "type": "string",
+          "enum": ["current"]
+        },
+        "sync_legacy_status": {
+          "type": "string",
+          "enum": ["legacy", "not_available"]
+        },
+        "public_gateway_v2_status": {
+          "type": "string",
+          "enum": ["current", "not_available"]
+        },
+        "recommended_entrypoint": { "type": ["string", "null"] }
+      }
+    },
     "contracts": {
       "type": "object",
       "properties": {
@@ -51,8 +74,7 @@
       "type": "object",
       "properties": {
         "submit_async": { "type": "string" },
-        "contract_detail": { "type": "string" },
-        "submit_sync_legacy": { "type": ["string", "null"] }
+        "contract_detail": { "type": "string" }
       }
     }
   }

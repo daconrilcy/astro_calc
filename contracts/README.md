@@ -17,19 +17,16 @@ Depuis l hote : `http://localhost:8080` et `http://localhost:8081`.
 
 ## Modes d integration
 
-### Mode V1 certifie — orchestration externe
+### Mode public recommande — gateway V2
 
-1. `POST /v1/calculations/natal` (contrat `astro_engine_request_v1`)
-2. Extraire `audit_payload.payload` de la reponse `astro_engine_response_v1`
-3. `POST /v1/readings/generate` (contrat `generate_reading_request_v1`)
+1. `POST /v2/natal/simplified/{free|basic|premium}`
+2. `POST /v2/natal/full/{free|basic|premium}`
+3. `POST /v2/horoscope/daily/{free|basic|premium}`
+4. `POST /v2/horoscope/period/{free|basic|premium}`
 
-`response_contract.generation_mode` est **optionnel** : s'il est omis ou incorrect, l'API l'aligne sur `interpretation_profile_code` (`InterpretationProfileResolver`).
+La gateway V2 porte la facade publique d'orchestration. Elle appelle `astral_calculator` pour le calcul et `astral_llm` pour la generation, sans exposer les contrats techniques intermediaires.
 
-Smoke E2E fake : [`scripts/docker_compose_smoke.ps1`](../scripts/docker_compose_smoke.ps1) (`natal_basic`, provider `fake`).
-
-Voir [integration/engine_to_reading_mapping.md](integration/engine_to_reading_mapping.md).
-
-## Mode intégration async V1 (API externe)
+### Mode integration async V1
 
 Catalogue + jobs async pour applications tierces :
 
@@ -40,7 +37,13 @@ Catalogue + jobs async pour applications tierces :
 
 Contrat normatif : [`docs/integration_api_contract.md`](../docs/integration_api_contract.md). Guide : [`docs/integration_api_guide.md`](../docs/integration_api_guide.md).
 
-Smoke E2E : [`scripts/test_integration_jobs_e2e.ps1`](../scripts/test_integration_jobs_e2e.ps1) (natal_simplified + worker). Full natal : [`scripts/test_natal_from_birth_e2e.ps1`](../scripts/test_natal_from_birth_e2e.ps1).
+### Surfaces sync legacy — supprimees du runtime courant
+
+`POST /v1/readings/generate` et `POST /v1/readings/natal/simplified` ont ete retires de `astral_llm_api`.
+
+Les anciens artefacts sync associes sont en cours d'extinction et ne font plus partie du parcours d'integration documente.
+
+Smoke E2E async : [`scripts/test_integration_jobs_e2e.ps1`](../scripts/test_integration_jobs_e2e.ps1) (natal_simplified + worker). Full natal : [`scripts/test_natal_from_birth_e2e.ps1`](../scripts/test_natal_from_birth_e2e.ps1).
 
 Bootstrap catalogue en base : `.\scripts\manage_integration_services.ps1 -Submit` (après import profils).
 
@@ -52,27 +55,11 @@ Schémas : `integration_*_v1.schema.json` dans `contracts/llm/`.
 
 `POST /v1/natal/readings/from-birth` — non implemente.
 
-### Mode natal simplifie (v2.4)
-
-1. `POST /v1/calculations/natal/simplified` (`astro_simplified_natal_request_v1` → `astro_simplified_natal_response_v1`)
-2. Extraire `simplified_payload.payload` + controles `llm_payload`
-3. `POST /v1/readings/generate` avec `interpretation_profile_code: natal_simplified` et `astro_result.contract_version: natal_simplified_structured_v1`
-
-Orchestration one-shot : `POST /v1/readings/natal/simplified` (LLM API, birth → calcul → lecture).
-
-Champs `llm_payload` : `forbidden_interpretation_topics` (canonique) ; `forbidden_topics` = alias déprécié en sortie calculateur.
-
-Smoke rapide : [`scripts/docker_simplified_natal_smoke.ps1`](../scripts/docker_simplified_natal_smoke.ps1).
-
-Suite E2E complète (**12** cas calculateur dont 5 négatifs **422** + **7** lectures positives + **5** négatifs orchestration **400**) : [`scripts/test_natal_simplified_e2e.ps1`](../scripts/test_natal_simplified_e2e.ps1).
-
-Recette OpenAI optionnelle (monitoring qualité, facturée) : `-UseReal -SubmitProfile -TimeoutSec 900` sur la même suite ; seuils `Assert-SimplifiedStrictOpenAiQuality` — voir [`docs/natal_simplified_forbidden_topics.md`](../docs/natal_simplified_forbidden_topics.md).
+Le calculateur conserve `POST /v1/calculations/natal/simplified` comme contrat de calcul partiel. Les champs `llm_payload` exposent `forbidden_interpretation_topics` comme nom canonique (`forbidden_topics` = alias de sortie calculateur conserve pour compatibilite descendante de donnees).
 
 Documentation métier : [`docs/natal_simplified_reading_contract.md`](../docs/natal_simplified_reading_contract.md), [`docs/natal_simplified_forbidden_topics.md`](../docs/natal_simplified_forbidden_topics.md).
 
 Guide débutant : [docs/GUIDE_DEBUTANT_DOCKER.md](../docs/GUIDE_DEBUTANT_DOCKER.md) §9.
-
-Contrats calculateur supplementaires : voir `versions.json` (`astro_simplified_*`, `natal_simplified_structured_v1`, `llm_projection_natal_simplified_v1`).
 
 ## Decouverte des contrats
 

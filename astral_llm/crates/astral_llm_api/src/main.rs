@@ -118,6 +118,7 @@ async fn main() {
         limits.clone(),
         catalog.clone(),
         config.privacy_policy.clone(),
+        config.legacy_product_code_shim_available(),
     ));
 
     tracing::info!(

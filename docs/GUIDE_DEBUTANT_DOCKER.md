@@ -39,9 +39,11 @@ Le projet expose **deux services HTTP** complémentaires :
 | **astral_llm_api** | `8081` | Génère une **lecture textuelle** structurée à partir du résultat du calculateur |
 | **PostgreSQL** | interne (`5432`) | Référentiels astrologiques, profils LLM, persistance des runs |
 
-En **V1 certifié**, l'orchestration du thème natal **complet** reste **externe** : votre application enchaîne `POST /v1/calculations/natal` puis `POST /v1/readings/generate`.
+La surface publique recommandee est maintenant la **gateway V2** : `POST /v2/natal/*` et `POST /v2/horoscope/*`.
 
-Pour les **données de naissance partielles** (date seule, sans heure, lieu incomplet…), le produit **natal simplifié** (v2.4) ajoute un parcours **one-shot** : `POST /v1/readings/natal/simplified` calcule et génère la lecture en un seul appel. Voir le [tutoriel débutant §9](#tutoriel-débutant--natal-simplifié-v24).
+Les flux sync `POST /v1/readings/generate` et `POST /v1/readings/natal/simplified` ont ete retires du runtime courant.
+
+Les artefacts historiques lies a ces routes ne font plus partie du parcours outille. Le shim des anciens `product_code` (`natal_basic`, `natal_premium`) peut etre coupe via `ASTRAL_LLM_ENABLE_LEGACY_PRODUCT_CODE_SHIM` et `ASTRAL_LLM_LEGACY_PRODUCT_CODE_SHIM_CUTOFF_DATE`.
 
 Les **contrats** (JSON Schema + OpenAPI) vivent dans le dossier [`contracts/`](../contracts/). Ils décrivent les payloads échangés entre services et avec les applications tierces.
 
@@ -88,6 +90,12 @@ Une seule commande lance **les trois services** (même réseau `astral_net`, mê
 
 ```powershell
 docker compose up -d --build
+```
+
+Pour activer une **coupure ferme du legacy runtime** en local ou en staging :
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.legacy-cutover.yml up -d --build
 ```
 
 Pour ne démarrer qu'un sous-ensemble (ex. import DB seul) :
@@ -153,6 +161,12 @@ Ce script lit les fichiers JSON dans `json_db/` et crée/peuple les tables Postg
 docker compose up -d --build
 ```
 
+Version avec coupure legacy active :
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.legacy-cutover.yml up -d --build
+```
+
 Le premier build peut prendre **10 à 30 minutes** (compilation Rust). Si le transfert de contexte dépasse quelques centaines de Mo, vérifiez que `.dockerignore` exclut bien `**/target/` (artefacts Cargo locaux).
 
 ### Étape 7 — Bootstrap et vérification
@@ -160,6 +174,12 @@ Le premier build peut prendre **10 à 30 minutes** (compilation Rust). Si le tra
 ```powershell
 .\scripts\docker_bootstrap.ps1
 .\scripts\docker_compose_smoke.ps1
+```
+
+Wrapper complet avec coupure legacy active :
+
+```powershell
+.\scripts\docker_update_integration_stack.ps1 -LegacyCutover
 ```
 
 Si les deux scripts se terminent sans erreur, votre environnement est opérationnel.
@@ -220,6 +240,7 @@ ASTRAL_LLM_DEFAULT_MODEL=fake-model
 ASTRAL_LLM_ENABLE_PERSISTENCE=false  # ignoré en Docker : Compose force true
 ASTRAL_LLM_REQUEST_TIMEOUT_MS=120000
 ASTRAL_LLM_STORE_RAW_PROVIDER_OUTPUTS=false  # optionnel : désactive les sorties brutes LLM en dev
+ASTRAL_LLM_ENABLE_LEGACY_PRODUCT_CODE_SHIM=true
 ```
 
 Par défaut hors production, les sorties brutes provider sont stockées dans
@@ -236,6 +257,19 @@ ASTRAL_LLM_DEFAULT_PROVIDER=openai
 OPENAI_API_KEY=sk-...
 ASTRAL_LLM_REQUEST_TIMEOUT_MS=900000   # recommandé pour natal_premium_plus
 ```
+
+Pour planifier ou activer la coupure du shim legacy restant :
+
+```env
+# coupure par date
+ASTRAL_LLM_LEGACY_PRODUCT_CODE_SHIM_CUTOFF_DATE=2026-12-31
+
+# coupure ferme immediate
+ASTRAL_LLM_ENABLE_LEGACY_PRODUCT_CODE_SHIM=false
+```
+
+L'override [`docker-compose.legacy-cutover.yml`](../docker-compose.legacy-cutover.yml)
+force la coupure ferme du shim `product_code`.
 
 ### Exposer PostgreSQL sur l'hôte
 
@@ -419,8 +453,7 @@ Validation client : [`scripts/test_natal_premium_profile.ps1`](../scripts/test_n
 
 | Mode | Appels | Quand l'utiliser |
 |------|--------|------------------|
-| **Orchestration one-shot** | `POST /v1/readings/natal/simplified` | Parcours produit « date → texte » (recommandé) |
-| **Orchestration manuelle** | `POST /v1/calculations/natal/simplified` puis `POST /v1/readings/generate` | Contrôle fin du payload intermédiaire |
+| **Gateway V2 publique** | `POST /v2/natal/simplified/free` | Parcours public recommandé |
 
 #### Étape 0 — Prérequis (une seule fois)
 
@@ -429,6 +462,8 @@ docker compose up -d --build
 python scripts/import_json_db_to_postgres.py   # tables simplified + référentiel (incl. astral_simplified_profile_feature_exclusions)
 .\scripts\docker_bootstrap.ps1               # profils LLM dont natal_simplified
 ```
+
+Version "legacy coupe" :
 
 > **Table exclusions profil** : `astral_simplified_profile_feature_exclusions` (seed `json_db/astral_simplified_profile_feature_exclusions.json`) alimente `llm_payload.profile_excluded_feature_codes` et `forbidden_interpretation_topics`. Si la table est vide pour `natal_simplified`, le calculateur renvoie une erreur runtime (`InvalidRuntimeTable`) — pas de fallback en constante Rust.
 
@@ -443,75 +478,31 @@ Invoke-RestMethod http://localhost:8081/health/ready
 
 > **Provider** : Compose force `ASTRAL_LLM_DEFAULT_PROVIDER=fake` dans le conteneur. La valeur `openai` dans le `.env` hôte n'affecte pas Docker ; les scripts vérifient le runtime via `GET /v1/providers`.
 
-#### Étape 1 — Smoke rapide (1 cas, ~30 s)
+#### Étape 1 — Validation calculateur
 
 ```powershell
-.\scripts\docker_simplified_natal_smoke.ps1
+.\scripts\test_natal_simplified_calculator.ps1
 ```
 
-Équivalent à `test_natal_simplified_e2e.ps1` sur le cas `date_only`. Sortie attendue : `Calculator OK` puis `Reading OK`.
-
-#### Étape 2 — Suite complète (recommandée après modification du code)
-
-```powershell
-docker compose up -d --build astral_llm_api   # après changement Rust LLM
-docker compose up -d --build astral_calculator_api   # après changement payload calculateur (llm_payload, schémas)
-.\scripts\test_natal_simplified_e2e.ps1
-```
-
-Résultat attendu : **12/12** calculateur (7 positifs + 5 négatifs **422**), **7/7** lectures positives, **5/5** négatifs orchestration **400** — phases 1, 2 et **2b** de la suite.
-
-> **Provider E2E** : la suite active **`-ForceFake`** par défaut (bascule `natal_prompter` → fake, sans OpenAI). Recette OpenAI optionnelle : `-UseReal -SubmitProfile -TimeoutSec 900` (facturée ; active `Assert-SimplifiedStrictOpenAiQuality` — seuils body 120–650 mots, summary ≤75, title ≤14, whitelist `astro_basis`, cas équinoxe `ambiguous_core_identity`). Artefacts : `output/natal_simplified_openai/{timestamp}/` + `quality_summary.json`.
+Résultat attendu : **12/12** calculateur (7 positifs + 5 négatifs **422**).
 
 Scripts complémentaires :
 
 ```powershell
 .\scripts\test_natal_simplified_calculator.ps1          # calculateur seul (422 négatifs)
-.\scripts\test_natal_simplified_reading.ps1 -ForceFake  # lectures fake (7 positifs)
-.\scripts\test_natal_simplified_reading.ps1 -NegativeOnly  # négatifs orchestration 400 seuls
-.\scripts\test_natal_simplified_e2e.ps1 -Case date_only
-.\scripts\test_natal_simplified_e2e.ps1 -NoSaveOutputs
-.\scripts\test_natal_simplified_reading.ps1 -UseReal -SubmitProfile -TimeoutSec 900  # OpenAI facturé
+.\scripts\test_integration_jobs_e2e.ps1                 # integration async v1
+.\scripts\test_natal_from_birth_e2e.ps1                # natal full async
 ```
 
-Artefacts JSON (generes par defaut par `test_natal_simplified_e2e.ps1`) : `output/natal_simplified/calculator/`, `output/natal_simplified/reading/` et `output/natal_simplified/e2e_summary.json`. Desactiver : `-NoSaveOutputs`.
+#### Étape 2 — Appel public
 
-#### Étape 3 — Appel HTTP manuel (lecture one-shot)
-
-Exemple **date seule** avec les clés API de votre `.env` :
-
-```powershell
-. .\scripts\lib\astral_http_auth.ps1
-Import-AstralDotEnv -RepoRoot (Get-Location)
-$headers = New-AstralAuthHeaders -Service llm
-$body = @{
-  request_contract_version = "astro_simplified_natal_request_v1"
-  birth = @{ date = "1990-06-15" }
-  user_language = "fr"
-  audience_level = "beginner"
-} | ConvertTo-Json -Depth 5
-
-Invoke-RestMethod -Method Post -Uri "http://localhost:8081/v1/readings/natal/simplified" `
-  -Headers $headers -Body $body -ContentType "application/json"
-```
-
-Réponse attendue : `reading_completeness: partial`, `reading.status: success`, chapitre `identity` (ou `ambiguous_core_identity` si Soleil ambigu), `calculation.computed_scope` selon l'entrée. Dans `calculation.llm_payload`, le champ canonique des sujets d'interprétation exclus est **`forbidden_interpretation_topics`** (`forbidden_topics` = alias déprécié). En cas de rejet garde post-génération : HTTP **422**, enveloppe orchestrée avec `calculation` + `reading.status: safety_rejected` + `violations`.
-
-Erreurs entrée sur l'orchestration (contrat, format date, lieu incomplet, heure sans timezone) : HTTP **400** `INVALID_INPUT`, sans enveloppe orchestrée. Sur le calculateur seul (`POST /v1/calculations/natal/simplified`), les mêmes erreurs métier renvoient **422** `VALIDATION_FAILED`.
-
-Autres exemples de requêtes : [`contracts/integration/examples/natal_simplified_examples.json`](../contracts/integration/examples/natal_simplified_examples.json).
+Cette orchestration one-shot sync a ete retiree du runtime courant. Utiliser la gateway V2 ou les jobs async V1.
 
 Documentation métier : [`docs/natal_simplified_reading_contract.md`](natal_simplified_reading_contract.md), [`docs/natal_simplified_forbidden_topics.md`](natal_simplified_forbidden_topics.md).
 
 ### Smoke test E2E — natal simplifié (`docker_simplified_natal_smoke.ps1`)
 
-Raccourci vers l'étape 1 du tutoriel ci-dessus :
-
-```powershell
-.\scripts\docker_simplified_natal_smoke.ps1
-# Calcul seul :
-.\scripts\docker_simplified_natal_smoke.ps1 -SkipReading
-```
+Le smoke sync historique a ete supprime du parcours courant.
 
 ---
 
@@ -591,75 +582,13 @@ Invoke-RestMethod -Method Post -Uri "http://localhost:8080/v1/calculations/natal
 
 Champs utiles dans la réponse : `input_precision.level`, `computed_scope`, `facts` / `ambiguous_facts`, `llm_payload.allowed_fact_codes` / `blocked_interpretation_fact_codes`, `simplified_payload.payload`.
 
-### LLM — lecture natal simplifiée (orchestration one-shot)
+### LLM — lecture natal simplifiée sync historique
 
-Un seul appel : naissance → calculateur interne → profil `natal_simplified`.
+Route retiree du runtime courant.
 
-```powershell
-$headers = @{
-  "Content-Type" = "application/json"
-  "Authorization" = "Bearer $env:ASTRAL_LLM_API_KEY"
-}
-$body = @{
-  request_contract_version = "astro_simplified_natal_request_v1"
-  birth = @{ date = "1990-06-15" }
-  user_language = "fr"
-  audience_level = "beginner"
-} | ConvertTo-Json -Depth 5
+### LLM — génération de lecture sync legacy (thème complet)
 
-Invoke-RestMethod -Method Post -Uri "http://localhost:8081/v1/readings/natal/simplified" `
-  -Headers $headers -Body $body
-```
-
-Prérequis gateway : client calculateur configuré (`ASTRAL_CALCULATOR_HOST` / `PORT` — automatique sous Docker Compose).
-
-### LLM — génération de lecture (thème complet)
-
-Avec le provider fake (local, gratuit) :
-
-```powershell
-$headers = @{
-  "Content-Type" = "application/json"
-  "Authorization" = "Bearer ma-cle-llm-secrete"
-}
-$body = @{
-  product_context = @{
-    product_code = "natal_prompter"
-    interpretation_profile_code = "natal_basic"
-    user_language = "fr"
-    audience_level = "beginner"
-  }
-  astro_result = @{
-    contract_version = "natal_structured_v13"
-    chart_type = "natal"
-    data = @{ domain_scores = @{ identity = 0.8 } }  # en pratique : payload du calculateur
-  }
-  astrologer_profile = @{
-    tone = "warm"
-    jargon_level = "beginner"
-    wording_style = "clear"
-    preferred_domains = @("identity", "relationships")
-    forbidden_wording = @()
-  }
-  engine = @{
-    provider = "fake"
-    model = "fake-model"
-    allow_fallback = $true
-  }
-  response_contract = @{
-    output_schema_version = "natal_reading_v1"
-    format = "structured_json"
-    include_astro_sources = $true
-    include_legal_disclaimer = $true
-  }
-} | ConvertTo-Json -Depth 10
-
-Invoke-RestMethod -Method Post -Uri "http://localhost:8081/v1/readings/generate" -Headers $headers -Body $body
-```
-
-> **`generation_mode`** : optionnel dans `response_contract`. S'il est omis ou incorrect, l'API l'aligne automatiquement sur `interpretation_profile_code` (`InterpretationProfileResolver`).
-
-Réponse attendue : `status: success`, `reading.schema_version: natal_reading_v1`, liste de chapitres.
+Route retiree du runtime courant.
 
 ### Autres endpoints utiles
 
@@ -669,7 +598,6 @@ Réponse attendue : `status: success`, `reading.schema_version: natal_reading_v1
 | Calculateur | GET | `/v1/reference/status` | État DB + éphémérides |
 | LLM | POST | `/v1/readings/validate` | Valide une lecture JSON |
 | Calculateur | POST | `/v1/calculations/natal/simplified` | Calcul partiel (contrats `astro_simplified_*`) |
-| LLM | POST | `/v1/readings/natal/simplified` | Naissance → calcul simplifié → lecture |
 | LLM | GET | `/v1/providers` | Modèles, `default_provider`, circuit breakers |
 | LLM | GET | `/v1/runs/{run_id}` | Audit d'un run (si persistance active) |
 
@@ -677,59 +605,12 @@ Réponse attendue : `status: success`, `reading.schema_version: natal_reading_v1
 
 ## 11. Flux complet calculateur → LLM
 
-C'est le **mode V1 certifié** : deux appels HTTP orchestrés par votre application.
+### Flux natal simplifié
 
 ```
   [Client]
      │
-     │  POST /v1/calculations/natal
-     │  (astro_engine_request_v1)
-     ▼
-  [astral_calculator_api]
-     │
-     │  astro_engine_response_v1
-     │  └─ audit_payload.payload  ───┐
-     │                                │
-     │  POST /v1/readings/generate    │
-     │  (generate_reading_request_v1) │
-     ▼                                │
-  [astral_llm_api] ◄──────────────────┘
-     │
-     │  generate_reading_response_v1
-     ▼
-  [Client]
-```
-
-### Règles de mapping
-
-Document détaillé : [`contracts/integration/engine_to_reading_mapping.md`](../contracts/integration/engine_to_reading_mapping.md).
-
-En résumé :
-
-1. Attendre `calculation_result.status == "completed"`.
-2. Copier `audit_payload.contract_version` → `astro_result.contract_version`.
-3. Copier **uniquement** `audit_payload.payload` → `astro_result.data` (pas l'enveloppe complète).
-4. Définir `product_context.interpretation_profile_code` (`natal_light`, `natal_basic`, `natal_premium`, `natal_premium_plus`).
-5. `response_contract.generation_mode` peut être omis : l'API le dérive du profil (`single_pass` pour `natal_light`, `chapter_orchestrated` pour les autres).
-
-### Exemples JSON prêts à l'emploi
-
-| Fichier | Contenu |
-|---------|---------|
-| `contracts/integration/examples/natal_calculation_request_v1.paris_1990.json` | Requête calculateur |
-| `contracts/integration/examples/natal_calculation_response_v1.paris_1990.json` | Réponse calculateur (référence) |
-| `contracts/integration/examples/generate_reading_request_v1.from_engine_paris_1990.json` | Requête LLM déjà mappée |
-| `contracts/integration/examples/natal_simplified_examples.json` | Matrice `input_precision` (requêtes simplified) |
-
-### Flux natal simplifié (one-shot ou manuel)
-
-```
-  [Client]
-     │
-     │  POST /v1/readings/natal/simplified   (one-shot, recommandé)
-     │  OU
-     │  POST /v1/calculations/natal/simplified
-     │       puis POST /v1/readings/generate (profil natal_simplified)
+     │  POST /v2/natal/simplified/free
      ▼
   [astral_llm_api] ──HTTP interne──► [astral_calculator_api]
      │
@@ -737,8 +618,6 @@ En résumé :
      ▼
   [Client]
 ```
-
-Mapping détaillé : [`contracts/integration/engine_to_reading_mapping.md`](../contracts/integration/engine_to_reading_mapping.md) (section natal simplifié).
 
 ---
 
@@ -893,7 +772,7 @@ En Docker Compose, définissez **les deux clés** dans `.env` avant le premier `
 **Natal simplifié — même payload invalide, code HTTP selon l'endpoint :**
 
 - `POST /v1/calculations/natal/simplified` → **422** `VALIDATION_FAILED`
-- `POST /v1/readings/natal/simplified` → **400** `INVALID_INPUT` (sans enveloppe orchestrée)
+- `POST /v1/readings/natal/simplified` → route retiree du runtime courant
 
 Les erreurs **métier de génération** (échec LLM après acceptation de la requête) utilisent plutôt `generate_reading_response_v1` avec `status: failed`.
 
@@ -915,9 +794,9 @@ docker compose up -d --build
 .\scripts\docker_bootstrap.ps1
 .\scripts\docker_compose_smoke.ps1
 
-# Natal simplifié (fake, sans OpenAI)
-.\scripts\docker_simplified_natal_smoke.ps1
-.\scripts\test_natal_simplified_e2e.ps1
+# Natal simplifié
+.\scripts\test_natal_simplified_calculator.ps1
+.\scripts\test_integration_jobs_e2e.ps1
 
 # Tests Rust natal simplifié
 cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests
@@ -1012,14 +891,14 @@ docker compose restart astral_calculator_api astral_llm_api
 
 ```powershell
 docker compose up -d --build astral_llm_api
-.\scripts\test_natal_simplified_reading.ps1 -Case date_only
+.\scripts\test_integration_jobs_e2e.ps1
 ```
 
 ### Natal simplifié — tests lecture échouent sans fake
 
 **Cause** : gateway configuré sur OpenAI alors que les scripts E2E attendent le provider **fake** (gratuit).
 
-**Action** : utiliser Docker Compose (`ASTRAL_LLM_DEFAULT_PROVIDER=fake` dans le conteneur) ou `-UseReal` avec `OPENAI_API_KEY`. Vérifier : `GET /v1/providers` → `default_provider: fake`.
+**Action** : utiliser Docker Compose (`ASTRAL_LLM_DEFAULT_PROVIDER=fake` dans le conteneur) ou `-UseReal` sur les scripts premium courants. Vérifier : `GET /v1/providers` → `default_provider: fake`.
 
 ### `DATABASE_URL absent` au bootstrap (étape 3)
 
@@ -1055,7 +934,7 @@ DATABASE_URL=postgres://postgres:change-me@localhost:5432/astral
 Pour certifier le **natal simplifié** (fake, sans coût OpenAI) :
 
 ```powershell
-.\scripts\test_natal_simplified_e2e.ps1
+.\scripts\test_integration_jobs_e2e.ps1
 ```
 
 Pour certifier une lecture Premium Plus de bout en bout (hors Docker ou avec stack Docker) :

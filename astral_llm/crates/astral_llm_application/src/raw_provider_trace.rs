@@ -22,6 +22,16 @@ pub fn log_raw_provider_response(
     fallback_used: bool,
 ) -> Option<PathBuf> {
     let base = raw_provider_trace_base_dir()?;
+    write_raw_provider_response(&base, request, provider, response, fallback_used)
+}
+
+fn write_raw_provider_response(
+    base: &std::path::Path,
+    request: &ProviderGenerationRequest,
+    provider: &ProviderKind,
+    response: &ProviderGenerationResponse,
+    fallback_used: bool,
+) -> Option<PathBuf> {
     let run_id = sanitize_filename_segment(&request.metadata.run_id);
     let chapter = request
         .metadata
@@ -224,7 +234,8 @@ mod tests {
         };
 
         let path =
-            log_raw_provider_response(&request, &ProviderKind::OpenAi, &response, false).unwrap();
+            write_raw_provider_response(&dir, &request, &ProviderKind::OpenAi, &response, false)
+                .unwrap();
         let content = std::fs::read_to_string(path).unwrap();
         assert!(content.contains("\"raw_text\""));
         assert!(content.contains("\"trace_id\""));

@@ -1,9 +1,8 @@
 <#
 .SYNOPSIS
-    Smoke E2E HTTP : calculateur -> mapping -> LLM (fake).
+    Smoke E2E HTTP recommande : full natal via jobs async (fake).
 #>
 param(
-    [string]$CalculatorUrl = "http://localhost:8080",
     [string]$LlmUrl = "http://localhost:8081"
 )
 
@@ -12,73 +11,94 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\astral_http_auth.ps1")
 Import-AstralDotEnv -RepoRoot $repoRoot
 
-$requestPath = Join-Path $repoRoot "contracts\integration\examples\natal_calculation_request_v1.paris_1990.json"
-if (-not (Test-Path -LiteralPath $requestPath)) {
-    throw "Fixture introuvable : $requestPath"
-}
-
-$calcHeaders = New-AstralAuthHeaders -Service calculator
 $llmHeaders = New-AstralAuthHeaders -Service llm
 
-Write-Host "== Smoke E2E calculator -> llm ==" -ForegroundColor Cyan
+Write-Host "== Smoke E2E jobs async ==" -ForegroundColor Cyan
 
-Write-Host "`n[1/3] POST /v1/calculations/natal"
-$engineRequest = Get-Content -LiteralPath $requestPath -Raw | ConvertFrom-Json
-$engineResponse = Invoke-AstralJson -Method Post -Uri "$CalculatorUrl/v1/calculations/natal" -Headers $calcHeaders -Body $engineRequest
-if ($engineResponse.response_contract_version -ne "astro_engine_response_v1") {
-    throw "Reponse calculateur inattendue"
+Write-Host "`n[1/4] GET /v1/services"
+$services = Invoke-AstralJson -Method Get -Uri "$LlmUrl/v1/services" -Headers $llmHeaders
+$service = @($services.services | Where-Object { $_.service_code -eq "natal_basic" })[0]
+if ($null -eq $service) {
+    throw "Service natal_basic introuvable dans le catalogue"
 }
-if ($engineResponse.calculation_result.status -ne "completed") {
-    throw "Calcul non termine"
+if ($service.availability -notin @("active", "beta")) {
+    throw "Service natal_basic indisponible pour le smoke"
 }
-Write-Host "  chart_calculation_id=$($engineResponse.calculation_result.chart_calculation_id)" -ForegroundColor Green
+Write-Host "  natal_basic=$($service.availability)" -ForegroundColor Green
 
-Write-Host "`n[2/3] Mapping engine -> reading request"
-$readingRequest = [ordered]@{
-    request_id = "smoke-$(Get-Date -Format 'yyyyMMddHHmmss')"
-    product_context = [ordered]@{
-        product_code = "natal_prompter"
-        interpretation_profile_code = "natal_basic"
-        user_language = "fr"
-        audience_level = "beginner"
+Write-Host "`n[2/4] POST /v1/jobs"
+$idempotencyKey = "smoke-jobs-$(Get-Date -Format 'yyyyMMddHHmmss')"
+$jobBody = [ordered]@{
+    service_code = "natal_basic"
+    payload = [ordered]@{
+        request_contract_version = "astro_engine_request_v1"
+        calculation = [ordered]@{
+            type = "natal"
+        }
+        birth = [ordered]@{
+            date = "1990-06-15"
+            time = "14:30:00"
+            timezone = "Europe/Paris"
+            location = [ordered]@{
+                latitude = 48.8566
+                longitude = 2.3522
+            }
+        }
+        projection = [ordered]@{
+            level = "compact"
+        }
     }
-    astro_result = [ordered]@{
-        contract_version = $engineResponse.audit_payload.contract_version
-        chart_type = "natal"
-        data = $engineResponse.audit_payload.payload
-    }
-    astrologer_profile = [ordered]@{
-        tone = "warm"
-        jargon_level = "beginner"
-        wording_style = "clear"
-        preferred_domains = @("identity", "emotional_life", "relationships")
-        forbidden_wording = @()
-    }
-    engine = [ordered]@{
-        provider = "fake"
-        model = "fake-model"
-        allow_fallback = $true
-    }
-    response_contract = [ordered]@{
-        output_schema_version = "natal_reading_v1"
-        generation_mode = "chapter_orchestrated"
-        format = "structured_json"
-        include_astro_sources = $true
-        include_legal_disclaimer = $true
-    }
+    user_language = "fr"
+    audience_level = "beginner"
 }
 
-Write-Host "`n[3/3] POST /v1/readings/generate (fake)"
-$readingResponse = Invoke-AstralJson -Method Post -Uri "$LlmUrl/v1/readings/generate" -Headers $llmHeaders -Body $readingRequest
+$jobHeaders = $llmHeaders.Clone()
+$jobHeaders["Idempotency-Key"] = $idempotencyKey
+$submit = Invoke-WebRequest -Method Post -Uri "$LlmUrl/v1/jobs" -Headers $jobHeaders `
+    -Body ($jobBody | ConvertTo-Json -Depth 20) -UseBasicParsing -SkipHttpErrorCheck
+if ($submit.StatusCode -ne 202) {
+    throw "Soumission job echouee : HTTP $($submit.StatusCode) $($submit.Content)"
+}
+$accepted = $submit.Content | ConvertFrom-Json
+if ($accepted.status -ne "queued") {
+    throw "Statut submit inattendu : $($accepted.status)"
+}
+Write-Host "  run_id=$($accepted.run_id)" -ForegroundColor Green
 
-if ($readingResponse.status -ne "success") {
-    throw "Generation LLM echouee : $($readingResponse | ConvertTo-Json -Depth 5 -Compress)"
+Write-Host "`n[3/4] Poll /v1/jobs/{run_id}"
+$deadline = (Get-Date).AddSeconds(180)
+$status = $null
+while ((Get-Date) -lt $deadline) {
+    Start-Sleep -Seconds 3
+    $status = Invoke-AstralJson -Method Get -Uri "$LlmUrl/v1/jobs/$($accepted.run_id)" -Headers $llmHeaders
+    Write-Host "  status=$($status.status)"
+    if ($status.status -in @("completed", "failed", "safety_rejected")) {
+        break
+    }
 }
 
-if ($readingResponse.reading.schema_version -ne "natal_reading_v1") {
-    throw "schema_version inattendu : $($readingResponse.reading.schema_version)"
+if ($null -eq $status) {
+    throw "Poll job impossible"
+}
+if ($status.status -ne "completed") {
+    throw "Job non termine avec succes : $($status | ConvertTo-Json -Depth 8 -Compress)"
 }
 
-Write-Host "  run_id=$($readingResponse.run_id)" -ForegroundColor Green
-Write-Host "  chapters=$($readingResponse.reading.chapters.Count)" -ForegroundColor Green
-Write-Host "`nSmoke E2E OK." -ForegroundColor Green
+Write-Host "`n[4/4] Validation enveloppe resultat"
+if (-not $status.result.calculation) {
+    throw "Resultat job sans calculation"
+}
+if (-not $status.result.reading) {
+    throw "Resultat job sans reading"
+}
+if ($status.result.reading.status -ne "success") {
+    throw "Lecture finale inattendue : $($status.result.reading | ConvertTo-Json -Depth 8 -Compress)"
+}
+if ($status.result.reading.reading.schema_version -ne "natal_reading_v1") {
+    throw "schema_version inattendu : $($status.result.reading.reading.schema_version)"
+}
+
+Write-Host "  calculation=ok" -ForegroundColor Green
+Write-Host "  reading=ok" -ForegroundColor Green
+Write-Host "  chapters=$($status.result.reading.reading.chapters.Count)" -ForegroundColor Green
+Write-Host "`nSmoke E2E jobs OK." -ForegroundColor Green

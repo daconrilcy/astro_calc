@@ -42,6 +42,7 @@ pub use validators::{
 };
 pub use writer::{
     fake_period_writer_response, period_response_provider_schema, period_writer_messages,
+    period_writer_response_with_quality_loop,
 };
 
 pub(crate) use evidence::*;

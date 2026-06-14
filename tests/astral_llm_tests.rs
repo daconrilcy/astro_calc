@@ -143,6 +143,7 @@ fn build_use_case(catalog: Arc<CanonicalCatalog>) -> GenerateReadingUseCase {
         ServiceLimits::default(),
         catalog,
         PrivacyPolicy::default(),
+        true,
     )
 }
 
@@ -213,6 +214,7 @@ async fn configured_fallback_without_openai_first() {
         ServiceLimits::default(),
         catalog,
         PrivacyPolicy::default(),
+        true,
     );
 
     let request = sample_request_with_engine(

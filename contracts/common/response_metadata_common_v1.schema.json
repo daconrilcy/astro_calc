@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://astral-calculation.local/contracts/common/response_metadata_common_v1.schema.json",
+  "title": "ResponseMetadataCommon",
+  "type": "object",
+  "required": ["product_code", "tier", "variant", "contract_version"],
+  "properties": {
+    "product_code": { "type": "string" },
+    "tier": { "type": "string", "enum": ["free", "basic", "premium"] },
+    "variant": { "type": "string" },
+    "contract_version": { "type": "string" }
+  },
+  "additionalProperties": false
+}

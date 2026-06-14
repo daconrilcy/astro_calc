@@ -100,6 +100,8 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 name = "astral_calculator"
 version = "0.1.0"
 dependencies = [
+ "astral_contracts",
+ "astral_time_window",
  "chrono",
  "chrono-tz",
  "dotenvy",
@@ -137,9 +139,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "astral_contracts"
+version = "0.1.0"
+dependencies = [
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "astral_gateway"
+version = "0.1.0"
+dependencies = [
+ "astral_calculator",
+ "astral_contracts",
+ "astral_llm_application",
+ "astral_llm_domain",
+ "astral_llm_infra",
+ "async-trait",
+ "axum",
+ "dotenvy",
+ "reqwest",
+ "schemars",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tower",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "astral_llm_api"
 version = "0.1.0"
 dependencies = [
+ "astral_contracts",
  "astral_llm_application",
  "astral_llm_domain",
  "astral_llm_infra",
@@ -163,6 +199,8 @@ dependencies = [
 name = "astral_llm_application"
 version = "0.1.0"
 dependencies = [
+ "astral_calculator",
+ "astral_contracts",
  "astral_llm_domain",
  "astral_llm_infra",
  "astral_llm_providers",
@@ -185,6 +223,7 @@ dependencies = [
 name = "astral_llm_domain"
 version = "0.1.0"
 dependencies = [
+ "astral_contracts",
  "schemars",
  "serde",
  "serde_json",
@@ -195,6 +234,7 @@ dependencies = [
 name = "astral_llm_infra"
 version = "0.1.0"
 dependencies = [
+ "astral_contracts",
  "astral_llm_domain",
  "chrono",
  "dotenvy",

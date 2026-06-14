@@ -37,8 +37,6 @@ pub(crate) const SUPPORTED_OBJECTS_JSON: &str =
     include_str!("../../../../../json_db/horoscope_supported_objects.json");
 pub(crate) const SUPPORTED_ASPECTS_JSON: &str =
     include_str!("../../../../../json_db/horoscope_supported_aspects.json");
-pub(crate) const PERIOD_PROFILES_JSON: &str =
-    include_str!("../../../../../json_db/astral_time_period_profiles.json");
 pub(crate) const SCAN_PROFILES_JSON: &str =
     include_str!("../../../../../json_db/horoscope_scan_profiles.json");
 pub fn public_watch_point_for_theme(theme_code: &str) -> Result<Option<String>, GenerationError> {
@@ -52,7 +50,6 @@ pub fn public_watch_point_for_theme(theme_code: &str) -> Result<Option<String>, 
 #[derive(Clone)]
 pub(crate) struct ReferenceData {
     pub(crate) service_code: String,
-    pub(crate) service_profile: ServiceProfile,
     pub(crate) slot_profiles: Vec<SlotProfile>,
     pub(crate) object_weights: HashMap<String, f64>,
     pub(crate) target_weights: HashMap<String, f64>,
@@ -70,15 +67,12 @@ pub(crate) struct ReferenceData {
 }
 #[derive(Clone)]
 pub(crate) struct ServiceProfile {
-    pub(crate) house_system_code: Option<String>,
     pub(crate) period_profile_code: Option<String>,
     pub(crate) detail_profile_code: Option<String>,
     pub(crate) scan_profile_code: Option<String>,
 }
 #[derive(Clone)]
 pub(crate) struct ScanProfile {
-    pub(crate) granularity: String,
-    pub(crate) reference_time_local: String,
     pub(crate) expected_snapshots_per_day: usize,
 }
 #[derive(Clone)]
@@ -133,7 +127,6 @@ impl ReferenceData {
         let aspect_rows = rows(ASPECT_WEIGHTS_JSON)?;
         let refs = Self {
             service_code: service_code.to_string(),
-            service_profile: service_profile(service_code)?,
             slot_profiles: slot_profiles(service_code)?,
             object_weights: weight_map(OBJECT_WEIGHTS_JSON, "object_code")?,
             target_weights: weight_map(TARGET_WEIGHTS_JSON, "target_code")?,
@@ -306,10 +299,6 @@ pub(crate) fn service_profile(service_code: &str) -> Result<ServiceProfile, Gene
         .find(|row| row.get("service_code").and_then(|v| v.as_str()) == Some(service_code))
         .ok_or_else(|| horoscope_error("HOROSCOPE_SERVICE_NOT_IMPLEMENTED"))?;
     Ok(ServiceProfile {
-        house_system_code: row
-            .get("house_system_code")
-            .and_then(|v| v.as_str())
-            .map(str::to_string),
         period_profile_code: row
             .get("period_profile_code")
             .and_then(|v| v.as_str())
@@ -348,40 +337,12 @@ pub(crate) fn scan_profile(scan_profile_code: &str) -> Result<ScanProfile, Gener
         })
         .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"))?;
     Ok(ScanProfile {
-        granularity: row
-            .get("granularity")
-            .and_then(Value::as_str)
-            .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"))?
-            .to_string(),
-        reference_time_local: row
-            .get("reference_time_local")
-            .and_then(Value::as_str)
-            .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"))?
-            .to_string(),
         expected_snapshots_per_day: row
             .get("expected_snapshots_per_day")
             .and_then(Value::as_u64)
             .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"))?
             as usize,
     })
-}
-impl ScanProfile {
-    pub(crate) fn reference_times(&self) -> Result<Vec<NaiveTime>, GenerationError> {
-        let times = self
-            .reference_time_local
-            .split(',')
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-            .map(|value| {
-                NaiveTime::parse_from_str(value, "%H:%M")
-                    .map_err(|_| horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        if times.len() != self.expected_snapshots_per_day || times.is_empty() {
-            return Err(horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"));
-        }
-        Ok(times)
-    }
 }
 pub(crate) fn shortlist_profile(service_code: &str) -> Result<ShortlistProfile, GenerationError> {
     let row = rows(SHORTLIST_JSON)?

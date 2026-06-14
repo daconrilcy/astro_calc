@@ -214,3 +214,45 @@ fn export_llm_schemas() {
         eprintln!("exported {}", path.display());
     }
 }
+
+#[test]
+fn llm_openapi_excludes_removed_sync_legacy_routes() {
+    let root = repo_root();
+    let openapi = fs::read_to_string(root.join("contracts/llm/openapi.yaml")).expect("read");
+    assert!(
+        !openapi.contains("/v1/readings/generate:"),
+        "generate route must be removed from published OpenAPI"
+    );
+    assert!(
+        !openapi.contains("/v1/readings/natal/simplified:"),
+        "simplified natal route must be removed from published OpenAPI"
+    );
+}
+
+#[test]
+fn integration_service_public_schema_excludes_legacy_sync_fields() {
+    let root = repo_root();
+    let schema: serde_json::Value = serde_json::from_str(
+        &fs::read_to_string(root.join("contracts/llm/integration_service_v1.schema.json"))
+            .expect("read schema"),
+    )
+    .expect("json");
+
+    let required = schema["required"].as_array().expect("required array");
+    assert!(
+        !required
+            .iter()
+            .any(|value| value.as_str() == Some("supports_sync_legacy")),
+        "public schema must not require supports_sync_legacy"
+    );
+    assert!(
+        schema["properties"].get("supports_sync_legacy").is_none(),
+        "public schema must not expose supports_sync_legacy"
+    );
+    assert!(
+        schema["properties"]["endpoints"]["properties"]
+            .get("submit_sync_legacy")
+            .is_none(),
+        "public schema must not expose endpoints.submit_sync_legacy"
+    );
+}

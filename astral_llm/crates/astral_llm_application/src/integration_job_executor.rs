@@ -1,24 +1,17 @@
+use astral_contracts::horoscope_service_descriptor;
 use astral_llm_domain::{
-    generation_request::AudienceLevel, GenerateReadingResponse, GenerationError,
-    GenerationErrorCode,
+    generation_request::AudienceLevel,
+    integration::{CalculationMode, IntegrationService},
+    GenerateReadingResponse, GenerationError, GenerationErrorCode,
 };
 use astral_llm_infra::CalculatorClient;
 use serde_json::Value;
 use uuid::Uuid;
 
 use crate::generate_reading_use_case::{GenerateReadingUseCase, UseCaseOutput};
-use crate::horoscope::{
-    HoroscopeBasicDailyNatalOrchestrator, HoroscopeFreeDailyOrchestrator,
-    HoroscopePeriodNatalOrchestrator, HoroscopePremiumDailyLocalOrchestrator,
-    HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE, HOROSCOPE_FREE_DAILY_SERVICE_CODE,
-    HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
-    HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
-    HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE, HOROSCOPE_SERVICE_CODE,
-};
+use crate::horoscope::{HoroscopeDailyNatalOrchestrator, HoroscopePeriodNatalOrchestrator};
 use crate::integration_job_validator::ValidatedIntegrationJob;
-use crate::simplified_reading::{
-    build_reading_request, validate_simplified_calculation_request, SIMPLIFIED_PROFILE,
-};
+use crate::simplified_reading::build_reading_request;
 
 #[derive(Debug, Clone)]
 pub struct UnifiedReadingResult {
@@ -36,12 +29,12 @@ pub enum UnifiedReadingOutcome {
     Json(Value),
 }
 
-pub struct UnifiedReadingOrchestrator<'a> {
+pub struct IntegrationJobExecutor<'a> {
     calculator: &'a CalculatorClient,
     use_case: &'a GenerateReadingUseCase,
 }
 
-impl<'a> UnifiedReadingOrchestrator<'a> {
+impl<'a> IntegrationJobExecutor<'a> {
     pub fn new(calculator: &'a CalculatorClient, use_case: &'a GenerateReadingUseCase) -> Self {
         Self {
             calculator,
@@ -51,110 +44,82 @@ impl<'a> UnifiedReadingOrchestrator<'a> {
 
     pub async fn execute(
         &self,
+        service: &IntegrationService,
         job: &ValidatedIntegrationJob,
         public_run_id: Option<&str>,
     ) -> Result<UnifiedReadingResult, GenerationError> {
-        match job.service_code.as_str() {
-            HOROSCOPE_SERVICE_CODE => self.run_horoscope(job, public_run_id).await,
-            HOROSCOPE_FREE_DAILY_SERVICE_CODE => self.run_free_horoscope(job, public_run_id).await,
-            HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE => {
-                self.run_premium_horoscope(job, public_run_id).await
-            }
-            HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE
-            | HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE
-            | HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE => {
-                self.run_period_horoscope(job, public_run_id).await
-            }
-            SIMPLIFIED_PROFILE => self.run_simplified(job).await,
-            other if other.ends_with("_from_payload") => self.run_from_payload(job).await,
-            other if other.starts_with("natal_") => self.run_full_natal(job).await,
-            code => Err(GenerationError::with_details(
+        if !supports_integration_service(service) {
+            return Err(GenerationError::with_details(
                 GenerationErrorCode::InvalidInput,
-                format!("orchestration not implemented for service: {code}"),
+                format!(
+                    "orchestration not implemented for service: {}",
+                    service.service_code
+                ),
+                Value::Null,
+            ));
+        }
+        if let Some(descriptor) = horoscope_service_descriptor(&service.service_code) {
+            return self
+                .run_horoscope_service(job, descriptor.contracts.public_request_contract, public_run_id)
+                .await;
+        }
+
+        if service.is_from_payload() {
+            return self.run_from_payload(job).await;
+        }
+
+        match service.calculation_mode {
+            CalculationMode::SimplifiedNatal => self.run_simplified(job).await,
+            CalculationMode::FullNatal => self.run_full_natal(job).await,
+            CalculationMode::None => Err(GenerationError::with_details(
+                GenerationErrorCode::InvalidInput,
+                format!(
+                    "orchestration not implemented for service: {}",
+                    service.service_code
+                ),
                 Value::Null,
             )),
         }
     }
 
-    async fn run_horoscope(
+    async fn run_horoscope_service(
         &self,
         job: &ValidatedIntegrationJob,
+        public_request_contract: &str,
         public_run_id: Option<&str>,
     ) -> Result<UnifiedReadingResult, GenerationError> {
         let run_id = public_run_id
             .map(str::to_string)
             .unwrap_or_else(|| Uuid::new_v4().to_string());
-        let result = HoroscopeBasicDailyNatalOrchestrator::execute(
-            self.calculator,
-            self.use_case,
-            &job.payload,
-            Some(&run_id),
-        )
-        .await?;
-        Ok(UnifiedReadingResult {
-            run_id,
-            outcome: UnifiedReadingOutcome::Json(result),
-        })
-    }
-
-    async fn run_free_horoscope(
-        &self,
-        job: &ValidatedIntegrationJob,
-        public_run_id: Option<&str>,
-    ) -> Result<UnifiedReadingResult, GenerationError> {
-        let run_id = public_run_id
-            .map(str::to_string)
-            .unwrap_or_else(|| Uuid::new_v4().to_string());
-        let result = HoroscopeFreeDailyOrchestrator::execute(
-            self.calculator,
-            self.use_case,
-            &job.payload,
-            Some(&run_id),
-        )
-        .await?;
-        Ok(UnifiedReadingResult {
-            run_id,
-            outcome: UnifiedReadingOutcome::Json(result),
-        })
-    }
-
-    async fn run_premium_horoscope(
-        &self,
-        job: &ValidatedIntegrationJob,
-        public_run_id: Option<&str>,
-    ) -> Result<UnifiedReadingResult, GenerationError> {
-        let run_id = public_run_id
-            .map(str::to_string)
-            .unwrap_or_else(|| Uuid::new_v4().to_string());
-        let result = HoroscopePremiumDailyLocalOrchestrator::execute(
-            self.calculator,
-            self.use_case,
-            &job.payload,
-            Some(&run_id),
-        )
-        .await?;
-        Ok(UnifiedReadingResult {
-            run_id,
-            outcome: UnifiedReadingOutcome::Json(result),
-        })
-    }
-
-    async fn run_period_horoscope(
-        &self,
-        job: &ValidatedIntegrationJob,
-        public_run_id: Option<&str>,
-    ) -> Result<UnifiedReadingResult, GenerationError> {
-        let run_id = public_run_id
-            .map(str::to_string)
-            .unwrap_or_else(|| Uuid::new_v4().to_string());
-        let result = HoroscopePeriodNatalOrchestrator::execute(
-            &job.service_code,
-            self.calculator,
-            self.use_case,
-            &job.payload,
-            Some(&run_id),
-        )
-        .await?;
+        let result = match public_request_contract {
+            "horoscope_daily_request_v2" => {
+                HoroscopeDailyNatalOrchestrator::execute(
+                    &job.service_code,
+                    self.calculator,
+                    self.use_case,
+                    &job.payload,
+                    Some(&run_id),
+                )
+                .await?
+            }
+            "horoscope_period_request_v2" => {
+                HoroscopePeriodNatalOrchestrator::execute(
+                    &job.service_code,
+                    self.calculator,
+                    self.use_case,
+                    &job.payload,
+                    Some(&run_id),
+                )
+                .await?
+            }
+            contract => {
+                return Err(GenerationError::with_details(
+                    GenerationErrorCode::InvalidInput,
+                    format!("unsupported horoscope contract: {contract}"),
+                    Value::Null,
+                ));
+            }
+        };
         Ok(UnifiedReadingResult {
             run_id,
             outcome: UnifiedReadingOutcome::Json(result),
@@ -165,7 +130,7 @@ impl<'a> UnifiedReadingOrchestrator<'a> {
         &self,
         job: &ValidatedIntegrationJob,
     ) -> Result<UnifiedReadingResult, GenerationError> {
-        validate_simplified_calculation_request(&job.payload)?;
+        crate::validate_simplified_calculation_request(&job.payload)?;
         let calculation = self
             .calculator
             .calculate_simplified_natal(&job.payload)
@@ -249,6 +214,31 @@ impl<'a> UnifiedReadingOrchestrator<'a> {
             Some("full".into()),
         ))
     }
+}
+
+pub fn supports_integration_service(service: &IntegrationService) -> bool {
+    if horoscope_service_descriptor(&service.service_code).is_some() {
+        return true;
+    }
+    if service.is_from_payload() {
+        return service.payload_contract == "generate_reading_request_v1"
+            && matches_orchestration(service, &["interpretation_only", "llm_only"]);
+    }
+    match service.calculation_mode {
+        CalculationMode::SimplifiedNatal => matches_orchestration(
+            service,
+            &["unified_from_birth", "calculator_then_llm", "legacy_unified"],
+        ) && service.payload_contract == "astro_simplified_natal_request_v1",
+        CalculationMode::FullNatal => matches_orchestration(
+            service,
+            &["unified_from_birth", "calculator_then_llm", "legacy_unified"],
+        ) && service.payload_contract == "astro_engine_request_v1",
+        CalculationMode::None => false,
+    }
+}
+
+fn matches_orchestration(service: &IntegrationService, accepted_raw_modes: &[&str]) -> bool {
+    accepted_raw_modes.contains(&service.orchestration_mode.as_str())
 }
 
 fn build_unified_result(

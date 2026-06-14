@@ -65,7 +65,7 @@ pub(crate) async fn period_writer_response(
     validate_period_provider_public_payload(&response)?;
     Ok(response)
 }
-pub(crate) async fn period_writer_response_with_quality_loop(
+pub async fn period_writer_response_with_quality_loop(
     use_case: &GenerateReadingUseCase,
     request: &Value,
     run_id: Option<&str>,

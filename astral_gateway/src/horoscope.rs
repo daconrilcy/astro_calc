@@ -1,0 +1,192 @@
+use std::sync::Arc;
+
+use astral_calculator::horoscope::{
+    build_horoscope_daily_calculation_request_from_public,
+    build_horoscope_period_calculation_request_from_public,
+};
+use astral_contracts::{
+    ProductTier, QualityMetadataCommon, ResponseMetadataCommon,
+    HOROSCOPE_FREE_DAILY_SERVICE_CODE, HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+    HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
+    HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+};
+use astral_llm_application::{
+    build_interpretation_request, build_period_writer_request, period_editorial_audit,
+    score_calculation, validate_horoscope_response_schema, validate_period_public_request,
+    validate_period_response_contract, validate_public_request, validate_response_evidence,
+    HoroscopePeriodPublicRequest, HoroscopePublicRequest,
+};
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+
+use crate::{
+    error::GatewayError,
+    ports::{CalculatorPort, LlmPort},
+};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HoroscopeReadingResponseV2 {
+    pub metadata: ResponseMetadataCommon,
+    pub quality: QualityMetadataCommon,
+    pub calculation: Value,
+    pub llm_request: Value,
+    pub reading: Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub debug: Option<Value>,
+}
+
+pub struct GenerateHoroscopeDailyReadingUseCase {
+    calculator: Arc<dyn CalculatorPort>,
+    llm: Arc<dyn LlmPort>,
+}
+
+pub struct GenerateHoroscopePeriodReadingUseCase {
+    calculator: Arc<dyn CalculatorPort>,
+    llm: Arc<dyn LlmPort>,
+}
+
+impl GenerateHoroscopeDailyReadingUseCase {
+    pub fn new(calculator: Arc<dyn CalculatorPort>, llm: Arc<dyn LlmPort>) -> Self {
+        Self { calculator, llm }
+    }
+
+    pub async fn execute(
+        &self,
+        service_code: &str,
+        request: HoroscopePublicRequest,
+    ) -> Result<HoroscopeReadingResponseV2, GatewayError> {
+        let public = validate_public_request(&serde_json::to_value(&request).map_err(|err| {
+            GatewayError::bad_request(format!("invalid horoscope request serialization: {err}"))
+        })?)
+        .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+        let public_value = serde_json::to_value(&public).map_err(|err| {
+            GatewayError::Internal(format!("invalid horoscope request serialization: {err}"))
+        })?;
+        let calculation_request =
+            build_horoscope_daily_calculation_request_from_public(service_code, &public_value)
+                .map_err(GatewayError::bad_request)?;
+        let calculation = self
+            .calculator
+            .calculate_horoscope_daily_natal(
+                &serde_json::to_value(&calculation_request).map_err(|err| {
+                    GatewayError::Internal(format!(
+                        "invalid horoscope daily calculation request serialization: {err}"
+                    ))
+                })?,
+            )
+            .await?;
+        let signals = score_calculation(&calculation)
+            .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+        let interpretation = build_interpretation_request(&public, &calculation, &signals)
+            .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+        let reading = self.llm.render_horoscope_daily(&interpretation).await?;
+        validate_horoscope_response_schema(&reading)
+            .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+        validate_response_evidence(&interpretation, &reading)
+            .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+
+        Ok(HoroscopeReadingResponseV2 {
+            metadata: ResponseMetadataCommon {
+                product_code: service_code.to_string(),
+                tier: daily_tier(service_code),
+                variant: "daily".to_string(),
+                contract_version: "horoscope_reading_response_v2".to_string(),
+            },
+            quality: QualityMetadataCommon {
+                calculator_contract_version: Some("horoscope_calculation_response".to_string()),
+                llm_contract_version: Some("horoscope_response".to_string()),
+                reading_completeness: None,
+            },
+            calculation,
+            llm_request: interpretation,
+            reading,
+            debug: None,
+        })
+    }
+}
+
+impl GenerateHoroscopePeriodReadingUseCase {
+    pub fn new(calculator: Arc<dyn CalculatorPort>, llm: Arc<dyn LlmPort>) -> Self {
+        Self { calculator, llm }
+    }
+
+    pub async fn execute(
+        &self,
+        service_code: &str,
+        request: HoroscopePeriodPublicRequest,
+    ) -> Result<HoroscopeReadingResponseV2, GatewayError> {
+        let public =
+            validate_period_public_request(&serde_json::to_value(&request).map_err(|err| {
+                GatewayError::bad_request(format!(
+                    "invalid horoscope period request serialization: {err}"
+                ))
+            })?)
+            .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+        let public_value = serde_json::to_value(&public).map_err(|err| {
+            GatewayError::Internal(format!(
+                "invalid horoscope period request serialization: {err}"
+            ))
+        })?;
+        let calculation_request =
+            build_horoscope_period_calculation_request_from_public(service_code, &public_value)
+                .map_err(GatewayError::bad_request)?;
+        let calculation = self
+            .calculator
+            .calculate_horoscope_period_natal(
+                &serde_json::to_value(&calculation_request).map_err(|err| {
+                    GatewayError::Internal(format!(
+                        "invalid horoscope period calculation request serialization: {err}"
+                    ))
+                })?,
+            )
+            .await?;
+        let writer_request = build_period_writer_request(&public, &calculation)
+            .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+        let reading = self.llm.render_horoscope_period(&writer_request).await?;
+        validate_period_response_contract(&writer_request, &reading)
+            .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+
+        let mut debug = json!({
+            "period_editorial_audit": period_editorial_audit(&writer_request, &reading)
+        });
+        if let Some(warning) = public.language_compat_warning.clone() {
+            debug["language_compatibility"] = warning;
+        }
+
+        Ok(HoroscopeReadingResponseV2 {
+            metadata: ResponseMetadataCommon {
+                product_code: service_code.to_string(),
+                tier: period_tier(service_code),
+                variant: "period".to_string(),
+                contract_version: "horoscope_reading_response_v2".to_string(),
+            },
+            quality: QualityMetadataCommon {
+                calculator_contract_version: Some(
+                    "horoscope_period_calculation_response".to_string(),
+                ),
+                llm_contract_version: Some("horoscope_period_response".to_string()),
+                reading_completeness: None,
+            },
+            calculation,
+            llm_request: writer_request,
+            reading,
+            debug: Some(debug),
+        })
+    }
+}
+
+fn daily_tier(service_code: &str) -> ProductTier {
+    match service_code {
+        HOROSCOPE_FREE_DAILY_SERVICE_CODE => ProductTier::Free,
+        HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE => ProductTier::Premium,
+        _ => ProductTier::Basic,
+    }
+}
+
+fn period_tier(service_code: &str) -> ProductTier {
+    match service_code {
+        HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE => ProductTier::Free,
+        HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE => ProductTier::Premium,
+        _ => ProductTier::Basic,
+    }
+}

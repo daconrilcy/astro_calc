@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://astral-calculation.local/contracts/common/error_response_common_v1.schema.json",
+  "title": "ErrorResponseCommon",
+  "type": "object",
+  "required": ["code", "message"],
+  "properties": {
+    "code": { "type": "string" },
+    "message": { "type": "string" },
+    "details": {}
+  },
+  "additionalProperties": false
+}

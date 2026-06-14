@@ -1,0 +1,8 @@
+services:
+  astral_llm_api:
+    environment:
+      ASTRAL_LLM_ENABLE_LEGACY_PRODUCT_CODE_SHIM: "false"
+
+  astral_llm_worker:
+    environment:
+      ASTRAL_LLM_ENABLE_LEGACY_PRODUCT_CODE_SHIM: "false"

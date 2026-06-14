@@ -28,8 +28,9 @@ impl InterpretationProfileResolver {
     pub fn normalize_request(
         request: &mut GenerateReadingRequest,
         catalog: &SharedCanonicalCatalog,
+        legacy_product_code_shim_available: bool,
     ) -> Result<(), GenerationError> {
-        Self::migrate_legacy_product_codes(request)?;
+        Self::migrate_legacy_product_codes(request, legacy_product_code_shim_available)?;
 
         if request.product_context.product_code != NATAL_PROMPTER_PRODUCT {
             return Ok(());
@@ -85,12 +86,25 @@ impl InterpretationProfileResolver {
 
     fn migrate_legacy_product_codes(
         request: &mut GenerateReadingRequest,
+        legacy_product_code_shim_available: bool,
     ) -> Result<(), GenerationError> {
         let implied_profile = match request.product_context.product_code.as_str() {
             LEGACY_PRODUCT_NATAL_PREMIUM => Some(PROFILE_NATAL_PREMIUM),
             LEGACY_PRODUCT_NATAL_BASIC => Some(PROFILE_NATAL_BASIC),
             _ => return Ok(()),
         };
+
+        if !legacy_product_code_shim_available {
+            return Err(GenerationError::with_details(
+                GenerationErrorCode::ProductPolicyViolation,
+                "legacy product_code shim is disabled; use natal_prompter + interpretation_profile_code",
+                serde_json::json!({
+                    "legacy_product_code": request.product_context.product_code,
+                    "expected_product_code": NATAL_PROMPTER_PRODUCT,
+                    "expected_profile_code": implied_profile,
+                }),
+            ));
+        }
 
         let legacy_code = request.product_context.product_code.clone();
         if let Some(existing) = request
@@ -320,7 +334,7 @@ mod tests {
     fn migrates_legacy_natal_premium_product_code() {
         let catalog = catalog_with_profiles();
         let mut request = base_request("natal_premium", None, GenerationMode::SinglePass);
-        InterpretationProfileResolver::normalize_request(&mut request, &catalog).unwrap();
+        InterpretationProfileResolver::normalize_request(&mut request, &catalog, true).unwrap();
         assert_eq!(request.product_context.product_code, NATAL_PROMPTER_PRODUCT);
         assert_eq!(
             request
@@ -343,7 +357,7 @@ mod tests {
             Some("natal_premium"),
             GenerationMode::SinglePass,
         );
-        let err = InterpretationProfileResolver::normalize_request(&mut request, &catalog)
+        let err = InterpretationProfileResolver::normalize_request(&mut request, &catalog, true)
             .expect_err("conflicting legacy profile");
         assert_eq!(
             err.detail().code,
@@ -359,7 +373,7 @@ mod tests {
             Some("natal_light"),
             GenerationMode::SinglePass,
         );
-        let err = InterpretationProfileResolver::normalize_request(&mut request, &catalog)
+        let err = InterpretationProfileResolver::normalize_request(&mut request, &catalog, true)
             .expect_err("premium legacy cannot force light profile");
         assert_eq!(
             err.detail().code,
@@ -404,10 +418,22 @@ mod tests {
             Some("natal_light"),
             GenerationMode::ChapterOrchestrated,
         );
-        InterpretationProfileResolver::normalize_request(&mut request, &catalog).unwrap();
+        InterpretationProfileResolver::normalize_request(&mut request, &catalog, true).unwrap();
         assert_eq!(
             request.response_contract.generation_mode,
             GenerationMode::SinglePass
+        );
+    }
+
+    #[test]
+    fn disabled_legacy_product_code_shim_rejects_old_product_code() {
+        let catalog = catalog_with_profiles();
+        let mut request = base_request(LEGACY_PRODUCT_NATAL_BASIC, None, GenerationMode::SinglePass);
+        let err = InterpretationProfileResolver::normalize_request(&mut request, &catalog, false)
+            .expect_err("legacy product code shim disabled");
+        assert_eq!(
+            err.detail().code,
+            GenerationErrorCode::ProductPolicyViolation
         );
     }
 }

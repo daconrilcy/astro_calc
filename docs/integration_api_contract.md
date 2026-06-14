@@ -14,7 +14,14 @@ Spécification normative de l'API d'intégration métier (`astral_llm_api`). Les
 
 **Hors V1** : routes sync génériques (`POST /v1/readings/natal/{profile}`, `POST /v1/services/{code}/generate-sync`).
 
-Les endpoints historiques (`POST /v1/calculations/*`, `POST /v1/readings/generate`, `POST /v1/readings/natal/simplified`, `GET /v1/runs/{id}`) restent disponibles sans changement de contrat.
+Les endpoints historiques `POST /v1/readings/generate` et `POST /v1/readings/natal/simplified` ont ete retires du runtime courant.
+
+Breaking changes facade publique du 2026-06-14:
+
+- `GET /v1/services` ne publie plus `supports_sync_legacy`
+- `GET /v1/services` ne publie plus `endpoints.submit_sync_legacy`
+- la source de verite de migration publique est `api_surface`
+- les handlers sync legacy ont ete supprimes de `astral_llm_api`
 
 ## Enveloppe job vs payload métier
 
@@ -202,7 +209,7 @@ availability ∈ {active, beta}
   → POST /v1/jobs → 501 SERVICE_NOT_IMPLEMENTED avant mise en file
 ```
 
-Phase 2 pilote : seul `natal_simplified` exécutable ; autres profils `planned` → **404**.
+Phase historique pilote : seul `natal_simplified` etait initialement executable ; les services `*_from_payload` sont maintenant classes `deprecated` et restent hors catalogue public courant.
 
 ## Rétention
 
@@ -244,15 +251,34 @@ Le corps complet du résultat reste accessible via poll HTTP. `supports_mercure:
 
 Découverte : `GET /v1/contracts` sur `astral_llm_api`.
 
+Le catalogue V1 publie `api_surface` pour distinguer explicitement :
+
+- `async_job_v1_status`: surface async V1 encore courante pour l'intégration jobs
+- `sync_legacy_status`: route sync legacy interne ou historique
+- `public_gateway_v2_status`: surface publique recommandee cote `astral_gateway`
+- `recommended_entrypoint`: endpoint public v2 recommande quand il existe
+
 ## Auth et tenancy
 
 - Auth : `Authorization: Bearer <key>` ou `X-API-Key` si `ASTRAL_LLM_API_KEY` configuré
 - `X-Tenant-Id` : identifiant tenant (défaut `default`)
 - Dev sans auth : `api_key_id` fixe `key:dev-local`
 
+## Positionnement des surfaces
+
+- `astral_gateway` porte la surface publique recommandee pour l'orchestration metier (`/v2/natal/*`, `/v2/horoscope/*`)
+- `astral_llm_api` conserve le contrat async V1 pour l'integration par jobs (`/v1/services`, `/v1/jobs`)
+- les routes sync heritagees restent hors contrat public V2 et sont exposees comme `legacy` dans `api_surface`
+
+## Legacy runtime
+
+- les handlers sync legacy ont ete supprimes du runtime courant
+- `ASTRAL_LLM_ENABLE_LEGACY_PRODUCT_CODE_SHIM=false` coupe la migration implicite des anciens `product_code` (`natal_basic`, `natal_premium`) vers `natal_prompter`
+- `ASTRAL_LLM_LEGACY_PRODUCT_CODE_SHIM_CUTOFF_DATE=YYYY-MM-DD` permet une extinction datee de ce shim
+
 ## Routes sync — hors contrat V1 intégration
 
-Les routes legacy sync documentées par service via `supports_sync_legacy` et `endpoints.submit_sync_legacy` ne font pas partie du contrat d'intégration async V1.
+Les routes legacy sync ne font pas partie du contrat d'intégration async V1.
 ## Service horoscope basic daily natal 3 slots
 
 - `service_code` : `horoscope_basic_daily_natal_3_slots`

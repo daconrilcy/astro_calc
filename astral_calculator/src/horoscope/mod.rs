@@ -1,17 +1,20 @@
+mod builders;
+
 use std::collections::HashSet;
 
+pub use astral_contracts::{
+    HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE, HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+    HOROSCOPE_FREE_DAILY_SERVICE_CODE, HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+    HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
+    HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+};
+pub use builders::{
+    build_horoscope_daily_calculation_request_from_public,
+    build_horoscope_period_calculation_request_from_public,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::domain::ObjectPositionFact;
-
-pub const HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE: &str = "horoscope_basic_daily_natal_3_slots";
-pub const HOROSCOPE_FREE_DAILY_SERVICE_CODE: &str = "horoscope_free_daily";
-pub const HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE: &str =
-    "horoscope_premium_daily_local_2h_slots";
-pub const HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE: &str =
-    "horoscope_basic_next_7_days_natal";
-pub const HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE: &str =
-    "horoscope_premium_next_7_days_natal";
 const HOROSCOPE_ORB_WEIGHT_BANDS_JSON: &str =
     include_str!("../../../json_db/horoscope_orb_weight_bands.json");
 

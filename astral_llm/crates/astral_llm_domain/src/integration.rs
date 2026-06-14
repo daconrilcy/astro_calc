@@ -1,5 +1,6 @@
 //! Contrats integration API (catalogue services, jobs async).
 
+use astral_contracts::OrchestrationMode;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -128,10 +129,20 @@ pub struct IntegrationService {
     pub label_fr: String,
     pub description_fr: String,
     pub orchestration_mode: String,
+    #[serde(default)]
+    pub orchestration_mode_typed: Option<OrchestrationMode>,
     pub calculation_mode: CalculationMode,
     pub service_request_contract: String,
     pub payload_contract: String,
     pub service_response_contract: String,
+    #[serde(default)]
+    pub public_request_contract: Option<String>,
+    #[serde(default)]
+    pub calculator_request_contract: Option<String>,
+    #[serde(default)]
+    pub llm_request_contract: Option<String>,
+    #[serde(default)]
+    pub public_response_contract: Option<String>,
     pub calculation_output_contract: Option<String>,
     pub reading_output_contract: String,
     pub sync_endpoint: Option<String>,
@@ -147,5 +158,15 @@ pub struct IntegrationService {
 impl IntegrationService {
     pub fn is_from_payload(&self) -> bool {
         self.service_code.ends_with("_from_payload")
+    }
+
+    pub fn resolved_orchestration_mode(&self) -> OrchestrationMode {
+        self.orchestration_mode_typed.unwrap_or_else(|| match self.orchestration_mode.as_str() {
+            "calculator_only" => OrchestrationMode::CalculatorOnly,
+            "llm_only" => OrchestrationMode::LlmOnly,
+            "public_gateway" => OrchestrationMode::PublicGateway,
+            "legacy_unified" => OrchestrationMode::LegacyUnified,
+            _ => OrchestrationMode::CalculatorThenLlm,
+        })
     }
 }

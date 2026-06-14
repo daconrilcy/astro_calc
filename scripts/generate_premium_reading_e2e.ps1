@@ -15,6 +15,8 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 
+Write-Host "Internal LLM reading client: POST /v1/internal/readings/render"
+
 function Import-DotEnv {
     param([string]$Path)
 
@@ -224,7 +226,7 @@ if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
     $headers["Authorization"] = "Bearer $ApiKey"
 }
 
-$uri = "{0}/v1/readings/generate" -f $BaseUrl.TrimEnd("/")
+$uri = "{0}/v1/internal/readings/render" -f $BaseUrl.TrimEnd("/")
 $bodyObject = Get-Content -Raw -LiteralPath $RequestPath | ConvertFrom-Json
 $bodyObject.idempotency_key = $IdempotencyKey
 

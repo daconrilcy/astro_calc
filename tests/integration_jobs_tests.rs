@@ -15,10 +15,15 @@ fn sample_simplified_service() -> IntegrationService {
         label_fr: "Test".into(),
         description_fr: "Test".into(),
         orchestration_mode: "unified_from_birth".into(),
+        orchestration_mode_typed: None,
         calculation_mode: CalculationMode::SimplifiedNatal,
         service_request_contract: "integration_job_request_v1".into(),
         payload_contract: "astro_simplified_natal_request_v1".into(),
         service_response_contract: "integration_job_status_v1".into(),
+        public_request_contract: None,
+        calculator_request_contract: None,
+        llm_request_contract: None,
+        public_response_contract: None,
         calculation_output_contract: Some("astro_simplified_natal_response_v1".into()),
         reading_output_contract: "generate_reading_response_v1".into(),
         sync_endpoint: None,
@@ -40,10 +45,15 @@ fn from_payload_service() -> IntegrationService {
         label_fr: "Test".into(),
         description_fr: "Test".into(),
         orchestration_mode: "interpretation_only".into(),
+        orchestration_mode_typed: None,
         calculation_mode: CalculationMode::None,
         service_request_contract: "integration_job_request_v1".into(),
         payload_contract: "generate_reading_request_v1".into(),
         service_response_contract: "integration_job_status_v1".into(),
+        public_request_contract: None,
+        calculator_request_contract: None,
+        llm_request_contract: None,
+        public_response_contract: None,
         calculation_output_contract: None,
         reading_output_contract: "generate_reading_response_v1".into(),
         sync_endpoint: None,
@@ -51,7 +61,7 @@ fn from_payload_service() -> IntegrationService {
         supports_async: true,
         supports_sync_legacy: true,
         supports_mercure: false,
-        availability: ServiceAvailability::Planned,
+        availability: ServiceAvailability::Deprecated,
         example_request_json: None,
         sort_order: 2,
     }
@@ -65,10 +75,15 @@ fn unsupported_active_service() -> IntegrationService {
         label_fr: "Test".into(),
         description_fr: "Test".into(),
         orchestration_mode: "unsupported".into(),
+        orchestration_mode_typed: None,
         calculation_mode: CalculationMode::FullNatal,
         service_request_contract: "integration_job_request_v1".into(),
         payload_contract: "astro_engine_request_v1".into(),
         service_response_contract: "integration_job_status_v1".into(),
+        public_request_contract: None,
+        calculator_request_contract: None,
+        llm_request_contract: None,
+        public_response_contract: None,
         calculation_output_contract: Some("astro_engine_response_v1".into()),
         reading_output_contract: "generate_reading_response_v1".into(),
         sync_endpoint: None,
@@ -242,7 +257,7 @@ fn active_service_without_v1_orchestrator_is_not_executable() {
 }
 
 #[test]
-fn planned_service_not_submittable() {
+fn deprecated_service_not_submittable() {
     let service = from_payload_service();
     assert!(!service.availability.is_submittable());
 }

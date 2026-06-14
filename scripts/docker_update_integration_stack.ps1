@@ -10,6 +10,9 @@
 
 .EXAMPLE
     .\scripts\docker_update_integration_stack.ps1 -SkipLlmSync
+
+.EXAMPLE
+    .\scripts\docker_update_integration_stack.ps1 -LegacyCutover
 #>
 param(
     [string]$CalculatorUrl = "http://127.0.0.1:8080",
@@ -20,6 +23,7 @@ param(
     [switch]$SkipLlmSync,
     [switch]$SkipCatalogueSubmit,
     [switch]$SkipSmoke,
+    [switch]$LegacyCutover,
     [switch]$RunRustChecks
 )
 
@@ -92,6 +96,20 @@ function Assert-PremiumNext7V2Catalogue {
     }
 }
 
+function Invoke-DockerCompose {
+    param(
+        [Parameter(ValueFromRemainingArguments = $true)]
+        [string[]]$ComposeArgs
+    )
+
+    $composeFiles = @("-f", "docker-compose.yml")
+    if ($LegacyCutover) {
+        $composeFiles += @("-f", "docker-compose.legacy-cutover.yml")
+    }
+
+    & docker compose @composeFiles @ComposeArgs
+}
+
 Push-Location $repoRoot
 try {
     Write-Host "== Docker integration stack update ==" -ForegroundColor Cyan
@@ -102,18 +120,18 @@ try {
 
     if (-not $SkipBuild) {
         Invoke-Step "Build and start containers" {
-            docker compose up -d --build
+            Invoke-DockerCompose up -d --build
             if ($LASTEXITCODE -ne 0) { throw "docker compose up -d --build failed" }
         }
     } else {
         Invoke-Step "Start existing containers" {
-            docker compose up -d --no-build
+            Invoke-DockerCompose up -d --no-build
             if ($LASTEXITCODE -ne 0) { throw "docker compose up -d --no-build failed" }
         }
     }
 
     Invoke-Step "PostgreSQL readiness" {
-        docker compose exec -T postgres pg_isready -U $env:POSTGRES_USER -d $env:POSTGRES_DB | Out-Null
+        Invoke-DockerCompose exec -T postgres pg_isready -U $env:POSTGRES_USER -d $env:POSTGRES_DB | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "PostgreSQL is not ready" }
     }
 
@@ -137,7 +155,7 @@ try {
     }
 
     Invoke-Step "Restart LLM API and worker" {
-        docker compose restart astral_llm_api astral_llm_worker | Out-Null
+        Invoke-DockerCompose restart astral_llm_api astral_llm_worker | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "docker compose restart failed" }
     }
 
@@ -211,6 +229,9 @@ try {
     Write-Host "Calculator: $CalculatorUrl"
     Write-Host "LLM API:    $LlmUrl"
     Write-Host "Mercure:    http://127.0.0.1:3000"
+    if ($LegacyCutover) {
+        Write-Host "Legacy product_code shim: disabled via docker-compose.legacy-cutover.yml" -ForegroundColor Yellow
+    }
 } finally {
     Pop-Location
 }

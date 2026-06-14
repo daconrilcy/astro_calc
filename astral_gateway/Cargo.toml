@@ -1,0 +1,53 @@
+[package]
+name = "astral_gateway"
+version.workspace = true
+edition.workspace = true
+default-run = "astral_gateway"
+
+[lib]
+name = "astral_gateway"
+path = "src/lib.rs"
+
+[[bin]]
+name = "astral_gateway"
+path = "src/main.rs"
+
+[[test]]
+name = "gateway_natal_v2_tests"
+path = "../tests/gateway_natal_v2_tests.rs"
+
+[[test]]
+name = "service_registry_tests"
+path = "../tests/service_registry_tests.rs"
+
+[[test]]
+name = "gateway_schema_tests"
+path = "../tests/gateway_schema_tests.rs"
+
+[[test]]
+name = "gateway_horoscope_v2_tests"
+path = "../tests/gateway_horoscope_v2_tests.rs"
+
+[dependencies]
+astral_calculator.workspace = true
+astral_contracts.workspace = true
+astral_llm_application.workspace = true
+astral_llm_domain.workspace = true
+astral_llm_infra.workspace = true
+async-trait.workspace = true
+axum.workspace = true
+dotenvy.workspace = true
+reqwest.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tower-http.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+serde_json.workspace = true
+tower = "0.5"

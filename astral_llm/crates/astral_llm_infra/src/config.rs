@@ -2,6 +2,7 @@ use astral_llm_domain::{
     AstralLlmEnv, EngineDefaults, FallbackPolicy, PrivacyPolicy, ProductionExposureMode,
     ProviderKind, ServiceLimits,
 };
+use chrono::{NaiveDate, Utc};
 
 use crate::canonical::service_limits_from_env;
 use crate::url_validator::{
@@ -36,6 +37,8 @@ pub struct AppConfig {
     pub idempotency_ttl_hours: i64,
     pub circuit_breaker_failure_threshold: u32,
     pub circuit_breaker_open_secs: u64,
+    pub enable_legacy_product_code_shim: bool,
+    pub legacy_product_code_shim_cutoff_date: Option<NaiveDate>,
 }
 
 impl AppConfig {
@@ -96,6 +99,10 @@ impl AppConfig {
             runtime_env != AstralLlmEnv::Production,
         );
         let store_sanitized_payloads = env_bool("ASTRAL_LLM_STORE_SANITIZED_PAYLOADS", false);
+        let enable_legacy_product_code_shim =
+            env_bool("ASTRAL_LLM_ENABLE_LEGACY_PRODUCT_CODE_SHIM", true);
+        let legacy_product_code_shim_cutoff_date =
+            env_date("ASTRAL_LLM_LEGACY_PRODUCT_CODE_SHIM_CUTOFF_DATE");
 
         Self {
             runtime_env,
@@ -140,6 +147,8 @@ impl AppConfig {
             circuit_breaker_open_secs: env_var("ASTRAL_LLM_CIRCUIT_BREAKER_OPEN_SECS")
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(60),
+            enable_legacy_product_code_shim,
+            legacy_product_code_shim_cutoff_date,
         }
     }
 
@@ -162,6 +171,13 @@ impl AppConfig {
 
     pub fn requires_auth(&self) -> bool {
         self.runtime_env.requires_api_key() || self.api_key.as_ref().is_some_and(|k| !k.is_empty())
+    }
+
+    pub fn legacy_product_code_shim_available(&self) -> bool {
+        feature_available(
+            self.enable_legacy_product_code_shim,
+            self.legacy_product_code_shim_cutoff_date,
+        )
     }
 }
 
@@ -245,6 +261,17 @@ pub fn env_bool(key: &str, default: bool) -> bool {
         .unwrap_or(default)
 }
 
+pub fn env_date(key: &str) -> Option<NaiveDate> {
+    env_var(key).and_then(|v| NaiveDate::parse_from_str(&v, "%Y-%m-%d").ok())
+}
+
+fn feature_available(enabled: bool, cutoff_date: Option<NaiveDate>) -> bool {
+    enabled
+        && cutoff_date
+            .map(|cutoff| Utc::now().date_naive() <= cutoff)
+            .unwrap_or(true)
+}
+
 pub fn parse_provider_kind(raw: &str) -> ProviderKind {
     match raw.trim().to_lowercase().as_str() {
         "openai" | "open_ai" => ProviderKind::OpenAi,
@@ -282,5 +309,16 @@ mod tests {
         };
         let chain = policy.candidate_chain(&ProviderKind::OpenAi, true);
         assert_eq!(chain, vec![ProviderKind::OpenAi]);
+    }
+
+    #[test]
+    fn feature_available_respects_disabled_flag() {
+        assert!(!feature_available(false, None));
+    }
+
+    #[test]
+    fn feature_available_respects_future_cutoff() {
+        let tomorrow = Utc::now().date_naive().succ_opt().expect("tomorrow");
+        assert!(feature_available(true, Some(tomorrow)));
     }
 }

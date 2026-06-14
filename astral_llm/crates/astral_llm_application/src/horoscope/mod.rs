@@ -10,7 +10,7 @@ use astral_llm_domain::{
 use astral_llm_providers::{
     GenerationMetadata, PromptMessage, PromptRole, ProviderGenerationRequest,
 };
-use chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
+use chrono::{Datelike, NaiveDate};
 use chrono_tz::Tz;
 use jsonschema::JSONSchema;
 use regex::Regex;
@@ -34,7 +34,7 @@ pub(crate) use daily::*;
 pub use daily::{
     aggregate_themes, build_calculation_request, build_calculation_request_for_service,
     build_interpretation_request, daily_response_provider_schema, daily_writer_messages,
-    score_calculation, validate_public_request, validate_response_evidence,
+    daily_writer_response, score_calculation, validate_public_request, validate_response_evidence,
 };
 pub(crate) use errors::*;
 pub use orchestrators::{
@@ -48,6 +48,7 @@ pub use period::{
     build_period_interpretation_request, build_period_writer_request, fake_period_writer_response,
     period_editorial_audit, period_quality_audit, period_response_provider_schema,
     period_writer_max_output_tokens, period_writer_messages, period_writer_reasoning_effort,
+    period_writer_response_with_quality_loop,
     postprocess_period_provider_response, repair_period_response_shape,
     reprocess_horoscope_period_payload, validate_period_interpretation_request_schema,
     validate_period_provider_public_payload, validate_period_public_request,

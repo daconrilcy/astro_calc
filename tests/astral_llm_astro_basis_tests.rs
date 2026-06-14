@@ -138,6 +138,7 @@ fn build_use_case(catalog: Arc<CanonicalCatalog>) -> GenerateReadingUseCase {
         ServiceLimits::default(),
         catalog,
         PrivacyPolicy::default(),
+        true,
     )
 }
 

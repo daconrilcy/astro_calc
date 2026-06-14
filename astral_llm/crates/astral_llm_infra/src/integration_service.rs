@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use astral_contracts::OrchestrationMode;
 use astral_llm_domain::integration::{CalculationMode, IntegrationService, ServiceAvailability};
 use sqlx::PgPool;
 
@@ -65,17 +66,33 @@ impl IntegrationServiceRow {
     fn into_domain(self) -> Option<IntegrationService> {
         let calculation_mode = CalculationMode::parse(&self.calculation_mode)?;
         let availability = ServiceAvailability::parse(&self.availability)?;
+        let orchestration_mode_typed = parse_orchestration_mode(&self.orchestration_mode);
+        let service_request_contract = self.service_request_contract.clone();
+        let payload_contract = self.payload_contract.clone();
+        let service_response_contract = self.service_response_contract.clone();
+        let calculator_request_contract = infer_calculator_request_contract(
+            orchestration_mode_typed,
+            &payload_contract,
+            calculation_mode,
+        );
+        let llm_request_contract =
+            infer_llm_request_contract(orchestration_mode_typed, &payload_contract);
         Some(IntegrationService {
             service_code: self.service_code,
             profile_code: self.profile_code,
             product_code: self.product_code,
             label_fr: self.label_fr,
             description_fr: self.description_fr,
+            orchestration_mode_typed: Some(orchestration_mode_typed),
             orchestration_mode: self.orchestration_mode,
             calculation_mode,
-            service_request_contract: self.service_request_contract,
-            payload_contract: self.payload_contract,
-            service_response_contract: self.service_response_contract,
+            service_request_contract: service_request_contract.clone(),
+            payload_contract: payload_contract.clone(),
+            service_response_contract: service_response_contract.clone(),
+            public_request_contract: Some(service_request_contract.clone()),
+            calculator_request_contract,
+            llm_request_contract,
+            public_response_contract: Some(service_response_contract.clone()),
             calculation_output_contract: self.calculation_output_contract,
             reading_output_contract: self.reading_output_contract,
             sync_endpoint: self.sync_endpoint,
@@ -87,5 +104,41 @@ impl IntegrationServiceRow {
             example_request_json: self.example_request_json,
             sort_order: self.sort_order.try_into().ok()?,
         })
+    }
+}
+
+fn parse_orchestration_mode(raw: &str) -> OrchestrationMode {
+    match raw {
+        "calculator_only" => OrchestrationMode::CalculatorOnly,
+        "llm_only" => OrchestrationMode::LlmOnly,
+        "public_gateway" => OrchestrationMode::PublicGateway,
+        "legacy_unified" => OrchestrationMode::LegacyUnified,
+        _ => OrchestrationMode::CalculatorThenLlm,
+    }
+}
+
+fn infer_calculator_request_contract(
+    orchestration_mode: OrchestrationMode,
+    payload_contract: &str,
+    calculation_mode: CalculationMode,
+) -> Option<String> {
+    if matches!(
+        orchestration_mode,
+        OrchestrationMode::CalculatorOnly | OrchestrationMode::CalculatorThenLlm
+    ) || !matches!(calculation_mode, CalculationMode::None)
+    {
+        Some(payload_contract.to_string())
+    } else {
+        None
+    }
+}
+
+fn infer_llm_request_contract(
+    orchestration_mode: OrchestrationMode,
+    payload_contract: &str,
+) -> Option<String> {
+    match orchestration_mode {
+        OrchestrationMode::LlmOnly => Some(payload_contract.to_string()),
+        _ => None,
     }
 }

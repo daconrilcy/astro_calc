@@ -94,7 +94,7 @@
       "supports_async": true,
       "supports_sync_legacy": true,
       "supports_mercure": false,
-      "availability": "planned",
+      "availability": "deprecated",
       "example_request_json": null,
       "sort_order": 20
     },
@@ -116,7 +116,7 @@
       "supports_async": true,
       "supports_sync_legacy": true,
       "supports_mercure": false,
-      "availability": "planned",
+      "availability": "deprecated",
       "example_request_json": null,
       "sort_order": 30
     },
@@ -138,7 +138,7 @@
       "supports_async": true,
       "supports_sync_legacy": true,
       "supports_mercure": false,
-      "availability": "planned",
+      "availability": "deprecated",
       "example_request_json": null,
       "sort_order": 40
     },
@@ -160,7 +160,7 @@
       "supports_async": true,
       "supports_sync_legacy": true,
       "supports_mercure": false,
-      "availability": "planned",
+      "availability": "deprecated",
       "example_request_json": null,
       "sort_order": 50
     },
@@ -182,7 +182,7 @@
       "supports_async": true,
       "supports_sync_legacy": true,
       "supports_mercure": false,
-      "availability": "planned",
+      "availability": "deprecated",
       "example_request_json": null,
       "sort_order": 55
     },

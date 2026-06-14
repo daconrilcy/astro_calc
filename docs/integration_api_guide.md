@@ -2,6 +2,20 @@
 
 Guide pratique pour connecter une application externe à `astral_llm_api`. Contrat normatif : [integration_api_contract.md](integration_api_contract.md).
 
+Pour une orchestration publique metier, preferer `astral_gateway` et ses endpoints `/v2/*`. `astral_llm_api` reste la surface d'integration async par jobs.
+
+Breaking change facade publique du 2026-06-14:
+
+- `GET /v1/services` ne publie plus `supports_sync_legacy`
+- `GET /v1/services` ne publie plus `endpoints.submit_sync_legacy`
+- la migration publique se lit via `api_surface`
+- les handlers sync legacy ont ete supprimes du runtime courant
+
+Legacy applicatif restant:
+
+- `ASTRAL_LLM_ENABLE_LEGACY_PRODUCT_CODE_SHIM=false` desactive la migration implicite des anciens `product_code`
+- `ASTRAL_LLM_LEGACY_PRODUCT_CODE_SHIM_CUTOFF_DATE=YYYY-MM-DD` ajoute une date de coupure pour ce shim
+
 ## Démarrage rapide (Docker local)
 
 ```powershell
@@ -16,6 +30,13 @@ docker compose up -d astral_llm_worker
 - Worker : traite les jobs `queued` en arrière-plan
 
 Smoke intégration : `.\scripts\test_integration_jobs_e2e.ps1`
+
+Cutover legacy ferme :
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.legacy-cutover.yml up -d --build
+.\scripts\docker_update_integration_stack.ps1 -LegacyCutover
+```
 
 ## Flux recommandé
 
@@ -47,7 +68,7 @@ GET /v1/services
 
 Liste les services `active` et `beta`. Ajouter `?include=planned` pour voir la feuille de route.
 
-Champs utiles : `service_code`, `availability`, `calculation_mode`, `supports_async`, `supports_mercure`, `contracts.payload`.
+Champs utiles : `service_code`, `availability`, `calculation_mode`, `supports_async`, `supports_mercure`, `contracts.payload`, `api_surface.recommended_entrypoint`.
 
 ## 2. Lire le contrat métier
 
@@ -115,12 +136,29 @@ Respecter `poll_after_ms`. Statut terminal `completed` inclut `result` (envelopp
 |--------------|------|------------------|
 | `natal_simplified` | birth → calcul simplifié → lecture | **active** |
 | `natal_basic` | birth → moteur complet → lecture basic | **active** (Phase 3) |
-| `natal_*_from_payload` | payload pré-calculé | planned |
+| `natal_*_from_payload` | payload pré-calculé | deprecated |
 | `natal_light`, `natal_premium`, `natal_premium_plus` | full natal | planned (activation progressive) |
 | `horoscope_premium_daily_local_2h_slots` | horoscope quotidien local 12 créneaux | **beta** |
 | `horoscope_free_next_7_days_natal` | horoscope Free compact des 7 prochains jours | **active** |
 | `horoscope_basic_next_7_days_natal` | horoscope Basic des 7 prochains jours | **beta** |
 | `horoscope_premium_next_7_days_natal` | horoscope Premium des 7 prochains jours V2 | **beta** |
+
+## Equivalence recommandee vers la gateway V2
+
+| service_code V1 | endpoint public recommande |
+|--------------|------------------|
+| `natal_simplified` | `POST /v2/natal/simplified/free` |
+| `natal_light` | `POST /v2/natal/full/free` |
+| `natal_basic` | `POST /v2/natal/full/basic` |
+| `natal_premium` | `POST /v2/natal/full/premium` |
+| `horoscope_free_daily` | `POST /v2/horoscope/daily/free` |
+| `horoscope_basic_daily_natal_3_slots` | `POST /v2/horoscope/daily/basic` |
+| `horoscope_premium_daily_local_2h_slots` | `POST /v2/horoscope/daily/premium` |
+| `horoscope_free_next_7_days_natal` | `POST /v2/horoscope/period/free` |
+| `horoscope_basic_next_7_days_natal` | `POST /v2/horoscope/period/basic` |
+| `horoscope_premium_next_7_days_natal` | `POST /v2/horoscope/period/premium` |
+
+Les services V1 `*_from_payload` restent des surfaces techniques ou de compatibilite. Ils n'ont pas d'equivalent public recommande dans la gateway.
 
 ### Horoscope Premium quotidien local
 
@@ -249,8 +287,9 @@ Hub local Docker : `http://localhost:3000/.well-known/mercure`
 
 | Besoin | Route |
 |--------|-------|
-| Orchestration manuelle calcul + lecture | `POST /v1/calculations/natal` puis `POST /v1/readings/generate` |
-| Sync one-shot simplified | `POST /v1/readings/natal/simplified` |
+| Orchestration publique recommandee | `POST /v2/natal/*`, `POST /v2/horoscope/*` |
+| Orchestration manuelle legacy calcul + lecture | retiree du runtime courant |
+| Sync one-shot simplified legacy | retiree du runtime courant |
 | **Intégration async certifiée** | `POST /v1/jobs` |
 
 Voir [contracts/README.md](../contracts/README.md) pour la matrice complète.
@@ -273,7 +312,7 @@ Voir [contracts/README.md](../contracts/README.md) pour la matrice complète.
 
 | Symptôme | Cause | Action |
 |----------|-------|--------|
-| 404 SERVICE_NOT_FOUND | Service `planned` ou code invalide | `GET /v1/services?include=planned` |
+| 404 SERVICE_NOT_FOUND | Service `planned`, `deprecated`, `disabled` ou code invalide | `GET /v1/services?include=planned` |
 | 409 IDEMPOTENCY_CONFLICT | Clé réutilisée autre service/payload | Nouvelle clé |
 | 422 PAYLOAD_VALIDATION_FAILED | Payload ≠ contrat ou gate profil | `GET .../contract` |
 | Job reste `queued` | Worker arrêté | `docker compose up -d astral_llm_worker` |

@@ -107,7 +107,9 @@ Après génération LLM, le gateway applique `harden_ambiguous_core_identity_cha
 
 Filet de sécurité : `ambiguous_core_identity_violations` + fallback body déterministe (`ambiguous_core_body_fallback`) si le durcissement ne suffit pas. Voir [`docs/natal_simplified_forbidden_topics.md`](natal_simplified_forbidden_topics.md).
 
-## Réponse API orchestrée (`POST /v1/readings/natal/simplified`)
+## Réponse API orchestrée historique (`POST /v1/readings/natal/simplified`)
+
+Cette route sync a ete retiree du runtime courant. La section ci-dessous est conservee uniquement comme reference comportementale historique.
 
 Corps requête : champs `astro_simplified_natal_request_v1` **à la racine** (`request_contract_version`, `birth`, …) + `user_language` (défaut `fr`) + `audience_level` (défaut `beginner`).
 
@@ -140,7 +142,7 @@ Retournée uniquement lorsque le calculateur a répondu **200** et que la géné
 | `POST /v1/calculations/natal/simplified` | **422** | `VALIDATION_FAILED` | Non (error_response_v1) |
 | `POST /v1/readings/natal/simplified` | **400** | `INVALID_INPUT` | Non (error_response_v1) |
 
-Recette E2E : **12/12** calculateur (7 positifs + 5 négatifs **422**), **7/7** lectures positives, **5/5** négatifs orchestration **400** (`test_natal_simplified_e2e.ps1` phases 1, 2 et 2b).
+Recette historique fermee : **12/12** calculateur (7 positifs + 5 négatifs **422**), **7/7** lectures positives, **5/5** négatifs orchestration **400**.
 
 ### Codes HTTP — orchestration (succès et post-génération)
 

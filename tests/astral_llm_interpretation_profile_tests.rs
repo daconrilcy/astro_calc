@@ -122,7 +122,7 @@ fn legacy_product_code_rejects_profile_mismatch() {
         },
         safety_policy: None,
     };
-    let err = InterpretationProfileResolver::normalize_request(&mut request, &catalog)
+    let err = InterpretationProfileResolver::normalize_request(&mut request, &catalog, true)
         .expect_err("legacy basic + premium profile");
     assert_eq!(
         err.detail().code,
@@ -172,7 +172,7 @@ fn legacy_natal_premium_product_code_migrates_at_normalize() {
         },
         safety_policy: None,
     };
-    InterpretationProfileResolver::normalize_request(&mut request, &catalog).unwrap();
+    InterpretationProfileResolver::normalize_request(&mut request, &catalog, true).unwrap();
     assert_eq!(request.product_context.product_code, NATAL_PROMPTER_PRODUCT);
     assert_eq!(
         request

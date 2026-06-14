@@ -37,6 +37,8 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 uuid = { version = "1", features = ["v4", "serde"] }
 
+astral_contracts = { path = "../astral_contracts" }
+astral_calculator = { path = "../astral_calculator" }
 astral_llm_domain = { path = "crates/astral_llm_domain" }
 astral_llm_application = { path = "crates/astral_llm_application" }
 astral_llm_providers = { path = "crates/astral_llm_providers" }

@@ -158,6 +158,8 @@ fn production_public_config_requires_persistence() {
         idempotency_ttl_hours: 24,
         circuit_breaker_failure_threshold: 5,
         circuit_breaker_open_secs: 60,
+        enable_legacy_product_code_shim: true,
+        legacy_product_code_shim_cutoff_date: None,
     };
     assert!(config.requires_strict_persistence());
     let mut secrets = astral_llm_infra::ProviderSecrets::default();

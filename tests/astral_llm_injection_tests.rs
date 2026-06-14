@@ -59,6 +59,7 @@ fn build_use_case() -> GenerateReadingUseCase {
         ServiceLimits::default(),
         catalog,
         PrivacyPolicy::default(),
+        true,
     )
 }
 

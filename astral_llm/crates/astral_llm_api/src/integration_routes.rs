@@ -1,4 +1,5 @@
-use astral_llm_application::IntegrationJobValidator;
+use astral_contracts::horoscope_service_descriptor;
+use astral_llm_application::{supports_integration_service, IntegrationJobValidator};
 use astral_llm_domain::{
     integration::{IntegrationService, JobStatus},
     GenerationErrorCode,
@@ -59,6 +60,7 @@ pub async fn get_service_contract(
     Json(json!({
         "service_code": service.service_code,
         "profile_code": service.profile_code,
+        "api_surface": service_api_surface(service),
         "contracts": service_contracts(service),
         "schema_links": service_schema_links(service),
         "example_request": service.example_request_json,
@@ -411,21 +413,7 @@ pub fn calculate_job_expires_at(now: DateTime<Utc>, ttl_hours: i64) -> DateTime<
 }
 
 pub fn service_has_v1_orchestrator(service: &IntegrationService) -> bool {
-    match service.calculation_mode {
-        astral_llm_domain::CalculationMode::SimplifiedNatal => {
-            service.service_code == "natal_simplified"
-        }
-        astral_llm_domain::CalculationMode::FullNatal => service.service_code.starts_with("natal_"),
-        astral_llm_domain::CalculationMode::None => {
-            service.is_from_payload()
-                || service.service_code == "horoscope_basic_daily_natal_3_slots"
-                || service.service_code == "horoscope_free_daily"
-                || service.service_code == "horoscope_premium_daily_local_2h_slots"
-                || service.service_code == "horoscope_free_next_7_days_natal"
-                || service.service_code == "horoscope_basic_next_7_days_natal"
-                || service.service_code == "horoscope_premium_next_7_days_natal"
-        }
-    }
+    supports_integration_service(service)
 }
 
 fn service_catalog_item(service: &IntegrationService) -> serde_json::Value {
@@ -441,13 +429,12 @@ fn service_catalog_item(service: &IntegrationService) -> serde_json::Value {
         "quality_tier": quality_tier(service),
         "async_recommended": service.supports_async,
         "supports_async": service.supports_async,
-        "supports_sync_legacy": service.supports_sync_legacy,
         "supports_mercure": service.supports_mercure,
+        "api_surface": service_api_surface(service),
         "contracts": service_contracts(service),
         "endpoints": {
             "submit_async": service.async_endpoint,
             "contract_detail": format!("/v1/services/{}/contract", service.service_code),
-            "submit_sync_legacy": service.sync_endpoint,
         }
     })
 }
@@ -459,6 +446,19 @@ fn service_contracts(service: &IntegrationService) -> serde_json::Value {
         "service_response": service.service_response_contract,
         "calculation_output": service.calculation_output_contract,
         "reading_output": service.reading_output_contract,
+    })
+}
+
+fn service_api_surface(service: &IntegrationService) -> serde_json::Value {
+    json!({
+        "async_job_v1_status": "current",
+        "sync_legacy_status": if service.supports_sync_legacy { "legacy" } else { "not_available" },
+        "public_gateway_v2_status": if recommended_gateway_v2_path(service).is_some() {
+            "current"
+        } else {
+            "not_available"
+        },
+        "recommended_entrypoint": recommended_gateway_v2_path(service),
     })
 }
 
@@ -481,6 +481,10 @@ fn schema_link_for_contract(contract: &str) -> String {
 }
 
 fn service_mapping_notes(service: &IntegrationService) -> Vec<&'static str> {
+    if let Some(descriptor) = horoscope_service_descriptor(&service.service_code) {
+        return horoscope_mapping_notes(descriptor.contracts.public_request_contract);
+    }
+
     match service.calculation_mode {
         astral_llm_domain::CalculationMode::SimplifiedNatal => vec![
             "payload = astro_simplified_natal_request_v1",
@@ -490,37 +494,10 @@ fn service_mapping_notes(service: &IntegrationService) -> Vec<&'static str> {
             "payload = astro_engine_request_v1",
             "orchestration: calcul moteur puis mapping engine → generate_reading_request",
         ],
-        astral_llm_domain::CalculationMode::None => {
-            if service.service_code == "horoscope_basic_daily_natal_3_slots" {
-                vec![
-                    "payload = horoscope_basic_daily_natal_request",
-                    "orchestration: calculator horoscope facts -> deterministic scoring -> fake horoscope response",
-                ]
-            } else if service.service_code == "horoscope_free_daily" {
-                vec![
-                    "payload = horoscope_daily_natal_request",
-                    "orchestration: calculator horoscope facts -> deterministic scoring -> single free daily fake horoscope response",
-                ]
-            } else if service.service_code == "horoscope_premium_daily_local_2h_slots" {
-                vec![
-                    "payload = horoscope_premium_daily_local_request",
-                    "orchestration: calculator local horoscope facts -> deterministic premium scoring -> structured premium fake horoscope response",
-                ]
-            } else if service.service_code == "horoscope_free_next_7_days_natal"
-                || service.service_code == "horoscope_basic_next_7_days_natal"
-                || service.service_code == "horoscope_premium_next_7_days_natal"
-            {
-                vec![
-                    "payload = horoscope_period_natal_request",
-                    "orchestration: time window resolver -> scan plan -> calculator period facts -> deterministic period scoring -> structured period fake horoscope response",
-                ]
-            } else {
-                vec![
-                    "payload = generate_reading_request_v1",
-                    "interpretation_profile_code must match service profile_code",
-                ]
-            }
-        }
+        astral_llm_domain::CalculationMode::None => vec![
+            "payload = generate_reading_request_v1",
+            "interpretation_profile_code must match service profile_code",
+        ],
     }
 }
 
@@ -534,15 +511,9 @@ fn service_validation_notes(service: &IntegrationService) -> Vec<String> {
             "payload.product_context.interpretation_profile_code must equal '{}'",
             service.profile_code
         ));
-    } else if service.service_code == "horoscope_basic_daily_natal_3_slots"
-        || service.service_code == "horoscope_free_daily"
-        || service.service_code == "horoscope_premium_daily_local_2h_slots"
-        || service.service_code == "horoscope_free_next_7_days_natal"
-        || service.service_code == "horoscope_basic_next_7_days_natal"
-        || service.service_code == "horoscope_premium_next_7_days_natal"
-    {
+    } else if let Some(descriptor) = horoscope_service_descriptor(&service.service_code) {
         notes.push("chart_calculation_id is required; inline birth_data is out of V1 scope".into());
-        if service.service_code == "horoscope_premium_daily_local_2h_slots" {
+        if horoscope_daily_requires_location(descriptor) {
             notes.push(
                 "location.latitude and location.longitude are required for local chart calculation"
                     .into(),
@@ -550,6 +521,42 @@ fn service_validation_notes(service: &IntegrationService) -> Vec<String> {
         }
     }
     notes
+}
+
+fn horoscope_mapping_notes(public_request_contract: &str) -> Vec<&'static str> {
+    match public_request_contract {
+        "horoscope_daily_request_v2" => vec![
+            "payload = horoscope daily public request",
+            "orchestration: calculator horoscope facts -> deterministic scoring -> structured horoscope response",
+        ],
+        "horoscope_period_request_v2" => vec![
+            "payload = horoscope period public request",
+            "orchestration: time window resolver -> scan plan -> calculator period facts -> structured period response",
+        ],
+        _ => vec!["horoscope service contract is not documented"],
+    }
+}
+
+fn horoscope_daily_requires_location(
+    descriptor: &astral_contracts::ServiceDescriptor,
+) -> bool {
+    descriptor.service_code == astral_contracts::HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE
+}
+
+fn recommended_gateway_v2_path(service: &IntegrationService) -> Option<&'static str> {
+    match service.service_code.as_str() {
+        "natal_simplified" => Some("/v2/natal/simplified/free"),
+        "natal_basic" => Some("/v2/natal/full/basic"),
+        "natal_premium" => Some("/v2/natal/full/premium"),
+        "natal_light" => Some("/v2/natal/full/free"),
+        "horoscope_free_daily" => Some("/v2/horoscope/daily/free"),
+        "horoscope_basic_daily_natal_3_slots" => Some("/v2/horoscope/daily/basic"),
+        "horoscope_premium_daily_local_2h_slots" => Some("/v2/horoscope/daily/premium"),
+        "horoscope_free_next_7_days_natal" => Some("/v2/horoscope/period/free"),
+        "horoscope_basic_next_7_days_natal" => Some("/v2/horoscope/period/basic"),
+        "horoscope_premium_next_7_days_natal" => Some("/v2/horoscope/period/premium"),
+        _ => None,
+    }
 }
 
 fn profile_generation_mode(service: &IntegrationService) -> Option<&str> {
@@ -562,18 +569,20 @@ fn profile_generation_mode(service: &IntegrationService) -> Option<&str> {
 }
 
 fn quality_tier(service: &IntegrationService) -> Option<&'static str> {
-    if service.service_code.contains("simplified") {
-        Some("simplified")
-    } else if service.service_code.contains("premium_plus") {
-        Some("premium_plus")
-    } else if service.service_code.contains("premium") {
-        Some("premium")
-    } else if service.service_code.contains("basic") {
-        Some("basic")
-    } else if service.service_code.contains("light") {
-        Some("light")
-    } else {
-        None
+    match service.service_code.as_str() {
+        "natal_simplified" => Some("simplified"),
+        "natal_light" => Some("light"),
+        "natal_basic" => Some("basic"),
+        "natal_premium" => Some("premium"),
+        "natal_premium_plus" => Some("premium_plus"),
+        "horoscope_free_daily" | "horoscope_free_next_7_days_natal" => Some("free"),
+        "horoscope_basic_daily_natal_3_slots" | "horoscope_basic_next_7_days_natal" => {
+            Some("basic")
+        }
+        "horoscope_premium_daily_local_2h_slots" | "horoscope_premium_next_7_days_natal" => {
+            Some("premium")
+        }
+        _ => None,
     }
 }
 

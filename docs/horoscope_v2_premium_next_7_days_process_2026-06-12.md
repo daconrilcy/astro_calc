@@ -1,5 +1,7 @@
 # Horoscope V2 Premium Next 7 Days - Processus
 
+> Document historique. Le runtime courant passe maintenant par `IntegrationJobExecutor` ; ce diagramme est conserve uniquement comme trace de migration du flux V1.
+
 Date : 2026-06-12
 
 Service : `horoscope_premium_next_7_days_natal`
@@ -15,10 +17,10 @@ flowchart TD
     D --> E["Worker loop claims job\nmain()\nastral_llm/crates/astral_llm_worker/src/main.rs"]
     E --> F["IntegrationJobValidator::validate_job()\nastral_llm/crates/astral_llm_application/src/integration_job_validator.rs"]
 
-    F --> G["UnifiedReadingOrchestrator::execute()\nastral_llm/crates/astral_llm_application/src/unified_reading_orchestrator.rs"]
+    F --> G["IntegrationJobExecutor::execute()\nastral_llm/crates/astral_llm_application/src/integration_job_executor.rs"]
 
     G --> H{"service_code period horoscope ?"}
-    H -->|"horoscope_premium_next_7_days_natal"| I["UnifiedReadingOrchestrator::run_period_horoscope()\nastral_llm/crates/astral_llm_application/src/unified_reading_orchestrator.rs"]
+    H -->|"horoscope_premium_next_7_days_natal"| I["IntegrationJobExecutor::run_period_horoscope()\nastral_llm/crates/astral_llm_application/src/integration_job_executor.rs"]
 
     I --> J["HoroscopePeriodNatalOrchestrator::execute()\nastral_llm/crates/astral_llm_application/src/horoscope/mod.rs"]
 

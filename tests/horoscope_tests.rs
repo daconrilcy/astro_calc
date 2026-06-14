@@ -71,10 +71,15 @@ fn sample_service(
         } else {
             "horoscope_basic_daily_natal".into()
         },
+        orchestration_mode_typed: None,
         calculation_mode: CalculationMode::None,
         service_request_contract: "integration_job_request_v1".into(),
         payload_contract: payload_contract.into(),
         service_response_contract: "integration_job_status_v1".into(),
+        public_request_contract: None,
+        calculator_request_contract: None,
+        llm_request_contract: None,
+        public_response_contract: None,
         calculation_output_contract: Some(calculation_output_contract.into()),
         reading_output_contract: reading_output_contract.into(),
         sync_endpoint: None,

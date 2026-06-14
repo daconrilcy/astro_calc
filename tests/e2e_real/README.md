@@ -17,7 +17,6 @@ Les scripts E2E existaient deja, mais ils etaient melanges avec les scripts de
 bootstrap, de seed et de verification golden dans `scripts/` :
 
 - `scripts/docker_compose_smoke.ps1` : smoke calculateur -> LLM fake.
-- `scripts/test_natal_simplified_e2e.ps1` : matrice natal simplifie sync.
 - `scripts/test_integration_jobs_e2e.ps1` : service async `natal_simplified`.
 - `scripts/test_natal_from_birth_e2e.ps1` : service async `natal_basic`.
 - `scripts/test_horoscope_basic_daily_fake.ps1` : service async horoscope.
@@ -35,8 +34,6 @@ Manques couverts par ce dossier :
 
 - `01_calculator_services.e2e.ps1` : endpoints calculateur, schemas,
   validation, natal complet, natal simplifie, horoscope calculateur.
-- `02_llm_sync_services.e2e.ps1` : endpoints LLM, providers, schemas,
-  generation sync, validation de lecture, lecture natal simplifie sync.
 - `03_integration_catalog_services.e2e.ps1` : catalogue public et jobs async
   pour chaque service `active` ou `beta`.
 - `04_horoscope_premium_daily.e2e.ps1` : service async
@@ -45,8 +42,10 @@ Manques couverts par ce dossier :
   `best/watch`. Le script produit aussi un JSON complet et un Markdown lisible
   du texte reellement genere dans `output/horoscope_premium_daily_real/` par
   defaut, ou dans le dossier fourni via `-OutputDir`.
-- `run_real_e2e.ps1` : lance les scripts dans l'ordre et produit un
+- `run_real_e2e.ps1` : lance la suite principale jobs/gateway et produit un
   rapport Markdown sous `output/e2e_real_reports/` par defaut.
+
+Les anciennes suites sync ont ete retirees du parcours de test courant.
 
 ## Diagnostics
 

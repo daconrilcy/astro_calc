@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://astral-calculation.local/contracts/common/request_context_common_v1.schema.json",
+  "title": "RequestContextCommon",
+  "type": "object",
+  "required": ["target_language_code", "audience_level"],
+  "properties": {
+    "request_id": { "type": ["string", "null"] },
+    "idempotency_key": { "type": ["string", "null"] },
+    "target_language_code": { "type": "string" },
+    "audience_level": { "type": "string" }
+  },
+  "additionalProperties": false
+}

@@ -47,6 +47,7 @@ pub mod final_synthesis_synthesizer;
 pub mod generate_reading_use_case;
 pub mod generation_trace;
 pub mod integration_job_result;
+pub mod integration_job_executor;
 pub mod integration_job_validator;
 pub mod model_capability_registry;
 pub mod payload_sanitizer;
@@ -69,8 +70,6 @@ pub mod summary_forbidden_patterns;
 pub mod summary_synthesizer;
 pub mod summary_ux_rules;
 pub mod token_budget;
-pub mod unified_reading_orchestrator;
-
 pub use astro_basis_validator::AstroBasisValidator;
 pub use astro_payload_normalizer::AstroPayloadNormalizer;
 pub use chapter_evidence_coherence::ChapterEvidenceCoherence;
@@ -87,8 +86,20 @@ pub use evidence_diversity_validator::{compute_evidence_metrics, EvidenceDiversi
 pub use execution_audit::ExecutionAudit;
 pub use generate_reading_use_case::{GenerateReadingUseCase, UseCaseOutput};
 pub use generation_trace::GenerationTraceContext;
+pub use horoscope::{
+    build_calculation_request_for_service, build_interpretation_request,
+    build_period_calculation_request_for_service, build_period_writer_request,
+    daily_writer_response, period_editorial_audit, period_writer_response_with_quality_loop,
+    score_calculation, validate_horoscope_response_schema, validate_period_public_request,
+    validate_period_response_contract, validate_public_request, validate_response_evidence,
+    HoroscopePeriodPublicRequest, HoroscopePublicRequest,
+};
 pub use integration_job_result::{
     job_error_from_reading, job_status_from_reading, unified_result_envelope,
+};
+pub use integration_job_executor::{
+    supports_integration_service, IntegrationJobExecutor, UnifiedReadingOutcome,
+    UnifiedReadingResult,
 };
 pub use integration_job_validator::{IntegrationJobValidator, ValidatedIntegrationJob};
 pub use interpretation_profile_resolver::{
@@ -126,7 +137,4 @@ pub use text_reprocessing_service_adapter::{
     reprocess_horoscope_daily, reprocess_horoscope_period, reprocess_natal_simplified,
     reprocess_natal_theme, reprocess_natal_theme_with_context, reprocess_prompt_trace,
     reprocess_shared_text, TextReprocessingApplicationError, TextReprocessingFieldAudit,
-};
-pub use unified_reading_orchestrator::{
-    UnifiedReadingOrchestrator, UnifiedReadingOutcome, UnifiedReadingResult,
 };

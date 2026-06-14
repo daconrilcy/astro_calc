@@ -4,8 +4,8 @@ use std::time::Duration;
 use astral_llm_application::{
     build_capability_registry_with_db, build_fallback_policy, build_providers,
     job_error_from_reading, job_status_from_reading, unified_result_envelope,
-    GenerateReadingUseCase, IntegrationJobValidator, PromptCompiler, ProviderCircuitBreaker,
-    ProviderRouter, ResponseValidator, SchemaRegistry, UnifiedReadingOrchestrator,
+    GenerateReadingUseCase, IntegrationJobExecutor, IntegrationJobValidator, PromptCompiler,
+    ProviderCircuitBreaker, ProviderRouter, ResponseValidator, SchemaRegistry,
     UnifiedReadingOutcome,
 };
 use astral_llm_domain::GenerateReadingResponse;
@@ -90,6 +90,7 @@ async fn main() {
         config.limits.clone(),
         catalog,
         config.privacy_policy.clone(),
+        config.legacy_product_code_shim_available(),
     );
 
     let calculator = CalculatorClient::new(
@@ -99,7 +100,7 @@ async fn main() {
     )
     .expect("calculator client");
 
-    let orchestrator = UnifiedReadingOrchestrator::new(&calculator, &use_case);
+    let orchestrator = IntegrationJobExecutor::new(&calculator, &use_case);
     let validator = IntegrationJobValidator::new();
     let mercure = MercurePublisher::from_env();
 
@@ -171,7 +172,9 @@ async fn main() {
 
         let _ = jobs.touch_heartbeat(job.job_id, stale_secs).await;
         let public_run_id = job.run_id.to_string();
-        let outcome = orchestrator.execute(&validated, Some(&public_run_id)).await;
+        let outcome = orchestrator
+            .execute(&service, &validated, Some(&public_run_id))
+            .await;
         match outcome {
             Ok(result) => {
                 let gen_run_id = Uuid::parse_str(&result.run_id).ok();

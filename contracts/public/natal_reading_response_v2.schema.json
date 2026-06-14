@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://astral-calculation.local/contracts/public/natal_reading_response_v2.schema.json",
+  "title": "NatalReadingResponseV2",
+  "type": "object",
+  "required": ["metadata", "quality", "reading"],
+  "properties": {
+    "metadata": { "$ref": "../common/response_metadata_common_v1.schema.json" },
+    "quality": { "$ref": "../common/quality_metadata_common_v1.schema.json" },
+    "calculation": {},
+    "reading": { "$ref": "../llm/generate_reading_response_v1.schema.json" }
+  },
+  "additionalProperties": false
+}

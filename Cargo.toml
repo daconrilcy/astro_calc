@@ -1,8 +1,10 @@
 [workspace]
 resolver = "2"
 members = [
+    "astral_contracts",
     "astral_calculator",
     "astral_calculator_api",
+    "astral_gateway",
     "astral_time_window",
     "astral_llm/crates/astral_llm_domain",
     "astral_llm/crates/astral_llm_application",
@@ -40,6 +42,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "regis
 tracing-appender = "0.2"
 uuid = { version = "1", features = ["v4", "serde"] }
 
+astral_contracts = { path = "astral_contracts" }
+astral_calculator = { path = "astral_calculator" }
 astral_llm_domain = { path = "astral_llm/crates/astral_llm_domain" }
 astral_llm_application = { path = "astral_llm/crates/astral_llm_application" }
 astral_llm_providers = { path = "astral_llm/crates/astral_llm_providers" }

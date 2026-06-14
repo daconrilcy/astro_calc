@@ -93,6 +93,7 @@ path = "../../../tests/horoscope_tests.rs"
 harness = true
 
 [dependencies]
+astral_contracts.workspace = true
 astral_llm_application.workspace = true
 astral_llm_domain.workspace = true
 astral_llm_infra.workspace = true

@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://astral-calculation.local/contracts/public/natal_reading_request_v2.schema.json",
+  "title": "NatalReadingRequestV2",
+  "type": "object",
+  "required": ["context", "birth"],
+  "properties": {
+    "context": { "$ref": "../common/request_context_common_v1.schema.json" },
+    "birth": { "$ref": "../common/birth_input_common_v1.schema.json" }
+  },
+  "additionalProperties": false
+}

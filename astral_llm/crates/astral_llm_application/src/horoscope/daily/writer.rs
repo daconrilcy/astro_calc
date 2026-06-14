@@ -1,6 +1,6 @@
 use super::*;
 
-pub(crate) async fn daily_writer_response(
+pub async fn daily_writer_response(
     use_case: &GenerateReadingUseCase,
     request: &Value,
     run_id: Option<&str>,

@@ -51,6 +51,7 @@ pub struct GenerateReadingUseCase {
     limits: ServiceLimits,
     pub(super) catalog: SharedCanonicalCatalog,
     privacy_policy: PrivacyPolicy,
+    legacy_product_code_shim_available: bool,
 }
 
 pub struct UseCaseOutput {
@@ -67,6 +68,7 @@ impl GenerateReadingUseCase {
         limits: ServiceLimits,
         catalog: SharedCanonicalCatalog,
         privacy_policy: PrivacyPolicy,
+        legacy_product_code_shim_available: bool,
     ) -> Self {
         Self {
             router,
@@ -76,6 +78,7 @@ impl GenerateReadingUseCase {
             limits,
             catalog,
             privacy_policy,
+            legacy_product_code_shim_available,
         }
     }
 
@@ -92,7 +95,11 @@ impl GenerateReadingUseCase {
         &self,
         request: &mut GenerateReadingRequest,
     ) -> Result<(), GenerationError> {
-        InterpretationProfileResolver::normalize_request(request, &self.catalog)
+        InterpretationProfileResolver::normalize_request(
+            request,
+            &self.catalog,
+            self.legacy_product_code_shim_available,
+        )
     }
 
     pub fn requires_premium_rate_limit(&self, request: &GenerateReadingRequest) -> bool {
@@ -143,7 +150,11 @@ impl GenerateReadingUseCase {
         audit: &mut ExecutionAudit,
     ) -> Result<astral_llm_domain::NatalReadingResponse, GenerationError> {
         // Idempotent : l'API peut deja avoir appele prepare_request().
-        InterpretationProfileResolver::normalize_request(&mut request, &self.catalog)?;
+        InterpretationProfileResolver::normalize_request(
+            &mut request,
+            &self.catalog,
+            self.legacy_product_code_shim_available,
+        )?;
         RequestValidator::validate(&request, &self.limits, &self.catalog)?;
 
         let service_defaults =

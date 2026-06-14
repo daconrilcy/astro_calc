@@ -3,10 +3,40 @@
   "title": "integration_service_contract_v1",
   "description": "Detail contrat GET /v1/services/{service_code}/contract.",
   "type": "object",
-  "required": ["service_code", "contracts", "schema_links", "validation_notes"],
+  "required": [
+    "service_code",
+    "api_surface",
+    "contracts",
+    "schema_links",
+    "validation_notes"
+  ],
   "properties": {
     "service_code": { "type": "string" },
     "profile_code": { "type": "string" },
+    "api_surface": {
+      "type": "object",
+      "required": [
+        "async_job_v1_status",
+        "sync_legacy_status",
+        "public_gateway_v2_status",
+        "recommended_entrypoint"
+      ],
+      "properties": {
+        "async_job_v1_status": {
+          "type": "string",
+          "enum": ["current"]
+        },
+        "sync_legacy_status": {
+          "type": "string",
+          "enum": ["legacy", "not_available"]
+        },
+        "public_gateway_v2_status": {
+          "type": "string",
+          "enum": ["current", "not_available"]
+        },
+        "recommended_entrypoint": { "type": ["string", "null"] }
+      }
+    },
     "contracts": {
       "type": "object",
       "properties": {

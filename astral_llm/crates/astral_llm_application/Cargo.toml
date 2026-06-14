@@ -4,6 +4,8 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+astral_contracts.workspace = true
+astral_calculator.workspace = true
 astral_llm_domain.workspace = true
 astral_llm_providers.workspace = true
 jsonschema.workspace = true

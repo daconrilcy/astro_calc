@@ -59,7 +59,7 @@ impl EditorialValidator {
     ) -> Result<ReadingQualityReport, GenerationError> {
         let catalog = editorial_catalog();
         let mut request = request.clone();
-        InterpretationProfileResolver::normalize_request(&mut request, &catalog)?;
+        InterpretationProfileResolver::normalize_request(&mut request, &catalog, true)?;
         let interpretation = InterpretationProfileResolver::resolve(&request, &catalog)?;
 
         let mut violations = Vec::new();

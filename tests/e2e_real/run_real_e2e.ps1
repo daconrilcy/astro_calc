@@ -94,15 +94,6 @@ $scripts = @(
         }
     },
     @{
-        Path = Join-Path $PSScriptRoot "02_llm_sync_services.e2e.ps1"
-        Name = "LLM sync services"
-        Args = @{
-            CalculatorUrl = $CalculatorUrl
-            LlmUrl = $LlmUrl
-            ReadyTimeoutSec = $ReadyTimeoutSec
-        }
-    },
-    @{
         Path = Join-Path $PSScriptRoot "03_integration_catalog_services.e2e.ps1"
         Name = "Integration catalogue services"
         Args = @{
@@ -250,13 +241,15 @@ Add-ReportLine ""
 Add-ReportLine "- GET /v1/contracts"
 Add-ReportLine "- GET /v1/providers"
 Add-ReportLine "- GET /v1/schemas/{schema_version}"
-Add-ReportLine "- POST /v1/readings/generate"
 Add-ReportLine "- POST /v1/readings/validate"
-Add-ReportLine "- POST /v1/readings/natal/simplified"
 Add-ReportLine "- GET /v1/services"
 Add-ReportLine "- GET /v1/services/{service_code}/contract"
 Add-ReportLine "- POST /v1/jobs"
 Add-ReportLine "- GET /v1/jobs/{run_id}"
+Add-ReportLine ""
+Add-ReportLine "### Legacy compatibility endpoints"
+Add-ReportLine ""
+Add-ReportLine "- Legacy sync endpoints removed from runtime"
 Add-ReportLine ""
 Add-ReportLine "### Active/beta integration services"
 Add-ReportLine ""
