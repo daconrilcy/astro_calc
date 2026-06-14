@@ -246,7 +246,6 @@ pub fn reprocess_horoscope_period(
             Op::Typography,
             Op::NormalizeLength,
             Op::ReduceRepetition,
-            Op::HumanizeLabels,
             Op::ValidateQuality,
             Op::BuildFallback,
         ],

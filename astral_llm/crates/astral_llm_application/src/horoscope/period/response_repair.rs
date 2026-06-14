@@ -1,14 +1,7 @@
 use super::*;
 
-fn allow_legacy_editorial_rewrites(response: &Value) -> bool {
-    response["quality"]["provider"].as_str() == Some("fake")
-}
-
 pub fn repair_period_response_shape(request: &Value, response: &mut Value) {
     repair_period_response_shape_v2(request, response);
-    if allow_legacy_editorial_rewrites(response) {
-        restore_period_response_technical_keys_v2(request, response);
-    }
 }
 
 pub(crate) fn simple_public_word_count(text: &str) -> usize {
@@ -70,35 +63,7 @@ pub fn repair_period_response_shape_v2(request: &Value, response: &mut Value) {
     }
 
     prune_period_response_variant_fields_v2(request, response);
-    trim_period_response_strings_v2(response);
-    normalize_period_v2_public_short_labels(response);
-    normalize_period_v2_watch_summary_status(response);
     restore_period_response_technical_keys_v2(request, response);
-}
-
-pub(crate) fn trim_period_response_strings_v2(value: &mut Value) {
-    match value {
-        Value::String(text) => {
-            *text = normalize_period_v2_objective_public_text(text.trim());
-        }
-        Value::Array(items) => {
-            for item in items {
-                trim_period_response_strings_v2(item);
-            }
-        }
-        Value::Object(map) => {
-            for child in map.values_mut() {
-                trim_period_response_strings_v2(child);
-            }
-        }
-        _ => {}
-    }
-}
-
-pub(crate) fn normalize_period_v2_objective_public_text(text: &str) -> String {
-    PERIOD_V2_OBJECTIVE_TEXT_REPLACEMENTS
-        .iter()
-        .fold(text.to_string(), |acc, (from, to)| acc.replace(from, to))
 }
 
 pub(crate) fn restore_period_response_technical_keys_v2(request: &Value, response: &mut Value) {

@@ -399,7 +399,7 @@ pub fn fake_period_writer_response(request: &Value) -> Result<Value, GenerationE
     if is_free_period_request(request) {
         return fake_free_period_writer_response(request);
     }
-    let daily_timeline = request["daily_plans"]        .as_array()        .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_TIMELINE_MISSING"))?        .iter()        .enumerate()        .map(|(index, day)| {            let theme = day["theme_code"].as_str().unwrap_or("organisation");            let theme_label = day["theme_label"]                .as_str()                .unwrap_or_else(|| period_theme_public_label(theme));            let text = ensure_period_personalization_text(                &period_public_day_text(day, index),                &format!(                    "Gardez le critère le plus simple : qui fait quoi, pour quand, avec quelle preuve. {}",                    naturalize_period_focus(&period_public_focus_text(day))                ),            );            json!({                "date": day["date"],                "day_label": day["day_label"],                "theme": theme_label,                "tone": period_tone_public_label(day["tone"].as_str().unwrap_or("focused")),                "text": text,                "advice": period_public_day_advice(day),                "evidence_keys": day["evidence_keys"]            })        })        .collect::<Vec<_>>();
+    let daily_timeline = request["daily_plans"]        .as_array()        .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_TIMELINE_MISSING"))?        .iter()        .enumerate()        .map(|(index, day)| {            let theme = day["theme_code"].as_str().unwrap_or("organisation");            let theme_label = day["theme_label"]                .as_str()                .map(str::to_string)                .unwrap_or_else(|| period_theme_public_label(theme));            let text = ensure_period_personalization_text(                &period_public_day_text(day, index),                &format!(                    "Gardez le critère le plus simple : qui fait quoi, pour quand, avec quelle preuve. {}",                    naturalize_period_focus(&period_public_focus_text(day))                ),            );            json!({                "date": day["date"],                "day_label": day["day_label"],                "theme": theme_label,                "tone": period_tone_public_label(day["tone"].as_str().unwrap_or("focused")),                "text": text,                "advice": period_public_day_advice(day),                "evidence_keys": day["evidence_keys"]            })        })        .collect::<Vec<_>>();
     let domain_sections = request["domain_sections"]        .as_array()        .into_iter()        .flatten()        .map(|section| {            json!({                "domain": section["domain"],                "title": section["title"],                "text": period_public_domain_text(section),                "evidence_keys": section["evidence_keys"]            })        })        .collect::<Vec<_>>();
     let service_code = request["service_code"]
         .as_str()
@@ -437,8 +437,6 @@ pub(crate) fn fake_period_writer_response_from_writer_request(
         request
             .pointer("/semantic_brief/key_day_candidates")
             .and_then(Value::as_array),
-        "Jour à retenir",
-        "Repère utile à lire dans le mouvement global de la période.",
         primary_date,
         &primary_key,
     );
@@ -452,8 +450,6 @@ pub(crate) fn fake_period_writer_response_from_writer_request(
         request
             .pointer("/semantic_brief/best_day_candidates")
             .and_then(Value::as_array),
-        "Jour favorable",
-        "Appui utile pour avancer sur une action concrète.",
         primary_date,
         &primary_key,
     );
@@ -461,8 +457,6 @@ pub(crate) fn fake_period_writer_response_from_writer_request(
         request
             .pointer("/semantic_brief/watch_day_candidates")
             .and_then(Value::as_array),
-        "Jour de vigilance",
-        "Repère utile pour vérifier charge, délai ou limite avant d'accepter.",
         primary_date,
         &primary_key,
     );
@@ -485,14 +479,35 @@ pub(crate) fn fake_period_writer_response_from_writer_request(
 }
 pub(crate) fn day_markers_from_candidates_v2(
     candidates: Option<&Vec<Value>>,
-    title: &str,
-    reason: &str,
     fallback_date: &str,
     fallback_evidence_key: &Value,
 ) -> Vec<Value> {
-    let mut out = candidates        .into_iter()        .flatten()        .take(4)        .map(|candidate| {            json!({                "date": candidate["date"],                "title": title,                "reason": reason,                "evidence_keys": candidate["evidence_keys"],                "fallback_reason": null            })        })        .collect::<Vec<_>>();
+    let mut out = candidates
+        .into_iter()
+        .flatten()
+        .take(4)
+        .map(|candidate| {
+            let title = candidate["date"]
+                .as_str()
+                .map(public_day_label)
+                .unwrap_or_else(|| "Repère".to_string());
+            json!({
+                "date": candidate["date"],
+                "title": title,
+                "reason": "Repère utile pour lire la suite de la période.",
+                "evidence_keys": candidate["evidence_keys"],
+                "fallback_reason": null
+            })
+        })
+        .collect::<Vec<_>>();
     if out.is_empty() {
-        out.push(json!({            "date": fallback_date,            "title": title,            "reason": reason,            "evidence_keys": [fallback_evidence_key.clone()],            "fallback_reason": null        }));
+        out.push(json!({
+            "date": fallback_date,
+            "title": public_day_label(fallback_date),
+            "reason": "Repère utile pour lire la suite de la période.",
+            "evidence_keys": [fallback_evidence_key.clone()],
+            "fallback_reason": null
+        }));
     }
     out
 }
@@ -533,12 +548,51 @@ pub(crate) fn window_markers_from_candidates_v2(
             .take(1)
             .collect();
     }
-    let limit = if candidate_type == "best" && windows.len() > 1 {
-        2
-    } else {
-        3
-    };
-    windows        .into_iter()        .take(limit)        .enumerate()        .map(|(index, window)| {            if candidate_type == "watch" {                json!({                    "date": window["date"],                    "time_range_label": window["time_range_label"],                    "source_snapshot_keys": window["source_snapshot_keys"],                    "title": "Fenêtre à cadrer",                    "theme": "Vigilance",                    "tone": "Mesuré",                    "watch_point": "Vérifier la limite avant de répondre.",                    "evidence_keys": window["evidence_keys"]                })            } else {                let (title, best_for) = match index {                    0 => (                        "Fenêtre de confirmation",                        vec!["confirmer", "documenter", "terminer"],                    ),                    1 => (                        "Fenêtre de clarification",                        vec!["clarifier", "répondre", "cadrer"],                    ),                    _ => (                        "Fenêtre de mise au net",                        vec!["prioriser", "classer", "finaliser"],                    ),                };                json!({                    "date": window["date"],                    "time_range_label": window["time_range_label"],                    "source_snapshot_keys": window["source_snapshot_keys"],                    "title": title,                    "theme": "Appui concret",                    "tone": "Constructif",                    "reason": "Moment utile pour confirmer une action courte.",                    "best_for": best_for,                    "evidence_keys": window["evidence_keys"]                })            }        })        .collect()
+    let limit = if candidate_type == "best" && windows.len() > 1 { 2 } else { 3 };
+    windows
+        .into_iter()
+        .take(limit)
+        .map(|window| {
+            let date = window["date"].as_str().unwrap_or("");
+            let title = format!(
+                "{} {}",
+                public_day_label(date),
+                window["time_range_label"].as_str().unwrap_or("")
+            );
+            let theme = window["theme_code"]
+                .as_str()
+                .map(period_theme_public_label)
+                .unwrap_or_else(|| "thème".to_string());
+            let tone = window["tone_code"]
+                .as_str()
+                .map(period_tone_public_label)
+                .unwrap_or_else(|| "ton".to_string());
+            if candidate_type == "watch" {
+                json!({
+                    "date": window["date"],
+                    "time_range_label": window["time_range_label"],
+                    "source_snapshot_keys": window["source_snapshot_keys"],
+                    "title": title,
+                    "theme": theme,
+                    "tone": tone,
+                    "watch_point": "Repère à vérifier avant de répondre.",
+                    "evidence_keys": window["evidence_keys"]
+                })
+            } else {
+                json!({
+                    "date": window["date"],
+                    "time_range_label": window["time_range_label"],
+                    "source_snapshot_keys": window["source_snapshot_keys"],
+                    "title": title,
+                    "theme": theme,
+                    "tone": tone,
+                    "reason": "Repère utile pour agir sans surcharge.",
+                    "best_for": [theme],
+                    "evidence_keys": window["evidence_keys"]
+                })
+            }
+        })
+        .collect()
 }
 pub(crate) fn evidence_summary_v2(evidence: &[Value], limit: usize) -> Vec<Value> {
     evidence        .iter()        .take(limit)        .map(|item| {            json!({                "evidence_key": item["evidence_key"],                "date": item["date"],                "label": format!(                    "{} / {}",                    period_theme_public_label(item["theme_code"].as_str().unwrap_or("organization")),                    period_tone_public_label(                        item["tone_code"]                            .as_str()                            .or_else(|| item["tone"].as_str())                            .unwrap_or("focused")                    )                )            })        })        .collect()
@@ -568,7 +622,13 @@ pub(crate) fn fake_free_period_writer_response(request: &Value) -> Result<Value,
         .collect::<Vec<_>>();
     let key_days = if key_days.is_empty() {
         vec![
-            json!({            "date": date,            "title": "Jour à retenir",            "reason": format!("Le thème {} ressort plus nettement et donne un repère utile sans en faire un verdict.", theme),            "evidence_keys": [evidence_key.clone()],            "fallback_reason": null        }),
+            json!({
+                "date": date,
+                "title": public_day_label(date),
+                "reason": format!("Le thème {} ressort plus nettement et donne un repère utile sans en faire un verdict.", theme),
+                "evidence_keys": [evidence_key.clone()],
+                "fallback_reason": null
+            }),
         ]
     } else {
         key_days

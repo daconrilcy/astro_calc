@@ -9,12 +9,6 @@ pub const HOROSCOPE_SERVICE_CODE: &str = HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_COD
 pub(crate) const HOROSCOPE_PRODUCT_CODE: &str = "horoscope";
 pub(crate) const PERIOD_V2_QUALITY_MAX_RETRIES: usize = 2;
 pub(crate) const PERIOD_V2_MAX_OUTPUT_TOKENS: u32 = 16_000;
-pub(crate) const PERIOD_V2_OBJECTIVE_TEXT_REPLACEMENTS: &[(&str, &str)] = &[
-    ("demie-journée", "demi-journée"),
-    ("demie journée", "demi-journée"),
-    ("reorganiser", "réorganiser"),
-    ("Reorganiser", "Réorganiser"),
-];
 pub(crate) fn service_code_from_value(value: &Value) -> Result<&str, GenerationError> {
     let service_code = value
         .get("service_code")

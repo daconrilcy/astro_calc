@@ -130,7 +130,6 @@ pub(crate) fn validate_free_period_provider_public_payload(
             json!({ "field": "key_days", "count": response["key_days"].as_array().map(Vec::len).unwrap_or(0) }),
         ));
     }
-    validate_free_period_key_days_are_neutral_markers(response)?;
     require_period_public_string(response, &["advice"])?;
     let evidence = response
         .get("evidence_summary")
@@ -141,60 +140,6 @@ pub(crate) fn validate_free_period_provider_public_payload(
             "HOROSCOPE_PERIOD_FREE_EVIDENCE_MISSING",
             json!({ "field": "evidence_summary", "count": evidence.len() }),
         ));
-    }
-    Ok(())
-}
-pub(crate) fn validate_free_period_key_days_are_neutral_markers(
-    response: &Value,
-) -> Result<(), GenerationError> {
-    let forbidden_terms = [
-        "meilleur",
-        "meilleure",
-        "favorabl",
-        "idéal",
-        "ideal",
-        "opportun",
-        "chance",
-        "fenêtre",
-        "fenetre",
-        "créneau",
-        "creneau",
-        "optimal",
-        "parfait",
-        "profiter",
-    ];
-    for (index, day) in response["key_days"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .enumerate()
-    {
-        let text = [
-            day.get("title").and_then(Value::as_str),
-            day.get("reason").and_then(Value::as_str),
-        ]
-        .into_iter()
-        .flatten()
-        .collect::<Vec<_>>()
-        .join(" ")
-        .to_lowercase();
-        if forbidden_terms.iter().any(|term| text.contains(term)) {
-            return Err(quality_error(
-                "HOROSCOPE_PERIOD_FREE_KEY_DAY_BEST_DAY_LEAK",
-                json!({ "field": "key_days", "index": index }),
-            ));
-        }
-        let reason = day
-            .get("reason")
-            .and_then(Value::as_str)
-            .unwrap_or("")
-            .to_lowercase();
-        if reason.split_whitespace().count() < 6 {
-            return Err(quality_error(
-                "HOROSCOPE_PERIOD_FREE_KEY_DAY_TOO_THIN",
-                json!({ "field": "key_days.reason", "index": index }),
-            ));
-        }
     }
     Ok(())
 }

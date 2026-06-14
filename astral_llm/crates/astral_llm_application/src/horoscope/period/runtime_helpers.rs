@@ -173,193 +173,27 @@ pub(crate) fn build_period_window(
     })
 }
 
-fn period_best_window_title(theme: &str, start_label: &str) -> &'static str {
-    match (theme, start_label) {
-        ("relationship", "00:00") => "Apaiser une attente personnelle",
-        ("relationship", "06:00") => "Ouvrir un échange utile",
-        ("relationship", "12:00") => "Clarifier une attente relationnelle",
-        ("relationship", _) => "Retrouver une fluidité relationnelle",
-        ("energy", "00:00") => "Relancer l'élan sans brusquer",
-        ("energy", "06:00") => "Passer à l'action courte",
-        ("energy", "12:00") => "Canaliser l'énergie disponible",
-        ("energy", _) => "Transformer l'élan en décision",
-        ("communication", "00:00") => "Préparer une parole nette",
-        ("communication", "06:00") => "Formuler le message essentiel",
-        ("communication", "12:00") => "Mettre les mots au bon endroit",
-        ("communication", _) => "Répondre avec plus de précision",
-        ("clarity", "00:00") => "Reprendre l'initiative personnelle",
-        ("clarity", "06:00") => "Clarifier le cap visible",
-        ("clarity", "12:00") => "Choisir une suite simple",
-        ("clarity", _) => "Retrouver une impulsion créative",
-        ("integration", "00:00") => "Stabiliser une base intérieure",
-        ("integration", "06:00") => "Consolider ce qui doit durer",
-        ("integration", "12:00") => "Relier les décisions au cadre",
-        ("integration", _) => "Préparer une suite plus stable",
-        (_, "00:00") => "Reprendre l'initiative personnelle",
-        (_, "06:00") => "Clarifier le cap visible",
-        (_, "12:00") => "Stabiliser une décision utile",
-        _ => "Retrouver une impulsion créative",
-    }
+fn period_best_window_title(theme: &str, start_label: &str) -> String {
+    format!("{} {}", period_theme_public_label(theme), start_label)
 }
 
-fn period_watch_window_title(theme: &str, _start_label: &str) -> &'static str {
-    period_public_theme_field(theme, "watch_window_title", "Ralentir avant de répondre")
+fn period_watch_window_title(theme: &str, start_label: &str) -> String {
+    format!("{} {}", period_theme_public_label(theme), start_label)
 }
 
-fn period_best_window_reason(theme: &str) -> &'static str {
-    match theme {
-        "relationship" => {
-            "À utiliser pour nommer un besoin, confirmer une attente ou réparer un malentendu simple."
-        }
-        "energy" => {
-            "À réserver à une action courte : lancer, terminer ou limiter un effort avant dispersion."
-        }
-        "communication" => {
-            "À utiliser pour préparer une phrase claire, envoyer un message ciblé ou cadrer une réponse."
-        }
-        "clarity" => {
-            "À privilégier pour choisir entre deux options, clarifier une preuve ou mettre une priorité au net."
-        }
-        "integration" => {
-            "À garder pour consolider un engagement, vérifier sa tenue ou réduire ce qui surcharge."
-        }
-        _ => {
-            "À utiliser pour confirmer une ressource, fermer une tâche pratique ou poser une preuve simple."
-        }
-    }
+fn period_best_window_reason(theme: &str) -> String {
+    period_public_theme_field(theme, "domain_focus", theme)
 }
 
-fn period_watch_window_point(theme: &str) -> &'static str {
-    period_public_theme_field(
-        theme,
-        "watch_window_point",
-        "Gardez une marge avant de transformer l'impression en décision définitive.",
-    )
+fn period_watch_window_point(theme: &str) -> String {
+    period_public_theme_field(theme, "watch_window_point", theme)
 }
 
-fn period_best_window_best_for(theme: &str, start_label: &str) -> Vec<&'static str> {
-    match (theme, start_label) {
-        ("relationship", "00:00") => vec![
-            "apaiser une attente personnelle",
-            "préparer un échange sensible",
-            "retrouver une disponibilité affective",
-        ],
-        ("relationship", "06:00") => vec![
-            "ouvrir un échange utile",
-            "clarifier une attente",
-            "réparer un malentendu simple",
-        ],
-        ("relationship", "12:00") => vec![
-            "poser un accord concret",
-            "nommer un besoin relationnel",
-            "ajuster une attente partagée",
-        ],
-        ("relationship", _) => vec![
-            "fluidifier une relation",
-            "répondre avec nuance",
-            "consolider un lien utile",
-        ],
-        ("energy", "00:00") => vec![
-            "préparer l'élan du jour",
-            "choisir une action courte",
-            "éviter de démarrer trop vite",
-        ],
-        ("energy", "06:00") => vec![
-            "lancer une action courte",
-            "débloquer une décision pratique",
-            "poser une limite concrète",
-        ],
-        ("energy", "12:00") => vec![
-            "canaliser l'effort utile",
-            "traiter un point actif",
-            "agir sans disperser l'énergie",
-        ],
-        ("energy", _) => vec![
-            "transformer l'élan en décision",
-            "conclure une action simple",
-            "récupérer après l'effort",
-        ],
-        ("communication", "00:00") => vec![
-            "préparer une formulation",
-            "ordonner les arguments",
-            "clarifier l'intention du message",
-        ],
-        ("communication", "06:00") => vec![
-            "envoyer un message clair",
-            "préparer une réponse",
-            "nommer une priorité",
-        ],
-        ("communication", "12:00") => vec![
-            "ajuster une réponse",
-            "tenir un échange précis",
-            "réduire les explications inutiles",
-        ],
-        ("communication", _) => vec![
-            "répondre avec précision",
-            "clore une discussion utile",
-            "poser un cadre verbal",
-        ],
-        ("clarity", "00:00") => vec![
-            "reprendre l'initiative personnelle",
-            "poser un repère simple",
-            "préparer le rythme du jour",
-        ],
-        ("clarity", "06:00") => vec![
-            "clarifier le cap visible",
-            "organiser la prochaine étape",
-            "rendre une priorité lisible",
-        ],
-        ("clarity", "12:00") => vec![
-            "trier les options",
-            "choisir une suite simple",
-            "mettre à jour une priorité",
-        ],
-        ("clarity", _) => vec![
-            "retrouver une impulsion créative",
-            "assouplir une décision",
-            "préserver un élan durable",
-        ],
-        ("integration", "00:00") => vec![
-            "stabiliser une base intérieure",
-            "préparer une consolidation",
-            "faire le point avant d'élargir",
-        ],
-        ("integration", "06:00") => vec![
-            "consolider une avancée",
-            "revenir à l'essentiel",
-            "stabiliser une décision",
-        ],
-        ("integration", "12:00") => vec![
-            "relier une décision au cadre",
-            "vérifier la tenue d'un engagement",
-            "ordonner ce qui doit durer",
-        ],
-        ("integration", _) => vec![
-            "préparer une suite stable",
-            "assimiler une étape",
-            "réduire ce qui surcharge",
-        ],
-        (_, "00:00") => vec![
-            "reprendre l'initiative personnelle",
-            "poser un repère simple",
-            "préparer le rythme du jour",
-        ],
-        (_, "06:00") => vec![
-            "clarifier le cap visible",
-            "organiser la prochaine étape",
-            "rendre une priorité lisible",
-        ],
-        (_, "12:00") => vec![
-            "stabiliser une décision utile",
-            "trier les options concrètes",
-            "réduire la dispersion",
-        ],
-        _ => vec![
-            "retrouver une impulsion créative",
-            "assouplir une décision",
-            "préserver un élan durable",
-        ],
-    }
+fn period_best_window_best_for(theme: &str, start_label: &str) -> Vec<String> {
+    vec![
+        format!("{} {}", period_theme_public_label(theme), start_label),
+        period_public_theme_field(theme, "domain_focus", theme),
+    ]
 }
 
 fn period_event_score(item: &Value, event_type: &str) -> f64 {

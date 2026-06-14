@@ -1,7 +1,7 @@
 use super::*;
 
-pub(crate) fn period_theme_public_label(theme_code: &str) -> &'static str {
-    period_public_theme_field(theme_code, "public_label", "priorité principale")
+pub(crate) fn period_theme_public_label(theme_code: &str) -> String {
+    period_public_theme_field(theme_code, "public_label", theme_code)
 }
 pub(crate) fn period_theme_public_label_if_code(theme: &str) -> String {
     period_public_theme_labels()
@@ -29,16 +29,12 @@ pub(crate) fn period_public_theme_labels() -> &'static HashMap<String, String> {
             .collect::<HashMap<_, _>>()
     })
 }
-pub(crate) fn period_domain_title(theme_code: &str) -> &'static str {
-    period_public_theme_field(theme_code, "domain_title", "Priorité utile")
+pub(crate) fn period_domain_title(theme_code: &str) -> String {
+    period_public_theme_field(theme_code, "domain_title", theme_code)
 }
-pub(crate) fn period_public_theme_field(
-    theme_code: &str,
-    field: &str,
-    fallback: &'static str,
-) -> &'static str {
+pub(crate) fn period_public_theme_field(theme_code: &str, field: &str, fallback: &str) -> String {
     let theme_code = period_editorial_theme_key(theme_code);
-    static THEME_FIELDS: OnceLock<HashMap<String, HashMap<String, &'static str>>> = OnceLock::new();
+    static THEME_FIELDS: OnceLock<HashMap<String, HashMap<String, String>>> = OnceLock::new();
     let fields = THEME_FIELDS.get_or_init(|| {
         rows(PERIOD_PUBLIC_THEMES_JSON)
             .unwrap_or_default()
@@ -60,10 +56,7 @@ pub(crate) fn period_public_theme_field(
                     "watch_window_point",
                 ] {
                     if let Some(value) = row.get(field).and_then(Value::as_str) {
-                        values.insert(
-                            field.to_string(),
-                            Box::leak(value.to_string().into_boxed_str()) as &'static str,
-                        );
+                        values.insert(field.to_string(), value.to_string());
                     }
                 }
                 Some((code, values))
@@ -73,8 +66,8 @@ pub(crate) fn period_public_theme_field(
     fields
         .get(theme_code)
         .or_else(|| fields.get("default"))
-        .and_then(|row| row.get(field).copied())
-        .unwrap_or(fallback)
+        .and_then(|row| row.get(field).cloned())
+        .unwrap_or_else(|| fallback.to_string())
 }
 #[derive(Clone)]
 pub(crate) struct PeriodNatalFocus {
@@ -126,12 +119,12 @@ pub(crate) fn period_tone_public_label(tone_code: &str) -> String {
     period_tone_labels()
         .get(tone_code)
         .cloned()
-        .unwrap_or_else(|| "nuancé".to_string())
+        .unwrap_or_else(|| tone_code.to_string())
 }
 pub(crate) fn period_tone_public_label_if_code(tone: &str) -> String {
     let normalized = tone.trim().to_lowercase();
     if normalized.is_empty() {
-        return "nuancé".to_string();
+        return tone.to_string();
     }
     if let Some(label) = period_tone_labels().get(normalized.as_str()) {
         return label.clone();
@@ -139,37 +132,7 @@ pub(crate) fn period_tone_public_label_if_code(tone: &str) -> String {
     if period_public_tone_labels().contains(&normalized) {
         return normalized;
     }
-    for fragment in normalized.split(['/', ',', '|', '→', '+']) {
-        let fragment = fragment.trim();
-        if fragment.is_empty() {
-            continue;
-        }
-        if let Some(label) = period_tone_labels().get(fragment) {
-            return label.clone();
-        }
-        if period_public_tone_labels().contains(fragment) {
-            return fragment.to_string();
-        }
-        if let Some(label) = period_tone_public_label_for_short_synonym(fragment) {
-            return label.to_string();
-        }
-    }
-    period_tone_public_label_for_short_synonym(normalized.as_str())
-        .unwrap_or(tone)
-        .to_string()
-}
-pub(crate) fn period_tone_public_label_for_short_synonym(tone: &str) -> Option<&'static str> {
-    match tone {
-        "focalisé" | "focalisee" | "focalisée" | "concentre" | "concentré" | "concentree"
-        | "concentrée" => Some("concentré"),
-        "supportif" | "supportive" | "soutien" | "soutenant" => Some("soutenant"),
-        "actif" | "active" | "dynamique" => Some("dynamique"),
-        "mixte" | "mixed" | "nuance" | "nuancé" | "nuancee" | "nuancée" => Some("nuancé"),
-        "vigilant" | "careful" | "prudent" | "prudente" => Some("vigilant"),
-        "fluide" | "fluid" => Some("fluide"),
-        "tendu" | "tendue" | "tense" | "sous tension" => Some("sous tension"),
-        _ => None,
-    }
+    tone.to_string()
 }
 pub(crate) fn period_public_tone_labels() -> &'static HashSet<String> {
     static PUBLIC_TONE_LABELS: OnceLock<HashSet<String>> = OnceLock::new();
@@ -196,21 +159,6 @@ pub(crate) fn period_tone_labels() -> &'static HashMap<String, String> {
             })
             .collect::<HashMap<_, _>>()
     })
-}
-pub(crate) fn validate_period_public_tones(response: &Value) -> Result<(), GenerationError> {
-    let allowed = period_public_tone_labels();
-    for day in response["daily_timeline"].as_array().into_iter().flatten() {
-        let tone = day["tone"]
-            .as_str()
-            .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_TECHNICAL_CODE_LEAK"))?;
-        if !allowed.contains(tone) {
-            return Err(quality_error(
-                "HOROSCOPE_PERIOD_TECHNICAL_CODE_LEAK",
-                json!({ "field": "daily_timeline.tone", "tone": tone }),
-            ));
-        }
-    }
-    Ok(())
 }
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct PeriodWordLimits {

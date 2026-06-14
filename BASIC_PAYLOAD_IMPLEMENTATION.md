@@ -403,6 +403,7 @@ Refactored `horoscope_premium_next_7_days_natal` writer guidance to reduce mecha
 - Added canonical editorial role data in `json_db/horoscope_period_editorial_roles.json`, consumed by the runtime instead of hardcoded role mappings.
 - Replaced the Premium period prompt's lexical anti-repetition instructions with editorial orchestration: distinct day functions, usable windows, non-duplicative domains, and strategy synthesis.
 - Adjusted Premium period generation temperature from `0.4` to `0.55` while keeping structured output validation.
+- Removed the period post-processing layer that rewrote public labels and canonicalized key-day/window wording; the runtime now keeps only structural repair, technical key restoration, and overlap pruning, while the text reprocessing adapter no longer applies `HumanizeLabels` to `horoscope_period`.
 - Updated `premium_rich` word targets from `2200-3200` to `1600-2600`, with the hard limit still at `3200`, to reduce forced filler when source signals are not dense enough.
 - Added regression coverage in `tests/horoscope_tests.rs`.
 

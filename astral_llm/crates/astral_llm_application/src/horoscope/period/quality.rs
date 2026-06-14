@@ -103,9 +103,6 @@ pub(crate) fn period_quality_audit_with_request(
         "mode": "non_blocking",
         "public_word_count": simple_public_word_count(&public_text),
         "section_word_counts": period_v2_section_word_counts(response),
-        "top_repeated_terms": period_v2_top_repeated_terms(&public_text, 8),
-        "duplicate_titles": period_v2_duplicate_titles(response),
-        "window_title_time_mismatches": period_v2_window_title_time_mismatches(response),
         "warnings": period_quality_warnings_json(request, response, &public_text)
     })
 }
@@ -132,11 +129,7 @@ pub(crate) fn period_collect_quality_warnings(
     public_text: &str,
 ) -> Vec<PeriodV2QualityWarning> {
     let mut warnings = Vec::new();
-    warnings.extend(period_v2_meta_language_warnings(response, public_text));
-    warnings.extend(period_v2_generic_best_window_warnings(response));
-    warnings.extend(period_v2_public_tone_warnings(response));
     warnings.extend(period_v2_seven_daily_shape_warnings(response));
-    warnings.extend(period_v2_recalendarization_warnings(response));
     warnings.extend(period_v2_word_count_warnings(
         request,
         response,
@@ -161,76 +154,17 @@ pub(crate) fn period_v2_meta_language_warnings(
     response: &Value,
     public_text: &str,
 ) -> Vec<PeriodV2QualityWarning> {
-    let mut warnings = Vec::new();
-    let lower = public_text.to_lowercase();
-    if period_editorial_meta_forbidden_terms()
-        .iter()
-        .any(|forbidden| lower.contains(forbidden))
-    {
-        warnings.push(period_v2_warning(
-            "/reading",
-            PERIOD_V2_META_LANGUAGE_WARNING,
-            PeriodV2QualitySeverity::Warning,
-            "Le texte public contient une formulation éditorialement méta.",
-        ));
-    }
-    if response["watch_windows"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .any(|window| {
-            let text = [
-                window.get("title").and_then(Value::as_str),
-                window.get("watch_point").and_then(Value::as_str),
-            ]
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>()
-            .join(" ")
-            .to_lowercase();
-            period_editorial_meta_forbidden_terms()
-                .iter()
-                .any(|forbidden| text.contains(forbidden))
-        })
-    {
-        warnings.push(period_v2_warning(
-            "/watch_windows",
-            PERIOD_V2_META_LANGUAGE_WARNING,
-            PeriodV2QualitySeverity::Warning,
-            "Une fenêtre de vigilance contient une formulation éditorialement méta.",
-        ));
-    }
-    warnings
+    let _ = (response, public_text);
+    Vec::new()
 }
 pub(crate) fn period_v2_generic_best_window_warnings(
     response: &Value,
 ) -> Vec<PeriodV2QualityWarning> {
-    let best = response["best_windows"]
-        .as_array()
-        .cloned()
-        .unwrap_or_default();
-    if best.is_empty() {
-        return Vec::new();
-    }
-    if validate_period_best_windows_not_generic(&best).is_err() {
-        return vec![period_v2_warning(
-            "/best_windows",
-            PERIOD_V2_GENERIC_BEST_WINDOW_WARNING,
-            PeriodV2QualitySeverity::Warning,
-            "Les meilleures fenêtres paraissent trop génériques.",
-        )];
-    }
+    let _ = response;
     Vec::new()
 }
 pub(crate) fn period_v2_public_tone_warnings(response: &Value) -> Vec<PeriodV2QualityWarning> {
-    if validate_period_public_tones(response).is_err() {
-        return vec![period_v2_warning(
-            "/daily_timeline",
-            PERIOD_V2_PUBLIC_TONE_WARNING,
-            PeriodV2QualitySeverity::Warning,
-            "Au moins une tonalité publique sort du registre attendu.",
-        )];
-    }
+    let _ = response;
     Vec::new()
 }
 pub(crate) fn period_v2_seven_daily_shape_warnings(
@@ -259,31 +193,8 @@ pub(crate) fn validate_period_not_seven_daily(response: &Value) -> Result<(), Ge
 pub(crate) fn period_v2_recalendarization_warnings(
     response: &Value,
 ) -> Vec<PeriodV2QualityWarning> {
-    let advice_and_strategy_text = [
-        response.pointer("/advice/main").and_then(Value::as_str),
-        response.pointer("/advice/best_use").and_then(Value::as_str),
-        response.pointer("/advice/avoid").and_then(Value::as_str),
-        response.pointer("/strategy/text").and_then(Value::as_str),
-        response
-            .pointer("/strategy/best_use")
-            .and_then(Value::as_str),
-        response
-            .pointer("/strategy/recovery")
-            .and_then(Value::as_str),
-    ]
-    .into_iter()
-    .flatten()
-    .collect::<Vec<_>>()
-    .join(" ");
-    if explicit_date_count(&advice_and_strategy_text) == 0 {
-        return Vec::new();
-    }
-    vec![period_v2_warning(
-        "/strategy",
-        PERIOD_V2_RECALENDARIZATION_SHAPE_WARNING,
-        PeriodV2QualitySeverity::Warning,
-        "Le texte conseil/stratégie re-calendarise trop fortement la période.",
-    )]
+    let _ = response;
+    Vec::new()
 }
 pub(crate) fn period_v2_word_count_warnings(
     request: Option<&Value>,

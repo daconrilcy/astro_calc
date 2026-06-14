@@ -1,4 +1,3 @@
-use crate::french_typography::restore_french_glued_compounds;
 use crate::generate_reading_use_case::GenerateReadingUseCase;
 use crate::text_reprocessing_service_adapter::{
     reprocess_horoscope_daily, reprocess_horoscope_period,
