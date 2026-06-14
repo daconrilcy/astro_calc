@@ -1,10 +1,19 @@
 param(
     [int]$Port = 8099,
+    [string]$GatewayBaseUrl = "http://localhost:8082",
     [string]$LlmBaseUrl = "http://localhost:8081",
     [string]$CalculatorBaseUrl = "http://localhost:8080"
 )
 
 $ErrorActionPreference = "Stop"
+
+try {
+    Add-Type -AssemblyName System.Net.Http -ErrorAction Stop
+} catch {
+    if (-not ("System.Net.Http.HttpClient" -as [type])) {
+        throw
+    }
+}
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $uiRoot = Join-Path $repoRoot "tests\service_test_ui"
@@ -14,6 +23,41 @@ if (-not (Test-Path $uiRoot)) {
 $uiRootFull = [IO.Path]::GetFullPath((Resolve-Path -LiteralPath $uiRoot).Path)
 $uiRootPrefix = $uiRootFull.TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
 
+function Test-PortAvailable {
+    param([int]$CandidatePort)
+
+    $tcpListener = $null
+    try {
+        $tcpListener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $CandidatePort)
+        $tcpListener.Start()
+        return $true
+    } catch {
+        return $false
+    } finally {
+        if ($tcpListener) {
+            $tcpListener.Stop()
+        }
+    }
+}
+
+function Resolve-UiPort {
+    param([int]$PreferredPort)
+
+    if (Test-PortAvailable -CandidatePort $PreferredPort) {
+        return $PreferredPort
+    }
+
+    foreach ($candidate in ($PreferredPort + 1)..($PreferredPort + 20)) {
+        if (Test-PortAvailable -CandidatePort $candidate) {
+            Write-Warning "Port $PreferredPort deja utilise. Bascule automatique vers $candidate."
+            return $candidate
+        }
+    }
+
+    throw "No available port found between $PreferredPort and $($PreferredPort + 20)."
+}
+
+$Port = Resolve-UiPort -PreferredPort $Port
 $listener = [System.Net.HttpListener]::new()
 $prefix = "http://localhost:$Port/"
 $listener.Prefixes.Add($prefix)
@@ -56,6 +100,7 @@ $defaultLlmApiKey = $envFileValues["ASTRAL_LLM_API_KEY"]
 $defaultCalculatorApiKey = $envFileValues["ASTRAL_CALCULATOR_API_KEY"]
 
 Write-Host "Astral service test UI: $prefix"
+Write-Host "Gateway proxy    : $GatewayBaseUrl"
 Write-Host "LLM proxy        : $LlmBaseUrl"
 Write-Host "Calculator proxy : $CalculatorBaseUrl"
 Write-Host "LLM API key      : $(if ($defaultLlmApiKey) { 'loaded from .env' } else { 'not configured' })"
@@ -260,6 +305,10 @@ try {
         }
         try {
             $path = $context.Request.Url.AbsolutePath
+            if ($path -eq "/api/gateway" -or $path.StartsWith("/api/gateway/")) {
+                Invoke-Proxy -Context $context -BaseUrl $GatewayBaseUrl -PrefixToRemove "/api/gateway" -DefaultApiKey ""
+                continue
+            }
             if ($path -eq "/api/llm" -or $path.StartsWith("/api/llm/")) {
                 Invoke-Proxy -Context $context -BaseUrl $LlmBaseUrl -PrefixToRemove "/api/llm" -DefaultApiKey $defaultLlmApiKey
                 continue

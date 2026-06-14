@@ -755,3 +755,41 @@ Validation de cloture executee pour cette refonte :
 Note :
 
 - la fixture `tests/golden/astro_engine_response_v1_paris_1990_rich.json` a ete regeneree via le mecanisme de test prevu (`UPDATE_ENGINE_RESPONSE_GOLDEN=1`) pour realigner le golden publie sur l'enveloppe moteur courante
+
+## 2026-06-14 - Docker update stack et service test UI
+
+Etat final retenu :
+
+- `docker-compose.yml` expose maintenant `astral_gateway` sur `:8082` avec healthcheck `GET /health/ready`
+- `scripts/docker_update_integration_stack.ps1` pilote la stack refactoree complete : compose explicite, bootstrap DB, reseed catalogue, sync profils/modeles, restart runtime, tests Rust et smokes V2
+- `scripts/start_service_test_ui.ps1` expose des proxys `gateway`, `llm` et `calculator`, et reste lancable sous PowerShell 7 comme sous `powershell.exe`
+- `tests/service_test_ui/*` cible la surface publique `astral_gateway` V2 et garde `GET /api/llm/v1/services` comme diagnostic async interne
+
+Parcours automatiques retenus :
+
+- bootstrap DB systematique via `python scripts/import_json_db_to_postgres.py`
+- soumission systematique du catalogue via `scripts/manage_integration_services.ps1 -Submit`
+- sync systematique du catalogue LLM via `Sync-AstralLlmCatalog`
+- tests Rust par defaut :
+  - `cargo test -p astral_contracts --test contracts_registry_tests --test inline_tests_governance_tests`
+  - `cargo test -p astral_gateway`
+  - `cargo test -p astral_llm_application --test integration_job_executor_tests --test chapter_quality_repair_tests`
+  - `cargo test -p astral_llm_api --test contracts_publish_tests`
+  - `cargo test -p astral_llm_api --test integration_services_tests`
+  - `cargo test -p astral_llm_api --test integration_jobs_tests`
+  - `cargo test -p astral_calculator_api --test astral_calculator_api_tests`
+- smokes HTTP publics :
+  - `POST /v2/natal/simplified/free`
+  - `POST /v2/natal/full/basic`
+  - `POST /v2/horoscope/daily/free`
+  - `POST /v2/horoscope/period/free`
+  - verification `404` sur `POST /v1/readings/generate` et `POST /v1/readings/natal/simplified`
+
+Exclus du parcours automatique car moteur LLM reel :
+
+- `provider_real_smoke`
+- `*_real_e2e.ps1`
+- `generate_premium*_e2e.ps1`
+- `test_natal_premium*_profile.ps1`
+- toute suite necessitant `OPENAI_API_KEY`
+- tout appel direct certifiant `POST /v1/internal/readings/render`

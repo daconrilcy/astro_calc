@@ -1,8 +1,14 @@
 # Bascule temporaire du routeur LLM en fake pour les tests E2E natal simplifie.
 
 $script:OriginalProductModelsConf = $null
-$script:OriginalSimplifiedProfileJson = $null
+$script:OriginalProfileJsonByCode = @{}
 $script:SimplifiedFakeComposeOverridePath = $null
+$script:SimplifiedE2eProfileCodes = @(
+    "natal_simplified",
+    "natal_light",
+    "natal_basic",
+    "natal_premium"
+)
 
 function Invoke-SimplifiedE2ePsql {
     param(
@@ -36,6 +42,15 @@ function Invoke-SimplifiedE2ePsql {
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
     $psi.RedirectStandardInput = $true
+    if ($psi.PSObject.Properties.Name -contains "StandardInputEncoding") {
+        $psi.StandardInputEncoding = [System.Text.UTF8Encoding]::new($false)
+    }
+    if ($psi.PSObject.Properties.Name -contains "StandardOutputEncoding") {
+        $psi.StandardOutputEncoding = [System.Text.UTF8Encoding]::new($false)
+    }
+    if ($psi.PSObject.Properties.Name -contains "StandardErrorEncoding") {
+        $psi.StandardErrorEncoding = [System.Text.UTF8Encoding]::new($false)
+    }
     foreach ($arg in @(
         "compose",
         "exec",
@@ -89,7 +104,14 @@ function Enable-SimplifiedE2eFakeLlmProvider {
         $script:OriginalProductModelsConf = Get-Content -LiteralPath $confPath -Raw
     }
 
-    $script:OriginalSimplifiedProfileJson = Invoke-SimplifiedE2ePsql -RepoRoot $RepoRoot -Sql "SELECT profile_json::text FROM llm_interpretation_profiles WHERE profile_code = 'natal_simplified' AND is_active = true;"
+    $script:OriginalProfileJsonByCode = @{}
+    foreach ($profileCode in $script:SimplifiedE2eProfileCodes) {
+        $escapedProfileCode = $profileCode.Replace("'", "''")
+        $profileJson = Invoke-SimplifiedE2ePsql -RepoRoot $RepoRoot -Sql "SELECT profile_json::text FROM llm_interpretation_profiles WHERE profile_code = '$escapedProfileCode' AND is_active = true;"
+        if (-not [string]::IsNullOrWhiteSpace($profileJson)) {
+            $script:OriginalProfileJsonByCode[$profileCode] = $profileJson
+        }
+    }
 
     Write-Host "E2E : bascule natal_prompter / natal_simplified -> provider fake (sans OpenAI)..." -ForegroundColor Cyan
     & (Join-Path $RepoRoot "scripts\set_product_llm_models.ps1") `
@@ -108,7 +130,7 @@ SET profile_json = jsonb_set(
     '{chapter_models,summary_model}', '"fake-model"'::jsonb, true
 ),
 updated_at = NOW()
-WHERE profile_code = 'natal_simplified';
+WHERE profile_code IN ('natal_simplified', 'natal_light', 'natal_basic', 'natal_premium');
 "@
     Invoke-SimplifiedE2ePsql -RepoRoot $RepoRoot -Sql $profileSql | Out-Null
 
@@ -146,13 +168,14 @@ function Restore-SimplifiedE2eLlmProvider {
     Write-Host "E2E : restauration modeles LLM depuis config/llm_product_models.conf..." -ForegroundColor Cyan
     & (Join-Path $RepoRoot "scripts\set_product_llm_models.ps1") | Out-Null
 
-    if (-not [string]::IsNullOrWhiteSpace($script:OriginalSimplifiedProfileJson)) {
-        $profileJson = New-SimplifiedE2eDollarQuotedSql $script:OriginalSimplifiedProfileJson
+    foreach ($profileCode in $script:OriginalProfileJsonByCode.Keys) {
+        $profileJson = New-SimplifiedE2eDollarQuotedSql $script:OriginalProfileJsonByCode[$profileCode]
+        $escapedProfileCode = $profileCode.Replace("'", "''")
         $restoreProfileSql = @"
 UPDATE llm_interpretation_profiles
 SET profile_json = $profileJson::jsonb,
     updated_at = NOW()
-WHERE profile_code = 'natal_simplified';
+WHERE profile_code = '$escapedProfileCode';
 "@
         Invoke-SimplifiedE2ePsql -RepoRoot $RepoRoot -Sql $restoreProfileSql | Out-Null
     }
@@ -167,6 +190,6 @@ WHERE profile_code = 'natal_simplified';
     }
 
     $script:OriginalProductModelsConf = $null
-    $script:OriginalSimplifiedProfileJson = $null
+    $script:OriginalProfileJsonByCode = @{}
     $script:SimplifiedFakeComposeOverridePath = $null
 }

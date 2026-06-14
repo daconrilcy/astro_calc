@@ -109,21 +109,29 @@ impl GenerateNatalReadingUseCase {
 }
 
 fn simplified_calculation_request(request: &NatalReadingRequestV2) -> Result<Value, GatewayError> {
-    let payload = serde_json::json!({
+    let mut birth = serde_json::Map::new();
+    birth.insert("date".to_string(), Value::String(request.birth.date.clone()));
+    if let Some(time) = &request.birth.time {
+        birth.insert("time".to_string(), Value::String(time.clone()));
+    }
+    if let Some(timezone) = &request.birth.timezone {
+        birth.insert("timezone".to_string(), Value::String(timezone.clone()));
+    }
+    if let Some(location) = &request.birth.location {
+        birth.insert("location".to_string(), serde_json::to_value(location).map_err(|err| {
+            GatewayError::bad_request(format!("invalid birth.location payload: {err}"))
+        })?);
+    }
+
+    Ok(serde_json::json!({
         "request_contract_version": "astro_simplified_natal_request_v1",
         "request_id": request.context.request_id,
-        "birth": {
-            "date": request.birth.date,
-            "time": request.birth.time,
-            "timezone": request.birth.timezone,
-            "location": request.birth.location,
-        },
+        "birth": Value::Object(birth),
         "calculation": {
             "zodiacal_reference_system": "tropical",
             "house_system": "placidus"
         }
-    });
-    Ok(payload)
+    }))
 }
 
 fn full_calculation_request(

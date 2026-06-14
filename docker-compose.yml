@@ -121,6 +121,33 @@ services:
     volumes:
       - ./output:/app/output
 
+  astral_gateway:
+    build:
+      context: .
+      dockerfile: docker/astral_gateway/Dockerfile
+    container_name: astral_gateway
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      ASTRAL_GATEWAY_BIND_ADDR: 0.0.0.0:8082
+      ASTRAL_GATEWAY_REQUEST_TIMEOUT_MS: ${ASTRAL_GATEWAY_REQUEST_TIMEOUT_MS:-60000}
+      ASTRAL_CALCULATOR_HOST: astral_calculator_api
+      ASTRAL_CALCULATOR_PORT: "8080"
+      ASTRAL_LLM_HOST: astral_llm_api
+      ASTRAL_LLM_PORT: "8081"
+      ASTRAL_CALCULATOR_API_KEY: ${ASTRAL_CALCULATOR_API_KEY:-}
+      ASTRAL_LLM_API_KEY: ${ASTRAL_LLM_API_KEY:-}
+    networks:
+      - astral_net
+    ports:
+      - "8082:8082"
+    depends_on:
+      astral_calculator_api:
+        condition: service_healthy
+      astral_llm_api:
+        condition: service_healthy
+
   mercure:
     image: dunglas/mercure:v0.16
     container_name: astral_mercure

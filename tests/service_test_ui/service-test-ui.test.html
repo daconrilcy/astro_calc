@@ -30,7 +30,7 @@
         timezone: "Europe/Paris",
         targetDate: "2026-06-09",
         language: "fr",
-        audience: "beginner",
+        audience: "general",
         location: {
           latitude: 48.8566,
           longitude: 2.3522,
@@ -39,90 +39,71 @@
         },
       };
 
-      const simplified = api.buildNatalSimplifiedPayload(input);
-      assert("payload natal simplifie", simplified.request_contract_version === "astro_simplified_natal_request_v1");
-      assert("payload natal simplifie location", simplified.birth.location.latitude === 48.8566);
+      const natal = api.buildGatewayNatalRequest(input);
+      assert("payload natal context", natal.context.target_language_code === "fr");
+      assert("payload natal birth location", natal.birth.location.latitude === 48.8566);
+      assert("payload natal audience general", natal.context.audience_level === "general");
 
-      const full = api.buildFullNatalPayload(input, "compact");
-      assert("payload natal full", full.request_contract_version === "astro_engine_request_v1");
-      assert("payload natal full projection", full.projection.level === "compact");
-      assert("payload natal full heure", full.birth.time === "14:30:00");
+      const calculatorNatal = api.buildCalculatorNatalPayload(input);
+      assert("payload calculator natal contract", calculatorNatal.request_contract_version === "astro_engine_request_v1");
+      assert("payload calculator natal projection", calculatorNatal.projection.level === "compact");
+      assert("payload calculator natal heure", calculatorNatal.birth.time === "14:30:00");
 
-      const horoscope = api.buildHoroscopePayload({ service_code: "horoscope_premium_daily_local_2h_slots" }, input, 123);
-      assert("payload horoscope id", horoscope.chart_calculation_id === "123");
-      assert("payload horoscope date", horoscope.date === "2026-06-09");
-      assert("payload horoscope langue legacy", horoscope.target_language === "fr");
-      assert("payload horoscope sans langue v2", !Object.prototype.hasOwnProperty.call(horoscope, "target_language_code"));
-      assert("payload horoscope premium location", horoscope.location.label === "Paris, France");
+      const daily = api.buildGatewayHoroscopeDailyRequest(input, 123, { tier: "premium" });
+      assert("payload horoscope daily id", daily.chart_calculation_id === "123");
+      assert("payload horoscope daily date", daily.date === "2026-06-09");
+      assert("payload horoscope daily premium location", daily.location.label === "Paris, France");
+      assert("payload horoscope daily premium detail", daily.detail_level === "premium_rich");
 
-      const period = api.buildHoroscopePayload({ service_code: "horoscope_premium_next_7_days_natal" }, input, 456);
-      assert("payload horoscope periode anchor", period.anchor_date === "2026-06-09");
-      assert("payload horoscope premium v2 langue", period.target_language_code === "fr");
-      assert("payload horoscope premium v2 sans legacy", !Object.prototype.hasOwnProperty.call(period, "target_language"));
-      assert("payload horoscope audience publique", period.audience_level === "general");
+      const freeDaily = api.buildGatewayHoroscopeDailyRequest(input, 123, { tier: "free" });
+      assert("payload horoscope daily free no location", !Object.prototype.hasOwnProperty.call(freeDaily, "location"));
 
-      const freePeriod = api.buildHoroscopePayload({ service_code: "horoscope_free_next_7_days_natal" }, input, 654);
-      assert("payload horoscope periode legacy langue", freePeriod.target_language === "fr");
-      assert("payload horoscope periode legacy sans v2", !Object.prototype.hasOwnProperty.call(freePeriod, "target_language_code"));
+      const period = api.buildGatewayHoroscopePeriodRequest(input, 456);
+      assert("payload horoscope period anchor", period.anchor_date === "2026-06-09");
+      assert("payload horoscope period langue", period.target_language === "fr");
+      assert("payload horoscope period code", period.target_language_code === "fr");
+      assert("payload horoscope period audience", period.audience_level === "general");
 
-      const expertPeriod = api.buildHoroscopePayload({ service_code: "horoscope_free_next_7_days_natal" }, { ...input, audience: "expert" }, 456);
-      assert("payload horoscope audience expert", expertPeriod.audience_level === "expert");
+      assert("code langue supporte", api.supportedTargetLanguageCode("de") === "de");
+      assert("code langue non supporte", api.supportedTargetLanguageCode("it") === null);
 
-      const job = api.buildJobBody({ service_code: "natal_basic" }, full, { ...input, audience: "general" });
-      assert("enveloppe audience conforme", job.audience_level === "beginner");
+      assert("audience gateway beginner", api.normalizeGatewayAudience("beginner") === "beginner");
+      assert("audience gateway general", api.normalizeGatewayAudience("general") === "general");
+      assert("audience horoscope expert", api.normalizeHoroscopeAudience("expert") === "expert");
+      assert("audience horoscope default", api.normalizeHoroscopeAudience("intermediate") === "general");
 
-      assert("detection horoscope par code", api.isHoroscopeService({ service_code: "horoscope_free_daily" }));
-      assert("detection horoscope par contrat", api.isHoroscopeService({ service_code: "x", contracts: { payload: "horoscope_period_natal_request" } }));
-      assert("natal non horoscope", !api.isHoroscopeService({ service_code: "natal_basic", calculation_mode: "full_natal" }));
-      assert("projection premium riche", api.projectionLevelForService({ service_code: "natal_premium", interpretation_profile_code: "natal_premium" }) === "rich");
-      assert("projection basic compacte", api.projectionLevelForService({ service_code: "natal_basic", interpretation_profile_code: "natal_basic" }) === "compact");
+      assert("detection horoscope", api.isHoroscopeService({ kind: "horoscope_period" }));
+      assert("detection non horoscope", !api.isHoroscopeService({ kind: "natal_full" }));
 
-      const filtered = api.filterRunnableServices([
-        { service_code: "planned", availability: "planned", sort_order: 1 },
-        { service_code: "beta", availability: "beta", sort_order: 3 },
-        { service_code: "active", availability: "active", sort_order: 2 },
-      ]);
-      assert("filtrage active beta", filtered.map((service) => service.service_code).join(",") === "active,beta");
+      assert("validation service bloque sans location", api.serviceCanRun({ kind: "natal_simplified" }, { ...input, location: null }) === "Resoudre le lieu avant execution.");
+      assert("validation service full requiert heure", api.serviceCanRun({ kind: "natal_full" }, { ...input, birthTime: "" }) === "Heure de naissance requise pour ce service.");
 
-      const natalSections = api.normalizeReadingSections({
-        summary: { title: "Synthese", short_text: "Texte court." },
-        chapters: [{ title: "Chapitre", body: "Paragraphe 1.\n\nParagraphe 2." }],
+      const natalSections = api.normalizeGatewayReadingSections({
+        metadata: { product_code: "natal_full_basic", variant: "full", tier: "basic" },
+        quality: { calculator_contract_version: "astro_engine_response_v1", llm_contract_version: "generate_reading_response_v1" },
+        reading: {
+          reading: {
+            summary: { title: "Synthese", short_text: "Texte court." },
+            chapters: [{ title: "Chapitre", body: "Paragraphe 1.\n\nParagraphe 2." }],
+          }
+        }
       });
-      assert("rendu natal sections", natalSections.length === 2);
-      assert("rendu natal paragraphes", natalSections[1].paragraphs.length === 2);
+      assert("rendu gateway natal sections", natalSections.length >= 4);
 
-      const horoscopeSections = api.normalizeReadingSections({
-        summary: { title: "Jour", text: "Resume." },
-        slots: [{ title: "Matin", text: "Texte.", advice: "Conseil." }],
+      const horoscopeSections = api.normalizeGatewayReadingSections({
+        metadata: { product_code: "horoscope_free_daily", variant: "daily", tier: "free" },
+        reading: {
+          summary: { title: "Jour", text: "Resume." },
+          slots: [{ title: "Matin", text: "Texte.", advice: "Conseil." }],
+        }
       });
-      assert("rendu horoscope sections", horoscopeSections.length === 2);
-
-      const premiumDailySections = api.normalizeReadingSections({
-        timeline: [{ title: "Créneau favorable", slot_label: "00:00–02:00", text: "Texte." }],
-        best_slots: [{ title: "Créneau favorable", slot_label: "02:00–04:00", reason: "Raison." }],
-      });
-      const premiumDailyLabels = premiumDailySections.flatMap((section) => section.meta || []);
-      assert("rendu premium conserve label timeline", premiumDailyLabels.includes("00:00–02:00"));
-      assert("rendu premium conserve label best slot", premiumDailyLabels.includes("02:00–04:00"));
-
-      const domainSections = api.normalizeReadingSections({
-        domain_sections: [{ domain: "work", title: "Travail et organisation", text: "Texte." }],
-      });
-      assert("rendu domaine masque code technique", !(domainSections[0].meta || []).includes("work"));
-
-      const safetySections = api.normalizeReadingSections({
-        status: "safety_rejected",
-        error: { message: "Sujet non autorise." },
-        violations: ["violation_a"],
-      });
-      assert("rendu safety rejected", safetySections[0].title === "Generation rejetee");
-      assert("rendu safety rejected details", safetySections[0].paragraphs.length === 2);
-
-      const htmlError = api.parseResponseBody("<html>nope</html>", "text/html");
-      assert("parsing erreur non json", htmlError.error.code === "NON_JSON_RESPONSE");
+      assert("rendu gateway horoscope sections", horoscopeSections.length >= 3);
 
       const invalidJson = api.parseResponseBody("{bad", "application/json");
       assert("parsing json invalide", invalidJson.error.code === "INVALID_JSON_RESPONSE");
+
+      const htmlError = api.parseResponseBody("<html>nope</html>", "text/html");
+      assert("parsing erreur non json", htmlError.error.code === "NON_JSON_RESPONSE");
 
       assert("id client disponible", typeof api.newClientId() === "string" && api.newClientId().length > 8);
 

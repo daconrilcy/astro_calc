@@ -10,10 +10,11 @@
   <main class="app-shell">
     <section class="topbar">
       <div>
-        <h1>Test des services reels</h1>
-        <p>Interface locale de developpement pour lancer les services actifs et beta.</p>
+        <h1>Gateway V2 service test UI</h1>
+        <p>Interface locale de developpement pour lancer la surface publique V2 et diagnostiquer l'async V1 interne.</p>
       </div>
       <div class="status-strip" aria-live="polite">
+        <span id="gatewayStatus" class="status-dot">Gateway</span>
         <span id="llmStatus" class="status-dot">LLM</span>
         <span id="calculatorStatus" class="status-dot">Calculateur</span>
       </div>
@@ -51,6 +52,7 @@
       <div class="field">
         <label for="audience">Audience</label>
         <select id="audience">
+          <option value="general">general</option>
           <option value="beginner">beginner</option>
           <option value="intermediate">intermediate</option>
           <option value="expert">expert</option>
@@ -73,8 +75,11 @@
 
     <section class="service-board">
       <div class="board-heading">
-        <h2>Services disponibles</h2>
-        <p id="serviceCount">Chargement...</p>
+        <div>
+          <h2>Services publics V2</h2>
+          <p id="serviceCount">Chargement...</p>
+        </div>
+        <p id="diagnosticCount">Diagnostic async interne en attente...</p>
       </div>
       <div id="serviceGrid" class="service-grid"></div>
     </section>
@@ -91,7 +96,7 @@
       </header>
       <div class="service-meta"></div>
       <div class="service-actions">
-        <button type="button" class="run-service">Generer en reel</button>
+        <button type="button" class="run-service">Executer</button>
       </div>
       <div class="result-region" hidden>
         <div class="result-toolbar">

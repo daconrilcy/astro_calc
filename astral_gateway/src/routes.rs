@@ -24,6 +24,8 @@ use astral_llm_application::{HoroscopePeriodPublicRequest, HoroscopePublicReques
 pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/health", get(health))
+        .route("/health/live", get(health))
+        .route("/health/ready", get(health_ready))
         .route("/v2/natal/simplified/free", post(natal_simplified_free))
         .route("/v2/natal/simplified/basic", post(natal_simplified_basic))
         .route("/v2/natal/simplified/premium", post(natal_simplified_premium))
@@ -46,6 +48,10 @@ pub fn router(state: AppState) -> Router {
 
 async fn health() -> impl IntoResponse {
     Json(json!({ "status": "ok", "service": "astral_gateway" }))
+}
+
+async fn health_ready() -> impl IntoResponse {
+    Json(json!({ "status": "ready", "service": "astral_gateway" }))
 }
 
 async fn natal_simplified_free(
