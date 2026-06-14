@@ -25,7 +25,7 @@
   "key_days": [
     {
       "date": "2026-06-07",
-      "title": "Jour à retenir",
+      "title": "Repère du jour",
       "reason": "Le thème organisation ressort plus nettement et donne un repère utile sans en faire un verdict.",
       "evidence_keys": ["period:2026-06-07:2026-06-07:noon:moon:natal_house:6"],
       "fallback_reason": null

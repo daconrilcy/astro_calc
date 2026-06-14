@@ -88,7 +88,13 @@ pub(crate) fn period_natal_focus_code(fact: &Value) -> String {
     "natal_house_6".to_string()
 }
 pub(crate) fn period_natal_focus(code: &str) -> PeriodNatalFocus {
-    period_natal_focus_labels()        .get(code)        .cloned()        .unwrap_or_else(|| PeriodNatalFocus {            label: "une priorité concrète".to_string(),            hint: "Situations associées : choisir une priorité simple, vérifier une limite, alléger une charge, garder une marge de décision.".to_string(),        })
+    period_natal_focus_labels()
+        .get(code)
+        .cloned()
+        .unwrap_or_else(|| PeriodNatalFocus {
+            label: code.to_string(),
+            hint: String::new(),
+        })
 }
 pub(crate) fn period_natal_focus_labels() -> &'static HashMap<String, PeriodNatalFocus> {
     static LABELS: OnceLock<HashMap<String, PeriodNatalFocus>> = OnceLock::new();
@@ -310,16 +316,16 @@ pub fn validate_period_public_word_count(
     }
     Ok(())
 }
-pub(crate) fn period_object_public_label(object_code: &str) -> &'static str {
+pub(crate) fn period_object_public_label(object_code: &str) -> String {
     match object_code {
-        "sun" => "le Soleil",
-        "moon" => "la Lune",
-        "mercury" => "Mercure",
-        "venus" => "Vénus",
-        "mars" => "Mars",
-        "jupiter" => "Jupiter",
-        "saturn" => "Saturne",
-        _ => "un facteur astrologique",
+        "sun" => "le Soleil".to_string(),
+        "moon" => "la Lune".to_string(),
+        "mercury" => "Mercure".to_string(),
+        "venus" => "Vénus".to_string(),
+        "mars" => "Mars".to_string(),
+        "jupiter" => "Jupiter".to_string(),
+        "saturn" => "Saturne".to_string(),
+        other => other.to_string(),
     }
 }
 pub(crate) fn public_day_label(date: &str) -> String {

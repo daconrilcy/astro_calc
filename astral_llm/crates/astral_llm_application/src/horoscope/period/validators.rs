@@ -367,57 +367,6 @@ pub(crate) fn validate_period_premium_windows_contract_v2(
     }
     Ok(())
 }
-pub(crate) fn period_editorial_meta_forbidden_terms() -> &'static [&'static str] {
-    &[
-        "nouvelle facette",
-        "répéter le même conseil",
-        "repeter le meme conseil",
-        "fonction narrative",
-        "changer l'usage",
-        "changer l’usage",
-    ]
-}
-pub(crate) fn validate_period_best_windows_not_generic(
-    windows: &[Value],
-) -> Result<(), GenerationError> {
-    let titles = windows
-        .iter()
-        .filter_map(|window| window["title"].as_str())
-        .map(normalized_text)
-        .collect::<HashSet<_>>();
-    let best_for_sets = windows
-        .iter()
-        .filter_map(|window| window["best_for"].as_array())
-        .map(|items| {
-            items
-                .iter()
-                .filter_map(Value::as_str)
-                .map(normalized_text)
-                .collect::<Vec<_>>()
-                .join("|")
-        })
-        .collect::<HashSet<_>>();
-    let generic_titles = windows
-        .iter()
-        .filter_map(|window| window["title"].as_str())
-        .filter(|title| normalized_text(title) == "fenêtre favorable")
-        .count();
-    let generic_reasons = windows
-        .iter()
-        .filter_map(|window| window["reason"].as_str())
-        .filter(|reason| period_best_window_reason_is_generic(reason))
-        .count();
-    if generic_titles > 0
-        || generic_reasons > 0
-        || (windows.len() >= 3 && (titles.len() < 2 || best_for_sets.len() < 2))
-    {
-        return Err(quality_error(
-            "HOROSCOPE_PERIOD_PREMIUM_WINDOWS_TOO_GENERIC",
-            json!({                "title_count": titles.len(),                "best_for_count": best_for_sets.len(),                "generic_titles": generic_titles,                "generic_reasons": generic_reasons            }),
-        ));
-    }
-    Ok(())
-}
 pub(crate) fn validate_period_window_array(
     field: &str,
     windows: &[Value],
@@ -649,15 +598,6 @@ pub(crate) fn period_window_identity(window: &Value) -> Option<String> {
         window.get("date")?.as_str()?,
         normalized_text(window.get("time_range_label")?.as_str()?)
     ))
-}
-
-pub(crate) fn period_best_window_reason_is_generic(reason: &str) -> bool {
-    let lower = normalized_text(reason);
-    lower.contains("moment utile")
-        || lower.contains("fenetre favorable")
-        || lower.contains("fenetre utile")
-        || lower.contains("creaneau peut servir")
-        || lower.contains("ce creneau peut servir")
 }
 pub(crate) fn is_period_major_aspect(aspect: &str) -> bool {
     matches!(

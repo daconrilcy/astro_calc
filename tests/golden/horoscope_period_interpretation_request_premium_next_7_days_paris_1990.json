@@ -1164,7 +1164,7 @@
   "watch_days": [
     {
       "date": "2026-06-07",
-      "title": "Jour de vigilance",
+      "title": "Repère de prudence",
       "reason": "Ce jour demande de ralentir avant de répondre.",
       "evidence_keys": [
         "period:2026-06-07:2026-06-07:06:00:mars:square:natal_mercury"

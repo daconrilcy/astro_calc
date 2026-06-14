@@ -2970,7 +2970,7 @@ Tests ajoutes :
 **4B est close** apres cette passe. Suite : brancher le service LLM aval sur `llm_payload`
 (sans `audit_payload` sauf mode debug).
 
-Vigilance non bloquante (hors scope 4B.1) : `keywords.by_area` utilise encore des
+Point non bloquant (hors scope 4B.1) : `keywords.by_area` utilise encore des
 cles internes en snake_case (ex. `shared_resources`). Ce ne sont pas des phrases
 publiques ; acceptable pour le contrat actuel. Si la regle devient « zero
 snake_case dans tout `llm_payload`, y compris les cles », migrer `by_area` vers

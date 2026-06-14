@@ -25,7 +25,7 @@ Review finale implementation hors documentation.
 - P1 : `best_days` pouvait contenir deux entrees pour la meme date.
 - P2 : la timeline Premium pouvait etre trop dominee par un seul theme public.
 - V1.1 P1 : Premium retournait `watch_summary.status = none` dans des cas sans tension forte mais avec signaux exploitables.
-- V1.1 P1 : les `best_windows` pouvaient rester trop generiques (`Fenetre favorable`, `best_for` peu differencies).
+- V1.1 P1 : les `best_windows` pouvaient rester trop génériques, avec un `best_for` peu différencié.
 - V1.1 follow-up P1 : `best_for` variait par theme mais pas toujours par snapshot ; trois fenetres d'un meme theme pouvaient donc partager le meme usage conseille.
 - V1.1 P1 : le texte public pouvait conserver des fragments francais casses comme `s'dynamique`.
 - V1.1 real-run P2 : un premier E2E reel a produit l'adjectif maladroit `rédynamique` dans un domaine public.

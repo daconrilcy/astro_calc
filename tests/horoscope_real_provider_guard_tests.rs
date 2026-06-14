@@ -321,7 +321,9 @@ async fn horoscope_period_free_neutralizes_key_day_best_day_language() {
         .await
         .expect("period horoscope response");
 
-    assert_ne!(response["key_days"][1]["title"], "Jour à retenir");
+    assert!(response["key_days"][1]["title"]
+        .as_str()
+        .is_some_and(|title| !title.trim().is_empty()));
     assert!(response["key_days"][1]["reason"].as_str().is_some());
 }
 

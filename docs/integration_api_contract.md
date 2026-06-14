@@ -544,7 +544,7 @@ Shape reponse publique :
   "period_resolution": {},
   "summary": { "title": "Vos 7 prochains jours", "text": "..." },
   "dominant_theme": { "theme": "organisation", "text": "..." },
-  "key_days": [{ "date": "2026-06-10", "title": "Jour à retenir", "reason": "...", "evidence_keys": [] }],
+  "key_days": [{ "date": "2026-06-10", "title": "Repère du jour", "reason": "...", "evidence_keys": [] }],
   "advice": "...",
   "watch_summary": { "status": "none", "text": "...", "evidence_keys": [] },
   "evidence_summary": [{ "date": "2026-06-10", "evidence_key": "...", "label": "..." }],
@@ -678,7 +678,7 @@ Regles publiques :
   vide avec `watch_days = []` uniquement en statut `low`.
 - Le profil `premium_rich` vise 1600 a 2600 mots et impose une limite dure de 3200 mots.
 - Les `best_windows` Premium doivent avoir des titres et `best_for`
-  differencies ; le titre generique `Fenetre favorable` est refuse.
+  différenciés ; un titre trop générique est refusé.
 
 Reponse abregee :
 

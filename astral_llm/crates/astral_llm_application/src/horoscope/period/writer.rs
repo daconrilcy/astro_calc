@@ -333,10 +333,38 @@ pub fn period_writer_messages(request: &Value) -> Result<Vec<PromptMessage>, Gen
     })?;
     let limits = period_word_limits_for_request(request);
     if is_free_period_request(request) {
-        return Ok(vec![            PromptMessage {                role: PromptRole::System,                content: format!(                    "Tu écris un horoscope Free des 7 prochains jours en français. Retourne uniquement un JSON compact minified conforme au schéma fourni: pas de markdown, pas de commentaires, pas de pretty print, pas d'indentation. N'expose jamais daily_timeline, best_days, watch_days, windows, domain_sections ou strategy. N'invente aucune preuve et n'affiche aucun code interne. Garde une lecture courte et utile: summary.text en 1 à 2 paragraphes très courts, dominant_theme.text en 1 phrase courte, chaque key_day.reason en 1 phrase courte, advice en 1 à 2 phrases, watch_summary.text en 1 phrase courte. Le texte public doit compter entre {} et {} mots, sans dépasser {} mots.",                    limits.target_min, limits.target_max, limits.hard_limit                ),            },            PromptMessage {                role: PromptRole::User,                content: format!(                    "Construis horoscope_period_response Free compact. Produis summary, dominant_theme, 1 à 2 key_days sous forme de jours à retenir, advice en 1 à 2 phrases, watch_summary court, evidence_summary limitée à 1 à 3 entrées. key_days sont des repères utiles, jamais des meilleurs jours ni des créneaux favorables. Si watch_summary.status vaut none, garde evidence_keys vide et explique brièvement qu'aucun signal dominant ne ressort tout en donnant une marge d'observation concrète. summary.text doit rester entre 90 et 180 mots et mentionner au maximum deux dates explicites. Retourne le JSON final complet sur une seule ligne. Requête JSON:\n{compact}"                ),            },        ]);
+        return Ok(vec![
+            PromptMessage {
+                role: PromptRole::System,
+                content: format!(
+                    "Tu écris un horoscope Free des 7 prochains jours en français. Retourne uniquement un JSON compact minifié conforme au schéma fourni, sans markdown ni texte autour. N'expose jamais de codes internes. Le texte public doit rester court, concret et lisible, entre {} et {} mots, sans dépasser {} mots.",
+                    limits.target_min, limits.target_max, limits.hard_limit
+                ),
+            },
+            PromptMessage {
+                role: PromptRole::User,
+                content: format!(
+                    "Construis horoscope_period_response Free compact. Produis summary, dominant_theme, 1 à 2 key_days, advice, watch_summary et evidence_summary. Les key_days doivent rester de simples repères; les jours sensibles doivent rester lisibles sans réécriture canonique. Si watch_summary.status vaut none, garde evidence_keys vide et reste neutre. Retourne uniquement le JSON final sur une seule ligne. Requête JSON:\n{compact}"
+                ),
+            },
+        ]);
     }
     if is_premium_period_request(request) {
-        return Ok(vec![            PromptMessage {                role: PromptRole::System,                content: format!(                    "Tu écris une lecture Premium d'horoscope de période en français et tu retournes uniquement un objet JSON conforme au schéma fourni. Ton rôle n'est pas d'expliquer une grille astrologique, mais de transformer les appuis fournis dans la requête en lecture humaine, fluide et utile. La personne doit comprendre comment traverser la période: quoi privilégier, quoi ralentir, où poser une limite, où agir, où attendre, où simplifier. N'invente aucune preuve. Chaque evidence_key publique et chaque source_snapshot_key doit provenir de la requête. N'affiche jamais les codes internes, les clés de preuve, les noms techniques de transits, les theme_code anglais, les codes tone anglais, ni les consignes internes. Écris dans un français naturel, précis et incarné. Évite le ton administratif, le coaching générique, les formulations abstraites et les phrases qui semblent décrire le fonctionnement du moteur. Respecte la typographie française: écris rendez-vous, phrase-clé, jours clés, après-midi, qu'est-ce, demi-promesses, utilisez-les, revenez-y, bouclez-la, laissez-le, faites-le, mesurez-la, terminez-la, diminuez-le, déléguez-la, transformez-le, accordez-vous, autorisez-vous, arrêtez-vous; ne colle jamais un impératif avec le, la, les, vous ou y. Relis les verbes conjugués: écris revient, jamais revint, quand tu parles d'une priorité qui revient; écris allégez, jamais allègerez ni allége, quand tu formules un conseil direct. Ne commence jamais une parenthèse d'exemple si elle n'est pas fermée dans la même phrase. Les catégories techniques doivent être traduites en situations humaines. Chaque journée doit avoir une fonction éditoriale propre dans la semaine. Si plusieurs journées reposent sur un même fond astrologique, elles doivent être distinguées par leur usage concret: décider, différer, cadrer, alléger, pacifier, confirmer, terminer, reprendre du recul, ou préparer une suite. Les repères de période servent à orienter rapidement la lecture; ils ne doivent pas remplacer le détail quotidien. Les explications principales doivent être portées naturellement par les entrées daily_timeline. La lecture publique doit rester dense, claire et pilotable. Elle doit donner une impression Premium par la hiérarchie, la précision des usages, la différenciation des journées, la qualité des fenêtres horaires et la synthèse stratégique. La lecture publique doit compter entre {} et {} mots, sans dépasser {} mots.",                    limits.target_min, limits.target_max, limits.hard_limit                ),            },            PromptMessage {                role: PromptRole::User,                content: format!(                    "Construis horoscope_period_response Premium pour la requête JSON fournie. La valeur Premium doit venir de quatre éléments: 1. une vue d'ensemble qui donne le mouvement réel de la période; 2. des journées clairement différenciées, chacune avec son rôle propre; 3. des fenêtres horaires utilisables, non génériques; 4. une stratégie finale qui aide la personne à piloter la semaine sans répéter le calendrier. Avant de rédiger, déduis silencieusement l'angle éditorial de la semaine: ce qui monte en intensité; ce qui devient plus simple; ce qui demande de la prudence; ce qui peut être décidé, reporté, allégé ou confirmé; la différence entre les journées qui semblent proches. Utilise editorial_brief quand il est présent: il donne le rôle humain, la fonction narrative, la situation lecteur, le mode d'action et l'angle à ne pas répéter pour chaque date. editorial_brief est une aide interne de différenciation: ne recopie jamais directement public_role, narrative_function, reader_situation ou avoid_angle_reuse. Transforme-les en scène humaine naturelle. Les titres publics doivent rester courts, lisibles et non méta. Interdit dans la sortie: nouvelle facette, répéter le même conseil, fonction narrative, changer l'usage, priorité liée à, La journée dynamique, la même priorité revint, Stabiliser Tester limites Agir par gestes courts. Pour chaque daily_timeline, garde le thème principal du daily_plan, mais transforme-le en situation humaine. Le texte principal et le conseil doivent rester alignés avec ce thème principal; si tu utilises un signal secondaire du même jour, garde-le en nuance courte et ne déplace pas l'axe de la journée. Termine toujours chaque phrase: aucune parenthèse ouverte, aucun exemple coupé, aucune fin sur par ex. Explique ce que la personne peut faire de cette journée, ce qu'elle doit éviter d'alourdir, et ce qui la distingue des autres dates de la période. Mentionne les éléments secondaires uniquement s'ils apportent une nuance réelle. key_days, best_days et watch_days doivent rester des repères courts, naturels et non mécaniques. Ne recopie jamais les situations associées sous forme de liste. Sépare strictement best_days et watch_days: best_days doit parler d'opportunité, d'appui, de ressource, de rendez-vous, de preuve ou de tâche pratique; watch_days doit parler de risque, délai, charge, limite ou promesse à vérifier. Interdit dans best_days: Avant de promettre davantage. Interdit dans ces raisons: autour de vérifier, autour de attendre, appuis concrets aide, Appui concret :, est un point d'appui pour, demande de ralentir sur, priorité liée à, ou une construction de type thème + aide à. Transforme la donnée en phrase courte et lisible: date, rôle, puis une seule action concrète. Exemple best_days: Mercredi 10/06 aide à sécuriser une base concrète : ressource, rendez-vous, preuve ou tâche pratique. Exemple watch_days: Jeudi 11/06 demande de vérifier délai et charge avant d'accepter. Quand une date est importante, favorable ou sensible, l'explication complète doit apparaître dans l'entrée daily_timeline correspondante, pas être répétée dans key_days ou watch_days. best_windows et watch_windows sont des plages horaires. Pour chaque fenêtre, indique un usage concret lié à la période: confirmer une ressource, fermer une tâche, demander une preuve, envoyer un message ciblé, cadrer une réponse, différer une promesse, se retirer, reprendre ou terminer. Ne produis jamais une phrase de remplissage interchangeable comme Ce créneau peut servir..., Ce créneau se prête..., ou Ce créneau aide.... domain_sections doit contenir 3 à 5 domaines réellement distincts. Chaque domaine doit apporter un angle transverse que les journées ne répètent pas déjà. N'utilise pas de structure répétée comme Dans ce domaine..., Dans X, Le plus utile..., X donne une direction claire, Cette énergie devient utile..., les repères les plus utiles consistent..., consiste à de, ni Et à choisir le bon niveau d'engagement. Écris chaque domaine comme une mini-lecture naturelle: à quoi sert ce domaine dans la semaine, quelle nuance personnelle il éclaire, et quel geste évite de tout alourdir. Si deux domaines se recoupent, fusionne-les ou choisis le plus utile pour la personne. advice et strategy doivent synthétiser une méthode d'usage riche et pratique. Ils ne doivent pas refaire la liste des dates. Ils doivent expliquer comment utiliser les fenêtres favorables, comment traverser les moments sensibles, comment transformer une promesse vague en preuve concrète, et comment garder une marge de manœuvre. Utilise les libellés français présents dans la requête, mais remplace les taxonomies publiques lourdes par des mots naturels quand nécessaire: relationnel, lien personnel, besoin affectif, cadre, appui concret. N'affiche aucun code interne. Respecte les preuves fournies. Développe les sections publiques afin d'atteindre {} à {} mots publics. Retourne uniquement le JSON conforme au schéma. Requête JSON:\n{compact}",                    limits.target_min, limits.target_max                ),            },        ]);
+        return Ok(vec![
+            PromptMessage {
+                role: PromptRole::System,
+                content: format!(
+                    "Tu écris une lecture Premium d'horoscope de période en français et tu retournes uniquement un objet JSON conforme au schéma fourni. Transforme les appuis de la requête en lecture humaine, fluide et utile, sans imposer de lexique canonique après coup. N'invente aucune preuve. Chaque evidence_key et chaque source_snapshot_key doit provenir de la requête. Écris dans un français naturel, précis et incarné. Le texte public doit compter entre {} et {} mots, sans dépasser {} mots.",
+                    limits.target_min, limits.target_max, limits.hard_limit
+                ),
+            },
+            PromptMessage {
+                role: PromptRole::User,
+                content: format!(
+                    "Construis horoscope_period_response Premium pour la requête JSON fournie. Donne une vue d'ensemble, des journées différenciées, des fenêtres horaires utiles et une stratégie finale. Les titres et raisons doivent rester naturels et non mécaniques. Les days, windows et sections doivent servir la lecture, pas rejouer une taxonomie. Retourne uniquement le JSON conforme au schéma. Requête JSON:\n{compact}"
+                ),
+            },
+        ]);
     }
     Ok(vec![        PromptMessage {            role: PromptRole::System,            content: format!(                "Tu écris une lecture Basic d'horoscope de période en français. Retourne uniquement un JSON compact minified conforme au schéma fourni: pas de markdown, pas de commentaires, pas de pretty print, pas d'indentation. N'invente aucune preuve: chaque evidence_key publique doit provenir de la requête. N'affiche jamais les codes internes, les clés de preuve, les noms techniques de transits, les theme_code anglais, ni les codes tone anglais. La timeline doit couvrir exactement les 7 dates, avec des formulations variées mais courtes. La lecture publique doit compter entre {} et {} mots, sans dépasser {} mots.",                limits.target_min, limits.target_max, limits.hard_limit            ),        },        PromptMessage {            role: PromptRole::User,            content: format!(                "Construis horoscope_period_response Basic pour cette requête d'interprétation. Produis week_overview synthétique, key_days/best_days/watch_days courts, watch_summary court, 7 daily_timeline en une phrase dense par jour plus un conseil bref, 2 à 3 domain_sections seulement, advice en 3 champs courts, evidence_summary limitée à 1 à 5 entrées. Utilise les libellés français déjà présents, pas les codes internes. Atteins {} à {} mots publics par densité utile, pas par répétition. Mentionne les indications de personnalisation natale dans au moins 4 jours, chaque domaine et la vue d'ensemble, sans recopier les noms de champs ni les consignes internes. Chaque domain_sections.text doit contenir une phrase courte qui relie explicitement le domaine à un repère personnel avec un de ces mots publics: thème natal, zone natale, maison, sensibilité, besoins émotionnels, communiquer, penser, attachement, agir, responsabilité, limites, relations directes, besoin de sens, habitudes, rythme de travail. Retourne le JSON final complet sur une seule ligne. Requête JSON:\n{compact}",                limits.target_min, limits.target_max            ),        },    ])
 }
@@ -399,16 +427,117 @@ pub fn fake_period_writer_response(request: &Value) -> Result<Value, GenerationE
     if is_free_period_request(request) {
         return fake_free_period_writer_response(request);
     }
-    let daily_timeline = request["daily_plans"]        .as_array()        .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_TIMELINE_MISSING"))?        .iter()        .enumerate()        .map(|(index, day)| {            let theme = day["theme_code"].as_str().unwrap_or("organisation");            let theme_label = day["theme_label"]                .as_str()                .map(str::to_string)                .unwrap_or_else(|| period_theme_public_label(theme));            let text = ensure_period_personalization_text(                &period_public_day_text(day, index),                &format!(                    "Gardez le critère le plus simple : qui fait quoi, pour quand, avec quelle preuve. {}",                    naturalize_period_focus(&period_public_focus_text(day))                ),            );            json!({                "date": day["date"],                "day_label": day["day_label"],                "theme": theme_label,                "tone": period_tone_public_label(day["tone"].as_str().unwrap_or("focused")),                "text": text,                "advice": period_public_day_advice(day),                "evidence_keys": day["evidence_keys"]            })        })        .collect::<Vec<_>>();
-    let domain_sections = request["domain_sections"]        .as_array()        .into_iter()        .flatten()        .map(|section| {            json!({                "domain": section["domain"],                "title": section["title"],                "text": period_public_domain_text(section),                "evidence_keys": section["evidence_keys"]            })        })        .collect::<Vec<_>>();
+    let daily_timeline = request["daily_plans"]
+        .as_array()
+        .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_TIMELINE_MISSING"))?
+        .iter()
+        .map(|day| {
+            let date = day["date"].as_str().unwrap_or_default();
+            let day_label = day
+                .get("day_label")
+                .and_then(Value::as_str)
+                .map(str::to_string)
+                .unwrap_or_else(|| public_day_label(date));
+            let theme = day["theme_code"].as_str().unwrap_or("organization");
+            let theme_label = day["theme_label"]
+                .as_str()
+                .map(str::to_string)
+                .unwrap_or_else(|| period_theme_public_label(theme));
+            let text = day
+                .get("text")
+                .and_then(Value::as_str)
+                .map(str::to_string)
+                .filter(|text| !text.trim().is_empty())
+                .unwrap_or_else(|| {
+                    format!(
+                        "{day_label} sert de repère pour avancer sans surcharger la journée."
+                    )
+                });
+            json!({
+                "date": day["date"],
+                "day_label": day_label,
+                "theme": theme_label,
+                "tone": period_tone_public_label(day["tone"].as_str().unwrap_or("focused")),
+                "text": text,
+                "advice": day
+                    .get("advice")
+                    .and_then(Value::as_str)
+                    .map(str::to_string)
+                    .unwrap_or_else(|| "Gardez un geste simple et vérifiable.".to_string()),
+                "evidence_keys": day["evidence_keys"]
+            })
+        })
+        .collect::<Vec<_>>();
+    let domain_sections = request["domain_sections"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|section| {
+            let domain = section["domain"].as_str().unwrap_or("organization");
+            json!({
+                "domain": period_theme_public_label(domain),
+                "title": section
+                    .get("title")
+                    .and_then(Value::as_str)
+                    .map(str::to_string)
+                    .unwrap_or_else(|| period_domain_title(domain)),
+                "text": section
+                    .get("text")
+                    .and_then(Value::as_str)
+                    .map(str::to_string)
+                    .unwrap_or_else(|| period_public_theme_field(domain, "domain_focus", domain)),
+                "evidence_keys": section["evidence_keys"]
+            })
+        })
+        .collect::<Vec<_>>();
     let service_code = request["service_code"]
         .as_str()
         .unwrap_or(HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE);
-    let mut response = json!({        "contract_version": "horoscope_period_response",        "service_code": service_code,        "period_resolution": request["period_resolution"],        "week_overview": {            "title": "Vos 7 prochains jours",            "text": "La période se lit comme une progression continue : d'abord nommer les priorités dans les relations directes, puis cadrer les échanges et terminer sur une intégration plus posée.",            "trajectory": "Une trajectoire globale relie les jours clés, les besoins émotionnels et les choix à consolider."        },        "key_days": request["key_days"],        "best_days": request["best_days"],        "watch_days": request["watch_days"],        "watch_summary": request["watch_summary_plan"],        "daily_timeline": daily_timeline,        "domain_sections": domain_sections,        "advice": {            "main": "Avancez par étapes courtes et gardez une trace de ce qui évolue d'un jour à l'autre.",            "best_use": "Planifier, prioriser et consolider les échanges importants.",            "avoid": "Transformer un signal quotidien en certitude définitive."        },        "evidence_summary": request["evidence"].as_array().into_iter().flatten().take(5).map(|item| json!({            "evidence_key": item["evidence_key"],            "date": item["date"],            "label": item["human_label"]        })).collect::<Vec<_>>(),        "quality": {            "daily_timeline_count": 7,            "evidence_guard_passed": true,            "best_watch_overlap_passed": true,            "provider": "fake",            "model": "fake-model",            "fallback_used": false,            "period_contract": "basic_next_7_days"        }    });
+    let mut response = json!({
+        "contract_version": "horoscope_period_response",
+        "service_code": service_code,
+        "period_resolution": request["period_resolution"],
+        "week_overview": {
+            "title": "Vos 7 prochains jours",
+            "text": "La période se lit comme une progression continue, avec des repères quotidiens à utiliser sans rigidifier la semaine.",
+            "trajectory": "Une trajectoire globale relie les jours, les appuis et les moments de prudence."
+        },
+        "key_days": request["key_days"],
+        "best_days": request["best_days"],
+        "watch_days": request["watch_days"],
+        "watch_summary": request["watch_summary_plan"],
+        "daily_timeline": daily_timeline,
+        "domain_sections": domain_sections,
+        "advice": {
+            "main": "Avancez par étapes courtes et gardez une trace de ce qui évolue d'un jour à l'autre.",
+            "best_use": "Réserver les appuis aux échanges utiles et aux décisions réversibles.",
+            "avoid": "Transformer un signal quotidien en certitude définitive."
+        },
+        "evidence_summary": request["evidence"].as_array().into_iter().flatten().take(5).map(|item| json!({
+            "evidence_key": item["evidence_key"],
+            "date": item["date"],
+            "label": item["human_label"]
+        })).collect::<Vec<_>>(),
+        "quality": {
+            "daily_timeline_count": 7,
+            "evidence_guard_passed": true,
+            "best_watch_overlap_passed": true,
+            "provider": "fake",
+            "model": "fake-model",
+            "fallback_used": false,
+            "period_contract": "basic_next_7_days"
+        }
+    });
     if is_premium_period_service(service_code) {
         response["best_windows"] = request["best_windows"].clone();
         response["watch_windows"] = request["watch_windows"].clone();
-        response["strategy"] = json!({            "title": request["strategy"]["title"].as_str().unwrap_or("Stratégie de semaine"),            "text": "Utilisez les meilleurs créneaux pour agir court et les moments de vigilance pour ralentir avant de répondre. La stratégie consiste à alterner décision, mise au net et récupération sans transformer la semaine en suite d'urgences.",            "best_use": request["strategy"]["best_use"].as_str().unwrap_or("Réserver les créneaux soutenants aux échanges utiles."),            "recovery": request["strategy"]["recovery"].as_str().unwrap_or("Préserver des temps de recul après les moments plus réactifs."),            "evidence_keys": request["strategy"]["evidence_keys"]        });
+        response["strategy"] = json!({
+            "title": request["strategy"]["title"].as_str().unwrap_or("Stratégie de semaine"),
+            "text": "Utilisez les créneaux utiles pour agir court et gardez de l'air dans les moments plus sensibles.",
+            "best_use": request["strategy"]["best_use"].as_str().unwrap_or("Réserver les appuis aux échanges utiles."),
+            "recovery": request["strategy"]["recovery"].as_str().unwrap_or("Préserver des temps de recul après les moments plus réactifs."),
+            "evidence_keys": request["strategy"]["evidence_keys"]
+        });
         response["quality"]["period_contract"] = json!("premium_next_7_days");
     }
     repair_period_response_shape(request, &mut response);
@@ -441,11 +570,64 @@ pub(crate) fn fake_period_writer_response_from_writer_request(
         &primary_key,
     );
     if is_free_period_service(service_code) {
-        let mut response = json!({            "contract_version": "horoscope_period_response",            "service_code": service_code,            "period_resolution": request["period_resolution"],            "summary": {                "title": "Vos 7 prochains jours",                "text": format!("Cette période donne une boussole générale plutôt qu'un planning détaillé. Le thème {primary_theme} ressort comme fil conducteur : il aide à repérer une priorité, un échange ou une routine à stabiliser sans transformer chaque signal en certitude. Gardez une marge d'observation, puis choisissez une action simple et vérifiable.")            },            "dominant_theme": {                "theme": primary_theme,                "text": "Le thème dominant sert de repère pour hiérarchiser les décisions et éviter la dispersion."            },            "key_days": key_days.into_iter().take(2).collect::<Vec<_>>(),            "advice": "Gardez une seule priorité observable, puis ajustez-la si le même signal revient dans la semaine.",            "watch_summary": {                "status": "low",                "text": "Une vigilance légère suffit : ralentir si une réaction paraît plus forte que la situation.",                "evidence_keys": [primary_key]            },            "evidence_summary": evidence_summary_v2(evidence, 3),            "quality": quality_v2(service_code, request, 0)        });
+        let mut response = json!({
+            "contract_version": "horoscope_period_response",
+            "service_code": service_code,
+            "period_resolution": request["period_resolution"],
+            "summary": {
+                "title": "Vos 7 prochains jours",
+                "text": format!("Cette période donne une boussole générale plutôt qu'un planning détaillé. Le thème {primary_theme} ressort comme fil conducteur et aide à repérer une priorité simple sans figer chaque signal.")
+            },
+            "dominant_theme": {
+                "theme": primary_theme,
+                "text": "Le thème dominant sert de repère pour hiérarchiser les décisions sans rigidifier la lecture."
+            },
+            "key_days": key_days.into_iter().take(2).collect::<Vec<_>>(),
+            "advice": "Gardez une seule priorité observable, puis ajustez-la si le même signal revient dans la semaine.",
+            "watch_summary": {
+                "status": "low",
+                "text": "Une vigilance légère suffit : ralentir si une réaction paraît plus forte que la situation.",
+                "evidence_keys": [primary_key]
+            },
+            "evidence_summary": evidence_summary_v2(evidence, 3),
+            "quality": quality_v2(service_code, request, 0)
+        });
         repair_period_response_shape_v2(request, &mut response);
         return Ok(response);
     }
-    let daily_timeline = request        .pointer("/semantic_brief/daily_signal_summary")        .and_then(Value::as_array)        .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_TIMELINE_MISSING"))?        .iter()        .map(|day| {            let date = day["date"].as_str().unwrap_or(primary_date);            let theme_code = day["theme_codes"]                .as_array()                .and_then(|items| items.first())                .and_then(Value::as_str)                .unwrap_or("organization");            let tone_code = day["tone_codes"]                .as_array()                .and_then(|items| items.first())                .and_then(Value::as_str)                .unwrap_or("focused");            let keys = day["evidence_keys"].as_array().cloned().unwrap_or_else(|| vec![primary_key.clone()]);            json!({                "date": date,                "day_label": public_day_label(date),                "theme": period_theme_public_label(theme_code),                "tone": period_tone_public_label(tone_code),                "text": format!("Le signal du {date} demande de transformer les indices disponibles en action simple pour vous. Vos priorités restent le filtre concret de cette journée, sans en faire une prédiction fermée."),                "advice": "Choisissez un geste court, vérifiable et relié au contexte réel.",                "evidence_keys": keys            })        })        .collect::<Vec<_>>();
+    let daily_timeline = request
+        .pointer("/semantic_brief/daily_signal_summary")
+        .and_then(Value::as_array)
+        .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_TIMELINE_MISSING"))?
+        .iter()
+        .map(|day| {
+            let date = day["date"].as_str().unwrap_or(primary_date);
+            let theme_code = day["theme_codes"]
+                .as_array()
+                .and_then(|items| items.first())
+                .and_then(Value::as_str)
+                .unwrap_or("organization");
+            let tone_code = day["tone_codes"]
+                .as_array()
+                .and_then(|items| items.first())
+                .and_then(Value::as_str)
+                .unwrap_or("focused");
+            let keys = day["evidence_keys"]
+                .as_array()
+                .cloned()
+                .unwrap_or_else(|| vec![primary_key.clone()]);
+            let day_label = public_day_label(date);
+            json!({
+                "date": date,
+                "day_label": day_label,
+                "theme": period_theme_public_label(theme_code),
+                "tone": period_tone_public_label(tone_code),
+                "text": format!("{day_label} sert de repère pour utiliser le signal sans le rigidifier."),
+                "advice": "Choisissez un geste court, vérifiable et relié au contexte réel.",
+                "evidence_keys": keys
+            })
+        })
+        .collect::<Vec<_>>();
     let best_days = day_markers_from_candidates_v2(
         request
             .pointer("/semantic_brief/best_day_candidates")
@@ -460,8 +642,53 @@ pub(crate) fn fake_period_writer_response_from_writer_request(
         primary_date,
         &primary_key,
     );
-    let domain_sections = request        .pointer("/semantic_brief/domain_candidates")        .and_then(Value::as_array)        .into_iter()        .flatten()        .take(if is_premium_period_service(service_code) { 5 } else { 4 })        .map(|domain| {            let code = domain["domain_code"].as_str().unwrap_or("organization");            json!({                "domain": period_theme_public_label(code),                "title": period_domain_title(code),                "text": "Ce domaine sert de repère transversal : il aide à relier les journées entre elles et à choisir un geste qui ne surcharge pas la période.",                "evidence_keys": domain["evidence_keys"]            })        })        .collect::<Vec<_>>();
-    let mut response = json!({        "contract_version": "horoscope_period_response",        "service_code": service_code,        "period_resolution": request["period_resolution"],        "week_overview": {            "title": "Vos 7 prochains jours",            "text": "La période se lit comme une progression pour vous : observer les premiers signaux, choisir une priorité concrète, puis ajuster le rythme quand une tension ou une opportunité se répète.",            "trajectory": "Le fil conducteur consiste à relier vos priorités à des décisions plus simples et vérifiables."        },        "key_days": key_days,        "best_days": best_days,        "watch_days": watch_days,        "watch_summary": {            "status": "low",            "text": "Les vigilances demandent surtout de vérifier les limites avant de promettre davantage.",            "evidence_keys": [primary_key.clone()]        },        "daily_timeline": daily_timeline,        "domain_sections": domain_sections,        "advice": {            "main": "Avancez par étapes courtes et gardez une trace de ce qui évolue d'un jour à l'autre.",            "best_use": "Utilisez les appuis pour confirmer une décision ou finaliser une tâche concrète.",            "avoid": "Transformer un signal quotidien en certitude définitive."        },        "evidence_summary": evidence_summary_v2(evidence, 5),        "quality": quality_v2(service_code, request, 7)    });
+    let domain_sections = request
+        .pointer("/semantic_brief/domain_candidates")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .take(if is_premium_period_service(service_code) { 5 } else { 4 })
+        .map(|domain| {
+            let code = domain["domain_code"].as_str().unwrap_or("organization");
+            json!({
+                "domain": period_theme_public_label(code),
+                "title": period_domain_title(code),
+                "text": domain
+                    .get("text")
+                    .and_then(Value::as_str)
+                    .map(str::to_string)
+                    .unwrap_or_else(|| period_public_theme_field(code, "domain_focus", code)),
+                "evidence_keys": domain["evidence_keys"]
+            })
+        })
+        .collect::<Vec<_>>();
+    let mut response = json!({
+        "contract_version": "horoscope_period_response",
+        "service_code": service_code,
+        "period_resolution": request["period_resolution"],
+        "week_overview": {
+            "title": "Vos 7 prochains jours",
+            "text": "La période se lit comme une progression: observer les premiers signaux, choisir une priorité concrète, puis ajuster le rythme si une tension ou une opportunité se répète.",
+            "trajectory": "Le fil conducteur consiste à relier les priorités à des décisions simples et vérifiables."
+        },
+        "key_days": key_days,
+        "best_days": best_days,
+        "watch_days": watch_days,
+        "watch_summary": {
+            "status": "low",
+            "text": "Les moments de prudence demandent surtout de vérifier les limites avant de promettre davantage.",
+            "evidence_keys": [primary_key.clone()]
+        },
+        "daily_timeline": daily_timeline,
+        "domain_sections": domain_sections,
+        "advice": {
+            "main": "Avancez par étapes courtes et gardez une trace de ce qui évolue d'un jour à l'autre.",
+            "best_use": "Utilisez les appuis pour confirmer une décision ou finaliser une tâche concrète.",
+            "avoid": "Transformer un signal quotidien en certitude définitive."
+        },
+        "evidence_summary": evidence_summary_v2(evidence, 5),
+        "quality": quality_v2(service_code, request, 7)
+    });
     if is_premium_period_service(service_code) {
         let best_windows = window_markers_from_candidates_v2(request, "best", &HashSet::new());
         let best_window_identities = best_windows
@@ -472,7 +699,13 @@ pub(crate) fn fake_period_writer_response_from_writer_request(
             window_markers_from_candidates_v2(request, "watch", &best_window_identities);
         response["best_windows"] = json!(best_windows);
         response["watch_windows"] = json!(watch_windows);
-        response["strategy"] = json!({            "title": "Stratégie de semaine",            "text": "Utilisez les meilleurs créneaux pour agir court et les moments de vigilance pour ralentir avant de répondre. La stratégie consiste à alterner décision, mise au net et récupération sans transformer la semaine en suite d'urgences.",            "best_use": "Réserver les appuis aux échanges utiles, aux preuves concrètes et aux décisions réversibles.",            "recovery": "Préserver des temps de recul après les moments plus réactifs.",            "evidence_keys": [primary_key]        });
+        response["strategy"] = json!({
+            "title": "Stratégie de semaine",
+            "text": "Utilisez les créneaux utiles pour agir court et gardez de l'air dans les moments plus sensibles.",
+            "best_use": "Réserver les appuis aux échanges utiles, aux preuves concrètes et aux décisions réversibles.",
+            "recovery": "Préserver des temps de recul après les moments plus réactifs.",
+            "evidence_keys": [primary_key]
+        });
     }
     repair_period_response_shape_v2(request, &mut response);
     Ok(response)
@@ -487,14 +720,26 @@ pub(crate) fn day_markers_from_candidates_v2(
         .flatten()
         .take(4)
         .map(|candidate| {
-            let title = candidate["date"]
-                .as_str()
-                .map(public_day_label)
-                .unwrap_or_else(|| "Repère".to_string());
+            let title = candidate
+                .get("title")
+                .and_then(Value::as_str)
+                .filter(|title| !title.trim().is_empty())
+                .map(str::to_string)
+                .unwrap_or_else(|| {
+                    candidate["date"]
+                        .as_str()
+                        .map(public_day_label)
+                        .unwrap_or_else(|| "Repère".to_string())
+                });
             json!({
                 "date": candidate["date"],
                 "title": title,
-                "reason": "Repère utile pour lire la suite de la période.",
+                "reason": candidate
+                    .get("reason")
+                    .and_then(Value::as_str)
+                    .filter(|reason| !reason.trim().is_empty())
+                    .map(str::to_string)
+                    .unwrap_or_else(|| "Repère utile pour lire la suite de la période.".to_string()),
                 "evidence_keys": candidate["evidence_keys"],
                 "fallback_reason": null
             })
@@ -575,7 +820,11 @@ pub(crate) fn window_markers_from_candidates_v2(
                     "title": title,
                     "theme": theme,
                     "tone": tone,
-                    "watch_point": "Repère à vérifier avant de répondre.",
+                    "watch_point": window
+                        .get("watch_point")
+                        .and_then(Value::as_str)
+                        .filter(|text| !text.trim().is_empty())
+                        .unwrap_or("Repère à vérifier avant de répondre."),
                     "evidence_keys": window["evidence_keys"]
                 })
             } else {
@@ -586,8 +835,15 @@ pub(crate) fn window_markers_from_candidates_v2(
                     "title": title,
                     "theme": theme,
                     "tone": tone,
-                    "reason": "Repère utile pour agir sans surcharge.",
-                    "best_for": [theme],
+                    "reason": window
+                        .get("reason")
+                        .and_then(Value::as_str)
+                        .filter(|text| !text.trim().is_empty())
+                        .unwrap_or("Repère utile pour agir sans surcharge."),
+                    "best_for": window
+                        .get("best_for")
+                        .cloned()
+                        .unwrap_or_else(|| json!([theme])),
                     "evidence_keys": window["evidence_keys"]
                 })
             }
@@ -595,7 +851,33 @@ pub(crate) fn window_markers_from_candidates_v2(
         .collect()
 }
 pub(crate) fn evidence_summary_v2(evidence: &[Value], limit: usize) -> Vec<Value> {
-    evidence        .iter()        .take(limit)        .map(|item| {            json!({                "evidence_key": item["evidence_key"],                "date": item["date"],                "label": format!(                    "{} / {}",                    period_theme_public_label(item["theme_code"].as_str().unwrap_or("organization")),                    period_tone_public_label(                        item["tone_code"]                            .as_str()                            .or_else(|| item["tone"].as_str())                            .unwrap_or("focused")                    )                )            })        })        .collect()
+    evidence
+        .iter()
+        .take(limit)
+        .map(|item| {
+            json!({
+                "evidence_key": item["evidence_key"],
+                "date": item["date"],
+                "label": item
+                    .get("human_label")
+                    .and_then(Value::as_str)
+                    .filter(|label| !label.trim().is_empty())
+                    .map(str::to_string)
+                    .unwrap_or_else(|| {
+                        format!(
+                            "{} / {}",
+                            period_theme_public_label(item["theme_code"].as_str().unwrap_or("organization")),
+                            period_tone_public_label(
+                                item["tone_code"]
+                                    .as_str()
+                                    .or_else(|| item["tone"].as_str())
+                                    .unwrap_or("focused")
+                            )
+                        )
+                    })
+            })
+        })
+        .collect()
 }
 pub(crate) fn quality_v2(service_code: &str, _request: &Value, daily_count: usize) -> Value {
     json!({        "daily_timeline_count": daily_count,        "evidence_guard_passed": true,        "best_watch_overlap_passed": true,        "provider": "fake",        "model": "fake-model",        "fallback_used": false,        "period_contract": if is_free_period_service(service_code) {            "free_next_7_days"        } else if is_premium_period_service(service_code) {            "premium_next_7_days"        } else {            "basic_next_7_days"        }    })

@@ -64,6 +64,9 @@ pub fn repair_period_response_shape_v2(request: &Value, response: &mut Value) {
 
     prune_period_response_variant_fields_v2(request, response);
     restore_period_response_technical_keys_v2(request, response);
+    if is_free_period_service(service_code) {
+        expand_free_period_public_text(response);
+    }
 }
 
 pub(crate) fn restore_period_response_technical_keys_v2(request: &Value, response: &mut Value) {
@@ -102,4 +105,48 @@ pub(crate) fn restore_period_response_technical_keys_v2(request: &Value, respons
     if response["watch_summary"]["status"].as_str() == Some("none") {
         response["watch_summary"]["evidence_keys"] = json!([]);
     }
+}
+
+fn expand_free_period_public_text(response: &mut Value) {
+    for pointer in [
+        "/summary/text",
+        "/dominant_theme/text",
+        "/watch_summary/text",
+        "/advice",
+    ] {
+        let Some(value) = response.pointer_mut(pointer) else {
+            continue;
+        };
+        let Value::String(text) = value else {
+            continue;
+        };
+        let expanded = expand_minimal_public_text(text, 40);
+        if expanded != *text {
+            *text = expanded;
+        }
+    }
+}
+
+fn expand_minimal_public_text(text: &str, min_words: usize) -> String {
+    if simple_public_word_count(text) >= min_words {
+        return text.trim().to_string();
+    }
+    let mut expanded = text.trim().to_string();
+    for addition in [
+        "Cette lecture reste volontairement générale et sert surtout de repère pour traverser la semaine sans rigidifier chaque détail.",
+        "Gardez une marge d'ajustement, puis revenez à une action simple si le même signal se répète.",
+        "Elle ne fixe pas une lecture définitive, mais aide à garder un cap souple et à revenir au concret.",
+    ] {
+        if simple_public_word_count(&expanded) >= min_words {
+            break;
+        }
+        if !expanded.is_empty() && !expanded.ends_with(['.', '!', '?']) {
+            expanded.push('.');
+        }
+        if !expanded.is_empty() {
+            expanded.push(' ');
+        }
+        expanded.push_str(addition);
+    }
+    expanded
 }

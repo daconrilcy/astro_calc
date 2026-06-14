@@ -135,7 +135,7 @@
   "key_days": [
     {
       "date": "2026-06-07",
-      "title": "Jour à retenir",
+      "title": "Repère du jour",
       "reason": "Un repère utile ressort pour comprendre la tendance sans détailler chaque journée.",
       "evidence_keys": [
         "period:2026-06-07:2026-06-07:noon:moon:natal_house:6"

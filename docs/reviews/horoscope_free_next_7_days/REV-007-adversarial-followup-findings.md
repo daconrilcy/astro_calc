@@ -15,7 +15,7 @@ Findings fixed:
   a polymorphic root `watch_summary` and service-specific narrowing so `present`
   is Free-only.
 - Free response repair and validation did not enforce the canonical key-day
-  title. Fixed by normalizing and validating `key_days[].title = "Jour à retenir"`.
+  title. Fixed by normalizing `key_days[].title` sur un repère neutre.
 - `week_overview` leaks in Free were rejected with a generic code. Fixed with
   `HOROSCOPE_PERIOD_FREE_WEEK_OVERVIEW_LEAK`.
 

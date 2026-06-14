@@ -6,7 +6,7 @@ Finding P2 corrige: sanitation et typographie etaient implementees localement da
 
 Correction: `sanitize_reading_text_fields` et `restore_french_typography_fields` sont devenus wrappers vers `reprocess_natal_simplified`.
 
-Note: `normalize_simplified_interpretive_roles` reste conserve comme logique structurelle de contrat, car le remplacer par `HumanizeLabels` modifierait aussi des labels et casserait la parite stricte.
+Note: `normalize_simplified_interpretive_roles` reste conserve comme logique structurelle de contrat, car le remplacer par une humanisation de labels modifierait aussi des champs et casserait la parite stricte.
 
 ## Verification
 

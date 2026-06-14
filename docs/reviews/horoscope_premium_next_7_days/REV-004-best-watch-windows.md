@@ -12,7 +12,7 @@ Les fenetres sont la valeur centrale du Premium.
 - Aucune fenetre n'est a la fois best et watch.
 - Chaque `best_window` / `watch_window` reference au moins un `source_snapshot_key` existant dans `scan_plan.snapshots`.
 - Chaque fenetre porte des `evidence_keys` valides.
-- Les `best_windows` ne conservent pas le titre generique `Fenetre favorable` et differencient leurs `best_for`.
+- Les `best_windows` évitent un titre trop générique et différencient leurs `best_for`.
 
 ## Findings
 

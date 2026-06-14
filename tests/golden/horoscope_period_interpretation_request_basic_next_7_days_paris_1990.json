@@ -68,7 +68,7 @@
   "best_days": [
     {
       "date": "2026-06-07",
-      "title": "Jour favorable",
+      "title": "Repère favorable",
       "reason": "Dimanche 07/06 ressort par le theme organization.",
       "evidence_keys": ["period:2026-06-07:2026-06-07:noon:moon:natal_house:6"]
     }
@@ -76,7 +76,7 @@
   "watch_days": [
     {
       "date": "2026-06-09",
-      "title": "Jour de vigilance",
+      "title": "Repère de prudence",
       "reason": "Mardi 09/06 ressort par le theme energy.",
       "evidence_keys": ["period:2026-06-09:2026-06-09:noon:mars:square:natal_moon"]
     }

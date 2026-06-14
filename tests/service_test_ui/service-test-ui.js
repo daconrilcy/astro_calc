@@ -632,7 +632,7 @@
     addStringSection(sections, "Conseil", payload.advice);
     addObjectAdvice(sections, payload.advice);
     addStringSection(sections, "Point de vigilance", payload.watch_point);
-    addObjectTextSection(sections, "Vigilance", payload.watch_summary);
+    addObjectTextSection(sections, "Repères", payload.watch_summary);
 
     addArraySections(sections, "Creneau", payload.slots, ["text", "advice", "watch_point"]);
     addArraySections(sections, "Meilleur moment", payload.best_slots, ["reason"]);
@@ -640,10 +640,10 @@
     addArraySections(sections, "Timeline", payload.timeline, ["text", "advice", "watch_point"]);
     addArraySections(sections, "Jour cle", payload.key_days, ["reason"]);
     addArraySections(sections, "Meilleur jour", payload.best_days, ["reason"]);
-    addArraySections(sections, "Jour de vigilance", payload.watch_days, ["reason"]);
+    addArraySections(sections, "Jours sensibles", payload.watch_days, ["reason"]);
     addArraySections(sections, "Timeline quotidienne", payload.daily_timeline, ["text", "advice"]);
     addArraySections(sections, "Domaine", payload.domain_sections, ["text"]);
-    addArraySections(sections, "Fenetre favorable", payload.best_windows, ["reason", "advice"]);
+    addArraySections(sections, "Créneaux utiles", payload.best_windows, ["reason", "advice"]);
     addArraySections(sections, "Fenetre de vigilance", payload.watch_windows, ["reason", "advice"]);
     addObjectAdvice(sections, payload.strategy, "Strategie");
 

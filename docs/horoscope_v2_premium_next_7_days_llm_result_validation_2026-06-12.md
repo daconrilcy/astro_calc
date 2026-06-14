@@ -73,9 +73,9 @@ des diagnostics comme :
 
 - `public_word_count`
 - `section_word_counts`
-- `top_repeated_terms`
-- `duplicate_titles`
-- `window_title_time_mismatches`
+- `signal_excessif_de_repetition`
+- `titres_dupliques`
+- `mismatch_titre_horaire`
 
 L'audit est ajoute dans `result.debug.period_v2_editorial_audit`. Il ne doit
 pas etre injecte dans `result.reading.quality`.
