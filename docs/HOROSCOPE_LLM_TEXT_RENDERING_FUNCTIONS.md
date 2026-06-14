@@ -54,20 +54,15 @@ Fichier: `astral_llm/crates/astral_llm_application/src/horoscope/mod.rs`
 | `period_event_personalization_hint` | 5599 | Fournit un hint redactionnel par theme d'evenement. |
 | `period_advice_hint` | 5613 | Compose un conseil public a partir du theme et du focus natal. |
 
-## Horoscope periode - nettoyage typographique, repetition et longueur
+## Horoscope periode - retraitement technique actuel
 
-Fichier: `astral_llm/crates/astral_llm_application/src/horoscope/mod.rs`
+Fichier: `astral_llm/crates/astral_llm_application/src/text_reprocessing_service_adapter.rs`
 
 | Fonction | Ligne | Role texte |
 | --- | ---: | --- |
-| `sanitize_period_public_string` | 2941 | Nettoyage central des chaines publiques periode: fragments, bornes de phrase, ponctuation, substitutions. |
-| `sanitize_period_french_fragments` | 2989 | Corrige des fragments francais recurrents. |
-| `sanitize_period_broken_sentences` | 3000 | Corrige les phrases cassees ou terminaisons faibles. |
-| `sanitize_period_sentence_boundaries` | 3037 | Normalise les frontieres de phrases. |
-| `sanitize_period_french_colon_spacing` | 3060 | Corrige l'espacement autour des deux-points en francais. |
-| `replace_ascii_case_insensitive` | 3088 | Remplacement insensible a la casse pour texte ASCII. |
-| `replace_ascii_token_case_insensitive` | 3106 | Remplacement tokenise insensible a la casse. |
-| `ensure_period_response_minimum_words` | 3169 | Complete ou reduit une reponse pour respecter les bornes de longueur. |
+| `reprocess_horoscope_period` | adapter | Retraitement technique: sanitation script, tirets, typographie, bornes de longueur, repetition, quality technique et fallback structurel. |
+| `postprocess_period_provider_response` | period/postprocess | Repair de shape et pruning des overlaps de fenetres. |
+| `validate_period_v2_public_text_forbidden_technical_leaks` | period/quality | Blocage des fuites techniques uniquement. |
 | `trim_period_response_to_hard_limit` | 3257 | Compacte la reponse si elle depasse la limite dure. |
 | `trim_period_response_aggressively` | 3333 | Compactage fort des textes publics. |
 | `fill_period_response_to_minimum` | 3416 | Ajoute des phrases pour atteindre le minimum de mots. |
@@ -99,7 +94,6 @@ Fichier: `astral_llm/crates/astral_llm_application/src/horoscope/mod.rs`
 | `period_style_variant_for_theme` | 5553 | Choisit la variante de style redactionnel d'un theme. |
 | `period_style_variants` | 5572 | Charge les variantes de style depuis `json_db/horoscope_period_style_variants.json`. |
 | `period_tone_public_label` | 5628 | Convertit un tone code en libelle public. |
-| `period_tone_public_label_if_code` | 5635 | Convertit seulement si la valeur est un code connu. |
 | `period_tone_labels` | 5647 | Charge les libelles de ton depuis `json_db/horoscope_tone_labels.json`. |
 | `normalize_period_public_tones` | 5670 | Remplace les tons techniques du provider par les libelles publics attendus. |
 | `period_object_public_label` | 5876 | Convertit les objets astrologiques en libelles publics. |
@@ -251,7 +245,7 @@ Legende services:
 | `period_public_domain_interpretive_sentence` | Horoscope period Basic, Premium | fr | Recouvre `period_public_domain_personalization_sentence`. |
 | `period_public_focus_text` | Horoscope period | fr | Recouvre `period_public_focus_from_hint`. |
 | `period_public_focus_from_hint` | Horoscope period | fr | Recouvre `period_public_focus_text`, sous-cas texte brut. |
-| `sanitize_period_public_string` | Horoscope period | fr | Recouvre `sanitize_text_for_french_script` et `restore_french_elisions`, mais avec corrections periode specifiques. |
+| `reprocess_horoscope_period` | Horoscope period | fr | Recouvre `sanitize_text_for_french_script` et `restore_french_elisions` sans humanisation de labels ni remplacements taxonomiques periode. |
 | `sanitize_period_french_fragments` | Horoscope period | fr | Recouvre partiellement `sanitize_period_broken_sentences`. |
 | `sanitize_period_broken_sentences` | Horoscope period | fr | Recouvre `period_trim_incomplete_tail`. |
 | `sanitize_period_sentence_boundaries` | Horoscope period | fr | Recouvre `split_sentences_fr` / `period_complete_sentences`. |
@@ -286,8 +280,7 @@ Legende services:
 | `period_style_variants` | Horoscope period | fr | Source DB/JSON des variantes de style. |
 | `period_event_personalization_hint` | Horoscope period | fr | Recouvre les phrases de personnalisation publiques. |
 | `period_advice_hint` | Horoscope period | fr | Recouvre `period_public_day_advice`. |
-| `period_tone_public_label` | Horoscope period | fr | Recouvre `period_tone_public_label_if_code`. |
-| `period_tone_public_label_if_code` | Horoscope period | fr | Recouvre `period_tone_public_label`, garde la valeur inconnue. |
+| `period_tone_public_label` | Horoscope period | fr | Convertit les codes de ton connus depuis les libelles de reference. |
 | `period_tone_labels` | Horoscope period | fr | Source DB/JSON des tons publics. |
 | `normalize_period_public_tones` | Horoscope period Basic, Premium | fr | Recouvre les fonctions de libelle tone, application structurelle. |
 | `period_object_public_label` | Horoscope period | fr | Recouvre `AstroLabelHumanizer::object_label`, mais hardcode horoscope. |
@@ -379,9 +372,9 @@ Fichier: `astral_llm/crates/astral_llm_application/src/astro_label_humanizer.rs`
 
 | Fonction | Services applicables | Langues applicables | Doublon / recouvrement |
 | --- | --- | --- | --- |
-| `restore_french_elisions` | Natal simplifie, Theme natal, LLM shared | fr | Recouvre une partie de `sanitize_period_public_string`. |
+| `restore_french_elisions` | Natal simplifie, Theme natal, LLM shared | fr | Recouvre une partie de la typographie appliquee par `reprocess_horoscope_period`. |
 | `french_elision_violations` | Horoscope daily, Horoscope period, LLM shared | fr | Pair validation de `restore_french_elisions`. |
-| `sanitize_text_for_french_script` | Natal simplifie, LLM shared | fr | Recouvre la sanitation script interne de `sanitize_period_public_string`. |
+| `sanitize_text_for_french_script` | Natal simplifie, LLM shared | fr | Recouvre la sanitation script utilisee par `reprocess_horoscope_period`. |
 | `collapse_whitespace` | Natal simplifie, LLM shared | fr,en,es,de | Doublon avec plusieurs normalisations whitespace locales. |
 | `post_process_single_pass_reading` | Natal simplifie | fr principalement; disclaimer fr,en,es,de | Orchestrateur; recouvre sanitation, typo et summary. |
 | `apply_simplified_body_fallback` | Natal simplifie | fr | Recouvre `simplified_deterministic_body`, application structurelle. |
@@ -566,10 +559,10 @@ Fichiers:
 | Comptage de mots | `count_words`, `period_public_word_count`, `TokenBudget::word_count`, usages directs de `split_whitespace().count()` | Doublon transversal. Standardiser une fonction unique par politique de comptage. |
 | Normalisation texte pour comparaison | `normalized_text`, `meaningful_words`, `first_words`, `chapter_opening_phrase`, `paragraph_opening_phrases`, `normalize_paragraph_for_placement_check` | Recouvrements partiels entre horoscope daily et theme natal. |
 | Anti-repetition | `normalize_period_repetitive_public_phrases`, `normalize_period_repetitive_text`, `replace_period_phrase_after_allowed`, `detect_duplicate_openings`, `count_repeated_trigrams`, `phrases_to_avoid_from_prior` | Deux approches: correction deterministic period vs detection/prompting natal. A garder separees ou extraire une couche commune de detection. |
-| Typographie francaise | `sanitize_period_french_colon_spacing`, `restore_french_elisions`, `french_elision_violations`, `sanitize_period_public_string` | Recouvrement partiel. Les corrections francaises devraient etre centralisees dans `french_typography`. |
-| Sanitation script | `sanitize_text_for_french_script`, `sanitize_reading_text_fields`, `sanitize_field`, `sanitize_period_public_string` | Doublon partiel: horoscope period n'utilise pas le meme chemin que natal simplifie. |
+| Typographie francaise | `restore_french_elisions`, `french_elision_violations`, `reprocess_horoscope_period` | Recouvrement partiel. Les corrections francaises devraient rester centralisees dans `french_typography`. |
+| Sanitation script | `sanitize_text_for_french_script`, `sanitize_reading_text_fields`, `sanitize_field`, `reprocess_horoscope_period` | Doublon partiel entre schemas, sans sanitation semantique periode. |
 | Libelles objets astrologiques | `period_object_public_label`, `AstroLabelHumanizer::object_label`, `title_case_token` | `period_object_public_label` est hardcode et devrait idealement deleguer au catalogue/humanizer. |
-| Libelles theme/tone/focus | `period_theme_public_label`, `period_domain_title`, `period_tone_public_label`, `period_tone_public_label_if_code`, `period_natal_focus`, `period_*_labels` | Recouvrement attendu entre resolution label et source labels. Pas un doublon critique, mais separation resolution/source a clarifier. |
+| Libelles theme/tone/focus | `period_theme_public_label`, `period_domain_title`, `period_tone_public_label`, `period_natal_focus`, `period_*_labels` | Recouvrement attendu entre resolution label et source labels. Pas un doublon critique, mais separation resolution/source a clarifier. |
 | Conseils et personnalisation periode | `ensure_period_personalization_text`, `period_public_personalization_sentence`, `period_public_interpretive_sentence`, `period_public_domain_personalization_sentence`, `period_public_domain_interpretive_sentence`, `period_advice_hint` | Plusieurs fonctions produisent des phrases proches. Mutualisation possible par templates DB ou catalogue. |
 | Fallbacks fake/deterministes | `fake_writer_*`, `render_fake_*`, `premium_timeline_*`, `simplified_deterministic_body`, `deterministic_safe_summary_fallback` | Doublons d'intention, mais schemas differents. Les textes hardcodes devraient etre signales comme dette vis-a-vis de la regle "donnees canoniques". |
 | Directives de repair | `append_repair_instructions`, `synthesis_repair_directive`, `SCRIPT_REPAIR_INSTRUCTION`, `length_repair_from_error`, `safety_repair_from_error` | Recouvrement entre chapitre, synthese finale et single-pass. Mutualisation possible par type de violation. |
@@ -609,7 +602,7 @@ Le module `astral_llm_application::text_reprocessing` reprend ces fonctionnalite
 | Projection calculateur | `wrapper` | `REV-CONNECT-003-calculator-projection` | Helper disponible; aucun runtime direct trouve dans `astral_llm_application`. |
 | `simplified_reading_postprocess` sanitation/typographie | `wrapper` | `REV-CONNECT-004-natal-simplified` | Wrappers vers `reprocess_natal_simplified`. |
 | Horoscope daily fake renderers | `wrapper` | `REV-CONNECT-005-horoscope-daily` | Post-traitement final via `reprocess_horoscope_daily`; structure fake conservee. |
-| Horoscope period repair/sanitize | `wrapper` | `REV-CONNECT-006-horoscope-period` | `sanitize_period_public_string` delegue a `reprocess_horoscope_period`; repair shape/preuves conserve. |
+| Horoscope period repair/sanitize | `connected` | `REV-CONNECT-006-horoscope-period` | `reprocess_horoscope_period` applique les operations techniques; repair shape/preuves conserve, sans humanisation taxonomique. |
 | Natal theme final reading | `wrapper` | `REV-CONNECT-007-natal-theme` | Post-traitement final via `reprocess_natal_theme`; catalogue humanizer conserve. |
 
 Voir `docs/TEXT_REPROCESSING_MODULE.md` pour les contrats, registres, exemples JSON et strategie de branchement.

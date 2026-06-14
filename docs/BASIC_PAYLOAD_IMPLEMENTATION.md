@@ -3603,9 +3603,10 @@ Le module `text_reprocessing` est branche progressivement via
 - `horoscope_daily`: les rendus fake daily passent par
   `reprocess_horoscope_daily` apres construction structurelle.
 - `horoscope_period`: les reponses provider passent par
-  `reprocess_horoscope_period` apres repair/tone et avant validation.
-  La sanitation de chaine publique periode est centralisee dans
-  `ScriptSanitizerProcessor`; `sanitize_period_public_string` reste un wrapper.
+  `reprocess_horoscope_period` apres repair structurel et avant validation.
+  Le retraitement periode est limite aux controles techniques, a la typographie,
+  a la longueur et a la repetition; il n'applique pas `HumanizeLabels` et ne
+  canonicalise pas le lexique metier.
 - `natal_theme`: la lecture finale orchestree passe par
   `reprocess_natal_theme` apres assemblage.
 - Fixtures editoriales premium: `EditorialValidator` valide une copie de lecture

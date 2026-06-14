@@ -8,7 +8,7 @@ Le flux provider period passe dans `reprocess_horoscope_period` apres `repair_pe
 
 Correction supplementaire: les sous-fonctions locales de sanitation de chaine publique periode (`sanitize_period_french_fragments`, `sanitize_period_broken_sentences`, `sanitize_period_sentence_boundaries`, `sanitize_period_french_colon_spacing`, remplacements ASCII) ont ete migrees dans `ScriptSanitizerProcessor` pour `SERVICE_HOROSCOPE_PERIOD`.
 
-Note: les fonctions `sanitize_period_*` restantes sont conservees comme wrappers/structure de reparation, car elles normalisent aussi la shape, les preuves, les fenetres et les fallbacks de contrat. `sanitize_period_public_string` est uniquement un wrapper vers `reprocess_horoscope_period`.
+Note: les fonctions periode restantes sont conservees pour la structure de reparation, car elles normalisent aussi la shape, les preuves, les fenetres et les fallbacks de contrat. Le chemin actif de retraitement texte passe par `reprocess_horoscope_period`.
 
 ## Verification
 

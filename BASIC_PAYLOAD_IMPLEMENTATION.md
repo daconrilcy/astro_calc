@@ -29,9 +29,10 @@ path are explicit about when a real LLM provider is expected instead of the
 - Daily horoscope post-processing now sanitizes public slot fields so real LLM
   outputs such as `[morning]`, `slot:morning`, `slot_code`, `slot_` or `avoid_`
   are replaced/removed before the public leak validator runs.
-- Free period post-processing now neutralizes `key_days` that a real provider
-  phrases as best/favorable windows. They are converted back to neutral
-  "Jour à retenir" markers before the Free period public validator runs.
+- Free period post-processing no longer canonicalizes `key_days` wording. It
+  preserves provider text when the structure is valid and keeps only technical
+  repair, evidence alignment, and neutral length expansion for short Free
+  outputs.
 - Free period public word-count validation now counts Free-specific fields
   (`summary`, `dominant_theme`, `advice`, `watch_summary`) and expands a too
   short real-provider response with neutral guidance before hard validation.
@@ -633,13 +634,13 @@ Refactored the deterministic generation model for `horoscope_premium_next_7_days
 - `FakeProvider` now treats a provider schema containing full reading fields (`summary` + `chapters`) as a full `natal_reading_v1` request even when a `chapter_code` is present for prompt context. This prevents the async `natal_simplified` smoke from returning a chapter-only JSON that fails schema validation.
 - `scripts/lib/horoscope_e2e_fake_provider.ps1` now also enables fake at the Docker environment level for API and worker during horoscope fake smokes. Daily horoscope smoke suites wrap their fake jobs with this helper, so `docker_update_integration_stack.ps1` can continue through the daily and period fake suites without consuming OpenAI quota.
 - Premium period provider responses now run a final evidence realignment pass before validation. Public `evidence_keys` and window `source_snapshot_keys` for daily timeline, day markers, domain sections, best/watch windows, watch summary, strategy, and evidence summary are restored only from the canonical interpretation request, preventing real LLM omissions from failing with `HOROSCOPE_PERIOD_EVIDENCE_MISSING` while still rejecting invented raw response evidence.
-- Premium period public text now normalizes mechanical fragments before validation, including serialized situation hints such as `autour de vérifier`, `Appui concret :`, `est un point d'appui pour ...`, repeated `Cette énergie devient utile quand elle sert à`, and double punctuation. Domain fallback wording was also rewritten to avoid template-like `donne un angle transversal` / `gagne en valeur` phrasing.
+- Historical note: Premium period public text previously normalized mechanical fragments before validation. The active period path now avoids semantic or taxonomic rewrites after provider output and keeps only structural repair, technical leak checks, typography, and length/contract guards.
 - The mechanical text cleanup now uses case-insensitive regexes, accepts straight and typographic apostrophes, and runs as a final recursive public-string pass before validation while skipping contract/enumeration fields such as `status`, dates, evidence keys, period resolution and quality metadata.
 - Domain fallback copy now limits the raw focus list to the first actionable items and writes a natural cross-domain mini-reading instead of serializing every associated situation.
 - Evidence restoration fallback by index is now constrained by date for day-based arrays and by missing domain/title identity for domain sections, so valid-but-wrong provider evidence is not silently reassigned to an unrelated public block.
 - Premium period fallback copy now naturalizes raw focus lists before they reach `daily_timeline`, `key_days`, `best_days`, and `watch_days`, avoiding repeated verbs such as `Vérifiez vérifier` and punctuation artifacts such as `. ,`.
 - Premium period public expansion no longer appends a domain personalization sentence when the domain text already contains a personal marker, preventing duplicated `Dans ...` follow-up sentences.
-- Premium prompt and editorial fallback wording now avoid the taxonomic public phrase `priorité liée à`.
+- Historical note: Premium prompt and editorial fallback wording previously removed a taxonomic public phrase from deterministic copy.
 - Premium period final cleanup now directly reapplies glued French compound repair on every public string, including `utilisezles` in overview fields.
 - French typography cleanup now also repairs real-run glued forms such as `aprèsmidi`, `qu’estce`, `mesurezl`, and `demipromesses`.
 - Premium period cleanup rewrites the latest real-run polish fragments: `La journée dynamique...`, `revint`, raw `Stabiliser Tester limites...` trajectories, abstract `Le mouvement part de vos repères...` trajectories, and `Dans X, Le plus utile...` domain appendices.

@@ -38,23 +38,3 @@ pub(crate) fn prune_period_v2_overlapping_watch_windows(response: &mut Value) {
         });
     }
 }
-
-pub(crate) fn period_window_title_conflicts_with_time(time_range_label: &str, title: &str) -> bool {
-    let lower_title = title.to_lowercase();
-    if !lower_title.contains("matin") {
-        return false;
-    }
-    period_window_start_hour(time_range_label).is_some_and(|hour| hour >= 12)
-}
-
-pub(crate) fn period_window_start_hour(time_range_label: &str) -> Option<u32> {
-    let start = time_range_label
-        .split(['–', '-', '—'])
-        .next()
-        .unwrap_or("")
-        .trim();
-    start
-        .split(':')
-        .next()
-        .and_then(|hour| hour.trim().parse::<u32>().ok())
-}

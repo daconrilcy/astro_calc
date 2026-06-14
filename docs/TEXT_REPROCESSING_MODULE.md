@@ -141,7 +141,7 @@ Le branchement applicatif passe par `text_reprocessing_service_adapter`.
 | `calculator_projection` | `reprocess_calculator_projection` | normalize_dashes, humanize_labels, sanitize | helper pret, aucun runtime direct trouve dans `astral_llm_application` |
 | `natal_simplified` | `reprocess_natal_simplified` | normalize_dashes, sanitize, typography | connecte via wrappers postprocess |
 | `horoscope_daily` | `reprocess_horoscope_daily` | normalize_dashes, sanitize, typography, length, repetition, quality, fallback | connecte apres rendus fake daily |
-| `horoscope_period` | `reprocess_horoscope_period` | normalize_dashes, sanitize, typography, length, repetition, labels, quality, fallback | connecte; `sanitize_period_public_string` est un wrapper vers le module central |
+| `horoscope_period` | `reprocess_horoscope_period` | normalize_dashes, sanitize, typography, length, repetition, quality, fallback | connecte; aucun `HumanizeLabels`, aucune canonicalisation taxonomique periode |
 | `natal_theme` | `reprocess_natal_theme` | normalize_dashes, sanitize, typography, labels, quality | connecte apres assemblage final |
 | Fixtures editoriales premium | `reprocess_natal_theme_with_context` | labels, quality, astro_basis density | connecte dans `EditorialValidator` sur copie de validation |
 

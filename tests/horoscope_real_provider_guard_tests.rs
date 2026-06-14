@@ -1,8 +1,9 @@
 use astral_llm_application::{
     build_provider_map, daily_writer_response, period_writer_response_with_quality_loop,
-    GenerateReadingUseCase, ModelCapabilityRegistry, PromptCompiler, ProviderCircuitBreaker,
-    ProviderRouter, ResponseValidator, SchemaRegistry, validate_response_evidence,
+    validate_response_evidence, GenerateReadingUseCase, ModelCapabilityRegistry, PromptCompiler,
+    ProviderCircuitBreaker, ProviderRouter, ResponseValidator, SchemaRegistry,
 };
+use astral_llm_domain::provider::ReasoningEffort;
 use astral_llm_domain::{
     provider::{ProviderCapabilities, ProviderKind, StructuredOutputMode},
     EngineDefaults, FallbackPolicy, PrivacyPolicy, ServiceLimits,
@@ -15,7 +16,6 @@ use astral_llm_providers::{
     LlmProvider, ProviderGenerationRequest, ProviderGenerationResponse, TokenUsage,
 };
 use async_trait::async_trait;
-use astral_llm_domain::provider::ReasoningEffort;
 use serde_json::Value;
 use std::collections::VecDeque;
 use std::path::PathBuf;
@@ -245,8 +245,11 @@ async fn horoscope_daily_repairs_non_json_real_provider_response_without_fake_fa
 
 #[tokio::test]
 async fn horoscope_daily_repairs_public_slot_code_leaks_from_real_provider() {
-    let request = load_json_fixture("tests/golden/horoscope_interpretation_request_basic_daily_paris_1990.json");
-    let mut response_fixture = load_json_fixture("tests/golden/horoscope_response_basic_daily_fake.json");
+    let request = load_json_fixture(
+        "tests/golden/horoscope_interpretation_request_basic_daily_paris_1990.json",
+    );
+    let mut response_fixture =
+        load_json_fixture("tests/golden/horoscope_response_basic_daily_fake.json");
     response_fixture["slots"][0]["title"] = serde_json::json!("[morning]");
     response_fixture["slots"][0]["text"] =
         serde_json::json!("slot:morning La Lune donne un repère astrologique concret.");
@@ -262,12 +265,10 @@ async fn horoscope_daily_repairs_public_slot_code_leaks_from_real_provider() {
         .expect("daily horoscope response");
 
     assert_ne!(response["slots"][0]["title"], "[morning]");
-    assert!(
-        !response["slots"][0]["text"]
-            .as_str()
-            .unwrap_or_default()
-            .contains("slot:morning")
-    );
+    assert!(!response["slots"][0]["text"]
+        .as_str()
+        .unwrap_or_default()
+        .contains("slot:morning"));
     validate_response_evidence(&request, &response).expect("repaired public slot text validates");
 }
 
@@ -296,7 +297,7 @@ async fn horoscope_period_stays_on_real_provider_when_configured_real() {
 }
 
 #[tokio::test]
-async fn horoscope_period_free_neutralizes_key_day_best_day_language() {
+async fn horoscope_period_free_preserves_provider_key_day_wording() {
     let request = load_json_fixture(
         "tests/golden/horoscope_period_interpretation_request_free_next_7_days_paris_1990.json",
     );
@@ -308,8 +309,9 @@ async fn horoscope_period_free_neutralizes_key_day_best_day_language() {
         .expect("key_days array")
         .push(second_key_day);
     response_fixture["key_days"][1]["title"] = serde_json::json!("Meilleur créneau");
-    response_fixture["key_days"][1]["reason"] =
-        serde_json::json!("Cette journée est la meilleure fenêtre favorable pour profiter du climat.");
+    response_fixture["key_days"][1]["reason"] = serde_json::json!(
+        "Cette journée est la meilleure fenêtre favorable pour profiter du climat."
+    );
     let use_case = test_use_case(
         Arc::new(FixtureOpenAiProvider {
             fixture: response_fixture,
@@ -321,10 +323,11 @@ async fn horoscope_period_free_neutralizes_key_day_best_day_language() {
         .await
         .expect("period horoscope response");
 
-    assert!(response["key_days"][1]["title"]
-        .as_str()
-        .is_some_and(|title| !title.trim().is_empty()));
-    assert!(response["key_days"][1]["reason"].as_str().is_some());
+    assert_eq!(response["key_days"][1]["title"], "Meilleur créneau");
+    assert_eq!(
+        response["key_days"][1]["reason"],
+        "Cette journée est la meilleure fenêtre favorable pour profiter du climat."
+    );
 }
 
 #[tokio::test]

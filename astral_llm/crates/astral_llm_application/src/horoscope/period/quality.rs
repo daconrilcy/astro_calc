@@ -1,11 +1,5 @@
 use super::*;
-pub(crate) const PERIOD_V2_META_LANGUAGE_WARNING: &str = "PERIOD_V2_META_LANGUAGE_WARNING";
-pub(crate) const PERIOD_V2_GENERIC_BEST_WINDOW_WARNING: &str =
-    "PERIOD_V2_GENERIC_BEST_WINDOW_WARNING";
-pub(crate) const PERIOD_V2_PUBLIC_TONE_WARNING: &str = "PERIOD_V2_PUBLIC_TONE_WARNING";
 pub(crate) const PERIOD_V2_SEVEN_DAILY_SHAPE_WARNING: &str = "PERIOD_V2_SEVEN_DAILY_SHAPE_WARNING";
-pub(crate) const PERIOD_V2_RECALENDARIZATION_SHAPE_WARNING: &str =
-    "PERIOD_V2_RECALENDARIZATION_SHAPE_WARNING";
 pub(crate) const PERIOD_V2_WORD_COUNT_WARNING: &str = "PERIOD_V2_WORD_COUNT_WARNING";
 pub(crate) fn period_v2_failure_issue(
     path: &str,
@@ -150,23 +144,6 @@ pub(crate) fn period_v2_warning(
         message: message.to_string(),
     }
 }
-pub(crate) fn period_v2_meta_language_warnings(
-    response: &Value,
-    public_text: &str,
-) -> Vec<PeriodV2QualityWarning> {
-    let _ = (response, public_text);
-    Vec::new()
-}
-pub(crate) fn period_v2_generic_best_window_warnings(
-    response: &Value,
-) -> Vec<PeriodV2QualityWarning> {
-    let _ = response;
-    Vec::new()
-}
-pub(crate) fn period_v2_public_tone_warnings(response: &Value) -> Vec<PeriodV2QualityWarning> {
-    let _ = response;
-    Vec::new()
-}
 pub(crate) fn period_v2_seven_daily_shape_warnings(
     response: &Value,
 ) -> Vec<PeriodV2QualityWarning> {
@@ -181,7 +158,10 @@ pub(crate) fn period_v2_seven_daily_shape_warnings(
     Vec::new()
 }
 pub(crate) fn validate_period_not_seven_daily(response: &Value) -> Result<(), GenerationError> {
-    let day_count = response["daily_timeline"].as_array().map(Vec::len).unwrap_or(0);
+    let day_count = response["daily_timeline"]
+        .as_array()
+        .map(Vec::len)
+        .unwrap_or(0);
     if day_count != 7 {
         return Err(quality_error(
             "HOROSCOPE_PERIOD_TIMELINE_MISSING",
@@ -189,12 +169,6 @@ pub(crate) fn validate_period_not_seven_daily(response: &Value) -> Result<(), Ge
         ));
     }
     Ok(())
-}
-pub(crate) fn period_v2_recalendarization_warnings(
-    response: &Value,
-) -> Vec<PeriodV2QualityWarning> {
-    let _ = response;
-    Vec::new()
 }
 pub(crate) fn period_v2_word_count_warnings(
     request: Option<&Value>,

@@ -3,32 +3,6 @@ use super::*;
 pub(crate) fn period_theme_public_label(theme_code: &str) -> String {
     period_public_theme_field(theme_code, "public_label", theme_code)
 }
-pub(crate) fn period_theme_public_label_if_code(theme: &str) -> String {
-    period_public_theme_labels()
-        .get(period_editorial_theme_key(theme))
-        .cloned()
-        .unwrap_or_else(|| theme.to_string())
-}
-pub(crate) fn period_public_theme_labels() -> &'static HashMap<String, String> {
-    static THEME_LABELS: OnceLock<HashMap<String, String>> = OnceLock::new();
-    THEME_LABELS.get_or_init(|| {
-        rows(PERIOD_PUBLIC_THEMES_JSON)
-            .unwrap_or_default()
-            .into_iter()
-            .filter(|row| {
-                row.get("is_enabled")
-                    .and_then(Value::as_bool)
-                    .unwrap_or(true)
-            })
-            .filter_map(|row| {
-                Some((
-                    row.get("theme_code")?.as_str()?.to_string(),
-                    row.get("public_label")?.as_str()?.to_string(),
-                ))
-            })
-            .collect::<HashMap<_, _>>()
-    })
-}
 pub(crate) fn period_domain_title(theme_code: &str) -> String {
     period_public_theme_field(theme_code, "domain_title", theme_code)
 }
@@ -126,23 +100,6 @@ pub(crate) fn period_tone_public_label(tone_code: &str) -> String {
         .get(tone_code)
         .cloned()
         .unwrap_or_else(|| tone_code.to_string())
-}
-pub(crate) fn period_tone_public_label_if_code(tone: &str) -> String {
-    let normalized = tone.trim().to_lowercase();
-    if normalized.is_empty() {
-        return tone.to_string();
-    }
-    if let Some(label) = period_tone_labels().get(normalized.as_str()) {
-        return label.clone();
-    }
-    if period_public_tone_labels().contains(&normalized) {
-        return normalized;
-    }
-    tone.to_string()
-}
-pub(crate) fn period_public_tone_labels() -> &'static HashSet<String> {
-    static PUBLIC_TONE_LABELS: OnceLock<HashSet<String>> = OnceLock::new();
-    PUBLIC_TONE_LABELS.get_or_init(|| period_tone_labels().values().cloned().collect())
 }
 pub(crate) fn period_tone_labels() -> &'static HashMap<String, String> {
     static TONE_LABELS: OnceLock<HashMap<String, String>> = OnceLock::new();

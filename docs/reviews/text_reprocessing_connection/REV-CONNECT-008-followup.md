@@ -24,9 +24,9 @@ Test: `text_reprocessing_adapter_natal_simplified_preserves_technical_fields`.
 
 ### P2 - Sanitation publique horoscope_period encore implementee localement
 
-La review statique a montre que `sanitize_period_public_string` portait encore les remplacements de codes techniques, les corrections de fragments francais et les frontieres de phrases dans `horoscope/mod.rs`.
+La review statique avait montre que l'ancien helper periode portait encore les remplacements de codes techniques, les corrections de fragments francais et les frontieres de phrases dans `horoscope/mod.rs`.
 
-Correction: deplacement de cette logique dans `ScriptSanitizerProcessor` pour `SERVICE_HOROSCOPE_PERIOD`; `sanitize_period_public_string` ne fait plus que deleguer a `reprocess_horoscope_period`.
+Correction: deplacement de la partie technique dans `ScriptSanitizerProcessor` pour `SERVICE_HOROSCOPE_PERIOD`; le chemin actif passe par `reprocess_horoscope_period` sans humanisation taxonomique.
 
 Tests: `text_reprocessing_horoscope_period_sanitizes_public_technical_leaks`, `cargo test -p astral_llm_api --test horoscope_tests`.
 
