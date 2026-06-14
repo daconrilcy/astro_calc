@@ -1414,7 +1414,7 @@ fn evidence_repair_from_error(err: &GenerationError) -> Option<ChapterRepairKind
 }
 
 /// Corrige les derivees de code renvoyees par certains modeles (ex. `emotional_life_natal_premium_v1`).
-fn normalize_chapter_code(received: &str, expected: &str) -> Option<String> {
+pub fn normalize_chapter_code(received: &str, expected: &str) -> Option<String> {
     if received == expected {
         return Some(expected.to_string());
     }

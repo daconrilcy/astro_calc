@@ -37,3 +37,7 @@ path = "../../../tests/integration_job_executor_tests.rs"
 [[test]]
 name = "chapter_quality_repair_tests"
 path = "../../../tests/chapter_quality_repair_tests.rs"
+
+[[test]]
+name = "reading_quality_validator_tests"
+path = "../../../tests/reading_quality_validator_tests.rs"

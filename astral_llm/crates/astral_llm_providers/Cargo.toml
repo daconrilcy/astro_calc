@@ -21,3 +21,7 @@ reqwest.workspace = true
 secrecy.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
+
+[[test]]
+name = "openai_provider_adapter_tests"
+path = "../../../tests/openai_provider_adapter_tests.rs"

@@ -727,6 +727,8 @@ Couverture ajoutee ou consolidee :
 - `tests/integration_job_executor_tests.rs` couvre la matrice de support des services factorises cote `IntegrationJobExecutor`
 - `tests/astral_calculator_api_unit_regression_tests.rs` et `tests/astral_llm_api_unit_regression_tests.rs` reprennent les regressions unitaires minimales anciennement inline
 - `tests/chapter_quality_repair_tests.rs` et `tests/interpretive_evidence_tests.rs` preservent les comportements publics encore utiles apres extraction
+- `tests/reading_quality_validator_tests.rs` restaure les gates qualite premium/premium_plus et la normalisation defensive des codes de chapitre renvoyes par les providers
+- `tests/openai_provider_adapter_tests.rs` verrouille l'extraction `output_text` de l'adapter OpenAI, l'erreur actionable sur reponse reasoning-only et la downgrade `reasoning_effort none -> minimal`
 
 Validation de cloture executee pour cette refonte :
 
