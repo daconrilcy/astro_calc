@@ -63,37 +63,3 @@ impl ExecutionAudit {
         )
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use astral_llm_domain::ChapterGenerationStatus;
-
-    #[test]
-    fn aggregates_tokens_from_all_steps() {
-        let mut audit = ExecutionAudit::new("run-1");
-        audit.record_chapter_step(
-            "identity",
-            "openai",
-            "gpt-4.1",
-            ChapterGenerationStatus::Generated,
-            Some(100),
-            Some(50),
-            1000,
-            None,
-            None,
-        );
-        audit.record_chapter_step(
-            "summary",
-            "openai",
-            "gpt-4.1",
-            ChapterGenerationStatus::Generated,
-            Some(200),
-            Some(30),
-            500,
-            None,
-            None,
-        );
-        assert_eq!(audit.aggregate_token_usage(), (Some(300), Some(80)));
-    }
-}

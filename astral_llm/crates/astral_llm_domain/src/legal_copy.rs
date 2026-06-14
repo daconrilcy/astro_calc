@@ -14,17 +14,3 @@ pub fn default_legal_disclaimer(language: &str, include: bool) -> String {
             .into()
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn french_disclaimer_has_accents() {
-        let d = default_legal_disclaimer("fr", true);
-        assert!(d.contains("interprétation"));
-        assert!(d.contains("médical"));
-        assert!(!d.contains("interpretation"));
-        assert!(!d.contains("medical"));
-    }
-}

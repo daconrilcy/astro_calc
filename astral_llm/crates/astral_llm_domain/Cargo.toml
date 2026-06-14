@@ -16,3 +16,7 @@ serde_json.workspace = true
 [[test]]
 name = "text_reprocessing_domain_tests"
 path = "../../../tests/text_reprocessing_domain_tests.rs"
+
+[[test]]
+name = "interpretive_evidence_tests"
+path = "../../../tests/interpretive_evidence_tests.rs"

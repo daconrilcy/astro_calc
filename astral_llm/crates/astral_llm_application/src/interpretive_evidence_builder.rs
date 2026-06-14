@@ -90,62 +90,6 @@ pub fn evidence_enabled_for_request(
         .map(|ctx| ctx.profile.evidence_enabled())
         .unwrap_or(false)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use astral_llm_infra::bootstrap_evidence_catalog;
-
-    fn minimal_facts() -> NormalizedAstroFacts {
-        let payload = astral_llm_domain::AstroCalculationPayload {
-            contract_version: "natal_structured_v13".into(),
-            chart_type: "natal".into(),
-            data: serde_json::json!({
-                "planets": {
-                    "sun": { "house": 2, "sign": "capricorn" },
-                    "moon": { "house": 4, "sign": "pisces" },
-                    "ascendant": { "house": 1, "sign": "scorpio" }
-                }
-            }),
-        };
-        crate::AstroPayloadNormalizer::normalize(
-            &payload,
-            &astral_llm_domain::PrivacyPolicy::default(),
-            &astral_llm_infra::CanonicalCatalog::default(),
-            "fr",
-        )
-        .unwrap()
-    }
-
-    #[test]
-    fn minimal_pool_not_rich_enough() {
-        let facts = minimal_facts();
-        let pool =
-            InterpretiveEvidenceBuilder::build(&facts, &bootstrap_evidence_catalog()).unwrap();
-        let policy = bootstrap_evidence_catalog().premium_policy;
-        assert!(pool_richness_check(&pool, &policy, 5).is_err());
-    }
-
-    #[test]
-    fn signal_and_placement_share_semantic_key() {
-        let facts = minimal_facts();
-        let pool =
-            InterpretiveEvidenceBuilder::build(&facts, &bootstrap_evidence_catalog()).unwrap();
-        let placement = pool
-            .evidence
-            .iter()
-            .find(|e| e.fact_id.starts_with("placement:sun"))
-            .expect("placement sun");
-        let signal = pool
-            .evidence
-            .iter()
-            .find(|e| e.fact_id == "signal:object_position:sun");
-        if let Some(signal) = signal {
-            assert_eq!(signal.semantic_fact_key, placement.semantic_fact_key);
-        }
-    }
-}
-
 pub fn pool_richness_check(
     pool: &InterpretiveEvidencePool,
     policy: &astral_llm_domain::PremiumEvidencePolicy,

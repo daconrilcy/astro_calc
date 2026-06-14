@@ -18,18 +18,3 @@ impl WritingLanguageDirective {
         )
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use astral_llm_infra::{bootstrap_writing_locales, CanonicalCatalog};
-    use std::sync::Arc;
-
-    #[test]
-    fn includes_spanish_instruction() {
-        let mut c = CanonicalCatalog::default();
-        c.writing_locales = bootstrap_writing_locales();
-        let block = WritingLanguageDirective::prompt_block(&Arc::new(c), "es");
-        assert!(block.contains("OUTPUT_LANGUAGE: es"));
-    }
-}

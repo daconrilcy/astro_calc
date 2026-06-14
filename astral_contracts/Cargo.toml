@@ -7,3 +7,11 @@ edition.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+
+[[test]]
+name = "contracts_registry_tests"
+path = "../tests/contracts_registry_tests.rs"
+
+[[test]]
+name = "inline_tests_governance_tests"
+path = "../tests/inline_tests_governance_tests.rs"

@@ -264,14 +264,3 @@ fn safety_validation_error(violations: &[String]) -> GenerationError {
         serde_json::json!({ "violations": violations }),
     )
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn max_attempts_reads_profile_or_defaults() {
-        assert_eq!(max_script_generation_attempts(None, true), 2);
-        assert_eq!(max_script_generation_attempts(None, false), 1);
-    }
-}

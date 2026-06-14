@@ -67,18 +67,3 @@ fn is_private_or_local_host(host: &str) -> bool {
             .and_then(|p| p.parse::<u8>().ok())
             .is_some_and(|p| (16..=31).contains(&p))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn rejects_localhost() {
-        assert!(validate_openai_base_url("http://localhost/v1").is_err());
-    }
-
-    #[test]
-    fn accepts_openai_host() {
-        assert!(validate_openai_base_url("https://api.openai.com").is_ok());
-    }
-}

@@ -39,22 +39,3 @@ pub fn job_logical_payload(envelope: &serde_json::Value) -> serde_json::Value {
         "astrologer_profile": envelope.get("astrologer_profile").cloned().unwrap_or(serde_json::json!({})),
     })
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn key_order_does_not_change_hash() {
-        let a = serde_json::json!({"b": 2, "a": 1});
-        let b = serde_json::json!({"a": 1, "b": 2});
-        assert_eq!(canonical_json_hash(&a), canonical_json_hash(&b));
-    }
-
-    #[test]
-    fn nested_keys_sorted() {
-        let v = serde_json::json!({"z": {"b": 1, "a": 2}, "a": 0});
-        let h = canonical_json_hash(&v);
-        assert_eq!(h.len(), 64);
-    }
-}

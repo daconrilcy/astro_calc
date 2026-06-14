@@ -94,19 +94,3 @@ fn log_file_path() -> Option<String> {
         .map(|v| v.trim().to_string())
         .filter(|v| !v.is_empty())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::log_format_is_json;
-
-    #[test]
-    fn json_format_flag_reads_env() {
-        let previous = std::env::var("ASTRAL_LLM_LOG_FORMAT").ok();
-        std::env::set_var("ASTRAL_LLM_LOG_FORMAT", "json");
-        assert!(log_format_is_json());
-        match previous {
-            Some(value) => std::env::set_var("ASTRAL_LLM_LOG_FORMAT", value),
-            None => std::env::remove_var("ASTRAL_LLM_LOG_FORMAT"),
-        }
-    }
-}

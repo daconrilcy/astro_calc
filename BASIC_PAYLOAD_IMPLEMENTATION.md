@@ -709,3 +709,47 @@ Validation de cloture :
 - `cargo test -p astral_llm_api --test integration_jobs_tests`
 - `cargo test -p astral_llm_api --test integration_services_tests`
 - `cargo test -p astral_llm_worker`
+
+## 2026-06-14 - Strategie finale de tests factorises
+
+Etat final retenu :
+
+- tous les tests Rust du workspace vivent sous `tests/`
+- les crates declarent explicitement leurs suites via `[[test]]` dans leurs `Cargo.toml`
+- aucun bloc `#[cfg(test)]` ni module `mod tests` ne reste dans `astral_*/src` ou `astral_llm/crates/*/src`
+- un test de gouvernance (`tests/inline_tests_governance_tests.rs`) verrouille cette regle
+
+Couverture ajoutee ou consolidee :
+
+- `tests/contracts_registry_tests.rs` couvre la taxonomie typed `astral_contracts`, les descripteurs horoscope et la presence des schemas communs/publics
+- `tests/horoscope_builders_tests.rs` couvre les builders factorises du calculateur pour daily/period, les validations d'entree et le scan plan
+- `tests/gateway_route_surface_tests.rs` couvre la surface publique `astral_gateway` V2 et verifie l'absence des anciennes routes sync runtime
+- `tests/integration_job_executor_tests.rs` couvre la matrice de support des services factorises cote `IntegrationJobExecutor`
+- `tests/astral_calculator_api_unit_regression_tests.rs` et `tests/astral_llm_api_unit_regression_tests.rs` reprennent les regressions unitaires minimales anciennement inline
+- `tests/chapter_quality_repair_tests.rs` et `tests/interpretive_evidence_tests.rs` preservent les comportements publics encore utiles apres extraction
+
+Validation de cloture executee pour cette refonte :
+
+- `cargo test -p astral_contracts --test contracts_registry_tests --test inline_tests_governance_tests`
+- `cargo test -p astral_calculator --test horoscope_builders_tests`
+- `cargo test -p astral_gateway --test gateway_route_surface_tests`
+- `cargo test -p astral_llm_application --test integration_job_executor_tests --test chapter_quality_repair_tests`
+- `cargo test -p astral_llm_domain --test interpretive_evidence_tests`
+- `cargo test -p astral_calculator_api --test astral_calculator_api_unit_regression_tests`
+- `cargo test -p astral_llm_api --test astral_llm_api_unit_regression_tests`
+- `cargo test -p astral_gateway`
+- `cargo test -p astral_calculator`
+- `cargo test -p astral_calculator_api --test astral_calculator_api_tests`
+- `cargo test -p astral_llm_api --test astral_llm_tests`
+- `cargo test -p astral_llm_api --test integration_services_tests`
+- `cargo test -p astral_llm_api --test integration_jobs_tests`
+- `cargo test -p astral_llm_api --test contracts_publish_tests`
+- `cargo test -p astral_llm_api --test horoscope_tests`
+- `cargo test -p astral_llm_api --test astral_llm_simplified_reading_tests`
+- `cargo test -p astral_llm_application simplified_reading_guard`
+- `cargo test -p astral_llm_application simplified_reading_postprocess`
+- `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`
+
+Note :
+
+- la fixture `tests/golden/astro_engine_response_v1_paris_1990_rich.json` a ete regeneree via le mecanisme de test prevu (`UPDATE_ENGINE_RESPONSE_GOLDEN=1`) pour realigner le golden publie sur l'enveloppe moteur courante

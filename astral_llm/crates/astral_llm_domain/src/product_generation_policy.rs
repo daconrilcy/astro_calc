@@ -85,23 +85,6 @@ impl ProductGenerationPolicy {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::provider::ProviderKind;
-
-    #[test]
-    fn empty_allowed_providers_means_unrestricted() {
-        let policy = ProductGenerationPolicy {
-            allowed_providers: vec![],
-            allowed_models: vec![],
-            ..ProductGenerationPolicy::bootstrap_natal_prompter()
-        };
-        assert!(policy.allows_provider(&ProviderKind::OpenAi));
-    }
-}
-
 fn reasoning_rank(effort: ReasoningEffort) -> u8 {
     match effort {
         ReasoningEffort::None => 0,

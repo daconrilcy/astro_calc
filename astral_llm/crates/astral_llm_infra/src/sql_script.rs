@@ -82,33 +82,3 @@ fn normalize_statement(raw: &str) -> Option<String> {
     }
     Some(lines.join(" "))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::split_sql_statements;
-
-    #[test]
-    fn splits_multiple_create_statements() {
-        let sql = "CREATE TABLE a (id INT);\nCREATE INDEX idx ON a (id);";
-        let parts = split_sql_statements(sql);
-        assert_eq!(parts.len(), 2);
-        assert!(parts[0].starts_with("CREATE TABLE"));
-        assert!(parts[1].starts_with("CREATE INDEX"));
-    }
-
-    #[test]
-    fn keeps_semicolon_inside_string() {
-        let sql = "INSERT INTO t (c) VALUES ('a;b');\nSELECT 1;";
-        let parts = split_sql_statements(sql);
-        assert_eq!(parts.len(), 2);
-        assert!(parts[0].contains("'a;b'"));
-    }
-
-    #[test]
-    fn ignores_semicolon_in_line_comment() {
-        let sql = "-- a; b\nCREATE TABLE t (id INT);";
-        let parts = split_sql_statements(sql);
-        assert_eq!(parts.len(), 1);
-        assert!(parts[0].starts_with("CREATE TABLE"));
-    }
-}

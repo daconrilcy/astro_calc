@@ -125,15 +125,3 @@ fn strip_schema_for_provider(schema: &serde_json::Value) -> serde_json::Value {
     }
     out
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn provider_schema_strips_meta_fields() {
-        let registry = SchemaRegistry::new();
-        let schema = registry.provider_schema("natal_reading_v1").unwrap();
-        assert!(schema.get("$schema").is_none());
-    }
-}

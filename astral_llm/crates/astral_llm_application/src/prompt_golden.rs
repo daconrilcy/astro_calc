@@ -280,32 +280,6 @@ pub fn assert_premium_plus_prompt_structure(prompts_root: &std::path::Path) -> R
     }
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn compiled_prompt_excludes_pii_and_injection() {
-        let prompts = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../prompts");
-        assert_compiled_prompt_is_safe(&prompts).expect("golden prompt safety");
-    }
-
-    #[test]
-    fn premium_plus_compiled_prompt_does_not_contain_4_paragraphs() {
-        let prompts = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../prompts");
-        assert_premium_plus_prompt_structure(&prompts)
-            .expect("premium_plus prompt structure golden");
-    }
-
-    #[test]
-    fn premium_compact_prompt_has_single_structure_block() {
-        let prompts = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../prompts");
-        assert_premium_compact_prompt_structure(&prompts)
-            .expect("premium compact prompt structure golden");
-    }
-}
-
 pub fn assert_premium_compact_prompt_structure(
     prompts_root: &std::path::Path,
 ) -> Result<(), String> {

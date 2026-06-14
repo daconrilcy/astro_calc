@@ -29,3 +29,11 @@ tokio.workspace = true
 [[test]]
 name = "text_reprocessing_application_tests"
 path = "../../../tests/text_reprocessing_application_tests.rs"
+
+[[test]]
+name = "integration_job_executor_tests"
+path = "../../../tests/integration_job_executor_tests.rs"
+
+[[test]]
+name = "chapter_quality_repair_tests"
+path = "../../../tests/chapter_quality_repair_tests.rs"

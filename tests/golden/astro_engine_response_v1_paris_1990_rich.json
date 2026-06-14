@@ -2596,6 +2596,35 @@
             "identity_house"
           ]
         },
+        "descendant_ruler": {
+          "context_key": "angle:descendant:ruler",
+          "interpretive_hint": "The angle descendant in taurus is routed through Venus, placed in Aquarius house 3.",
+          "interpretive_role": "relationship_angle_ruler",
+          "ruler_house_number": 3,
+          "ruler_object_code": "venus",
+          "ruler_object_codes": [
+            "venus"
+          ],
+          "ruler_position_signal_key": "object_position:venus",
+          "ruler_sign_code": "aquarius",
+          "ruler_sources": [
+            {
+              "astral_system_code": "traditional",
+              "astral_system_id": 1,
+              "dignity_type": "domicile",
+              "is_primary": true,
+              "object_code": "venus",
+              "reference_version_id": 1,
+              "weight": 1.0
+            }
+          ],
+          "sign_code": "taurus",
+          "source_code": "descendant",
+          "source_kind": "angle",
+          "strength_context": [
+            "partnership_house"
+          ]
+        },
         "dispositor_links": [
           {
             "dispositor_object_code": "saturn",

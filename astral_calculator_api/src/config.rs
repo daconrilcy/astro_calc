@@ -159,18 +159,3 @@ fn env_bool(name: &str, default: bool) -> bool {
         .map(|v| matches!(v.to_ascii_lowercase().as_str(), "1" | "true" | "yes" | "on"))
         .unwrap_or(default)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn validate_path_within_accepts_child_file() {
-        let dir = std::env::temp_dir().join("astral_schema_test");
-        std::fs::create_dir_all(&dir).unwrap();
-        let file = dir.join("openapi.yaml");
-        std::fs::write(&file, "openapi: 3.1.0").unwrap();
-        validate_path_within(&file, &dir).expect("child path allowed");
-        let _ = std::fs::remove_dir_all(dir);
-    }
-}

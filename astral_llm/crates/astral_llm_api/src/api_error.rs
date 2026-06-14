@@ -70,27 +70,3 @@ pub fn map_generation_error_status(code: &GenerationErrorCode) -> StatusCode {
         _ => StatusCode::UNPROCESSABLE_ENTITY,
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use astral_llm_domain::GenerationError;
-
-    #[test]
-    fn error_response_matches_v1_shape() {
-        let response = error_response(
-            StatusCode::BAD_REQUEST,
-            "INVALID_INPUT",
-            "bad field",
-            Some(json!({ "field": "x" })),
-        );
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-    }
-
-    #[test]
-    fn generation_error_uses_code_as_str() {
-        let err = GenerationError::new(GenerationErrorCode::InvalidInput, "missing product");
-        let response = from_generation_error(err);
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-    }
-}

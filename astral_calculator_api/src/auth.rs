@@ -57,28 +57,3 @@ fn constant_time_eq(a: &str, b: &str) -> bool {
         .fold(0u8, |acc, (x, y)| acc | (x ^ y))
         == 0
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn public_paths_are_exempt() {
-        assert!(is_public_path("/health/live"));
-        assert!(is_public_path("/v1/schemas/astro_engine_request_v1"));
-        assert!(!is_public_path("/v1/calculations/natal"));
-    }
-
-    #[test]
-    fn bearer_token_is_case_insensitive() {
-        assert_eq!(
-            bearer_token(Some(&"Bearer secret-key".parse().unwrap())),
-            Some("secret-key")
-        );
-        assert_eq!(
-            bearer_token(Some(&"bearer another".parse().unwrap())),
-            Some("another")
-        );
-        assert_eq!(bearer_token(Some(&"Basic abc".parse().unwrap())), None);
-    }
-}

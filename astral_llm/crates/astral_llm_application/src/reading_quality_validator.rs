@@ -292,23 +292,6 @@ fn has_interpretive_framing(body: &str) -> bool {
     .any(|marker| lower.contains(marker))
 }
 
-#[cfg(test)]
-mod repetition_tests {
-    use crate::text_trigrams::count_repeated_trigrams;
-
-    #[test]
-    fn counts_distinct_repeated_phrases_not_every_window() {
-        let body = "votre theme invite votre theme invite votre theme invite \
-            a explorer la vie interieure avec douceur et clarte symbolique \
-            pour comprendre les emotions et les liens humains avec bienveillance";
-        let score = count_repeated_trigrams(body, "fr");
-        assert!(
-            score <= 3,
-            "expected at most 3 distinct repeats, got {score}"
-        );
-    }
-}
-
 fn has_deterministic_wording(corpus: &str) -> bool {
     [
         "destin inevitable",
@@ -319,13 +302,13 @@ fn has_deterministic_wording(corpus: &str) -> bool {
         "certain death",
     ]
     .iter()
-    .any(|p| corpus.contains(p))
+    .any(|pattern| corpus.contains(pattern))
 }
 
 fn has_beginner_jargon(corpus: &str) -> bool {
     ["maison xii", "quincunx", "pars fortunae", "biquintile"]
         .iter()
-        .any(|j| corpus.contains(j))
+        .any(|jargon| corpus.contains(jargon))
 }
 
 const SYMBOLIC_DISCLAIMER_STOCK_PHRASES: &[&str] = &[
@@ -339,7 +322,7 @@ fn chapter_has_symbolic_disclaimer_boilerplate(body: &str) -> bool {
     let lower = body.to_lowercase();
     SYMBOLIC_DISCLAIMER_STOCK_PHRASES
         .iter()
-        .any(|p| lower.contains(p))
+        .any(|phrase| lower.contains(phrase))
 }
 
 fn count_symbolic_disclaimer_boilerplate_chapters(
@@ -347,232 +330,7 @@ fn count_symbolic_disclaimer_boilerplate_chapters(
 ) -> usize {
     chapters
         .iter()
-        .filter(|c| c.code != SYNTHESIS_CHAPTER_CODE)
-        .filter(|c| chapter_has_symbolic_disclaimer_boilerplate(&c.body))
+        .filter(|chapter| chapter.code != SYNTHESIS_CHAPTER_CODE)
+        .filter(|chapter| chapter_has_symbolic_disclaimer_boilerplate(&chapter.body))
         .count()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use astral_llm_domain::{
-        generation_response::{
-            ConfidenceLevel, LegalBlock, NatalReadingResponse, QualityMetadata, ReadingChapter,
-            ReadingSummary,
-        },
-        output_contract::GenerationMode,
-    };
-
-    fn premium_ctx() -> ResolvedInterpretationContext {
-        let profile = astral_llm_infra::bootstrap_interpretation_profiles()
-            .get("natal_premium")
-            .expect("natal_premium profile")
-            .clone();
-        let effective_policy = profile.to_product_generation_policy();
-        ResolvedInterpretationContext {
-            profile,
-            effective_policy,
-        }
-    }
-
-    fn premium_request() -> GenerateReadingRequest {
-        GenerateReadingRequest {
-            request_id: None,
-            idempotency_key: None,
-            product_context: astral_llm_domain::ProductContext {
-                product_code: "natal_prompter".into(),
-                interpretation_profile_code: Some("natal_premium".into()),
-                user_language: "fr".into(),
-                audience_level: AudienceLevel::Intermediate,
-            },
-            astro_result: astral_llm_domain::AstroCalculationPayload {
-                contract_version: "natal_structured_v13".into(),
-                chart_type: "natal".into(),
-                data: serde_json::json!({
-                    "domain_scores": { "identity": 0.5 },
-                    "planets": {
-                        "sun": { "house": 2, "sign": "capricorn" }
-                    }
-                }),
-            },
-            astrologer_profile: astral_llm_domain::AstrologerProfile {
-                profile_id: None,
-                name: None,
-                tone: astral_llm_domain::ToneProfile::Warm,
-                jargon_level: astral_llm_domain::JargonLevel::Balanced,
-                wording_style: astral_llm_domain::WordingStyle::Clear,
-                preferred_domains: vec!["identity".into()],
-                forbidden_wording: vec![],
-                custom_instructions: None,
-            },
-            engine: astral_llm_domain::EngineParams {
-                provider: None,
-                model: None,
-                reasoning_effort: None,
-                temperature: None,
-                max_output_tokens: None,
-                domain_count: None,
-                allow_fallback: false,
-                timeout_ms: None,
-                allow_oracle_benchmark: false,
-                summary_model: None,
-            },
-            response_contract: astral_llm_domain::ResponseContract {
-                output_schema_version: "natal_reading_v1".into(),
-                generation_mode: GenerationMode::ChapterOrchestrated,
-                format: astral_llm_domain::OutputFormat::StructuredJson,
-                chapters: vec![],
-                global_max_tokens: None,
-                include_astro_sources: true,
-                include_legal_disclaimer: true,
-            },
-            safety_policy: None,
-        }
-    }
-
-    fn good_reading() -> NatalReadingResponse {
-        NatalReadingResponse {
-            schema_version: "natal_reading_v1".into(),
-            language: "fr".into(),
-            reading_type: "natal_prompter".into(),
-            summary: ReadingSummary {
-                title: "T".into(),
-                short_text: "S".into(),
-            },
-            chapters: vec![ReadingChapter {
-                code: "identity".into(),
-                title: "Identite".into(),
-                body: "Votre theme suggere une personnalite reflechie, orientee vers la \
-                    comprehension symbolique des experiences et des transitions interieures. \
-                    Vous avancez avec prudence lorsque le sens n'est pas clair, tout en montrant \
-                    une grande capacite d'adaptation lorsque vous sentez une direction authentique. \
-                    Cette configuration invite a accueillir les phases de questionnement comme \
-                    des espaces creatifs, plutot que comme des blocages rigides.".into(),
-                astro_basis: vec![
-                    astral_llm_domain::AstroBasisItem {
-                        fact_id: Some("domain_score:identity".into()),
-                        label: None,
-                        factor: "identity".into(),
-                        interpretive_role: "domain_score".into(),
-                    },
-                    astral_llm_domain::AstroBasisItem {
-                        fact_id: Some("placement:sun:capricorn:house:2".into()),
-                        label: None,
-                        factor: "sun".into(),
-                        interpretive_role: "core".into(),
-                    },
-                    astral_llm_domain::AstroBasisItem {
-                        fact_id: Some("placement:moon:cancer:house:4".into()),
-                        label: None,
-                        factor: "moon".into(),
-                        interpretive_role: "core".into(),
-                    },
-                    astral_llm_domain::AstroBasisItem {
-                        fact_id: Some("aspect:sun:moon:trine".into()),
-                        label: None,
-                        factor: "sun_moon".into(),
-                        interpretive_role: "supporting".into(),
-                    },
-                ],
-                confidence: ConfidenceLevel::Medium,
-                safety_flags: vec![],
-            }],
-            legal: LegalBlock {
-                disclaimer: "Lecture symbolique.".into(),
-            },
-            quality: QualityMetadata {
-                used_provider: "fake".into(),
-                used_model: "fake".into(),
-                generation_mode: GenerationMode::ChapterOrchestrated,
-                prompt_family: "natal_prompter".into(),
-                prompt_version: "v1".into(),
-                astro_contract_version: "natal_structured_v13".into(),
-                fallback_used: false,
-            },
-        }
-    }
-
-    #[test]
-    fn premium_rejects_poor_quality() {
-        let request = premium_request();
-        let mut reading = good_reading();
-        reading.chapters[0].body = "sun in aries. moon in cancer.".into();
-        let ctx = premium_ctx();
-        assert!(
-            ReadingQualityValidator::validate_for_product(&request, &reading, Some(&ctx)).is_err()
-        );
-    }
-
-    #[test]
-    fn premium_accepts_rich_reading() {
-        let request = premium_request();
-        let reading = good_reading();
-        let ctx = premium_ctx();
-        assert!(
-            ReadingQualityValidator::validate_for_product(&request, &reading, Some(&ctx)).is_ok()
-        );
-    }
-
-    #[test]
-    fn chapter_orchestrated_without_profile_does_not_block() {
-        let request = premium_request();
-        assert!(!requires_blocking_quality_gate(&request, None));
-    }
-
-    #[test]
-    fn premium_plus_rejects_short_synthesis_chapter() {
-        let profile = astral_llm_infra::bootstrap_interpretation_profiles()
-            .get("natal_premium_plus")
-            .expect("natal_premium_plus")
-            .clone();
-        let ctx = ResolvedInterpretationContext {
-            profile: profile.clone(),
-            effective_policy: profile.to_product_generation_policy(),
-        };
-        let mut request = premium_request();
-        request.product_context.interpretation_profile_code = Some("natal_premium_plus".into());
-        let mut reading = good_reading();
-        let (syn_min, _, _) = profile.synthesis_word_targets();
-        let basis_item = astral_llm_domain::AstroBasisItem {
-            fact_id: Some("dominant_planet:jupiter".into()),
-            label: None,
-            factor: "jupiter".into(),
-            interpretive_role: "core".into(),
-        };
-        reading.chapters.push(ReadingChapter {
-            code: SYNTHESIS_CHAPTER_CODE.into(),
-            title: "Synthese".into(),
-            body: "Court.".into(),
-            astro_basis: vec![
-                basis_item.clone(),
-                basis_item.clone(),
-                basis_item.clone(),
-                basis_item,
-            ],
-            confidence: ConfidenceLevel::Medium,
-            safety_flags: vec![],
-        });
-        let report = ReadingQualityValidator::assess(&request, &reading, Some(&ctx));
-        assert!(
-            report
-                .warnings
-                .iter()
-                .any(|w| w.contains("synthesis") && w.contains("too short")),
-            "expected synthesis too short warning, got {:?}",
-            report.warnings
-        );
-        assert!(syn_min > 2);
-    }
-
-    #[test]
-    fn premium_profile_blocks_even_in_single_pass_mode() {
-        let mut request = premium_request();
-        request.response_contract.generation_mode = GenerationMode::SinglePass;
-        let mut reading = good_reading();
-        reading.chapters[0].body = "sun aries. moon cancer.".into();
-        let ctx = premium_ctx();
-        assert!(
-            ReadingQualityValidator::validate_for_product(&request, &reading, Some(&ctx)).is_err()
-        );
-    }
 }

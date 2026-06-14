@@ -198,62 +198,6 @@ pub(crate) fn validate_free_period_key_days_are_neutral_markers(
     }
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn free_period_accepts_non_literal_key_day_title_when_marker_stays_neutral() {
-        let response = json!({
-            "service_code": HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
-            "summary": {
-                "title": "Vos 7 prochains jours",
-                "text": "Une tendance générale se dessine sans transformer la semaine en programme rigide."
-            },
-            "dominant_theme": {
-                "theme": "Relations",
-                "text": "Le climat dominant aide à prioriser les échanges utiles."
-            },
-            "key_days": [{
-                "date": "2026-06-14",
-                "title": "Point d'appui de la semaine",
-                "reason": "Ce repère aide à cadrer une décision simple sans en faire un verdict.",
-                "evidence_keys": ["signal:1"]
-            }],
-            "advice": "Choisissez une action simple puis ajustez selon les retours.",
-            "watch_summary": {
-                "status": "low",
-                "text": "Une vigilance légère suffit pour éviter les réactions trop rapides.",
-                "evidence_keys": ["signal:1"]
-            },
-            "evidence_summary": [{
-                "date": "2026-06-14",
-                "evidence_key": "signal:1",
-                "label": "Climat relationnel plus sensible"
-            }]
-        });
-
-        assert!(validate_free_period_provider_public_payload(&response).is_ok());
-    }
-
-    #[test]
-    fn free_period_rejects_key_day_reason_that_is_too_thin() {
-        let response = json!({
-            "key_days": [{
-                "date": "2026-06-14",
-                "title": "Point d'appui",
-                "reason": "Ralentir avant de conclure."
-            }]
-        });
-
-        let error = validate_free_period_key_days_are_neutral_markers(&response).unwrap_err();
-        assert_eq!(
-            error.detail().message,
-            "HOROSCOPE_PERIOD_FREE_KEY_DAY_TOO_THIN"
-        );
-    }
-}
 pub(crate) fn validate_free_period_required_fields(
     response: &Value,
 ) -> Result<(), GenerationError> {

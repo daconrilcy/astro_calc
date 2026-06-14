@@ -60,15 +60,3 @@ fn is_public_path(path: &str) -> bool {
     ) || path.starts_with("/v1/schemas/")
         || path.starts_with("/v1/services")
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn constant_time_eq_checks() {
-        assert!(constant_time_eq("secret", "secret"));
-        assert!(!constant_time_eq("secret", "Secret"));
-        assert!(!constant_time_eq("secret", "secrets"));
-    }
-}

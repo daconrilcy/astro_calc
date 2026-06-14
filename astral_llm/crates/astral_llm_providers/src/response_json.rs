@@ -66,26 +66,3 @@ fn extract_balanced_json_object(raw: &str) -> Option<String> {
     }
     None
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parses_payload_with_bom() {
-        let value = parse_response_payload("\u{feff} {\"ok\":true}").expect("payload");
-        assert_eq!(value["ok"], serde_json::json!(true));
-    }
-
-    #[test]
-    fn parses_model_output_inside_markdown_fence() {
-        let value = parse_model_output_json("```json\n{\"ok\":true}\n```").expect("json");
-        assert_eq!(value["ok"], serde_json::json!(true));
-    }
-
-    #[test]
-    fn parses_payload_with_wrapping_noise() {
-        let value = parse_response_payload("noise\n{\"ok\":true}\ntrailer").expect("payload");
-        assert_eq!(value["ok"], serde_json::json!(true));
-    }
-}

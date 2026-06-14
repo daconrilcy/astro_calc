@@ -39,13 +39,6 @@ impl OpenAiProvider {
     }
 }
 
-#[cfg(test)]
-impl OpenAiProvider {
-    pub fn with_base_url_for_test(api_key: SecretString, base_url: String) -> Self {
-        Self::with_base_url(api_key, base_url)
-    }
-}
-
 #[async_trait]
 impl LlmProvider for OpenAiProvider {
     fn kind(&self) -> ProviderKind {
@@ -258,53 +251,6 @@ fn output_has_only_reasoning(payload: &serde_json::Value) -> bool {
         && outputs
             .iter()
             .all(|item| item.get("type").and_then(|v| v.as_str()) == Some("reasoning"))
-}
-
-#[cfg(test)]
-mod extract_tests {
-    use super::*;
-    use astral_llm_domain::provider::ReasoningEffort;
-
-    #[test]
-    fn uses_top_level_output_text() {
-        let payload = json!({ "output_text": "{\"ok\":true}" });
-        assert_eq!(extract_output_text(&payload).unwrap(), "{\"ok\":true}");
-    }
-
-    #[test]
-    fn falls_back_to_output_array_messages() {
-        let payload = json!({
-            "output": [
-                { "type": "reasoning", "id": "r1" },
-                {
-                    "type": "message",
-                    "role": "assistant",
-                    "content": [
-                        { "type": "output_text", "text": "{\"chapter\":\"identity\"}" }
-                    ]
-                }
-            ]
-        });
-        assert_eq!(
-            extract_output_text(&payload).unwrap(),
-            "{\"chapter\":\"identity\"}"
-        );
-    }
-
-    #[test]
-    fn reasoning_only_yields_actionable_error() {
-        let payload = json!({
-            "status": "completed",
-            "output": [{ "type": "reasoning", "id": "r1" }]
-        });
-        let err = extract_output_text(&payload).unwrap_err().to_string();
-        assert!(err.contains("reasoning only"));
-    }
-
-    #[test]
-    fn openai_none_reasoning_effort_is_downgraded_to_minimal() {
-        assert_eq!(reasoning_effort_str(ReasoningEffort::None), "minimal");
-    }
 }
 
 fn parse_usage(value: &serde_json::Value) -> TokenUsage {

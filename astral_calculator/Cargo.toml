@@ -80,3 +80,7 @@ path = "../tests/engine_contract_tests.rs"
 name = "simplified_natal_tests"
 path = "../tests/simplified_natal_tests.rs"
 required-features = ["test-utils"]
+
+[[test]]
+name = "horoscope_builders_tests"
+path = "../tests/horoscope_builders_tests.rs"

@@ -92,6 +92,11 @@ name = "horoscope_tests"
 path = "../../../tests/horoscope_tests.rs"
 harness = true
 
+[[test]]
+name = "astral_llm_api_unit_regression_tests"
+path = "../../../tests/astral_llm_api_unit_regression_tests.rs"
+harness = true
+
 [dependencies]
 astral_contracts.workspace = true
 astral_llm_application.workspace = true

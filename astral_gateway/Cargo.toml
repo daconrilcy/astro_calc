@@ -28,6 +28,10 @@ path = "../tests/gateway_schema_tests.rs"
 name = "gateway_horoscope_v2_tests"
 path = "../tests/gateway_horoscope_v2_tests.rs"
 
+[[test]]
+name = "gateway_route_surface_tests"
+path = "../tests/gateway_route_surface_tests.rs"
+
 [dependencies]
 astral_calculator.workspace = true
 astral_contracts.workspace = true

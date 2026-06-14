@@ -290,35 +290,3 @@ pub fn parse_provider_list(raw: &str) -> Vec<ProviderKind> {
         .map(parse_provider_kind)
         .collect()
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parse_fake_provider() {
-        assert_eq!(parse_provider_kind("fake"), ProviderKind::Fake);
-    }
-
-    #[test]
-    fn empty_fallback_chain_when_unset() {
-        let policy = FallbackPolicy {
-            enabled: true,
-            chain: vec![],
-            ..FallbackPolicy::default()
-        };
-        let chain = policy.candidate_chain(&ProviderKind::OpenAi, true);
-        assert_eq!(chain, vec![ProviderKind::OpenAi]);
-    }
-
-    #[test]
-    fn feature_available_respects_disabled_flag() {
-        assert!(!feature_available(false, None));
-    }
-
-    #[test]
-    fn feature_available_respects_future_cutoff() {
-        let tomorrow = Utc::now().date_naive().succ_opt().expect("tomorrow");
-        assert!(feature_available(true, Some(tomorrow)));
-    }
-}

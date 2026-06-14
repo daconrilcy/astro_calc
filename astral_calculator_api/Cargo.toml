@@ -17,6 +17,11 @@ name = "astral_calculator_api_tests"
 path = "../tests/astral_calculator_api_tests.rs"
 harness = true
 
+[[test]]
+name = "astral_calculator_api_unit_regression_tests"
+path = "../tests/astral_calculator_api_unit_regression_tests.rs"
+harness = true
+
 [dependencies]
 astral_calculator = { path = "../astral_calculator", features = ["swisseph-engine"] }
 axum.workspace = true

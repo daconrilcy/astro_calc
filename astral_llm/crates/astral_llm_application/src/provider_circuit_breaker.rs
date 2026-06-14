@@ -118,39 +118,3 @@ impl ProviderCircuitBreaker {
         guard.iter().map(|(k, c)| (k.clone(), c.state)).collect()
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn opens_after_threshold() {
-        let cb = ProviderCircuitBreaker::new(2, 30);
-        let provider = ProviderKind::OpenAi;
-        assert!(cb.allows_call(&provider));
-        cb.record_transient_failure(&provider);
-        assert!(cb.allows_call(&provider));
-        cb.record_transient_failure(&provider);
-        assert!(!cb.allows_call(&provider));
-    }
-
-    #[test]
-    fn half_open_allows_single_probe() {
-        let cb = ProviderCircuitBreaker::new(1, 60);
-        let provider = ProviderKind::Mistral;
-        cb.record_transient_failure(&provider);
-        assert!(!cb.allows_call(&provider));
-        // simulate cooldown elapsed by forcing half-open
-        {
-            let mut guard = cb.inner.lock().unwrap();
-            let circuit = guard.get_mut("mistral").unwrap();
-            circuit.state = CircuitBreakerState::HalfOpen;
-            circuit.half_open_probe_active = false;
-            circuit.open_until = None;
-        }
-        assert!(cb.allows_call(&provider));
-        assert!(!cb.allows_call(&provider));
-        cb.record_success(&provider);
-        assert!(cb.allows_call(&provider));
-    }
-}

@@ -58,30 +58,3 @@ impl TokenBudget {
         Ok(())
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use astral_llm_domain::output_contract::ChapterContract;
-
-    #[test]
-    fn rejects_only_below_min_words() {
-        let contracts = vec![ChapterContract {
-            code: "career".into(),
-            title: "Career".into(),
-            min_words: Some(80),
-            max_words: Some(300),
-            target_tokens: None,
-            required_fields: vec![],
-        }];
-        assert!(TokenBudget::validate_chapter_lengths(
-            &[("career".into(), "short".into())],
-            &contracts,
-        )
-        .is_err());
-        let long = (0..400).map(|_| "word").collect::<Vec<_>>().join(" ");
-        assert!(
-            TokenBudget::validate_chapter_lengths(&[("career".into(), long)], &contracts,).is_ok()
-        );
-    }
-}

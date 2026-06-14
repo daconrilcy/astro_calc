@@ -1435,24 +1435,6 @@ fn resolve_safety_mode(provider: &astral_llm_domain::ProviderKind) -> SafetyMode
     }
 }
 
-#[cfg(test)]
-mod chapter_code_tests {
-    use super::normalize_chapter_code;
-
-    #[test]
-    fn normalizes_product_suffix_drift() {
-        assert_eq!(
-            normalize_chapter_code("emotional_life_natal_premium_v1", "emotional_life").as_deref(),
-            Some("emotional_life")
-        );
-    }
-
-    #[test]
-    fn rejects_unrelated_code() {
-        assert!(normalize_chapter_code("career", "emotional_life").is_none());
-    }
-}
-
 pub fn new_run_id() -> String {
     Uuid::new_v4().to_string()
 }
