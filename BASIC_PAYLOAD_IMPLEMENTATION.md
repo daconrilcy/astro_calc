@@ -20,7 +20,7 @@ mechanical prose heuristics.
 
 Validation:
 
-- `cargo test -p astral_llm_api --test horoscope_v1_tests`
+- `cargo test -p astral_llm_api --test horoscope_tests`
 
 Adversarial follow-up:
 
@@ -66,7 +66,7 @@ editorial heuristics become non-blocking audit warnings.
 
 ## Validation
 
-- `cargo test -p astral_llm_api --test horoscope_v1_tests`
+- `cargo test -p astral_llm_api --test horoscope_tests`
 
 # Horoscope Period V2 semantic brief - 2026-06-11
 
@@ -116,7 +116,7 @@ Refactored `astral_llm_application/src/horoscope/mod.rs` into focused
 Validation:
 
 - `cargo check -p astral_llm_application`
-- `cargo test -p astral_llm_api --test horoscope_v1_tests`
+- `cargo test -p astral_llm_api --test horoscope_tests`
 - `cargo test -p astral_llm_api --test contracts_publish_tests`
 - `cargo test -p astral_llm_application --test text_reprocessing_application_tests`
 - `cargo test -p astral_llm_application french_typography`
@@ -147,7 +147,7 @@ is no longer accepted or rejected by hardcoded lexical markers.
 Validation:
 
 - `cargo fmt`
-- `cargo test -p astral_llm_api --test horoscope_v1_tests`
+- `cargo test -p astral_llm_api --test horoscope_tests`
 
 ## Horoscope test helpers relocation - 2026-06-12
 
@@ -161,11 +161,11 @@ Moved horoscope-specific test helper logic out of
 - Removed `_for_test` wrapper functions from the application horoscope module.
 - Exposed the underlying period writer/audit/word-count functions under their
   production names for integration-test coverage.
-- Kept the prompt text aggregation helper local to `tests/horoscope_v1_tests.rs`.
+- Kept the prompt text aggregation helper local to `tests/horoscope_tests.rs`.
 
 ### Validation
 
-- `cargo test -p astral_llm_api --test horoscope_v1_tests`
+- `cargo test -p astral_llm_api --test horoscope_tests`
 
 ## Premium 7-day V2 naturalized evidence guard - 2026-06-12
 
@@ -188,7 +188,7 @@ after real run `cb3d7119-53be-4560-816e-e67dd4affe00` failed with
 
 ### Validation
 
-- Added a regression test in `tests/horoscope_v1_tests.rs` using the same
+- Added a regression test in `tests/horoscope_tests.rs` using the same
   Jupiter/Saturn overview style seen in the failed real run.
 
 ## Premium 7-day V2 test UI catalog replacement - 2026-06-12
@@ -235,7 +235,7 @@ Improved the real OpenAI `horoscope_premium_next_7_days_natal` V2 editorial path
 
 ### Validation
 
-- Added focused tests in `tests/horoscope_v1_tests.rs` for the editorial brief, prompt guidance, objective postprocess cleanup, and non-blocking audit metadata.
+- Added focused tests in `tests/horoscope_tests.rs` for the editorial brief, prompt guidance, objective postprocess cleanup, and non-blocking audit metadata.
 
 ## Scope
 
@@ -258,7 +258,7 @@ Free and basic 7-day services remain on `legacy_v1` according to the initial Pre
 ## Validation
 
 - `cargo check -p astral_llm_application`
-- `cargo test -p astral_llm_api --test horoscope_v1_tests`
+- `cargo test -p astral_llm_api --test horoscope_tests`
 - `cargo test -p astral_llm_api --test contracts_publish_tests`
 - `cargo test -p astral_llm_application`
 - `python scripts\import_json_db_to_postgres.py --dry-run --output target\astral_json_db_import_v2.sql`
@@ -321,7 +321,7 @@ Hardened the final public text cleanup for `horoscope_premium_next_7_days_natal`
 
 ## Validation
 
-- `cargo test -p astral_llm_api --test horoscope_v1_tests`
+- `cargo test -p astral_llm_api --test horoscope_tests`
 - `cargo test -p astral_llm_application --test text_reprocessing_application_tests`
 - `cargo test -p astral_llm_application french_typography`
 - `.\scripts\test_horoscope_basic_next_7_days_fake.ps1`
@@ -361,7 +361,7 @@ Refactored `horoscope_premium_next_7_days_natal` writer guidance to reduce mecha
 - Replaced the Premium period prompt's lexical anti-repetition instructions with editorial orchestration: distinct day functions, usable windows, non-duplicative domains, and strategy synthesis.
 - Adjusted Premium period generation temperature from `0.4` to `0.55` while keeping structured output validation.
 - Updated `premium_rich` word targets from `2200-3200` to `1600-2600`, with the hard limit still at `3200`, to reduce forced filler when source signals are not dense enough.
-- Added regression coverage in `tests/horoscope_v1_tests.rs`.
+- Added regression coverage in `tests/horoscope_tests.rs`.
 
 # Premium 7-day horoscope readability - 2026-06-09
 
@@ -379,7 +379,7 @@ Refactored `horoscope_premium_next_7_days_natal` writer guidance to reduce mecha
 
 ## Tests
 
-- Added regression coverage in `tests/horoscope_v1_tests.rs`.
+- Added regression coverage in `tests/horoscope_tests.rs`.
 
 ## Scope
 
@@ -395,7 +395,7 @@ Improved the editorial structure of `horoscope_premium_next_7_days_natal`.
 
 ## Tests
 
-- Added regression coverage in `tests/horoscope_v1_tests.rs`.
+- Added regression coverage in `tests/horoscope_tests.rs`.
 
 # E2E real stabilization - 2026-06-08
 
@@ -414,7 +414,7 @@ Improved the real LLM output quality for `horoscope_premium_daily_local_2h_slots
 
 ## Tests
 
-- Added regression coverage in `tests/horoscope_v1_tests.rs`.
+- Added regression coverage in `tests/horoscope_tests.rs`.
 - Extended `tests/service_test_ui/service-test-ui.test.html`.
 
 # Service test UI horoscope slot labels - 2026-06-09
@@ -482,7 +482,7 @@ Stabilized the real end-to-end scenarios present in `scripts/` for horoscope and
 
 Added focused regression coverage in:
 
-- `tests/horoscope_v1_tests.rs`
+- `tests/horoscope_tests.rs`
 - `tests/text_reprocessing_application_tests.rs`
 - `astral_llm/crates/astral_llm_application/src/text_trigrams.rs`
 
@@ -555,7 +555,7 @@ Fixed the local fake smoke path for `horoscope_premium_next_7_days_natal`, which
 
 ## Validation
 
-- `cargo test -p astral_llm_api --test horoscope_v1_tests horoscope_premium_next_7_days`
+- `cargo test -p astral_llm_api --test horoscope_tests horoscope_premium_next_7_days`
 - `docker compose up -d --build astral_llm_api astral_llm_worker`
 - `.\scripts\test_horoscope_premium_next_7_days_all.ps1 -SkipRustChecks`
 - `.\scripts\test_horoscope_period_all.ps1 -SkipRustChecks`
@@ -612,8 +612,8 @@ Refactored the deterministic generation model for `horoscope_premium_next_7_days
 
 ## Validation
 
-- `cargo test -p astral_llm_api --test horoscope_v1_tests horoscope_premium_next_7_days`
-- `cargo test -p astral_llm_api --test horoscope_v1_tests` (264 tests, final premium wording and personalization polish)
+- `cargo test -p astral_llm_api --test horoscope_tests horoscope_premium_next_7_days`
+- `cargo test -p astral_llm_api --test horoscope_tests` (264 tests, final premium wording and personalization polish)
 - `.\scripts\test_horoscope_premium_next_7_days_fake.ps1`
 - `cargo test -p astral_llm_api --test contracts_publish_tests`
 - `cargo test -p astral_llm_api --test integration_jobs_tests`

@@ -13,6 +13,6 @@
 
 ## Verification
 
-- Tests de schema Free / Basic ajoutes dans `horoscope_v1_tests`.
+- Tests de schema Free / Basic ajoutes dans `horoscope_tests`.
 - Tests adversariaux ajoutes pour Basic avec un seul slot, Free avec trois slots et service horoscope inconnu.
 - Le conflit idempotence reste couvert par la couche integration existante; aucun fork horoscope n'a ete cree.

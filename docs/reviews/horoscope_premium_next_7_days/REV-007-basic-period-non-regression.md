@@ -18,7 +18,7 @@ Le Premium reutilise le moteur period existant.
 ## Corrections
 
 - `basic_standard.max_key_days` conserve a 2.
-- Suite `horoscope_v1_tests` complete passee.
+- Suite `horoscope_tests` complete passee.
 
 ## Statut
 

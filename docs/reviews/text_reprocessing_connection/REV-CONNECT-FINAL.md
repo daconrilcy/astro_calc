@@ -12,7 +12,7 @@ Les services disposent d'un point de passage vers `text_reprocessing`. Les fonct
 - `cargo test -p astral_llm_application text_reprocessing`
 - `cargo test -p astral_llm_application simplified_reading_postprocess`
 - `cargo test -p astral_llm_api --test astral_llm_simplified_reading_tests`
-- `cargo test -p astral_llm_api --test horoscope_v1_tests`
+- `cargo test -p astral_llm_api --test horoscope_tests`
 
 ## Verification residuelle
 

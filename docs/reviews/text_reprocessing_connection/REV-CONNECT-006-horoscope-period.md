@@ -14,4 +14,4 @@ Note: les fonctions `sanitize_period_*` restantes sont conservees comme wrappers
 
 - Fixture: `tests/fixtures/text_reprocessing_migration/horoscope_period/baseline.json`
 - Test central: `text_reprocessing_horoscope_period_sanitizes_public_technical_leaks`
-- `cargo test -p astral_llm_api --test horoscope_v1_tests`
+- `cargo test -p astral_llm_api --test horoscope_tests`

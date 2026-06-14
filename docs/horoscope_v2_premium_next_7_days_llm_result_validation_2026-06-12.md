@@ -101,7 +101,7 @@ Commandes cible :
 
 ```powershell
 cargo fmt
-cargo test -p astral_llm_api --test horoscope_v1_tests
+cargo test -p astral_llm_api --test horoscope_tests
 cargo test -p astral_llm_api --test contracts_publish_tests
 ```
 

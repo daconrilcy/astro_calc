@@ -110,7 +110,7 @@ These V2 functions are implemented as shared period capability, but only Premium
 Executed validation commands:
 
 - `cargo check -p astral_llm_application`
-- `cargo test -p astral_llm_api --test horoscope_v1_tests` (286 passed)
+- `cargo test -p astral_llm_api --test horoscope_tests` (286 passed)
 - `cargo test -p astral_llm_api --test contracts_publish_tests` (3 passed, 1 ignored)
 - `cargo test -p astral_llm_application` (183 unit tests + 33 integration tests + doctests passed)
 - `python scripts\import_json_db_to_postgres.py --dry-run --output target\astral_json_db_import_v2.sql`

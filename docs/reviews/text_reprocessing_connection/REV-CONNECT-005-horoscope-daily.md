@@ -9,4 +9,4 @@ Les sorties fake daily Free/Basic/Premium sont passees dans `reprocess_horoscope
 ## Verification
 
 - Fixture: `tests/fixtures/text_reprocessing_migration/horoscope_daily/baseline.json`
-- `cargo test -p astral_llm_api --test horoscope_v1_tests`
+- `cargo test -p astral_llm_api --test horoscope_tests`

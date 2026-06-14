@@ -28,7 +28,7 @@ La review statique a montre que `sanitize_period_public_string` portait encore l
 
 Correction: deplacement de cette logique dans `ScriptSanitizerProcessor` pour `SERVICE_HOROSCOPE_PERIOD`; `sanitize_period_public_string` ne fait plus que deleguer a `reprocess_horoscope_period`.
 
-Tests: `text_reprocessing_horoscope_period_sanitizes_public_technical_leaks`, `cargo test -p astral_llm_api --test horoscope_v1_tests`.
+Tests: `text_reprocessing_horoscope_period_sanitizes_public_technical_leaks`, `cargo test -p astral_llm_api --test horoscope_tests`.
 
 ## Residual findings
 

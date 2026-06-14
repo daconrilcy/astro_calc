@@ -6,5 +6,4 @@ Findings reviewed:
 - Premium period still keeps windows, strategy and richer domain sections.
 - Free period cannot be a Basic/Premium shape with fewer words.
 
-Status: fixed; `cargo test -p astral_llm_api --test horoscope_v1_tests` passed.
-
+Status: fixed; `cargo test -p astral_llm_api --test horoscope_tests` passed.
