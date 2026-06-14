@@ -91,11 +91,11 @@ Ordre dans `single_pass_hardening.rs` :
 7. `SafetyGuard` (+ `reading_script_guard`)
 8. `ReadingQualityValidator` (non bloquant)
 
-Recette E2E : `test_natal_simplified_e2e.ps1` — **12/12** calculateur + **7/7** lectures + **5/5** négatifs orchestration **400** ; `-ForceFake` par défaut. OpenAI optionnel : `-UseReal -SubmitProfile -TimeoutSec 900`.
+Recette courante : `test_natal_simplified_calculator.ps1` pour le calculateur (**12/12**) et `test_integration_jobs_e2e.ps1` pour l'orchestration async V1 `natal_simplified`. OpenAI optionnel : scripts premium courants.
 
 ### Gate qualité OpenAI (`-UseReal`)
 
-Activée par `Assert-SimplifiedStrictOpenAiQuality` dans `scripts/lib/simplified_natal_assertions.ps1` (via `test_natal_simplified_reading.ps1` quand `-UseReal` et pas `-NegativeOnly`). Échecs préfixés `strict:` dans la sortie E2E.
+Activée historiquement par `Assert-SimplifiedStrictOpenAiQuality` dans `scripts/lib/simplified_natal_assertions.ps1` pendant la phase de certification sync supprimée.
 
 | Sévérité | Contrôle |
 |----------|----------|
@@ -109,11 +109,7 @@ Recette certifiée REV-014 (2026-06-06, pré-durcissement) : **7/7** cas positif
 
 Recertification post-durcissement équinoxe (REV-020, 2026-06-06) : **7/7**, `gate_passed: true`, modèle `gpt-5-mini`. Artefacts : `output/natal_simplified_openai/2026-06-06T125816Z/`.
 
-`quality_summary.json` est agrégé dynamiquement par `test_natal_simplified_e2e.ps1 -UseReal` (compteurs P0/P1, warnings P2, `gate_passed`, `model` via `default_model` de `GET /v1/providers`, détails dans `quality_metrics.raw.json`). Fonctionne aussi avec `-NoSaveOutputs` (artefacts qualité seuls).
-
-```powershell
-.\scripts\test_natal_simplified_e2e.ps1 -UseReal -SubmitProfile -TimeoutSec 900
-```
+Les artefacts `quality_summary.json` mentionnés ci-dessous appartiennent à l'ancienne certification sync et sont conservés comme référence historique uniquement.
 
 ## SafetyGuard vs prompt
 
@@ -139,7 +135,8 @@ Hors `allowed_fact_codes` par défaut. Projection indicative uniquement ; pas d'
 | `cargo test -p astral_llm_application simplified_reading_postprocess` | Summary compact, rôles, fallback |
 | `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests` | `forbidden_interpretation_topics` + alias legacy |
 | `cargo test -p astral_llm_api --test astral_llm_simplified_reading_tests` | Prompt, routing chapitre, golden |
-| `.\scripts\test_natal_simplified_e2e.ps1` | 12 calculateur + 7 lectures + 5 négatifs **400** |
+| `.\scripts\test_natal_simplified_calculator.ps1` | 12 calculateur (7 positifs + 5 négatifs **422**) |
+| `.\scripts\test_integration_jobs_e2e.ps1` | Orchestration async V1 `natal_simplified` |
 
 Fixtures golden :
 

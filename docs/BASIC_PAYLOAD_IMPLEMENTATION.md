@@ -3287,7 +3287,7 @@ Repository : `load_simplified_catalog()` dans `simplified/repository.rs`.
 ### Endpoints
 
 - `POST /v1/calculations/natal/simplified` — contrats `astro_simplified_natal_*`
-- `POST /v1/readings/natal/simplified` (LLM API) — orchestration birth → calcul → profil `natal_simplified` (HTTP **422** si `safety_rejected` post-génération ; **400** si entrée invalide avant calcul)
+- `POST /v1/readings/natal/simplified` — route sync historique retiree du runtime courant
 
 ### Champs `llm_payload` (calculateur → LLM)
 
@@ -3321,7 +3321,7 @@ Pipeline `single_pass` durci (`single_pass_hardening.rs`) :
 
 Profil `natal_simplified` : `quality.max_script_repair_attempts: 2` (1 retry) dans `config/natal_interpretation_profiles/natal_simplified.json` → table `llm_interpretation_profiles`.
 
-E2E recette : `test_natal_simplified_e2e.ps1` active `-ForceFake` par défaut (provider fake, sans OpenAI). Recette OpenAI optionnelle : `-UseReal`.
+Recette courante : `test_natal_simplified_calculator.ps1` pour le calculateur et `test_integration_jobs_e2e.ps1` pour l'orchestration async V1 `natal_simplified`.
 
 Autres modules :
 
@@ -3341,13 +3341,11 @@ Note : ~~constante Rust `PROFILE_INTERPRETATION_EXCLUDED`~~ **F-07 closed** — 
 | `cargo test -p astral_llm_application reading_script_guard` | Sanitisation + détection script |
 | `cargo test -p astral_llm_application french_typography` | Élisions FR |
 | `cargo test -p astral_llm_application simplified_reading_postprocess` | Summary compact + fallback body |
-| `.\scripts\test_natal_simplified_e2e.ps1` | **12** calculateur + **7** lectures + **5** négatifs **400** |
-| `.\scripts\test_natal_simplified_reading.ps1 -NegativeOnly` | Négatifs orchestration seuls |
-| `.\scripts\docker_simplified_natal_smoke.ps1` | Smoke rapide `date_only` |
+| `.\scripts\test_natal_simplified_calculator.ps1` | **12** calculateur (7 positifs + 5 négatifs **422**) |
+| `.\scripts\test_integration_jobs_e2e.ps1` | Orchestration async V1 `natal_simplified` |
+| `.\scripts\test_natal_from_birth_e2e.ps1` | Orchestration async V1 `natal_basic` |
 
 Golden : `tests/golden/simplified_natal_calculation_stable_1990-06-15.json`, `tests/golden/simplified_natal_calculation_equinox_1990-03-21.json`.
-
-Revue adversariale : [`docs/reviews/natal_simplified/REV-011-adversarial-findings.md`](reviews/natal_simplified/REV-011-adversarial-findings.md).
 
 Guide débutant pas à pas : [`docs/GUIDE_DEBUTANT_DOCKER.md`](GUIDE_DEBUTANT_DOCKER.md) §9 (tutoriel natal simplifié).
 
@@ -3413,7 +3411,7 @@ d'un autre service.
 |--------|-------|------|
 | `integration_routes.rs` | `astral_llm_api` | Routes HTTP catalogue + jobs |
 | `integration_job_validator.rs` | `astral_llm_application` | Enveloppe → payload → gate from_payload |
-| `unified_reading_orchestrator.rs` | `astral_llm_application` | simplified / full natal / from_payload |
+| `integration_job_executor.rs` | `astral_llm_application` | simplified / full natal / from_payload |
 | `engine_reading.rs` | `astral_llm_application` | Mapping moteur → `generate_reading_request_v1` |
 | `job_persistence.rs` | `astral_llm_infra` | Persistance + idempotence tenant-wide |
 | `canonical_json_hash.rs` | `astral_llm_infra` | Hash SHA-256 JSON canonique |
@@ -3443,8 +3441,6 @@ d'un autre service.
 | `cargo test -p astral_llm_api --test integration_jobs_tests` | Validator, hashing, golden engine |
 | `.\scripts\test_integration_jobs_e2e.ps1` | E2E natal_simplified async |
 | `.\scripts\test_natal_from_birth_e2e.ps1` | E2E full natal (`natal_basic`) |
-
-Reviews : [`docs/reviews/integration_api/INDEX.md`](reviews/integration_api/INDEX.md).
 
 # Articulation horoscope
 

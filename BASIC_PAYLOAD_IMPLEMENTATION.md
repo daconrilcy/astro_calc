@@ -678,94 +678,34 @@ Refactored the deterministic generation model for `horoscope_premium_next_7_days
 
 - Verrouillage des caches BuildKit Cargo dans `docker/astral_calculator_api/Dockerfile`, `docker/astral_llm_api/Dockerfile` et `docker/astral_llm_worker/Dockerfile`.
 - Ajout de `sharing=locked` et de `id=` explicites sur les mounts `registry`, `git` et `target` pour eviter les corruptions de cache concurrentes du type `.cargo-ok already exists`.
-## 2026-06-13 - Gateway V2 foundations
+## 2026-06-13/14 - Gateway V2 consolidation
 
-- introduction de `astral_contracts` pour porter les types communs de facade publique
-- introduction de `astral_gateway` comme nouvelle couche d'orchestration publique
-- alignement de la taxonomie `natal_simplified_*` et `natal_full_*` sur `free/basic/premium`
-- centralisation initiale des codes de service horoscope pour supprimer la duplication calculator/llm
-- migration initiale `horoscope` vers la gateway via des endpoints llm internes dedies
+Etat final retenu :
 
-## 2026-06-13 - Horoscope calculator ownership and legacy dispatch cleanup
+- `astral_contracts` porte la taxonomie publique typed et les contrats communs
+- `astral_gateway` porte l'orchestration publique V2 pour `natal` et `horoscope`
+- `astral_calculator` est proprietaire exclusif du calcul, y compris les builders horoscope
+- `astral_llm` est proprietaire exclusif du rendu LLM, avec endpoints internes de rendu pour la gateway
+- le catalogue `GET /v1/services` expose `api_surface` et positionne explicitement la gateway V2 comme point d'entree public recommande
+- `IntegrationJobExecutor` remplace le reliquat de dispatch central historique
 
-- la gateway `horoscope` construit maintenant ses requetes calculator depuis `astral_calculator::horoscope` au lieu de `astral_llm_application`
-- les builders legacy `astral_llm_application::horoscope::{daily,period}::calculation_request` deleguent desormais vers `astral_calculator`, ce qui retire la logique calculatoire restante du domaine LLM
-- `UnifiedReadingOrchestrator` ne matche plus chaque code horoscope un par un ; il route via le registre partage `astral_contracts::horoscope_service_descriptor`
-- le worker n'utilise plus `UnifiedReadingOrchestrator` comme point d'entree metier ; il consomme `IntegrationJobExecutor`, aligne sur `IntegrationService`
-- la regle de support des services async est maintenant partagee entre API et worker via `supports_integration_service`, ce qui supprime la divergence potentielle entre acceptation HTTP et execution job
-- nettoyage du reliquat legacy mort autour des builders horoscope pour garder une separation calculator/llm lisible
-- stabilisation du test `raw_provider_trace` en extrayant un helper d'ecriture pur sans dependance a l'etat global d'environnement
+Extinction legacy retenue :
 
-Validation :
+- les routes sync publiques `POST /v1/readings/generate` et `POST /v1/readings/natal/simplified` sont supprimees du runtime
+- `supports_sync_legacy` et `endpoints.submit_sync_legacy` ne sont plus publies dans la facade publique V1
+- les scripts et suites de compatibilite sync ont ete supprimes
+- le mapping manuel sync et les exemples associes ont ete retires
+
+Outillage courant :
+
+- les scripts premium utiles restent sous `scripts/` et ciblent `POST /v1/internal/readings/render`
+- `docker-compose.legacy-cutover.yml` ne sert plus qu'au shim `product_code` legacy restant
+
+Validation de cloture :
 
 - `cargo test -p astral_gateway`
-- `cargo test -p astral_llm_application`
+- `cargo test -p astral_llm_api`
 - `cargo test -p astral_llm_api --test contracts_publish_tests`
 - `cargo test -p astral_llm_api --test integration_jobs_tests`
 - `cargo test -p astral_llm_api --test integration_services_tests`
 - `cargo test -p astral_llm_worker`
-
-## 2026-06-13 - Published API surface finalization
-
-- le catalogue `GET /v1/services` et le detail `GET /v1/services/{service_code}/contract` exposent maintenant `api_surface`
-- `api_surface` separe explicitement la surface async V1 courante, la surface sync legacy et la surface publique recommandee cote gateway V2
-- la recommandation `recommended_entrypoint` est centralisee par service pour guider la migration publique sans laisser les clients deduire eux-memes les equivalences
-- la documentation d'integration aligne maintenant clairement `astral_gateway` comme facade publique et `astral_llm_api` comme surface technique de jobs
-
-## 2026-06-13 - Aggressive legacy public-surface extinction
-
-- le catalogue public V1 ne republie plus d'endpoint sync legacy consommable: `supports_sync_legacy` est desormais faux cote facade publique et `endpoints.submit_sync_legacy` est nul
-- l'information de compatibilite legacy reste uniquement dans `api_surface.sync_legacy_status`, ce qui evite de proposer encore les anciens chemins comme points d'entree produit
-- `contracts/llm/openapi.yaml` marque `POST /v1/readings/generate` et `POST /v1/readings/natal/simplified` comme routes `deprecated`
-- `astral_llm_application` n'exporte plus `UnifiedReadingOrchestrator` comme primitive publique de premier rang
-- la documentation racine et les guides d'integration repositionnent la gateway V2 comme facade publique recommandee
-
-## 2026-06-13 - Hard legacy catalog extinction and runtime deprecation headers
-
-- tous les services `natal_*_from_payload` du seed `llm_integration_services` passent de `planned` a `deprecated`
-- les tests de seed verrouillent maintenant l'ensemble de la famille `*_from_payload` en statut `deprecated` avec profil fixe et contrat `generate_reading_request_v1`
-- les endpoints sync legacy `POST /v1/readings/generate` et `POST /v1/readings/natal/simplified` emettent des headers HTTP de deprecation (`Deprecation`, `Sunset`, `Warning`, `Link`)
-- la documentation d'integration et les artefacts E2E nomment explicitement ces routes comme `legacy sync`
-
-## 2026-06-14 - Runtime legacy cutover controls
-
-- ajout de coupe-circuits runtime sur les routes sync legacy via `ASTRAL_LLM_ENABLE_LEGACY_SYNC_ROUTES` et `ASTRAL_LLM_LEGACY_SYNC_CUTOFF_DATE`
-- quand la route sync legacy est coupee, l'API repond `410 GONE` avec code `LEGACY_SYNC_ROUTE_DISABLED` et details de migration
-- ajout de coupe-circuits runtime sur le shim `product_code` legacy via `ASTRAL_LLM_ENABLE_LEGACY_PRODUCT_CODE_SHIM` et `ASTRAL_LLM_LEGACY_PRODUCT_CODE_SHIM_CUTOFF_DATE`
-- `GenerateReadingUseCase` porte maintenant explicitement la politique de shim legacy au lieu de normaliser implicitement sans borne runtime
-- la suite E2E principale retire les endpoints sync legacy ; une suite dediee `tests/e2e_real/run_real_e2e_compat.ps1` conserve la verification de compatibilite et des headers de deprecation
-
-## 2026-06-14 - Docker activation path for legacy cutover
-
-- ajout de `docker-compose.legacy-cutover.yml` pour desactiver explicitement les routes sync legacy et le shim `product_code` au runtime
-- `docker-compose.yml` propage deja les variables de coupure vers `astral_llm_api` et `astral_llm_worker`; l'override permet maintenant une activation simple par composition Compose
-- `scripts/docker_update_integration_stack.ps1` accepte `-LegacyCutover` et applique automatiquement l'override `docker-compose.legacy-cutover.yml`
-- `.env.example`, `docs/GUIDE_DEBUTANT_DOCKER.md`, `docs/integration_api_guide.md` et `tests/e2e_real/README.md` documentent le chemin d'activation local/staging et le comportement attendu de la suite de compatibilite
-
-## 2026-06-14 - Live cutover validation and first physical legacy removal
-
-- validation locale reelle du cutover avec rebuild Docker sous `docker-compose.legacy-cutover.yml`
-- verification HTTP effective: `POST /v1/readings/generate` et `POST /v1/readings/natal/simplified` repondent maintenant `410 GONE` avec `LEGACY_SYNC_ROUTE_DISABLED`
-- suppression physique du wrapper `UnifiedReadingOrchestrator`, qui ne portait plus aucune logique metier et ne faisait que relayer `IntegrationJobExecutor`
-
-## 2026-06-14 - Public V1 facade breaking change and legacy sync downgrade
-
-- le catalogue public `GET /v1/services` ne publie plus `supports_sync_legacy` ni `endpoints.submit_sync_legacy`; la migration publique passe exclusivement par `api_surface`
-- le schema publie `contracts/llm/integration_service_v1.schema.json` retire ces deux champs, avec tests de contrat pour verrouiller ce breaking change
-- `scripts/docker_compose_smoke.ps1` bascule du parcours sync `POST /v1/readings/generate` vers le parcours courant `POST /v1/jobs` avec `service_code = natal_basic`
-- `scripts/build_reading_request_from_engine.ps1` et `scripts/generate_premium_reading_e2e.ps1` sont retrogrades en outillage de compatibilite legacy sync
-- `astral_llm_api::routes` isole maintenant l'enregistrement des routes sync legacy dans un helper unique, preparant leur suppression physique a la date cible de retrait
-
-## 2026-06-14 - Physical removal of sync legacy handlers
-
-- suppression physique de `with_legacy_sync_routes`, `generate_reading` et `generate_simplified_natal_reading` dans `astral_llm_api::routes`
-- suppression des chemins `/v1/readings/generate` et `/v1/readings/natal/simplified` du `contracts/llm/openapi.yaml`
-- retrait des flags runtime `ASTRAL_LLM_ENABLE_LEGACY_SYNC_ROUTES` et `ASTRAL_LLM_LEGACY_SYNC_CUTOFF_DATE`, devenus inutiles apres suppression effective des handlers
-- bascule des derniers wrappers et scripts encore utiles vers `scripts/legacy-compat/`, avec mise a jour des points d'entree restants (`docker_premium_openai_e2e.ps1`, `test_natal_premium_plus_profile.ps1`, `AGENTS.md`, `contracts/README.md`, `docs/GUIDE_DEBUTANT_DOCKER.md`)
-
-## 2026-06-14 - Final removal of legacy-compat suites
-
-- les scripts premium utiles (`generate_premium_reading_e2e.ps1`, `generate_premium_plus_reading_e2e.ps1`, `test_natal_premium_profile.ps1`) reviennent dans `scripts/` comme outillage courant et ciblent `POST /v1/internal/readings/render`
-- les suites `scripts/legacy-compat/` et `tests/legacy-compat/` sont supprimees physiquement
-- les docs de premier rang (`contracts/README.md`, `docs/GUIDE_DEBUTANT_DOCKER.md`, `tests/e2e_real/README.md`, `AGENTS.md`) ne presentent plus `legacy-compat` comme repertoire d'archive disponible
-- le mapping manuel `contracts/integration/engine_to_reading_mapping.md` et son exemple `generate_reading_request_v1.from_engine_paris_1990.json` sont retires pour ne plus documenter un flux sync supprimé

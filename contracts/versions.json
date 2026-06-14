@@ -22,7 +22,6 @@
     "integration_service_contract": "integration_service_contract_v1"
   },
   "integration": {
-    "engine_to_reading_mapping": "v1",
     "error_response": "error_response_v1",
     "period_window_request": "period_window_request_v1",
     "period_window_response": "period_window_response_v1"

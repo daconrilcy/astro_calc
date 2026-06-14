@@ -500,7 +500,7 @@ Cette orchestration one-shot sync a ete retiree du runtime courant. Utiliser la 
 
 Documentation métier : [`docs/natal_simplified_reading_contract.md`](natal_simplified_reading_contract.md), [`docs/natal_simplified_forbidden_topics.md`](natal_simplified_forbidden_topics.md).
 
-### Smoke test E2E — natal simplifié (`docker_simplified_natal_smoke.ps1`)
+### Smoke test E2E — natal simplifié historique
 
 Le smoke sync historique a ete supprime du parcours courant.
 

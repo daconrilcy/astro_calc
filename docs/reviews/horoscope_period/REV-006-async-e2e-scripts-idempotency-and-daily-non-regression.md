@@ -10,5 +10,5 @@ Findings checked:
 
 Corrections applied:
 
-- Added period routing in `UnifiedReadingOrchestrator`.
+- Added period routing in the async execution path now carried by `IntegrationJobExecutor`.
 - Added period smoke scripts and Docker update integration.
