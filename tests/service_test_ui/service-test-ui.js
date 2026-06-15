@@ -919,7 +919,9 @@
   async function finalizeServiceResult(service, response, elapsedMs) {
     const normalized = normalizeGatewayReadingSections(response);
     const runId = extractRunId(response);
-    const audit = runId ? await fetchRunAudit(runId) : null;
+    const inlineAudit = extractInlineAudit(response);
+    const fetchedAudit = runId ? await fetchRunAudit(runId) : null;
+    const audit = fetchedAudit && !fetchedAudit.error ? fetchedAudit : inlineAudit;
     const promptPayload = extractPromptPayload(response, audit);
     const readingText = joinSectionsForCopy(normalized);
     const current = state.results[service.service_code];
@@ -951,10 +953,21 @@
     }
   }
 
+  function extractInlineAudit(payload) {
+    const audit = firstValueAtPaths(payload, [
+      ["debug", "audit"],
+      ["audit"],
+    ]);
+    if (!audit || typeof audit !== "object" || Array.isArray(audit)) return null;
+    return audit;
+  }
+
   function extractRunId(payload) {
     return firstStringAtPaths(payload, [
       ["run_id"],
       ["metadata", "run_id"],
+      ["debug", "run_id"],
+      ["debug", "audit", "run_id"],
       ["reading", "run_id"],
       ["result", "run_id"],
     ]);

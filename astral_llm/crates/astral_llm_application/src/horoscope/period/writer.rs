@@ -3,10 +3,24 @@ async fn period_writer_response_inner(
     use_case: &GenerateReadingUseCase,
     request: &Value,
     run_id: Option<&str>,
-) -> Result<Value, GenerationError> {
+) -> Result<(Value, GenerationStepRecord), GenerationError> {
     let defaults = horoscope_writer_engine_defaults(use_case);
     if defaults.provider == ProviderKind::Fake {
-        return fake_period_writer_response(request);
+        return fake_period_writer_response(request).map(|response| {
+            (
+                response,
+                horoscope_generation_step(
+                    "horoscope_period_writer",
+                    None,
+                    ProviderKind::Fake.as_str(),
+                    defaults.model.clone(),
+                    ChapterGenerationStatus::Generated,
+                    None,
+                    0,
+                    None,
+                ),
+            )
+        });
     }
     let resolved_run_id = run_id
         .map(str::to_string)
@@ -44,6 +58,7 @@ async fn period_writer_response_inner(
         max_output_tokens = provider_request.max_output_tokens.unwrap_or_default(),
         "horoscope period writer request"
     );
+    let provider_started_at = std::time::Instant::now();
     let routed = use_case
         .router
         .generate(
@@ -55,6 +70,7 @@ async fn period_writer_response_inner(
             ModelRouteContext::PrimaryReading,
         )
         .await?;
+    let provider_latency_ms = provider_started_at.elapsed().as_millis();
     if routed.used_provider == ProviderKind::Fake {
         return Err(quality_error(
             "HOROSCOPE_PERIOD_TECHNICAL_CODE_LEAK",
@@ -92,7 +108,17 @@ async fn period_writer_response_inner(
     response["quality"]["fallback_used"] = json!(routed.fallback_used);
     response = postprocess_period_provider_response(request, response);
     validate_period_provider_public_payload(&response)?;
-    Ok(response)
+    let step = horoscope_generation_step(
+        "horoscope_period_writer",
+        None,
+        routed.used_provider.as_str(),
+        routed.response.model_used.clone(),
+        ChapterGenerationStatus::Generated,
+        routed.response.usage.clone(),
+        provider_latency_ms,
+        None,
+    );
+    Ok((response, step))
 }
 
 pub async fn period_writer_response_with_quality_loop(
@@ -101,6 +127,7 @@ pub async fn period_writer_response_with_quality_loop(
     run_id: Option<&str>,
 ) -> Result<Value, GenerationError> {
     let resolved_run_id = run_id
+        .or_else(|| request.get("debug_run_id").and_then(Value::as_str))
         .map(str::to_string)
         .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
     let defaults = horoscope_writer_engine_defaults(use_case);
@@ -123,41 +150,55 @@ pub async fn period_writer_response_with_quality_loop(
     .await;
     let started_at = std::time::Instant::now();
     let result = async {
-        let mut response = period_writer_response_inner(use_case, request, Some(&resolved_run_id)).await?;
-    let mut retries_used = 0_usize;
-    for attempt in 0..=PERIOD_V2_QUALITY_MAX_RETRIES {
-        match validate_period_response_quality_gates(request, &response) {
-            Ok(()) => {
-                tracing::info!(
-                    service_code = %request["service_code"].as_str().unwrap_or("unknown"),
-                    quality_retries_used = retries_used,
-                    max_retries = PERIOD_V2_QUALITY_MAX_RETRIES,
-                    "horoscope period quality loop completed"
-                );
-                return Ok(response);
-            }
-            Err(err) if attempt < PERIOD_V2_QUALITY_MAX_RETRIES => {
-                retries_used += 1;
-                response = period_style_editor_response(use_case, request, &response, &err, run_id)
+        let (mut response, first_step) =
+            period_writer_response_inner(use_case, request, Some(&resolved_run_id)).await?;
+        let mut steps = vec![first_step];
+        let mut retries_used = 0_usize;
+        for attempt in 0..=PERIOD_V2_QUALITY_MAX_RETRIES {
+            match validate_period_response_quality_gates(request, &response) {
+                Ok(()) => {
+                    tracing::info!(
+                        service_code = %request["service_code"].as_str().unwrap_or("unknown"),
+                        quality_retries_used = retries_used,
+                        max_retries = PERIOD_V2_QUALITY_MAX_RETRIES,
+                        "horoscope period quality loop completed"
+                    );
+                    return Ok((response, steps));
+                }
+                Err(err) if attempt < PERIOD_V2_QUALITY_MAX_RETRIES => {
+                    retries_used += 1;
+                    let (edited_response, retry_step) = period_style_editor_response(
+                        use_case,
+                        request,
+                        &response,
+                        &err,
+                        Some(&resolved_run_id),
+                    )
                     .await?;
-            }
-            Err(err) => {
-                tracing::warn!(
-                    service_code = %request["service_code"].as_str().unwrap_or("unknown"),
-                    quality_retries_used = retries_used,
-                    max_retries = PERIOD_V2_QUALITY_MAX_RETRIES,
-                    final_error = %err.detail().message,
-                    "horoscope period quality loop failed"
-                );
-                return Err(GenerationError::with_details(
-                    GenerationErrorCode::PostSafetyValidationFailed,
-                    "HOROSCOPE_PERIOD_QUALITY_FAILED",
-                    json!({                        "attempts": attempt + 1,                        "max_retries": PERIOD_V2_QUALITY_MAX_RETRIES,                        "issues": [period_v2_failure_issue("/", "quality_failed", "error", &err.detail().message)]                    }),
-                ));
+                    steps.push(retry_step);
+                    response = edited_response;
+                }
+                Err(err) => {
+                    tracing::warn!(
+                        service_code = %request["service_code"].as_str().unwrap_or("unknown"),
+                        quality_retries_used = retries_used,
+                        max_retries = PERIOD_V2_QUALITY_MAX_RETRIES,
+                        final_error = %err.detail().message,
+                        "horoscope period quality loop failed"
+                    );
+                    return Err(GenerationError::with_details(
+                        GenerationErrorCode::PostSafetyValidationFailed,
+                        "HOROSCOPE_PERIOD_QUALITY_FAILED",
+                        json!({
+                            "attempts": attempt + 1,
+                            "max_retries": PERIOD_V2_QUALITY_MAX_RETRIES,
+                            "issues": [period_v2_failure_issue("/", "quality_failed", "error", &err.detail().message)]
+                        }),
+                    ));
+                }
             }
         }
-    }
-    Ok(response)
+        Ok((response, steps))
     }
     .await;
     persist_horoscope_run_finished(
@@ -172,11 +213,15 @@ pub async fn period_writer_response_with_quality_loop(
         &defaults.provider,
         &defaults.model,
         request,
-        &result,
+        result.as_ref().map(|(response, _)| response),
         started_at,
+        result
+            .as_ref()
+            .map(|(_, steps)| steps.as_slice())
+            .unwrap_or(&[]),
     )
     .await;
-    result
+    result.map(|(response, _)| response)
 }
 #[doc(hidden)]
 pub fn period_response_provider_schema(request: &Value) -> Result<Value, GenerationError> {

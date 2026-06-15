@@ -18,6 +18,7 @@ use astral_llm_application::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use uuid::Uuid;
 
 use crate::{
     error::GatewayError,
@@ -55,6 +56,7 @@ impl GenerateHoroscopeDailyReadingUseCase {
         service_code: &str,
         request: HoroscopePublicRequest,
     ) -> Result<HoroscopeReadingResponseV2, GatewayError> {
+        let llm_run_id = Uuid::new_v4().to_string();
         let public = validate_public_request(&serde_json::to_value(&request).map_err(|err| {
             GatewayError::bad_request(format!("invalid horoscope request serialization: {err}"))
         })?)
@@ -77,13 +79,15 @@ impl GenerateHoroscopeDailyReadingUseCase {
             .await?;
         let signals = score_calculation(&calculation)
             .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
-        let interpretation = build_interpretation_request(&public, &calculation, &signals)
+        let mut interpretation = build_interpretation_request(&public, &calculation, &signals)
             .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+        interpretation["debug_run_id"] = json!(llm_run_id);
         let reading = self.llm.render_horoscope_daily(&interpretation).await?;
         validate_horoscope_response_schema(&reading)
             .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
         validate_response_evidence(&interpretation, &reading)
             .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+        let audit = self.llm.get_run_audit(&llm_run_id).await.ok();
 
         Ok(HoroscopeReadingResponseV2 {
             metadata: ResponseMetadataCommon {
@@ -100,7 +104,7 @@ impl GenerateHoroscopeDailyReadingUseCase {
             calculation,
             llm_request: interpretation,
             reading,
-            debug: None,
+            debug: Some(build_horoscope_debug_payload(&llm_run_id, audit, None)),
         })
     }
 }
@@ -115,6 +119,7 @@ impl GenerateHoroscopePeriodReadingUseCase {
         service_code: &str,
         request: HoroscopePeriodPublicRequest,
     ) -> Result<HoroscopeReadingResponseV2, GatewayError> {
+        let llm_run_id = Uuid::new_v4().to_string();
         let public =
             validate_period_public_request(&serde_json::to_value(&request).map_err(|err| {
                 GatewayError::bad_request(format!(
@@ -140,15 +145,19 @@ impl GenerateHoroscopePeriodReadingUseCase {
                 },
             )?)
             .await?;
-        let writer_request = build_period_writer_request(&public, &calculation)
+        let mut writer_request = build_period_writer_request(&public, &calculation)
             .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+        writer_request["debug_run_id"] = json!(llm_run_id);
         let reading = self.llm.render_horoscope_period(&writer_request).await?;
         validate_period_response_contract(&writer_request, &reading)
             .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+        let audit = self.llm.get_run_audit(&llm_run_id).await.ok();
 
-        let mut debug = json!({
-            "period_editorial_audit": period_editorial_audit(&writer_request, &reading)
-        });
+        let mut debug = build_horoscope_debug_payload(
+            &llm_run_id,
+            audit,
+            Some(json!(period_editorial_audit(&writer_request, &reading))),
+        );
         if let Some(warning) = public.language_compat_warning.clone() {
             debug["language_compatibility"] = warning;
         }
@@ -189,4 +198,21 @@ fn period_tier(service_code: &str) -> ProductTier {
         HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE => ProductTier::Premium,
         _ => ProductTier::Basic,
     }
+}
+
+fn build_horoscope_debug_payload(
+    run_id: &str,
+    audit: Option<Value>,
+    period_editorial_audit: Option<Value>,
+) -> Value {
+    let mut debug = json!({
+        "run_id": run_id
+    });
+    if let Some(audit_value) = audit {
+        debug["audit"] = audit_value;
+    }
+    if let Some(editorial_audit) = period_editorial_audit {
+        debug["period_editorial_audit"] = editorial_audit;
+    }
+    debug
 }

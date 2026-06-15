@@ -3,10 +3,13 @@ use crate::text_reprocessing_service_adapter::{
     reprocess_horoscope_daily, reprocess_horoscope_period,
 };
 use astral_llm_domain::{
+    chapter_orchestration::{ChapterGenerationStatus, GenerationStepRecord},
     model_usage_tier::ModelRouteContext, EngineDefaults, GenerationError, GenerationErrorCode,
-    ProviderKind, ReasoningEffort, SafetyMode,
+    ProviderKind, ReasoningEffort, SafetyMode, TokenUsage, TokenUsageType,
 };
-use astral_llm_infra::{hash_json, GenerationRunRecord, RunStatus, SafetyStatus};
+use astral_llm_infra::{
+    hash_json, GenerationRunRecord, GenerationTokenUsageRecord, RunStatus, SafetyStatus,
+};
 use astral_llm_providers::{
     GenerationMetadata, PromptMessage, PromptRole, ProviderGenerationRequest,
 };
@@ -145,8 +148,9 @@ pub(crate) async fn persist_horoscope_run_finished(
     provider_requested: &ProviderKind,
     model_requested: &str,
     request: &Value,
-    result: &Result<Value, GenerationError>,
+    result: Result<&Value, &GenerationError>,
     started_at: std::time::Instant,
+    steps: &[GenerationStepRecord],
 ) {
     let Some(persistence) = use_case.persistence() else {
         return;
@@ -154,6 +158,7 @@ pub(crate) async fn persist_horoscope_run_finished(
     let Ok(run_uuid) = uuid::Uuid::parse_str(run_id) else {
         return;
     };
+    let aggregate_usage = aggregate_horoscope_usage(steps);
     let (status, safety_status, provider_used, model_used, fallback_used, output_hash, error_code) =
         match result {
             Ok(response) => (
@@ -215,8 +220,14 @@ pub(crate) async fn persist_horoscope_run_finished(
         safety_status,
         input_hash: hash_json(request),
         output_hash,
-        token_input: None,
-        token_output: None,
+        token_input: aggregate_usage
+            .as_ref()
+            .and_then(|usage| usage.tokens_for(TokenUsageType::Input))
+            .map(|value| i32::try_from(value).unwrap_or(i32::MAX)),
+        token_output: aggregate_usage
+            .as_ref()
+            .and_then(|usage| usage.tokens_for(TokenUsageType::Output))
+            .map(|value| i32::try_from(value).unwrap_or(i32::MAX)),
         latency_ms: Some(i32::try_from(started_at.elapsed().as_millis()).unwrap_or(i32::MAX)),
         error_code,
         created_at: chrono::Utc::now(),
@@ -224,4 +235,129 @@ pub(crate) async fn persist_horoscope_run_finished(
     if let Err(err) = persistence.upsert_run(&record).await {
         tracing::warn!(run_id, error = %err, "failed to persist final horoscope run");
     }
+    let step_ids = match persistence.insert_steps(run_uuid, steps).await {
+        Ok(step_ids) => step_ids,
+        Err(err) => {
+            tracing::warn!(run_id, error = %err, "failed to persist horoscope generation steps");
+            return;
+        }
+    };
+    if let Some(run_usage) = aggregate_usage.and_then(|usage| {
+        let provider = record
+            .provider_used
+            .as_deref()
+            .or(Some(record.provider_requested.as_str()))?;
+        let model = record
+            .model_used
+            .as_deref()
+            .or(Some(record.model_requested.as_str()))?;
+        price_horoscope_usage(use_case, provider, model, usage)
+    }) {
+        let usage_records = horoscope_usage_records(&run_usage);
+        if let Err(err) = persistence
+            .replace_run_token_usages(run_uuid, &usage_records)
+            .await
+        {
+            tracing::warn!(run_id, error = %err, "failed to persist horoscope run token usage");
+        }
+    }
+    for (step_id, step) in step_ids.into_iter().zip(steps) {
+        let Some(step_usage) = step.token_usage.clone() else {
+            continue;
+        };
+        let Some(step_usage) = price_horoscope_usage(use_case, &step.provider, &step.model, step_usage)
+        else {
+            continue;
+        };
+        let usage_records = horoscope_usage_records(&step_usage);
+        if let Err(err) = persistence
+            .replace_step_token_usages(step_id, &usage_records)
+            .await
+        {
+            tracing::warn!(
+                run_id,
+                step_id = %step_id,
+                error = %err,
+                "failed to persist horoscope step token usage"
+            );
+        }
+    }
+}
+
+pub(crate) fn horoscope_generation_step(
+    step_type: impl Into<String>,
+    chapter_code: Option<String>,
+    provider: impl Into<String>,
+    model: impl Into<String>,
+    status: ChapterGenerationStatus,
+    token_usage: Option<TokenUsage>,
+    latency_ms: u128,
+    error_code: Option<String>,
+) -> GenerationStepRecord {
+    let input_tokens = token_usage
+        .as_ref()
+        .and_then(|usage| usage.tokens_for(TokenUsageType::Input));
+    let output_tokens = token_usage
+        .as_ref()
+        .and_then(|usage| usage.tokens_for(TokenUsageType::Output));
+    GenerationStepRecord {
+        step_type: step_type.into(),
+        chapter_code,
+        provider: provider.into(),
+        model: model.into(),
+        status,
+        token_usage,
+        input_tokens,
+        output_tokens,
+        latency_ms: Some(u32::try_from(latency_ms).unwrap_or(u32::MAX)),
+        error_code,
+    }
+}
+
+fn aggregate_horoscope_usage(steps: &[GenerationStepRecord]) -> Option<TokenUsage> {
+    let mut usage = TokenUsage::default();
+    for step in steps {
+        if let Some(step_usage) = &step.token_usage {
+            for item in &step_usage.items {
+                usage.push(item.clone());
+            }
+        }
+    }
+    (!usage.is_empty()).then_some(usage)
+}
+
+fn price_horoscope_usage(
+    use_case: &GenerateReadingUseCase,
+    provider: &str,
+    model: &str,
+    usage: TokenUsage,
+) -> Option<TokenUsage> {
+    let provider_kind = match provider.trim().to_lowercase().as_str() {
+        "openai" => ProviderKind::OpenAi,
+        "anthropic" => ProviderKind::Anthropic,
+        "mistral" => ProviderKind::Mistral,
+        "fake" => ProviderKind::Fake,
+        other => ProviderKind::Custom(other.to_string()),
+    };
+    let capability = use_case
+        .router
+        .capability_registry()
+        .require(&provider_kind, model)
+        .ok()?;
+    Some(usage.priced(&capability.token_pricing()))
+}
+
+fn horoscope_usage_records(usage: &TokenUsage) -> Vec<GenerationTokenUsageRecord> {
+    usage
+        .items
+        .iter()
+        .map(|item| GenerationTokenUsageRecord {
+            usage_type_code: item.usage_type.as_str().to_string(),
+            usage_subtype: item.usage_subtype.clone(),
+            token_count: i32::try_from(item.token_count).unwrap_or(i32::MAX),
+            unit_price_usd_per_mtok: item.unit_price_usd_per_mtok,
+            estimated_cost_usd: item.estimated_cost_usd,
+            provider_metric_name: item.provider_metric_name.clone(),
+        })
+        .collect()
 }

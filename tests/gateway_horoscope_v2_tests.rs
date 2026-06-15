@@ -1,4 +1,8 @@
-use std::{fs, path::PathBuf, sync::Arc};
+use std::{
+    fs,
+    path::PathBuf,
+    sync::{Arc, Mutex},
+};
 
 use astral_gateway::{
     horoscope::{GenerateHoroscopeDailyReadingUseCase, GenerateHoroscopePeriodReadingUseCase},
@@ -48,6 +52,8 @@ impl CalculatorPort for FixtureCalculator {
 struct FixtureLlm {
     daily: Value,
     period: Value,
+    captured_daily_request: Mutex<Option<Value>>,
+    captured_period_request: Mutex<Option<Value>>,
 }
 
 #[async_trait]
@@ -61,16 +67,53 @@ impl LlmPort for FixtureLlm {
 
     async fn render_horoscope_daily(
         &self,
-        _request: &Value,
+        request: &Value,
     ) -> Result<Value, astral_gateway::error::GatewayError> {
+        *self.captured_daily_request.lock().expect("daily request lock") = Some(request.clone());
         Ok(self.daily.clone())
     }
 
     async fn render_horoscope_period(
         &self,
-        _request: &Value,
+        request: &Value,
     ) -> Result<Value, astral_gateway::error::GatewayError> {
+        *self.captured_period_request.lock().expect("period request lock") = Some(request.clone());
         Ok(self.period.clone())
+    }
+
+    async fn get_run_audit(&self, run_id: &str) -> Result<Value, astral_gateway::error::GatewayError> {
+        Ok(serde_json::json!({
+            "run_id": run_id,
+            "token_usage": {
+                "summary": {
+                    "input_tokens": 42,
+                    "output_tokens": 314,
+                    "cache_tokens": 12,
+                    "reasoning_tokens": 8
+                },
+                "cost": {
+                    "currency": "USD",
+                    "estimated_total": 0.001234
+                }
+            },
+            "steps": [
+                {
+                    "step_type": "writer",
+                    "status": "completed",
+                    "provider": "openai",
+                    "model": "gpt-5-mini",
+                    "latency_ms": 1200,
+                    "token_usage": {
+                        "summary": {
+                            "input_tokens": 42,
+                            "output_tokens": 314,
+                            "cache_tokens": 12,
+                            "reasoning_tokens": 8
+                        }
+                    }
+                }
+            ]
+        }))
     }
 }
 
@@ -83,8 +126,10 @@ async fn gateway_daily_basic_uses_calculator_then_llm() {
     let llm = Arc::new(FixtureLlm {
         daily: read_golden("horoscope_response_basic_daily_fake.json"),
         period: Value::Null,
+        captured_daily_request: Mutex::new(None),
+        captured_period_request: Mutex::new(None),
     });
-    let use_case = GenerateHoroscopeDailyReadingUseCase::new(calculator, llm);
+    let use_case = GenerateHoroscopeDailyReadingUseCase::new(calculator, llm.clone());
 
     let response = use_case
         .execute(
@@ -107,6 +152,33 @@ async fn gateway_daily_basic_uses_calculator_then_llm() {
         response.metadata.product_code,
         astral_contracts::HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE
     );
+    let debug_run_id = response
+        .debug
+        .as_ref()
+        .and_then(|value| value.get("run_id"))
+        .and_then(Value::as_str)
+        .expect("debug run id");
+    uuid::Uuid::parse_str(debug_run_id).expect("valid uuid");
+    let captured_daily_request = llm
+        .captured_daily_request
+        .lock()
+        .expect("daily request lock");
+    let captured_run_id = captured_daily_request
+        .as_ref()
+        .and_then(|value| value.get("debug_run_id"))
+        .and_then(Value::as_str)
+        .expect("captured debug_run_id");
+    assert_eq!(captured_run_id, debug_run_id);
+    let embedded_audit = response
+        .debug
+        .as_ref()
+        .and_then(|value| value.get("audit"))
+        .and_then(Value::as_object)
+        .expect("embedded audit");
+    assert_eq!(
+        embedded_audit.get("run_id").and_then(Value::as_str),
+        Some(debug_run_id)
+    );
 }
 
 #[tokio::test]
@@ -120,8 +192,10 @@ async fn gateway_period_free_uses_calculator_then_llm() {
     let llm = Arc::new(FixtureLlm {
         daily: Value::Null,
         period: read_golden("horoscope_period_response_free_next_7_days_fake.json"),
+        captured_daily_request: Mutex::new(None),
+        captured_period_request: Mutex::new(None),
     });
-    let use_case = GenerateHoroscopePeriodReadingUseCase::new(calculator, llm);
+    let use_case = GenerateHoroscopePeriodReadingUseCase::new(calculator, llm.clone());
 
     let response = use_case
         .execute(
@@ -144,6 +218,33 @@ async fn gateway_period_free_uses_calculator_then_llm() {
     assert_eq!(
         response.metadata.product_code,
         astral_contracts::HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE
+    );
+    let debug_run_id = response
+        .debug
+        .as_ref()
+        .and_then(|value| value.get("run_id"))
+        .and_then(Value::as_str)
+        .expect("debug run id");
+    uuid::Uuid::parse_str(debug_run_id).expect("valid uuid");
+    let captured_period_request = llm
+        .captured_period_request
+        .lock()
+        .expect("period request lock");
+    let captured_run_id = captured_period_request
+        .as_ref()
+        .and_then(|value| value.get("debug_run_id"))
+        .and_then(Value::as_str)
+        .expect("captured debug_run_id");
+    assert_eq!(captured_run_id, debug_run_id);
+    let embedded_audit = response
+        .debug
+        .as_ref()
+        .and_then(|value| value.get("audit"))
+        .and_then(Value::as_object)
+        .expect("embedded audit");
+    assert_eq!(
+        embedded_audit.get("run_id").and_then(Value::as_str),
+        Some(debug_run_id)
     );
 }
 

@@ -5,9 +5,9 @@ WORKDIR /app
 COPY . .
 RUN --mount=type=cache,id=astral-cargo-registry,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,id=astral-cargo-git,target=/usr/local/cargo/git,sharing=locked \
-    --mount=type=cache,id=astral-target-llm-api,target=/app/target,sharing=locked \
+    --mount=type=cache,id=astral-target-llm-api,target=/app/tmp_target,sharing=locked \
     cargo build --release -p astral_llm_api && \
-    cp /app/target/release/astral_llm_api /tmp/astral_llm_api
+    cp /app/tmp_target/release/astral_llm_api /tmp/astral_llm_api
 
 FROM debian:bookworm-slim
 WORKDIR /app

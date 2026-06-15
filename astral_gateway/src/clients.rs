@@ -88,6 +88,36 @@ impl HttpLlmClient {
             .map_err(|err| GatewayError::upstream(format!("llm response parse failed: {err}")))
     }
 
+    async fn get_internal_json(&self, path: &str) -> Result<Value, GatewayError> {
+        let url = format!("{}{}", self.base_url, path);
+        let mut builder = self.client.get(url);
+        if let Some(key) = &self.api_key {
+            builder = builder
+                .header("X-API-Key", key)
+                .header("Authorization", format!("Bearer {key}"));
+        }
+        let response = builder
+            .send()
+            .await
+            .map_err(|err| GatewayError::upstream(format!("llm request failed: {err}")))?;
+        let status = response.status();
+        if !status.is_success() {
+            let body = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "<unreadable body>".to_string());
+            return Err(GatewayError::upstream(format!(
+                "llm rejected request: status={} body={}",
+                status,
+                truncate_for_error(&body)
+            )));
+        }
+        response
+            .json::<Value>()
+            .await
+            .map_err(|err| GatewayError::upstream(format!("llm response parse failed: {err}")))
+    }
+
     async fn send_llm_json_with_timeout_retry<T: Serialize + ?Sized>(
         &self,
         url: &str,
@@ -217,6 +247,10 @@ impl LlmPort for HttpLlmClient {
     async fn render_horoscope_period(&self, request: &Value) -> Result<Value, GatewayError> {
         self.post_internal_json_without_retry("/v1/internal/horoscope/period/render", request)
             .await
+    }
+
+    async fn get_run_audit(&self, run_id: &str) -> Result<Value, GatewayError> {
+        self.get_internal_json(&format!("/v1/runs/{run_id}")).await
     }
 }
 

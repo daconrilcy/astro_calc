@@ -29,10 +29,24 @@ pub(crate) async fn period_style_editor_response(
     response: &Value,
     error: &GenerationError,
     run_id: Option<&str>,
-) -> Result<Value, GenerationError> {
+) -> Result<(Value, GenerationStepRecord), GenerationError> {
     let defaults = horoscope_writer_engine_defaults(use_case);
     if defaults.provider == ProviderKind::Fake {
-        return fake_period_writer_response_from_writer_request(request);
+        return fake_period_writer_response_from_writer_request(request).map(|response| {
+            (
+                response,
+                horoscope_generation_step(
+                    "horoscope_period_quality_retry",
+                    Some("period_quality_retry".to_string()),
+                    ProviderKind::Fake.as_str(),
+                    defaults.model.clone(),
+                    ChapterGenerationStatus::Repaired,
+                    None,
+                    0,
+                    None,
+                ),
+            )
+        });
     }
     let schema = period_response_provider_schema(request)?;
     let provider_request = ProviderGenerationRequest {
@@ -66,6 +80,7 @@ pub(crate) async fn period_style_editor_response(
         issue = %error.detail().message,
         "horoscope period quality retry requested"
     );
+    let provider_started_at = std::time::Instant::now();
     let routed = use_case
         .router
         .generate(
@@ -77,6 +92,7 @@ pub(crate) async fn period_style_editor_response(
             ModelRouteContext::PrimaryReading,
         )
         .await?;
+    let provider_latency_ms = provider_started_at.elapsed().as_millis();
     let mut edited = routed        .response        .parsed_json        .or_else(|| parse_period_provider_json(&routed.response.raw_text))        .ok_or_else(|| {            let incomplete_reason =                period_provider_incomplete_reason(&routed.response.provider_metadata);            GenerationError::with_details(                GenerationErrorCode::PostSafetyValidationFailed,                format!(                    "HOROSCOPE_PERIOD_RESPONSE_INVALID: editor_response_not_json raw_text_len={}",                    routed.response.raw_text.len()                ),                json!({                    "reason": "editor_response_not_json",                    "raw_text_len": routed.response.raw_text.len(),                    "provider_incomplete_reason": incomplete_reason                }),            )        })?;
     if !edited
         .get("quality")
@@ -90,7 +106,17 @@ pub(crate) async fn period_style_editor_response(
     repair_period_response_shape_v2(request, &mut edited);
     edited = postprocess_period_provider_response(request, edited);
     validate_period_response_quality_gates(request, &edited)?;
-    Ok(edited)
+    let step = horoscope_generation_step(
+        "horoscope_period_quality_retry",
+        Some("period_quality_retry".to_string()),
+        routed.used_provider.as_str(),
+        routed.response.model_used.clone(),
+        ChapterGenerationStatus::Repaired,
+        routed.response.usage.clone(),
+        provider_latency_ms,
+        None,
+    );
+    Ok((edited, step))
 }
 pub fn period_quality_audit(response: &Value) -> Value {
     period_quality_audit_with_request(None, response)

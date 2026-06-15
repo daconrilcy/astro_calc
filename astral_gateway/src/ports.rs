@@ -46,6 +46,12 @@ pub trait LlmPort: Send + Sync {
             "horoscope period rendering is not implemented for this LLM port".to_string(),
         ))
     }
+
+    async fn get_run_audit(&self, _run_id: &str) -> Result<Value, GatewayError> {
+        Err(GatewayError::Internal(
+            "run audit lookup is not implemented for this LLM port".to_string(),
+        ))
+    }
 }
 
 pub trait IntegrationCatalogPort: Send + Sync {}

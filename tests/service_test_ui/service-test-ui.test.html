@@ -195,6 +195,12 @@
       const runId = api.extractRunId({ metadata: { run_id: "123e4567-e89b-12d3-a456-426614174000" } });
       assert("extract run id", runId === "123e4567-e89b-12d3-a456-426614174000");
 
+      const debugRunId = api.extractRunId({ debug: { run_id: "123e4567-e89b-12d3-a456-426614174001" } });
+      assert("extract debug run id", debugRunId === "123e4567-e89b-12d3-a456-426614174001");
+
+      const inlineAudit = api.extractInlineAudit({ debug: { audit: { run_id: "123e4567-e89b-12d3-a456-426614174002", token_input: 10 } } });
+      assert("extract inline audit", inlineAudit && inlineAudit.run_id === "123e4567-e89b-12d3-a456-426614174002");
+
       const promptTracePayload = api.extractPromptPayload({}, {
         status: "success",
         prompt_traces: [{

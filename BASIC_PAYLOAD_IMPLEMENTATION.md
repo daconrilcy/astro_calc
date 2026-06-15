@@ -956,3 +956,14 @@ Exclus du parcours automatique car moteur LLM reel :
 
 - 2026-06-14 : le champ public 0week_overview.trajectory0 du flux horoscope period est maintenant durci contre la recopie brute de phases internes (mise_en_mouvement) et les residus d'edition (} } (removed)), avec fallback automatique vers une trajectoire publique propre si le contenu reste suspect.
 
+# 2026-06-15 - Correction modals tokens/couts horoscope daily/period
+
+- UI de tests: ajout du support de `debug.run_id` pour retrouver les audits LLM horoscope.
+- Gateway horoscope: generation d'un `run_id` stable par requete, propagation vers l'API LLM et exposition dans `debug`.
+- API LLM horoscope: reutilisation de `debug_run_id` pour persister les audits `daily` et `period` sous le meme identifiant que celui expose au gateway.
+- API LLM horoscope: persistance des `GenerationStepRecord` et des `token_usages` pricies pour les writers `daily`, `period` et les retries de reparation/qualite, afin que `/v1/runs/{run_id}` expose enfin `steps`, `token_usage` et les compteurs/couts attendus par les modales UI.
+
+# 2026-06-15 - Correction build Docker multi-services avec target-dir Cargo
+
+- Cause: le workspace force `tmp_target` dans `.cargo/config.toml`, alors que les Dockerfiles copiaient encore les binaires depuis `/app/target/release`.
+- Correction: alignement des mounts cache Docker BuildKit et des chemins `cp` sur `/app/tmp_target/release` pour `astral_calculator_api`, `astral_gateway`, `astral_llm_api` et `astral_llm_worker`.

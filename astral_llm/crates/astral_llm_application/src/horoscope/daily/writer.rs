@@ -6,6 +6,7 @@ pub async fn daily_writer_response(
     run_id: Option<&str>,
 ) -> Result<Value, GenerationError> {
     let resolved_run_id = run_id
+        .or_else(|| request.get("debug_run_id").and_then(Value::as_str))
         .map(str::to_string)
         .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
     let defaults = horoscope_writer_engine_defaults(use_case);
@@ -29,6 +30,7 @@ pub async fn daily_writer_response(
 
     let started_at = std::time::Instant::now();
     let result = async {
+        let mut steps = Vec::new();
         let schema = daily_response_provider_schema(request)?;
         let provider_request = ProviderGenerationRequest {
             model: defaults.model.clone(),
@@ -54,6 +56,7 @@ pub async fn daily_writer_response(
             },
         };
 
+        let provider_started_at = std::time::Instant::now();
         let routed = use_case
             .router
             .generate(
@@ -65,12 +68,29 @@ pub async fn daily_writer_response(
                 ModelRouteContext::PrimaryReading,
             )
             .await?;
+        let provider_latency_ms = provider_started_at.elapsed().as_millis();
         if routed.used_provider == ProviderKind::Fake {
             return Err(quality_error(
                 "HOROSCOPE_DAILY_REAL_PROVIDER_REQUIRED",
                 json!({ "provider": "fake" }),
             ));
         }
+        let primary_step = horoscope_generation_step(
+            "horoscope_daily_writer",
+            None,
+            routed.used_provider.as_str(),
+            routed.response.model_used.clone(),
+            if routed.response.parsed_json.is_some()
+                || parse_period_provider_json(&routed.response.raw_text).is_some()
+            {
+                ChapterGenerationStatus::Generated
+            } else {
+                ChapterGenerationStatus::SchemaInvalid
+            },
+            routed.response.usage.clone(),
+            provider_latency_ms,
+            None,
+        );
 
         let mut response = match routed
             .response
@@ -78,15 +98,21 @@ pub async fn daily_writer_response(
             .clone()
             .or_else(|| parse_period_provider_json(&routed.response.raw_text))
         {
-            Some(response) => response,
+            Some(response) => {
+                steps.push(primary_step);
+                response
+            }
             None => {
-                daily_writer_repair_non_json_response(
+                let (response, repair_step) = daily_writer_repair_non_json_response(
                     use_case,
                     request,
                     &routed.response.raw_text,
                     Some(&resolved_run_id),
                 )
-                .await?
+                .await?;
+                steps.push(primary_step);
+                steps.push(repair_step);
+                response
             }
         };
         if !response
@@ -100,10 +126,9 @@ pub async fn daily_writer_response(
         response["quality"]["fallback_used"] = json!(routed.fallback_used);
         repair_daily_response_shape(request, &mut response);
         repair_premium_daily_editorial_repetition(&mut response);
-        Ok(reprocess_horoscope_daily_payload(response))
+        Ok((reprocess_horoscope_daily_payload(response), steps))
     }
     .await;
-
     persist_horoscope_run_finished(
         use_case,
         &resolved_run_id,
@@ -116,12 +141,16 @@ pub async fn daily_writer_response(
         &defaults.provider,
         &defaults.model,
         request,
-        &result,
+        result.as_ref().map(|(response, _)| response),
         started_at,
+        result
+            .as_ref()
+            .map(|(_, steps)| steps.as_slice())
+            .unwrap_or(&[]),
     )
     .await;
 
-    result
+    result.map(|(response, _)| response)
 }
 
 async fn daily_writer_repair_non_json_response(
@@ -129,7 +158,7 @@ async fn daily_writer_repair_non_json_response(
     request: &Value,
     raw_text: &str,
     run_id: Option<&str>,
-) -> Result<Value, GenerationError> {
+) -> Result<(Value, GenerationStepRecord), GenerationError> {
     let defaults = horoscope_writer_engine_defaults(use_case);
     if defaults.provider == ProviderKind::Fake {
         return Err(quality_error(
@@ -163,6 +192,7 @@ async fn daily_writer_repair_non_json_response(
             prompt_version: Some("v1".into()),
         },
     };
+    let provider_started_at = std::time::Instant::now();
     let routed = use_case
         .router
         .generate(
@@ -174,6 +204,7 @@ async fn daily_writer_repair_non_json_response(
             ModelRouteContext::PrimaryReading,
         )
         .await?;
+    let provider_latency_ms = provider_started_at.elapsed().as_millis();
     if routed.used_provider == ProviderKind::Fake {
         return Err(quality_error(
             "HOROSCOPE_DAILY_REAL_PROVIDER_REQUIRED",
@@ -212,7 +243,17 @@ async fn daily_writer_repair_non_json_response(
     repaired["quality"]["model"] = json!(routed.response.model_used);
     repaired["quality"]["fallback_used"] = json!(routed.fallback_used);
     repaired["quality"]["repair_attempted"] = json!(true);
-    Ok(repaired)
+    let repair_step = horoscope_generation_step(
+        "horoscope_daily_json_repair",
+        Some("daily_json_repair".to_string()),
+        routed.used_provider.as_str(),
+        routed.response.model_used.clone(),
+        ChapterGenerationStatus::Repaired,
+        routed.response.usage.clone(),
+        provider_latency_ms,
+        None,
+    );
+    Ok((repaired, repair_step))
 }
 
 pub fn daily_response_provider_schema(request: &Value) -> Result<Value, GenerationError> {
