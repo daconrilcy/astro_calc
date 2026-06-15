@@ -111,17 +111,86 @@
 
       const usage = api.summarizeUsage({
         audit: {
+          token_usage: {
+            summary: {
+              input_tokens: 120,
+              output_tokens: 450,
+              cache_tokens: 30,
+              reasoning_tokens: 12
+            },
+            cost: {
+              currency: "USD",
+              estimated_total: 0.0042,
+              input_cost: 0.0012,
+              output_cost: 0.0027,
+              cache_cost: 0.0002,
+              reasoning_cost: 0.0001
+            },
+            engine: {
+              provider: "openai",
+              model: "gpt-5",
+              pricing_source: "official_pricing_page"
+            }
+          },
           token_input: 120,
           token_output: 450,
           steps: [
-            { step_type: "writer", status: "completed", provider: "openai", model: "gpt-5", input_tokens: 120, output_tokens: 450, latency_ms: 1900 }
+            {
+              step_type: "writer",
+              status: "completed",
+              provider: "openai",
+              model: "gpt-5",
+              input_tokens: 120,
+              output_tokens: 450,
+              latency_ms: 1900,
+              token_usage: {
+                summary: {
+                  input_tokens: 120,
+                  output_tokens: 450,
+                  cache_tokens: 30,
+                  reasoning_tokens: 12
+                },
+                cost: {
+                  currency: "USD",
+                  estimated_total: 0.0042,
+                  input_cost: 0.0012,
+                  output_cost: 0.0027,
+                  cache_cost: 0.0002,
+                  reasoning_cost: 0.0001
+                },
+                engine: {
+                  provider: "openai",
+                  model: "gpt-5",
+                  pricing_source: "official_pricing_page"
+                }
+              }
+            }
           ]
         }
       });
       assert("usage input", usage.inputTokens === 120);
       assert("usage output", usage.outputTokens === 450);
-      assert("usage cost placeholder", usage.costLabel === "indisponible");
+      assert("usage cache", usage.cacheTokens === 30);
+      assert("usage reasoning", usage.reasoningTokens === 12);
+      assert("usage cost available", usage.costLabel !== "indisponible");
       assert("usage steps detail", usage.steps.length === 1);
+
+      const localStepUsage = api.summarizeUsage({
+        audit: {
+          steps: [
+            {
+              step_type: "dash_normalize",
+              status: "repaired",
+              provider: "openai",
+              model: "gpt-5-mini"
+            }
+          ]
+        }
+      });
+      assert("local step label input", localStepUsage.steps[0].inputTokens === "step local (sans tokens provider)");
+      assert("local step label output", localStepUsage.steps[0].outputTokens === "step local (sans tokens provider)");
+      assert("local step label cache", localStepUsage.steps[0].cacheTokens === "step local (sans tokens provider)");
+      assert("local step label reasoning", localStepUsage.steps[0].reasoningTokens === "step local (sans tokens provider)");
 
       const runId = api.extractRunId({ metadata: { run_id: "123e4567-e89b-12d3-a456-426614174000" } });
       assert("extract run id", runId === "123e4567-e89b-12d3-a456-426614174000");

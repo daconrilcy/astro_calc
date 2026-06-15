@@ -3,16 +3,16 @@ use std::time::Duration;
 use astral_llm_domain::{
     contract_versions::GenerationRunContractVersions,
     generation_response::{
-        GenerateReadingResponse, GenerationFailedResponse, SafetyRejectedResponse,
-        StructuredReadingResponse,
+        GenerateReadingResponse, SafetyRejectedResponse,
     },
     model_usage_tier::ModelRouteContext,
     output_contract::GenerationMode,
     EngineDefaults, GenerateReadingRequest, GenerationError, GenerationErrorCode, PrivacyPolicy,
-    ProviderKind, SafetyMode, ServiceLimits,
+    ProviderKind, PublicTokenUsage, SafetyMode, ServiceLimits, TokenUsage,
 };
 use astral_llm_infra::{
-    hash_json, GenerationRunRecord, RunPersistence, RunStatus, SafetyStatus, SharedCanonicalCatalog,
+    hash_json, GenerationRunRecord, GenerationTokenUsageRecord, RunPersistence, RunStatus,
+    SafetyStatus, SharedCanonicalCatalog,
 };
 
 use astral_llm_providers::{GenerationMetadata, ProviderGenerationRequest};
@@ -62,6 +62,14 @@ pub struct GenerateReadingUseCase {
 pub struct UseCaseOutput {
     pub response: GenerateReadingResponse,
     pub audit: ExecutionAudit,
+}
+
+pub(super) struct SinglePassGenerationResult {
+    pub reading: astral_llm_domain::NatalReadingResponse,
+    pub used_provider: String,
+    pub used_model: String,
+    pub token_usage: Option<TokenUsage>,
+    pub latency_ms: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -178,10 +186,18 @@ impl GenerateReadingUseCase {
             .await;
 
         let response = match self.execute_inner(request, &run_id, &mut audit).await {
-            Ok(reading) => GenerateReadingResponse::Success(StructuredReadingResponse {
-                run_id: run_id.clone(),
-                reading,
-            }),
+            Ok(reading) => {
+                let token_usage = self.audit_public_usage(
+                    reading.quality.used_provider.as_str(),
+                    reading.quality.used_model.as_str(),
+                    audit.aggregate_detailed_usage(),
+                );
+                GenerateReadingResponse::Success {
+                    run_id: run_id.clone(),
+                    reading,
+                    token_usage,
+                }
+            }
             Err(GenerationError::Detailed { detail, .. })
                 if matches!(
                     detail.code,
@@ -189,12 +205,29 @@ impl GenerateReadingUseCase {
                         | GenerationErrorCode::PostSafetyValidationFailed
                 ) =>
             {
-                build_safety_rejected(&run_id, &detail)
+                let token_usage = audit
+                    .steps
+                    .last()
+                    .map(|step| (step.provider.as_str(), step.model.as_str()))
+                    .and_then(|(provider, model)| {
+                        self.audit_public_usage(provider, model, audit.aggregate_detailed_usage())
+                    });
+                build_safety_rejected(&run_id, &detail, token_usage)
             }
-            Err(err) => GenerateReadingResponse::Failed(GenerationFailedResponse {
-                run_id: run_id.clone(),
-                error: err.detail().clone(),
-            }),
+            Err(err) => {
+                let token_usage = audit
+                    .steps
+                    .last()
+                    .map(|step| (step.provider.as_str(), step.model.as_str()))
+                    .and_then(|(provider, model)| {
+                        self.audit_public_usage(provider, model, audit.aggregate_detailed_usage())
+                    });
+                GenerateReadingResponse::Failed {
+                    run_id: run_id.clone(),
+                    error: err.detail().clone(),
+                    token_usage,
+                }
+            }
         };
 
         self.persist_run_finished(&run_context, &response, started_at.elapsed(), &audit)
@@ -502,7 +535,7 @@ impl GenerateReadingUseCase {
         >,
         run_id: &str,
         repair_instruction: Option<&str>,
-    ) -> Result<astral_llm_domain::NatalReadingResponse, GenerationError> {
+    ) -> Result<SinglePassGenerationResult, GenerationError> {
         let chapter_code = request
             .response_contract
             .chapters
@@ -582,6 +615,7 @@ impl GenerateReadingUseCase {
             },
         };
 
+        let route_started_at = std::time::Instant::now();
         let route = self
             .router
             .generate(
@@ -593,6 +627,8 @@ impl GenerateReadingUseCase {
                 ModelRouteContext::PrimaryReading,
             )
             .await?;
+        let route_latency_ms =
+            u64::try_from(route_started_at.elapsed().as_millis()).unwrap_or(u64::MAX);
 
         let json = route.response.parsed_json.ok_or_else(|| {
             GenerationError::new(
@@ -617,8 +653,10 @@ impl GenerateReadingUseCase {
         let prompt_family = bundle.prompt_family.clone();
         let prompt_version = bundle.prompt_version.clone();
 
-        reading.quality.used_provider = route.used_provider.as_str().to_string();
-        reading.quality.used_model = route.response.model_used;
+        let used_provider = route.used_provider.as_str().to_string();
+        let used_model = route.response.model_used.clone();
+        reading.quality.used_provider = used_provider.clone();
+        reading.quality.used_model = used_model.clone();
         reading.quality.prompt_family = prompt_family.clone();
         reading.quality.prompt_version = prompt_version.clone();
         reading.quality.astro_contract_version = request.astro_result.contract_version.clone();
@@ -633,7 +671,13 @@ impl GenerateReadingUseCase {
             &prompt_version,
         );
 
-        Ok(reading)
+        Ok(SinglePassGenerationResult {
+            reading,
+            used_provider,
+            used_model,
+            token_usage: route.response.usage,
+            latency_ms: route_latency_ms,
+        })
     }
 
     async fn persist_run_started(
@@ -701,29 +745,29 @@ impl GenerateReadingUseCase {
         let (token_input, token_output) = audit.aggregate_token_usage();
         let (status, safety_status, provider_used, model_used, output_hash, error) = match response
         {
-            GenerateReadingResponse::Success(success) => (
+            GenerateReadingResponse::Success { reading, .. } => (
                 RunStatus::Success,
                 SafetyStatus::Passed,
-                Some(success.reading.quality.used_provider.clone()),
-                Some(success.reading.quality.used_model.clone()),
+                Some(reading.quality.used_provider.clone()),
+                Some(reading.quality.used_model.clone()),
                 serde_json::to_value(response).ok().map(|v| hash_json(&v)),
                 None,
             ),
-            GenerateReadingResponse::SafetyRejected(rejected) => (
+            GenerateReadingResponse::SafetyRejected { error, .. } => (
                 RunStatus::SafetyRejected,
                 SafetyStatus::Rejected,
                 None,
                 None,
                 serde_json::to_value(response).ok().map(|v| hash_json(&v)),
-                Some(rejected.error.code.clone()),
+                Some(error.code.clone()),
             ),
-            GenerateReadingResponse::Failed(failed) => (
+            GenerateReadingResponse::Failed { error, .. } => (
                 RunStatus::Failed,
                 SafetyStatus::NotChecked,
                 None,
                 None,
                 serde_json::to_value(response).ok().map(|v| hash_json(&v)),
-                Some(failed.error.code.as_str().to_string()),
+                Some(error.code.as_str().to_string()),
             ),
         };
         let final_record = GenerationRunRecord {
@@ -735,14 +779,14 @@ impl GenerateReadingUseCase {
             astro_contract_version: context.astro_contract_version.clone(),
             output_schema_version: context.output_schema_version.clone(),
             prompt_family: match response {
-                GenerateReadingResponse::Success(success) => {
-                    success.reading.quality.prompt_family.clone()
+                GenerateReadingResponse::Success { reading, .. } => {
+                    reading.quality.prompt_family.clone()
                 }
                 _ => "-".into(),
             },
             prompt_version: match response {
-                GenerateReadingResponse::Success(success) => {
-                    success.reading.quality.prompt_version.clone()
+                GenerateReadingResponse::Success { reading, .. } => {
+                    reading.quality.prompt_version.clone()
                 }
                 _ => "-".into(),
             },
@@ -752,7 +796,7 @@ impl GenerateReadingUseCase {
             model_requested: context.model_requested.clone(),
             model_used,
             generation_mode: context.generation_mode.clone(),
-            fallback_used: matches!(response, GenerateReadingResponse::Success(success) if success.reading.quality.fallback_used),
+            fallback_used: matches!(response, GenerateReadingResponse::Success { reading, .. } if reading.quality.fallback_used),
             selected_domains: if audit.selected_domains.is_empty() {
                 None
             } else {
@@ -771,8 +815,40 @@ impl GenerateReadingUseCase {
         if let Err(err) = persistence.upsert_run(&final_record).await {
             tracing::warn!(run_id = %audit.run_id, error = %err, "failed to persist final generation run");
         }
-        if let Err(err) = persistence.insert_steps(run_uuid, &audit.steps).await {
-            tracing::warn!(run_id = %audit.run_id, error = %err, "failed to persist generation steps");
+        let step_ids = match persistence.insert_steps(run_uuid, &audit.steps).await {
+            Ok(step_ids) => step_ids,
+            Err(err) => {
+                tracing::warn!(run_id = %audit.run_id, error = %err, "failed to persist generation steps");
+                return;
+            }
+        };
+        if let Some(run_usage) = audit.aggregate_detailed_usage().and_then(|usage| {
+            let provider = final_record
+                .provider_used
+                .as_deref()
+                .or(Some(final_record.provider_requested.as_str()))?;
+            let model = final_record
+                .model_used
+                .as_deref()
+                .or(Some(final_record.model_requested.as_str()))?;
+            self.priced_usage(provider, model, usage)
+        }) {
+            let usage_records = to_usage_records(&run_usage);
+            if let Err(err) = persistence.replace_run_token_usages(run_uuid, &usage_records).await {
+                tracing::warn!(run_id = %audit.run_id, error = %err, "failed to persist run token usage");
+            }
+        }
+        for (step_id, step) in step_ids.into_iter().zip(&audit.steps) {
+            let Some(step_usage) = step.token_usage.clone() else {
+                continue;
+            };
+            let Some(step_usage) = self.priced_usage(&step.provider, &step.model, step_usage) else {
+                continue;
+            };
+            let usage_records = to_usage_records(&step_usage);
+            if let Err(err) = persistence.replace_step_token_usages(step_id, &usage_records).await {
+                tracing::warn!(run_id = %audit.run_id, step_id = %step_id, error = %err, "failed to persist step token usage");
+            }
         }
     }
 }
@@ -780,6 +856,7 @@ impl GenerateReadingUseCase {
 fn build_safety_rejected(
     run_id: &str,
     detail: &astral_llm_domain::GenerationErrorDetail,
+    token_usage: Option<PublicTokenUsage>,
 ) -> GenerateReadingResponse {
     let violations: Vec<String> = detail
         .details
@@ -799,16 +876,87 @@ fn build_safety_rejected(
         .and_then(|v| v.as_str())
         .unwrap_or("safety_policy")
         .to_string();
-    GenerateReadingResponse::SafetyRejected(SafetyRejectedResponse::new(
-        run_id,
-        category,
-        detail.message.clone(),
-        detail
-            .details
-            .as_ref()
-            .and_then(|v| v.get("rule_id"))
-            .and_then(|v| v.as_str())
-            .map(str::to_string),
+    GenerateReadingResponse::SafetyRejected {
+        run_id: run_id.to_string(),
+        error: SafetyRejectedResponse::new(
+            run_id,
+            category,
+            detail.message.clone(),
+            detail
+                .details
+                .as_ref()
+                .and_then(|v| v.get("rule_id"))
+                .and_then(|v| v.as_str())
+                .map(str::to_string),
+            violations.clone(),
+        )
+        .error,
         violations,
-    ))
+        token_usage,
+    }
+}
+
+impl GenerateReadingUseCase {
+    fn priced_usage(
+        &self,
+        provider: &str,
+        model: &str,
+        usage: TokenUsage,
+    ) -> Option<TokenUsage> {
+        let provider_kind = match provider.trim().to_lowercase().as_str() {
+            "openai" => ProviderKind::OpenAi,
+            "anthropic" => ProviderKind::Anthropic,
+            "mistral" => ProviderKind::Mistral,
+            "fake" => ProviderKind::Fake,
+            other => ProviderKind::Custom(other.to_string()),
+        };
+        let capability = self
+            .router
+            .capability_registry()
+            .require(&provider_kind, model)
+            .ok()?;
+        Some(usage.priced(&capability.token_pricing()))
+    }
+
+    fn audit_public_usage(
+        &self,
+        provider: &str,
+        model: &str,
+        usage: Option<TokenUsage>,
+    ) -> Option<PublicTokenUsage> {
+        let usage = self.priced_usage(provider, model, usage?)?;
+        let provider_kind = match provider.trim().to_lowercase().as_str() {
+            "openai" => ProviderKind::OpenAi,
+            "anthropic" => ProviderKind::Anthropic,
+            "mistral" => ProviderKind::Mistral,
+            "fake" => ProviderKind::Fake,
+            other => ProviderKind::Custom(other.to_string()),
+        };
+        let capability = self
+            .router
+            .capability_registry()
+            .require(&provider_kind, model)
+            .ok()?;
+        Some(usage.with_pricing(
+            &capability.token_pricing(),
+            capability.pricing_source.clone(),
+            provider.to_string(),
+            model.to_string(),
+        ))
+    }
+}
+
+fn to_usage_records(usage: &TokenUsage) -> Vec<GenerationTokenUsageRecord> {
+    usage
+        .items
+        .iter()
+        .map(|item| GenerationTokenUsageRecord {
+            usage_type_code: item.usage_type.as_str().to_string(),
+            usage_subtype: item.usage_subtype.clone(),
+            token_count: i32::try_from(item.token_count).unwrap_or(i32::MAX),
+            unit_price_usd_per_mtok: item.unit_price_usd_per_mtok,
+            estimated_cost_usd: item.estimated_cost_usd,
+            provider_metric_name: item.provider_metric_name.clone(),
+        })
+        .collect()
 }

@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::model_usage_tier::ModelUsageTierPolicy;
 use crate::provider::{ProviderKind, ReasoningEffort, StructuredOutputMode};
+use crate::token_usage::TokenPricing;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub struct ProviderModelRef {
@@ -33,6 +34,10 @@ pub enum StructuredOutputAdapterKind {
 pub struct ModelCapability {
     pub provider: ProviderKind,
     pub model: String,
+    #[serde(default)]
+    pub display_name: Option<String>,
+    #[serde(default)]
+    pub api_model_id: Option<String>,
     pub supports_json_schema_strict: bool,
     pub supports_json_object: bool,
     pub supports_reasoning_effort: bool,
@@ -60,6 +65,20 @@ pub struct ModelCapability {
     pub usage_tier_code: Option<String>,
     #[serde(default = "ModelUsageTierPolicy::unrestricted")]
     pub tier_policy: ModelUsageTierPolicy,
+    #[serde(default)]
+    pub input_price_usd_per_mtok: Option<f64>,
+    #[serde(default)]
+    pub output_price_usd_per_mtok: Option<f64>,
+    #[serde(default)]
+    pub cache_read_price_usd_per_mtok: Option<f64>,
+    #[serde(default)]
+    pub cache_write_price_usd_per_mtok: Option<f64>,
+    #[serde(default)]
+    pub reasoning_price_usd_per_mtok: Option<f64>,
+    #[serde(default)]
+    pub pricing_currency: Option<String>,
+    #[serde(default)]
+    pub pricing_source: Option<String>,
 }
 
 impl ModelCapability {
@@ -98,6 +117,20 @@ impl ModelCapability {
             supports_prompt_cache: false,
             max_input_tokens: Some(self.max_input_tokens),
             max_output_tokens: Some(self.max_output_tokens),
+        }
+    }
+
+    pub fn token_pricing(&self) -> TokenPricing {
+        TokenPricing {
+            currency: self
+                .pricing_currency
+                .clone()
+                .unwrap_or_else(|| "USD".to_string()),
+            input_price_usd_per_mtok: self.input_price_usd_per_mtok,
+            output_price_usd_per_mtok: self.output_price_usd_per_mtok,
+            cache_read_price_usd_per_mtok: self.cache_read_price_usd_per_mtok,
+            cache_write_price_usd_per_mtok: self.cache_write_price_usd_per_mtok,
+            reasoning_price_usd_per_mtok: self.reasoning_price_usd_per_mtok,
         }
     }
 }

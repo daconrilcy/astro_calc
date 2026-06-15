@@ -3,7 +3,7 @@ use std::time::Instant;
 use astral_llm_domain::{
     chapter_orchestration::{ChapterGenerationStatus, ReadingPlanChapter},
     generation_response::ReadingChapter,
-    GenerationError, GenerationErrorCode,
+    GenerationError, GenerationErrorCode, TokenUsage,
 };
 
 use crate::engine_defaults::ResolvedEngineParams;
@@ -67,7 +67,7 @@ pub struct ChapterOutcome {
     pub reading_chapter: ReadingChapter,
     pub bundle: PromptBundle,
     pub status: ChapterGenerationStatus,
-    pub route_meta: (String, String, bool, Option<u32>, Option<u32>),
+    pub route_meta: (String, String, bool, Option<TokenUsage>, Option<u32>, Option<u32>),
 }
 
 const MAX_REPETITION_REPAIR_ATTEMPTS: usize = 3;
@@ -108,7 +108,7 @@ pub async fn retry_chapter_on_min_words<F, Fut>(
     (
         ReadingChapter,
         PromptBundle,
-        (String, String, bool, Option<u32>, Option<u32>),
+        (String, String, bool, Option<TokenUsage>, Option<u32>, Option<u32>),
     ),
     GenerationError,
 >
@@ -119,7 +119,7 @@ where
             (
                 ReadingChapter,
                 PromptBundle,
-                (String, String, bool, Option<u32>, Option<u32>),
+                (String, String, bool, Option<TokenUsage>, Option<u32>, Option<u32>),
             ),
             GenerationError,
         >,
@@ -148,7 +148,6 @@ where
         &engine.model,
         ChapterGenerationStatus::Failed,
         None,
-        None,
         started.elapsed().as_millis() as u64,
         Some(
             GenerationErrorCode::SchemaValidationFailed
@@ -171,7 +170,7 @@ pub async fn maybe_repair_repetition<F, Fut>(
     chapter: &ReadingPlanChapter,
     reading_chapter: ReadingChapter,
     bundle: PromptBundle,
-    route_meta: (String, String, bool, Option<u32>, Option<u32>),
+    route_meta: (String, String, bool, Option<TokenUsage>, Option<u32>, Option<u32>),
     quality_thresholds: &PremiumQualityThresholds,
     locale: &str,
     run_id: &str,
@@ -187,7 +186,7 @@ where
             (
                 ReadingChapter,
                 PromptBundle,
-                (String, String, bool, Option<u32>, Option<u32>),
+                (String, String, bool, Option<TokenUsage>, Option<u32>, Option<u32>),
             ),
             GenerationError,
         >,
@@ -265,7 +264,6 @@ where
                     &engine.model,
                     ChapterGenerationStatus::Failed,
                     None,
-                    None,
                     started.elapsed().as_millis() as u64,
                     Some(repair_err.detail().code.as_str().to_string()),
                     Some("repair_repetition"),
@@ -281,7 +279,6 @@ where
         &engine.model,
         ChapterGenerationStatus::Failed,
         best_meta.3,
-        best_meta.4,
         started.elapsed().as_millis() as u64,
         Some(
             GenerationErrorCode::ReadingQualityFailed

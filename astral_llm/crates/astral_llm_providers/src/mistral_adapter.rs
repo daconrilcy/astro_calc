@@ -5,13 +5,13 @@ use serde_json::json;
 
 use astral_llm_domain::{
     provider::{ProviderCapabilities, ProviderKind, StructuredOutputMode},
-    ProviderKind as DomainProviderKind, SafetyMode,
+    ProviderKind as DomainProviderKind, SafetyMode, TokenUsage, TokenUsageItem, TokenUsageType,
 };
 
 use crate::provider_trait::LlmProvider;
 use crate::response_json::{parse_model_output_json, parse_response_payload};
 use crate::types::{
-    PromptMessage, PromptRole, ProviderGenerationRequest, ProviderGenerationResponse, TokenUsage,
+    PromptMessage, PromptRole, ProviderGenerationRequest, ProviderGenerationResponse,
 };
 use crate::LlmProviderError;
 
@@ -156,14 +156,47 @@ fn build_messages(messages: &[PromptMessage]) -> Vec<serde_json::Value> {
 }
 
 fn parse_usage(value: &serde_json::Value) -> TokenUsage {
-    TokenUsage {
-        input_tokens: value
-            .get("prompt_tokens")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0) as u32,
-        output_tokens: value
-            .get("completion_tokens")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0) as u32,
-    }
+    let mut usage = TokenUsage::default();
+    push_usage(
+        &mut usage,
+        TokenUsageType::Input,
+        None,
+        value.get("prompt_tokens").and_then(|v| v.as_u64()),
+        Some("prompt_tokens"),
+    );
+    push_usage(
+        &mut usage,
+        TokenUsageType::Output,
+        None,
+        value.get("completion_tokens").and_then(|v| v.as_u64()),
+        Some("completion_tokens"),
+    );
+    push_usage(
+        &mut usage,
+        TokenUsageType::Cache,
+        Some("read"),
+        value.get("cached_tokens").and_then(|v| v.as_u64()),
+        Some("cached_tokens"),
+    );
+    usage
+}
+
+fn push_usage(
+    usage: &mut TokenUsage,
+    usage_type: TokenUsageType,
+    usage_subtype: Option<&str>,
+    token_count: Option<u64>,
+    metric: Option<&str>,
+) {
+    let Some(token_count) = token_count.filter(|count| *count > 0) else {
+        return;
+    };
+    usage.push(TokenUsageItem {
+        usage_type,
+        usage_subtype: usage_subtype.map(str::to_string),
+        token_count: token_count as u32,
+        provider_metric_name: metric.map(str::to_string),
+        unit_price_usd_per_mtok: None,
+        estimated_cost_usd: None,
+    });
 }

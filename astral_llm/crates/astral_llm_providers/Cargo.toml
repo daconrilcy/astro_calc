@@ -25,3 +25,7 @@ tokio.workspace = true
 [[test]]
 name = "openai_provider_adapter_tests"
 path = "../../../tests/openai_provider_adapter_tests.rs"
+
+[[test]]
+name = "anthropic_mistral_provider_adapter_tests"
+path = "../../../tests/anthropic_mistral_provider_adapter_tests.rs"

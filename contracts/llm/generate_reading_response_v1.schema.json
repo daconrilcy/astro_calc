@@ -130,6 +130,31 @@
       ],
       "type": "object"
     },
+    "PublicTokenUsage": {
+      "properties": {
+        "cost": {
+          "$ref": "#/definitions/TokenCostSummary"
+        },
+        "details": {
+          "items": {
+            "$ref": "#/definitions/TokenUsageItem"
+          },
+          "type": "array"
+        },
+        "engine": {
+          "$ref": "#/definitions/TokenUsageEngine"
+        },
+        "summary": {
+          "$ref": "#/definitions/TokenUsageSummary"
+        }
+      },
+      "required": [
+        "cost",
+        "engine",
+        "summary"
+      ],
+      "type": "object"
+    },
     "QualityMetadata": {
       "properties": {
         "astro_contract_version": {
@@ -239,6 +264,162 @@
         "message"
       ],
       "type": "object"
+    },
+    "TokenCostSummary": {
+      "properties": {
+        "cache_cost": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "currency": {
+          "type": "string"
+        },
+        "estimated_total": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "input_cost": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "output_cost": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "reasoning_cost": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "currency"
+      ],
+      "type": "object"
+    },
+    "TokenUsageEngine": {
+      "properties": {
+        "model": {
+          "type": "string"
+        },
+        "pricing_source": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provider": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "model",
+        "provider"
+      ],
+      "type": "object"
+    },
+    "TokenUsageItem": {
+      "properties": {
+        "estimated_cost_usd": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "provider_metric_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "token_count": {
+          "format": "uint32",
+          "minimum": 0.0,
+          "type": "integer"
+        },
+        "unit_price_usd_per_mtok": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "usage_subtype": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "usage_type": {
+          "$ref": "#/definitions/TokenUsageType"
+        }
+      },
+      "required": [
+        "token_count",
+        "usage_type"
+      ],
+      "type": "object"
+    },
+    "TokenUsageSummary": {
+      "properties": {
+        "cache_tokens": {
+          "format": "uint32",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "input_tokens": {
+          "format": "uint32",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "output_tokens": {
+          "format": "uint32",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "reasoning_tokens": {
+          "format": "uint32",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "TokenUsageType": {
+      "enum": [
+        "input",
+        "output",
+        "cache",
+        "reasoning"
+      ],
+      "type": "string"
     }
   },
   "oneOf": [
@@ -255,6 +436,16 @@
             "success"
           ],
           "type": "string"
+        },
+        "token_usage": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/PublicTokenUsage"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -273,7 +464,20 @@
           "type": "string"
         },
         "status": {
+          "enum": [
+            "safety_rejected"
+          ],
           "type": "string"
+        },
+        "token_usage": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/PublicTokenUsage"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "violations": {
           "items": {
@@ -303,6 +507,16 @@
             "failed"
           ],
           "type": "string"
+        },
+        "token_usage": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/PublicTokenUsage"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [

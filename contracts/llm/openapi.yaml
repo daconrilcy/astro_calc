@@ -56,6 +56,10 @@ paths:
   /v1/runs/{run_id}:
     get:
       summary: Audit d un run
+      description: >
+        Retourne l audit interne enrichi, incluant `token_usage.summary`,
+        `token_usage.cost`, `token_usage.details` et `steps[].token_usage`
+        en plus des agregats legacy `token_input` et `token_output`.
       parameters:
         - name: run_id
           in: path
@@ -64,7 +68,9 @@ paths:
             type: string
       responses:
         "200":
-          description: Enregistrement audit
+          description: >
+            Enregistrement audit avec detail par step, providers/modeles et
+            consommation tokens par type (`input`, `output`, `cache`, `reasoning`).
   /v1/services:
     get:
       summary: Catalogue services d integration (active + beta)
@@ -94,6 +100,9 @@ paths:
   /v1/jobs:
     post:
       summary: Soumettre un job async d integration
+      description: >
+        Les reponses terminales publient un bloc additif `token_usage`
+        (resume + cout estime) sans casser les champs legacy existants.
       security:
         - bearerAuth: []
         - apiKeyAuth: []
@@ -134,6 +143,9 @@ paths:
   /v1/jobs/{run_id}:
     get:
       summary: Statut d un job d integration
+      description: >
+        Les statuts terminaux republient `token_usage` si le resultat metier
+        est disponible, sans detail interne par step.
       security:
         - bearerAuth: []
         - apiKeyAuth: []

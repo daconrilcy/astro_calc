@@ -373,6 +373,9 @@ fn job_replay_response(record: &JobRecord) -> Response {
     if record.status == JobStatus::Completed {
         if let Some(result) = &record.result_json {
             body["result"] = result.clone();
+            if let Some(token_usage) = result.get("token_usage") {
+                body["token_usage"] = token_usage.clone();
+            }
         }
         return (StatusCode::OK, Json(body)).into_response();
     }
@@ -392,6 +395,9 @@ fn job_status_body(record: &JobRecord) -> serde_json::Value {
     if record.status == JobStatus::Completed {
         if let Some(result) = &record.result_json {
             body["result"] = result.clone();
+            if let Some(token_usage) = result.get("token_usage") {
+                body["token_usage"] = token_usage.clone();
+            }
         }
     }
     if let Some(error) = &record.error_json {

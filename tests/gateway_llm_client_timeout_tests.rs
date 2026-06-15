@@ -12,8 +12,11 @@ use tokio::{
 #[tokio::test]
 async fn gateway_llm_client_does_not_retry_horoscope_period_on_http_408() {
     let attempts = Arc::new(AtomicUsize::new(0));
-    let base_url = spawn_stub(attempts.clone(), vec![StubResponse::new(408, "Request Timeout")])
-        .await;
+    let base_url = spawn_stub(
+        attempts.clone(),
+        vec![StubResponse::new(408, "Request Timeout")],
+    )
+    .await;
     let client = HttpLlmClient::new(base_url, None, 5_000).expect("client");
 
     let error = client

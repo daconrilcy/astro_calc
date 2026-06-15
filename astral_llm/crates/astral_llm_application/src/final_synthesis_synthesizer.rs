@@ -10,7 +10,7 @@ use astral_llm_domain::{
     model_usage_tier::ModelRouteContext,
     output_contract::ChapterContract,
     GenerateReadingRequest, GenerationError, GenerationErrorCode, NormalizedAstroFacts,
-    ProductGenerationPolicy, SafetyMode, SafetyPolicy,
+    ProductGenerationPolicy, SafetyMode, SafetyPolicy, TokenUsage, TokenUsageType,
 };
 use astral_llm_infra::SharedCanonicalCatalog;
 use astral_llm_providers::{GenerationMetadata, ProviderGenerationRequest};
@@ -38,6 +38,7 @@ use astral_llm_providers::PromptMessage;
 
 pub struct FinalSynthesisResult {
     pub chapter: ReadingChapter,
+    pub token_usage: Option<TokenUsage>,
     pub input_tokens: Option<u32>,
     pub output_tokens: Option<u32>,
 }
@@ -268,11 +269,20 @@ impl<'a> FinalSynthesisSynthesizer<'a> {
             )
         })?;
 
-        let input_tokens = route.response.usage.as_ref().map(|u| u.input_tokens);
-        let output_tokens = route.response.usage.as_ref().map(|u| u.output_tokens);
+        let input_tokens = route
+            .response
+            .usage
+            .as_ref()
+            .and_then(|u| u.tokens_for(TokenUsageType::Input));
+        let output_tokens = route
+            .response
+            .usage
+            .as_ref()
+            .and_then(|u| u.tokens_for(TokenUsageType::Output));
 
         Ok(FinalSynthesisResult {
             chapter: reading_chapter,
+            token_usage: route.response.usage.clone(),
             input_tokens,
             output_tokens,
         })

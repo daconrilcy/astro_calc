@@ -47,8 +47,9 @@ pub use mercure_publisher::MercurePublisher;
 pub use model_catalog::{load_active_provider_codes, load_model_capabilities};
 pub use payload_redaction::{redact_request_for_storage, redact_value};
 pub use persistence::{
-    error_code, hash_json, GenerationPromptTraceRecord, GenerationRunRecord, IdempotencyClaim,
-    IdempotencyHit, RunPersistence, RunStatus, SafetyStatus,
+    error_code, hash_json, GenerationPromptTraceRecord, GenerationRunRecord,
+    GenerationTokenUsageRecord, IdempotencyClaim, IdempotencyHit, RunPersistence, RunStatus,
+    SafetyStatus,
 };
 pub use provider_catalog::{
     LlmProviderModelRow, LlmProviderRow, ProviderCatalogRepository, UpsertProviderModelInput,

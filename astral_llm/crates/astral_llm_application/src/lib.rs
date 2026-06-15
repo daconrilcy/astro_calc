@@ -89,12 +89,11 @@ pub use generation_trace::GenerationTraceContext;
 pub use horoscope::{
     build_calculation_request_for_service, build_interpretation_request,
     build_period_calculation_request_for_service, build_period_writer_request,
-    daily_writer_response, period_editorial_audit,
-    period_style_editor_max_output_tokens, period_writer_max_output_tokens,
-    period_writer_response_with_quality_loop, score_calculation,
+    daily_writer_response, period_editorial_audit, period_style_editor_max_output_tokens,
+    period_writer_max_output_tokens, period_writer_response_with_quality_loop, score_calculation,
     validate_horoscope_response_schema, validate_period_public_request,
-    validate_period_response_contract, validate_public_request,
-    validate_response_evidence, HoroscopePeriodPublicRequest, HoroscopePublicRequest,
+    validate_period_response_contract, validate_public_request, validate_response_evidence,
+    HoroscopePeriodPublicRequest, HoroscopePublicRequest,
 };
 pub use integration_job_executor::{
     supports_integration_service, IntegrationJobExecutor, UnifiedReadingOutcome,

@@ -58,45 +58,47 @@ impl GenerationTraceContext {
             .count();
 
         match response {
-            GenerateReadingResponse::Success(success) => {
+            GenerateReadingResponse::Success { reading, .. } => {
                 tracing::info!(
                     target: TARGET,
                     run_id = %self.run_id,
                     request_id = self.request_id.as_deref().unwrap_or("-"),
                     product_code = %self.product_code,
                     latency_ms,
-                    chapter_count = success.reading.chapters.len(),
+                    chapter_count = reading.chapters.len(),
                     steps_generated,
                     steps_failed,
                     selected_domains = ?audit.selected_domains,
                     "generation succeeded"
                 );
             }
-            GenerateReadingResponse::SafetyRejected(rejected) => {
+            GenerateReadingResponse::SafetyRejected {
+                error, violations, ..
+            } => {
                 tracing::warn!(
                     target: TARGET,
                     run_id = %self.run_id,
                     request_id = self.request_id.as_deref().unwrap_or("-"),
                     product_code = %self.product_code,
                     latency_ms,
-                    error_code = %rejected.error.code,
-                    rule_id = rejected.error.rule_id.as_deref().unwrap_or("-"),
-                    violations = ?rejected.violations,
+                    error_code = %error.code,
+                    rule_id = error.rule_id.as_deref().unwrap_or("-"),
+                    violations = ?violations,
                     steps_generated,
                     steps_failed,
                     "generation safety rejected"
                 );
             }
-            GenerateReadingResponse::Failed(failed) => {
+            GenerateReadingResponse::Failed { error, .. } => {
                 tracing::error!(
                     target: TARGET,
                     run_id = %self.run_id,
                     request_id = self.request_id.as_deref().unwrap_or("-"),
                     product_code = %self.product_code,
                     latency_ms,
-                    error_code = failed.error.code.as_str(),
-                    error_message = %failed.error.message,
-                    error_details = ?failed.error.details,
+                    error_code = error.code.as_str(),
+                    error_message = %error.message,
+                    error_details = ?error.details,
                     steps_generated,
                     steps_failed,
                     selected_domains = ?audit.selected_domains,

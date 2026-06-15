@@ -145,9 +145,9 @@ impl HttpLlmClient {
                 status,
                 truncate_for_error(&body)
             ))),
-            Err(LlmHttpError::Transport(message)) => {
-                Err(GatewayError::upstream(format!("llm request failed: {message}")))
-            }
+            Err(LlmHttpError::Transport(message)) => Err(GatewayError::upstream(format!(
+                "llm request failed: {message}"
+            ))),
         }
     }
 

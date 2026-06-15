@@ -224,7 +224,7 @@ async fn premium_e2e_fails_without_interpretive_payload() {
     let request = premium_request(premium_payload_with_scores_only());
     let response = use_case.execute(request).await;
     assert!(
-        matches!(response, GenerateReadingResponse::Failed(_)),
+        matches!(response, GenerateReadingResponse::Failed { .. }),
         "expected failure when payload has no interpretive facts"
     );
 }
@@ -245,11 +245,8 @@ async fn premium_e2e_minimal_placements_fails_diversity() {
     let request = premium_request(premium_payload_with_placements());
     let response = use_case.execute(request).await;
     match response {
-        GenerateReadingResponse::Failed(failed) => {
-            assert_eq!(
-                failed.error.code.as_str(),
-                "PREMIUM_EVIDENCE_DIVERSITY_FAILED"
-            );
+        GenerateReadingResponse::Failed { error, .. } => {
+            assert_eq!(error.code.as_str(), "PREMIUM_EVIDENCE_DIVERSITY_FAILED");
         }
         other => panic!("expected PREMIUM_EVIDENCE_DIVERSITY_FAILED, got {other:?}"),
     }
@@ -262,9 +259,11 @@ async fn premium_e2e_succeeds_with_rich_payload_and_summary() {
     let response = use_case.execute(request).await;
 
     match response {
-        GenerateReadingResponse::Success(success) => {
-            assert_eq!(success.reading.chapters.len(), 2);
-            for chapter in &success.reading.chapters {
+        GenerateReadingResponse::Success {
+            reading, ..
+        } => {
+            assert_eq!(reading.chapters.len(), 2);
+            for chapter in &reading.chapters {
                 let has_interpretive = chapter.astro_basis.iter().any(|b| {
                     b.fact_id
                         .as_ref()
@@ -276,7 +275,7 @@ async fn premium_e2e_succeeds_with_rich_payload_and_summary() {
                     chapter.code
                 );
             }
-            let summary = &success.reading.summary;
+            let summary = &reading.summary;
             assert!(!summary
                 .short_text
                 .to_lowercase()

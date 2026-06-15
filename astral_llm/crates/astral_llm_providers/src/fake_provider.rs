@@ -61,10 +61,7 @@ impl LlmProvider for FakeProvider {
             Ok(ProviderGenerationResponse {
                 raw_text: json.to_string(),
                 parsed_json: Some(json),
-                usage: Some(TokenUsage {
-                    input_tokens: 120,
-                    output_tokens: 450,
-                }),
+                usage: Some(TokenUsage::simple(120, 450)),
                 provider_metadata: serde_json::json!({ "fake": true }),
                 model_used: request.model,
                 provider_kind: DomainProviderKind::Fake,

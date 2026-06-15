@@ -26,6 +26,7 @@ pub mod runtime_env;
 pub mod safety_policy;
 pub mod service_limits;
 pub mod text_reprocessing;
+pub mod token_usage;
 
 pub use astro_fact::*;
 pub use astrologer_profile::*;
@@ -53,3 +54,4 @@ pub use runtime_env::*;
 pub use safety_policy::*;
 pub use service_limits::ServiceLimits;
 pub use text_reprocessing::*;
+pub use token_usage::*;

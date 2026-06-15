@@ -164,10 +164,7 @@ fn provider_response_from_json(value: Value) -> ProviderGenerationResponse {
     ProviderGenerationResponse {
         raw_text: value.to_string(),
         parsed_json: Some(value),
-        usage: Some(TokenUsage {
-            input_tokens: 100,
-            output_tokens: 200,
-        }),
+        usage: Some(TokenUsage::simple(100, 200)),
         provider_metadata: json!({ "fixture": true }),
         model_used: "gpt-5-mini".into(),
         provider_kind: ProviderKind::OpenAi,
@@ -178,10 +175,7 @@ fn provider_response_from_raw_text(raw_text: &str) -> ProviderGenerationResponse
     ProviderGenerationResponse {
         raw_text: raw_text.to_string(),
         parsed_json: None,
-        usage: Some(TokenUsage {
-            input_tokens: 80,
-            output_tokens: 120,
-        }),
+        usage: Some(TokenUsage::simple(80, 120)),
         provider_metadata: json!({ "fixture": true }),
         model_used: "gpt-5-mini".into(),
         provider_kind: ProviderKind::OpenAi,
@@ -213,7 +207,7 @@ async fn run_audit_stores_prompt_traces_for_single_pass_and_chapter_modes() {
         .await;
     assert!(matches!(
         single.response,
-        astral_llm_domain::GenerateReadingResponse::Success(_)
+        astral_llm_domain::GenerateReadingResponse::Success { .. }
     ));
 
     let single_audit = persistence
@@ -239,7 +233,7 @@ async fn run_audit_stores_prompt_traces_for_single_pass_and_chapter_modes() {
         .await;
     assert!(matches!(
         chapter.response,
-        astral_llm_domain::GenerateReadingResponse::Success(_)
+        astral_llm_domain::GenerateReadingResponse::Success { .. }
     ));
 
     let chapter_audit = persistence

@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use astral_llm_domain::{provider::ReasoningEffort, SafetyMode};
+use astral_llm_domain::{provider::ReasoningEffort, SafetyMode, TokenUsageType};
 use astral_llm_providers::{
     GenerationMetadata, LlmProvider, LlmProviderError, OpenAiProvider, PromptMessage, PromptRole,
     ProviderGenerationRequest,
@@ -131,6 +131,46 @@ async fn openai_provider_uses_top_level_output_text() {
             .and_then(|json| json.get("ok")),
         Some(&serde_json::json!(true))
     );
+    let usage = response.usage.expect("usage");
+    assert_eq!(usage.tokens_for(TokenUsageType::Input), Some(12));
+    assert_eq!(usage.tokens_for(TokenUsageType::Output), Some(7));
+    handle.await.expect("stub join");
+}
+
+#[tokio::test]
+async fn openai_provider_maps_input_output_cache_and_reasoning_usage() {
+    let (base_url, _captured, handle) = spawn_openai_stub(serde_json::json!({
+        "output_text": "{\"ok\":true}",
+        "usage": {
+            "input_tokens": 100,
+            "input_tokens_details": { "cached_tokens": 25 },
+            "output_tokens": 40,
+            "output_tokens_details": { "reasoning_tokens": 9 }
+        }
+    }))
+    .await;
+    let provider = OpenAiProvider::with_base_url(SecretString::from("test-key"), base_url);
+
+    let response = provider
+        .generate(request_with_reasoning(None))
+        .await
+        .expect("provider response");
+
+    let usage = response.usage.expect("usage");
+    assert_eq!(usage.tokens_for(TokenUsageType::Input), Some(100));
+    assert_eq!(usage.tokens_for(TokenUsageType::Output), Some(40));
+    assert_eq!(usage.tokens_for(TokenUsageType::Cache), Some(25));
+    assert_eq!(usage.tokens_for(TokenUsageType::Reasoning), Some(9));
+    assert!(usage.items.iter().any(|item| {
+        item.usage_type == TokenUsageType::Cache
+            && item.usage_subtype.as_deref() == Some("read")
+            && item.provider_metric_name.as_deref() == Some("input_tokens_details.cached_tokens")
+    }));
+    assert!(usage.items.iter().any(|item| {
+        item.usage_type == TokenUsageType::Reasoning
+            && item.provider_metric_name.as_deref()
+                == Some("output_tokens_details.reasoning_tokens")
+    }));
     handle.await.expect("stub join");
 }
 

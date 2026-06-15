@@ -218,7 +218,7 @@ async fn main() {
                 let envelope = unified_result_envelope(calculation, &reading, reading_completeness);
                 let status = job_status_from_reading(&reading);
                 match &reading {
-                    GenerateReadingResponse::Success(_) => {
+                    GenerateReadingResponse::Success { .. } => {
                         if let Err(err) =
                             jobs.mark_completed(job.job_id, gen_run_id, &envelope).await
                         {
@@ -239,7 +239,7 @@ async fn main() {
                         )
                         .await;
                     }
-                    GenerateReadingResponse::SafetyRejected(_) => {
+                    GenerateReadingResponse::SafetyRejected { .. } => {
                         let err = job_error_from_reading(&reading);
                         if let Err(persist_err) = jobs
                             .mark_safety_rejected(job.job_id, gen_run_id, &envelope, &err)
@@ -262,7 +262,7 @@ async fn main() {
                         )
                         .await;
                     }
-                    GenerateReadingResponse::Failed(_) => {
+                    GenerateReadingResponse::Failed { .. } => {
                         let err = job_error_from_reading(&reading);
                         let retry = job.attempt_count < job.max_attempts;
                         let _ = jobs.mark_failed(job.job_id, &err, retry).await;

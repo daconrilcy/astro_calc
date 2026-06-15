@@ -60,10 +60,7 @@ impl LlmProvider for FixtureOpenAiProvider {
         Ok(ProviderGenerationResponse {
             raw_text,
             parsed_json: Some(self.fixture.clone()),
-            usage: Some(TokenUsage {
-                input_tokens: 100,
-                output_tokens: 200,
-            }),
+            usage: Some(TokenUsage::simple(100, 200)),
             provider_metadata: serde_json::json!({ "fixture": true }),
             model_used: request.model,
             provider_kind: ProviderKind::OpenAi,
@@ -260,10 +257,7 @@ async fn horoscope_daily_repairs_non_json_real_provider_response_without_fake_fa
     responses.push_back(ProviderGenerationResponse {
         raw_text: response_fixture.to_string(),
         parsed_json: Some(response_fixture),
-        usage: Some(TokenUsage {
-            input_tokens: 120,
-            output_tokens: 240,
-        }),
+        usage: Some(TokenUsage::simple(120, 240)),
         provider_metadata: serde_json::json!({ "fixture": true, "repair": true }),
         model_used: "repair-placeholder".to_string(),
         provider_kind: ProviderKind::OpenAi,
@@ -451,10 +445,7 @@ async fn horoscope_period_quality_loop_stops_after_one_retry() {
     responses.push_back(ProviderGenerationResponse {
         raw_text: invalid_response.to_string(),
         parsed_json: Some(invalid_response),
-        usage: Some(TokenUsage {
-            input_tokens: 300,
-            output_tokens: 500,
-        }),
+        usage: Some(TokenUsage::simple(300, 500)),
         provider_metadata: serde_json::json!({ "fixture": true, "attempt": 1 }),
         model_used: "writer".to_string(),
         provider_kind: ProviderKind::OpenAi,
@@ -469,10 +460,7 @@ async fn horoscope_period_quality_loop_stops_after_one_retry() {
             second_invalid["watch_windows"] = serde_json::json!([]);
             second_invalid
         }),
-        usage: Some(TokenUsage {
-            input_tokens: 200,
-            output_tokens: 400,
-        }),
+        usage: Some(TokenUsage::simple(200, 400)),
         provider_metadata: serde_json::json!({ "fixture": true, "attempt": 2 }),
         model_used: "editor".to_string(),
         provider_kind: ProviderKind::OpenAi,

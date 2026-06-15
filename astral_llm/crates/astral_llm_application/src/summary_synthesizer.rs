@@ -6,6 +6,7 @@ use astral_llm_domain::{
     generation_response::{ReadingChapter, ReadingSummary, SummaryProviderResponse},
     model_usage_tier::ModelRouteContext,
     GenerateReadingRequest, GenerationError, GenerationErrorCode, SafetyMode, SafetyPolicy,
+    TokenUsage, TokenUsageType,
 };
 use astral_llm_infra::SharedCanonicalCatalog;
 use astral_llm_providers::{
@@ -59,6 +60,7 @@ const ASTRO_SUMMARY_MARKERS: &[&str] = &[
 
 pub struct SummarySynthesisResult {
     pub summary: ReadingSummary,
+    pub token_usage: Option<TokenUsage>,
     pub input_tokens: Option<u32>,
     pub output_tokens: Option<u32>,
 }
@@ -222,17 +224,37 @@ impl<'a> SummarySynthesizer<'a> {
             )
         })?;
 
-        let input_tokens = route.response.usage.as_ref().map(|u| u.input_tokens);
-        let output_tokens = route.response.usage.as_ref().map(|u| u.output_tokens);
+        let input_tokens = route.response.usage.as_ref().and_then(|u| u.input_tokens());
+        let output_tokens = route
+            .response
+            .usage
+            .as_ref()
+            .and_then(|u| u.output_tokens());
 
         Ok(SummarySynthesisResult {
             summary: ReadingSummary {
                 title: summary.title,
                 short_text: summary.short_text,
             },
+            token_usage: route.response.usage.clone(),
             input_tokens,
             output_tokens,
         })
+    }
+}
+
+trait LegacyTokenUsageAccess {
+    fn input_tokens(&self) -> Option<u32>;
+    fn output_tokens(&self) -> Option<u32>;
+}
+
+impl LegacyTokenUsageAccess for TokenUsage {
+    fn input_tokens(&self) -> Option<u32> {
+        self.tokens_for(TokenUsageType::Input)
+    }
+
+    fn output_tokens(&self) -> Option<u32> {
+        self.tokens_for(TokenUsageType::Output)
     }
 }
 

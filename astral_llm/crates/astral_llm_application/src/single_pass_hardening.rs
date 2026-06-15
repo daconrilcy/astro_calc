@@ -44,7 +44,7 @@ impl GenerateReadingUseCase {
         let mut last_violations: Vec<String> = Vec::new();
 
         for attempt in 0..max_attempts {
-            let mut reading = self
+            let single_pass = self
                 .generate_single_pass(
                     request,
                     engine,
@@ -57,6 +57,21 @@ impl GenerateReadingUseCase {
                     repair_instruction,
                 )
                 .await?;
+            audit.record_chapter_step(
+                chapter_code,
+                &single_pass.used_provider,
+                &single_pass.used_model,
+                if attempt > 0 {
+                    astral_llm_domain::ChapterGenerationStatus::Repaired
+                } else {
+                    astral_llm_domain::ChapterGenerationStatus::Generated
+                },
+                single_pass.token_usage.clone(),
+                single_pass.latency_ms,
+                None,
+                Some("single_pass_generate"),
+            );
+            let mut reading = single_pass.reading;
 
             let post_audit =
                 post_process_single_pass_reading(&mut reading, request, interpretation);
@@ -67,6 +82,7 @@ impl GenerateReadingUseCase {
                     provider: reading.quality.used_provider.clone(),
                     model: reading.quality.used_model.clone(),
                     status: astral_llm_domain::ChapterGenerationStatus::Repaired,
+                    token_usage: None,
                     input_tokens: None,
                     output_tokens: None,
                     latency_ms: None,
@@ -83,6 +99,7 @@ impl GenerateReadingUseCase {
                     provider: reading.quality.used_provider.clone(),
                     model: reading.quality.used_model.clone(),
                     status: astral_llm_domain::ChapterGenerationStatus::Repaired,
+                    token_usage: None,
                     input_tokens: None,
                     output_tokens: None,
                     latency_ms: None,
@@ -100,6 +117,7 @@ impl GenerateReadingUseCase {
                     provider: reading.quality.used_provider.clone(),
                     model: reading.quality.used_model.clone(),
                     status: astral_llm_domain::ChapterGenerationStatus::Repaired,
+                    token_usage: None,
                     input_tokens: None,
                     output_tokens: None,
                     latency_ms: None,
@@ -123,6 +141,7 @@ impl GenerateReadingUseCase {
                             provider: reading.quality.used_provider.clone(),
                             model: reading.quality.used_model.clone(),
                             status: astral_llm_domain::ChapterGenerationStatus::Repaired,
+                            token_usage: None,
                             input_tokens: None,
                             output_tokens: None,
                             latency_ms: None,
@@ -156,6 +175,7 @@ impl GenerateReadingUseCase {
                             provider: reading.quality.used_provider.clone(),
                             model: reading.quality.used_model.clone(),
                             status: astral_llm_domain::ChapterGenerationStatus::Repaired,
+                            token_usage: None,
                             input_tokens: None,
                             output_tokens: None,
                             latency_ms: None,
@@ -182,6 +202,7 @@ impl GenerateReadingUseCase {
                             provider: reading.quality.used_provider.clone(),
                             model: reading.quality.used_model.clone(),
                             status: astral_llm_domain::ChapterGenerationStatus::Repaired,
+                            token_usage: None,
                             input_tokens: None,
                             output_tokens: None,
                             latency_ms: None,

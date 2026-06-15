@@ -6,13 +6,16 @@ use astral_llm_domain::{
     provider::{ProviderKind, ReasoningEffort, StructuredOutputMode},
 };
 
-const MODEL_SELECT: &str = "SELECT m.id, m.provider, m.model, m.catalog_notes, \
+const MODEL_SELECT: &str = "SELECT m.id, m.provider, m.model, m.model_code, m.display_name, m.api_model_id, m.catalog_notes, \
     m.supports_json_schema_strict, m.supports_json_object, \
     m.supports_reasoning_effort, m.supports_streaming, \
     m.max_input_tokens, m.max_output_tokens, m.structured_output_adapter, \
     m.storage_disable_supported, m.is_active, m.supports_temperature, m.reasoning_output_reserve_min, \
     m.reasoning_effort_subtask, m.reasoning_effort_primary, m.reasoning_effort_oracle, \
     m.usage_tier_code, \
+    c.input_price_usd_per_mtok, c.output_price_usd_per_mtok, \
+    c.cache_read_price_usd_per_mtok, c.cache_write_price_usd_per_mtok, \
+    c.reasoning_price_usd_per_mtok, c.pricing_currency, c.source_ref AS pricing_source, \
     COALESCE(t.allows_primary_reading, true) AS allows_primary_reading, \
     COALESCE(t.allows_subtask, true) AS allows_subtask, \
     COALESCE(t.allows_oracle_benchmark, false) AS allows_oracle_benchmark";
@@ -31,6 +34,9 @@ pub struct LlmProviderModelRow {
     pub id: i32,
     pub provider: String,
     pub model: String,
+    pub model_code: Option<String>,
+    pub display_name: Option<String>,
+    pub api_model_id: Option<String>,
     pub catalog_notes: Option<String>,
     pub supports_json_schema_strict: bool,
     pub supports_json_object: bool,
@@ -47,6 +53,13 @@ pub struct LlmProviderModelRow {
     pub reasoning_effort_primary: Option<String>,
     pub reasoning_effort_oracle: Option<String>,
     pub usage_tier_code: Option<String>,
+    pub input_price_usd_per_mtok: Option<f64>,
+    pub output_price_usd_per_mtok: Option<f64>,
+    pub cache_read_price_usd_per_mtok: Option<f64>,
+    pub cache_write_price_usd_per_mtok: Option<f64>,
+    pub reasoning_price_usd_per_mtok: Option<f64>,
+    pub pricing_currency: Option<String>,
+    pub pricing_source: Option<String>,
     pub allows_primary_reading: bool,
     pub allows_subtask: bool,
     pub allows_oracle_benchmark: bool,
@@ -54,6 +67,9 @@ pub struct LlmProviderModelRow {
 
 #[derive(Debug, Clone, Default)]
 pub struct UpsertProviderModelInput {
+    pub model_code: Option<String>,
+    pub display_name: Option<String>,
+    pub api_model_id: Option<String>,
     pub supports_json_schema_strict: bool,
     pub supports_json_object: bool,
     pub supports_reasoning_effort: bool,
@@ -153,6 +169,7 @@ impl ProviderCatalogRepository {
                 let sql = format!(
                     "{MODEL_SELECT} FROM llm_provider_models m \
                      INNER JOIN llm_providers p ON p.id = m.provider_id \
+                     LEFT JOIN llm_model_characteristics c ON c.model_id = m.id AND c.is_current = true \
                      LEFT JOIN llm_model_usage_tiers t ON t.tier_code = m.usage_tier_code \
                      WHERE p.provider_code = $1 AND m.is_active = true AND p.is_active = true \
                      ORDER BY m.model"
@@ -166,6 +183,7 @@ impl ProviderCatalogRepository {
                 let sql = format!(
                     "{MODEL_SELECT} FROM llm_provider_models m \
                      INNER JOIN llm_providers p ON p.id = m.provider_id \
+                     LEFT JOIN llm_model_characteristics c ON c.model_id = m.id AND c.is_current = true \
                      LEFT JOIN llm_model_usage_tiers t ON t.tier_code = m.usage_tier_code \
                      WHERE p.provider_code = $1 ORDER BY m.model"
                 );
@@ -178,6 +196,7 @@ impl ProviderCatalogRepository {
                 let sql = format!(
                     "{MODEL_SELECT} FROM llm_provider_models m \
                      INNER JOIN llm_providers p ON p.id = m.provider_id \
+                     LEFT JOIN llm_model_characteristics c ON c.model_id = m.id AND c.is_current = true \
                      LEFT JOIN llm_model_usage_tiers t ON t.tier_code = m.usage_tier_code \
                      WHERE m.is_active = true AND p.is_active = true \
                      ORDER BY m.provider, m.model"
@@ -187,6 +206,7 @@ impl ProviderCatalogRepository {
             (None, true) => {
                 let sql = format!(
                     "{MODEL_SELECT} FROM llm_provider_models m \
+                     LEFT JOIN llm_model_characteristics c ON c.model_id = m.id AND c.is_current = true \
                      LEFT JOIN llm_model_usage_tiers t ON t.tier_code = m.usage_tier_code \
                      ORDER BY m.provider, m.model"
                 );
@@ -209,21 +229,34 @@ impl ProviderCatalogRepository {
 
         let sql = format!(
             "INSERT INTO llm_provider_models ( \
-                provider, provider_id, model, catalog_notes, usage_tier_code, \
+                provider, provider_id, model, model_code, display_name, api_model_id, catalog_notes, usage_tier_code, \
                 supports_json_schema_strict, supports_json_object, supports_reasoning_effort, \
                 supports_streaming, max_input_tokens, max_output_tokens, \
                 structured_output_adapter, storage_disable_supported, is_active \
-             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) \
-             RETURNING id, provider, model, catalog_notes, \
+             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) \
+             RETURNING id, provider, model, model_code, display_name, api_model_id, catalog_notes, \
              supports_json_schema_strict, supports_json_object, supports_reasoning_effort, \
              supports_streaming, max_input_tokens, max_output_tokens, structured_output_adapter, \
              storage_disable_supported, is_active, usage_tier_code, \
+             NULL::double precision AS input_price_usd_per_mtok, NULL::double precision AS output_price_usd_per_mtok, \
+             NULL::double precision AS cache_read_price_usd_per_mtok, NULL::double precision AS cache_write_price_usd_per_mtok, \
+             NULL::double precision AS reasoning_price_usd_per_mtok, NULL::text AS pricing_currency, NULL::text AS pricing_source, \
              true AS allows_primary_reading, true AS allows_subtask, false AS allows_oracle_benchmark"
         );
         sqlx::query_as(&sql)
             .bind(provider_code.trim().to_lowercase())
             .bind(provider_id)
             .bind(model.trim())
+            .bind(input.model_code.clone().unwrap_or_else(|| model.trim().to_string()))
+            .bind(
+                input
+                    .display_name
+                    .clone()
+                    .unwrap_or_else(|| model.trim().to_string()),
+            )
+            .bind(
+                input.api_model_id.clone().unwrap_or_else(|| model.trim().to_string()),
+            )
             .bind(&input.catalog_notes)
             .bind(&input.usage_tier_code)
             .bind(input.supports_json_schema_strict)
@@ -315,6 +348,8 @@ pub fn row_to_capability(row: &LlmProviderModelRow) -> Option<ModelCapability> {
     Some(ModelCapability {
         provider,
         model: row.model.clone(),
+        display_name: row.display_name.clone(),
+        api_model_id: row.api_model_id.clone(),
         supports_json_schema_strict: row.supports_json_schema_strict,
         supports_json_object: row.supports_json_object,
         supports_reasoning_effort: row.supports_reasoning_effort,
@@ -349,6 +384,13 @@ pub fn row_to_capability(row: &LlmProviderModelRow) -> Option<ModelCapability> {
             .and_then(ReasoningEffort::parse_api_value),
         usage_tier_code: row.usage_tier_code.clone(),
         tier_policy,
+        input_price_usd_per_mtok: row.input_price_usd_per_mtok,
+        output_price_usd_per_mtok: row.output_price_usd_per_mtok,
+        cache_read_price_usd_per_mtok: row.cache_read_price_usd_per_mtok,
+        cache_write_price_usd_per_mtok: row.cache_write_price_usd_per_mtok,
+        reasoning_price_usd_per_mtok: row.reasoning_price_usd_per_mtok,
+        pricing_currency: row.pricing_currency.clone(),
+        pricing_source: row.pricing_source.clone(),
     })
 }
 

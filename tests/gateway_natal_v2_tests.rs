@@ -6,7 +6,7 @@ use astral_gateway::{
 };
 use astral_llm_domain::{
     generation_request::AudienceLevel,
-    generation_response::{ConfidenceLevel, GenerateReadingResponse, StructuredReadingResponse},
+    generation_response::{ConfidenceLevel, GenerateReadingResponse},
     output_contract::GenerationMode,
     GenerateReadingRequest, NatalReadingResponse, ReadingChapter, ReadingSummary,
 };
@@ -63,40 +63,39 @@ impl astral_gateway::ports::LlmPort for FakeLlm {
         &self,
         request: &GenerateReadingRequest,
     ) -> Result<GenerateReadingResponse, astral_gateway::error::GatewayError> {
-        Ok(GenerateReadingResponse::Success(
-            StructuredReadingResponse {
-                run_id: "run-test".into(),
-                reading: NatalReadingResponse {
-                    schema_version: "natal_reading_v1".into(),
-                    language: request.product_context.user_language.clone(),
-                    reading_type: request.product_context.product_code.clone(),
-                    summary: ReadingSummary {
-                        title: "Test".into(),
-                        short_text: "Test".into(),
-                    },
-                    chapters: vec![ReadingChapter {
-                        code: "identity".into(),
-                        title: "Identity".into(),
-                        body: "Body".into(),
-                        astro_basis: vec![],
-                        confidence: ConfidenceLevel::Medium,
-                        safety_flags: vec![],
-                    }],
-                    legal: astral_llm_domain::LegalBlock {
-                        disclaimer: "Disclaimer".into(),
-                    },
-                    quality: astral_llm_domain::QualityMetadata {
-                        used_provider: "fake".into(),
-                        used_model: "fake".into(),
-                        generation_mode: GenerationMode::SinglePass,
-                        prompt_family: "test".into(),
-                        prompt_version: "v1".into(),
-                        astro_contract_version: request.astro_result.contract_version.clone(),
-                        fallback_used: false,
-                    },
+        Ok(GenerateReadingResponse::Success {
+            run_id: "run-test".into(),
+            reading: NatalReadingResponse {
+                schema_version: "natal_reading_v1".into(),
+                language: request.product_context.user_language.clone(),
+                reading_type: request.product_context.product_code.clone(),
+                summary: ReadingSummary {
+                    title: "Test".into(),
+                    short_text: "Test".into(),
+                },
+                chapters: vec![ReadingChapter {
+                    code: "identity".into(),
+                    title: "Identity".into(),
+                    body: "Body".into(),
+                    astro_basis: vec![],
+                    confidence: ConfidenceLevel::Medium,
+                    safety_flags: vec![],
+                }],
+                legal: astral_llm_domain::LegalBlock {
+                    disclaimer: "Disclaimer".into(),
+                },
+                quality: astral_llm_domain::QualityMetadata {
+                    used_provider: "fake".into(),
+                    used_model: "fake".into(),
+                    generation_mode: GenerationMode::SinglePass,
+                    prompt_family: "test".into(),
+                    prompt_version: "v1".into(),
+                    astro_contract_version: request.astro_result.contract_version.clone(),
+                    fallback_used: false,
                 },
             },
-        ))
+            token_usage: None,
+        })
     }
 }
 
@@ -194,8 +193,8 @@ async fn natal_gateway_respects_explicit_audience_level() {
         .expect("response");
 
     match response.reading {
-        GenerateReadingResponse::Success(success) => {
-            assert_eq!(success.reading.language, "fr");
+        GenerateReadingResponse::Success { reading, .. } => {
+            assert_eq!(reading.language, "fr");
         }
         other => panic!("unexpected reading response: {other:?}"),
     }

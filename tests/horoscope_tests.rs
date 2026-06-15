@@ -6,9 +6,9 @@ use astral_llm_api::integration_routes::service_has_v1_orchestrator;
 use astral_llm_application::horoscope::{
     build_period_writer_request, fake_period_writer_response, period_writer_messages,
     postprocess_period_provider_response, validate_period_public_request,
-    validate_period_response_contract,
-    validate_period_writer_request_schema, HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE,
-    HOROSCOPE_FREE_DAILY_SERVICE_CODE, HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+    validate_period_response_contract, validate_period_writer_request_schema,
+    HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE, HOROSCOPE_FREE_DAILY_SERVICE_CODE,
+    HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
     HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE, HOROSCOPE_SERVICE_CODE,
 };
@@ -329,7 +329,10 @@ fn period_system_prompts_forbid_meta_comments_about_output() {
     let premium_system = &premium_messages[0].content;
 
     for prompt in [basic_system, premium_system] {
-        assert!(prompt.contains("Never comment on the result") || prompt.contains("Ne commente jamais le résultat"));
+        assert!(
+            prompt.contains("Never comment on the result")
+                || prompt.contains("Ne commente jamais le résultat")
+        );
         assert!(prompt.contains("JSON"));
         assert!(prompt.contains("schema") || prompt.contains("schéma"));
         assert!(prompt.contains("timeout"));

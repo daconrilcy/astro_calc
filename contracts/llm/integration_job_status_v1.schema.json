@@ -40,6 +40,10 @@
       "type": "integer",
       "minimum": 0
     },
+    "token_usage": {
+      "type": ["object", "null"],
+      "description": "Resume token_usage additif au niveau job, derive du reading terminal."
+    },
     "result": {
       "description": "Enveloppe unifiee { calculation?, reading, reading_completeness? } si terminal success."
     },

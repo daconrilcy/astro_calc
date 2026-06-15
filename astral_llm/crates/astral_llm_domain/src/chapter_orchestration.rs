@@ -1,6 +1,8 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::{PublicTokenUsage, TokenUsage};
+
 /// Code interne pour l'etape de synthese finale (metadata provider).
 pub const READING_SUMMARY_STEP_CODE: &str = "__summary__";
 
@@ -54,8 +56,23 @@ pub struct GenerationStepRecord {
     pub provider: String,
     pub model: String,
     pub status: ChapterGenerationStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub token_usage: Option<TokenUsage>,
     pub input_tokens: Option<u32>,
     pub output_tokens: Option<u32>,
     pub latency_ms: Option<u32>,
     pub error_code: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct GenerationStepTokenUsageView {
+    pub step_type: String,
+    pub chapter_code: Option<String>,
+    pub provider: String,
+    pub model: String,
+    pub status: ChapterGenerationStatus,
+    pub latency_ms: Option<u32>,
+    pub error_code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub token_usage: Option<PublicTokenUsage>,
 }

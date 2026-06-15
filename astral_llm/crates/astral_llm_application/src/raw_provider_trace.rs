@@ -72,10 +72,7 @@ fn write_raw_provider_response(
         "raw_text": response.raw_text,
         "parsed_json": response.parsed_json,
         "provider_metadata": response.provider_metadata,
-        "usage": response.usage.as_ref().map(|usage| json!({
-            "input_tokens": usage.input_tokens,
-            "output_tokens": usage.output_tokens,
-        })),
+        "usage": response.usage,
     });
     let body = match serde_json::to_string_pretty(&payload) {
         Ok(body) => body,

@@ -3,6 +3,41 @@
 Refactored the local service test UI into grouped execution frames with richer
 operator tooling for V2 public services.
 
+# Token usage LLM detail, provider/model catalog normalization and test UI modal - 2026-06-15
+
+Implemented an additive end-to-end token usage pipeline plus a normalized
+provider/model catalog for LLM runtime pricing and observability.
+
+- Added canonical token usage domain types with 4 categories:
+  `input`, `output`, `cache`, `reasoning`, plus optional subtypes for cache
+  `read` and `write`.
+- Provider adapters now map detailed usage when the provider exposes it:
+  OpenAI (`usage`, cached input, reasoning output), Anthropic
+  (`input/output/cache_read/cache_write`), and Mistral
+  (`prompt/completion/cached`).
+- Added PostgreSQL tables `llm_token_usage_types`,
+  `llm_generation_run_token_usages`, and `llm_generation_step_token_usages`.
+  Legacy aggregate columns stay populated for backward compatibility.
+- Normalized the provider/model catalog with `llm_providers`,
+  `llm_provider_models`, and `llm_model_characteristics`, including pricing,
+  limits, reasoning support, and source metadata.
+- The generation runtime now prices token usage from the DB-backed model
+  characteristics, persists run-level and step-level usage rows, and exposes a
+  standard `token_usage` block with `summary`, `cost`, `engine`, and detailed
+  items for run audit.
+- `GenerateReadingResponse`, integration job envelopes, and `/v1/runs/{run_id}`
+  now expose additive `token_usage` data while keeping `run_id`, `token_input`,
+  `token_output`, `quality.used_provider`, and `quality.used_model`.
+- The service test UI token modal now reads the enriched audit payload and shows
+  input/output/cache/reasoning totals, estimated cost, and per-step usage with
+  graceful `indisponible` fallbacks when a provider does not publish a metric.
+- Added provider adapter regression tests for OpenAI, Anthropic, and Mistral
+  detailed usage mapping, plus updated schema publication and UI fixture
+  coverage.
+- Added `scripts/sync_provider_model_catalog.py` and wired it into
+  `scripts/lib/sync_llm_catalog.ps1` so official provider docs/API data can be
+  pushed into the DB before runtime usage.
+
 - Reworked `tests/service_test_ui/` into 4 main frames:
   input parameters, natal, horoscope (daily + period), and a non-active
   placeholder for future interpretations.

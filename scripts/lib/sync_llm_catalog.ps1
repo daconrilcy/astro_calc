@@ -22,7 +22,8 @@ function Sync-AstralLlmCatalog {
 
     $profilesScript = Join-Path $RepoRoot "scripts\manage_natal_interpretation_profiles.ps1"
     $modelsScript = Join-Path $RepoRoot "scripts\set_product_llm_models.ps1"
-    foreach ($path in @($profilesScript, $modelsScript)) {
+    $providerCatalogScript = Join-Path $RepoRoot "scripts\sync_provider_model_catalog.py"
+    foreach ($path in @($profilesScript, $modelsScript, $providerCatalogScript)) {
         if (-not (Test-Path -LiteralPath $path)) {
             throw "Required script not found: $path"
         }
@@ -34,6 +35,9 @@ function Sync-AstralLlmCatalog {
             Write-Host "  submit $($_.Name)"
             & $profilesScript -Submit -Path $_.FullName
         }
+
+    Write-Host "  sync provider/model catalog"
+    & python $providerCatalogScript
 
     Write-Host "  sync config/llm_product_models.conf"
     & $modelsScript

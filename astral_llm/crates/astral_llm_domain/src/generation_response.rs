@@ -3,19 +3,38 @@ use serde::{Deserialize, Serialize};
 
 use crate::errors::GenerationErrorDetail;
 use crate::output_contract::GenerationMode;
+use crate::PublicTokenUsage;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum GenerateReadingResponse {
-    Success(StructuredReadingResponse),
-    SafetyRejected(SafetyRejectedResponse),
-    Failed(GenerationFailedResponse),
+    Success {
+        run_id: String,
+        reading: NatalReadingResponse,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        token_usage: Option<PublicTokenUsage>,
+    },
+    SafetyRejected {
+        run_id: String,
+        error: SafetyErrorBody,
+        violations: Vec<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        token_usage: Option<PublicTokenUsage>,
+    },
+    Failed {
+        run_id: String,
+        error: GenerationErrorDetail,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        token_usage: Option<PublicTokenUsage>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct StructuredReadingResponse {
     pub run_id: String,
     pub reading: NatalReadingResponse,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub token_usage: Option<PublicTokenUsage>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -114,6 +133,8 @@ pub struct SafetyRejectedResponse {
     pub status: String,
     pub error: SafetyErrorBody,
     pub violations: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub token_usage: Option<PublicTokenUsage>,
 }
 
 impl SafetyRejectedResponse {
@@ -134,6 +155,7 @@ impl SafetyRejectedResponse {
                 rule_id,
             },
             violations,
+            token_usage: None,
         }
     }
 }
@@ -142,4 +164,24 @@ impl SafetyRejectedResponse {
 pub struct GenerationFailedResponse {
     pub run_id: String,
     pub error: GenerationErrorDetail,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub token_usage: Option<PublicTokenUsage>,
+}
+
+impl GenerateReadingResponse {
+    pub fn token_usage(&self) -> Option<&PublicTokenUsage> {
+        match self {
+            Self::Success { token_usage, .. }
+            | Self::SafetyRejected { token_usage, .. }
+            | Self::Failed { token_usage, .. } => token_usage.as_ref(),
+        }
+    }
+
+    pub fn run_id(&self) -> &str {
+        match self {
+            Self::Success { run_id, .. }
+            | Self::SafetyRejected { run_id, .. }
+            | Self::Failed { run_id, .. } => run_id,
+        }
+    }
 }

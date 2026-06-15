@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use astral_llm_domain::PublicTokenUsage;
 use serde::Serialize;
 use sqlx::FromRow;
 use uuid::Uuid;
@@ -31,6 +32,7 @@ impl RunAuditRow {
         self,
         steps: Vec<RunAuditStepView>,
         prompt_traces: Vec<RunAuditPromptTraceView>,
+        token_usage: Option<PublicTokenUsage>,
     ) -> RunAuditView {
         RunAuditView {
             run_id: self.id,
@@ -52,6 +54,7 @@ impl RunAuditRow {
             selected_domains: self.selected_domains,
             fallback_used: self.fallback_used,
             created_at: self.created_at,
+            token_usage,
             steps,
             prompt_traces,
         }
@@ -60,6 +63,7 @@ impl RunAuditRow {
 
 #[derive(Debug, Clone, Serialize, FromRow)]
 pub struct RunAuditStepView {
+    pub id: Uuid,
     pub step_type: String,
     pub chapter_code: Option<String>,
     pub provider: String,
@@ -70,6 +74,19 @@ pub struct RunAuditStepView {
     pub latency_ms: Option<i32>,
     pub error_code: Option<String>,
     pub created_at: DateTime<Utc>,
+    #[sqlx(skip)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub token_usage: Option<PublicTokenUsage>,
+}
+
+#[derive(Debug, Clone, Serialize, FromRow)]
+pub struct TokenUsageItemView {
+    pub usage_type_code: String,
+    pub usage_subtype: Option<String>,
+    pub token_count: i32,
+    pub unit_price_usd_per_mtok: Option<f64>,
+    pub estimated_cost_usd: Option<f64>,
+    pub provider_metric_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, FromRow)]
@@ -106,6 +123,8 @@ pub struct RunAuditView {
     pub selected_domains: Option<serde_json::Value>,
     pub fallback_used: Option<bool>,
     pub created_at: DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub token_usage: Option<PublicTokenUsage>,
     pub steps: Vec<RunAuditStepView>,
     pub prompt_traces: Vec<RunAuditPromptTraceView>,
 }

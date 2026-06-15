@@ -7,6 +7,9 @@ pub fn unified_result_envelope(
     reading_completeness: Option<String>,
 ) -> serde_json::Value {
     let mut out = json!({ "reading": reading });
+    if let Some(token_usage) = reading.token_usage() {
+        out["token_usage"] = serde_json::to_value(token_usage).unwrap_or(serde_json::Value::Null);
+    }
     if let Some(calc) = calculation {
         out["calculation"] = calc;
     }
@@ -18,13 +21,15 @@ pub fn unified_result_envelope(
 
 pub fn job_error_from_reading(reading: &GenerateReadingResponse) -> serde_json::Value {
     match reading {
-        GenerateReadingResponse::Failed(f) => {
+        GenerateReadingResponse::Failed {
+            error: failure_error,
+            ..
+        } => {
             let mut error = json!({
-                "code": f.error.code.as_str(),
-                "message": f.error.message,
+                "code": failure_error.code.as_str(),
+                "message": failure_error.message,
             });
-            if let Some(details) = f
-                .error
+            if let Some(details) = failure_error
                 .details
                 .as_ref()
                 .filter(|details| !details.is_null())
@@ -33,15 +38,19 @@ pub fn job_error_from_reading(reading: &GenerateReadingResponse) -> serde_json::
             }
             error
         }
-        GenerateReadingResponse::SafetyRejected(r) => {
+        GenerateReadingResponse::SafetyRejected {
+            error: rejected_error,
+            violations,
+            ..
+        } => {
             let mut error = json!({
                 "code": "SAFETY_REJECTED",
-                "message": r.error.message,
+                "message": rejected_error.message,
             });
             error["details"] = json!({
-                "category": r.error.category,
-                "rule_id": r.error.rule_id,
-                "violations": r.violations,
+                "category": rejected_error.category,
+                "rule_id": rejected_error.rule_id,
+                "violations": violations,
             });
             error
         }
@@ -51,8 +60,8 @@ pub fn job_error_from_reading(reading: &GenerateReadingResponse) -> serde_json::
 
 pub fn job_status_from_reading(reading: &GenerateReadingResponse) -> JobStatus {
     match reading {
-        GenerateReadingResponse::Success(_) => JobStatus::Completed,
-        GenerateReadingResponse::SafetyRejected(_) => JobStatus::SafetyRejected,
-        GenerateReadingResponse::Failed(_) => JobStatus::Failed,
+        GenerateReadingResponse::Success { .. } => JobStatus::Completed,
+        GenerateReadingResponse::SafetyRejected { .. } => JobStatus::SafetyRejected,
+        GenerateReadingResponse::Failed { .. } => JobStatus::Failed,
     }
 }

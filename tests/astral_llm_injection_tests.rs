@@ -150,7 +150,7 @@ async fn rejects_injection_in_astro_payload_strings() {
         request.astro_result.data = serde_json::json!({ "note": sample });
         let response = use_case.execute(request).await;
         assert!(
-            !matches!(response, GenerateReadingResponse::Success(_)),
+            !matches!(response, GenerateReadingResponse::Success { .. }),
             "expected rejection for injection sample: {sample}"
         );
     }
@@ -164,7 +164,7 @@ async fn rejects_unsafe_custom_instructions_samples() {
         request.astrologer_profile.custom_instructions = Some(sample.to_string());
         let response = use_case.execute(request).await;
         assert!(
-            matches!(response, GenerateReadingResponse::SafetyRejected(_)),
+            matches!(response, GenerateReadingResponse::SafetyRejected { .. }),
             "expected safety rejection for: {sample}"
         );
     }

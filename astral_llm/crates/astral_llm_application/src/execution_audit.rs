@@ -1,4 +1,4 @@
-use astral_llm_domain::{ChapterGenerationStatus, GenerationStepRecord};
+use astral_llm_domain::{ChapterGenerationStatus, GenerationStepRecord, TokenUsage, TokenUsageType};
 
 #[derive(Debug, Clone, Default)]
 pub struct ExecutionAudit {
@@ -26,18 +26,24 @@ impl ExecutionAudit {
         provider: &str,
         model: &str,
         status: ChapterGenerationStatus,
-        input_tokens: Option<u32>,
-        output_tokens: Option<u32>,
+        token_usage: Option<TokenUsage>,
         latency_ms: u64,
         error_code: Option<String>,
         step_type: Option<&str>,
     ) {
+        let input_tokens = token_usage
+            .as_ref()
+            .and_then(|usage| usage.tokens_for(TokenUsageType::Input));
+        let output_tokens = token_usage
+            .as_ref()
+            .and_then(|usage| usage.tokens_for(TokenUsageType::Output));
         self.push_step(GenerationStepRecord {
             step_type: step_type.unwrap_or("chapter_generate").into(),
             chapter_code: Some(chapter_code.to_string()),
             provider: provider.to_string(),
             model: model.to_string(),
             status,
+            token_usage,
             input_tokens,
             output_tokens,
             latency_ms: Some(latency_ms as u32),
@@ -61,5 +67,17 @@ impl ExecutionAudit {
             input.map(|v| i32::try_from(v).unwrap_or(i32::MAX)),
             output.map(|v| i32::try_from(v).unwrap_or(i32::MAX)),
         )
+    }
+
+    pub fn aggregate_detailed_usage(&self) -> Option<TokenUsage> {
+        let mut usage = TokenUsage::default();
+        for step in &self.steps {
+            if let Some(step_usage) = &step.token_usage {
+                for item in &step_usage.items {
+                    usage.push(item.clone());
+                }
+            }
+        }
+        (!usage.is_empty()).then_some(usage)
     }
 }

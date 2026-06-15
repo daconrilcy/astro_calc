@@ -26,6 +26,10 @@
     "mercure_subscribe_url": {
       "type": ["string", "null"]
     },
+    "token_usage": {
+      "type": ["object", "null"],
+      "description": "Resume token_usage additif si le resultat terminal est deja disponible."
+    },
     "result": {
       "description": "Present uniquement sur replay 200 terminal completed."
     },

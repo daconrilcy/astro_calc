@@ -1095,10 +1095,27 @@
     if (step.chapter_code) parts.push(step.chapter_code);
     if (step.provider || step.model) parts.push([step.provider, step.model].filter(Boolean).join("/"));
     if (typeof step.latency_ms === "number") parts.push(formatMs(step.latency_ms));
-    if (typeof step.input_tokens === "number" || typeof step.output_tokens === "number") {
-      parts.push(`${step.input_tokens || 0}/${step.output_tokens || 0} tok`);
+    const tokenLabel = compactTokenLabel(step && step.token_usage, step && step.input_tokens, step && step.output_tokens);
+    if (tokenLabel) {
+      parts.push(tokenLabel);
     }
     return parts.join(" | ");
+  }
+
+  function compactTokenLabel(tokenUsage, legacyInput, legacyOutput) {
+    if (tokenUsage && tokenUsage.summary) {
+      const summary = tokenUsage.summary;
+      return [
+        `in ${summary.input_tokens || 0}`,
+        `out ${summary.output_tokens || 0}`,
+        `cache ${summary.cache_tokens || 0}`,
+        `reason ${summary.reasoning_tokens || 0}`,
+      ].join(" / ");
+    }
+    if (typeof legacyInput === "number" || typeof legacyOutput === "number") {
+      return `${legacyInput || 0}/${legacyOutput || 0} tok`;
+    }
+    return "";
   }
 
   function buildErrorResult(serviceCode, message, body, elapsedMs, previousSteps) {
@@ -1209,9 +1226,9 @@
     const auditTable = usage.steps.length
       ? [
         `<table class="audit-table">`,
-        `<thead><tr><th>Step</th><th>Statut</th><th>Provider</th><th>Tokens</th><th>Latence</th></tr></thead>`,
+        `<thead><tr><th>Step</th><th>Statut</th><th>Provider</th><th>Input</th><th>Output</th><th>Cache</th><th>Reasoning</th><th>Latence</th></tr></thead>`,
         `<tbody>`,
-        usage.steps.map((step) => `<tr><td>${escapeHtml(step.label)}</td><td>${escapeHtml(step.status)}</td><td>${escapeHtml(step.provider)}</td><td>${escapeHtml(step.tokens)}</td><td>${escapeHtml(step.latency)}</td></tr>`).join(""),
+        usage.steps.map((step) => `<tr><td>${escapeHtml(step.label)}</td><td>${escapeHtml(step.status)}</td><td>${escapeHtml(step.provider)}</td><td>${escapeHtml(step.inputTokens)}</td><td>${escapeHtml(step.outputTokens)}</td><td>${escapeHtml(step.cacheTokens)}</td><td>${escapeHtml(step.reasoningTokens)}</td><td>${escapeHtml(step.latency)}</td></tr>`).join(""),
         `</tbody></table>`,
       ].join("")
       : `<div class="empty-copy">Aucun detail backend disponible. Les couts restent indisponibles tant que le service de comptage n'est pas expose.</div>`;
@@ -1219,6 +1236,8 @@
       `<div class="usage-grid">`,
       `<article class="usage-card"><span>Input tokens</span><strong>${escapeHtml(String(usage.inputTokens))}</strong></article>`,
       `<article class="usage-card"><span>Output tokens</span><strong>${escapeHtml(String(usage.outputTokens))}</strong></article>`,
+      `<article class="usage-card"><span>Cache tokens</span><strong>${escapeHtml(String(usage.cacheTokens))}</strong></article>`,
+      `<article class="usage-card"><span>Reasoning tokens</span><strong>${escapeHtml(String(usage.reasoningTokens))}</strong></article>`,
       `<article class="usage-card"><span>Cout estime</span><strong>${escapeHtml(usage.costLabel)}</strong></article>`,
       `</div>`,
       auditTable,
@@ -1228,19 +1247,65 @@
 
   function summarizeUsage(result) {
     const audit = result && result.audit && !result.audit.error ? result.audit : null;
+    const rootUsage = audit && audit.token_usage ? audit.token_usage : null;
     const steps = audit && Array.isArray(audit.steps) ? audit.steps.map((step) => ({
       label: step.step_type || "-",
       status: step.status || "-",
       provider: [step.provider, step.model].filter(Boolean).join("/") || "-",
-      tokens: `${step.input_tokens || 0}/${step.output_tokens || 0}`,
+      inputTokens: readStepTokenSummary(step, "input_tokens", step.input_tokens),
+      outputTokens: readStepTokenSummary(step, "output_tokens", step.output_tokens),
+      cacheTokens: readStepTokenSummary(step, "cache_tokens", null),
+      reasoningTokens: readStepTokenSummary(step, "reasoning_tokens", null),
       latency: typeof step.latency_ms === "number" ? formatMs(step.latency_ms) : "-",
     })) : [];
     return {
-      inputTokens: audit && typeof audit.token_input === "number" ? audit.token_input : "indisponible",
-      outputTokens: audit && typeof audit.token_output === "number" ? audit.token_output : "indisponible",
-      costLabel: "indisponible",
+      inputTokens: readRootTokenSummary(rootUsage, audit, "input_tokens", "token_input"),
+      outputTokens: readRootTokenSummary(rootUsage, audit, "output_tokens", "token_output"),
+      cacheTokens: rootUsage && rootUsage.summary ? valueOrUnavailable(rootUsage.summary.cache_tokens) : "indisponible",
+      reasoningTokens: rootUsage && rootUsage.summary ? valueOrUnavailable(rootUsage.summary.reasoning_tokens) : "indisponible",
+      costLabel: rootUsage && rootUsage.cost && rootUsage.cost.estimated_total !== undefined && rootUsage.cost.estimated_total !== null
+        ? `${Number(rootUsage.cost.estimated_total).toFixed(6)} ${rootUsage.cost.currency || "USD"}`
+        : "indisponible",
       steps,
     };
+  }
+
+  function readStepTokenSummary(step, key, legacyValue) {
+    const summaryValue = readTokenSummary(step && step.token_usage, key, legacyValue);
+    if (summaryValue !== "indisponible") return summaryValue;
+    if (isLocalAuditStep(step)) return "step local (sans tokens provider)";
+    return summaryValue;
+  }
+
+  function readTokenSummary(tokenUsage, key, legacyValue) {
+    if (tokenUsage && tokenUsage.summary && tokenUsage.summary[key] !== undefined && tokenUsage.summary[key] !== null) {
+      return String(tokenUsage.summary[key]);
+    }
+    if (legacyValue !== undefined && legacyValue !== null) return String(legacyValue);
+    return "indisponible";
+  }
+
+  function readRootTokenSummary(rootUsage, audit, usageKey, legacyKey) {
+    if (rootUsage && rootUsage.summary && rootUsage.summary[usageKey] !== undefined && rootUsage.summary[usageKey] !== null) {
+      return String(rootUsage.summary[usageKey]);
+    }
+    if (audit && audit[legacyKey] !== undefined && audit[legacyKey] !== null) {
+      return String(audit[legacyKey]);
+    }
+    return "indisponible";
+  }
+
+  function valueOrUnavailable(value) {
+    return value === undefined || value === null ? "indisponible" : String(value);
+  }
+
+  function isLocalAuditStep(step) {
+    if (!step || typeof step !== "object") return false;
+    const hasDetailedUsage = Boolean(step.token_usage && step.token_usage.summary);
+    const hasLegacyUsage = step.input_tokens !== undefined && step.input_tokens !== null
+      || step.output_tokens !== undefined && step.output_tokens !== null;
+    if (hasDetailedUsage || hasLegacyUsage) return false;
+    return String(step.status || "").toLowerCase() === "repaired";
   }
 
   function openModal(title, subtitle, content) {

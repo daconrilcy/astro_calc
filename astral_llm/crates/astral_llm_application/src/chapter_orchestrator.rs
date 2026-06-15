@@ -8,7 +8,7 @@ use astral_llm_domain::{
     interpretation_profile::SYNTHESIS_CHAPTER_CODE,
     output_contract::GenerationMode,
     GenerateReadingRequest, GenerationError, GenerationErrorCode, NormalizedAstroFacts,
-    ProductGenerationPolicy, SafetyMode, SafetyPolicy,
+    ProductGenerationPolicy, SafetyMode, SafetyPolicy, TokenUsage, TokenUsageType,
 };
 use astral_llm_infra::SharedCanonicalCatalog;
 use astral_llm_providers::{GenerationMetadata, ProviderGenerationRequest};
@@ -220,8 +220,7 @@ impl<'a> ChapterOrchestrator<'a> {
                         &used_provider,
                         &used_model,
                         outcome.status,
-                        outcome.route_meta.3,
-                        outcome.route_meta.4,
+                        outcome.route_meta.3.clone(),
                         started.elapsed().as_millis() as u64,
                         None,
                         step_type,
@@ -294,8 +293,7 @@ impl<'a> ChapterOrchestrator<'a> {
                                 &used_provider,
                                 &used_model,
                                 ChapterGenerationStatus::Repaired,
-                                outcome.route_meta.3,
-                                outcome.route_meta.4,
+                                outcome.route_meta.3.clone(),
                                 started.elapsed().as_millis() as u64,
                                 None,
                                 Some("repair_evidence"),
@@ -308,7 +306,6 @@ impl<'a> ChapterOrchestrator<'a> {
                                 engine.provider.as_str(),
                                 &engine.model,
                                 ChapterGenerationStatus::AstroBasisInvalid,
-                                None,
                                 None,
                                 started.elapsed().as_millis() as u64,
                                 Some(repair_err.detail().code.as_str().to_string()),
@@ -386,8 +383,7 @@ impl<'a> ChapterOrchestrator<'a> {
                         &used_provider,
                         &used_model,
                         ChapterGenerationStatus::Repaired,
-                        outcome.route_meta.3,
-                        outcome.route_meta.4,
+                        outcome.route_meta.3.clone(),
                         started.elapsed().as_millis() as u64,
                         None,
                         Some("repair_too_short"),
@@ -414,7 +410,6 @@ impl<'a> ChapterOrchestrator<'a> {
                         engine.provider.as_str(),
                         &engine.model,
                         status,
-                        None,
                         None,
                         started.elapsed().as_millis() as u64,
                         Some(err.detail().code.as_str().to_string()),
@@ -491,6 +486,7 @@ impl<'a> ChapterOrchestrator<'a> {
                     })?;
                     summary_result = Some(crate::summary_synthesizer::SummarySynthesisResult {
                         summary: fallback,
+                        token_usage: None,
                         input_tokens: None,
                         output_tokens: None,
                     });
@@ -514,8 +510,7 @@ impl<'a> ChapterOrchestrator<'a> {
             } else {
                 ChapterGenerationStatus::Generated
             },
-            summary_result.input_tokens,
-            summary_result.output_tokens,
+            summary_result.token_usage,
             summary_started.elapsed().as_millis() as u64,
             None,
             if summary_used_fallback {
@@ -615,7 +610,6 @@ impl<'a> ChapterOrchestrator<'a> {
                                 &engine.model,
                                 status,
                                 None,
-                                None,
                                 synthesis_started.elapsed().as_millis() as u64,
                                 Some(err.detail().code.as_str().to_string()),
                                 None,
@@ -707,8 +701,7 @@ impl<'a> ChapterOrchestrator<'a> {
                     } else {
                         ChapterGenerationStatus::Generated
                     },
-                    synthesis_result.input_tokens,
-                    synthesis_result.output_tokens,
+                    synthesis_result.token_usage,
                     synthesis_started.elapsed().as_millis() as u64,
                     None,
                     synthesis_step_type,
@@ -943,7 +936,6 @@ impl<'a> ChapterOrchestrator<'a> {
                                 &meta.1,
                                 ChapterGenerationStatus::Repaired,
                                 meta.3,
-                                meta.4,
                                 started.elapsed().as_millis() as u64,
                                 None,
                                 Some("repair_opening"),
@@ -1059,7 +1051,6 @@ impl<'a> ChapterOrchestrator<'a> {
                         &meta.1,
                         ChapterGenerationStatus::Repaired,
                         meta.3,
-                        meta.4,
                         started.elapsed().as_millis() as u64,
                         None,
                         Some("repair_opening"),
@@ -1097,7 +1088,7 @@ impl<'a> ChapterOrchestrator<'a> {
         (
             ReadingChapter,
             crate::prompt_compiler::PromptBundle,
-            (String, String, bool, Option<u32>, Option<u32>),
+            (String, String, bool, Option<TokenUsage>, Option<u32>, Option<u32>),
         ),
         GenerationError,
     > {
@@ -1254,8 +1245,16 @@ impl<'a> ChapterOrchestrator<'a> {
             )
             .await?;
 
-        let input_tokens = route.response.usage.as_ref().map(|u| u.input_tokens);
-        let output_tokens = route.response.usage.as_ref().map(|u| u.output_tokens);
+        let input_tokens = route
+            .response
+            .usage
+            .as_ref()
+            .and_then(|u| u.tokens_for(TokenUsageType::Input));
+        let output_tokens = route
+            .response
+            .usage
+            .as_ref()
+            .and_then(|u| u.tokens_for(TokenUsageType::Output));
 
         let json = route.response.parsed_json.ok_or_else(|| {
             GenerationError::with_details(
@@ -1378,6 +1377,7 @@ impl<'a> ChapterOrchestrator<'a> {
             route.used_provider.as_str().to_string(),
             route.response.model_used,
             route.fallback_used,
+            route.response.usage,
             input_tokens,
             output_tokens,
         );

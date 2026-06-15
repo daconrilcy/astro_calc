@@ -5,13 +5,13 @@ use serde_json::json;
 
 use astral_llm_domain::{
     provider::{ProviderCapabilities, ProviderKind, ReasoningEffort, StructuredOutputMode},
-    ProviderKind as DomainProviderKind,
+    ProviderKind as DomainProviderKind, TokenUsage, TokenUsageItem, TokenUsageType,
 };
 
 use crate::provider_trait::LlmProvider;
 use crate::response_json::{parse_model_output_json, parse_response_payload};
 use crate::types::{
-    PromptMessage, PromptRole, ProviderGenerationRequest, ProviderGenerationResponse, TokenUsage,
+    PromptMessage, PromptRole, ProviderGenerationRequest, ProviderGenerationResponse,
 };
 use crate::LlmProviderError;
 
@@ -254,14 +254,56 @@ fn output_has_only_reasoning(payload: &serde_json::Value) -> bool {
 }
 
 fn parse_usage(value: &serde_json::Value) -> TokenUsage {
-    TokenUsage {
-        input_tokens: value
-            .get("input_tokens")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0) as u32,
-        output_tokens: value
-            .get("output_tokens")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0) as u32,
-    }
+    let mut usage = TokenUsage::default();
+    push_usage(
+        &mut usage,
+        TokenUsageType::Input,
+        None,
+        value.get("input_tokens").and_then(|v| v.as_u64()),
+        Some("input_tokens"),
+    );
+    push_usage(
+        &mut usage,
+        TokenUsageType::Cache,
+        Some("read"),
+        value.pointer("/input_tokens_details/cached_tokens")
+            .and_then(|v| v.as_u64()),
+        Some("input_tokens_details.cached_tokens"),
+    );
+    push_usage(
+        &mut usage,
+        TokenUsageType::Output,
+        None,
+        value.get("output_tokens").and_then(|v| v.as_u64()),
+        Some("output_tokens"),
+    );
+    push_usage(
+        &mut usage,
+        TokenUsageType::Reasoning,
+        None,
+        value.pointer("/output_tokens_details/reasoning_tokens")
+            .and_then(|v| v.as_u64()),
+        Some("output_tokens_details.reasoning_tokens"),
+    );
+    usage
+}
+
+fn push_usage(
+    usage: &mut TokenUsage,
+    usage_type: TokenUsageType,
+    usage_subtype: Option<&str>,
+    token_count: Option<u64>,
+    metric: Option<&str>,
+) {
+    let Some(token_count) = token_count.filter(|count| *count > 0) else {
+        return;
+    };
+    usage.push(TokenUsageItem {
+        usage_type,
+        usage_subtype: usage_subtype.map(str::to_string),
+        token_count: token_count as u32,
+        provider_metric_name: metric.map(str::to_string),
+        unit_price_usd_per_mtok: None,
+        estimated_cost_usd: None,
+    });
 }

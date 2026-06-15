@@ -15,7 +15,7 @@ use astral_llm_domain::{
     output_contract::{GenerationMode, OutputFormat, ResponseContract},
     provider::ProviderKind,
     AstroCalculationPayload, AstrologerProfile, EngineDefaults, FallbackPolicy, PrivacyPolicy,
-    ServiceLimits,
+    ServiceLimits, TokenUsageType,
 };
 use astral_llm_infra::{
     bootstrap_domains, bootstrap_interpretation_profiles, bootstrap_product_policies,
@@ -156,12 +156,41 @@ async fn generate_single_pass_with_fake_provider() {
     let response = use_case.execute(request).await;
 
     match response {
-        GenerateReadingResponse::Success(success) => {
-            assert_eq!(success.reading.schema_version, "natal_reading_v1");
-            assert!(!success.reading.chapters.is_empty());
+        GenerateReadingResponse::Success {
+            reading,
+            token_usage,
+            ..
+        } => {
+            assert_eq!(reading.schema_version, "natal_reading_v1");
+            assert!(!reading.chapters.is_empty());
+            let usage = token_usage.expect("public token usage");
+            assert_eq!(usage.summary.input_tokens, Some(120));
+            assert_eq!(usage.summary.output_tokens, Some(450));
         }
         other => panic!("expected success, got {other:?}"),
     }
+}
+
+#[tokio::test]
+async fn single_pass_audit_keeps_llm_generation_token_usage() {
+    let use_case = build_use_case(test_catalog());
+    let request = sample_request(GenerationMode::SinglePass);
+    let out = use_case
+        .execute_with_audit(request, "test-single-pass-audit".into())
+        .await;
+
+    let generation_step = out
+        .audit
+        .steps
+        .iter()
+        .find(|step| step.step_type == "single_pass_generate")
+        .expect("single_pass_generate step");
+    let usage = generation_step
+        .token_usage
+        .as_ref()
+        .expect("step token usage");
+    assert_eq!(usage.tokens_for(TokenUsageType::Input), Some(120));
+    assert_eq!(usage.tokens_for(TokenUsageType::Output), Some(450));
 }
 
 #[tokio::test]
@@ -176,10 +205,10 @@ async fn generate_chapter_orchestrated_multi_domain() {
 
     let response = use_case.execute(request).await;
     match response {
-        GenerateReadingResponse::Success(success) => {
-            assert_eq!(success.reading.chapters.len(), 6);
+        GenerateReadingResponse::Success { reading, .. } => {
+            assert_eq!(reading.chapters.len(), 6);
             assert_eq!(
-                success.reading.quality.generation_mode,
+                reading.quality.generation_mode,
                 GenerationMode::ChapterOrchestrated
             );
         }
@@ -239,10 +268,10 @@ async fn configured_fallback_without_openai_first() {
 
     let response = use_case.execute(request).await;
     match response {
-        GenerateReadingResponse::Success(success) => {
-            assert_eq!(success.reading.quality.used_model, "fake-model");
-            assert_eq!(success.reading.quality.used_provider, "fake");
-            assert!(success.reading.quality.fallback_used);
+        GenerateReadingResponse::Success { reading, .. } => {
+            assert_eq!(reading.quality.used_model, "fake-model");
+            assert_eq!(reading.quality.used_provider, "fake");
+            assert!(reading.quality.fallback_used);
         }
         other => panic!("expected success via OpenAI->Fake fallback, got {other:?}"),
     }
@@ -257,9 +286,8 @@ async fn rejects_unsafe_custom_instructions() {
 
     let response = use_case.execute(request).await;
     match response {
-        GenerateReadingResponse::SafetyRejected(rejected) => {
-            assert_eq!(rejected.status, "safety_rejected");
-            assert_eq!(rejected.error.code, "SAFETY_POLICY_VIOLATION");
+        GenerateReadingResponse::SafetyRejected { error, .. } => {
+            assert_eq!(error.code, "SAFETY_POLICY_VIOLATION");
         }
         other => panic!("expected safety rejection, got {other:?}"),
     }
@@ -274,7 +302,7 @@ async fn rejects_injection_in_astro_payload() {
     });
 
     let response = use_case.execute(request).await;
-    assert!(matches!(response, GenerateReadingResponse::Failed(_)));
+    assert!(matches!(response, GenerateReadingResponse::Failed { .. }));
 }
 
 #[tokio::test]
@@ -284,7 +312,7 @@ async fn rejects_unknown_astro_contract() {
     request.astro_result.contract_version = "unknown_v99".into();
 
     let response = use_case.execute(request).await;
-    assert!(matches!(response, GenerateReadingResponse::Failed(_)));
+    assert!(matches!(response, GenerateReadingResponse::Failed { .. }));
 }
 
 #[tokio::test]
@@ -294,7 +322,7 @@ async fn rejects_excessive_domain_count_for_basic_product() {
     request.engine.domain_count = Some(12);
 
     let response = use_case.execute(request).await;
-    assert!(matches!(response, GenerateReadingResponse::Failed(_)));
+    assert!(matches!(response, GenerateReadingResponse::Failed { .. }));
 }
 
 #[test]

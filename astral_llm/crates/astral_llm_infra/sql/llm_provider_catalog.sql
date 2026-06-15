@@ -21,6 +21,9 @@ CREATE TABLE IF NOT EXISTS llm_model_usage_tiers (
 );
 
 ALTER TABLE llm_provider_models ADD COLUMN IF NOT EXISTS provider_id INTEGER REFERENCES llm_providers(id);
+ALTER TABLE llm_provider_models ADD COLUMN IF NOT EXISTS model_code TEXT;
+ALTER TABLE llm_provider_models ADD COLUMN IF NOT EXISTS display_name TEXT;
+ALTER TABLE llm_provider_models ADD COLUMN IF NOT EXISTS api_model_id TEXT;
 ALTER TABLE llm_provider_models ADD COLUMN IF NOT EXISTS catalog_notes TEXT;
 ALTER TABLE llm_provider_models ADD COLUMN IF NOT EXISTS usage_tier_code TEXT REFERENCES llm_model_usage_tiers(tier_code);
 ALTER TABLE llm_provider_models ADD COLUMN IF NOT EXISTS supports_temperature BOOLEAN NOT NULL DEFAULT true;
@@ -28,6 +31,58 @@ ALTER TABLE llm_provider_models ADD COLUMN IF NOT EXISTS reasoning_output_reserv
 ALTER TABLE llm_provider_models ADD COLUMN IF NOT EXISTS reasoning_effort_subtask TEXT;
 ALTER TABLE llm_provider_models ADD COLUMN IF NOT EXISTS reasoning_effort_primary TEXT;
 ALTER TABLE llm_provider_models ADD COLUMN IF NOT EXISTS reasoning_effort_oracle TEXT;
+
+UPDATE llm_provider_models
+SET model_code = COALESCE(model_code, model),
+    display_name = COALESCE(display_name, model),
+    api_model_id = COALESCE(api_model_id, model);
+
+CREATE TABLE IF NOT EXISTS llm_model_characteristics (
+    id SERIAL PRIMARY KEY,
+    model_id INTEGER NOT NULL REFERENCES llm_provider_models(id) ON DELETE CASCADE,
+    max_context_tokens INTEGER,
+    max_output_tokens INTEGER,
+    supports_reasoning BOOLEAN NOT NULL DEFAULT false,
+    supports_temperature BOOLEAN NOT NULL DEFAULT true,
+    supports_streaming BOOLEAN NOT NULL DEFAULT false,
+    supports_json_schema_strict BOOLEAN NOT NULL DEFAULT false,
+    supports_json_object BOOLEAN NOT NULL DEFAULT false,
+    structured_output_adapter TEXT,
+    storage_disable_supported BOOLEAN NOT NULL DEFAULT false,
+    input_price_usd_per_mtok DOUBLE PRECISION,
+    output_price_usd_per_mtok DOUBLE PRECISION,
+    cache_read_price_usd_per_mtok DOUBLE PRECISION,
+    cache_write_price_usd_per_mtok DOUBLE PRECISION,
+    reasoning_price_usd_per_mtok DOUBLE PRECISION,
+    pricing_currency TEXT NOT NULL DEFAULT 'USD',
+    source_kind TEXT NOT NULL DEFAULT 'seed_sql',
+    source_ref TEXT,
+    observed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    is_current BOOLEAN NOT NULL DEFAULT true
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_llm_model_characteristics_current
+    ON llm_model_characteristics (model_id)
+    WHERE is_current = true;
+
+INSERT INTO llm_model_characteristics (
+    model_id, max_context_tokens, max_output_tokens, supports_reasoning,
+    supports_temperature, supports_streaming, supports_json_schema_strict,
+    supports_json_object, structured_output_adapter, storage_disable_supported,
+    pricing_currency, source_kind, source_ref, is_current
+)
+SELECT
+    m.id, m.max_input_tokens, m.max_output_tokens, m.supports_reasoning_effort,
+    COALESCE(m.supports_temperature, true), m.supports_streaming, m.supports_json_schema_strict,
+    m.supports_json_object, m.structured_output_adapter, m.storage_disable_supported,
+    'USD', 'backfill_llm_provider_models', 'llm_provider_catalog.sql', true
+FROM llm_provider_models AS m
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM llm_model_characteristics AS c
+    WHERE c.model_id = m.id
+      AND c.is_current = true
+);
 
 -- Tokens reserves pour le raisonnement interne (Responses API GPT-5) avant le message assistant.
 UPDATE llm_provider_models
@@ -309,3 +364,47 @@ UPDATE llm_provider_models
 SET supports_temperature = true
 WHERE provider = 'openai'
   AND model IN ('gpt-4.1', 'gpt-4.1-mini');
+
+UPDATE llm_model_characteristics AS c
+SET
+    max_context_tokens = m.max_input_tokens,
+    max_output_tokens = m.max_output_tokens,
+    supports_reasoning = m.supports_reasoning_effort,
+    supports_temperature = COALESCE(m.supports_temperature, true),
+    supports_streaming = m.supports_streaming,
+    supports_json_schema_strict = m.supports_json_schema_strict,
+    supports_json_object = m.supports_json_object,
+    structured_output_adapter = m.structured_output_adapter,
+    storage_disable_supported = m.storage_disable_supported
+FROM llm_provider_models AS m
+WHERE c.model_id = m.id
+  AND c.is_current = true;
+
+UPDATE llm_model_characteristics AS c
+SET input_price_usd_per_mtok = v.input_price,
+    output_price_usd_per_mtok = v.output_price,
+    cache_read_price_usd_per_mtok = v.cache_read_price,
+    cache_write_price_usd_per_mtok = v.cache_write_price,
+    reasoning_price_usd_per_mtok = v.reasoning_price,
+    source_kind = 'official_docs_seed',
+    source_ref = v.source_ref,
+    observed_at = NOW()
+FROM llm_provider_models AS m
+JOIN (
+    VALUES
+        ('openai', 'gpt-5.5', 5.0::float8, 30.0::float8, 0.5::float8, NULL::float8, NULL::float8, 'https://openai.com/api/pricing/'),
+        ('openai', 'gpt-5.5-pro', 30.0::float8, 180.0::float8, NULL::float8, NULL::float8, NULL::float8, 'https://developers.openai.com/api/docs/models/compare'),
+        ('openai', 'gpt-5.4', 2.5::float8, 15.0::float8, 0.25::float8, NULL::float8, NULL::float8, 'https://openai.com/api/pricing/'),
+        ('openai', 'gpt-5-mini', 0.75::float8, 4.5::float8, 0.075::float8, NULL::float8, NULL::float8, 'https://openai.com/api/pricing/'),
+        ('openai', 'gpt-5-nano', 0.15::float8, 0.6::float8, 0.015::float8, NULL::float8, NULL::float8, 'https://developers.openai.com/api/docs/pricing'),
+        ('openai', 'gpt-5.1', 5.0::float8, 20.0::float8, NULL::float8, NULL::float8, NULL::float8, 'https://developers.openai.com/api/docs/pricing'),
+        ('openai', 'gpt-4.1', 2.0::float8, 8.0::float8, 0.5::float8, NULL::float8, NULL::float8, 'https://developers.openai.com/api/docs/pricing'),
+        ('openai', 'gpt-4.1-mini', 0.4::float8, 1.6::float8, 0.1::float8, NULL::float8, NULL::float8, 'https://developers.openai.com/api/docs/pricing'),
+        ('anthropic', 'claude-sonnet-4-20250514', 3.0::float8, 15.0::float8, 0.3::float8, 3.75::float8, NULL::float8, 'https://platform.claude.com/docs/en/about-claude/pricing'),
+        ('mistral', 'mistral-large-latest', 2.0::float8, 6.0::float8, 0.2::float8, NULL::float8, NULL::float8, 'https://mistral.ai/pricing/'),
+        ('fake', 'fake-model', 0.0::float8, 0.0::float8, 0.0::float8, 0.0::float8, 0.0::float8, 'seed:fake')
+) AS v(provider_code, model, input_price, output_price, cache_read_price, cache_write_price, reasoning_price, source_ref)
+    ON v.provider_code = m.provider
+   AND v.model = m.model
+WHERE c.model_id = m.id
+  AND c.is_current = true;

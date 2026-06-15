@@ -3,9 +3,15 @@ use sha2::{Digest, Sha256};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use astral_llm_domain::{GenerateReadingResponse, GenerationErrorDetail, GenerationStepRecord};
+use astral_llm_domain::{
+    GenerateReadingResponse, GenerationErrorDetail, GenerationStepRecord, PublicTokenUsage,
+    TokenCostSummary, TokenUsage, TokenUsageEngine, TokenUsageItem, TokenUsageSummary,
+    TokenUsageType,
+};
 
-use crate::run_audit_view::{RunAuditPromptTraceView, RunAuditRow, RunAuditStepView, RunAuditView};
+use crate::run_audit_view::{
+    RunAuditPromptTraceView, RunAuditRow, RunAuditStepView, RunAuditView, TokenUsageItemView,
+};
 use crate::sql_script::execute_sql_script;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -88,6 +94,16 @@ pub struct GenerationPromptTraceRecord {
 }
 
 #[derive(Debug, Clone)]
+pub struct GenerationTokenUsageRecord {
+    pub usage_type_code: String,
+    pub usage_subtype: Option<String>,
+    pub token_count: i32,
+    pub unit_price_usd_per_mtok: Option<f64>,
+    pub estimated_cost_usd: Option<f64>,
+    pub provider_metric_name: Option<String>,
+}
+
+#[derive(Debug, Clone)]
 pub struct IdempotencyHit {
     pub run_id: Uuid,
     pub status: String,
@@ -154,6 +170,15 @@ impl RunPersistence {
             .execute(&self.pool)
             .await?;
         sqlx::query("SELECT 1 FROM llm_generation_prompt_traces LIMIT 0")
+            .execute(&self.pool)
+            .await?;
+        sqlx::query("SELECT 1 FROM llm_generation_run_token_usages LIMIT 0")
+            .execute(&self.pool)
+            .await?;
+        sqlx::query("SELECT 1 FROM llm_generation_step_token_usages LIMIT 0")
+            .execute(&self.pool)
+            .await?;
+        sqlx::query("SELECT 1 FROM llm_model_characteristics LIMIT 0")
             .execute(&self.pool)
             .await?;
         Ok(())
@@ -291,14 +316,16 @@ impl RunPersistence {
         &self,
         run_id: Uuid,
         steps: &[GenerationStepRecord],
-    ) -> Result<(), sqlx::Error> {
+    ) -> Result<Vec<Uuid>, sqlx::Error> {
+        let mut step_ids = Vec::with_capacity(steps.len());
         for step in steps {
-            sqlx::query(
+            let step_id: Uuid = sqlx::query_scalar(
                 r#"
                 INSERT INTO llm_generation_steps (
                     run_id, step_type, chapter_code, provider, model, status,
                     input_tokens, output_tokens, latency_ms, error_code
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                RETURNING id
                 "#,
             )
             .bind(run_id)
@@ -311,6 +338,69 @@ impl RunPersistence {
             .bind(step.output_tokens.map(|v| v as i32))
             .bind(step.latency_ms.map(|v| v as i32))
             .bind(&step.error_code)
+            .fetch_one(&self.pool)
+            .await?;
+            step_ids.push(step_id);
+        }
+        Ok(step_ids)
+    }
+
+    pub async fn replace_run_token_usages(
+        &self,
+        run_id: Uuid,
+        usages: &[GenerationTokenUsageRecord],
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query("DELETE FROM llm_generation_run_token_usages WHERE run_id = $1")
+            .bind(run_id)
+            .execute(&self.pool)
+            .await?;
+        for usage in usages {
+            sqlx::query(
+                r#"
+                INSERT INTO llm_generation_run_token_usages (
+                    run_id, usage_type_code, usage_subtype, token_count,
+                    unit_price_usd_per_mtok, estimated_cost_usd, provider_metric_name
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+                "#,
+            )
+            .bind(run_id)
+            .bind(&usage.usage_type_code)
+            .bind(&usage.usage_subtype)
+            .bind(usage.token_count)
+            .bind(usage.unit_price_usd_per_mtok)
+            .bind(usage.estimated_cost_usd)
+            .bind(&usage.provider_metric_name)
+            .execute(&self.pool)
+            .await?;
+        }
+        Ok(())
+    }
+
+    pub async fn replace_step_token_usages(
+        &self,
+        step_id: Uuid,
+        usages: &[GenerationTokenUsageRecord],
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query("DELETE FROM llm_generation_step_token_usages WHERE step_id = $1")
+            .bind(step_id)
+            .execute(&self.pool)
+            .await?;
+        for usage in usages {
+            sqlx::query(
+                r#"
+                INSERT INTO llm_generation_step_token_usages (
+                    step_id, usage_type_code, usage_subtype, token_count,
+                    unit_price_usd_per_mtok, estimated_cost_usd, provider_metric_name
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+                "#,
+            )
+            .bind(step_id)
+            .bind(&usage.usage_type_code)
+            .bind(&usage.usage_subtype)
+            .bind(usage.token_count)
+            .bind(usage.unit_price_usd_per_mtok)
+            .bind(usage.estimated_cost_usd)
+            .bind(&usage.provider_metric_name)
             .execute(&self.pool)
             .await?;
         }
@@ -481,7 +571,7 @@ impl RunPersistence {
 
         let steps = sqlx::query_as::<_, RunAuditStepView>(
             r#"
-            SELECT step_type, chapter_code, provider, model, status,
+            SELECT id, step_type, chapter_code, provider, model, status,
                    input_tokens, output_tokens, latency_ms, error_code, created_at
             FROM llm_generation_steps
             WHERE run_id = $1
@@ -491,6 +581,41 @@ impl RunPersistence {
         .bind(run_id)
         .fetch_all(&self.pool)
         .await?;
+
+        let run_usage_rows = sqlx::query_as::<_, TokenUsageItemView>(
+            r#"
+            SELECT usage_type_code, usage_subtype, token_count,
+                   unit_price_usd_per_mtok, estimated_cost_usd, provider_metric_name
+            FROM llm_generation_run_token_usages
+            WHERE run_id = $1
+            ORDER BY id ASC
+            "#,
+        )
+        .bind(run_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut steps = steps;
+        for step in &mut steps {
+            let rows = sqlx::query_as::<_, TokenUsageItemView>(
+                r#"
+                SELECT usage_type_code, usage_subtype, token_count,
+                       unit_price_usd_per_mtok, estimated_cost_usd, provider_metric_name
+                FROM llm_generation_step_token_usages
+                WHERE step_id = $1
+                ORDER BY id ASC
+                "#,
+            )
+            .bind(step.id)
+            .fetch_all(&self.pool)
+            .await?;
+            step.token_usage = build_public_usage(
+                &step.provider,
+                &step.model,
+                None,
+                rows,
+            );
+        }
 
         let prompt_traces = sqlx::query_as::<_, RunAuditPromptTraceView>(
             r#"
@@ -505,7 +630,17 @@ impl RunPersistence {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(Some(run.into_view(steps, prompt_traces)))
+        let run_provider = run
+            .provider_used
+            .clone()
+            .unwrap_or_else(|| run.provider_requested.clone());
+        let run_model = run
+            .model_used
+            .clone()
+            .unwrap_or_else(|| run.model_requested.clone());
+        let token_usage = build_public_usage(&run_provider, &run_model, None, run_usage_rows);
+
+        Ok(Some(run.into_view(steps, prompt_traces, token_usage)))
     }
 }
 
@@ -517,4 +652,69 @@ pub fn hash_json(value: &serde_json::Value) -> String {
 
 pub fn error_code(error: &GenerationErrorDetail) -> String {
     error.code.as_str().to_string()
+}
+
+fn build_public_usage(
+    provider: &str,
+    model: &str,
+    pricing_source: Option<String>,
+    rows: Vec<TokenUsageItemView>,
+) -> Option<PublicTokenUsage> {
+    if rows.is_empty() {
+        return None;
+    }
+
+    let details: Vec<TokenUsageItem> = rows
+        .into_iter()
+        .filter_map(|row| {
+            let usage_type = match row.usage_type_code.as_str() {
+                "input" => TokenUsageType::Input,
+                "output" => TokenUsageType::Output,
+                "cache" => TokenUsageType::Cache,
+                "reasoning" => TokenUsageType::Reasoning,
+                _ => return None,
+            };
+            Some(TokenUsageItem {
+                usage_type,
+                usage_subtype: row.usage_subtype,
+                token_count: row.token_count.max(0) as u32,
+                provider_metric_name: row.provider_metric_name,
+                unit_price_usd_per_mtok: row.unit_price_usd_per_mtok,
+                estimated_cost_usd: row.estimated_cost_usd,
+            })
+        })
+        .collect();
+
+    if details.is_empty() {
+        return None;
+    }
+
+    let usage = TokenUsage {
+        items: details.clone(),
+    };
+    Some(PublicTokenUsage {
+        summary: TokenUsageSummary {
+            input_tokens: usage.tokens_for(TokenUsageType::Input),
+            output_tokens: usage.tokens_for(TokenUsageType::Output),
+            cache_tokens: usage.tokens_for(TokenUsageType::Cache),
+            reasoning_tokens: usage.tokens_for(TokenUsageType::Reasoning),
+        },
+        cost: TokenCostSummary {
+            currency: "USD".into(),
+            estimated_total: details
+                .iter()
+                .filter_map(|item| item.estimated_cost_usd)
+                .reduce(|a, b| a + b),
+            input_cost: usage.cost_for(TokenUsageType::Input),
+            output_cost: usage.cost_for(TokenUsageType::Output),
+            cache_cost: usage.cost_for(TokenUsageType::Cache),
+            reasoning_cost: usage.cost_for(TokenUsageType::Reasoning),
+        },
+        engine: TokenUsageEngine {
+            provider: provider.to_string(),
+            model: model.to_string(),
+            pricing_source,
+        },
+        details,
+    })
 }

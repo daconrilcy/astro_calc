@@ -5,6 +5,8 @@ use astral_llm_domain::{
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
+pub use astral_llm_domain::TokenUsage;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PromptRole {
@@ -43,12 +45,6 @@ pub struct ProviderGenerationRequest {
     pub safety_mode: SafetyMode,
     pub timeout: Duration,
     pub metadata: GenerationMetadata,
-}
-
-#[derive(Debug, Clone)]
-pub struct TokenUsage {
-    pub input_tokens: u32,
-    pub output_tokens: u32,
 }
 
 #[derive(Debug, Clone)]
