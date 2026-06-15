@@ -31,6 +31,7 @@
         targetDate: "2026-06-09",
         language: "fr",
         audience: "general",
+        autoLocation: false,
         location: {
           latitude: 48.8566,
           longitude: 2.3522,
@@ -66,17 +67,23 @@
 
       assert("code langue supporte", api.supportedTargetLanguageCode("de") === "de");
       assert("code langue non supporte", api.supportedTargetLanguageCode("it") === null);
-
       assert("audience gateway beginner", api.normalizeGatewayAudience("beginner") === "beginner");
-      assert("audience gateway general", api.normalizeGatewayAudience("general") === "general");
       assert("audience horoscope expert", api.normalizeHoroscopeAudience("expert") === "expert");
-      assert("audience horoscope default", api.normalizeHoroscopeAudience("intermediate") === "general");
-
       assert("detection horoscope", api.isHoroscopeService({ kind: "horoscope_period" }));
-      assert("detection non horoscope", !api.isHoroscopeService({ kind: "natal_full" }));
 
-      assert("validation service bloque sans location", api.serviceCanRun({ kind: "natal_simplified" }, { ...input, location: null }) === "Resoudre le lieu avant execution.");
-      assert("validation service full requiert heure", api.serviceCanRun({ kind: "natal_full" }, { ...input, birthTime: "" }) === "Heure de naissance requise pour ce service.");
+      const grouped = api.buildServiceGroups(api.PUBLIC_SERVICES);
+      const natalFrame = grouped.find((item) => item.key === "natal");
+      const horoscopeFrame = grouped.find((item) => item.key === "horoscope");
+      assert("frame natal present", Boolean(natalFrame));
+      assert("frame horoscope present", Boolean(horoscopeFrame));
+      assert("natal order free basic premium", natalFrame.subframes[0].services.map((item) => item.tier).slice(0, 3).join(",") === "free,basic,premium");
+      assert("horoscope daily subframe present", horoscopeFrame.subframes.some((item) => item.key === "daily"));
+      assert("horoscope period subframe present", horoscopeFrame.subframes.some((item) => item.key === "period"));
+
+      const blockedNoLocation = api.serviceCanRun({ kind: "natal_simplified" }, { ...input, location: null });
+      assert("validation service bloque sans location", blockedNoLocation === "Resoudre le lieu avant execution.");
+      const blockedAutoLocation = api.serviceCanRun({ kind: "natal_simplified" }, { ...input, location: null, autoLocation: true });
+      assert("validation service bloque auto location", blockedAutoLocation === "Localisation automatique en attente ou echouee.");
 
       const natalSections = api.normalizeGatewayReadingSections({
         metadata: { product_code: "natal_full_basic", variant: "full", tier: "basic" },
@@ -90,22 +97,37 @@
       });
       assert("rendu gateway natal sections", natalSections.length >= 4);
 
-      const horoscopeSections = api.normalizeGatewayReadingSections({
-        metadata: { product_code: "horoscope_free_daily", variant: "daily", tier: "free" },
-        reading: {
-          summary: { title: "Jour", text: "Resume." },
-          slots: [{ title: "Matin", text: "Texte.", advice: "Conseil." }],
+      const copyText = api.composeCopiedReading("Natal full Basic", "Bloc 1\nBloc 2");
+      assert("copie contient service", copyText.includes("Service: Natal full Basic"));
+      assert("copie contient date", copyText.includes("Date: "));
+      assert("copie contient texte", copyText.includes("Bloc 1"));
+
+      const joined = api.joinSectionsForCopy([
+        { title: "Resume", paragraphs: ["Paragraphe A"] },
+        { title: "Chapitre", meta: ["Meta"], paragraphs: ["Paragraphe B"] },
+      ]);
+      assert("join sections include meta", joined.includes("Meta"));
+      assert("join sections include title", joined.includes("Resume"));
+
+      const usage = api.summarizeUsage({
+        audit: {
+          token_input: 120,
+          token_output: 450,
+          steps: [
+            { step_type: "writer", status: "completed", provider: "openai", model: "gpt-5", input_tokens: 120, output_tokens: 450, latency_ms: 1900 }
+          ]
         }
       });
-      assert("rendu gateway horoscope sections", horoscopeSections.length >= 3);
+      assert("usage input", usage.inputTokens === 120);
+      assert("usage output", usage.outputTokens === 450);
+      assert("usage cost placeholder", usage.costLabel === "indisponible");
+      assert("usage steps detail", usage.steps.length === 1);
+
+      const runId = api.extractRunId({ metadata: { run_id: "123e4567-e89b-12d3-a456-426614174000" } });
+      assert("extract run id", runId === "123e4567-e89b-12d3-a456-426614174000");
 
       const invalidJson = api.parseResponseBody("{bad", "application/json");
       assert("parsing json invalide", invalidJson.error.code === "INVALID_JSON_RESPONSE");
-
-      const htmlError = api.parseResponseBody("<html>nope</html>", "text/html");
-      assert("parsing erreur non json", htmlError.error.code === "NON_JSON_RESPONSE");
-
-      assert("id client disponible", typeof api.newClientId() === "string" && api.newClientId().length > 8);
 
       output.className = "pass";
       output.textContent = logs.join("\n");

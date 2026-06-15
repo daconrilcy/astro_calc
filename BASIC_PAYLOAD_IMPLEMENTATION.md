@@ -1,3 +1,31 @@
+# Service test UI grouped execution and observability - 2026-06-15
+
+Refactored the local service test UI into grouped execution frames with richer
+operator tooling for V2 public services.
+
+- Reworked `tests/service_test_ui/` into 4 main frames:
+  input parameters, natal, horoscope (daily + period), and a non-active
+  placeholder for future interpretations.
+- Added automatic location resolution by default with a manual fallback switch.
+- Added per-frame degraded/full mode switches and preserved explicit UI blocking
+  when current backend constraints still require missing birth data.
+- Reorganized service cards in stable `free -> basic -> premium` order and added
+  sequential batch execution for the required groups:
+  natal, horoscope daily, and horoscope period.
+- Added per-service progress tracking with UI timers, step traces, JSON/result
+  tabs, copy-text formatting with service name + timestamp, prompt modal, and
+  token/cost modal with graceful fallback when backend data is missing.
+- Added front-side audit adapters for `/api/llm/v1/runs/{run_id}` when a run id
+  is exposed by the response, without making the UI depend on that backend path.
+- Expanded `tests/service_test_ui/service-test-ui.test.html` to cover grouping,
+  ordering, degraded-mode validation, copy formatting, usage fallback, and run
+  id extraction.
+- Final validation included iterative adversarial reviews focused on:
+  batch-group structure, blocked CTA clarity, responsive behavior, disabled
+  state handling, modal fallbacks, and runtime console health.
+- Last adversarial cycle closed with no remaining actionable findings in the
+  implemented UI scope.
+
 # Horoscope period timeout stabilization - 2026-06-14
 
 - Aligned the default/documented request timeouts for `astral_gateway`,

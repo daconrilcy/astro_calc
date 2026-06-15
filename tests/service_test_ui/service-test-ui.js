@@ -3,6 +3,32 @@
 
   const TERMINAL_READING_STATUSES = new Set(["completed", "failed", "safety_rejected", "cancelled", "expired"]);
   const GENERAL_AUDIENCES = new Set(["general", "beginner", "intermediate", "expert"]);
+  const MODES = { complete: "complete", degraded: "degraded" };
+  const FRAME_DEFINITIONS = {
+    natal: {
+      title: "Theme natal",
+      description: "Services natals executes en sequence Free, Basic puis Premium.",
+      modeLabel: "Mode degrade",
+      supportsBatch: true,
+    },
+    horoscope: {
+      title: "Horoscope",
+      description: "Sous-cadres daily et period, avec orchestration sequentielle par tier.",
+      modeLabel: "Mode degrade",
+      supportsBatch: false,
+    },
+    other: {
+      title: "Autres interpretations",
+      description: "Perimetre reserve pour les futurs services.",
+      placeholder: true,
+      modeLabel: "Mode degrade",
+      supportsBatch: false,
+    },
+  };
+  const SUBFRAME_DESCRIPTIONS = {
+    daily: "Horoscope quotidien, toujours ordonne Free, Basic, Premium.",
+    period: "Horoscope de periode, toujours ordonne Free, Basic, Premium.",
+  };
   const PUBLIC_SERVICES = [
     {
       service_code: "natal_simplified_free",
@@ -10,9 +36,12 @@
       description_fr: "Parcours public V2 simplifie sans heure obligatoire.",
       tier: "free",
       kind: "natal_simplified",
+      frame: "natal",
+      subframe: "natal",
       endpoint: "/api/gateway/v2/natal/simplified/free",
       availability: "current",
       sort_order: 10,
+      capabilities: { copyText: true, promptView: true, auditModal: true, batchRun: true },
     },
     {
       service_code: "natal_simplified_basic",
@@ -20,9 +49,12 @@
       description_fr: "Parcours public V2 simplifie avec tier Basic.",
       tier: "basic",
       kind: "natal_simplified",
+      frame: "natal",
+      subframe: "natal",
       endpoint: "/api/gateway/v2/natal/simplified/basic",
       availability: "current",
       sort_order: 11,
+      capabilities: { copyText: true, promptView: true, auditModal: true, batchRun: true },
     },
     {
       service_code: "natal_simplified_premium",
@@ -30,9 +62,12 @@
       description_fr: "Parcours public V2 simplifie avec tier Premium.",
       tier: "premium",
       kind: "natal_simplified",
+      frame: "natal",
+      subframe: "natal",
       endpoint: "/api/gateway/v2/natal/simplified/premium",
       availability: "current",
       sort_order: 12,
+      capabilities: { copyText: true, promptView: true, auditModal: true, batchRun: true },
     },
     {
       service_code: "natal_full_free",
@@ -40,9 +75,12 @@
       description_fr: "Parcours public V2 full natal.",
       tier: "free",
       kind: "natal_full",
+      frame: "natal",
+      subframe: "natal",
       endpoint: "/api/gateway/v2/natal/full/free",
       availability: "current",
       sort_order: 20,
+      capabilities: { copyText: true, promptView: true, auditModal: true, batchRun: true },
     },
     {
       service_code: "natal_full_basic",
@@ -50,9 +88,12 @@
       description_fr: "Parcours public V2 full natal avec tier Basic.",
       tier: "basic",
       kind: "natal_full",
+      frame: "natal",
+      subframe: "natal",
       endpoint: "/api/gateway/v2/natal/full/basic",
       availability: "current",
       sort_order: 21,
+      capabilities: { copyText: true, promptView: true, auditModal: true, batchRun: true },
     },
     {
       service_code: "natal_full_premium",
@@ -60,9 +101,12 @@
       description_fr: "Parcours public V2 full natal avec tier Premium.",
       tier: "premium",
       kind: "natal_full",
+      frame: "natal",
+      subframe: "natal",
       endpoint: "/api/gateway/v2/natal/full/premium",
       availability: "current",
       sort_order: 22,
+      capabilities: { copyText: true, promptView: true, auditModal: true, batchRun: true },
     },
     {
       service_code: "horoscope_free_daily",
@@ -70,9 +114,12 @@
       description_fr: "Gateway V2 quotidien compact.",
       tier: "free",
       kind: "horoscope_daily",
+      frame: "horoscope",
+      subframe: "daily",
       endpoint: "/api/gateway/v2/horoscope/daily/free",
       availability: "current",
       sort_order: 30,
+      capabilities: { copyText: true, promptView: true, auditModal: true, batchRun: true },
     },
     {
       service_code: "horoscope_basic_daily_natal_3_slots",
@@ -80,9 +127,12 @@
       description_fr: "Gateway V2 quotidien en trois slots.",
       tier: "basic",
       kind: "horoscope_daily",
+      frame: "horoscope",
+      subframe: "daily",
       endpoint: "/api/gateway/v2/horoscope/daily/basic",
       availability: "current",
       sort_order: 31,
+      capabilities: { copyText: true, promptView: true, auditModal: true, batchRun: true },
     },
     {
       service_code: "horoscope_premium_daily_local_2h_slots",
@@ -90,9 +140,12 @@
       description_fr: "Gateway V2 premium local sur 12 creneaux.",
       tier: "premium",
       kind: "horoscope_daily",
+      frame: "horoscope",
+      subframe: "daily",
       endpoint: "/api/gateway/v2/horoscope/daily/premium",
       availability: "current",
       sort_order: 32,
+      capabilities: { copyText: true, promptView: true, auditModal: true, batchRun: true },
     },
     {
       service_code: "horoscope_free_next_7_days_natal",
@@ -100,9 +153,12 @@
       description_fr: "Gateway V2 periode des 7 prochains jours.",
       tier: "free",
       kind: "horoscope_period",
+      frame: "horoscope",
+      subframe: "period",
       endpoint: "/api/gateway/v2/horoscope/period/free",
       availability: "current",
       sort_order: 40,
+      capabilities: { copyText: true, promptView: true, auditModal: true, batchRun: true },
     },
     {
       service_code: "horoscope_basic_next_7_days_natal",
@@ -110,9 +166,12 @@
       description_fr: "Gateway V2 periode Basic.",
       tier: "basic",
       kind: "horoscope_period",
+      frame: "horoscope",
+      subframe: "period",
       endpoint: "/api/gateway/v2/horoscope/period/basic",
       availability: "current",
       sort_order: 41,
+      capabilities: { copyText: true, promptView: true, auditModal: true, batchRun: true },
     },
     {
       service_code: "horoscope_premium_next_7_days_natal",
@@ -120,9 +179,12 @@
       description_fr: "Gateway V2 periode Premium.",
       tier: "premium",
       kind: "horoscope_period",
+      frame: "horoscope",
+      subframe: "period",
       endpoint: "/api/gateway/v2/horoscope/period/premium",
       availability: "current",
       sort_order: 42,
+      capabilities: { copyText: true, promptView: true, auditModal: true, batchRun: true },
     },
   ];
 
@@ -131,6 +193,16 @@
     gatewayServices: PUBLIC_SERVICES.slice().sort((a, b) => a.sort_order - b.sort_order),
     diagnosticServices: [],
     natalChartByFingerprint: null,
+    results: {},
+    locationAuto: true,
+    locationResolveToken: 0,
+    timers: {},
+    isBatchRunning: false,
+    modes: {
+      natal: MODES.complete,
+      horoscope_daily: MODES.complete,
+      horoscope_period: MODES.complete,
+    },
   };
 
   function todayIso() {
@@ -147,6 +219,17 @@
     return element ? element.value.trim() : "";
   }
 
+  function isAutoLocationEnabled() {
+    return state.locationAuto;
+  }
+
+  function modeForService(service) {
+    if (!service) return MODES.complete;
+    if (service.kind === "horoscope_daily") return state.modes.horoscope_daily;
+    if (service.kind === "horoscope_period") return state.modes.horoscope_period;
+    return state.modes.natal;
+  }
+
   function readForm() {
     return {
       birthDate: valueOf("birthDate"),
@@ -160,16 +243,13 @@
       llmApiKey: valueOf("llmApiKey"),
       calculatorApiKey: valueOf("calculatorApiKey"),
       location: state.location,
+      autoLocation: state.locationAuto,
     };
   }
 
   function apiKeyForPath(path) {
-    if (path.startsWith("/api/calculator/")) {
-      return valueOf("calculatorApiKey") || valueOf("llmApiKey");
-    }
-    if (path.startsWith("/api/llm/")) {
-      return valueOf("llmApiKey");
-    }
+    if (path.startsWith("/api/calculator/")) return valueOf("calculatorApiKey") || valueOf("llmApiKey");
+    if (path.startsWith("/api/llm/")) return valueOf("llmApiKey");
     return "";
   }
 
@@ -209,9 +289,7 @@
 
   function errorMessageFromBody(body) {
     if (!body) return "";
-    if (body.error && typeof body.error === "object") {
-      return body.error.message || body.error.code || "";
-    }
+    if (body.error && typeof body.error === "object") return body.error.message || body.error.code || "";
     if (typeof body.message === "string") return body.message;
     return "";
   }
@@ -220,19 +298,37 @@
     return service.kind === "horoscope_daily" || service.kind === "horoscope_period";
   }
 
-  function serviceNeedsBirthTime(service) {
-    return service.kind === "natal_full" || isHoroscopeService(service);
+  function serviceNeedsLocation() {
+    return true;
   }
 
-  function serviceNeedsLocation(service) {
-    return true;
+  function serviceNeedsBirthTime(service) {
+    const mode = modeForService(service);
+    if (service.kind === "natal_simplified") return false;
+    if (service.kind === "natal_full") return mode === MODES.complete;
+    if (isHoroscopeService(service)) return mode === MODES.complete;
+    return false;
   }
 
   function serviceCanRun(service, input) {
     if (!input.birthDate) return "Date de naissance requise.";
-    if (serviceNeedsLocation(service) && !input.location) return "Resoudre le lieu avant execution.";
-    if (serviceNeedsBirthTime(service) && !input.birthTime) return "Heure de naissance requise pour ce service.";
+    if (serviceNeedsLocation(service) && !input.location) {
+      return input.autoLocation ? "Localisation automatique en attente ou echouee." : "Resoudre le lieu avant execution.";
+    }
     if (!GENERAL_AUDIENCES.has(input.audience)) return "Audience invalide.";
+
+    if (service.kind === "natal_full" && !input.birthTime && modeForService(service) === MODES.complete) {
+      return "Heure de naissance requise en mode complet.";
+    }
+
+    if (isHoroscopeService(service) && !input.birthTime) {
+      if (modeForService(service) === MODES.degraded) {
+        return "Mode degrade visible, mais le backend horoscope exige encore l'heure.";
+      }
+      return "Heure de naissance requise pour ce service.";
+    }
+
+    if (serviceNeedsBirthTime(service) && !input.birthTime) return "Heure de naissance requise pour ce service.";
     return "";
   }
 
@@ -343,23 +439,27 @@
       body: JSON.stringify(buildCalculatorNatalPayload(input)),
     });
     const chartCalculationId = response && response.calculation_result && response.calculation_result.chart_calculation_id;
-    if (!chartCalculationId) {
-      throw new Error("Le calcul natal ne contient pas chart_calculation_id.");
-    }
+    if (!chartCalculationId) throw new Error("Le calcul natal ne contient pas chart_calculation_id.");
     state.natalChartByFingerprint = { fingerprint, chartCalculationId };
     return chartCalculationId;
   }
 
-  async function resolveLocation() {
+  async function resolveLocation(options) {
+    const silent = Boolean(options && options.silent);
     const input = readForm();
     const result = document.getElementById("locationResult");
+    const token = Date.now();
+    state.locationResolveToken = token;
     if (!input.city || !input.country) {
+      state.location = null;
       if (result) result.textContent = "Ville et pays requis.";
-      return;
+      renderServices();
+      return null;
     }
-    if (result) result.textContent = "Resolution du lieu...";
+    if (result && !silent) result.textContent = "Resolution du lieu...";
     const params = new URLSearchParams({ city: input.city, country: input.country });
     const data = await apiFetch(`/api/geocode?${params.toString()}`, { method: "GET" });
+    if (state.locationResolveToken !== token) return state.location;
     state.location = {
       latitude: Number(data.latitude),
       longitude: Number(data.longitude),
@@ -367,10 +467,21 @@
       countryCode: data.country_code || null,
     };
     state.natalChartByFingerprint = null;
-    if (result) {
-      result.textContent = `${state.location.label} - lat ${state.location.latitude}, lon ${state.location.longitude}`;
-    }
+    if (result) result.textContent = `${state.location.label} - lat ${state.location.latitude}, lon ${state.location.longitude}`;
     renderServices();
+    return state.location;
+  }
+
+  function scheduleAutoResolve() {
+    if (!state.locationAuto) return;
+    window.clearTimeout(state.autoResolveHandle);
+    state.autoResolveHandle = window.setTimeout(() => {
+      resolveLocation({ silent: false }).catch((err) => {
+        const result = document.getElementById("locationResult");
+        if (result) result.textContent = err.message;
+        renderServices();
+      });
+    }, 250);
   }
 
   async function loadHealth() {
@@ -408,31 +519,151 @@
     renderServices();
   }
 
-  function renderServices() {
-    const grid = document.getElementById("serviceGrid");
-    const count = document.getElementById("serviceCount");
-    const template = document.getElementById("serviceCardTemplate");
-    if (!grid || !template) return;
-    grid.textContent = "";
-    if (count) count.textContent = `${state.gatewayServices.length} service(s) publics V2`;
+  function buildServiceGroups(services) {
+    const frames = [
+      { key: "natal", ...FRAME_DEFINITIONS.natal, subframes: [] },
+      { key: "horoscope", ...FRAME_DEFINITIONS.horoscope, subframes: [] },
+      { key: "other", ...FRAME_DEFINITIONS.other, subframes: [] },
+    ];
+    const map = {};
+    frames.forEach((frame) => { map[frame.key] = frame; });
 
-    state.gatewayServices.forEach((service) => {
-      const input = readForm();
-      const blockedReason = serviceCanRun(service, input);
-      const card = template.content.firstElementChild.cloneNode(true);
-      card.dataset.serviceCode = service.service_code;
-      card.querySelector("h3").textContent = service.label_fr;
-      card.querySelector(".service-description").textContent = service.description_fr;
-      const availability = card.querySelector(".availability");
-      availability.textContent = service.availability;
-      card.querySelector(".service-meta").innerHTML = buildMeta(service).map((item) => `<span class="meta-pill">${escapeHtml(item)}</span>`).join("");
-      const button = card.querySelector(".run-service");
-      button.disabled = Boolean(blockedReason);
-      button.textContent = blockedReason || "Executer";
-      button.addEventListener("click", () => runService(service, card));
-      attachResultControls(card);
-      grid.appendChild(card);
+    services.forEach((service) => {
+      const frame = map[service.frame];
+      if (!frame) return;
+      let subframe = frame.subframes.find((item) => item.key === service.subframe);
+      if (!subframe) {
+        subframe = {
+          key: service.subframe,
+          title: service.subframe === "natal" ? "Tous services natals" : titleCase(service.subframe),
+          description: SUBFRAME_DESCRIPTIONS[service.subframe] || "",
+          services: [],
+        };
+        frame.subframes.push(subframe);
+      }
+      subframe.services.push(service);
     });
+
+    frames.forEach((frame) => {
+      frame.subframes.forEach((subframe) => {
+        subframe.services.sort((a, b) => a.sort_order - b.sort_order);
+      });
+    });
+    return frames;
+  }
+
+  function renderServices() {
+    const container = document.getElementById("serviceSections");
+    const count = document.getElementById("serviceCount");
+    const frameTemplate = document.getElementById("serviceFrameTemplate");
+    const subframeTemplate = document.getElementById("serviceSubframeTemplate");
+    const cardTemplate = document.getElementById("serviceCardTemplate");
+    if (!container || !frameTemplate || !subframeTemplate || !cardTemplate) return;
+    container.textContent = "";
+    if (count) count.textContent = `${state.gatewayServices.length} service(s) publics V2`;
+    const groups = buildServiceGroups(state.gatewayServices);
+
+    groups.forEach((frame) => {
+      if (frame.placeholder) {
+        container.appendChild(renderPlaceholderFrame(frame));
+        return;
+      }
+
+      const frameNode = frameTemplate.content.firstElementChild.cloneNode(true);
+      frameNode.dataset.frameKey = frame.key;
+      frameNode.querySelector(".frame-title").textContent = frame.title;
+      frameNode.querySelector(".frame-description").textContent = frame.description;
+      const modeSwitch = frameNode.querySelector(".mode-switch");
+      const modeLabel = frameNode.querySelector(".mode-label");
+      if (modeSwitch && modeLabel) {
+        const frameMode = frame.key === "natal"
+          ? state.modes.natal
+          : frame.key === "horoscope"
+            ? combineHoroscopeMode()
+            : MODES.complete;
+        modeSwitch.checked = frameMode === MODES.degraded;
+        modeLabel.textContent = frameMode === MODES.degraded ? "Mode degrade" : "Mode complet";
+        modeSwitch.addEventListener("change", () => {
+          const mode = modeSwitch.checked ? MODES.degraded : MODES.complete;
+          if (frame.key === "natal") state.modes.natal = mode;
+          if (frame.key === "horoscope") {
+            state.modes.horoscope_daily = mode;
+            state.modes.horoscope_period = mode;
+          }
+          renderServices();
+        });
+      }
+
+      const runGroup = frameNode.querySelector(".run-group");
+      if (runGroup) {
+        if (frame.supportsBatch) {
+          runGroup.disabled = state.isBatchRunning;
+          runGroup.textContent = state.isBatchRunning ? "Batch en cours..." : "Tout executer";
+          runGroup.addEventListener("click", () => runBatch(frame.subframes.flatMap((sub) => sub.services)));
+        } else {
+          runGroup.hidden = true;
+        }
+      }
+
+      const subframesHost = frameNode.querySelector(".frame-subsections");
+      frame.subframes.forEach((subframe) => {
+        const subNode = subframeTemplate.content.firstElementChild.cloneNode(true);
+        subNode.dataset.subframeKey = subframe.key;
+        subNode.querySelector(".subframe-title").textContent = subframe.title;
+        subNode.querySelector(".subframe-description").textContent = subframe.description;
+        const subgroupButton = subNode.querySelector(".run-subgroup");
+        const showSubgroupBatch = !(frame.key === "natal" && subframe.key === "natal");
+        if (showSubgroupBatch) {
+          subgroupButton.disabled = state.isBatchRunning;
+          subgroupButton.textContent = state.isBatchRunning ? "Batch en cours..." : "Tout executer";
+          subgroupButton.addEventListener("click", () => runBatch(subframe.services));
+        } else {
+          subgroupButton.hidden = true;
+        }
+        const grid = subNode.querySelector(".service-grid");
+
+        subframe.services.forEach((service) => {
+          const input = readForm();
+          const blockedReason = serviceCanRun(service, input);
+          const card = cardTemplate.content.firstElementChild.cloneNode(true);
+          card.dataset.serviceCode = service.service_code;
+          card.querySelector("h3").textContent = service.label_fr;
+          card.querySelector(".service-description").textContent = service.description_fr;
+          const availability = card.querySelector(".availability");
+          availability.textContent = service.availability;
+          if (service.availability === "beta") availability.classList.add("beta");
+          card.querySelector(".service-meta").innerHTML = buildMeta(service).map((item) => `<span class="meta-pill">${escapeHtml(item)}</span>`).join("");
+          attachCardControls(card, service, blockedReason);
+          renderCardState(card, service, blockedReason);
+          grid.appendChild(card);
+        });
+
+        subframesHost.appendChild(subNode);
+      });
+
+      container.appendChild(frameNode);
+    });
+  }
+
+  function renderPlaceholderFrame(frame) {
+    const section = document.createElement("section");
+    section.className = "frame placeholder-frame";
+    section.innerHTML = [
+      `<div class="frame-header">`,
+      `<div><h2>${escapeHtml(frame.title)}</h2><p>${escapeHtml(frame.description)}</p></div>`,
+      `<span class="placeholder-badge">A venir</span>`,
+      `</div>`,
+      `<div class="placeholder-body">`,
+      `<p class="placeholder-copy">Le cadre existe pour preparer l'extension de l'interface, sans service branche pour l'instant.</p>`,
+      `</div>`,
+    ].join("");
+    return section;
+  }
+
+  function combineHoroscopeMode() {
+    return state.modes.horoscope_daily === MODES.degraded && state.modes.horoscope_period === MODES.degraded
+      ? MODES.degraded
+      : MODES.complete;
   }
 
   function buildMeta(service) {
@@ -442,11 +673,12 @@
       service.endpoint.replace("/api/gateway", ""),
       service.kind,
       `tier:${service.tier}`,
+      `mode:${modeForService(service)}`,
       relatedAsync ? `async:${relatedAsync.service_code}` : "async:unmapped",
     ];
   }
 
-  function attachResultControls(card) {
+  function attachCardControls(card, service) {
     const tabs = card.querySelectorAll(".tab");
     const reading = card.querySelector(".reading-view");
     const json = card.querySelector(".json-view");
@@ -459,102 +691,420 @@
         json.hidden = !showJson;
       });
     });
+
     card.querySelector(".toggle-tech").addEventListener("click", () => {
       const details = card.querySelector(".tech-details");
       details.hidden = !details.hidden;
     });
+
     card.querySelector(".copy-json").addEventListener("click", async () => {
       const button = card.querySelector(".copy-json");
+      const result = state.results[service.service_code];
       try {
-        await navigator.clipboard.writeText(json.textContent || "");
+        await navigator.clipboard.writeText(result && result.jsonText ? result.jsonText : "");
         flashButtonLabel(button, "Copie");
       } catch (err) {
         flashButtonLabel(button, "Copie impossible");
       }
     });
+
+    card.querySelector(".copy-text").addEventListener("click", async () => {
+      const button = card.querySelector(".copy-text");
+      const payload = composeCopiedReading(service.label_fr, getReadingTextForService(service.service_code));
+      try {
+        await navigator.clipboard.writeText(payload);
+        flashButtonLabel(button, "Texte copie");
+      } catch (err) {
+        flashButtonLabel(button, "Copie impossible");
+      }
+    });
+
+    card.querySelector(".show-prompt").addEventListener("click", () => openPromptModal(service));
+    card.querySelector(".show-usage").addEventListener("click", () => openUsageModal(service));
+    card.querySelector(".run-service").addEventListener("click", () => runService(service));
   }
 
-  async function runService(service, card) {
-    const input = readForm();
-    const blockedReason = serviceCanRun(service, input);
-    if (blockedReason) {
-      showError(card, blockedReason);
+  function renderCardState(card, service, blockedReason) {
+    const button = card.querySelector(".run-service");
+    const note = card.querySelector(".service-note");
+    const result = state.results[service.service_code];
+    const isRunning = result && result.status === "running";
+    button.disabled = state.isBatchRunning || isRunning || Boolean(blockedReason);
+    button.textContent = isRunning ? "Execution..." : "Executer";
+    if (note) note.textContent = blockedReason || "";
+    card.querySelector(".copy-text").disabled = !result || !result.readingText;
+    card.querySelector(".show-prompt").disabled = !result;
+    card.querySelector(".show-usage").disabled = !result;
+
+    renderProgress(card, service, result);
+    renderResult(card, service, result);
+  }
+
+  function renderProgress(card, service, result) {
+    const status = card.querySelector(".progress-status");
+    const timer = card.querySelector(".progress-timer");
+    const steps = card.querySelector(".progress-steps");
+    const mode = modeForService(service);
+    const defaultCopy = service.kind === "horoscope_daily" || service.kind === "horoscope_period"
+      ? mode === MODES.degraded
+        ? "Mode degrade visible, backend encore contraint."
+        : "Execution unitaire ou batch en attente."
+      : "Execution unitaire ou batch en attente.";
+    status.textContent = result ? result.progressLabel : "En attente";
+    timer.textContent = formatMs(result ? result.elapsedMs : 0);
+    const entries = result && result.steps.length ? result.steps : [{ label: defaultCopy, state: "idle" }];
+    steps.innerHTML = entries.map((step) => {
+      const classes = [
+        step.state === "active" ? "is-active" : "",
+        step.state === "error" ? "is-error" : "",
+      ].filter(Boolean).join(" ");
+      return `<li class="${classes}">${escapeHtml(step.label)}${step.meta ? ` - ${escapeHtml(step.meta)}` : ""}</li>`;
+    }).join("");
+  }
+
+  function renderResult(card, service, result) {
+    const region = card.querySelector(".result-region");
+    const reading = card.querySelector(".reading-view");
+    const json = card.querySelector(".json-view");
+    const tech = card.querySelector(".tech-details");
+    if (!result) {
+      region.hidden = true;
+      reading.innerHTML = "";
+      json.textContent = "";
+      tech.textContent = "";
+      tech.hidden = true;
       return;
     }
 
-    const button = card.querySelector(".run-service");
-    button.disabled = true;
-    button.textContent = "Execution...";
+    region.hidden = false;
+    json.textContent = result.jsonText || "";
+    tech.innerHTML = buildTechDetailsHtml(result, service);
+    tech.hidden = true;
+
+    if (result.errorMessage) {
+      reading.innerHTML = `<div class="reading-block"><h4 class="error-text">Erreur</h4><p>${escapeHtml(result.errorMessage)}</p></div>`;
+      return;
+    }
+
+    if (!result.sections || !result.sections.length) {
+      reading.innerHTML = `<div class="reading-block"><h4>Aucun rendu simplifie disponible</h4><p>Utiliser l'onglet JSON brut pour inspecter la reponse.</p></div>`;
+      return;
+    }
+
+    reading.innerHTML = result.sections.map(renderSection).join("");
+  }
+
+  function buildTechDetailsHtml(result, service) {
+    const lines = [
+      `Endpoint: ${escapeHtml(service.endpoint.replace("/api/gateway", ""))}`,
+      `Service: ${escapeHtml(service.service_code)}`,
+      `Mode UI: ${escapeHtml(modeForService(service))}`,
+      `Duree UI: ${escapeHtml(formatMs(result.elapsedMs))}`,
+      `Produit: ${escapeHtml(result.productCode || "")}`,
+      `Variant: ${escapeHtml(result.variant || "")}`,
+    ];
+    if (result.runId) lines.push(`Run audit: ${escapeHtml(result.runId)}`);
+    if (result.audit && result.audit.status) lines.push(`Audit status: ${escapeHtml(result.audit.status)}`);
+    if (result.promptAvailable === false) lines.push("Prompt: non expose par le backend pour ce service");
+    return lines.join("<br>");
+  }
+
+  async function runBatch(services) {
+    if (state.isBatchRunning) return;
+    state.isBatchRunning = true;
+    renderServices();
+    try {
+      for (const service of services.slice().sort((a, b) => a.sort_order - b.sort_order)) {
+        const input = readForm();
+        const blockedReason = serviceCanRun(service, input);
+        if (blockedReason) {
+          state.results[service.service_code] = buildErrorResult(service.service_code, blockedReason);
+          renderServices();
+          continue;
+        }
+        await runService(service, { batch: true });
+      }
+    } finally {
+      state.isBatchRunning = false;
+      renderServices();
+    }
+  }
+
+  async function runService(service, options) {
+    const input = readForm();
+    const blockedReason = serviceCanRun(service, input);
+    if (blockedReason) {
+      state.results[service.service_code] = buildErrorResult(service.service_code, blockedReason);
+      renderServices();
+      return;
+    }
+
     const started = Date.now();
-    showProgress(card, "Preparation...");
+    const result = {
+      serviceCode: service.service_code,
+      status: "running",
+      startedAt: started,
+      elapsedMs: 0,
+      progressLabel: "Preparation",
+      steps: [],
+      response: null,
+      jsonText: "",
+      sections: [],
+      readingText: "",
+      productCode: "",
+      variant: "",
+      runId: null,
+      audit: null,
+      promptPayload: null,
+      promptAvailable: null,
+      errorMessage: "",
+    };
+    state.results[service.service_code] = result;
+    startTimer(service.service_code);
+    addProgressStep(service.service_code, "Preparation de la requete", "active");
+    renderServices();
 
     try {
       let requestBody;
       if (service.kind === "natal_simplified" || service.kind === "natal_full") {
         requestBody = buildGatewayNatalRequest(input);
       } else {
-        showProgress(card, "Calcul natal de reference...");
+        addProgressStep(service.service_code, "Calcul natal de reference", "active");
         const chartCalculationId = await ensureNatalChartCalculationId(input);
+        markLatestStep(service.service_code, "done", `chart:${chartCalculationId}`);
         if (service.kind === "horoscope_daily") {
           requestBody = buildGatewayHoroscopeDailyRequest(input, chartCalculationId, service);
         } else {
           requestBody = buildGatewayHoroscopePeriodRequest(input, chartCalculationId);
         }
       }
-      showProgress(card, `POST ${service.endpoint.replace("/api/gateway", "")}`);
+
+      markLatestStep(service.service_code, "done");
+      addProgressStep(service.service_code, `Appel ${service.endpoint.replace("/api/gateway", "")}`, "active");
       const response = await apiFetch(service.endpoint, {
         method: "POST",
         body: JSON.stringify(requestBody),
       });
-      renderResult(card, response, Date.now() - started, service);
+      markLatestStep(service.service_code, "done");
+      addProgressStep(service.service_code, "Traitement de la reponse", "active");
+      await finalizeServiceResult(service, response, Date.now() - started);
+      markLatestStep(service.service_code, "done");
+      addProgressStep(service.service_code, "Rendu UI termine", "done");
     } catch (err) {
-      showError(card, err.message, err.body || null);
+      markLatestStep(service.service_code, "error", err.message);
+      state.results[service.service_code] = buildErrorResult(service.service_code, err.message, err.body || null, Date.now() - started, state.results[service.service_code].steps);
     } finally {
-      button.disabled = false;
-      button.textContent = "Executer";
+      stopTimer(service.service_code);
+      const next = state.results[service.service_code];
+      if (next) {
+        next.status = next.errorMessage ? "failed" : "completed";
+        next.progressLabel = next.errorMessage ? "Echec" : "Termine";
+      }
+      renderServices();
+      if (!options || !options.batch) {
+        return;
+      }
     }
   }
 
-  function showProgress(card, message) {
-    const region = card.querySelector(".result-region");
-    const reading = card.querySelector(".reading-view");
-    region.hidden = false;
-    reading.hidden = false;
-    card.querySelector(".json-view").hidden = true;
-    reading.innerHTML = `<div class="reading-block"><h4>${escapeHtml(message)}</h4><p>Veuillez patienter.</p></div>`;
-    card.querySelector(".tech-details").textContent = message;
-  }
-
-  function showError(card, message, body) {
-    const region = card.querySelector(".result-region");
-    const reading = card.querySelector(".reading-view");
-    const json = card.querySelector(".json-view");
-    region.hidden = false;
-    reading.innerHTML = `<div class="reading-block"><h4 class="error-text">Erreur</h4><p>${escapeHtml(message)}</p></div>`;
-    json.textContent = body ? JSON.stringify(body, null, 2) : "";
-    card.querySelector(".tech-details").textContent = message;
-  }
-
-  function renderResult(card, response, elapsedMs, service) {
-    const region = card.querySelector(".result-region");
-    const reading = card.querySelector(".reading-view");
-    const json = card.querySelector(".json-view");
-    const tech = card.querySelector(".tech-details");
+  async function finalizeServiceResult(service, response, elapsedMs) {
     const normalized = normalizeGatewayReadingSections(response);
-    region.hidden = false;
-    json.textContent = JSON.stringify(response, null, 2);
-    tech.innerHTML = [
-      `Endpoint: ${escapeHtml(service.endpoint.replace("/api/gateway", ""))}`,
-      `Service: ${escapeHtml(service.service_code)}`,
-      `Duree UI: ${Math.round(elapsedMs / 1000)} s`,
-      `Produit: ${escapeHtml(readField(response, ["metadata", "product_code"]) || "")}`,
-      `Variant: ${escapeHtml(readField(response, ["metadata", "variant"]) || "")}`,
-    ].join("<br>");
-    if (!normalized.length) {
-      reading.innerHTML = `<div class="reading-block"><h4>Aucun rendu simplifie disponible</h4><p>Utiliser l'onglet JSON brut pour inspecter la reponse.</p></div>`;
-      return;
+    const runId = extractRunId(response);
+    const audit = runId ? await fetchRunAudit(runId) : null;
+    const promptPayload = extractPromptPayload(response, audit);
+    const readingText = joinSectionsForCopy(normalized);
+    const current = state.results[service.service_code];
+    state.results[service.service_code] = {
+      ...current,
+      status: "completed",
+      elapsedMs,
+      progressLabel: audit ? "Reponse + audit charges" : "Reponse chargee",
+      response,
+      jsonText: JSON.stringify(response, null, 2),
+      sections: normalized,
+      readingText,
+      productCode: readField(response, ["metadata", "product_code"]) || "",
+      variant: readField(response, ["metadata", "variant"]) || "",
+      runId,
+      audit,
+      promptPayload,
+      promptAvailable: Boolean(promptPayload),
+      errorMessage: "",
+      steps: mergeUiAndAuditSteps(current.steps, audit),
+    };
+  }
+
+  async function fetchRunAudit(runId) {
+    try {
+      return await apiFetch(`/api/llm/v1/runs/${encodeURIComponent(runId)}`, { method: "GET" });
+    } catch (err) {
+      return { error: err.message, steps: [] };
     }
-    reading.innerHTML = normalized.map(renderSection).join("");
+  }
+
+  function extractRunId(payload) {
+    return firstStringAtPaths(payload, [
+      ["run_id"],
+      ["metadata", "run_id"],
+      ["reading", "run_id"],
+      ["result", "run_id"],
+    ]);
+  }
+
+  function extractPromptPayload(response, audit) {
+    const direct = firstValueAtPaths(response, [
+      ["prompt"],
+      ["prompt_text"],
+      ["prompt_trace"],
+      ["metadata", "prompt"],
+      ["metadata", "prompt_trace"],
+      ["debug", "prompt"],
+    ]);
+    if (direct) return direct;
+    if (audit && audit.prompt) return audit.prompt;
+    return null;
+  }
+
+  function mergeUiAndAuditSteps(existingSteps, audit) {
+    const uiSteps = (existingSteps || []).map((step) => ({ ...step }));
+    if (!audit || !Array.isArray(audit.steps) || !audit.steps.length) return uiSteps;
+    const auditSteps = audit.steps.map((step) => ({
+      label: step.step_type || "backend_step",
+      state: step.status === "failed" ? "error" : "done",
+      meta: compactAuditMeta(step),
+    }));
+    return uiSteps.concat(auditSteps);
+  }
+
+  function compactAuditMeta(step) {
+    const parts = [];
+    if (step.chapter_code) parts.push(step.chapter_code);
+    if (step.provider || step.model) parts.push([step.provider, step.model].filter(Boolean).join("/"));
+    if (typeof step.latency_ms === "number") parts.push(formatMs(step.latency_ms));
+    if (typeof step.input_tokens === "number" || typeof step.output_tokens === "number") {
+      parts.push(`${step.input_tokens || 0}/${step.output_tokens || 0} tok`);
+    }
+    return parts.join(" | ");
+  }
+
+  function buildErrorResult(serviceCode, message, body, elapsedMs, previousSteps) {
+    return {
+      serviceCode,
+      status: "failed",
+      startedAt: Date.now(),
+      elapsedMs: elapsedMs || 0,
+      progressLabel: "Echec",
+      steps: previousSteps || [{ label: message, state: "error" }],
+      response: body || null,
+      jsonText: body ? JSON.stringify(body, null, 2) : "",
+      sections: [],
+      readingText: "",
+      productCode: "",
+      variant: "",
+      runId: null,
+      audit: null,
+      promptPayload: null,
+      promptAvailable: false,
+      errorMessage: message,
+    };
+  }
+
+  function addProgressStep(serviceCode, label, stateValue, meta) {
+    const result = state.results[serviceCode];
+    if (!result) return;
+    result.progressLabel = label;
+    result.steps.push({ label, state: stateValue, meta: meta || "" });
+  }
+
+  function markLatestStep(serviceCode, stateValue, meta) {
+    const result = state.results[serviceCode];
+    if (!result || !result.steps.length) return;
+    const step = result.steps[result.steps.length - 1];
+    step.state = stateValue;
+    if (meta) step.meta = meta;
+  }
+
+  function startTimer(serviceCode) {
+    stopTimer(serviceCode);
+    state.timers[serviceCode] = window.setInterval(() => {
+      const result = state.results[serviceCode];
+      if (!result) return;
+      result.elapsedMs = Date.now() - result.startedAt;
+      const card = document.querySelector(`[data-service-code="${serviceCode}"]`);
+      if (card) renderProgress(card, state.gatewayServices.find((item) => item.service_code === serviceCode), result);
+    }, 100);
+  }
+
+  function stopTimer(serviceCode) {
+    if (!state.timers[serviceCode]) return;
+    window.clearInterval(state.timers[serviceCode]);
+    delete state.timers[serviceCode];
+  }
+
+  function openPromptModal(service) {
+    const result = state.results[service.service_code];
+    const hasPrompt = result && result.promptPayload;
+    const content = hasPrompt
+      ? `<pre class="prompt-box">${escapeHtml(stringifyPrompt(result.promptPayload))}</pre>`
+      : `<div class="empty-copy">Prompt non expose par le backend pour ce service.</div>`;
+    openModal(`Prompt - ${service.label_fr}`, service.service_code, content);
+  }
+
+  function openUsageModal(service) {
+    const result = state.results[service.service_code];
+    const usage = summarizeUsage(result);
+    const auditTable = usage.steps.length
+      ? [
+        `<table class="audit-table">`,
+        `<thead><tr><th>Step</th><th>Statut</th><th>Provider</th><th>Tokens</th><th>Latence</th></tr></thead>`,
+        `<tbody>`,
+        usage.steps.map((step) => `<tr><td>${escapeHtml(step.label)}</td><td>${escapeHtml(step.status)}</td><td>${escapeHtml(step.provider)}</td><td>${escapeHtml(step.tokens)}</td><td>${escapeHtml(step.latency)}</td></tr>`).join(""),
+        `</tbody></table>`,
+      ].join("")
+      : `<div class="empty-copy">Aucun detail backend disponible. Les couts restent indisponibles tant que le service de comptage n'est pas expose.</div>`;
+    const content = [
+      `<div class="usage-grid">`,
+      `<article class="usage-card"><span>Input tokens</span><strong>${escapeHtml(String(usage.inputTokens))}</strong></article>`,
+      `<article class="usage-card"><span>Output tokens</span><strong>${escapeHtml(String(usage.outputTokens))}</strong></article>`,
+      `<article class="usage-card"><span>Cout estime</span><strong>${escapeHtml(usage.costLabel)}</strong></article>`,
+      `</div>`,
+      auditTable,
+    ].join("");
+    openModal(`Tokens / couts - ${service.label_fr}`, service.service_code, content);
+  }
+
+  function summarizeUsage(result) {
+    const audit = result && result.audit && !result.audit.error ? result.audit : null;
+    const steps = audit && Array.isArray(audit.steps) ? audit.steps.map((step) => ({
+      label: step.step_type || "-",
+      status: step.status || "-",
+      provider: [step.provider, step.model].filter(Boolean).join("/") || "-",
+      tokens: `${step.input_tokens || 0}/${step.output_tokens || 0}`,
+      latency: typeof step.latency_ms === "number" ? formatMs(step.latency_ms) : "-",
+    })) : [];
+    return {
+      inputTokens: audit && typeof audit.token_input === "number" ? audit.token_input : "indisponible",
+      outputTokens: audit && typeof audit.token_output === "number" ? audit.token_output : "indisponible",
+      costLabel: "indisponible",
+      steps,
+    };
+  }
+
+  function openModal(title, subtitle, content) {
+    const root = document.getElementById("modalRoot");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalSubtitle = document.getElementById("modalSubtitle");
+    const modalContent = document.getElementById("modalContent");
+    if (!root || !modalTitle || !modalSubtitle || !modalContent) return;
+    modalTitle.textContent = title;
+    modalSubtitle.textContent = subtitle || "";
+    modalContent.innerHTML = content;
+    root.hidden = false;
+  }
+
+  function closeModal() {
+    const root = document.getElementById("modalRoot");
+    if (root) root.hidden = true;
   }
 
   function normalizeGatewayReadingSections(payload) {
@@ -632,7 +1182,7 @@
     addStringSection(sections, "Conseil", payload.advice);
     addObjectAdvice(sections, payload.advice);
     addStringSection(sections, "Point de vigilance", payload.watch_point);
-    addObjectTextSection(sections, "Repères", payload.watch_summary);
+    addObjectTextSection(sections, "Reperes", payload.watch_summary);
 
     addArraySections(sections, "Creneau", payload.slots, ["text", "advice", "watch_point"]);
     addArraySections(sections, "Meilleur moment", payload.best_slots, ["reason"]);
@@ -643,7 +1193,7 @@
     addArraySections(sections, "Jours sensibles", payload.watch_days, ["reason"]);
     addArraySections(sections, "Timeline quotidienne", payload.daily_timeline, ["text", "advice"]);
     addArraySections(sections, "Domaine", payload.domain_sections, ["text"]);
-    addArraySections(sections, "Créneaux utiles", payload.best_windows, ["reason", "advice"]);
+    addArraySections(sections, "Creneaux utiles", payload.best_windows, ["reason", "advice"]);
     addArraySections(sections, "Fenetre de vigilance", payload.watch_windows, ["reason", "advice"]);
     addObjectAdvice(sections, payload.strategy, "Strategie");
 
@@ -651,15 +1201,11 @@
   }
 
   function addStringSection(sections, title, value) {
-    if (typeof value === "string" && value.trim()) {
-      sections.push({ title, paragraphs: [value] });
-    }
+    if (typeof value === "string" && value.trim()) sections.push({ title, paragraphs: [value] });
   }
 
   function addObjectTextSection(sections, title, value) {
-    if (value && typeof value === "object" && value.text) {
-      sections.push({ title, paragraphs: [value.text] });
-    }
+    if (value && typeof value === "object" && value.text) sections.push({ title, paragraphs: [value.text] });
   }
 
   function addObjectAdvice(sections, value, title) {
@@ -695,6 +1241,51 @@
     return path.reduce((value, key) => (value && Object.prototype.hasOwnProperty.call(value, key) ? value[key] : null), obj);
   }
 
+  function firstValueAtPaths(obj, paths) {
+    for (const path of paths) {
+      const value = readField(obj, path);
+      if (value !== null && value !== undefined && value !== "") return value;
+    }
+    return null;
+  }
+
+  function firstStringAtPaths(obj, paths) {
+    const value = firstValueAtPaths(obj, paths);
+    return typeof value === "string" && value.trim() ? value.trim() : null;
+  }
+
+  function composeCopiedReading(serviceName, readingText) {
+    const stamp = new Date().toISOString();
+    return [`Service: ${serviceName}`, `Date: ${stamp}`, "", readingText || ""].join("\n");
+  }
+
+  function joinSectionsForCopy(sections) {
+    return (sections || []).map((section) => {
+      const lines = [section.title];
+      if (Array.isArray(section.meta) && section.meta.length) lines.push(section.meta.join(" - "));
+      (section.paragraphs || []).forEach((paragraph) => lines.push(paragraph));
+      return lines.join("\n");
+    }).join("\n\n").trim();
+  }
+
+  function getReadingTextForService(serviceCode) {
+    const result = state.results[serviceCode];
+    return result && result.readingText ? result.readingText : "";
+  }
+
+  function stringifyPrompt(value) {
+    return typeof value === "string" ? value : JSON.stringify(value, null, 2);
+  }
+
+  function formatMs(value) {
+    const ms = Number(value) || 0;
+    return `${(ms / 1000).toFixed(1)} s`;
+  }
+
+  function titleCase(value) {
+    return String(value || "").replace(/(^|\s|-)\S/g, (match) => match.toUpperCase());
+  }
+
   function escapeHtml(value) {
     return String(value || "")
       .replaceAll("&", "&amp;")
@@ -705,9 +1296,7 @@
   }
 
   function newClientId() {
-    if (window.crypto && typeof window.crypto.randomUUID === "function") {
-      return window.crypto.randomUUID();
-    }
+    if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
     return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }
 
@@ -723,45 +1312,83 @@
   function boot() {
     const targetDate = document.getElementById("targetDate");
     if (targetDate && !targetDate.value) targetDate.value = todayIso();
-    document.getElementById("resolveLocation").addEventListener("click", () => {
-      resolveLocation().catch((err) => {
-        const result = document.getElementById("locationResult");
-        if (result) result.textContent = err.message;
+    const locationAuto = document.getElementById("locationAuto");
+    const resolveButton = document.getElementById("resolveLocation");
+    if (locationAuto) {
+      locationAuto.checked = state.locationAuto;
+      locationAuto.addEventListener("change", () => {
+        state.locationAuto = locationAuto.checked;
+        resolveButton.disabled = state.locationAuto;
+        if (state.locationAuto) {
+          scheduleAutoResolve();
+        }
+        renderServices();
       });
-    });
+    }
+    if (resolveButton) {
+      resolveButton.disabled = state.locationAuto;
+      resolveButton.addEventListener("click", () => {
+        resolveLocation().catch((err) => {
+          const result = document.getElementById("locationResult");
+          if (result) result.textContent = err.message;
+        });
+      });
+    }
     document.getElementById("reloadServices").addEventListener("click", () => {
       loadDiagnosticServices().catch((err) => {
         const count = document.getElementById("diagnosticCount");
         if (count) count.textContent = err.message;
       });
     });
+    document.getElementById("closeModal").addEventListener("click", closeModal);
+    document.getElementById("modalRoot").addEventListener("click", (event) => {
+      const target = event.target;
+      if (target && target.dataset && target.dataset.closeModal === "true") closeModal();
+    });
     ["birthDate", "birthTime", "timezone", "city", "country", "targetDate", "language", "audience"].forEach((id) => {
       const element = document.getElementById(id);
       if (!element) return;
       element.addEventListener("change", () => {
-        if (["birthDate", "birthTime", "timezone"].includes(id)) {
-          state.natalChartByFingerprint = null;
-        }
+        if (["birthDate", "birthTime", "timezone"].includes(id)) state.natalChartByFingerprint = null;
         if (["city", "country"].includes(id)) {
           state.location = null;
           state.natalChartByFingerprint = null;
           const result = document.getElementById("locationResult");
-          if (result) result.textContent = "Lieu modifie, resolution a relancer.";
+          if (result) result.textContent = state.locationAuto ? "Lieu modifie, resolution automatique..." : "Lieu modifie, resolution a relancer.";
+          scheduleAutoResolve();
         }
         renderServices();
+      });
+      element.addEventListener("input", () => {
+        if (["city", "country"].includes(id)) {
+          state.location = null;
+          const result = document.getElementById("locationResult");
+          if (result) result.textContent = state.locationAuto ? "Lieu modifie, resolution automatique..." : "Lieu modifie, resolution a relancer.";
+          scheduleAutoResolve();
+          renderServices();
+        }
       });
     });
     renderServices();
     loadHealth().catch(() => {});
     loadDiagnosticServices().catch(() => {});
+    if (state.locationAuto) scheduleAutoResolve();
   }
 
   window.AstralServiceTestUi = {
+    PUBLIC_SERVICES,
+    MODES,
     buildGatewayNatalRequest,
     buildGatewayHoroscopeDailyRequest,
     buildGatewayHoroscopePeriodRequest,
     buildCalculatorNatalPayload,
+    buildServiceGroups,
+    composeCopiedReading,
+    combineHoroscopeMode,
+    extractRunId,
+    isAutoLocationEnabled,
     isHoroscopeService,
+    joinSectionsForCopy,
     normalizeGatewayAudience,
     normalizeHoroscopeAudience,
     normalizeReadingSections,
@@ -769,14 +1396,15 @@
     parseResponseBody,
     serviceCanRun,
     supportedTargetLanguageCode,
+    summarizeUsage,
     newClientId,
   };
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {
-      if (document.getElementById("serviceGrid")) boot();
+      if (document.getElementById("serviceSections")) boot();
     });
-  } else if (document.getElementById("serviceGrid")) {
+  } else if (document.getElementById("serviceSections")) {
     boot();
   }
 }());

@@ -11,7 +11,7 @@
     <section class="topbar">
       <div>
         <h1>Gateway V2 service test UI</h1>
-        <p>Interface locale de developpement pour lancer la surface publique V2 et diagnostiquer l'async V1 interne.</p>
+        <p>Interface locale de developpement pour lancer la surface publique V2, suivre les etapes de chaque requete et comparer les tiers Free, Basic et Premium.</p>
       </div>
       <div class="status-strip" aria-live="polite">
         <span id="gatewayStatus" class="status-dot">Gateway</span>
@@ -20,57 +20,72 @@
       </div>
     </section>
 
-    <section class="input-panel" aria-label="Parametres de test">
-      <div class="field">
-        <label for="birthDate">Date de naissance</label>
-        <input id="birthDate" type="date" value="1990-06-15" required>
+    <section class="frame frame-input" aria-label="Parametres de test">
+      <div class="frame-header">
+        <div>
+          <h2>Parametres d'entree</h2>
+          <p>La localisation est automatique par defaut, avec retour possible au mode manuel.</p>
+        </div>
+        <div class="header-actions">
+          <label class="switch-row" for="locationAuto">
+            <span>Localisation automatique</span>
+            <input id="locationAuto" type="checkbox" checked>
+          </label>
+          <button id="reloadServices" type="button" class="secondary">Recharger services</button>
+        </div>
       </div>
-      <div class="field">
-        <label for="birthTime">Heure de naissance</label>
-        <input id="birthTime" type="time" step="1" value="14:30:00">
+
+      <div class="input-panel">
+        <div class="field">
+          <label for="birthDate">Date de naissance</label>
+          <input id="birthDate" type="date" value="1990-06-15" required>
+        </div>
+        <div class="field">
+          <label for="birthTime">Heure de naissance</label>
+          <input id="birthTime" type="time" step="1" value="14:30:00">
+        </div>
+        <div class="field">
+          <label for="timezone">Fuseau horaire</label>
+          <input id="timezone" type="text" value="Europe/Paris" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="city">Ville</label>
+          <input id="city" type="text" value="Paris" autocomplete="address-level2">
+        </div>
+        <div class="field">
+          <label for="country">Pays</label>
+          <input id="country" type="text" value="France" autocomplete="country-name">
+        </div>
+        <div class="field">
+          <label for="targetDate">Date horoscope</label>
+          <input id="targetDate" type="date">
+        </div>
+        <div class="field">
+          <label for="language">Langue</label>
+          <input id="language" type="text" value="fr" maxlength="8">
+        </div>
+        <div class="field">
+          <label for="audience">Audience</label>
+          <select id="audience">
+            <option value="general">general</option>
+            <option value="beginner">beginner</option>
+            <option value="intermediate">intermediate</option>
+            <option value="expert">expert</option>
+          </select>
+        </div>
+        <div class="field api-key-field">
+          <label for="llmApiKey">X-API-Key LLM</label>
+          <input id="llmApiKey" type="password" autocomplete="off" placeholder="optionnel">
+        </div>
+        <div class="field api-key-field">
+          <label for="calculatorApiKey">X-API-Key calculateur</label>
+          <input id="calculatorApiKey" type="password" autocomplete="off" placeholder="fallback LLM">
+        </div>
+        <div class="actions">
+          <button id="resolveLocation" type="button">Resoudre le lieu</button>
+        </div>
+        <div id="locationResult" class="location-result" aria-live="polite"></div>
       </div>
-      <div class="field">
-        <label for="timezone">Fuseau horaire</label>
-        <input id="timezone" type="text" value="Europe/Paris" autocomplete="off">
-      </div>
-      <div class="field">
-        <label for="city">Ville</label>
-        <input id="city" type="text" value="Paris" autocomplete="address-level2">
-      </div>
-      <div class="field">
-        <label for="country">Pays</label>
-        <input id="country" type="text" value="France" autocomplete="country-name">
-      </div>
-      <div class="field">
-        <label for="targetDate">Date horoscope</label>
-        <input id="targetDate" type="date">
-      </div>
-      <div class="field">
-        <label for="language">Langue</label>
-        <input id="language" type="text" value="fr" maxlength="8">
-      </div>
-      <div class="field">
-        <label for="audience">Audience</label>
-        <select id="audience">
-          <option value="general">general</option>
-          <option value="beginner">beginner</option>
-          <option value="intermediate">intermediate</option>
-          <option value="expert">expert</option>
-        </select>
-      </div>
-      <div class="field api-key-field">
-        <label for="llmApiKey">X-API-Key LLM</label>
-        <input id="llmApiKey" type="password" autocomplete="off" placeholder="optionnel">
-      </div>
-      <div class="field api-key-field">
-        <label for="calculatorApiKey">X-API-Key calculateur</label>
-        <input id="calculatorApiKey" type="password" autocomplete="off" placeholder="fallback LLM">
-      </div>
-      <div class="actions">
-        <button id="resolveLocation" type="button">Resoudre le lieu</button>
-        <button id="reloadServices" type="button" class="secondary">Recharger services</button>
-      </div>
-      <div id="locationResult" class="location-result" aria-live="polite"></div>
     </section>
 
     <section class="service-board">
@@ -81,9 +96,41 @@
         </div>
         <p id="diagnosticCount">Diagnostic async interne en attente...</p>
       </div>
-      <div id="serviceGrid" class="service-grid"></div>
+      <div id="serviceSections" class="service-sections"></div>
     </section>
   </main>
+
+  <template id="serviceFrameTemplate">
+    <section class="frame service-frame">
+      <div class="frame-header">
+        <div>
+          <h2 class="frame-title"></h2>
+          <p class="frame-description"></p>
+        </div>
+        <div class="header-actions">
+          <label class="switch-row frame-mode-toggle">
+            <span class="mode-label">Mode complet</span>
+            <input class="mode-switch" type="checkbox">
+          </label>
+          <button type="button" class="run-group secondary">Tout executer</button>
+        </div>
+      </div>
+      <div class="frame-subsections"></div>
+    </section>
+  </template>
+
+  <template id="serviceSubframeTemplate">
+    <section class="subframe">
+      <div class="subframe-header">
+        <div>
+          <h3 class="subframe-title"></h3>
+          <p class="subframe-description"></p>
+        </div>
+        <button type="button" class="run-subgroup secondary">Tout executer</button>
+      </div>
+      <div class="service-grid"></div>
+    </section>
+  </template>
 
   <template id="serviceCardTemplate">
     <article class="service-card">
@@ -97,13 +144,24 @@
       <div class="service-meta"></div>
       <div class="service-actions">
         <button type="button" class="run-service">Executer</button>
+        <button type="button" class="copy-text secondary">Copier le texte</button>
+        <button type="button" class="show-prompt secondary">Voir le prompt</button>
+        <button type="button" class="show-usage secondary">Tokens / couts</button>
+      </div>
+      <div class="service-note" aria-live="polite"></div>
+      <div class="progress-panel">
+        <div class="progress-summary">
+          <span class="progress-status">En attente</span>
+          <span class="progress-timer">0.0 s</span>
+        </div>
+        <ol class="progress-steps"></ol>
       </div>
       <div class="result-region" hidden>
         <div class="result-toolbar">
           <button type="button" class="tab active" data-tab="reading">Lecture</button>
           <button type="button" class="tab" data-tab="json">JSON brut</button>
-          <button type="button" class="copy-json">Copier JSON</button>
-          <button type="button" class="toggle-tech">Details</button>
+          <button type="button" class="copy-json secondary">Copier JSON</button>
+          <button type="button" class="toggle-tech secondary">Details</button>
         </div>
         <div class="tech-details" hidden></div>
         <div class="reading-view"></div>
@@ -111,6 +169,20 @@
       </div>
     </article>
   </template>
+
+  <div id="modalRoot" class="modal-root" hidden>
+    <div class="modal-backdrop" data-close-modal="true"></div>
+    <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <header class="modal-header">
+        <div>
+          <h2 id="modalTitle">Details</h2>
+          <p id="modalSubtitle" class="modal-subtitle"></p>
+        </div>
+        <button id="closeModal" type="button" class="secondary">Fermer</button>
+      </header>
+      <div id="modalContent" class="modal-content"></div>
+    </section>
+  </div>
 
   <script src="./service-test-ui.js"></script>
 </body>
