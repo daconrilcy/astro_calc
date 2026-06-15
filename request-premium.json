@@ -14,10 +14,12 @@
         "domain_scores": {
           "identity": 0.85,
           "emotional_life": 0.78,
-          "relationships": 0.72,
-          "career": 0.55,
-          "growth_path": 0.6
-        },
+        "relationships": 0.72,
+        "career": 0.55,
+        "communication_mind": 0.58,
+        "family_roots": 0.64,
+        "growth_path": 0.6
+      },
         "planets": {
           "sun": { "house": 2, "sign": "capricorn" },
           "moon": { "house": 4, "sign": "pisces" },
@@ -36,6 +38,8 @@
         "emotional_life",
         "relationships",
         "career",
+        "communication_mind",
+        "family_roots",
         "growth_path"
       ],
       "forbidden_wording": [],
@@ -45,7 +49,7 @@
       "provider": "open_ai",
       "temperature": 0.5,
       "max_output_tokens": 1200,
-      "domain_count": 5,
+      "domain_count": 7,
       "allow_fallback": false,
       "timeout_ms": 120000
     },

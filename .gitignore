@@ -4,6 +4,7 @@ ephe/
 __pycache__/
 *.pyc
 target/
+tmp_target/
 output/
 target-verify/
 target-review/

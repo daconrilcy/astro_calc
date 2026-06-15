@@ -50,11 +50,15 @@ fn premium_profile_enables_evidence_and_blocking_gate() {
     assert!(profile.evidence_enabled());
     assert!(profile.blocking_quality_gate());
     assert!(profile.allows_chapter_orchestration());
+    assert_eq!(profile.astrological_chapter_types().len(), 11);
+    assert_eq!(profile.planned_chapter_count(None), 11);
     assert_eq!(profile.document.chapter_word_targets.min, 260);
     assert_eq!(profile.document.chapter_word_targets.target, 360);
     assert_eq!(profile.document.chapter_word_targets.max, 480);
     assert_eq!(profile.document.quality.min_words_per_chapter, 260);
     assert!(profile.chapter_needs_length_expansion("relationships"));
+    assert!(profile.chapter_needs_length_expansion("communication_mind"));
+    assert!(profile.chapter_needs_length_expansion("family_roots"));
     assert!(!profile.chapter_needs_length_expansion("identity"));
 }
 

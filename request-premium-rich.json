@@ -4460,6 +4460,8 @@
       "emotional_life",
       "relationships",
       "career",
+      "communication_mind",
+      "family_roots",
       "growth_path"
     ],
     "forbidden_wording": [],
@@ -4469,7 +4471,7 @@
     "provider": "open_ai",
     "temperature": 0.5,
     "max_output_tokens": 1200,
-    "domain_count": 5,
+    "domain_count": 7,
     "allow_fallback": false,
     "timeout_ms": 120000
   },
