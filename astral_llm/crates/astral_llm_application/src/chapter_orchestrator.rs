@@ -1235,6 +1235,10 @@ impl<'a> ChapterOrchestrator<'a> {
                 request_id: request.request_id.clone(),
                 product_code: request.product_context.product_code.clone(),
                 chapter_code: Some(chapter.code.clone()),
+                prompt_trace_step: Some("chapter_generate".into()),
+                prompt_trace_attempt: Some(attempt.into()),
+                prompt_family: Some(bundle.prompt_family.clone()),
+                prompt_version: Some(bundle.prompt_version.clone()),
             },
         };
 

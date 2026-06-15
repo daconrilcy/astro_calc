@@ -155,6 +155,17 @@ impl<'a> FinalSynthesisSynthesizer<'a> {
                 request_id: request.request_id.clone(),
                 product_code: request.product_context.product_code.clone(),
                 chapter_code: Some(SYNTHESIS_CHAPTER_CODE.into()),
+                prompt_trace_step: Some("final_synthesis_generate".into()),
+                prompt_trace_attempt: Some(
+                    if repair.is_some() {
+                        "repair"
+                    } else {
+                        "final_synthesis"
+                    }
+                    .into(),
+                ),
+                prompt_family: None,
+                prompt_version: None,
             },
         };
 

@@ -39,7 +39,7 @@ async fn main() {
         .await
         .expect("database connection");
 
-    let run_persistence = RunPersistence::new(pool.clone());
+    let run_persistence = Arc::new(RunPersistence::new(pool.clone()));
     if config.db_auto_migrate {
         run_persistence.ensure_schema().await.expect("schema");
     } else {
@@ -80,6 +80,7 @@ async fn main() {
             config.circuit_breaker_failure_threshold,
             config.circuit_breaker_open_secs,
         )),
+        Some(run_persistence.clone()),
     );
     let schema_registry = Arc::new(SchemaRegistry::new());
     let use_case = GenerateReadingUseCase::new(
@@ -91,6 +92,7 @@ async fn main() {
         catalog,
         config.privacy_policy.clone(),
         config.legacy_product_code_shim_available(),
+        Some(run_persistence.clone()),
     );
 
     let calculator = CalculatorClient::new(

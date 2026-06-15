@@ -104,6 +104,7 @@ async fn main() {
         capability_registry,
         privacy_policy,
         circuit_breaker,
+        persistence.clone(),
     );
 
     let schema_registry = Arc::new(SchemaRegistry::new());
@@ -119,6 +120,7 @@ async fn main() {
         catalog.clone(),
         config.privacy_policy.clone(),
         config.legacy_product_code_shim_available(),
+        persistence.clone(),
     ));
 
     tracing::info!(

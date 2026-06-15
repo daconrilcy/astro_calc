@@ -46,3 +46,20 @@ ALTER TABLE llm_generation_payloads
     ADD COLUMN IF NOT EXISTS astro_facts_hash TEXT;
 ALTER TABLE llm_generation_payloads
     ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+CREATE TABLE IF NOT EXISTS llm_generation_prompt_traces (
+    id BIGSERIAL PRIMARY KEY,
+    run_id UUID NOT NULL REFERENCES llm_generation_runs(id) ON DELETE CASCADE,
+    chapter_code TEXT,
+    step_type TEXT,
+    attempt TEXT,
+    prompt_family TEXT,
+    prompt_version TEXT,
+    message_count INTEGER NOT NULL,
+    compiled_prompt TEXT NOT NULL,
+    messages_json JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_llm_generation_prompt_traces_run_created
+    ON llm_generation_prompt_traces (run_id, created_at ASC, id ASC);

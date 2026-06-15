@@ -11,9 +11,13 @@ use astral_llm_domain::{
     EngineDefaults, GenerateReadingRequest, GenerationError, GenerationErrorCode, PrivacyPolicy,
     ProviderKind, SafetyMode, ServiceLimits,
 };
-use astral_llm_infra::SharedCanonicalCatalog;
+use astral_llm_infra::{
+    hash_json, GenerationRunRecord, RunPersistence, RunStatus, SafetyStatus, SharedCanonicalCatalog,
+};
 
 use astral_llm_providers::{GenerationMetadata, ProviderGenerationRequest};
+use chrono::Utc;
+use std::sync::Arc;
 
 use crate::astro_basis_validator::AstroBasisValidator;
 use crate::astro_payload_normalizer::AstroPayloadNormalizer;
@@ -52,11 +56,27 @@ pub struct GenerateReadingUseCase {
     pub(super) catalog: SharedCanonicalCatalog,
     privacy_policy: PrivacyPolicy,
     legacy_product_code_shim_available: bool,
+    persistence: Option<Arc<RunPersistence>>,
 }
 
 pub struct UseCaseOutput {
     pub response: GenerateReadingResponse,
     pub audit: ExecutionAudit,
+}
+
+#[derive(Debug, Clone)]
+struct RunAuditContext {
+    request_id: Option<String>,
+    idempotency_key: Option<String>,
+    product_code: String,
+    user_language: String,
+    astro_contract_version: String,
+    output_schema_version: String,
+    provider_requested: String,
+    model_requested: String,
+    generation_mode: String,
+    safety_policy_version: String,
+    input_hash: String,
 }
 
 impl GenerateReadingUseCase {
@@ -69,6 +89,7 @@ impl GenerateReadingUseCase {
         catalog: SharedCanonicalCatalog,
         privacy_policy: PrivacyPolicy,
         legacy_product_code_shim_available: bool,
+        persistence: Option<Arc<RunPersistence>>,
     ) -> Self {
         Self {
             router,
@@ -79,6 +100,7 @@ impl GenerateReadingUseCase {
             catalog,
             privacy_policy,
             legacy_product_code_shim_available,
+            persistence,
         }
     }
 
@@ -89,6 +111,10 @@ impl GenerateReadingUseCase {
 
     pub fn engine_defaults(&self) -> &EngineDefaults {
         &self.engine_defaults
+    }
+
+    pub fn persistence(&self) -> Option<&Arc<RunPersistence>> {
+        self.persistence.as_ref()
     }
 
     pub fn prepare_request(
@@ -119,6 +145,37 @@ impl GenerateReadingUseCase {
     ) -> UseCaseOutput {
         let mut audit = ExecutionAudit::new(&run_id);
         audit.idempotency_key = request.idempotency_key.clone();
+        let started_at = std::time::Instant::now();
+        let run_context = RunAuditContext {
+            request_id: request.request_id.clone(),
+            idempotency_key: request.idempotency_key.clone(),
+            product_code: request.product_context.product_code.clone(),
+            user_language: request.product_context.user_language.clone(),
+            astro_contract_version: request.astro_result.contract_version.clone(),
+            output_schema_version: request.response_contract.output_schema_version.clone(),
+            provider_requested: request
+                .engine
+                .provider
+                .clone()
+                .unwrap_or_else(|| self.engine_defaults.provider.clone())
+                .as_str()
+                .to_string(),
+            model_requested: request
+                .engine
+                .model
+                .clone()
+                .unwrap_or_else(|| self.engine_defaults.model.clone()),
+            generation_mode: request
+                .response_contract
+                .generation_mode
+                .as_str()
+                .to_string(),
+            safety_policy_version: "product_default".into(),
+            input_hash: hash_json(&serde_json::to_value(&request).unwrap_or_default()),
+        };
+
+        self.persist_run_started(&run_context, &run_id, &audit)
+            .await;
 
         let response = match self.execute_inner(request, &run_id, &mut audit).await {
             Ok(reading) => GenerateReadingResponse::Success(StructuredReadingResponse {
@@ -139,6 +196,9 @@ impl GenerateReadingUseCase {
                 error: err.detail().clone(),
             }),
         };
+
+        self.persist_run_finished(&run_context, &response, started_at.elapsed(), &audit)
+            .await;
 
         UseCaseOutput { response, audit }
     }
@@ -511,6 +571,14 @@ impl GenerateReadingUseCase {
                 request_id: request.request_id.clone(),
                 product_code: request.product_context.product_code.clone(),
                 chapter_code: chapter_code.map(str::to_string),
+                prompt_trace_step: Some("single_pass_generate".into()),
+                prompt_trace_attempt: Some(if repair_instruction.is_some() {
+                    "repair".into()
+                } else {
+                    "primary".into()
+                }),
+                prompt_family: Some(bundle.prompt_family.clone()),
+                prompt_version: Some(bundle.prompt_version.clone()),
             },
         };
 
@@ -566,6 +634,146 @@ impl GenerateReadingUseCase {
         );
 
         Ok(reading)
+    }
+
+    async fn persist_run_started(
+        &self,
+        context: &RunAuditContext,
+        run_id: &str,
+        audit: &ExecutionAudit,
+    ) {
+        let Some(persistence) = self.persistence.as_ref() else {
+            return;
+        };
+        let Ok(run_uuid) = uuid::Uuid::parse_str(run_id) else {
+            return;
+        };
+        let record = GenerationRunRecord {
+            id: run_uuid,
+            request_id: context.request_id.clone(),
+            idempotency_key: context.idempotency_key.clone(),
+            product_code: context.product_code.clone(),
+            user_language: context.user_language.clone(),
+            astro_contract_version: context.astro_contract_version.clone(),
+            output_schema_version: context.output_schema_version.clone(),
+            prompt_family: "-".into(),
+            prompt_version: "-".into(),
+            safety_policy_version: context.safety_policy_version.clone(),
+            provider_requested: context.provider_requested.clone(),
+            provider_used: None,
+            model_requested: context.model_requested.clone(),
+            model_used: None,
+            generation_mode: context.generation_mode.clone(),
+            fallback_used: false,
+            selected_domains: if audit.selected_domains.is_empty() {
+                None
+            } else {
+                Some(serde_json::json!(audit.selected_domains))
+            },
+            status: RunStatus::Pending,
+            safety_status: SafetyStatus::NotChecked,
+            input_hash: context.input_hash.clone(),
+            output_hash: None,
+            token_input: None,
+            token_output: None,
+            latency_ms: None,
+            error_code: None,
+            created_at: Utc::now(),
+        };
+        if let Err(err) = persistence.upsert_run(&record).await {
+            tracing::warn!(run_id, error = %err, "failed to persist pending generation run");
+        }
+    }
+
+    async fn persist_run_finished(
+        &self,
+        context: &RunAuditContext,
+        response: &GenerateReadingResponse,
+        latency: std::time::Duration,
+        audit: &ExecutionAudit,
+    ) {
+        let Some(persistence) = self.persistence.as_ref() else {
+            return;
+        };
+        let Ok(run_uuid) = uuid::Uuid::parse_str(&audit.run_id) else {
+            return;
+        };
+        let (token_input, token_output) = audit.aggregate_token_usage();
+        let (status, safety_status, provider_used, model_used, output_hash, error) = match response
+        {
+            GenerateReadingResponse::Success(success) => (
+                RunStatus::Success,
+                SafetyStatus::Passed,
+                Some(success.reading.quality.used_provider.clone()),
+                Some(success.reading.quality.used_model.clone()),
+                serde_json::to_value(response).ok().map(|v| hash_json(&v)),
+                None,
+            ),
+            GenerateReadingResponse::SafetyRejected(rejected) => (
+                RunStatus::SafetyRejected,
+                SafetyStatus::Rejected,
+                None,
+                None,
+                serde_json::to_value(response).ok().map(|v| hash_json(&v)),
+                Some(rejected.error.code.clone()),
+            ),
+            GenerateReadingResponse::Failed(failed) => (
+                RunStatus::Failed,
+                SafetyStatus::NotChecked,
+                None,
+                None,
+                serde_json::to_value(response).ok().map(|v| hash_json(&v)),
+                Some(failed.error.code.as_str().to_string()),
+            ),
+        };
+        let final_record = GenerationRunRecord {
+            id: run_uuid,
+            request_id: context.request_id.clone(),
+            idempotency_key: context.idempotency_key.clone(),
+            product_code: context.product_code.clone(),
+            user_language: context.user_language.clone(),
+            astro_contract_version: context.astro_contract_version.clone(),
+            output_schema_version: context.output_schema_version.clone(),
+            prompt_family: match response {
+                GenerateReadingResponse::Success(success) => {
+                    success.reading.quality.prompt_family.clone()
+                }
+                _ => "-".into(),
+            },
+            prompt_version: match response {
+                GenerateReadingResponse::Success(success) => {
+                    success.reading.quality.prompt_version.clone()
+                }
+                _ => "-".into(),
+            },
+            safety_policy_version: context.safety_policy_version.clone(),
+            provider_requested: context.provider_requested.clone(),
+            provider_used,
+            model_requested: context.model_requested.clone(),
+            model_used,
+            generation_mode: context.generation_mode.clone(),
+            fallback_used: matches!(response, GenerateReadingResponse::Success(success) if success.reading.quality.fallback_used),
+            selected_domains: if audit.selected_domains.is_empty() {
+                None
+            } else {
+                Some(serde_json::json!(audit.selected_domains))
+            },
+            status,
+            safety_status,
+            input_hash: context.input_hash.clone(),
+            output_hash,
+            token_input,
+            token_output,
+            latency_ms: Some(i32::try_from(latency.as_millis()).unwrap_or(i32::MAX)),
+            error_code: error,
+            created_at: Utc::now(),
+        };
+        if let Err(err) = persistence.upsert_run(&final_record).await {
+            tracing::warn!(run_id = %audit.run_id, error = %err, "failed to persist final generation run");
+        }
+        if let Err(err) = persistence.insert_steps(run_uuid, &audit.steps).await {
+            tracing::warn!(run_id = %audit.run_id, error = %err, "failed to persist generation steps");
+        }
     }
 }
 

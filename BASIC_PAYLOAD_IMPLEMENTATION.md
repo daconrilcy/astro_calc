@@ -45,6 +45,18 @@ operator tooling for V2 public services.
   timeout margin calculation, period writer/editor token budgets, and the
   one-retry limit of the period quality loop.
 
+# Audit PostgreSQL des prompts finalisés LLM - 2026-06-15
+
+Ajout d’une persistance PostgreSQL des prompts finalisés réellement envoyés au LLM, exposée dans l’audit interne `GET /v1/runs/{run_id}`.
+
+- Nouvelle table `llm_generation_prompt_traces` pour stocker plusieurs prompts par run, y compris les retries et repairs.
+- Chaque trace persiste `run_id`, `chapter_code`, `step_type`, `attempt`, `prompt_family`, `prompt_version`, `message_count`, `compiled_prompt` et `messages_json`.
+- Le point de stockage est centralisé dans `ProviderRouter` juste avant chaque appel provider, à partir du `ProviderGenerationRequest` final.
+- Les runs parent sont désormais upsertés en base avant exécution puis finalisés après génération, afin que les prompt traces soient rattachées à un audit exploitable.
+- La vue d’audit renvoyée par `/v1/runs/{run_id}` inclut maintenant `prompt_traces` en plus des `steps`.
+- Les flows couverts sont : single-pass natal, orchestration par chapitres, summary/final synthesis, horoscope daily, horoscope period et leurs repairs/retries.
+- La journalisation fichier existante sous `output/logs/prompts` reste active comme aide locale, mais la source d’audit principale devient PostgreSQL.
+
 # Horoscope real-provider local guard - 2026-06-14
 
 Added a local-provider guard for horoscope test runs so the UI and integration

@@ -46,6 +46,7 @@ fn build_use_case() -> GenerateReadingUseCase {
         Arc::new(ModelCapabilityRegistry::bootstrap()),
         PrivacyPolicy::default(),
         Arc::new(astral_llm_application::ProviderCircuitBreaker::new(5, 60)),
+        None,
     );
     let prompts = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../prompts");
     GenerateReadingUseCase::new(
@@ -60,6 +61,7 @@ fn build_use_case() -> GenerateReadingUseCase {
         catalog,
         PrivacyPolicy::default(),
         true,
+        None,
     )
 }
 

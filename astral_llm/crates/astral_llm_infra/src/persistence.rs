@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use astral_llm_domain::{GenerateReadingResponse, GenerationErrorDetail, GenerationStepRecord};
 
-use crate::run_audit_view::{RunAuditRow, RunAuditStepView, RunAuditView};
+use crate::run_audit_view::{RunAuditPromptTraceView, RunAuditRow, RunAuditStepView, RunAuditView};
 use crate::sql_script::execute_sql_script;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -75,6 +75,19 @@ pub struct GenerationRunRecord {
 }
 
 #[derive(Debug, Clone)]
+pub struct GenerationPromptTraceRecord {
+    pub run_id: Uuid,
+    pub chapter_code: Option<String>,
+    pub step_type: Option<String>,
+    pub attempt: Option<String>,
+    pub prompt_family: Option<String>,
+    pub prompt_version: Option<String>,
+    pub message_count: i32,
+    pub compiled_prompt: String,
+    pub messages_json: serde_json::Value,
+}
+
+#[derive(Debug, Clone)]
 pub struct IdempotencyHit {
     pub run_id: Uuid,
     pub status: String,
@@ -140,6 +153,9 @@ impl RunPersistence {
         sqlx::query("SELECT 1 FROM llm_jobs LIMIT 0")
             .execute(&self.pool)
             .await?;
+        sqlx::query("SELECT 1 FROM llm_generation_prompt_traces LIMIT 0")
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 
@@ -174,7 +190,7 @@ impl RunPersistence {
         Ok(())
     }
 
-    pub async fn insert_run(&self, record: &GenerationRunRecord) -> Result<(), sqlx::Error> {
+    pub async fn upsert_run(&self, record: &GenerationRunRecord) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
             INSERT INTO llm_generation_runs (
@@ -187,6 +203,31 @@ impl RunPersistence {
                 $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
                 $18, $19, $20, $21, $22, $23, $24, $25, $26
             )
+            ON CONFLICT (id) DO UPDATE SET
+                request_id = EXCLUDED.request_id,
+                idempotency_key = EXCLUDED.idempotency_key,
+                product_code = EXCLUDED.product_code,
+                user_language = EXCLUDED.user_language,
+                astro_contract_version = EXCLUDED.astro_contract_version,
+                output_schema_version = EXCLUDED.output_schema_version,
+                prompt_family = EXCLUDED.prompt_family,
+                prompt_version = EXCLUDED.prompt_version,
+                safety_policy_version = EXCLUDED.safety_policy_version,
+                provider_requested = EXCLUDED.provider_requested,
+                provider_used = EXCLUDED.provider_used,
+                model_requested = EXCLUDED.model_requested,
+                model_used = EXCLUDED.model_used,
+                generation_mode = EXCLUDED.generation_mode,
+                fallback_used = EXCLUDED.fallback_used,
+                selected_domains = EXCLUDED.selected_domains,
+                status = EXCLUDED.status,
+                safety_status = EXCLUDED.safety_status,
+                input_hash = EXCLUDED.input_hash,
+                output_hash = EXCLUDED.output_hash,
+                token_input = EXCLUDED.token_input,
+                token_output = EXCLUDED.token_output,
+                latency_ms = EXCLUDED.latency_ms,
+                error_code = EXCLUDED.error_code
             "#,
         )
         .bind(record.id)
@@ -215,6 +256,32 @@ impl RunPersistence {
         .bind(record.latency_ms)
         .bind(&record.error_code)
         .bind(record.created_at)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn insert_prompt_trace(
+        &self,
+        record: &GenerationPromptTraceRecord,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            r#"
+            INSERT INTO llm_generation_prompt_traces (
+                run_id, chapter_code, step_type, attempt, prompt_family, prompt_version,
+                message_count, compiled_prompt, messages_json
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            "#,
+        )
+        .bind(record.run_id)
+        .bind(&record.chapter_code)
+        .bind(&record.step_type)
+        .bind(&record.attempt)
+        .bind(&record.prompt_family)
+        .bind(&record.prompt_version)
+        .bind(record.message_count)
+        .bind(&record.compiled_prompt)
+        .bind(&record.messages_json)
         .execute(&self.pool)
         .await?;
         Ok(())
@@ -425,7 +492,20 @@ impl RunPersistence {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(Some(run.into_view(steps)))
+        let prompt_traces = sqlx::query_as::<_, RunAuditPromptTraceView>(
+            r#"
+            SELECT chapter_code, step_type, attempt, prompt_family, prompt_version,
+                   message_count, compiled_prompt, messages_json, created_at
+            FROM llm_generation_prompt_traces
+            WHERE run_id = $1
+            ORDER BY created_at ASC, id ASC
+            "#,
+        )
+        .bind(run_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(Some(run.into_view(steps, prompt_traces)))
     }
 }
 

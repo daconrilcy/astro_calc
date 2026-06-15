@@ -160,6 +160,15 @@ impl<'a> SummarySynthesizer<'a> {
                 request_id: request.request_id.clone(),
                 product_code: request.product_context.product_code.clone(),
                 chapter_code: Some(READING_SUMMARY_STEP_CODE.into()),
+                prompt_trace_step: Some("summary_generate".into()),
+                prompt_trace_attempt: Some(
+                    repair_instruction
+                        .map(|_| "repair")
+                        .unwrap_or("summary")
+                        .into(),
+                ),
+                prompt_family: None,
+                prompt_version: None,
             },
         };
 

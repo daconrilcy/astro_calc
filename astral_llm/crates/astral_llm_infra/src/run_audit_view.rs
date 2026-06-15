@@ -27,7 +27,11 @@ pub(crate) struct RunAuditRow {
 }
 
 impl RunAuditRow {
-    pub(crate) fn into_view(self, steps: Vec<RunAuditStepView>) -> RunAuditView {
+    pub(crate) fn into_view(
+        self,
+        steps: Vec<RunAuditStepView>,
+        prompt_traces: Vec<RunAuditPromptTraceView>,
+    ) -> RunAuditView {
         RunAuditView {
             run_id: self.id,
             request_id: self.request_id,
@@ -49,6 +53,7 @@ impl RunAuditRow {
             fallback_used: self.fallback_used,
             created_at: self.created_at,
             steps,
+            prompt_traces,
         }
     }
 }
@@ -64,6 +69,19 @@ pub struct RunAuditStepView {
     pub output_tokens: Option<i32>,
     pub latency_ms: Option<i32>,
     pub error_code: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, FromRow)]
+pub struct RunAuditPromptTraceView {
+    pub chapter_code: Option<String>,
+    pub step_type: Option<String>,
+    pub attempt: Option<String>,
+    pub prompt_family: Option<String>,
+    pub prompt_version: Option<String>,
+    pub message_count: i32,
+    pub compiled_prompt: String,
+    pub messages_json: serde_json::Value,
     pub created_at: DateTime<Utc>,
 }
 
@@ -89,4 +107,5 @@ pub struct RunAuditView {
     pub fallback_used: Option<bool>,
     pub created_at: DateTime<Utc>,
     pub steps: Vec<RunAuditStepView>,
+    pub prompt_traces: Vec<RunAuditPromptTraceView>,
 }

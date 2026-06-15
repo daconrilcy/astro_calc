@@ -7,6 +7,7 @@ use astral_llm_domain::{
     provider::{ProviderKind, StructuredOutputMode},
     FallbackPolicy, FallbackReason, GenerationError, GenerationErrorCode, PrivacyPolicy,
 };
+use astral_llm_infra::{GenerationPromptTraceRecord, RunPersistence};
 use astral_llm_providers::{
     LlmProvider, LlmProviderError, ProviderGenerationRequest, ProviderGenerationResponse,
     SharedLlmProvider,
@@ -29,6 +30,7 @@ pub struct ProviderRouter {
     capability_registry: Arc<ModelCapabilityRegistry>,
     privacy_policy: PrivacyPolicy,
     circuit_breaker: Arc<ProviderCircuitBreaker>,
+    persistence: Option<Arc<RunPersistence>>,
 }
 
 impl ProviderRouter {
@@ -38,6 +40,7 @@ impl ProviderRouter {
         capability_registry: Arc<ModelCapabilityRegistry>,
         privacy_policy: PrivacyPolicy,
         circuit_breaker: Arc<ProviderCircuitBreaker>,
+        persistence: Option<Arc<RunPersistence>>,
     ) -> Self {
         Self {
             providers,
@@ -45,6 +48,7 @@ impl ProviderRouter {
             capability_registry,
             privacy_policy,
             circuit_breaker,
+            persistence,
         }
     }
 
@@ -194,6 +198,8 @@ impl ProviderRouter {
 
             let mut attempt = 0;
             while attempt <= self.fallback_policy.max_retries_per_provider {
+                self.persist_prompt_trace(&provider_request, attempt.into())
+                    .await;
                 match provider.generate(provider_request.clone()).await {
                     Ok(response) => {
                         self.circuit_breaker.record_success(&provider_kind);
@@ -263,6 +269,41 @@ impl ProviderRouter {
                 "no provider available for request",
             )
         }))
+    }
+
+    async fn persist_prompt_trace(&self, request: &ProviderGenerationRequest, retry_index: u32) {
+        let Some(persistence) = self.persistence.as_ref() else {
+            return;
+        };
+        let Ok(run_id) = uuid::Uuid::parse_str(&request.metadata.run_id) else {
+            return;
+        };
+        let trace = crate::prompt_trace::build_prompt_trace_record(request);
+        let attempt = match (trace.attempt.as_deref(), retry_index) {
+            (Some(base), 0) => Some(base.to_string()),
+            (Some(base), index) => Some(format!("{base}_provider_retry_{index}")),
+            (None, 0) => None,
+            (None, index) => Some(format!("provider_retry_{index}")),
+        };
+        let record = GenerationPromptTraceRecord {
+            run_id,
+            chapter_code: trace.chapter_code,
+            step_type: trace.step_type,
+            attempt,
+            prompt_family: trace.prompt_family,
+            prompt_version: trace.prompt_version,
+            message_count: trace.message_count,
+            compiled_prompt: trace.compiled_prompt,
+            messages_json: trace.messages_json,
+        };
+        if let Err(err) = persistence.insert_prompt_trace(&record).await {
+            tracing::warn!(
+                run_id = %request.metadata.run_id,
+                chapter_code = request.metadata.chapter_code.as_deref().unwrap_or("-"),
+                error = %err,
+                "failed to persist prompt trace"
+            );
+        }
     }
 }
 

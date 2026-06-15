@@ -30,6 +30,10 @@ fn request_with_reasoning(reasoning_effort: Option<ReasoningEffort>) -> Provider
             request_id: None,
             product_code: "natal_prompter".into(),
             chapter_code: None,
+            prompt_trace_step: None,
+            prompt_trace_attempt: None,
+            prompt_family: None,
+            prompt_version: None,
         },
     }
 }

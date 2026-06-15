@@ -5,13 +5,26 @@ use std::path::PathBuf;
 
 use astral_llm_domain::chapter_orchestration::READING_SUMMARY_STEP_CODE;
 use astral_llm_infra::config::{env_bool, env_var};
-use astral_llm_providers::PromptMessage;
+use astral_llm_providers::{PromptMessage, PromptRole, ProviderGenerationRequest};
+use serde_json::{json, Value};
 
 use crate::prompt_compiler::{PromptBundle, PromptCompiler};
 use crate::text_reprocessing_service_adapter::reprocess_prompt_trace;
 
 pub const TARGET: &str = "astral_llm.prompt";
 const DEFAULT_PROMPT_LOG_DIR: &str = "output/logs/prompts";
+
+#[derive(Debug, Clone)]
+pub struct PromptTraceRecord {
+    pub chapter_code: Option<String>,
+    pub step_type: Option<String>,
+    pub attempt: Option<String>,
+    pub prompt_family: Option<String>,
+    pub prompt_version: Option<String>,
+    pub message_count: i32,
+    pub compiled_prompt: String,
+    pub messages_json: Value,
+}
 
 pub fn log_prompt_bundle(
     run_id: &str,
@@ -75,6 +88,25 @@ pub fn log_provider_messages(
             path = %path.display(),
             "compiled prompt written to file"
         );
+    }
+}
+
+pub fn build_prompt_trace_record(request: &ProviderGenerationRequest) -> PromptTraceRecord {
+    PromptTraceRecord {
+        chapter_code: request.metadata.chapter_code.clone(),
+        step_type: request.metadata.prompt_trace_step.clone(),
+        attempt: request.metadata.prompt_trace_attempt.clone(),
+        prompt_family: request.metadata.prompt_family.clone(),
+        prompt_version: request.metadata.prompt_version.clone(),
+        message_count: i32::try_from(request.messages.len()).unwrap_or(i32::MAX),
+        compiled_prompt: format_compiled_messages(&request.messages),
+        messages_json: Value::Array(
+            request
+                .messages
+                .iter()
+                .map(prompt_message_to_json)
+                .collect::<Vec<_>>(),
+        ),
     }
 }
 
@@ -162,4 +194,17 @@ fn sanitize_filename_segment(value: &str) -> String {
 
 fn format_compiled_messages(messages: &[PromptMessage]) -> String {
     reprocess_prompt_trace(messages)
+}
+
+fn prompt_message_to_json(message: &PromptMessage) -> Value {
+    let role = match message.role {
+        PromptRole::System => "system",
+        PromptRole::Developer => "developer",
+        PromptRole::User => "user",
+        PromptRole::Assistant => "assistant",
+    };
+    json!({
+        "role": role,
+        "content": message.content,
+    })
 }

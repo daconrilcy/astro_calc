@@ -102,6 +102,11 @@ name = "astral_llm_api_unit_regression_tests"
 path = "../../../tests/astral_llm_api_unit_regression_tests.rs"
 harness = true
 
+[[test]]
+name = "prompt_trace_persistence_tests"
+path = "../../../tests/prompt_trace_persistence_tests.rs"
+harness = true
+
 [dependencies]
 astral_contracts.workspace = true
 astral_llm_application.workspace = true
@@ -114,6 +119,7 @@ serde.workspace = true
 serde_json.workspace = true
 sqlx.workspace = true
 tokio.workspace = true
+tower.workspace = true
 tower-http = { version = "0.6", features = ["trace", "timeout", "limit"] }
 tracing.workspace = true
 uuid.workspace = true

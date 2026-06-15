@@ -1,5 +1,5 @@
 use super::*;
-pub(crate) async fn period_writer_response(
+async fn period_writer_response_inner(
     use_case: &GenerateReadingUseCase,
     request: &Value,
     run_id: Option<&str>,
@@ -8,6 +8,9 @@ pub(crate) async fn period_writer_response(
     if defaults.provider == ProviderKind::Fake {
         return fake_period_writer_response(request);
     }
+    let resolved_run_id = run_id
+        .map(str::to_string)
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
     let schema = period_response_provider_schema(request)?;
     let provider_request = ProviderGenerationRequest {
         model: defaults.model.clone(),
@@ -23,15 +26,17 @@ pub(crate) async fn period_writer_response(
         safety_mode: SafetyMode::PlatformRulesOnly,
         timeout: StdDuration::from_secs(180),
         metadata: GenerationMetadata {
-            run_id: run_id
-                .map(str::to_string)
-                .unwrap_or_else(|| uuid::Uuid::new_v4().to_string()),
+            run_id: resolved_run_id,
             request_id: None,
             product_code: request["service_code"]
                 .as_str()
                 .unwrap_or(HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE)
                 .to_string(),
             chapter_code: None,
+            prompt_trace_step: Some("horoscope_period_writer".into()),
+            prompt_trace_attempt: Some("primary".into()),
+            prompt_family: Some("horoscope_period_writer".into()),
+            prompt_version: Some("v1".into()),
         },
     };
     tracing::info!(
@@ -56,7 +61,26 @@ pub(crate) async fn period_writer_response(
             json!({ "provider": "fake" }),
         ));
     }
-    let mut response = routed        .response        .parsed_json        .or_else(|| parse_period_provider_json(&routed.response.raw_text))        .ok_or_else(|| {            let incomplete_reason =                period_provider_incomplete_reason(&routed.response.provider_metadata);            GenerationError::with_details(                GenerationErrorCode::PostSafetyValidationFailed,                format!(                    "HOROSCOPE_PERIOD_RESPONSE_INVALID: provider_response_not_json raw_text_len={}",                    routed.response.raw_text.len()                ),                json!({                    "reason": "provider_response_not_json",                    "raw_text_len": routed.response.raw_text.len(),                    "provider_incomplete_reason": incomplete_reason                }),            )        })?;
+    let mut response = routed
+        .response
+        .parsed_json
+        .or_else(|| parse_period_provider_json(&routed.response.raw_text))
+        .ok_or_else(|| {
+            let incomplete_reason =
+                period_provider_incomplete_reason(&routed.response.provider_metadata);
+            GenerationError::with_details(
+                GenerationErrorCode::PostSafetyValidationFailed,
+                format!(
+                    "HOROSCOPE_PERIOD_RESPONSE_INVALID: provider_response_not_json raw_text_len={}",
+                    routed.response.raw_text.len()
+                ),
+                json!({
+                    "reason": "provider_response_not_json",
+                    "raw_text_len": routed.response.raw_text.len(),
+                    "provider_incomplete_reason": incomplete_reason
+                }),
+            )
+        })?;
     if !response
         .get("quality")
         .map_or(false, |value| value.is_object())
@@ -70,12 +94,36 @@ pub(crate) async fn period_writer_response(
     validate_period_provider_public_payload(&response)?;
     Ok(response)
 }
+
 pub async fn period_writer_response_with_quality_loop(
     use_case: &GenerateReadingUseCase,
     request: &Value,
     run_id: Option<&str>,
 ) -> Result<Value, GenerationError> {
-    let mut response = period_writer_response(use_case, request, run_id).await?;
+    let resolved_run_id = run_id
+        .map(str::to_string)
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+    let defaults = horoscope_writer_engine_defaults(use_case);
+    if defaults.provider == ProviderKind::Fake {
+        return fake_period_writer_response(request);
+    }
+    persist_horoscope_run_started(
+        use_case,
+        &resolved_run_id,
+        request["service_code"]
+            .as_str()
+            .unwrap_or(HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE),
+        "horoscope_period_response",
+        "horoscope_period_writer",
+        "v1",
+        &defaults.provider,
+        &defaults.model,
+        request,
+    )
+    .await;
+    let started_at = std::time::Instant::now();
+    let result = async {
+        let mut response = period_writer_response_inner(use_case, request, Some(&resolved_run_id)).await?;
     let mut retries_used = 0_usize;
     for attempt in 0..=PERIOD_V2_QUALITY_MAX_RETRIES {
         match validate_period_response_quality_gates(request, &response) {
@@ -110,6 +158,25 @@ pub async fn period_writer_response_with_quality_loop(
         }
     }
     Ok(response)
+    }
+    .await;
+    persist_horoscope_run_finished(
+        use_case,
+        &resolved_run_id,
+        request["service_code"]
+            .as_str()
+            .unwrap_or(HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE),
+        "horoscope_period_response",
+        "horoscope_period_writer",
+        "v1",
+        &defaults.provider,
+        &defaults.model,
+        request,
+        &result,
+        started_at,
+    )
+    .await;
+    result
 }
 #[doc(hidden)]
 pub fn period_response_provider_schema(request: &Value) -> Result<Value, GenerationError> {

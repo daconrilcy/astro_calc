@@ -2,8 +2,8 @@ use astral_llm_application::{
     build_period_writer_request, build_provider_map, daily_writer_response,
     period_style_editor_max_output_tokens, period_writer_max_output_tokens,
     period_writer_response_with_quality_loop, validate_period_public_request,
-    validate_response_evidence, GenerateReadingUseCase, ModelCapabilityRegistry,
-    PromptCompiler, ProviderCircuitBreaker, ProviderRouter, ResponseValidator, SchemaRegistry,
+    validate_response_evidence, GenerateReadingUseCase, ModelCapabilityRegistry, PromptCompiler,
+    ProviderCircuitBreaker, ProviderRouter, ResponseValidator, SchemaRegistry,
 };
 use astral_llm_domain::provider::ReasoningEffort;
 use astral_llm_domain::{
@@ -108,13 +108,12 @@ impl LlmProvider for SequenceOpenAiProvider {
 fn assert_daily_request_keeps_real_provider_budget(request: &ProviderGenerationRequest) {
     if !request.metadata.product_code.contains("daily") {
         if request.metadata.product_code == "horoscope_premium_next_7_days_natal" {
-            let expected = if request.metadata.chapter_code.as_deref()
-                == Some("period_quality_retry")
-            {
-                8_000
-            } else {
-                12_000
-            };
+            let expected =
+                if request.metadata.chapter_code.as_deref() == Some("period_quality_retry") {
+                    8_000
+                } else {
+                    12_000
+                };
             assert_eq!(
                 request.max_output_tokens,
                 Some(expected),
@@ -177,6 +176,7 @@ fn test_use_case(provider: Arc<dyn LlmProvider>, model: &str) -> GenerateReading
         Arc::new(ModelCapabilityRegistry::bootstrap_dev_fallback()),
         PrivacyPolicy::default(),
         Arc::new(ProviderCircuitBreaker::new(5, 60)),
+        None,
     );
     let prompts_root = PathBuf::from("astral_llm/prompts");
     GenerateReadingUseCase::new(
@@ -191,6 +191,7 @@ fn test_use_case(provider: Arc<dyn LlmProvider>, model: &str) -> GenerateReading
         test_catalog(),
         PrivacyPolicy::default(),
         true,
+        None,
     )
 }
 

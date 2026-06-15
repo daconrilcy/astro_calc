@@ -42,6 +42,10 @@ fn minimal_structured_request(model: String, product_code: &str) -> ProviderGene
             request_id: None,
             product_code: product_code.into(),
             chapter_code: None,
+            prompt_trace_step: None,
+            prompt_trace_attempt: None,
+            prompt_family: None,
+            prompt_version: None,
         },
     }
 }
@@ -248,6 +252,10 @@ async fn openai_chapter_provider_schema_smoke() {
             request_id: None,
             product_code: "natal_prompter".into(),
             chapter_code: Some("identity".into()),
+            prompt_trace_step: None,
+            prompt_trace_attempt: None,
+            prompt_family: None,
+            prompt_version: None,
         },
     };
 

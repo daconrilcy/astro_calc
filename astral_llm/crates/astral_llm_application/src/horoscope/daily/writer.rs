@@ -5,81 +5,123 @@ pub async fn daily_writer_response(
     request: &Value,
     run_id: Option<&str>,
 ) -> Result<Value, GenerationError> {
+    let resolved_run_id = run_id
+        .map(str::to_string)
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
     let defaults = horoscope_writer_engine_defaults(use_case);
     if defaults.provider == ProviderKind::Fake {
         return fake_writer_response(request);
     }
+    persist_horoscope_run_started(
+        use_case,
+        &resolved_run_id,
+        request["service_code"]
+            .as_str()
+            .unwrap_or(HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE),
+        "horoscope_response",
+        "horoscope_daily_writer",
+        "v1",
+        &defaults.provider,
+        &defaults.model,
+        request,
+    )
+    .await;
 
-    let schema = daily_response_provider_schema(request)?;
-    let provider_request = ProviderGenerationRequest {
-        model: defaults.model.clone(),
-        messages: daily_writer_messages(request)?,
-        structured_schema: Some(schema),
-        reasoning_effort: Some(ReasoningEffort::Minimal),
-        temperature: Some(0.4),
-        max_output_tokens: Some(daily_writer_max_output_tokens(request)),
-        safety_mode: SafetyMode::PlatformRulesOnly,
-        timeout: StdDuration::from_secs(180),
-        metadata: GenerationMetadata {
-            run_id: run_id
-                .map(str::to_string)
-                .unwrap_or_else(|| uuid::Uuid::new_v4().to_string()),
-            request_id: None,
-            product_code: request["service_code"]
-                .as_str()
-                .unwrap_or(HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE)
-                .to_string(),
-            chapter_code: None,
-        },
-    };
+    let started_at = std::time::Instant::now();
+    let result = async {
+        let schema = daily_response_provider_schema(request)?;
+        let provider_request = ProviderGenerationRequest {
+            model: defaults.model.clone(),
+            messages: daily_writer_messages(request)?,
+            structured_schema: Some(schema),
+            reasoning_effort: Some(ReasoningEffort::Minimal),
+            temperature: Some(0.4),
+            max_output_tokens: Some(daily_writer_max_output_tokens(request)),
+            safety_mode: SafetyMode::PlatformRulesOnly,
+            timeout: StdDuration::from_secs(180),
+            metadata: GenerationMetadata {
+                run_id: resolved_run_id.clone(),
+                request_id: None,
+                product_code: request["service_code"]
+                    .as_str()
+                    .unwrap_or(HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE)
+                    .to_string(),
+                chapter_code: None,
+                prompt_trace_step: Some("horoscope_daily_writer".into()),
+                prompt_trace_attempt: Some("primary".into()),
+                prompt_family: Some("horoscope_daily_writer".into()),
+                prompt_version: Some("v1".into()),
+            },
+        };
 
-    let routed = use_case
-        .router
-        .generate(
-            provider_request,
-            defaults.provider.clone(),
-            &defaults.model,
-            false,
-            true,
-            ModelRouteContext::PrimaryReading,
-        )
-        .await?;
-    if routed.used_provider == ProviderKind::Fake {
-        return Err(quality_error(
-            "HOROSCOPE_DAILY_REAL_PROVIDER_REQUIRED",
-            json!({ "provider": "fake" }),
-        ));
-    }
-
-    let mut response = match routed
-        .response
-        .parsed_json
-        .clone()
-        .or_else(|| parse_period_provider_json(&routed.response.raw_text))
-    {
-        Some(response) => response,
-        None => {
-            daily_writer_repair_non_json_response(
-                use_case,
-                request,
-                &routed.response.raw_text,
-                run_id,
+        let routed = use_case
+            .router
+            .generate(
+                provider_request,
+                defaults.provider.clone(),
+                &defaults.model,
+                false,
+                true,
+                ModelRouteContext::PrimaryReading,
             )
-            .await?
+            .await?;
+        if routed.used_provider == ProviderKind::Fake {
+            return Err(quality_error(
+                "HOROSCOPE_DAILY_REAL_PROVIDER_REQUIRED",
+                json!({ "provider": "fake" }),
+            ));
         }
-    };
-    if !response
-        .get("quality")
-        .map_or(false, |value| value.is_object())
-    {
-        response["quality"] = json!({});
+
+        let mut response = match routed
+            .response
+            .parsed_json
+            .clone()
+            .or_else(|| parse_period_provider_json(&routed.response.raw_text))
+        {
+            Some(response) => response,
+            None => {
+                daily_writer_repair_non_json_response(
+                    use_case,
+                    request,
+                    &routed.response.raw_text,
+                    Some(&resolved_run_id),
+                )
+                .await?
+            }
+        };
+        if !response
+            .get("quality")
+            .map_or(false, |value| value.is_object())
+        {
+            response["quality"] = json!({});
+        }
+        response["quality"]["provider"] = json!(routed.used_provider.as_str());
+        response["quality"]["model"] = json!(routed.response.model_used);
+        response["quality"]["fallback_used"] = json!(routed.fallback_used);
+        repair_daily_response_shape(request, &mut response);
+        repair_premium_daily_editorial_repetition(&mut response);
+        Ok(reprocess_horoscope_daily_payload(response))
     }
-    response["quality"]["provider"] = json!(routed.used_provider.as_str());
-    response["quality"]["model"] = json!(routed.response.model_used);
-    response["quality"]["fallback_used"] = json!(routed.fallback_used);
-    repair_daily_response_shape(request, &mut response);
-    repair_premium_daily_editorial_repetition(&mut response);
-    Ok(reprocess_horoscope_daily_payload(response))
+    .await;
+
+    persist_horoscope_run_finished(
+        use_case,
+        &resolved_run_id,
+        request["service_code"]
+            .as_str()
+            .unwrap_or(HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE),
+        "horoscope_response",
+        "horoscope_daily_writer",
+        "v1",
+        &defaults.provider,
+        &defaults.model,
+        request,
+        &result,
+        started_at,
+    )
+    .await;
+
+    result
 }
 
 async fn daily_writer_repair_non_json_response(
@@ -115,6 +157,10 @@ async fn daily_writer_repair_non_json_response(
                 .unwrap_or(HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE)
                 .to_string(),
             chapter_code: Some("daily_json_repair".to_string()),
+            prompt_trace_step: Some("horoscope_daily_json_repair".into()),
+            prompt_trace_attempt: Some("repair".into()),
+            prompt_family: Some("horoscope_daily_writer".into()),
+            prompt_version: Some("v1".into()),
         },
     };
     let routed = use_case

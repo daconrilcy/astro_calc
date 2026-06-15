@@ -26,6 +26,10 @@ pub struct GenerationMetadata {
     pub request_id: Option<String>,
     pub product_code: String,
     pub chapter_code: Option<String>,
+    pub prompt_trace_step: Option<String>,
+    pub prompt_trace_attempt: Option<String>,
+    pub prompt_family: Option<String>,
+    pub prompt_version: Option<String>,
 }
 
 #[derive(Debug, Clone)]

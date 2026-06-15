@@ -54,6 +54,10 @@ pub(crate) async fn period_style_editor_response(
                 .unwrap_or(HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE)
                 .to_string(),
             chapter_code: Some("period_quality_retry".to_string()),
+            prompt_trace_step: Some("horoscope_period_quality_retry".into()),
+            prompt_trace_attempt: Some("repair".into()),
+            prompt_family: Some("horoscope_period_writer".into()),
+            prompt_version: Some("v1".into()),
         },
     };
     tracing::warn!(

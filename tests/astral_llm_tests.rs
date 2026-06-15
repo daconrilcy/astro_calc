@@ -51,6 +51,7 @@ fn test_router(fallback: FallbackPolicy) -> ProviderRouter {
         Arc::new(ModelCapabilityRegistry::bootstrap()),
         PrivacyPolicy::default(),
         Arc::new(ProviderCircuitBreaker::new(5, 60)),
+        None,
     )
 }
 
@@ -144,6 +145,7 @@ fn build_use_case(catalog: Arc<CanonicalCatalog>) -> GenerateReadingUseCase {
         catalog,
         PrivacyPolicy::default(),
         true,
+        None,
     )
 }
 
@@ -201,6 +203,7 @@ async fn configured_fallback_without_openai_first() {
         Arc::new(ModelCapabilityRegistry::bootstrap_dev_fallback()),
         privacy,
         Arc::new(ProviderCircuitBreaker::new(5, 60)),
+        None,
     );
     let prompts = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../prompts");
     let use_case = GenerateReadingUseCase::new(
@@ -215,6 +218,7 @@ async fn configured_fallback_without_openai_first() {
         catalog,
         PrivacyPolicy::default(),
         true,
+        None,
     );
 
     let request = sample_request_with_engine(
