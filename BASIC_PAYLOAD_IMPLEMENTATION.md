@@ -672,6 +672,7 @@ Then open `http://localhost:8099/`.
 
 - The UI loads `GET /v1/services` through the local proxy and displays only `active` and `beta` services.
 - `natal_premium` is listed as a beta real full-natal service and uses a rich engine projection.
+- `natal_premium` chapter profile was strengthened to reduce under-length failures: target `360` words per chapter, minimum `260`, body structure `4 x 60-110` words, with explicit expansion focus on `relationships`, `career`, `money`, `family`, and `growth_path`.
 - It resolves city/country through `/api/geocode`, backed by Nominatim/OpenStreetMap.
 - It submits real jobs through `POST /v1/jobs` with a unique `Idempotency-Key`, then polls `GET /v1/jobs/{run_id}`.
 - For horoscope services, it first calls the calculator natal endpoint to obtain `chart_calculation_id`, then submits the horoscope job.

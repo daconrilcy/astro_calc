@@ -385,9 +385,9 @@ pub fn assert_premium_compact_prompt_structure(
         &astral_llm_domain::chapter_orchestration::ReadingPlanChapter {
             code: "identity".into(),
             title: "Identite".into(),
-            min_words: 280,
-            target_words: 350,
-            max_words: 450,
+            min_words: 260,
+            target_words: 360,
+            max_words: 480,
         },
         &[],
         Some(&pack),
@@ -410,6 +410,12 @@ pub fn assert_premium_compact_prompt_structure(
         return Err(
             "premium compact prompt must contain exactly 4 paragraphs from body_structure".into(),
         );
+    }
+    if !task.contains("60") || !task.contains("110") {
+        return Err("premium compact prompt must contain paragraph word range".into());
+    }
+    if !task.contains("target ~360") {
+        return Err("premium compact prompt must contain target ~360".into());
     }
     Ok(())
 }

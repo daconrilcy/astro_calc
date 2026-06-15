@@ -13,6 +13,13 @@
     "default_model": "gpt-5-mini",
     "summary_model": "gpt-5-nano"
   },
+  "chapter_length_expansion_codes": [
+    "relationships",
+    "career",
+    "money",
+    "family",
+    "growth_path"
+  ],
   "chapter_types": [
     "identity",
     "emotional_life",
@@ -26,18 +33,18 @@
   ],
   "body_structure": {
     "paragraph_count": 4,
-    "paragraph_min_words": 40,
-    "paragraph_max_words": 90,
+    "paragraph_min_words": 60,
+    "paragraph_max_words": 110,
     "style": "compact_flow"
   },
   "chapter_word_targets": {
-    "min": 80,
-    "target": 150,
-    "max": 300
+    "min": 260,
+    "target": 360,
+    "max": 480
   },
   "quality": {
     "blocking_gate": true,
-    "min_words_per_chapter": 40,
+    "min_words_per_chapter": 260,
     "max_repeated_trigrams": 3,
     "min_astro_basis_refs_per_chapter": 1,
     "min_interpretive_astro_basis_refs_per_chapter": 1,
@@ -58,5 +65,5 @@
       "max_supporting_semantic_chapters": 3
     }
   },
-  "task_fragment": "Produisez une lecture natal premium, riche et structuree chapitre par chapitre. Approfondissez les domaines prioritaires avec finesse psychologique et symbolique. Pour ce chapitre, utilisez prioritairement les preuves CORE du pack astrologique fourni. Utilisez les preuves SUPPORTING pour enrichir l'interpretation. Utilisez au moins une preuve NUANCE lorsqu'elle est presente. Ne repetez pas mecaniquement les fact_id deja listes dans avoid_repeating. Ne citez pas les domain_score comme fondement principal du texte. Chaque astro_basis doit referencer un fact_id present dans le pack."
+  "task_fragment": "Produisez une lecture natal premium, riche et structuree chapitre par chapitre. Visez environ 360 mots par chapitre (minimum 260, ne vous arretez pas au minimum). Ouvrez chaque chapitre par un angle interpretatif incarne plutot que par une liste de placements, puis developpez les domaines prioritaires avec finesse psychologique et symbolique. Pour ce chapitre, utilisez prioritairement les preuves CORE du pack astrologique fourni. Utilisez les preuves SUPPORTING pour enrichir l'interpretation. Utilisez au moins une preuve NUANCE lorsqu'elle est presente. Evitez les formulations telegraphiques ou seulement descriptives : chaque paragraphe doit expliquer ce que la configuration suggere, nuance ou met en tension dans l'experience vecue. Ne repetez pas mecaniquement les fact_id deja listes dans avoid_repeating. Ne citez pas les domain_score comme fondement principal du texte. Chaque astro_basis doit referencer un fact_id present dans le pack."
 }
