@@ -805,8 +805,17 @@
     ];
     if (result.runId) lines.push(`Run audit: ${escapeHtml(result.runId)}`);
     if (result.audit && result.audit.status) lines.push(`Audit status: ${escapeHtml(result.audit.status)}`);
-    if (result.promptAvailable === false) lines.push("Prompt: non expose par le backend pour ce service");
+    lines.push(promptAvailabilityLabel(result));
     return lines.join("<br>");
+  }
+
+  function promptAvailabilityLabel(result) {
+    const promptPayload = result && result.promptPayload ? result.promptPayload : null;
+    const count = promptPayload && Array.isArray(promptPayload.traces) ? promptPayload.traces.length : 0;
+    if (count) return `Prompt: disponible (${count} trace(s))`;
+    if (promptPayload && promptPayload.kind === "unavailable") return "Prompt: audit indisponible";
+    if (result && result.audit && result.audit.error) return "Prompt: audit indisponible";
+    return "Prompt: non expose par le backend";
   }
 
   async function runBatch(services) {
@@ -928,7 +937,7 @@
       runId,
       audit,
       promptPayload,
-      promptAvailable: Boolean(promptPayload),
+      promptAvailable: Boolean(promptPayload && Array.isArray(promptPayload.traces) && promptPayload.traces.length),
       errorMessage: "",
       steps: mergeUiAndAuditSteps(current.steps, audit),
     };
@@ -952,6 +961,16 @@
   }
 
   function extractPromptPayload(response, audit) {
+    const traces = normalizePromptTraceList(audit);
+    if (traces.length) {
+      return {
+        kind: "prompt_traces",
+        traces,
+        source: "audit",
+        auditStatus: audit && audit.status ? audit.status : null,
+        auditError: audit && audit.error ? String(audit.error) : "",
+      };
+    }
     const direct = firstValueAtPaths(response, [
       ["prompt"],
       ["prompt_text"],
@@ -960,9 +979,104 @@
       ["metadata", "prompt_trace"],
       ["debug", "prompt"],
     ]);
-    if (direct) return direct;
-    if (audit && audit.prompt) return audit.prompt;
+    if (direct !== null && direct !== undefined && direct !== "") {
+      const legacyTraces = normalizeLegacyPromptPayload(direct);
+      return {
+        kind: "legacy_prompt",
+        traces: legacyTraces.length ? legacyTraces : [normalizeLegacyPromptTrace(direct)],
+        source: "response",
+        auditStatus: audit && audit.status ? audit.status : null,
+        auditError: audit && audit.error ? String(audit.error) : "",
+      };
+    }
+    if (audit && audit.prompt) {
+      const legacyTraces = normalizeLegacyPromptPayload(audit.prompt);
+      return {
+        kind: "legacy_prompt",
+        traces: legacyTraces.length ? legacyTraces : [normalizeLegacyPromptTrace(audit.prompt)],
+        source: "audit_prompt",
+        auditStatus: audit && audit.status ? audit.status : null,
+        auditError: audit && audit.error ? String(audit.error) : "",
+      };
+    }
+    if (audit && audit.error) {
+      return {
+        kind: "unavailable",
+        traces: [],
+        source: "audit_error",
+        auditStatus: audit.status || null,
+        auditError: String(audit.error),
+      };
+    }
     return null;
+  }
+
+  function normalizePromptTraceList(audit) {
+    if (!audit || !Array.isArray(audit.prompt_traces) || !audit.prompt_traces.length) return [];
+    return audit.prompt_traces
+      .map((trace, index) => normalizePromptTrace(trace, index))
+      .filter((trace) => trace && (hasPromptText(trace.compiledPrompt) || trace.messagesJson !== null));
+  }
+
+  function normalizePromptTrace(trace, index) {
+    if (!trace || typeof trace !== "object") return null;
+    return {
+      index,
+      kind: "prompt_trace",
+      chapterCode: nonEmptyString(trace.chapter_code),
+      stepType: nonEmptyString(trace.step_type),
+      attempt: nonEmptyString(trace.attempt),
+      promptFamily: nonEmptyString(trace.prompt_family),
+      promptVersion: nonEmptyString(trace.prompt_version),
+      messageCount: typeof trace.message_count === "number" ? trace.message_count : null,
+      compiledPrompt: typeof trace.compiled_prompt === "string" ? trace.compiled_prompt : "",
+      messagesJson: trace.messages_json === undefined ? null : trace.messages_json,
+      createdAt: nonEmptyString(trace.created_at),
+      source: "audit",
+    };
+  }
+
+  function normalizeLegacyPromptTrace(value) {
+    return {
+      index: 0,
+      kind: "legacy_prompt",
+      chapterCode: "",
+      stepType: "legacy_prompt",
+      attempt: "",
+      promptFamily: "",
+      promptVersion: "",
+      messageCount: null,
+      compiledPrompt: typeof value === "string" ? value : "",
+      messagesJson: typeof value === "string" ? null : value,
+      createdAt: "",
+      source: "legacy",
+    };
+  }
+
+  function normalizeLegacyPromptPayload(value) {
+    if (Array.isArray(value)) {
+      return value
+        .map((item, index) => normalizeLegacyPromptObject(item, index))
+        .filter(Boolean);
+    }
+    const single = normalizeLegacyPromptObject(value, 0);
+    return single ? [single] : [];
+  }
+
+  function normalizeLegacyPromptObject(value, index) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    if (!Object.prototype.hasOwnProperty.call(value, "compiled_prompt")
+      && !Object.prototype.hasOwnProperty.call(value, "messages_json")
+      && !Object.prototype.hasOwnProperty.call(value, "step_type")
+      && !Object.prototype.hasOwnProperty.call(value, "attempt")) {
+      return null;
+    }
+    const normalized = normalizePromptTrace(value, index);
+    if (!normalized) return null;
+    return {
+      ...normalized,
+      source: "legacy",
+    };
   }
 
   function mergeUiAndAuditSteps(existingSteps, audit) {
@@ -1043,11 +1157,50 @@
 
   function openPromptModal(service) {
     const result = state.results[service.service_code];
-    const hasPrompt = result && result.promptPayload;
-    const content = hasPrompt
-      ? `<pre class="prompt-box">${escapeHtml(stringifyPrompt(result.promptPayload))}</pre>`
-      : `<div class="empty-copy">Prompt non expose par le backend pour ce service.</div>`;
+    const promptPayload = result && result.promptPayload ? result.promptPayload : null;
+    const traceCount = promptPayload && Array.isArray(promptPayload.traces) ? promptPayload.traces.length : 0;
+    const content = traceCount
+      ? renderPromptPayload(promptPayload)
+      : `<div class="empty-copy">${escapeHtml(promptUnavailableMessage(result))}</div>`;
     openModal(`Prompt - ${service.label_fr}`, service.service_code, content);
+  }
+
+  function renderPromptPayload(payload) {
+    if (!payload || !Array.isArray(payload.traces) || !payload.traces.length) return "";
+    const intro = payload.traces.length === 1
+      ? `<p class="prompt-summary">1 prompt audite pour ce run.</p>`
+      : `<p class="prompt-summary">${payload.traces.length} prompts audites pour ce run.</p>`;
+    const traces = payload.traces.map((trace, index) => renderPromptTrace(trace, index)).join("");
+    return `<div class="prompt-trace-list">${intro}${traces}</div>`;
+  }
+
+  function renderPromptTrace(trace, index) {
+    const title = trace.stepType || `prompt_${index + 1}`;
+    const badges = [
+      trace.chapterCode ? `chapitre ${trace.chapterCode}` : "",
+      trace.attempt ? `attempt ${trace.attempt}` : "",
+      trace.createdAt ? formatPromptTimestamp(trace.createdAt) : "",
+    ].filter(Boolean);
+    const metaLines = [
+      trace.promptFamily ? `Famille: ${trace.promptFamily}` : "",
+      trace.promptVersion ? `Version: ${trace.promptVersion}` : "",
+      trace.messageCount !== null ? `Messages: ${trace.messageCount}` : "",
+      hasPromptText(trace.compiledPrompt) ? "" : "Prompt compile indisponible",
+    ].filter(Boolean);
+    const compiledPrompt = hasPromptText(trace.compiledPrompt)
+      ? `<div class="prompt-trace-section"><h5>Compiled prompt</h5><pre class="prompt-box">${escapeHtml(trace.compiledPrompt)}</pre></div>`
+      : "";
+    const messages = trace.messagesJson !== null
+      ? `<div class="prompt-trace-section"><h5>Messages JSON</h5><pre class="prompt-box">${escapeHtml(stringifyPrompt(trace.messagesJson))}</pre></div>`
+      : `<div class="prompt-trace-section"><h5>Messages JSON</h5><div class="empty-copy">Messages indisponibles pour cette trace.</div></div>`;
+    return [
+      `<section class="prompt-trace-card">`,
+      `<div class="prompt-trace-header"><div><h4>${escapeHtml(title)}</h4>${badges.length ? `<div class="prompt-trace-badges">${badges.map((part) => `<span class="meta-pill">${escapeHtml(part)}</span>`).join("")}</div>` : ""}</div></div>`,
+      metaLines.length ? `<div class="prompt-trace-meta">${metaLines.map(escapeHtml).join("<br>")}</div>` : "",
+      compiledPrompt,
+      messages,
+      `</section>`,
+    ].join("");
   }
 
   function openUsageModal(service) {
@@ -1277,6 +1430,34 @@
     return typeof value === "string" ? value : JSON.stringify(value, null, 2);
   }
 
+  function hasPromptText(value) {
+    return typeof value === "string" && value.trim().length > 0;
+  }
+
+  function nonEmptyString(value) {
+    return typeof value === "string" && value.trim() ? value.trim() : "";
+  }
+
+  function formatPromptTimestamp(value) {
+    if (!value) return "";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : date.toISOString();
+  }
+
+  function promptUnavailableMessage(result) {
+    const promptPayload = result && result.promptPayload ? result.promptPayload : null;
+    if (promptPayload && promptPayload.kind === "unavailable" && promptPayload.auditError) {
+      return `Audit prompt indisponible: ${promptPayload.auditError}`;
+    }
+    if (result && result.audit && result.audit.error) {
+      return `Audit prompt indisponible: ${result.audit.error}`;
+    }
+    if (result && result.runId && !result.audit) {
+      return "Audit du run indisponible pour ce service.";
+    }
+    return "Prompt non expose par le backend pour ce service.";
+  }
+
   function formatMs(value) {
     const ms = Number(value) || 0;
     return `${(ms / 1000).toFixed(1)} s`;
@@ -1386,9 +1567,11 @@
     composeCopiedReading,
     combineHoroscopeMode,
     extractRunId,
+    extractPromptPayload,
     isAutoLocationEnabled,
     isHoroscopeService,
     joinSectionsForCopy,
+    normalizePromptTraceList,
     normalizeGatewayAudience,
     normalizeHoroscopeAudience,
     normalizeReadingSections,

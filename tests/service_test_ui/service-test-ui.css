@@ -454,6 +454,47 @@ h3 {
   gap: 12px;
 }
 
+.prompt-summary,
+.prompt-trace-meta {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.prompt-trace-list {
+  display: grid;
+  gap: 14px;
+}
+
+.prompt-trace-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #faf6f0;
+  padding: 14px;
+}
+
+.prompt-trace-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.prompt-trace-header h4,
+.prompt-trace-section h5 {
+  margin-bottom: 6px;
+}
+
+.prompt-trace-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.prompt-trace-section {
+  display: grid;
+  gap: 6px;
+}
+
 .usage-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

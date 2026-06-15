@@ -126,6 +126,98 @@
       const runId = api.extractRunId({ metadata: { run_id: "123e4567-e89b-12d3-a456-426614174000" } });
       assert("extract run id", runId === "123e4567-e89b-12d3-a456-426614174000");
 
+      const promptTracePayload = api.extractPromptPayload({}, {
+        status: "success",
+        prompt_traces: [{
+          chapter_code: "identity",
+          step_type: "chapter_generate",
+          attempt: "primary",
+          prompt_family: "natal_prompter",
+          prompt_version: "v1",
+          message_count: 2,
+          compiled_prompt: "SYSTEM\\nUSER",
+          messages_json: [{ role: "system", content: "SYSTEM" }, { role: "user", content: "USER" }],
+          created_at: "2026-06-15T08:00:00Z",
+        }]
+      });
+      assert("prompt traces prioritized", promptTracePayload.kind === "prompt_traces");
+      assert("prompt traces count single", promptTracePayload.traces.length === 1);
+      assert("prompt traces chapter preserved", promptTracePayload.traces[0].chapterCode === "identity");
+
+      const promptTraceFallbackPriority = api.extractPromptPayload({ prompt: "legacy" }, {
+        prompt_traces: [{
+          step_type: "summary_generate",
+          compiled_prompt: "AUDIT FIRST",
+          messages_json: [],
+          message_count: 0,
+          created_at: "2026-06-15T08:01:00Z",
+        }]
+      });
+      assert("prompt traces beat legacy fallback", promptTraceFallbackPriority.traces[0].compiledPrompt === "AUDIT FIRST");
+
+      const multiPromptPayload = api.extractPromptPayload({}, {
+        prompt_traces: [
+          {
+            step_type: "chapter_generate",
+            attempt: "primary",
+            compiled_prompt: "P1",
+            messages_json: [{ role: "system", content: "P1" }],
+            message_count: 1,
+            created_at: "2026-06-15T08:02:00Z",
+          },
+          {
+            step_type: "summary_generate",
+            attempt: "repair",
+            compiled_prompt: "P2",
+            messages_json: [{ role: "system", content: "P2" }],
+            message_count: 1,
+            created_at: "2026-06-15T08:03:00Z",
+          }
+        ]
+      });
+      assert("multi prompt traces preserved", multiPromptPayload.traces.length === 2);
+      assert("multi prompt traces keep order", multiPromptPayload.traces[1].attempt === "repair");
+
+      const legacyPromptPayload = api.extractPromptPayload({ prompt: "legacy prompt text" }, null);
+      assert("legacy prompt fallback kind", legacyPromptPayload.kind === "legacy_prompt");
+      assert("legacy prompt fallback content", legacyPromptPayload.traces[0].compiledPrompt === "legacy prompt text");
+
+      const legacyStructuredPayload = api.extractPromptPayload({
+        prompt_trace: {
+          step_type: "legacy_step",
+          attempt: "primary",
+          compiled_prompt: "LEGACY STRUCTURED",
+          messages_json: [{ role: "user", content: "LEGACY STRUCTURED" }],
+          message_count: 1,
+        }
+      }, null);
+      assert("legacy structured prompt kind", legacyStructuredPayload.kind === "legacy_prompt");
+      assert("legacy structured prompt preserves step", legacyStructuredPayload.traces[0].stepType === "legacy_step");
+      assert("legacy structured prompt preserves content", legacyStructuredPayload.traces[0].compiledPrompt === "LEGACY STRUCTURED");
+
+      const legacyStructuredArrayPayload = api.extractPromptPayload({
+        prompt_trace: [
+          { step_type: "legacy_1", compiled_prompt: "L1", messages_json: [], message_count: 0 },
+          { step_type: "legacy_2", compiled_prompt: "L2", messages_json: [], message_count: 0 }
+        ]
+      }, null);
+      assert("legacy structured array count", legacyStructuredArrayPayload.traces.length === 2);
+      assert("legacy structured array order", legacyStructuredArrayPayload.traces[1].stepType === "legacy_2");
+
+      const unavailablePromptPayload = api.extractPromptPayload({}, { error: "audit down", steps: [] });
+      assert("audit error prompt unavailable", unavailablePromptPayload.kind === "unavailable");
+      assert("audit error prompt has zero traces", unavailablePromptPayload.traces.length === 0);
+
+      const normalizedTraceList = api.normalizePromptTraceList({
+        prompt_traces: [
+          { step_type: "writer", compiled_prompt: "", messages_json: [{ role: "system", content: "fallback" }], message_count: 1 },
+          { step_type: "ignored", compiled_prompt: "", messages_json: null, message_count: 0 },
+          { step_type: "ignored-whitespace", compiled_prompt: "   \n  ", messages_json: null, message_count: 0 }
+        ]
+      });
+      assert("normalize trace list keeps partial trace", normalizedTraceList.length === 1);
+      assert("normalize trace list exposes messages json", Array.isArray(normalizedTraceList[0].messagesJson));
+
       const invalidJson = api.parseResponseBody("{bad", "application/json");
       assert("parsing json invalide", invalidJson.error.code === "INVALID_JSON_RESPONSE");
 

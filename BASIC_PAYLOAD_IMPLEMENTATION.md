@@ -57,6 +57,16 @@ Ajout d’une persistance PostgreSQL des prompts finalisés réellement envoyés
 - Les flows couverts sont : single-pass natal, orchestration par chapitres, summary/final synthesis, horoscope daily, horoscope period et leurs repairs/retries.
 - La journalisation fichier existante sous `output/logs/prompts` reste active comme aide locale, mais la source d’audit principale devient PostgreSQL.
 
+# UI de test - affichage des prompt traces LLM - 2026-06-15
+
+Raccord de l’UI de test pour exploiter `prompt_traces` dans le bouton `Voir le prompt`.
+
+- `tests/service_test_ui/service-test-ui.js` normalise désormais `audit.prompt_traces` en source principale, avec fallback sur les anciens champs `prompt` si l’audit multi-traces n’est pas disponible.
+- Le modal prompt affiche une liste ordonnée de traces, avec metadata compacte (`step_type`, `chapter_code`, `attempt`, horodatage), puis `compiled_prompt` et `messages_json`.
+- `promptAvailable` reflète maintenant la présence d’au moins une trace normalisée, au lieu d’un champ direct arbitraire.
+- Les détails techniques distinguent `Prompt: disponible (n trace(s))`, `Prompt: audit indisponible` et `Prompt: non expose par le backend`.
+- La couverture `tests/service_test_ui/service-test-ui.test.html` valide le prioritaire `prompt_traces`, le multi-prompts ordonné, le fallback legacy, l’audit indisponible et la conservation d’une trace partielle avec `messages_json`.
+
 # Horoscope real-provider local guard - 2026-06-14
 
 Added a local-provider guard for horoscope test runs so the UI and integration
