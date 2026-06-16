@@ -12,16 +12,16 @@ use crate::domain::{
     BasicAccidentalDignityEvaluation, BasicHouseAxisEmphasis, BasicObjectPosition, BasicPayload,
     HouseAxisReference,
 };
-use crate::llm_projection::axis_labels::house_axis_label;
-use crate::llm_projection::dynamics::build_dynamics;
-use crate::llm_projection::humanize::{
+use super::axis_labels::house_axis_label;
+use super::dynamics::build_dynamics;
+use super::humanize::{
     accidental_overall_label, axis_balance_label, axis_importance, chart_sect_label,
     dignity_meaning, hemisphere_dominant_area, humanize_axis_summary, humanize_condition,
     humanize_motion_label, humanize_reason, importance_label, is_unremarkable_motion_condition,
     limit_keywords, push_unique, reading_slot_section, title_case_sign,
 };
-use crate::llm_projection::profiles::limits_envelope;
-use crate::llm_projection::types::*;
+use super::profiles::limits_envelope;
+use super::types::*;
 
 pub struct LlmProjectionBuildContext<'a> {
     pub birth_location_label: &'a str,

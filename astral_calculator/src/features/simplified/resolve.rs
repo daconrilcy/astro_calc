@@ -106,7 +106,7 @@ pub fn validate_and_resolve(
             "unknown input_precision level in catalog: {input_precision_level}"
         )));
     }
-    if catalog.scope(&computed_scope).is_none() {
+    if catalog.scope(computed_scope).is_none() {
         return Err(RuntimeError::Ephemeris(format!(
             "unknown computed_scope in catalog: {computed_scope}"
         )));

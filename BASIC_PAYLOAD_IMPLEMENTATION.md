@@ -1,17 +1,28 @@
+# 2026-06-16 - `astral_calculator` structural layering refactor
+
+- Added internal architecture layers for the calculator crate without changing public imports or JSON contracts: `application/`, `domain/`, `infra/db/`, and `features/`.
+- Preserved compatibility facades for `astral_calculator::domain`, `models`, `repositories`, `payload`, `payload_rules`, `payload_shared`, `runtime`, `signals`, `simplified`, `horoscope`, and `llm_projection`.
+- Split the former monolithic `domain.rs` into focused domain files for natal input, chart facts, references, scoring snapshots, and payload DTOs.
+- Moved SQL-facing models and runtime repository code under `infra/db/`, and moved the natal runtime service orchestration under `application/`.
+- Grouped functional modules under `features/` while keeping the previous public module paths intact.
+- Introduced `BasicPayloadBuilderInput` and `build_basic_payload_from` as the internal canonical payload builder entry point, with existing builder functions kept as wrappers.
+- Moved the simplified catalog DB loader under `infra/db/simplified_catalog_repository` with the existing simplified facade preserved.
+- Verification: `cargo test -p astral_calculator`; `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`; `cargo test -p astral_calculator_api --test astral_calculator_api_tests`; `cargo test -p astral_llm_application simplified_reading_guard`; `cargo test -p astral_llm_application simplified_reading_postprocess`.
+
 # 2026-06-16 - `payload_rules` refactor for shared natal payload rules
 
 - Added an internal `astral_calculator::payload_rules` layer as the single source of truth for shared natal payload rules used by both payload build and runtime freshness validation.
-- Moved the duplicated pure rules for `angles`, `chart_context`, `lunar_phase`, `reading_plan`, `rulership`, and canonical `house_axes` into `astral_calculator/src/payload_rules/`.
-- Reduced `astral_calculator/src/payload/` to orchestration wrappers for those domains: it now prepares inputs, calls `payload_rules`, and assembles `BasicPayload`.
+- Moved the duplicated pure rules for `angles`, `chart_context`, `lunar_phase`, `reading_plan`, `rulership`, and canonical `house_axes` into the `payload_rules` layer (currently backed by `astral_calculator/src/features/payload_rules/`).
+- Reduced the `payload` layer (currently backed by `astral_calculator/src/features/payload/`) to orchestration wrappers for those domains: it now prepares inputs, calls `payload_rules`, and assembles `BasicPayload`.
 - Reduced `astral_calculator/src/runtime/payload_freshness/` to validation wrappers for those same domains: it now checks payload freshness through the same shared rules instead of recomputing them locally.
-- Audited `astral_calculator/src/payload_shared/` and kept only transversal helpers compiled there: aspect normalization/extraction, contract constants, and generic text/score predicates.
+- Audited the `payload_shared` layer (currently backed by `astral_calculator/src/features/payload_shared/`) and kept only transversal helpers compiled there: aspect normalization/extraction, contract constants, and generic text/score predicates.
 - Removed `payload_shared` ownership of natal visibility and canonical house-axis meaning; those domain rules now live in `payload_rules`.
 - Added regression coverage for a wrap-around lunar phase mapping through the public payload builder and adversarial freshness mutations for shared chart-context and lunar-phase rules.
 
 # 2026-06-16 - Horoscope calculator domain split
 
 - Refactored `astral_calculator::horoscope` into focused domain submodules: `contracts`, `daily`, and `period`.
-- Kept `astral_calculator/src/horoscope/mod.rs` as a thin public facade so existing horoscope APIs and exported service codes remain stable.
+- Kept `astral_calculator::horoscope` as a thin public facade over `astral_calculator/src/features/horoscope/` so existing horoscope APIs and exported service codes remain stable.
 - Reused `astral_calculator::facts::normalize_degrees` from horoscope period logic instead of keeping duplicate math helpers inside the domain.
 - Centralized horoscope RFC3339 UTC normalization and local-time-to-UTC conversion behind one shared helper layer so `builders` and period calculation no longer maintain duplicate temporal rules.
 
@@ -50,7 +61,7 @@
   - `horoscope_orb_weight_bands`
   - `astral_zodiacal_reference_systems`
   - `astral_coordinate_reference_systems`
-- Added repository read methods in `astral_calculator/src/repositories.rs` for the tables above so these seeded DB rows can be loaded directly from Postgres.
+- Added repository read methods for the tables above so these seeded DB rows can be loaded directly from Postgres; the public `repositories` facade now delegates to `astral_calculator/src/infra/db/runtime_repository.rs`.
 - Existing coverage already present for `astral_house_systems`, `astral_house_axis_definitions`, and `astral_llm_projection_profiles`.
 
 # Service test UI grouped execution and observability - 2026-06-15
@@ -279,11 +290,11 @@ editorial heuristics become non-blocking audit warnings.
 Refactored shared payload invariants without changing payload generation,
 runtime freshness validation, or payload reuse decisions.
 
-- Added an internal `astral_calculator/src/payload_shared/` module for pure,
+- Added an internal `payload_shared` module for pure,
   shared helpers only: contract constants, aspect pair normalization/extraction,
   horizon and sect mapping, canonical house-axis definitions, and small text or
   score predicates.
-- Kept `astral_calculator/src/payload/` as the payload builder layer and
+- Kept the `payload` module as the payload builder layer and
   `astral_calculator/src/runtime/payload_freshness/` as the persisted payload
   validator layer.
 - Rewired duplicated helpers in `angles`, `signal_filters`, `aspects`,

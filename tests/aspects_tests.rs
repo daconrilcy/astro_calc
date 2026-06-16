@@ -224,7 +224,7 @@ fn canonical_major_aspect_orbs_match_json_db_seed() {
         let inside = detect_between(
             0.0,
             inside_right,
-            &single_aspect_definition(&code, angle, orb),
+            &single_aspect_definition(code, angle, orb),
         );
         let inside_fact = inside
             .iter()
@@ -236,7 +236,7 @@ fn canonical_major_aspect_orbs_match_json_db_seed() {
         let outside = detect_between(
             0.0,
             outside_right,
-            &single_aspect_definition(&code, angle, orb),
+            &single_aspect_definition(code, angle, orb),
         );
         assert!(
             !outside.iter().any(|fact| fact.aspect_code == code),

@@ -33,6 +33,19 @@ use reading_plan::build_reading_plan;
 use rulership::build_rulership_context;
 use signal_filters::{is_angle_to_angle_aspect_signal, is_structural_axis_signal_for_pairs};
 
+pub(crate) struct BasicPayloadBuilderInput<'a> {
+    pub(crate) chart_calculation_id: i32,
+    pub(crate) input: &'a NatalChartInput,
+    pub(crate) positions: &'a [ObjectPositionFact],
+    pub(crate) signals: &'a [InterpretationSignalRow],
+    pub(crate) domicile_rulers: &'a [crate::domain::DomicileRulerReference],
+    pub(crate) house_axes: &'a [HouseAxisReference],
+    pub(crate) lunar_phases: &'a [LunarPhaseReference],
+    pub(crate) accidental_conditions: &'a [AccidentalDignityConditionReference],
+    pub(crate) sect_affinities: &'a [ObjectSectAffinityReference],
+    pub(crate) catalog: &'a BasicPayloadCatalog,
+}
+
 pub fn build_basic_payload(
     chart_calculation_id: i32,
     input: &NatalChartInput,
@@ -114,6 +127,34 @@ pub fn build_basic_payload_with_accidental_references(
     sect_affinities: &[ObjectSectAffinityReference],
     catalog: &BasicPayloadCatalog,
 ) -> BasicPayload {
+    build_basic_payload_from(BasicPayloadBuilderInput {
+        chart_calculation_id,
+        input,
+        positions,
+        signals,
+        domicile_rulers,
+        house_axes,
+        lunar_phases,
+        accidental_conditions,
+        sect_affinities,
+        catalog,
+    })
+}
+
+pub(crate) fn build_basic_payload_from(builder_input: BasicPayloadBuilderInput<'_>) -> BasicPayload {
+    let BasicPayloadBuilderInput {
+        chart_calculation_id,
+        input,
+        positions,
+        signals,
+        domicile_rulers,
+        house_axes,
+        lunar_phases,
+        accidental_conditions,
+        sect_affinities,
+        catalog,
+    } = builder_input;
+
     let structural_axis_pairs = structural_axis_pairs_from_positions(positions);
     let angle_object_codes = angle_object_codes_from_positions(positions);
     let mut basic_signals: Vec<BasicSignal> = signals

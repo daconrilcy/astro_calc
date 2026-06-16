@@ -1,4 +1,5 @@
 pub mod aspects;
+pub(crate) mod application;
 pub mod catalog;
 pub mod cli;
 pub mod config;
@@ -9,8 +10,10 @@ pub mod engine;
 pub use engine::engine_request_from_env;
 pub mod ephemeris;
 pub mod facts;
+pub(crate) mod features;
 pub mod horoscope;
 pub mod idempotency;
+pub(crate) mod infra;
 pub mod llm_projection;
 pub mod models;
 pub mod payload;

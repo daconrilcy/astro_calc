@@ -4,6 +4,19 @@ Crate Rust du moteur de calcul astral : connexion PostgreSQL, runtime natal,
 payload `basic`, enveloppe engine 4A et projection LLM (construction cote
 calculateur).
 
+## Structure interne
+
+Le crate garde les chemins publics historiques, mais l'implementation est
+organisee par couches:
+
+- `application/` orchestre les use cases runtime.
+- `domain/` regroupe les types metier, faits de calcul, references et payloads.
+- `infra/db/` porte les rows SQL, repositories runtime et loaders de catalogue.
+- `features/` contient les domaines fonctionnels (`payload`, `signals`,
+  `simplified`, `horoscope`, `llm_projection`) exposes via les facades racine.
+- `runtime/` conserve les erreurs, validations de references et controles de
+  fraicheur des payloads.
+
 ## Execution
 
 Depuis la racine du depot (workspace) :

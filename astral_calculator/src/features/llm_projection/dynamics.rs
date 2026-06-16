@@ -1,9 +1,9 @@
 use crate::domain::{BasicPayload, BasicSignal};
-use crate::llm_projection::clean_text::{
+use super::clean_text::{
     clean_semantic_tags, humanize_dynamic_quality, humanize_phase, humanize_valence,
     limit_keywords, title_case_sign,
 };
-use crate::llm_projection::types::{
+use super::types::{
     LlmDynamics, LlmLunarPhase, LlmMajorAspect, LlmProjectionProfile,
 };
 

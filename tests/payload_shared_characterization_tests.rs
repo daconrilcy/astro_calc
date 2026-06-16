@@ -25,6 +25,7 @@ fn input() -> NatalChartInput {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn angle_position(
     chart_object_id: i32,
     object_code: &str,

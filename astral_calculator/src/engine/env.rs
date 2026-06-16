@@ -1,6 +1,3 @@
-#[path = "calculation_refs.rs"]
-mod calculation_refs;
-
 use chrono::{DateTime, Utc};
 
 use crate::engine::{
@@ -8,7 +5,7 @@ use crate::engine::{
     EngineProjectionRequest, REQUEST_CONTRACT_VERSION,
 };
 
-pub use calculation_refs::{
+pub use crate::engine::calculation_refs::{
     coordinate_reference_system_id_from_env, coordinate_reference_system_key_from_env,
     house_system_code_from_env, zodiacal_reference_system_key_from_env,
 };

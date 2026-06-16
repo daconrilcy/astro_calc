@@ -1,4 +1,4 @@
-mod catalog;
+pub(crate) mod catalog;
 mod ephemeris_calc;
 mod facts;
 mod payload;
