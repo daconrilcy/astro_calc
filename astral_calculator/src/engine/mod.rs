@@ -1,4 +1,7 @@
 mod request;
+#[allow(dead_code)]
+pub mod calculation_refs;
+pub mod env;
 mod resolve;
 mod response;
 
@@ -7,6 +10,12 @@ pub use request::{
     EngineProjectionRequest, LLM_PROJECTION_CONTRACT_VERSION, REQUEST_CONTRACT_VERSION,
     RESPONSE_CONTRACT_VERSION,
 };
+pub use calculation_refs::{
+    coordinate_reference_system_id_from_env, coordinate_reference_system_key_from_env,
+    house_system_code_from_env, house_system_id_from_env, zodiacal_reference_system_id_from_env,
+    zodiacal_reference_system_key_from_env,
+};
+pub use env::{birth_datetime_utc_from_env, engine_request_from_env};
 pub use resolve::{
     local_birth_to_utc, validate_and_resolve_request, validate_request_early, ResolvedEngineRequest,
 };

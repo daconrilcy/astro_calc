@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
@@ -146,7 +148,10 @@ fn house_id_by_code() -> &'static HashMap<String, i32> {
 }
 
 fn invert_map(id_to_key: &HashMap<i32, String>) -> HashMap<String, i32> {
-    id_to_key.iter().map(|(id, key)| (key.clone(), *id)).collect()
+    id_to_key
+        .iter()
+        .map(|(id, key)| (key.clone(), *id))
+        .collect()
 }
 
 pub fn zodiacal_reference_system_id_from_env() -> Result<i32, String> {
