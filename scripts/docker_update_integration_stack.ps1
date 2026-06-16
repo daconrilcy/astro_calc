@@ -168,6 +168,21 @@ function Invoke-RustTest {
     }
 }
 
+function Clear-TmpTargetArtifacts {
+    $tmpTargetPath = Join-Path $repoRoot "tmp_target"
+    if (-not (Test-Path $tmpTargetPath)) {
+        return
+    }
+
+    Write-Host "`n== Cleanup tmp_target ==" -ForegroundColor Cyan
+
+    Get-ChildItem -LiteralPath $tmpTargetPath -Force | ForEach-Object {
+        Remove-Item -LiteralPath $_.FullName -Recurse -Force
+    }
+
+    Write-Host "OK: Cleanup tmp_target" -ForegroundColor Green
+}
+
 function New-GatewayNatalRequestBody {
     param(
         [string]$AudienceLevel = "general",
@@ -249,6 +264,7 @@ function Invoke-GatewayJsonPost {
 }
 
 Push-Location $repoRoot
+$scriptSucceeded = $false
 try {
     $excludedSuites.Add("provider_real_smoke") | Out-Null
     $excludedSuites.Add("*_real_e2e.ps1") | Out-Null
@@ -437,6 +453,9 @@ try {
     foreach ($entry in $excludedSuites) {
         Write-Host " - $entry"
     }
+
+    Clear-TmpTargetArtifacts
+    $scriptSucceeded = $true
 } catch {
     Write-Host "`nUpdate failed: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host "`nDocker diagnostics:" -ForegroundColor Yellow
@@ -444,5 +463,8 @@ try {
     Invoke-DockerCompose -ComposeArgs @("logs", "--tail", "80", "astral_gateway", "astral_llm_api", "astral_llm_worker", "astral_calculator_api", "postgres")
     throw
 } finally {
+    if (-not $scriptSucceeded) {
+        Write-Host "`nTmp target cleanup skipped because the update failed." -ForegroundColor Yellow
+    }
     Pop-Location
 }

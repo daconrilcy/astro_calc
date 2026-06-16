@@ -974,6 +974,7 @@ Etat final retenu :
 
 - `docker-compose.yml` expose maintenant `astral_gateway` sur `:8082` avec healthcheck `GET /health/ready`
 - `scripts/docker_update_integration_stack.ps1` pilote la stack refactoree complete : compose explicite, bootstrap DB, reseed catalogue, sync profils/modeles, restart runtime, tests Rust et smokes V2
+- `scripts/docker_update_integration_stack.ps1` nettoie maintenant automatiquement `tmp_target/` en fin d'execution reussie pour recuperer l'espace disque occupe par les artefacts Cargo locaux. Le nettoyage n'est pas lance en cas d'echec, afin de conserver les artefacts utiles au diagnostic.
 - `scripts/start_service_test_ui.ps1` expose des proxys `gateway`, `llm` et `calculator`, et reste lancable sous PowerShell 7 comme sous `powershell.exe`
 - `tests/service_test_ui/*` cible la surface publique `astral_gateway` V2 et garde `GET /api/llm/v1/services` comme diagnostic async interne
 
