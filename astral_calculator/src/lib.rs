@@ -14,6 +14,7 @@ pub mod idempotency;
 pub mod llm_projection;
 pub mod models;
 pub mod payload;
+pub(crate) mod payload_rules;
 pub(crate) mod payload_shared;
 pub mod repositories;
 pub mod runtime;

@@ -1,6 +1,6 @@
 use crate::domain::{BasicObjectPosition, BasicSignal};
 use crate::payload_shared::text::{has_text, is_normalized_score};
-use crate::payload_shared::visibility::{
+use crate::payload_rules::chart_context::{
     horizon_position_for_altitude, is_angle_role, is_horizon_position,
 };
 

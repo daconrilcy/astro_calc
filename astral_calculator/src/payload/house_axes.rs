@@ -5,7 +5,7 @@ use crate::domain::{
     BasicAngleFact, BasicChartEmphasis, BasicDignity, BasicHouseAxisEmphasis, BasicHouseAxisScore,
     BasicRulershipContext, BasicSignal, HouseAxisReference, ObjectPositionFact,
 };
-use crate::payload_shared::visibility::is_angle_role;
+use crate::payload_rules::chart_context::is_angle_role;
 
 use super::json::position_context;
 

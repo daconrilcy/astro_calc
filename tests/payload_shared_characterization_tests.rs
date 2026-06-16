@@ -1,9 +1,11 @@
 use chrono::{TimeZone, Utc};
 use serde_json::json;
 
-use astral_calculator::domain::{HouseAxisReference, NatalChartInput, ObjectPositionFact};
+use astral_calculator::domain::{
+    HouseAxisReference, LunarPhaseReference, NatalChartInput, ObjectPositionFact,
+};
 use astral_calculator::models::HouseReference;
-use astral_calculator::payload::build_basic_payload;
+use astral_calculator::payload::{build_basic_payload, build_basic_payload_with_all_references};
 use astral_calculator::runtime::validate_house_axis_references;
 
 fn input() -> NatalChartInput {
@@ -333,4 +335,52 @@ fn shared_house_axis_canonical_mapping_builds_expected_axis() {
     .collect::<Vec<_>>();
 
     assert!(validate_house_axis_references(&references, &houses).is_ok());
+}
+
+#[test]
+fn shared_lunar_phase_wraparound_mapping_builds_expected_context() {
+    let mut positions = positions();
+    positions[0].longitude_deg = 350.0;
+    positions[1].longitude_deg = 10.0;
+
+    let payload = build_basic_payload_with_all_references(
+        9,
+        &input(),
+        &positions,
+        &[angle_signal_row()],
+        &[],
+        &[],
+        &[
+            LunarPhaseReference {
+                phase_code: "new_moon".to_string(),
+                label: "New Moon".to_string(),
+                description: "Wrap-around conjunction phase".to_string(),
+                cycle_family: "conjunction".to_string(),
+                range_start_deg: 337.5,
+                range_end_deg: 22.5,
+                exact_anchor_deg: 0.0,
+                is_major_lunar_phase: true,
+            },
+            LunarPhaseReference {
+                phase_code: "waxing_crescent".to_string(),
+                label: "Waxing Crescent".to_string(),
+                description: "Post-conjunction waxing phase".to_string(),
+                cycle_family: "waxing".to_string(),
+                range_start_deg: 22.5,
+                range_end_deg: 67.5,
+                exact_anchor_deg: 45.0,
+                is_major_lunar_phase: false,
+            },
+        ],
+    );
+
+    let lunar_phase = payload
+        .lunar_phase_context
+        .expect("expected lunar phase context");
+    assert_eq!(lunar_phase.phase_code, "new_moon");
+    assert!((lunar_phase.sun_moon_angle_deg - 20.0).abs() <= 0.0001);
+    assert!(lunar_phase
+        .related_signal_keys
+        .iter()
+        .all(|key| ["object_position:sun", "object_position:moon"].contains(&key.as_str())));
 }

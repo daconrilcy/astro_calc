@@ -1,3 +1,13 @@
+# 2026-06-16 - `payload_rules` refactor for shared natal payload rules
+
+- Added an internal `astral_calculator::payload_rules` layer as the single source of truth for shared natal payload rules used by both payload build and runtime freshness validation.
+- Moved the duplicated pure rules for `angles`, `chart_context`, `lunar_phase`, `reading_plan`, `rulership`, and canonical `house_axes` into `astral_calculator/src/payload_rules/`.
+- Reduced `astral_calculator/src/payload/` to orchestration wrappers for those domains: it now prepares inputs, calls `payload_rules`, and assembles `BasicPayload`.
+- Reduced `astral_calculator/src/runtime/payload_freshness/` to validation wrappers for those same domains: it now checks payload freshness through the same shared rules instead of recomputing them locally.
+- Audited `astral_calculator/src/payload_shared/` and kept only transversal helpers compiled there: aspect normalization/extraction, contract constants, and generic text/score predicates.
+- Removed `payload_shared` ownership of natal visibility and canonical house-axis meaning; those domain rules now live in `payload_rules`.
+- Added regression coverage for a wrap-around lunar phase mapping through the public payload builder and adversarial freshness mutations for shared chart-context and lunar-phase rules.
+
 # 2026-06-16 - Horoscope calculator domain split
 
 - Refactored `astral_calculator::horoscope` into focused domain submodules: `contracts`, `daily`, and `period`.

@@ -1,110 +1,19 @@
 use crate::domain::{BasicAngleFact, ObjectPositionFact};
-use crate::payload_shared::aspect::{angle_object_codes, structural_axis_pairs};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use super::json::position_context;
 pub(super) fn build_payload_angles(positions: &[ObjectPositionFact]) -> Vec<BasicAngleFact> {
-    let angle_object_codes: HashMap<String, String> = positions
-        .iter()
-        .filter_map(|position| {
-            position_context(position, "angle_context")
-                .and_then(|context| {
-                    context
-                        .get("angle_point_code")
-                        .and_then(|value| value.as_str())
-                        .map(ToString::to_string)
-                })
-                .map(|angle_point_code| (angle_point_code, position.object_code.clone()))
-        })
-        .collect();
-
-    let mut angles: Vec<_> = positions
-        .iter()
-        .filter_map(|position| {
-            let angle_context = position_context(position, "angle_context")?;
-            let opposite_angle_code = angle_context
-                .get("opposite_angle_code")
-                .and_then(|value| value.as_str())
-                .and_then(|code| angle_object_codes.get(code).map(String::as_str))
-                .or_else(|| {
-                    angle_context
-                        .get("opposite_angle_code")
-                        .and_then(|value| value.as_str())
-                })
-                .unwrap_or_default()
-                .to_string();
-
-            Some(BasicAngleFact {
-                angle_code: position.object_code.clone(),
-                angle_name: angle_context
-                    .get("full_name")
-                    .and_then(|value| value.as_str())
-                    .unwrap_or(&position.object_name)
-                    .to_string(),
-                axis: angle_context
-                    .get("axis")
-                    .and_then(|value| value.as_str())
-                    .unwrap_or_default()
-                    .to_string(),
-                opposite_angle_code,
-                longitude_deg: position.longitude_deg,
-                sign_id: position.sign_id,
-                sign_code: position.sign_code.clone(),
-                sign_name: position.sign_name.clone(),
-                house_id: position.house_id,
-                house_number: angle_context
-                    .get("associated_house_number")
-                    .and_then(|value| value.as_i64())
-                    .and_then(|value| i32::try_from(value).ok())
-                    .or(position.house_number)
-                    .unwrap_or_default(),
-                house_name: position.house_name.clone(),
-            })
-        })
-        .collect();
-    angles.sort_by_key(|angle| {
-        positions
-            .iter()
-            .find(|position| position.object_code == angle.angle_code)
-            .and_then(|position| position_context(position, "angle_context"))
-            .and_then(|context| {
-                context
-                    .get("chart_object_sort_order")
-                    .and_then(|value| value.as_i64())
-                    .and_then(|value| i32::try_from(value).ok())
-            })
-            .unwrap_or(i32::MAX)
-    });
-    angles
+    crate::payload_rules::angles::build_payload_angles(positions, position_context)
 }
 
 pub(super) fn structural_axis_pairs_from_positions(
     positions: &[ObjectPositionFact],
 ) -> HashSet<(String, String)> {
-    let angle_positions: Vec<_> = positions
-        .iter()
-        .filter_map(|position| {
-            position_context(position, "angle_context")
-                .and_then(|context| {
-                    context
-                        .get("axis")
-                        .and_then(|value| value.as_str())
-                        .map(ToString::to_string)
-                })
-                .map(|axis| (axis, position.object_code.clone()))
-        })
-        .collect();
-
-    structural_axis_pairs(&angle_positions)
+    crate::payload_rules::angles::structural_axis_pairs_from_positions(positions, position_context)
 }
 
 pub(super) fn angle_object_codes_from_positions(
     positions: &[ObjectPositionFact],
 ) -> HashSet<String> {
-    let angle_codes = positions
-        .iter()
-        .filter(|position| position_context(position, "angle_context").is_some())
-        .map(|position| position.object_code.clone())
-        .collect::<Vec<_>>();
-    angle_object_codes(&angle_codes)
+    crate::payload_rules::angles::angle_object_codes_from_positions(positions, position_context)
 }

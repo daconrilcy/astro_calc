@@ -1,9 +1,6 @@
 use std::collections::HashSet;
 
 use crate::domain::BasicSignal;
-use crate::payload_shared::aspect::{
-    aspect_code, is_marked_structural_axis, object_pair_from_aspect_signal,
-};
 
 use super::json;
 
@@ -11,21 +8,14 @@ pub(super) fn is_structural_axis_aspect_signal(
     signal: &BasicSignal,
     structural_axis_pairs: &HashSet<(String, String)>,
 ) -> bool {
-    signal.signal_key.starts_with("aspect:")
-        && (is_marked_structural_axis(signal)
-            || (aspect_code(signal) == Some("opposition")
-                && object_pair_from_aspect_signal(signal)
-                    .is_some_and(|pair| structural_axis_pairs.contains(&pair))))
+    crate::payload_rules::angles::is_structural_axis_aspect_signal(signal, structural_axis_pairs)
 }
 
 pub(super) fn is_angle_to_angle_aspect_signal(
     signal: &BasicSignal,
     angle_object_codes: &HashSet<String>,
 ) -> bool {
-    signal.signal_key.starts_with("aspect:")
-        && object_pair_from_aspect_signal(signal).is_some_and(|(source, target)| {
-            angle_object_codes.contains(&source) && angle_object_codes.contains(&target)
-        })
+    crate::payload_rules::angles::is_angle_to_angle_aspect_signal(signal, angle_object_codes)
 }
 
 pub(super) fn has_current_aspect_context(signal: &BasicSignal) -> bool {

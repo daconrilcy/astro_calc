@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::domain::{BasicHouseAxisEmphasis, BasicPayload, BasicSignal};
-use crate::payload_shared::house_axes::canonical_axis;
+use crate::payload_rules::house_axes::{axis_label, canonical_axis};
 use crate::payload_shared::text::{
     has_text, has_unique_non_empty_strings, is_normalized_score, push_unique,
 };
@@ -245,17 +245,5 @@ fn expected_interpretive_hint(axis: &BasicHouseAxisEmphasis) -> String {
             axis.theme_codes[1]
         ),
         _ => String::new(),
-    }
-}
-
-fn axis_label(axis_code: &str) -> &'static str {
-    match axis_code {
-        "self_relationship" => "Self and Relationship",
-        "resources_sharing" => "Resources and Sharing",
-        "local_distant" => "Local and Distant",
-        "private_public" => "Private and Public",
-        "creation_collective" => "Creation and Collective",
-        "control_surrender" => "Control and Surrender",
-        _ => "",
     }
 }

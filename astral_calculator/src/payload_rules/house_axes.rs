@@ -14,8 +14,17 @@ pub(crate) fn canonical_axis(axis_code: &str) -> Option<CanonicalAxis> {
         _ => return None,
     };
 
-    Some(CanonicalAxis {
-        houses,
-        theme_codes,
-    })
+    Some(CanonicalAxis { houses, theme_codes })
+}
+
+pub(crate) fn axis_label(axis_code: &str) -> &'static str {
+    match axis_code {
+        "self_relationship" => "Self and Relationship",
+        "resources_sharing" => "Resources and Sharing",
+        "local_distant" => "Local and Distant",
+        "private_public" => "Private and Public",
+        "creation_collective" => "Creation and Collective",
+        "control_surrender" => "Control and Surrender",
+        _ => "",
+    }
 }

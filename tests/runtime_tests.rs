@@ -1378,6 +1378,26 @@ fn current_payload_rejects_out_of_order_reading_plan_slots() {
 }
 
 #[test]
+fn current_payload_rejects_chart_context_source_drift() {
+    let mut payload = current_payload();
+    payload.chart_context.sect.source = Some("house_hemisphere_projection".to_string());
+
+    assert!(!is_current_basic_payload(&payload));
+}
+
+#[test]
+fn current_payload_rejects_lunar_phase_progress_ratio_drift() {
+    let mut payload = current_payload();
+    payload
+        .lunar_phase_context
+        .as_mut()
+        .expect("expected lunar phase")
+        .phase_progress_ratio = 0.99;
+
+    assert!(!is_current_basic_payload(&payload));
+}
+
+#[test]
 fn current_payload_rejects_old_opposition_hint_template() {
     let mut payload = current_payload();
     payload.signals[0].interpretive_hint = Some(
