@@ -5,8 +5,8 @@ use astral_llm_domain::{
     SafetyMode, TokenUsageType,
 };
 use astral_llm_providers::{
-    AnthropicProvider, GenerationMetadata, LlmProvider, MistralProvider, PromptMessage,
-    PromptRole, ProviderGenerationRequest,
+    AnthropicProvider, GenerationMetadata, LlmProvider, MistralProvider, PromptMessage, PromptRole,
+    ProviderGenerationRequest,
 };
 use secrecy::SecretString;
 use tokio::{

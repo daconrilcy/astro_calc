@@ -266,7 +266,8 @@ fn parse_usage(value: &serde_json::Value) -> TokenUsage {
         &mut usage,
         TokenUsageType::Cache,
         Some("read"),
-        value.pointer("/input_tokens_details/cached_tokens")
+        value
+            .pointer("/input_tokens_details/cached_tokens")
             .and_then(|v| v.as_u64()),
         Some("input_tokens_details.cached_tokens"),
     );
@@ -281,7 +282,8 @@ fn parse_usage(value: &serde_json::Value) -> TokenUsage {
         &mut usage,
         TokenUsageType::Reasoning,
         None,
-        value.pointer("/output_tokens_details/reasoning_tokens")
+        value
+            .pointer("/output_tokens_details/reasoning_tokens")
             .and_then(|v| v.as_u64()),
         Some("output_tokens_details.reasoning_tokens"),
     );

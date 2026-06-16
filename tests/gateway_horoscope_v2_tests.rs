@@ -69,7 +69,10 @@ impl LlmPort for FixtureLlm {
         &self,
         request: &Value,
     ) -> Result<Value, astral_gateway::error::GatewayError> {
-        *self.captured_daily_request.lock().expect("daily request lock") = Some(request.clone());
+        *self
+            .captured_daily_request
+            .lock()
+            .expect("daily request lock") = Some(request.clone());
         Ok(self.daily.clone())
     }
 
@@ -77,11 +80,17 @@ impl LlmPort for FixtureLlm {
         &self,
         request: &Value,
     ) -> Result<Value, astral_gateway::error::GatewayError> {
-        *self.captured_period_request.lock().expect("period request lock") = Some(request.clone());
+        *self
+            .captured_period_request
+            .lock()
+            .expect("period request lock") = Some(request.clone());
         Ok(self.period.clone())
     }
 
-    async fn get_run_audit(&self, run_id: &str) -> Result<Value, astral_gateway::error::GatewayError> {
+    async fn get_run_audit(
+        &self,
+        run_id: &str,
+    ) -> Result<Value, astral_gateway::error::GatewayError> {
         Ok(serde_json::json!({
             "run_id": run_id,
             "token_usage": {

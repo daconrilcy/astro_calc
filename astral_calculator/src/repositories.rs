@@ -12,12 +12,12 @@ use crate::domain::{
 };
 use crate::models::{
     AccidentalConditionTriggerRow, AccidentalDignityConditionReferenceRow,
-    AccidentalPolarityBandRow, AccidentalScoringParamsRow, AnglePointReference,
-    AstralTimePeriodProfileRow, AspectDefinition, BasicProductScoringProfileRow,
-    ChartCalculationRow, ChartObject, DomicileRulerReference, EssentialDignityRuleReferenceRow,
+    AccidentalPolarityBandRow, AccidentalScoringParamsRow, AnglePointReference, AspectDefinition,
+    AstralTimePeriodProfileRow, BasicProductScoringProfileRow, ChartCalculationRow, ChartObject,
+    DomicileRulerReference, EssentialDignityRuleReferenceRow, HorizonPositionReference,
     HoroscopeOrbWeightBandRow, HoroscopeScanProfileRow, HoroscopeServiceRow,
-    HoroscopeTimeSlotProfileRow, HorizonPositionReference, HouseAxisReferenceRow, HouseReference,
-    HouseSystem, InterpretationSignalRow, LlmProjectionProfileRow, LunarPhaseReferenceRow,
+    HoroscopeTimeSlotProfileRow, HouseAxisReferenceRow, HouseReference, HouseSystem,
+    InterpretationSignalRow, LlmProjectionProfileRow, LunarPhaseReferenceRow,
     MajorAspectFamilyReference, MotionStateReference, ObjectSectAffinityReferenceRow,
     PersistedAspectFact, PersistedObjectPositionFact, SignReference,
 };
@@ -716,8 +716,9 @@ impl RuntimeRepository {
     pub async fn zodiacal_reference_systems(
         &self,
     ) -> Result<Vec<crate::models::ZodiacalReferenceSystemRow>, RuntimeError> {
-        Ok(sqlx::query_as::<_, crate::models::ZodiacalReferenceSystemRow>(
-            r#"
+        Ok(
+            sqlx::query_as::<_, crate::models::ZodiacalReferenceSystemRow>(
+                r#"
             SELECT id,
                    key,
                    display_name,
@@ -728,9 +729,10 @@ impl RuntimeRepository {
             FROM astral_zodiacal_reference_systems
             ORDER BY id
             "#,
+            )
+            .fetch_all(&self.pool)
+            .await?,
         )
-        .fetch_all(&self.pool)
-        .await?)
     }
 
     pub async fn coordinate_reference_system_id_by_key(
@@ -757,8 +759,9 @@ impl RuntimeRepository {
     pub async fn coordinate_reference_systems(
         &self,
     ) -> Result<Vec<crate::models::CoordinateReferenceSystemRow>, RuntimeError> {
-        Ok(sqlx::query_as::<_, crate::models::CoordinateReferenceSystemRow>(
-            r#"
+        Ok(
+            sqlx::query_as::<_, crate::models::CoordinateReferenceSystemRow>(
+                r#"
             SELECT id,
                    key,
                    display_name,
@@ -768,9 +771,10 @@ impl RuntimeRepository {
             FROM astral_coordinate_reference_systems
             ORDER BY id
             "#,
+            )
+            .fetch_all(&self.pool)
+            .await?,
         )
-        .fetch_all(&self.pool)
-        .await?)
     }
 
     pub async fn zodiacal_reference_system_display_name(

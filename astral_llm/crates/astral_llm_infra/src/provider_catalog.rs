@@ -247,7 +247,12 @@ impl ProviderCatalogRepository {
             .bind(provider_code.trim().to_lowercase())
             .bind(provider_id)
             .bind(model.trim())
-            .bind(input.model_code.clone().unwrap_or_else(|| model.trim().to_string()))
+            .bind(
+                input
+                    .model_code
+                    .clone()
+                    .unwrap_or_else(|| model.trim().to_string()),
+            )
             .bind(
                 input
                     .display_name
@@ -255,7 +260,10 @@ impl ProviderCatalogRepository {
                     .unwrap_or_else(|| model.trim().to_string()),
             )
             .bind(
-                input.api_model_id.clone().unwrap_or_else(|| model.trim().to_string()),
+                input
+                    .api_model_id
+                    .clone()
+                    .unwrap_or_else(|| model.trim().to_string()),
             )
             .bind(&input.catalog_notes)
             .bind(&input.usage_tier_code)

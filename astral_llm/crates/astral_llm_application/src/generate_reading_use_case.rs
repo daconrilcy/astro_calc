@@ -2,9 +2,7 @@ use std::time::Duration;
 
 use astral_llm_domain::{
     contract_versions::GenerationRunContractVersions,
-    generation_response::{
-        GenerateReadingResponse, SafetyRejectedResponse,
-    },
+    generation_response::{GenerateReadingResponse, SafetyRejectedResponse},
     model_usage_tier::ModelRouteContext,
     output_contract::GenerationMode,
     EngineDefaults, GenerateReadingRequest, GenerationError, GenerationErrorCode, PrivacyPolicy,
@@ -834,7 +832,10 @@ impl GenerateReadingUseCase {
             self.priced_usage(provider, model, usage)
         }) {
             let usage_records = to_usage_records(&run_usage);
-            if let Err(err) = persistence.replace_run_token_usages(run_uuid, &usage_records).await {
+            if let Err(err) = persistence
+                .replace_run_token_usages(run_uuid, &usage_records)
+                .await
+            {
                 tracing::warn!(run_id = %audit.run_id, error = %err, "failed to persist run token usage");
             }
         }
@@ -842,11 +843,15 @@ impl GenerateReadingUseCase {
             let Some(step_usage) = step.token_usage.clone() else {
                 continue;
             };
-            let Some(step_usage) = self.priced_usage(&step.provider, &step.model, step_usage) else {
+            let Some(step_usage) = self.priced_usage(&step.provider, &step.model, step_usage)
+            else {
                 continue;
             };
             let usage_records = to_usage_records(&step_usage);
-            if let Err(err) = persistence.replace_step_token_usages(step_id, &usage_records).await {
+            if let Err(err) = persistence
+                .replace_step_token_usages(step_id, &usage_records)
+                .await
+            {
                 tracing::warn!(run_id = %audit.run_id, step_id = %step_id, error = %err, "failed to persist step token usage");
             }
         }
@@ -897,12 +902,7 @@ fn build_safety_rejected(
 }
 
 impl GenerateReadingUseCase {
-    fn priced_usage(
-        &self,
-        provider: &str,
-        model: &str,
-        usage: TokenUsage,
-    ) -> Option<TokenUsage> {
+    fn priced_usage(&self, provider: &str, model: &str, usage: TokenUsage) -> Option<TokenUsage> {
         let provider_kind = match provider.trim().to_lowercase().as_str() {
             "openai" => ProviderKind::OpenAi,
             "anthropic" => ProviderKind::Anthropic,

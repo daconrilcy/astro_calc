@@ -230,7 +230,10 @@ async fn v2_natal_inspect_route_returns_pre_llm_payload() {
             .expect("body"),
     )
     .expect("json");
-    assert_eq!(body["metadata"]["contract_version"], "natal_inspection_response_v2");
+    assert_eq!(
+        body["metadata"]["contract_version"],
+        "natal_inspection_response_v2"
+    );
     assert!(body.get("llm_request").is_some());
     assert!(body.get("reading").is_none());
 }

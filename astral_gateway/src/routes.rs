@@ -56,7 +56,10 @@ pub fn router_with_timeout(state: AppState, request_timeout: std::time::Duration
         .route("/v2/natal/full/free", post(natal_full_free))
         .route("/v2/natal/full/free/inspect", post(natal_full_free_inspect))
         .route("/v2/natal/full/basic", post(natal_full_basic))
-        .route("/v2/natal/full/basic/inspect", post(natal_full_basic_inspect))
+        .route(
+            "/v2/natal/full/basic/inspect",
+            post(natal_full_basic_inspect),
+        )
         .route("/v2/natal/full/premium", post(natal_full_premium))
         .route(
             "/v2/natal/full/premium/inspect",

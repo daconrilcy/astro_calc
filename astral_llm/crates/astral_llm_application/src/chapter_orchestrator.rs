@@ -1088,7 +1088,14 @@ impl<'a> ChapterOrchestrator<'a> {
         (
             ReadingChapter,
             crate::prompt_compiler::PromptBundle,
-            (String, String, bool, Option<TokenUsage>, Option<u32>, Option<u32>),
+            (
+                String,
+                String,
+                bool,
+                Option<TokenUsage>,
+                Option<u32>,
+                Option<u32>,
+            ),
         ),
         GenerationError,
     > {

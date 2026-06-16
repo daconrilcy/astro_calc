@@ -166,7 +166,14 @@ async fn natal_gateway_supports_simplified_premium_v2() {
 
     assert_eq!(response.metadata.product_code, "natal_simplified_premium");
     assert_eq!(response.metadata.variant, "simplified");
-    assert_eq!(response.debug.as_ref().and_then(|debug| debug.get("run_id")).and_then(|value| value.as_str()), Some("run-test"));
+    assert_eq!(
+        response
+            .debug
+            .as_ref()
+            .and_then(|debug| debug.get("run_id"))
+            .and_then(|value| value.as_str()),
+        Some("run-test")
+    );
     assert_eq!(
         response
             .debug
@@ -288,5 +295,8 @@ async fn natal_gateway_execute_calls_llm_for_standard_flow() {
         .expect("reading response");
 
     assert_eq!(calls.load(Ordering::SeqCst), 1);
-    assert!(matches!(response.reading, GenerateReadingResponse::Success { .. }));
+    assert!(matches!(
+        response.reading,
+        GenerateReadingResponse::Success { .. }
+    ));
 }

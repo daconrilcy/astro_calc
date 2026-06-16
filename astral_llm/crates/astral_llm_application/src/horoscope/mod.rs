@@ -4,8 +4,9 @@ use crate::text_reprocessing_service_adapter::{
 };
 use astral_llm_domain::{
     chapter_orchestration::{ChapterGenerationStatus, GenerationStepRecord},
-    model_usage_tier::ModelRouteContext, EngineDefaults, GenerationError, GenerationErrorCode,
-    ProviderKind, ReasoningEffort, SafetyMode, TokenUsage, TokenUsageType,
+    model_usage_tier::ModelRouteContext,
+    EngineDefaults, GenerationError, GenerationErrorCode, ProviderKind, ReasoningEffort,
+    SafetyMode, TokenUsage, TokenUsageType,
 };
 use astral_llm_infra::{
     hash_json, GenerationRunRecord, GenerationTokenUsageRecord, RunStatus, SafetyStatus,
@@ -265,7 +266,8 @@ pub(crate) async fn persist_horoscope_run_finished(
         let Some(step_usage) = step.token_usage.clone() else {
             continue;
         };
-        let Some(step_usage) = price_horoscope_usage(use_case, &step.provider, &step.model, step_usage)
+        let Some(step_usage) =
+            price_horoscope_usage(use_case, &step.provider, &step.model, step_usage)
         else {
             continue;
         };

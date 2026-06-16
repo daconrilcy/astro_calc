@@ -259,9 +259,7 @@ async fn premium_e2e_succeeds_with_rich_payload_and_summary() {
     let response = use_case.execute(request).await;
 
     match response {
-        GenerateReadingResponse::Success {
-            reading, ..
-        } => {
+        GenerateReadingResponse::Success { reading, .. } => {
             assert_eq!(reading.chapters.len(), 2);
             for chapter in &reading.chapters {
                 let has_interpretive = chapter.astro_basis.iter().any(|b| {

@@ -609,12 +609,7 @@ impl RunPersistence {
             .bind(step.id)
             .fetch_all(&self.pool)
             .await?;
-            step.token_usage = build_public_usage(
-                &step.provider,
-                &step.model,
-                None,
-                rows,
-            );
+            step.token_usage = build_public_usage(&step.provider, &step.model, None, rows);
         }
 
         let prompt_traces = sqlx::query_as::<_, RunAuditPromptTraceView>(

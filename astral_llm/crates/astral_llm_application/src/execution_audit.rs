@@ -1,4 +1,6 @@
-use astral_llm_domain::{ChapterGenerationStatus, GenerationStepRecord, TokenUsage, TokenUsageType};
+use astral_llm_domain::{
+    ChapterGenerationStatus, GenerationStepRecord, TokenUsage, TokenUsageType,
+};
 
 #[derive(Debug, Clone, Default)]
 pub struct ExecutionAudit {

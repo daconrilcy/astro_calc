@@ -139,9 +139,8 @@ impl TokenUsage {
                 },
             };
             item.unit_price_usd_per_mtok = unit_price;
-            item.estimated_cost_usd = unit_price.map(|price| {
-                (item.token_count as f64 / 1_000_000.0) * price
-            });
+            item.estimated_cost_usd =
+                unit_price.map(|price| (item.token_count as f64 / 1_000_000.0) * price);
         }
         priced
     }

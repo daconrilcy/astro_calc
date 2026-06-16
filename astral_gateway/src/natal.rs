@@ -12,12 +12,12 @@ use astral_llm_domain::{
 };
 use serde_json::Value;
 
+use crate::contracts::NatalInspectionResponseV2;
 use crate::{
     contracts::{NatalReadingRequestV2, NatalReadingResponseV2},
     error::GatewayError,
     ports::{CalculatorPort, LlmPort},
 };
-use crate::contracts::NatalInspectionResponseV2;
 
 #[derive(Debug, Clone, Copy)]
 pub struct NatalGatewayPolicy {

@@ -5,10 +5,7 @@ use crate::runtime::RuntimeError;
 pub fn profile_from_level(level: &str) -> Result<LlmProjectionProfile, RuntimeError> {
     let repository = load_repository()?;
     tokio::runtime::Handle::current()
-        .block_on(repository.llm_projection_profile(
-            "llm_projection_natal_v1",
-            level,
-        ))
+        .block_on(repository.llm_projection_profile("llm_projection_natal_v1", level))
 }
 
 pub async fn resolve_projection_profile(
@@ -16,7 +13,10 @@ pub async fn resolve_projection_profile(
     contract_version: &str,
     level: &str,
 ) -> Result<LlmProjectionProfile, RuntimeError> {
-    match repository.llm_projection_profile(contract_version, level).await {
+    match repository
+        .llm_projection_profile(contract_version, level)
+        .await
+    {
         Ok(profile) => Ok(profile),
         Err(error) => Err(error),
     }
