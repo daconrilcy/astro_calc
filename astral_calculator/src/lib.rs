@@ -6,7 +6,6 @@ pub mod db;
 pub mod dignities;
 pub mod domain;
 pub mod engine;
-pub mod engine_env;
 pub use engine::engine_request_from_env;
 pub mod ephemeris;
 pub mod facts;
