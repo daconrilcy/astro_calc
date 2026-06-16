@@ -23,6 +23,7 @@ use crate::models::{
 };
 use crate::runtime::RuntimeError;
 
+#[derive(Clone)]
 pub struct RuntimeRepository {
     pool: PgPool,
 }

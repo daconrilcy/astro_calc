@@ -130,6 +130,7 @@ services:
     env_file:
       - .env
     environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       ASTRAL_GATEWAY_BIND_ADDR: 0.0.0.0:8082
       ASTRAL_GATEWAY_REQUEST_TIMEOUT_MS: ${ASTRAL_GATEWAY_REQUEST_TIMEOUT_MS:-900000}
       ASTRAL_CALCULATOR_HOST: astral_calculator_api

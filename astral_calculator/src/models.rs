@@ -69,7 +69,7 @@ pub struct HoroscopeServiceRow {
     pub service_code: String,
     pub product_level_code: String,
     pub shortlist_profile_code: String,
-    pub time_slot_profile_code: String,
+    pub time_slot_profile_code: Option<String>,
     pub slot_mode: String,
     pub requires_natal_chart: bool,
     pub requires_location: bool,

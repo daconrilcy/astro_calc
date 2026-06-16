@@ -216,12 +216,32 @@ fn load_repository() -> Result<RuntimeRepository, String> {
     Ok(RuntimeRepository::new(pool))
 }
 
-fn run_blocking<F, T>(future: F) -> Result<T, sqlx::Error>
+fn run_blocking<F, T, E>(future: F) -> Result<T, E>
 where
-    F: std::future::Future<Output = Result<T, sqlx::Error>>,
+    F: std::future::Future<Output = Result<T, E>> + Send + 'static,
+    T: Send + 'static,
+    E: Send + 'static,
 {
     if let Ok(handle) = tokio::runtime::Handle::try_current() {
-        handle.block_on(future)
+        match handle.runtime_flavor() {
+            tokio::runtime::RuntimeFlavor::MultiThread => {
+                tokio::task::block_in_place(|| handle.block_on(future))
+            }
+            tokio::runtime::RuntimeFlavor::CurrentThread => std::thread::spawn(move || {
+                tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("tokio runtime")
+                    .block_on(future)
+            })
+            .join()
+            .expect("runtime bridge thread"),
+            _ => tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("tokio runtime")
+                .block_on(future),
+        }
     } else {
         tokio::runtime::Builder::new_current_thread()
             .enable_all()
@@ -235,9 +255,8 @@ fn service_profile(
     repository: &RuntimeRepository,
     service_code: &str,
 ) -> Result<ServiceProfile, String> {
-    let row = tokio::runtime::Handle::try_current()
-        .map_err(|error| error.to_string())?
-        .block_on(repository.horoscope_services())
+    let repository = repository.clone();
+    let row = run_blocking(async move { repository.horoscope_services().await })
         .map_err(|err| err.to_string())?
         .into_iter()
         .find(|row| row.service_code == service_code)
@@ -264,9 +283,8 @@ fn slot_profiles(
     repository: &RuntimeRepository,
     service_code: &str,
 ) -> Result<Vec<SlotProfileRow>, String> {
-    let mut slots = tokio::runtime::Handle::try_current()
-        .map_err(|error| error.to_string())?
-        .block_on(repository.horoscope_time_slot_profiles())
+    let repository = repository.clone();
+    let mut slots = run_blocking(async move { repository.horoscope_time_slot_profiles().await })
         .map_err(|err| err.to_string())?
         .into_iter()
         .filter(|row| row.service_code == service_code)
@@ -288,9 +306,8 @@ fn resolve_period_window(
     anchor_date: &str,
     timezone: &str,
 ) -> Result<Value, String> {
-    let profiles = tokio::runtime::Handle::try_current()
-        .map_err(|error| error.to_string())?
-        .block_on(repository.astral_time_period_profiles())
+    let repository = repository.clone();
+    let profiles = run_blocking(async move { repository.astral_time_period_profiles().await })
         .map_err(|err| err.to_string())?;
     let profile_defs = serde_json::from_value::<Vec<astral_time_window::PeriodProfileDefinition>>(
         serde_json::to_value(profiles).map_err(|err| err.to_string())?,
@@ -477,9 +494,8 @@ fn scan_profile(
     repository: &RuntimeRepository,
     scan_profile_code: &str,
 ) -> Result<ScanProfile, String> {
-    let row = tokio::runtime::Handle::try_current()
-        .map_err(|error| error.to_string())?
-        .block_on(repository.horoscope_scan_profiles())
+    let repository = repository.clone();
+    let row = run_blocking(async move { repository.horoscope_scan_profiles().await })
         .map_err(|err| err.to_string())?
         .into_iter()
         .find(|row| row.scan_profile_code == scan_profile_code && row.is_enabled)
