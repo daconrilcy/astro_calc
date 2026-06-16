@@ -27,11 +27,6 @@ test-utils = []
 [dev-dependencies]
 jsonschema = "0.18"
 
-[[bin]]
-name = "swe_smoke"
-path = "src/bin/swe_smoke.rs"
-required-features = ["swisseph-engine"]
-
 [[test]]
 name = "aspects_tests"
 path = "../tests/aspects_tests.rs"
@@ -80,6 +75,11 @@ path = "../tests/engine_contract_tests.rs"
 name = "simplified_natal_tests"
 path = "../tests/simplified_natal_tests.rs"
 required-features = ["test-utils"]
+
+[[test]]
+name = "swisseph_smoke_tests"
+path = "../tests/swisseph_smoke_tests.rs"
+required-features = ["swisseph-engine"]
 
 [[test]]
 name = "horoscope_builders_tests"

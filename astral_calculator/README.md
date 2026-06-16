@@ -22,10 +22,10 @@ definie, il construit automatiquement une URL depuis `POSTGRES_DB`,
 Le moteur Swiss Ephemeris utilise le crate `swiss-eph` via la feature
 `swisseph-engine`.
 
-Smoke test sans fichiers `.se1`, en mode Moshier :
+Smoke test sans fichiers `.se1`, en mode Moshier, inclus dans la suite de tests :
 
 ```powershell
-cargo run -p astral_calculator --features swisseph-engine --bin swe_smoke
+cargo test -p astral_calculator --features swisseph-engine --test swiss_ephemeris_smoke_tests
 ```
 
 Execution du calcul natal avec les fichiers Swiss Ephemeris.

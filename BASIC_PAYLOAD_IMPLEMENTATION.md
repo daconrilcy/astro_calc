@@ -5,6 +5,12 @@
 - Reused `astral_calculator::facts::normalize_degrees` from horoscope period logic instead of keeping duplicate math helpers inside the domain.
 - Centralized horoscope RFC3339 UTC normalization and local-time-to-UTC conversion behind one shared helper layer so `builders` and period calculation no longer maintain duplicate temporal rules.
 
+# 2026-06-16 - Swiss Ephemeris smoke test moved into `tests/`
+
+- Moved the standalone `swe_smoke` binary into an integration test at [`tests/swiss_ephemeris_smoke_tests.rs`](tests/swiss_ephemeris_smoke_tests.rs).
+- Declared the smoke check in `astral_calculator/Cargo.toml` so it runs with the `astral_calculator` test suite when `swisseph-engine` is enabled.
+- Updated the calculator README to point operators to `cargo test` instead of `cargo run` for this diagnostic check.
+
 # 2026-06-16 - Horoscope refactor review fixes
 
 - Removed the new `horoscope -> aspects` coupling by moving shortest angular distance into `astral_calculator::facts`, where the other generic longitude helpers already live.
