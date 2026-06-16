@@ -560,6 +560,19 @@ impl RuntimeRepository {
         .await?)
     }
 
+    pub async fn house_systems(&self) -> Result<Vec<HouseSystem>, RuntimeError> {
+        Ok(sqlx::query_as::<_, HouseSystem>(
+            r#"
+            SELECT id, code, name, calculation_engine_code
+            FROM astral_house_systems
+            WHERE is_active = true
+            ORDER BY id
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?)
+    }
+
     pub async fn horoscope_services(&self) -> Result<Vec<HoroscopeServiceRow>, RuntimeError> {
         Ok(sqlx::query_as::<_, HoroscopeServiceRow>(
             r#"

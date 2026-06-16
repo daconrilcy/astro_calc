@@ -97,7 +97,7 @@ pub struct HoroscopeTimeSlotProfileRow {
     pub sort_order: i32,
 }
 
-#[derive(Debug, Clone, sqlx::FromRow)]
+#[derive(Debug, Clone, serde::Serialize, sqlx::FromRow)]
 pub struct AstralTimePeriodProfileRow {
     pub period_profile_code: String,
     pub resolution_strategy: String,

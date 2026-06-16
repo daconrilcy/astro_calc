@@ -1,3 +1,10 @@
+# DB-backed reference migration - 2026-06-16
+
+- Replaced the remaining `json_db`-backed reference lookups in `astral_calculator` with direct Postgres reads through `RuntimeRepository`.
+- Added repository coverage for `astral_house_systems` and used existing SQLx row models for horoscope services, slots, time periods, scan profiles, orb weight bands, zodiacal systems, coordinate systems, house axes, and LLM projection profiles.
+- Updated engine/horoscope/LLM projection tests to rely on the database-backed contract and to skip cleanly when the database is not available in the local environment.
+- Kept the runtime strict-BDD: no fallback to `json_db` remains in the affected code paths.
+
 # DB-backed reference model coverage - 2026-06-16
 
 - Added SQLx row models in `astral_calculator/src/models.rs` for:

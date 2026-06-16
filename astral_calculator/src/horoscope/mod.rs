@@ -15,8 +15,6 @@ pub use builders::{
 use serde::{Deserialize, Serialize};
 
 use crate::domain::ObjectPositionFact;
-const HOROSCOPE_ORB_WEIGHT_BANDS_JSON: &str =
-    include_str!("../../../json_db/horoscope_orb_weight_bands.json");
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct HoroscopeCalculationRequest {
@@ -250,20 +248,27 @@ pub fn calculate_horoscope_daily_natal(
 pub fn calculate_horoscope_period_natal(
     request: HoroscopePeriodCalculationRequest,
 ) -> HoroscopePeriodCalculationResponse {
-    calculate_horoscope_period_natal_from_positions(request, &[])
+    calculate_horoscope_period_natal_from_positions(request, &[], 8.0)
 }
 
 pub fn calculate_horoscope_period_natal_from_positions(
     request: HoroscopePeriodCalculationRequest,
     natal_positions: &[ObjectPositionFact],
+    period_max_major_aspect_orb_deg: f64,
 ) -> HoroscopePeriodCalculationResponse {
-    calculate_horoscope_period_natal_from_transits(request, natal_positions, &[])
+    calculate_horoscope_period_natal_from_transits(
+        request,
+        natal_positions,
+        &[],
+        period_max_major_aspect_orb_deg,
+    )
 }
 
 pub fn calculate_horoscope_period_natal_from_transits(
     request: HoroscopePeriodCalculationRequest,
     natal_positions: &[ObjectPositionFact],
     transit_snapshots: &[(String, Vec<ObjectPositionFact>)],
+    max_major_aspect_orb_deg: f64,
 ) -> HoroscopePeriodCalculationResponse {
     let request = normalize_horoscope_period_request_utc(request).unwrap_or_else(|request| {
         panic!("invalid horoscope period calculation request: {request}")
@@ -287,7 +292,13 @@ pub fn calculate_horoscope_period_natal_from_transits(
                 .iter()
                 .find(|(key, _)| key == &snapshot.snapshot_key)
                 .map(|(_, positions)| positions.as_slice());
-            real_period_snapshot(index, snapshot, &usable_positions, transit_positions)
+            real_period_snapshot(
+                index,
+                snapshot,
+                &usable_positions,
+                transit_positions,
+                max_major_aspect_orb_deg,
+            )
         })
         .collect::<Vec<_>>();
     let evidence_keys = snapshots
@@ -312,6 +323,7 @@ fn real_period_snapshot(
     snapshot: &HoroscopeSnapshotRequest,
     natal_positions: &[&ObjectPositionFact],
     transit_positions: Option<&[ObjectPositionFact]>,
+    max_major_aspect_orb_deg: f64,
 ) -> HoroscopePeriodSnapshot {
     let transit_objects = ["moon", "venus", "mars", "sun", "mercury", "moon", "jupiter"];
     let object = transit_objects[index % transit_objects.len()];
@@ -335,7 +347,7 @@ fn real_period_snapshot(
         .map(|position| position.longitude_deg)
         .unwrap_or_else(|| normalize_deg(natal_longitude + 12.5 + (index as f64 * 27.0)));
     let nearest_aspect = nearest_major_aspect(transit_longitude, natal_longitude);
-    let valid_aspect = nearest_aspect.filter(|(_, orb)| *orb <= period_max_major_aspect_orb_deg());
+    let valid_aspect = nearest_aspect.filter(|(_, orb)| *orb <= max_major_aspect_orb_deg);
     let (aspect, orb) =
         valid_aspect.unwrap_or(("context", nearest_aspect.map(|(_, orb)| orb).unwrap_or(0.0)));
     let is_context_signal = object == "moon" || valid_aspect.is_none();
@@ -477,22 +489,6 @@ fn nearest_major_aspect(left: f64, right: f64) -> Option<(&'static str, f64)> {
         }
     }
     Some(best)
-}
-
-fn period_max_major_aspect_orb_deg() -> f64 {
-    serde_json::from_str::<serde_json::Value>(HOROSCOPE_ORB_WEIGHT_BANDS_JSON)
-        .ok()
-        .and_then(|value| {
-            value
-                .get("data")
-                .and_then(serde_json::Value::as_array)
-                .into_iter()
-                .flatten()
-                .filter_map(|row| row.get("max_orb_deg").and_then(serde_json::Value::as_f64))
-                .filter(|orb| orb.is_finite() && *orb > 0.0)
-                .max_by(|left, right| left.total_cmp(right))
-        })
-        .expect("json_db/horoscope_orb_weight_bands.json must define positive max_orb_deg values")
 }
 
 fn angular_separation(left: f64, right: f64) -> f64 {

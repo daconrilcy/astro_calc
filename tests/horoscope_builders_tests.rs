@@ -6,8 +6,19 @@ use astral_calculator::horoscope::{
 };
 use serde_json::json;
 
+fn db_available() -> bool {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("tokio runtime");
+    runtime.block_on(async { astral_calculator::db::connect_from_env().await.is_ok() })
+}
+
 #[test]
 fn free_daily_builder_keeps_public_surface_minimal() {
+    if !db_available() {
+        return;
+    }
     let request = build_horoscope_daily_calculation_request_from_public(
         HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE,
         &json!({
@@ -37,6 +48,9 @@ fn free_daily_builder_keeps_public_surface_minimal() {
 
 #[test]
 fn premium_daily_builder_requires_location_and_enables_local_features() {
+    if !db_available() {
+        return;
+    }
     let err = build_horoscope_daily_calculation_request_from_public(
         HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
         &json!({
@@ -74,6 +88,9 @@ fn premium_daily_builder_requires_location_and_enables_local_features() {
 
 #[test]
 fn daily_builder_rejects_invalid_timezone_and_service_code() {
+    if !db_available() {
+        return;
+    }
     let invalid_timezone = build_horoscope_daily_calculation_request_from_public(
         HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE,
         &json!({
@@ -99,6 +116,9 @@ fn daily_builder_rejects_invalid_timezone_and_service_code() {
 
 #[test]
 fn period_builder_creates_canonical_scan_plan_for_v2_service() {
+    if !db_available() {
+        return;
+    }
     let request = build_horoscope_period_calculation_request_from_public(
         HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
         &json!({
@@ -131,6 +151,9 @@ fn period_builder_creates_canonical_scan_plan_for_v2_service() {
 
 #[test]
 fn period_builder_rejects_invalid_anchor_date() {
+    if !db_available() {
+        return;
+    }
     let err = build_horoscope_period_calculation_request_from_public(
         HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
         &json!({

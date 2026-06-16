@@ -199,10 +199,18 @@ where
             )?;
             transit_snapshots.push((snapshot.snapshot_key.clone(), facts.positions));
         }
+        let period_max_major_aspect_orb_deg = self
+            .repository
+            .horoscope_orb_weight_bands()
+            .await?
+            .into_iter()
+            .map(|band| band.max_orb_deg)
+            .fold(0.0, f64::max);
         Ok(calculate_horoscope_period_natal_from_transits(
             request,
             &natal_positions,
             &transit_snapshots,
+            period_max_major_aspect_orb_deg,
         ))
     }
 

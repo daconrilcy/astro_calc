@@ -13,5 +13,5 @@ pub use profiles::{
 
 pub use builder::{build_llm_projection_natal_v1, LlmProjectionBuildContext};
 pub use dynamics::is_active_major_aspect_signal;
-pub use profiles::{all_profiles_from_seed, limits_envelope, profile_from_level};
+pub use profiles::{limits_envelope, profile_from_level};
 pub use types::*;

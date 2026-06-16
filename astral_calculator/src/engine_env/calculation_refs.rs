@@ -1,42 +1,80 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-const ZODIAC_JSON: &str = include_str!("../../../json_db/astral_zodiacal_reference_systems.json");
-const COORDINATE_JSON: &str =
-    include_str!("../../../json_db/astral_coordinate_reference_systems.json");
-const HOUSE_SYSTEM_JSON: &str = include_str!("../../../json_db/astral_house_systems.json");
+use tokio::runtime::Handle;
+
+use crate::repositories::RuntimeRepository;
 
 fn zodiac_key_by_id() -> &'static HashMap<i32, String> {
     static MAP: OnceLock<HashMap<i32, String>> = OnceLock::new();
-    MAP.get_or_init(|| id_key_map(ZODIAC_JSON, "key"))
+    MAP.get_or_init(load_zodiac_key_by_id)
 }
 
 fn coordinate_key_by_id() -> &'static HashMap<i32, String> {
     static MAP: OnceLock<HashMap<i32, String>> = OnceLock::new();
-    MAP.get_or_init(|| id_key_map(COORDINATE_JSON, "key"))
+    MAP.get_or_init(load_coordinate_key_by_id)
 }
 
 fn house_code_by_id() -> &'static HashMap<i32, String> {
     static MAP: OnceLock<HashMap<i32, String>> = OnceLock::new();
-    MAP.get_or_init(|| id_key_map(HOUSE_SYSTEM_JSON, "code"))
+    MAP.get_or_init(load_house_code_by_id)
 }
 
-fn id_key_map(json: &str, key_field: &str) -> HashMap<i32, String> {
-    key_by_id_map(json, key_field)
+fn load_repository() -> RuntimeRepository {
+    let pool = run_blocking(crate::db::connect_from_env())
+        .expect("database must be reachable for engine refs");
+    RuntimeRepository::new(pool)
 }
 
-fn key_by_id_map(json: &str, key_field: &str) -> HashMap<i32, String> {
-    let table: serde_json::Value = serde_json::from_str(json).expect("json_db table must parse");
-    table["data"]
-        .as_array()
-        .expect("json_db data array")
-        .iter()
-        .map(|row| {
-            let id = row["id"].as_i64().expect("row id") as i32;
-            let key = row[key_field].as_str().expect("row key").to_string();
-            (id, key)
+fn run_blocking<F, T>(future: F) -> Result<T, sqlx::Error>
+where
+    F: std::future::Future<Output = Result<T, sqlx::Error>>,
+{
+    if let Ok(handle) = Handle::try_current() {
+        handle.block_on(future)
+    } else {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("tokio runtime")
+            .block_on(future)
+    }
+}
+
+fn load_zodiac_key_by_id() -> HashMap<i32, String> {
+    let repository = load_repository();
+    Handle::current()
+        .block_on(async move {
+            repository
+                .zodiacal_reference_systems()
+                .await
+                .map(|rows| rows.into_iter().map(|row| (row.id, row.key)).collect())
         })
-        .collect()
+        .expect("astral_zodiacal_reference_systems must load")
+}
+
+fn load_coordinate_key_by_id() -> HashMap<i32, String> {
+    let repository = load_repository();
+    Handle::current()
+        .block_on(async move {
+            repository
+                .coordinate_reference_systems()
+                .await
+                .map(|rows| rows.into_iter().map(|row| (row.id, row.key)).collect())
+        })
+        .expect("astral_coordinate_reference_systems must load")
+}
+
+fn load_house_code_by_id() -> HashMap<i32, String> {
+    let repository = load_repository();
+    Handle::current()
+        .block_on(async move {
+            repository
+                .house_systems()
+                .await
+                .map(|rows| rows.into_iter().map(|row| (row.id, row.code)).collect())
+        })
+        .expect("astral_house_systems must load")
 }
 
 pub fn zodiacal_reference_system_key_from_env() -> Result<String, String> {
@@ -86,7 +124,7 @@ fn reference_key_from_env(
         return id_map
             .get(&id)
             .cloned()
-            .ok_or_else(|| format!("{id_var}={id} has no matching entry in json_db seed"));
+            .ok_or_else(|| format!("{id_var}={id} has no matching entry in database"));
     }
 
     Ok(default.to_string())
@@ -108,10 +146,7 @@ fn house_id_by_code() -> &'static HashMap<String, i32> {
 }
 
 fn invert_map(id_to_key: &HashMap<i32, String>) -> HashMap<String, i32> {
-    id_to_key
-        .iter()
-        .map(|(id, key)| (key.clone(), *id))
-        .collect()
+    id_to_key.iter().map(|(id, key)| (key.clone(), *id)).collect()
 }
 
 pub fn zodiacal_reference_system_id_from_env() -> Result<i32, String> {
@@ -150,9 +185,10 @@ fn reference_id_from_env(
     if let Ok(key) = std::env::var(key_var) {
         let trimmed = key.trim();
         if !trimmed.is_empty() {
-            return key_map.get(trimmed).copied().ok_or_else(|| {
-                format!("{key_var}={trimmed} has no matching entry in json_db seed")
-            });
+            return key_map
+                .get(trimmed)
+                .copied()
+                .ok_or_else(|| format!("{key_var}={trimmed} has no matching entry in database"));
         }
     }
 

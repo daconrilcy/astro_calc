@@ -4,6 +4,7 @@ use chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
 use chrono_tz::Tz;
 use serde::Deserialize;
 use serde_json::{json, Value};
+use crate::repositories::RuntimeRepository;
 
 use super::{
     HoroscopeCalculationRequest, HoroscopeCalculationSlotRequest, HoroscopeLocation,
@@ -13,12 +14,6 @@ use super::{
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
     HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE,
 };
-
-const SERVICES_JSON: &str = include_str!("../../../json_db/horoscope_services.json");
-const TIME_SLOTS_JSON: &str = include_str!("../../../json_db/horoscope_time_slot_profiles.json");
-const PERIOD_PROFILES_JSON: &str =
-    include_str!("../../../json_db/astral_time_period_profiles.json");
-const SCAN_PROFILES_JSON: &str = include_str!("../../../json_db/horoscope_scan_profiles.json");
 
 #[derive(Debug, Clone, Deserialize)]
 struct DailyPublicRequest {
@@ -67,8 +62,9 @@ pub fn build_horoscope_daily_calculation_request_from_public(
     let request: DailyPublicRequest =
         serde_json::from_value(payload.clone()).map_err(|err| err.to_string())?;
     validate_daily_public_request(service_code, &request)?;
-    let profile = service_profile(service_code)?;
-    let mut slots = slot_profiles(service_code)?;
+    let repository = load_repository()?;
+    let profile = service_profile(&repository, service_code)?;
+    let mut slots = slot_profiles(&repository, service_code)?;
     slots.sort_by_key(|slot| slot.sort_order);
     Ok(HoroscopeCalculationRequest {
         contract_version: "horoscope_calculation_request".into(),
@@ -131,20 +127,18 @@ pub fn build_horoscope_period_calculation_request_from_public(
         .parse::<Tz>()
         .map_err(|_| "HOROSCOPE_PERIOD_TIMEZONE_REQUIRED".to_string())?;
 
-    let profile = period_service_profile(service_code)?;
+    let repository = load_repository()?;
+    let profile = period_service_profile(&repository, service_code)?;
     let period_profile_code = profile
         .period_profile_code
         .ok_or_else(|| "HOROSCOPE_PERIOD_PROFILE_UNSUPPORTED".to_string())?;
     let scan_profile_code = profile
         .scan_profile_code
         .ok_or_else(|| "HOROSCOPE_PERIOD_SCAN_PLAN_INVALID".to_string())?;
-    let period_resolution = resolve_period_window(
-        &period_profile_code,
-        &request.anchor_date,
-        &request.timezone,
-    )?;
-    let scan_plan = build_scan_plan(&period_resolution, &scan_profile_code)?;
-    validate_scan_plan_value(&period_resolution, &scan_plan)?;
+    let period_resolution =
+        resolve_period_window(&repository, &period_profile_code, &request.anchor_date, &request.timezone)?;
+    let scan_plan = build_scan_plan(&repository, &period_resolution, &scan_profile_code)?;
+    validate_scan_plan_value(&repository, &period_resolution, &scan_plan)?;
 
     let scan_plan: HoroscopeScanPlan =
         serde_json::from_value(scan_plan).map_err(|err| err.to_string())?;
@@ -212,54 +206,80 @@ fn validate_daily_public_request(
     Ok(())
 }
 
-fn service_profile(service_code: &str) -> Result<ServiceProfile, String> {
-    let row = rows(SERVICES_JSON)?
+fn load_repository() -> Result<RuntimeRepository, String> {
+    let pool = run_blocking(crate::db::connect_from_env()).map_err(|err| err.to_string())?;
+    Ok(RuntimeRepository::new(pool))
+}
+
+fn run_blocking<F, T>(future: F) -> Result<T, sqlx::Error>
+where
+    F: std::future::Future<Output = Result<T, sqlx::Error>>,
+{
+    if let Ok(handle) = tokio::runtime::Handle::try_current() {
+        handle.block_on(future)
+    } else {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("tokio runtime")
+            .block_on(future)
+    }
+}
+
+fn service_profile(repository: &RuntimeRepository, service_code: &str) -> Result<ServiceProfile, String> {
+    let row = tokio::runtime::Handle::try_current()
+        .map_err(|error| error.to_string())?
+        .block_on(repository.horoscope_services())
+        .map_err(|err| err.to_string())?
         .into_iter()
-        .find(|row| row.get("service_code").and_then(Value::as_str) == Some(service_code))
+        .find(|row| row.service_code == service_code)
         .ok_or_else(|| "HOROSCOPE_SERVICE_NOT_IMPLEMENTED".to_string())?;
     Ok(ServiceProfile {
-        house_system_code: row
-            .get("house_system_code")
-            .and_then(Value::as_str)
-            .map(str::to_string),
-        period_profile_code: row
-            .get("period_profile_code")
-            .and_then(Value::as_str)
-            .map(str::to_string),
-        scan_profile_code: row
-            .get("scan_profile_code")
-            .and_then(Value::as_str)
-            .map(str::to_string),
+        house_system_code: row.house_system_code,
+        period_profile_code: row.period_profile_code,
+        scan_profile_code: row.scan_profile_code,
     })
 }
 
-fn period_service_profile(service_code: &str) -> Result<ServiceProfile, String> {
-    let profile = service_profile(service_code)?;
+fn period_service_profile(repository: &RuntimeRepository, service_code: &str) -> Result<ServiceProfile, String> {
+    let profile = service_profile(repository, service_code)?;
     if profile.period_profile_code.is_none() || profile.scan_profile_code.is_none() {
         return Err("HOROSCOPE_PERIOD_PROFILE_UNSUPPORTED".to_string());
     }
     Ok(profile)
 }
 
-fn slot_profiles(service_code: &str) -> Result<Vec<SlotProfileRow>, String> {
-    let mut slots = rows(TIME_SLOTS_JSON)?
+fn slot_profiles(repository: &RuntimeRepository, service_code: &str) -> Result<Vec<SlotProfileRow>, String> {
+    let mut slots = tokio::runtime::Handle::try_current()
+        .map_err(|error| error.to_string())?
+        .block_on(repository.horoscope_time_slot_profiles())
+        .map_err(|err| err.to_string())?
         .into_iter()
-        .filter(|row| row.get("service_code").and_then(Value::as_str) == Some(service_code))
-        .map(serde_json::from_value)
-        .collect::<Result<Vec<SlotProfileRow>, _>>()
-        .map_err(|err| err.to_string())?;
+        .filter(|row| row.service_code == service_code)
+        .map(|row| SlotProfileRow {
+            slot_code: row.slot_code,
+            start_local_time: row.start_local_time,
+            end_local_time: row.end_local_time,
+            reference_local_time: row.reference_local_time,
+            sort_order: row.sort_order,
+        })
+        .collect::<Vec<SlotProfileRow>>();
     slots.sort_by_key(|slot| slot.sort_order);
     Ok(slots)
 }
 
 fn resolve_period_window(
+    repository: &RuntimeRepository,
     period_profile_code: &str,
     anchor_date: &str,
     timezone: &str,
 ) -> Result<Value, String> {
-    let profiles = rows(PERIOD_PROFILES_JSON)?;
+    let profiles = tokio::runtime::Handle::try_current()
+        .map_err(|error| error.to_string())?
+        .block_on(repository.astral_time_period_profiles())
+        .map_err(|err| err.to_string())?;
     let profile_defs = serde_json::from_value::<Vec<astral_time_window::PeriodProfileDefinition>>(
-        Value::Array(profiles),
+        serde_json::to_value(profiles).map_err(|err| err.to_string())?,
     )
     .map_err(|err| format!("HOROSCOPE_PERIOD_PROFILE_UNSUPPORTED: {err}"))?;
     let resolver = astral_time_window::PeriodWindowResolver::new(profile_defs);
@@ -312,8 +332,8 @@ fn map_period_window_error(err: astral_time_window::PeriodWindowError) -> String
     }
 }
 
-fn build_scan_plan(period_resolution: &Value, scan_profile_code: &str) -> Result<Value, String> {
-    let scan_profile = scan_profile(scan_profile_code)?;
+fn build_scan_plan(repository: &RuntimeRepository, period_resolution: &Value, scan_profile_code: &str) -> Result<Value, String> {
+    let scan_profile = scan_profile(repository, scan_profile_code)?;
     let tz = period_resolution["timezone"]
         .as_str()
         .ok_or_else(|| "HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH".to_string())?
@@ -363,7 +383,11 @@ fn build_scan_plan(period_resolution: &Value, scan_profile_code: &str) -> Result
     }))
 }
 
-fn validate_scan_plan_value(period_resolution: &Value, scan_plan: &Value) -> Result<(), String> {
+fn validate_scan_plan_value(
+    repository: &RuntimeRepository,
+    period_resolution: &Value,
+    scan_plan: &Value,
+) -> Result<(), String> {
     let start = period_resolution["start_datetime_utc"]
         .as_str()
         .ok_or_else(|| "HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH".to_string())?;
@@ -392,7 +416,7 @@ fn validate_scan_plan_value(period_resolution: &Value, scan_plan: &Value) -> Res
     let scan_profile_code = scan_plan["scan_profile_code"]
         .as_str()
         .ok_or_else(|| "HOROSCOPE_PERIOD_SCAN_PLAN_INVALID".to_string())?;
-    let scan_profile = scan_profile(scan_profile_code)?;
+    let scan_profile = scan_profile(repository, scan_profile_code)?;
     if snapshots.len() != included.len() * scan_profile.expected_snapshots_per_day {
         return Err("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID".to_string());
     }
@@ -443,33 +467,18 @@ fn local_to_utc(tz: Tz, local: NaiveDateTime) -> Result<String, String> {
         .map(|value| value.with_timezone(&chrono::Utc).to_rfc3339())
 }
 
-fn scan_profile(scan_profile_code: &str) -> Result<ScanProfile, String> {
-    let row = rows(SCAN_PROFILES_JSON)?
+fn scan_profile(repository: &RuntimeRepository, scan_profile_code: &str) -> Result<ScanProfile, String> {
+    let row = tokio::runtime::Handle::try_current()
+        .map_err(|error| error.to_string())?
+        .block_on(repository.horoscope_scan_profiles())
+        .map_err(|err| err.to_string())?
         .into_iter()
-        .find(|row| {
-            row.get("scan_profile_code").and_then(Value::as_str) == Some(scan_profile_code)
-                && row
-                    .get("is_enabled")
-                    .and_then(Value::as_bool)
-                    .unwrap_or(true)
-        })
+        .find(|row| row.scan_profile_code == scan_profile_code && row.is_enabled)
         .ok_or_else(|| "HOROSCOPE_PERIOD_SCAN_PLAN_INVALID".to_string())?;
     Ok(ScanProfile {
-        granularity: row
-            .get("granularity")
-            .and_then(Value::as_str)
-            .ok_or_else(|| "HOROSCOPE_PERIOD_SCAN_PLAN_INVALID".to_string())?
-            .to_string(),
-        reference_time_local: row
-            .get("reference_time_local")
-            .and_then(Value::as_str)
-            .ok_or_else(|| "HOROSCOPE_PERIOD_SCAN_PLAN_INVALID".to_string())?
-            .to_string(),
-        expected_snapshots_per_day: row
-            .get("expected_snapshots_per_day")
-            .and_then(Value::as_u64)
-            .ok_or_else(|| "HOROSCOPE_PERIOD_SCAN_PLAN_INVALID".to_string())?
-            as usize,
+        granularity: row.granularity,
+        reference_time_local: row.reference_time_local,
+        expected_snapshots_per_day: row.expected_snapshots_per_day as usize,
     })
 }
 
@@ -490,13 +499,4 @@ impl ScanProfile {
         }
         Ok(times)
     }
-}
-
-fn rows(raw: &str) -> Result<Vec<Value>, String> {
-    let value: Value = serde_json::from_str(raw).map_err(|err| err.to_string())?;
-    Ok(value
-        .get("data")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default())
 }
