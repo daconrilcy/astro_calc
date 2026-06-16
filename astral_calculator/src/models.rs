@@ -44,6 +44,89 @@ pub struct HouseSystem {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+pub struct ZodiacalReferenceSystemRow {
+    pub id: i32,
+    pub key: String,
+    pub display_name: String,
+    pub category_id: i32,
+    pub description: String,
+    pub requires_ayanamsha: bool,
+    pub usage_note: Option<String>,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct CoordinateReferenceSystemRow {
+    pub id: i32,
+    pub key: String,
+    pub display_name: String,
+    pub category_id: i32,
+    pub description: String,
+    pub usage_note: Option<String>,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct HoroscopeServiceRow {
+    pub service_code: String,
+    pub product_level_code: String,
+    pub shortlist_profile_code: String,
+    pub time_slot_profile_code: String,
+    pub slot_mode: String,
+    pub requires_natal_chart: bool,
+    pub requires_location: bool,
+    pub requires_timezone: bool,
+    pub requires_inline_birth_data: bool,
+    pub house_system_code: Option<String>,
+    pub period_profile_code: Option<String>,
+    pub detail_profile_code: Option<String>,
+    pub scan_profile_code: Option<String>,
+    pub detail_level: Option<String>,
+    pub generation_mode: String,
+    pub max_words_target: Option<i32>,
+    pub max_words_hard_limit: Option<i32>,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct HoroscopeTimeSlotProfileRow {
+    pub service_code: String,
+    pub slot_code: String,
+    pub start_local_time: String,
+    pub end_local_time: String,
+    pub reference_local_time: String,
+    pub slot_label: String,
+    pub is_public: bool,
+    pub sort_order: i32,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct AstralTimePeriodProfileRow {
+    pub period_profile_code: String,
+    pub resolution_strategy: String,
+    pub duration_days: Option<i32>,
+    pub week_offset: Option<i32>,
+    pub included_days: Option<Value>,
+    pub is_enabled: bool,
+    pub sort_order: i32,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct HoroscopeScanProfileRow {
+    pub scan_profile_code: String,
+    pub granularity: String,
+    pub reference_time_local: String,
+    pub expected_snapshots_per_day: i32,
+    pub is_enabled: bool,
+    pub sort_order: i32,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct HoroscopeOrbWeightBandRow {
+    pub band_code: String,
+    pub min_orb_deg: f64,
+    pub max_orb_deg: f64,
+    pub weight: f64,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct SignReference {
     pub id: i32,
     pub code: String,
@@ -297,6 +380,7 @@ pub(crate) struct PersistedAspectFact {
 
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct LlmProjectionProfileRow {
+    pub id: i32,
     pub contract_version: String,
     pub level_code: String,
     pub max_keywords_per_item: i32,

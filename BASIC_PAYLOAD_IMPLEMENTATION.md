@@ -1,3 +1,16 @@
+# DB-backed reference model coverage - 2026-06-16
+
+- Added SQLx row models in `astral_calculator/src/models.rs` for:
+  - `horoscope_services`
+  - `horoscope_time_slot_profiles`
+  - `astral_time_period_profiles`
+  - `horoscope_scan_profiles`
+  - `horoscope_orb_weight_bands`
+  - `astral_zodiacal_reference_systems`
+  - `astral_coordinate_reference_systems`
+- Added repository read methods in `astral_calculator/src/repositories.rs` for the tables above so these seeded DB rows can be loaded directly from Postgres.
+- Existing coverage already present for `astral_house_systems`, `astral_house_axis_definitions`, and `astral_llm_projection_profiles`.
+
 # Service test UI grouped execution and observability - 2026-06-15
 
 Refactored the local service test UI into grouped execution frames with richer
