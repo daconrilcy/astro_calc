@@ -34,85 +34,10 @@ async fn build_test_state() -> Option<AppState> {
 
 #[test]
 fn horoscope_period_calculator_from_positions_never_uses_fake_source() {
-    let request: HoroscopePeriodCalculationRequest = serde_json::from_value(serde_json::json!({
-        "contract_version": "horoscope_period_calculation_request",
-        "service_code": "horoscope_basic_next_7_days_natal",
-        "chart_calculation_id": "123",
-        "period_resolution": {
-            "period_profile_code": "next_7_days",
-            "anchor_date": "2026-06-07",
-            "timezone": "Europe/Paris",
-            "start_datetime_local": "2026-06-07T00:00:00",
-            "end_datetime_local": "2026-06-14T00:00:00",
-            "start_datetime_utc": "2026-06-06T22:00:00+00:00",
-            "end_datetime_utc": "2026-06-13T22:00:00+00:00",
-            "end_exclusive": true,
-            "duration_days": 7,
-            "included_dates": ["2026-06-07","2026-06-08","2026-06-09","2026-06-10","2026-06-11","2026-06-12","2026-06-13"],
-            "included_days": []
-        },
-        "scan_plan": {
-            "scan_profile_code": "daily_noon_7_days",
-            "granularity": "daily_noon",
-            "snapshot_count": 7,
-            "snapshots": [
-                { "snapshot_key": "2026-06-07:noon", "date": "2026-06-07", "reference_time_local": "12:00", "reference_datetime_local": "2026-06-07T12:00:00", "reference_datetime_utc": "2026-06-07T10:00:00+00:00" },
-                { "snapshot_key": "2026-06-08:noon", "date": "2026-06-08", "reference_time_local": "12:00", "reference_datetime_local": "2026-06-08T12:00:00", "reference_datetime_utc": "2026-06-08T10:00:00+00:00" },
-                { "snapshot_key": "2026-06-09:noon", "date": "2026-06-09", "reference_time_local": "12:00", "reference_datetime_local": "2026-06-09T12:00:00", "reference_datetime_utc": "2026-06-09T10:00:00+00:00" },
-                { "snapshot_key": "2026-06-10:noon", "date": "2026-06-10", "reference_time_local": "12:00", "reference_datetime_local": "2026-06-10T12:00:00", "reference_datetime_utc": "2026-06-10T10:00:00+00:00" },
-                { "snapshot_key": "2026-06-11:noon", "date": "2026-06-11", "reference_time_local": "12:00", "reference_datetime_local": "2026-06-11T12:00:00", "reference_datetime_utc": "2026-06-11T10:00:00+00:00" },
-                { "snapshot_key": "2026-06-12:noon", "date": "2026-06-12", "reference_time_local": "12:00", "reference_datetime_local": "2026-06-12T12:00:00", "reference_datetime_utc": "2026-06-12T10:00:00+00:00" },
-                { "snapshot_key": "2026-06-13:noon", "date": "2026-06-13", "reference_time_local": "12:00", "reference_datetime_local": "2026-06-13T12:00:00", "reference_datetime_utc": "2026-06-13T10:00:00+00:00" }
-            ]
-        }
-    }))
-    .unwrap();
-    let positions = vec![
-        ObjectPositionFact {
-            chart_object_id: 1,
-            object_code: "sun".to_string(),
-            object_name: "Sun".to_string(),
-            zodiacal_reference_system_id: 1,
-            coordinate_reference_system_id: 1,
-            sign_id: 1,
-            sign_code: "aries".to_string(),
-            sign_name: "Aries".to_string(),
-            house_id: Some(1),
-            house_number: Some(1),
-            house_name: Some("House 1".to_string()),
-            motion_state_id: None,
-            horizon_position_id: None,
-            longitude_deg: 12.0,
-            latitude_deg: None,
-            apparent_speed_deg_per_day: Some(1.0),
-            altitude_deg: None,
-            is_visible: None,
-            facts_json: None,
-        },
-        ObjectPositionFact {
-            chart_object_id: 2,
-            object_code: "moon".to_string(),
-            object_name: "Moon".to_string(),
-            zodiacal_reference_system_id: 1,
-            coordinate_reference_system_id: 1,
-            sign_id: 2,
-            sign_code: "taurus".to_string(),
-            sign_name: "Taurus".to_string(),
-            house_id: Some(6),
-            house_number: Some(6),
-            house_name: Some("House 6".to_string()),
-            motion_state_id: None,
-            horizon_position_id: None,
-            longitude_deg: 48.0,
-            latitude_deg: None,
-            apparent_speed_deg_per_day: Some(13.0),
-            altitude_deg: None,
-            is_visible: None,
-            facts_json: None,
-        },
-    ];
+    let request = period_calculator_request();
+    let positions = sample_natal_positions();
 
-    let response = calculate_horoscope_period_natal_from_positions(request, &positions);
+    let response = calculate_horoscope_period_natal_from_positions(request, &positions, 8.0);
     assert_eq!(response.snapshots.len(), 7);
     for snapshot in response.snapshots {
         for fact in snapshot.transits_to_natal {
@@ -137,15 +62,14 @@ fn horoscope_period_calculator_public_function_never_uses_fake_source() {
 fn horoscope_period_calculator_with_transits_uses_swisseph_source() {
     let request = period_calculator_request();
     let positions = sample_natal_positions();
-    let transit_snapshots = request
-        .scan_plan
-        .snapshots
-        .iter()
-        .map(|snapshot| (snapshot.snapshot_key.clone(), positions.clone()))
-        .collect::<Vec<_>>();
+    let transit_snapshots = transit_snapshots_for_request(&request, positions.clone());
 
-    let response =
-        calculate_horoscope_period_natal_from_transits(request, &positions, &transit_snapshots);
+    let response = calculate_horoscope_period_natal_from_transits(
+        request,
+        &positions,
+        &transit_snapshots,
+        8.0,
+    );
     for snapshot in response.snapshots {
         for fact in snapshot.transits_to_natal {
             assert_eq!(fact.source, "swisseph_period_calculator_v1");
@@ -157,38 +81,20 @@ fn horoscope_period_calculator_with_transits_uses_swisseph_source() {
 fn horoscope_period_calculator_rejects_wide_major_aspect_orbs() {
     let request = period_calculator_request();
     let positions = sample_natal_positions();
-    let mut transit_positions = positions.clone();
-    transit_positions.push(ObjectPositionFact {
-        chart_object_id: 3,
-        object_code: "venus".to_string(),
-        object_name: "Venus".to_string(),
-        zodiacal_reference_system_id: 1,
-        coordinate_reference_system_id: 1,
-        sign_id: 6,
-        sign_code: "virgo".to_string(),
-        sign_name: "Virgo".to_string(),
-        house_id: Some(6),
-        house_number: Some(6),
-        house_name: Some("House 6".to_string()),
-        motion_state_id: None,
-        horizon_position_id: None,
-        longitude_deg: 178.0,
-        latitude_deg: None,
-        apparent_speed_deg_per_day: Some(1.0),
-        altitude_deg: None,
-        is_visible: None,
-        facts_json: None,
-    });
-    let transit_snapshots = request
-        .scan_plan
+    let transit_snapshots = transit_snapshots_with_venus_context(&request, positions.clone());
+
+    let response = calculate_horoscope_period_natal_from_transits(
+        request,
+        &positions,
+        &transit_snapshots,
+        8.0,
+    );
+    let venus_fact = response
         .snapshots
         .iter()
-        .map(|snapshot| (snapshot.snapshot_key.clone(), transit_positions.clone()))
-        .collect::<Vec<_>>();
-
-    let response =
-        calculate_horoscope_period_natal_from_transits(request, &positions, &transit_snapshots);
-    let venus_fact = response.snapshots[1].transits_to_natal.first().unwrap();
+        .flat_map(|snapshot| snapshot.transits_to_natal.iter())
+        .find(|fact| fact.transiting_object == "venus")
+        .expect("venus transit fact");
     assert_ne!(venus_fact.fact_type, "transit_to_natal");
     assert!(venus_fact.aspect.is_none());
     assert!(venus_fact.orb_deg.is_none());
@@ -198,44 +104,31 @@ fn horoscope_period_calculator_rejects_wide_major_aspect_orbs() {
 fn horoscope_period_calculator_outputs_context_fact_when_no_valid_aspect() {
     let request = period_calculator_request();
     let positions = sample_natal_positions();
-    let mut transit_positions = positions.clone();
-    transit_positions.push(ObjectPositionFact {
-        chart_object_id: 3,
-        object_code: "venus".to_string(),
-        object_name: "Venus".to_string(),
-        zodiacal_reference_system_id: 1,
-        coordinate_reference_system_id: 1,
-        sign_id: 6,
-        sign_code: "virgo".to_string(),
-        sign_name: "Virgo".to_string(),
-        house_id: Some(6),
-        house_number: Some(6),
-        house_name: Some("House 6".to_string()),
-        motion_state_id: None,
-        horizon_position_id: None,
-        longitude_deg: 178.0,
-        latitude_deg: None,
-        apparent_speed_deg_per_day: Some(1.0),
-        altitude_deg: None,
-        is_visible: None,
-        facts_json: None,
-    });
-    let transit_snapshots = request
-        .scan_plan
+    let transit_snapshots = transit_snapshots_with_venus_context(&request, positions.clone());
+
+    let response = calculate_horoscope_period_natal_from_transits(
+        request,
+        &positions,
+        &transit_snapshots,
+        8.0,
+    );
+    let venus_snapshot = response
         .snapshots
         .iter()
-        .map(|snapshot| (snapshot.snapshot_key.clone(), transit_positions.clone()))
-        .collect::<Vec<_>>();
-
-    let response =
-        calculate_horoscope_period_natal_from_transits(request, &positions, &transit_snapshots);
-    let venus_snapshot = &response.snapshots[1];
-    let venus_fact = venus_snapshot.transits_to_natal.first().unwrap();
+        .find(|snapshot| snapshot.transits_to_natal.iter().any(|fact| fact.transiting_object == "venus"))
+        .expect("venus snapshot");
+    let venus_fact = venus_snapshot
+        .transits_to_natal
+        .iter()
+        .find(|fact| fact.transiting_object == "venus")
+        .expect("venus fact");
     assert_eq!(venus_fact.fact_type, "transit_context");
     assert!(venus_fact.evidence_key.contains(":context:"));
     assert!(venus_fact.orb_deg.is_none());
-    assert_eq!(venus_snapshot.current_sky_aspects[0]["aspect"], "context");
-    assert!(venus_snapshot.current_sky_aspects[0]["orb_deg"].is_null());
+    assert!(venus_snapshot
+        .current_sky_aspects
+        .iter()
+        .any(|aspect| aspect["aspect"] == "context" && aspect["orb_deg"].is_null()));
 }
 
 #[test]
@@ -411,6 +304,47 @@ fn sample_natal_positions() -> Vec<ObjectPositionFact> {
             facts_json: None,
         },
     ]
+}
+
+fn transit_snapshots_for_request(
+    request: &HoroscopePeriodCalculationRequest,
+    positions: Vec<ObjectPositionFact>,
+) -> Vec<(String, Vec<ObjectPositionFact>)> {
+    request
+        .scan_plan
+        .snapshots
+        .iter()
+        .map(|snapshot| (snapshot.snapshot_key.clone(), positions.clone()))
+        .collect()
+}
+
+fn transit_snapshots_with_venus_context(
+    request: &HoroscopePeriodCalculationRequest,
+    positions: Vec<ObjectPositionFact>,
+) -> Vec<(String, Vec<ObjectPositionFact>)> {
+    let mut transit_positions = positions;
+    transit_positions.push(ObjectPositionFact {
+        chart_object_id: 3,
+        object_code: "venus".to_string(),
+        object_name: "Venus".to_string(),
+        zodiacal_reference_system_id: 1,
+        coordinate_reference_system_id: 1,
+        sign_id: 6,
+        sign_code: "virgo".to_string(),
+        sign_name: "Virgo".to_string(),
+        house_id: Some(6),
+        house_number: Some(6),
+        house_name: Some("House 6".to_string()),
+        motion_state_id: None,
+        horizon_position_id: None,
+        longitude_deg: 178.0,
+        latitude_deg: None,
+        apparent_speed_deg_per_day: Some(1.0),
+        altitude_deg: None,
+        is_visible: None,
+        facts_json: None,
+    });
+    transit_snapshots_for_request(request, transit_positions)
 }
 
 async fn spawn_test_server(state: AppState) -> String {

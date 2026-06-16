@@ -1,3 +1,9 @@
+# 2026-06-16 - Test regression hardening for astral_calculator_api
+
+- Reduced duplication in [tests/astral_calculator_api_tests.rs](tests/astral_calculator_api_tests.rs) by reusing the shared period request fixture and transit snapshot helpers.
+- Hardened the horoscope period regression checks so they locate the relevant Venus fact by content instead of relying on a fixed snapshot index.
+- Kept the test coverage focused on public behavior: source provenance, context fallback, UTC normalization, and HTTP contract smoke checks.
+
 # DB-backed reference migration - 2026-06-16
 
 - Replaced the remaining `json_db`-backed reference lookups in `astral_calculator` with direct Postgres reads through `RuntimeRepository`.

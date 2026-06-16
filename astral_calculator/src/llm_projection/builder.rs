@@ -1,3 +1,11 @@
+// Construit la projection LLM d'un thème natal a partir des donnees metier
+// calculees dans `BasicPayload`.
+//
+// Ce module assemble les sections exposees au moteur LLM: contexte du chart,
+// ordre de lecture, identite centrale, themes dominants, placements, angles,
+// forces, reseau relationnel, axes de maisons et mots-cles. Il ne calcule pas
+// les donnees astrologiques brutes; il les met en forme pour la couche de
+// redaction/interpretation.
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use crate::domain::{
@@ -23,6 +31,7 @@ pub struct LlmProjectionBuildContext<'a> {
     pub house_axes: &'a [HouseAxisReference],
 }
 
+// Assemble la projection complete `llm_projection_natal_v1`.
 pub fn build_llm_projection_natal_v1(
     payload: &BasicPayload,
     profile: &LlmProjectionProfile,
@@ -52,6 +61,7 @@ pub fn build_llm_projection_natal_v1(
     }
 }
 
+// Indexe les noms d'objets par code pour reutiliser des libelles humains.
 fn object_name_map(payload: &BasicPayload) -> HashMap<String, String> {
     payload
         .positions
@@ -60,6 +70,7 @@ fn object_name_map(payload: &BasicPayload) -> HashMap<String, String> {
         .collect()
 }
 
+// Construit le bloc `chart` avec les metadonnees de calcul et de naissance.
 fn build_chart(payload: &BasicPayload, ctx: &LlmProjectionBuildContext<'_>) -> LlmChart {
     let sect = payload
         .chart_context
@@ -103,6 +114,7 @@ fn build_chart(payload: &BasicPayload, ctx: &LlmProjectionBuildContext<'_>) -> L
     }
 }
 
+// Construit l'ordre de lecture attendu par le moteur de redaction.
 fn build_reading_order(
     payload: &BasicPayload,
     profile: &LlmProjectionProfile,
@@ -130,6 +142,7 @@ fn build_reading_order(
         .collect()
 }
 
+// Produit les signaux prioritaires pour le slot `dominant_cluster`.
 fn dominant_cluster_reading_focus(
     payload: &BasicPayload,
     profile: &LlmProjectionProfile,
@@ -180,6 +193,7 @@ fn dominant_cluster_reading_focus(
     focus
 }
 
+// Produit les signaux prioritaires pour le slot `main_tension_or_support`.
 fn main_dynamic_reading_focus(
     dynamics: &LlmDynamics,
     payload: &BasicPayload,
@@ -198,6 +212,7 @@ fn main_dynamic_reading_focus(
         .collect()
 }
 
+// Traduit un identifiant de signal en libelle lisible pour la lecture.
 fn reading_focus_from_signal(payload: &BasicPayload, signal_key: &str) -> Option<String> {
     if let Some(signal) = payload.signals.iter().find(|s| s.signal_key == signal_key) {
         return Some(signal.title.clone());
@@ -243,6 +258,7 @@ fn reading_focus_from_signal(payload: &BasicPayload, signal_key: &str) -> Option
     None
 }
 
+// Construit le noyau identitaire: Soleil, Lune et Ascendant.
 fn build_core_identity(
     payload: &BasicPayload,
     profile: &LlmProjectionProfile,
@@ -255,10 +271,12 @@ fn build_core_identity(
     }
 }
 
+// Recupere le texte de secte associe au theme pour filtrer les conditions.
 fn chart_sect(payload: &BasicPayload) -> Option<&str> {
     payload.chart_context.sect.chart_sect.as_deref()
 }
 
+// Construit le resume d'un astre mobile majeur dans le noyau identitaire.
 fn mobile_body(
     payload: &BasicPayload,
     code: &str,
@@ -273,6 +291,7 @@ fn mobile_body(
     })
 }
 
+// Construit le bloc Ascendant, avec regence si le profil le demande.
 fn build_ascendant_core(
     payload: &BasicPayload,
     profile: &LlmProjectionProfile,
@@ -335,6 +354,7 @@ fn build_ascendant_core(
     })
 }
 
+// Construit les themes dominants a partir des emphases calculees.
 fn build_dominant_themes(
     payload: &BasicPayload,
     profile: &LlmProjectionProfile,
@@ -413,6 +433,7 @@ fn build_dominant_themes(
     }
 }
 
+// Extrait des mots-cles additionnels depuis les positions d'un signe.
 fn sign_keywords_from_positions(
     payload: &BasicPayload,
     sign_code: &str,
@@ -434,6 +455,7 @@ fn sign_keywords_from_positions(
     out
 }
 
+// Construit les placements presents dans le rendu LLM.
 fn build_placements(payload: &BasicPayload, profile: &LlmProjectionProfile) -> LlmPlacementsGroup {
     let core_codes: HashSet<&str> = ["sun", "moon"].into_iter().collect();
     let angle_codes: HashSet<&str> = ["ascendant", "descendant", "mc", "ic"]
@@ -489,6 +511,7 @@ fn build_placements(payload: &BasicPayload, profile: &LlmProjectionProfile) -> L
     }
 }
 
+// Classe les objets par priorite astrologique pour le rendu.
 fn object_priority(position: &BasicObjectPosition) -> i32 {
     match position.object_code.as_str() {
         "sun" | "moon" => 100,
@@ -498,6 +521,7 @@ fn object_priority(position: &BasicObjectPosition) -> i32 {
     }
 }
 
+// Determine le niveau d'importance d'un objet selon sa presence en lecture.
 fn importance_for_object(code: &str, reading_codes: &HashSet<String>) -> &'static str {
     if reading_codes.contains(code) || matches!(code, "sun" | "moon") {
         "high"
@@ -506,6 +530,7 @@ fn importance_for_object(code: &str, reading_codes: &HashSet<String>) -> &'stati
     }
 }
 
+// Construit le bloc des angles principaux.
 fn build_angles(payload: &BasicPayload, profile: &LlmProjectionProfile) -> LlmAngles {
     let mut angles = LlmAngles::default();
     for angle in &payload.angles {
@@ -531,6 +556,7 @@ fn build_angles(payload: &BasicPayload, profile: &LlmProjectionProfile) -> LlmAn
     angles
 }
 
+// Construit les sections de forces: dignites essentielles et accidentelles.
 fn build_strengths(payload: &BasicPayload, profile: &LlmProjectionProfile) -> LlmStrengths {
     let mut dignity_rows: Vec<_> = payload.dignities.iter().collect();
     dignity_rows.sort_by(|a, b| {
@@ -566,6 +592,7 @@ fn build_strengths(payload: &BasicPayload, profile: &LlmProjectionProfile) -> Ll
     }
 }
 
+// Convertit une evaluation de dignite accidentelle en structure LLM.
 fn accidental_to_llm(
     entry: &BasicAccidentalDignityEvaluation,
     payload: &BasicPayload,
@@ -591,6 +618,7 @@ fn accidental_to_llm(
     }
 }
 
+// Construit le reseau relationnel des regences et receptions.
 fn build_relationship_network(
     payload: &BasicPayload,
     profile: &LlmProjectionProfile,
@@ -712,6 +740,7 @@ fn build_relationship_network(
     }
 }
 
+// Formate la position d'un regent pour le resume relationnel.
 fn ruler_placement_text(payload: &BasicPayload, ruler_code: &str) -> String {
     let Some(position) = payload
         .positions
@@ -728,6 +757,7 @@ fn ruler_placement_text(payload: &BasicPayload, ruler_code: &str) -> String {
     )
 }
 
+// Construit le bloc des axes de maisons a partir des emphases calculees.
 fn build_house_axes(
     payload: &BasicPayload,
     profile: &LlmProjectionProfile,
@@ -742,6 +772,7 @@ fn build_house_axes(
         .collect()
 }
 
+// Convertit une emphase d'axe de maison vers la representation LLM.
 fn house_axis_to_llm(
     axis: &BasicHouseAxisEmphasis,
     axis_refs: &[HouseAxisReference],
@@ -784,6 +815,7 @@ fn house_axis_to_llm(
     }
 }
 
+// Construit les mots-cles globaux et par domaine.
 fn build_keywords(
     payload: &BasicPayload,
     profile: &LlmProjectionProfile,
@@ -844,6 +876,7 @@ fn build_keywords(
     }
 }
 
+// Derive une cle de domaine lisible a partir du contexte de maison.
 fn readable_area_key(position: &BasicObjectPosition) -> String {
     position
         .house_context
@@ -862,6 +895,7 @@ fn readable_area_key(position: &BasicObjectPosition) -> String {
         .to_string()
 }
 
+// Filtre les mots-cles purement techniques qui n'aident pas la lecture.
 fn is_placement_technical_keyword(kw: &str) -> bool {
     let lower = kw.to_ascii_lowercase();
     lower.contains("cadent")
@@ -870,12 +904,14 @@ fn is_placement_technical_keyword(kw: &str) -> bool {
         || lower == "angular"
 }
 
+// Retourne les codes d'angles utilises dans la projection.
 fn angle_codes() -> HashSet<&'static str> {
     ["ascendant", "descendant", "mc", "ic"]
         .into_iter()
         .collect()
 }
 
+// Construit la representation LLM d'un placement individuel.
 fn placement_from_position(position: &BasicObjectPosition, include_degrees: bool) -> LlmPlacement {
     LlmPlacement {
         object: position.object_name.clone(),
@@ -895,6 +931,7 @@ fn placement_from_position(position: &BasicObjectPosition, include_degrees: bool
     }
 }
 
+// Resout une reference de maison a partir du contexte du theme.
 fn house_ref_from_payload(
     house_number: i32,
     theme_code: &str,
@@ -912,6 +949,7 @@ fn house_ref_from_payload(
     }
 }
 
+// Renvoie le code de theme de maison quand il est present.
 fn house_theme_code(position: &BasicObjectPosition) -> &str {
     position
         .house_context
@@ -921,6 +959,7 @@ fn house_theme_code(position: &BasicObjectPosition) -> &str {
         .unwrap_or("general")
 }
 
+// Recupere les mots-cles limites et normalises d'une position.
 fn limited_keywords(position: &BasicObjectPosition, limit: usize) -> Vec<String> {
     let raw: Vec<String> = position
         .sign_context
@@ -936,6 +975,7 @@ fn limited_keywords(position: &BasicObjectPosition, limit: usize) -> Vec<String>
     limit_keywords(&raw, limit)
 }
 
+// Construit les conditions d'un placement en respectant les limites du profil.
 fn position_conditions(
     position: &BasicObjectPosition,
     chart_sect: Option<&str>,
@@ -974,6 +1014,7 @@ fn position_conditions(
     out
 }
 
+// Dedouble et humanise les raisons d'une emphase astrologique.
 fn dedupe_humanized_reasons(
     reasons: &[String],
     object_names: &HashMap<String, String>,
@@ -990,6 +1031,7 @@ fn dedupe_humanized_reasons(
     out
 }
 
+// Traduit le contexte de mouvement d'une position en label lisible.
 fn motion_label(position: &BasicObjectPosition) -> Option<String> {
     position
         .motion_context
