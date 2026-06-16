@@ -1,4 +1,6 @@
-use astral_calculator::facts::{arc_contains, zodiac_slot_for_longitude};
+use astral_calculator::facts::{
+    arc_contains, shortest_angular_distance, zodiac_slot_for_longitude,
+};
 
 #[test]
 fn sign_handles_wraparound() {
@@ -12,4 +14,11 @@ fn arc_contains_handles_zero_crossing() {
     assert!(arc_contains(350.0, 10.0, 2.0));
     assert!(arc_contains(350.0, 10.0, 355.0));
     assert!(!arc_contains(350.0, 10.0, 180.0));
+}
+
+#[test]
+fn shortest_angular_distance_handles_wraparound() {
+    assert_eq!(shortest_angular_distance(10.0, 40.0), 30.0);
+    assert_eq!(shortest_angular_distance(350.0, 10.0), 20.0);
+    assert_eq!(shortest_angular_distance(-10.0, 10.0), 20.0);
 }

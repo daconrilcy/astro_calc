@@ -1,3 +1,16 @@
+# 2026-06-16 - Horoscope calculator domain split
+
+- Refactored `astral_calculator::horoscope` into focused domain submodules: `contracts`, `daily`, and `period`.
+- Kept `astral_calculator/src/horoscope/mod.rs` as a thin public facade so existing horoscope APIs and exported service codes remain stable.
+- Reused `astral_calculator::facts::normalize_degrees` from horoscope period logic instead of keeping duplicate math helpers inside the domain.
+- Centralized horoscope RFC3339 UTC normalization and local-time-to-UTC conversion behind one shared helper layer so `builders` and period calculation no longer maintain duplicate temporal rules.
+
+# 2026-06-16 - Horoscope refactor review fixes
+
+- Removed the new `horoscope -> aspects` coupling by moving shortest angular distance into `astral_calculator::facts`, where the other generic longitude helpers already live.
+- Moved UTC/RFC3339 conversion helpers out of the `horoscope` domain into a crate-level internal `astral_calculator::time` module so the domain no longer owns transversal date/time utilities.
+- Added explicit public regression tests for `calculate_horoscope_daily_natal` covering both the basic daily shape and the premium local slot path with `reference_datetime_utc`, local chart payload, and expected warnings.
+
 # 2026-06-16 - Test regression hardening for astral_calculator_api
 
 - Reduced duplication in [tests/astral_calculator_api_tests.rs](tests/astral_calculator_api_tests.rs) by reusing the shared period request fixture and transit snapshot helpers.

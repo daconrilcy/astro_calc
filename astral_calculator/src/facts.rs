@@ -9,6 +9,11 @@ pub fn normalize_degrees(value: f64) -> f64 {
     }
 }
 
+pub fn shortest_angular_distance(left: f64, right: f64) -> f64 {
+    let diff = (normalize_degrees(left) - normalize_degrees(right)).abs();
+    diff.min(360.0 - diff)
+}
+
 pub fn zodiac_slot_for_longitude(longitude_deg: f64) -> i32 {
     (normalize_degrees(longitude_deg) / 30.0).floor() as i32 + 1
 }

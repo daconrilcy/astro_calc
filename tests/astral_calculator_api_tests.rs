@@ -5,9 +5,12 @@ use astral_calculator::db::connect_from_env;
 use astral_calculator::domain::ObjectPositionFact;
 use astral_calculator::ephemeris::SwissEphemerisEngine;
 use astral_calculator::horoscope::{
-    calculate_horoscope_period_natal, calculate_horoscope_period_natal_from_positions,
+    calculate_horoscope_daily_natal, calculate_horoscope_period_natal,
+    calculate_horoscope_period_natal_from_positions,
     calculate_horoscope_period_natal_from_transits, normalize_horoscope_period_request_utc,
-    HoroscopePeriodCalculationRequest,
+    HoroscopeCalculationRequest, HoroscopeCalculationSlotRequest, HoroscopePeriod,
+    HoroscopePeriodCalculationRequest, HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE,
+    HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
 };
 use astral_calculator::runtime::ChartCalculationRuntimeService;
 use astral_calculator_api::{
@@ -115,7 +118,12 @@ fn horoscope_period_calculator_outputs_context_fact_when_no_valid_aspect() {
     let venus_snapshot = response
         .snapshots
         .iter()
-        .find(|snapshot| snapshot.transits_to_natal.iter().any(|fact| fact.transiting_object == "venus"))
+        .find(|snapshot| {
+            snapshot
+                .transits_to_natal
+                .iter()
+                .any(|fact| fact.transiting_object == "venus")
+        })
         .expect("venus snapshot");
     let venus_fact = venus_snapshot
         .transits_to_natal
@@ -221,6 +229,96 @@ fn horoscope_period_calculator_request_rejects_snapshot_outside_period() {
 
     let err = normalize_horoscope_period_request_utc(request).unwrap_err();
     assert!(err.contains("snapshot outside period"));
+}
+
+#[test]
+fn horoscope_daily_calculator_preserves_public_daily_contract_shape() {
+    let response = calculate_horoscope_daily_natal(HoroscopeCalculationRequest {
+        contract_version: "horoscope_calculation_request".to_string(),
+        service_code: HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE.to_string(),
+        period: HoroscopePeriod {
+            date: "2026-06-14".to_string(),
+            timezone: "Europe/Paris".to_string(),
+        },
+        chart_calculation_id: "123".to_string(),
+        location: None,
+        slot_profile_code: None,
+        house_system_code: None,
+        calculation_features: Vec::new(),
+        slots: vec![
+            HoroscopeCalculationSlotRequest {
+                slot_code: "morning".to_string(),
+                start_local_time: "06:00".to_string(),
+                end_local_time: "12:00".to_string(),
+                reference_local_time: "09:00".to_string(),
+            },
+            HoroscopeCalculationSlotRequest {
+                slot_code: "afternoon".to_string(),
+                start_local_time: "12:00".to_string(),
+                end_local_time: "18:00".to_string(),
+                reference_local_time: "15:00".to_string(),
+            },
+        ],
+    });
+
+    assert_eq!(response.contract_version, "horoscope_calculation_response");
+    assert_eq!(
+        response.service_code,
+        HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE
+    );
+    assert_eq!(response.slots.len(), 2);
+    assert_eq!(response.evidence_keys.len(), 2);
+    assert!(response
+        .slots
+        .iter()
+        .all(|slot| slot.reference_datetime_utc.is_none()));
+    assert!(response
+        .slots
+        .iter()
+        .all(|slot| slot.local_chart.is_none() && slot.angle_activations.is_empty()));
+}
+
+#[test]
+fn horoscope_daily_premium_calculator_emits_local_chart_and_reference_utc() {
+    let response = calculate_horoscope_daily_natal(HoroscopeCalculationRequest {
+        contract_version: "horoscope_calculation_request".to_string(),
+        service_code: HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE.to_string(),
+        period: HoroscopePeriod {
+            date: "2026-06-14".to_string(),
+            timezone: "Europe/Paris".to_string(),
+        },
+        chart_calculation_id: "123".to_string(),
+        location: Some(astral_calculator::horoscope::HoroscopeLocation {
+            latitude: 48.8566,
+            longitude: 2.3522,
+            label: Some("Paris".to_string()),
+        }),
+        slot_profile_code: Some("daily_2h_slots".to_string()),
+        house_system_code: Some("placidus".to_string()),
+        calculation_features: vec!["local_chart".to_string()],
+        slots: vec![HoroscopeCalculationSlotRequest {
+            slot_code: "slot_22_00".to_string(),
+            start_local_time: "22:00".to_string(),
+            end_local_time: "23:59".to_string(),
+            reference_local_time: "22:00".to_string(),
+        }],
+    });
+
+    assert_eq!(response.slots.len(), 1);
+    let slot = &response.slots[0];
+    assert_eq!(
+        slot.reference_datetime_utc.as_deref(),
+        Some("2026-06-14T20:00:00+00:00")
+    );
+    assert!(slot.local_chart.is_some());
+    assert_eq!(
+        slot.calculation_warnings,
+        vec!["FAKE_PREMIUM_LOCAL_DATA_STABLE_FOR_TESTS".to_string()]
+    );
+    assert!(response
+        .evidence_keys
+        .iter()
+        .any(|key| key.contains("slot:slot_22_00")));
 }
 
 fn period_calculator_request() -> HoroscopePeriodCalculationRequest {

@@ -1,8 +1,9 @@
 use serde_json::json;
 
 use crate::domain::{AspectFact, ObjectPositionFact};
-use crate::facts::normalize_degrees;
+use crate::facts::shortest_angular_distance;
 use crate::models::AspectDefinition;
+
 pub fn canonical_aspect_orb_deg(aspect: &AspectDefinition) -> Option<f64> {
     let max = aspect.max_default_orb_deg;
     aspect
@@ -21,7 +22,7 @@ pub fn detect_aspects(
         for right_index in (left_index + 1)..positions.len() {
             let left = &positions[left_index];
             let right = &positions[right_index];
-            let separation = shortest_distance(left.longitude_deg, right.longitude_deg);
+            let separation = shortest_angular_distance(left.longitude_deg, right.longitude_deg);
 
             for aspect in &aspect_defs {
                 if is_structural_axis_aspect(left, right, aspect) {
@@ -73,11 +74,6 @@ pub fn detect_aspects(
     }
 
     facts
-}
-
-fn shortest_distance(left: f64, right: f64) -> f64 {
-    let diff = (normalize_degrees(left) - normalize_degrees(right)).abs();
-    diff.min(360.0 - diff)
 }
 
 fn canonical_pair<'a>(
@@ -141,7 +137,7 @@ fn is_applying(
 
     let next_left = left.longitude_deg + left_speed;
     let next_right = right.longitude_deg + right_speed;
-    let next_separation = shortest_distance(next_left, next_right);
+    let next_separation = shortest_angular_distance(next_left, next_right);
     let next_orb = (next_separation - aspect_angle).abs();
     next_orb < current_orb
 }

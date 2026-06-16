@@ -1,10 +1,11 @@
 use std::collections::HashSet;
 
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
+use crate::repositories::RuntimeRepository;
+use crate::time::{local_to_utc, require_canonical_utc_offset};
+use chrono::{NaiveDate, NaiveTime};
 use chrono_tz::Tz;
 use serde::Deserialize;
 use serde_json::{json, Value};
-use crate::repositories::RuntimeRepository;
 
 use super::{
     HoroscopeCalculationRequest, HoroscopeCalculationSlotRequest, HoroscopeLocation,
@@ -135,8 +136,12 @@ pub fn build_horoscope_period_calculation_request_from_public(
     let scan_profile_code = profile
         .scan_profile_code
         .ok_or_else(|| "HOROSCOPE_PERIOD_SCAN_PLAN_INVALID".to_string())?;
-    let period_resolution =
-        resolve_period_window(&repository, &period_profile_code, &request.anchor_date, &request.timezone)?;
+    let period_resolution = resolve_period_window(
+        &repository,
+        &period_profile_code,
+        &request.anchor_date,
+        &request.timezone,
+    )?;
     let scan_plan = build_scan_plan(&repository, &period_resolution, &scan_profile_code)?;
     validate_scan_plan_value(&repository, &period_resolution, &scan_plan)?;
 
@@ -226,7 +231,10 @@ where
     }
 }
 
-fn service_profile(repository: &RuntimeRepository, service_code: &str) -> Result<ServiceProfile, String> {
+fn service_profile(
+    repository: &RuntimeRepository,
+    service_code: &str,
+) -> Result<ServiceProfile, String> {
     let row = tokio::runtime::Handle::try_current()
         .map_err(|error| error.to_string())?
         .block_on(repository.horoscope_services())
@@ -241,7 +249,10 @@ fn service_profile(repository: &RuntimeRepository, service_code: &str) -> Result
     })
 }
 
-fn period_service_profile(repository: &RuntimeRepository, service_code: &str) -> Result<ServiceProfile, String> {
+fn period_service_profile(
+    repository: &RuntimeRepository,
+    service_code: &str,
+) -> Result<ServiceProfile, String> {
     let profile = service_profile(repository, service_code)?;
     if profile.period_profile_code.is_none() || profile.scan_profile_code.is_none() {
         return Err("HOROSCOPE_PERIOD_PROFILE_UNSUPPORTED".to_string());
@@ -249,7 +260,10 @@ fn period_service_profile(repository: &RuntimeRepository, service_code: &str) ->
     Ok(profile)
 }
 
-fn slot_profiles(repository: &RuntimeRepository, service_code: &str) -> Result<Vec<SlotProfileRow>, String> {
+fn slot_profiles(
+    repository: &RuntimeRepository,
+    service_code: &str,
+) -> Result<Vec<SlotProfileRow>, String> {
     let mut slots = tokio::runtime::Handle::try_current()
         .map_err(|error| error.to_string())?
         .block_on(repository.horoscope_time_slot_profiles())
@@ -332,7 +346,11 @@ fn map_period_window_error(err: astral_time_window::PeriodWindowError) -> String
     }
 }
 
-fn build_scan_plan(repository: &RuntimeRepository, period_resolution: &Value, scan_profile_code: &str) -> Result<Value, String> {
+fn build_scan_plan(
+    repository: &RuntimeRepository,
+    period_resolution: &Value,
+    scan_profile_code: &str,
+) -> Result<Value, String> {
     let scan_profile = scan_profile(repository, scan_profile_code)?;
     let tz = period_resolution["timezone"]
         .as_str()
@@ -352,7 +370,7 @@ fn build_scan_plan(repository: &RuntimeRepository, period_resolution: &Value, sc
             .map_err(|_| "HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH".to_string())?;
         for time in &reference_times {
             let local = parsed.and_time(*time);
-            let utc = local_to_utc(tz, local)?;
+            let utc = local_to_utc(tz, local, "HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH")?;
             let time_label = time.format("%H:%M").to_string();
             let key_suffix = if scan_profile_code == "daily_noon_7_days" {
                 "noon".to_string()
@@ -402,8 +420,12 @@ fn validate_scan_plan_value(
         period_resolution["start_datetime_utc"]
             .as_str()
             .unwrap_or(""),
+        "HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH",
     )?;
-    require_canonical_utc_offset(period_resolution["end_datetime_utc"].as_str().unwrap_or(""))?;
+    require_canonical_utc_offset(
+        period_resolution["end_datetime_utc"].as_str().unwrap_or(""),
+        "HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH",
+    )?;
     let included = period_resolution["included_dates"]
         .as_array()
         .ok_or_else(|| "HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH".to_string())?;
@@ -436,7 +458,7 @@ fn validate_scan_plan_value(
         let utc = snapshot["reference_datetime_utc"]
             .as_str()
             .ok_or_else(|| "HOROSCOPE_PERIOD_SCAN_PLAN_INVALID".to_string())?;
-        require_canonical_utc_offset(utc)?;
+        require_canonical_utc_offset(utc, "HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH")?;
         let utc = chrono::DateTime::parse_from_rfc3339(utc)
             .map_err(|_| "HOROSCOPE_PERIOD_SCAN_PLAN_INVALID".to_string())?;
         if utc < start || utc >= end {
@@ -451,23 +473,10 @@ fn validate_scan_plan_value(
     Ok(())
 }
 
-fn require_canonical_utc_offset(raw: &str) -> Result<(), String> {
-    let parsed = chrono::DateTime::parse_from_rfc3339(raw)
-        .map_err(|_| "HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH".to_string())?;
-    if parsed.with_timezone(&chrono::Utc).to_rfc3339() != raw {
-        return Err("HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH".to_string());
-    }
-    Ok(())
-}
-
-fn local_to_utc(tz: Tz, local: NaiveDateTime) -> Result<String, String> {
-    tz.from_local_datetime(&local)
-        .single()
-        .ok_or_else(|| "HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH".to_string())
-        .map(|value| value.with_timezone(&chrono::Utc).to_rfc3339())
-}
-
-fn scan_profile(repository: &RuntimeRepository, scan_profile_code: &str) -> Result<ScanProfile, String> {
+fn scan_profile(
+    repository: &RuntimeRepository,
+    scan_profile_code: &str,
+) -> Result<ScanProfile, String> {
     let row = tokio::runtime::Handle::try_current()
         .map_err(|error| error.to_string())?
         .block_on(repository.horoscope_scan_profiles())
