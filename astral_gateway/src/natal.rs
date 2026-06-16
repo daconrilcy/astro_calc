@@ -7,7 +7,9 @@ use astral_llm_application::{
     build_reading_request, build_reading_request_from_engine, validate_engine_response,
     validate_simplified_calculation_request, SIMPLIFIED_PROFILE,
 };
-use astral_llm_domain::{generation_request::AudienceLevel, GenerateReadingRequest};
+use astral_llm_domain::{
+    generation_request::AudienceLevel, GenerateReadingRequest, GenerateReadingResponse,
+};
 use serde_json::Value;
 
 use crate::{
@@ -15,6 +17,7 @@ use crate::{
     error::GatewayError,
     ports::{CalculatorPort, LlmPort},
 };
+use crate::contracts::NatalInspectionResponseV2;
 
 #[derive(Debug, Clone, Copy)]
 pub struct NatalGatewayPolicy {
@@ -89,6 +92,7 @@ impl GenerateNatalReadingUseCase {
 
         let reading_request = build_llm_request(&request, &calculation, &policy)?;
         let reading = self.llm.generate_reading(&reading_request).await?;
+        let debug = build_natal_debug_payload(&reading_request, &reading)?;
 
         Ok(NatalReadingResponseV2 {
             metadata: ResponseMetadataCommon {
@@ -104,6 +108,49 @@ impl GenerateNatalReadingUseCase {
             },
             calculation: Some(calculation),
             reading,
+            debug: Some(debug),
+        })
+    }
+
+    pub async fn inspect(
+        &self,
+        policy: NatalGatewayPolicy,
+        request: NatalReadingRequestV2,
+    ) -> Result<NatalInspectionResponseV2, GatewayError> {
+        let calculation = match policy.variant {
+            NatalVariant::Simplified => {
+                let calculation_request = simplified_calculation_request(&request)?;
+                validate_simplified_calculation_request(&calculation_request)
+                    .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+                self.calculator
+                    .calculate_simplified_natal(&calculation_request)
+                    .await?
+            }
+            NatalVariant::Full => {
+                let calculation_request = full_calculation_request(&request, &policy)?;
+                self.calculator
+                    .calculate_full_natal(&calculation_request)
+                    .await?
+            }
+        };
+
+        let reading_request = build_llm_request(&request, &calculation, &policy)?;
+        Ok(NatalInspectionResponseV2 {
+            metadata: ResponseMetadataCommon {
+                product_code: policy.product_code().as_str().to_string(),
+                tier: policy.tier,
+                variant: policy.variant.as_str().to_string(),
+                contract_version: "natal_inspection_response_v2".to_string(),
+            },
+            quality: QualityMetadataCommon {
+                calculator_contract_version: calculation_contract_version(&calculation),
+                llm_contract_version: Some("generate_reading_request_v1".to_string()),
+                reading_completeness: reading_completeness_hint(&calculation),
+            },
+            calculation,
+            llm_request: serde_json::to_value(reading_request).map_err(|err| {
+                GatewayError::Internal(format!("llm request serialization failed: {err}"))
+            })?,
         })
     }
 }
@@ -252,4 +299,15 @@ fn reading_completeness_hint(calculation: &Value) -> Option<String> {
                 .and_then(Value::as_str)
                 .map(str::to_string)
         })
+}
+
+fn build_natal_debug_payload(
+    reading_request: &GenerateReadingRequest,
+    reading: &GenerateReadingResponse,
+) -> Result<Value, GatewayError> {
+    Ok(serde_json::json!({
+        "run_id": reading.run_id(),
+        "llm_request": serde_json::to_value(reading_request)
+            .map_err(|err| GatewayError::Internal(format!("llm request serialization failed: {err}")))?,
+    }))
 }

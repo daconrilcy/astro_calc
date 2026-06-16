@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
+};
 
 use astral_contracts::{NatalVariant, ProductTier};
 use astral_gateway::{
@@ -57,6 +60,12 @@ impl astral_gateway::ports::CalculatorPort for FakeCalculator {
 
 struct FakeLlm;
 
+struct PanicLlm;
+
+struct CountingLlm {
+    calls: Arc<AtomicUsize>,
+}
+
 #[async_trait]
 impl astral_gateway::ports::LlmPort for FakeLlm {
     async fn generate_reading(
@@ -99,6 +108,27 @@ impl astral_gateway::ports::LlmPort for FakeLlm {
     }
 }
 
+#[async_trait]
+impl astral_gateway::ports::LlmPort for PanicLlm {
+    async fn generate_reading(
+        &self,
+        _request: &GenerateReadingRequest,
+    ) -> Result<GenerateReadingResponse, astral_gateway::error::GatewayError> {
+        panic!("inspect path must not call the LLM port")
+    }
+}
+
+#[async_trait]
+impl astral_gateway::ports::LlmPort for CountingLlm {
+    async fn generate_reading(
+        &self,
+        request: &GenerateReadingRequest,
+    ) -> Result<GenerateReadingResponse, astral_gateway::error::GatewayError> {
+        self.calls.fetch_add(1, Ordering::SeqCst);
+        FakeLlm.generate_reading(request).await
+    }
+}
+
 fn request(time: Option<&str>) -> NatalReadingRequestV2 {
     NatalReadingRequestV2 {
         context: astral_contracts::RequestContextCommon {
@@ -136,6 +166,17 @@ async fn natal_gateway_supports_simplified_premium_v2() {
 
     assert_eq!(response.metadata.product_code, "natal_simplified_premium");
     assert_eq!(response.metadata.variant, "simplified");
+    assert_eq!(response.debug.as_ref().and_then(|debug| debug.get("run_id")).and_then(|value| value.as_str()), Some("run-test"));
+    assert_eq!(
+        response
+            .debug
+            .as_ref()
+            .and_then(|debug| debug.get("llm_request"))
+            .and_then(|value| value.get("product_context"))
+            .and_then(|value| value.get("interpretation_profile_code"))
+            .and_then(|value| value.as_str()),
+        Some("natal_simplified")
+    );
 }
 
 #[tokio::test]
@@ -198,4 +239,54 @@ async fn natal_gateway_respects_explicit_audience_level() {
         }
         other => panic!("unexpected reading response: {other:?}"),
     }
+}
+
+#[tokio::test]
+async fn natal_gateway_inspect_builds_llm_request_without_calling_llm() {
+    let use_case = GenerateNatalReadingUseCase::new(Arc::new(FakeCalculator), Arc::new(PanicLlm));
+    let response = use_case
+        .inspect(
+            NatalGatewayPolicy {
+                variant: NatalVariant::Full,
+                tier: ProductTier::Basic,
+            },
+            request(Some("14:30:00")),
+        )
+        .await
+        .expect("inspection response");
+
+    assert_eq!(response.metadata.product_code, "natal_full_basic");
+    assert_eq!(
+        response
+            .llm_request
+            .get("product_context")
+            .and_then(|value| value.get("interpretation_profile_code"))
+            .and_then(|value| value.as_str()),
+        Some("natal_basic")
+    );
+}
+
+#[tokio::test]
+async fn natal_gateway_execute_calls_llm_for_standard_flow() {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let use_case = GenerateNatalReadingUseCase::new(
+        Arc::new(FakeCalculator),
+        Arc::new(CountingLlm {
+            calls: calls.clone(),
+        }),
+    );
+
+    let response = use_case
+        .execute(
+            NatalGatewayPolicy {
+                variant: NatalVariant::Simplified,
+                tier: ProductTier::Free,
+            },
+            request(None),
+        )
+        .await
+        .expect("reading response");
+
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+    assert!(matches!(response.reading, GenerateReadingResponse::Success { .. }));
 }

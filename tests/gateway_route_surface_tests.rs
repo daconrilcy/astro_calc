@@ -210,6 +210,32 @@ async fn v2_natal_route_maps_to_expected_product_code() {
 }
 
 #[tokio::test]
+async fn v2_natal_inspect_route_returns_pre_llm_payload() {
+    let response = app()
+        .oneshot(
+            Request::post("/v2/natal/full/basic/inspect")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    serde_json::to_vec(&natal_request(Some("14:30:00"))).expect("request json"),
+                ))
+                .expect("request"),
+        )
+        .await
+        .expect("response");
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: Value = serde_json::from_slice(
+        &to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("body"),
+    )
+    .expect("json");
+    assert_eq!(body["metadata"]["contract_version"], "natal_inspection_response_v2");
+    assert!(body.get("llm_request").is_some());
+    assert!(body.get("reading").is_none());
+}
+
+#[tokio::test]
 async fn v2_horoscope_route_is_available() {
     let response = app()
         .oneshot(

@@ -785,6 +785,12 @@ Refactored the deterministic generation model for `horoscope_premium_next_7_days
 ## Hardening du cadrage symbolique natal
 
 - Ajout d'un helper applicatif `ensure_symbolic_framing_text` pour injecter un cadrage interpretatif court quand un chapitre natal n'en contient pas explicitement.
+
+## UI debug natal V2
+
+- Ajout d'un panneau "Inspection calcul natal" dans `tests/service_test_ui/`, affiche avant la sous-section des services natals.
+- Le panneau permet de lancer une inspection `simplified` ou `full` avec choix du tier public (`free`, `basic`, `premium`).
+- Chaque inspection appelle un endpoint dedie `.../inspect` qui s'arrete avant le LLM, renvoie le `calculation` et expose la requete `GenerateReadingRequest` construite sans lancer `generate_reading`.
 - Application du helper avant la validation safety des chapitres et de la synthese finale afin d'eviter les `SAFETY_REJECTED` fragiles du type `missing symbolic/interpretive framing`.
 - Ajout de tests de non-regression sur un texte de type `growth_path` trop affirmatif et sur l'idempotence quand le cadrage existe deja.
 

@@ -114,11 +114,43 @@ function Send-Bytes {
         [byte[]]$Bytes,
         [string]$ContentType
     )
-    $Context.Response.StatusCode = $StatusCode
-    $Context.Response.ContentType = $ContentType
-    $Context.Response.ContentLength64 = $Bytes.Length
-    $Context.Response.OutputStream.Write($Bytes, 0, $Bytes.Length)
-    $Context.Response.OutputStream.Close()
+    try {
+        if (-not (Test-ResponseWritable -Context $Context)) {
+            return $false
+        }
+        $Context.Response.StatusCode = $StatusCode
+        $Context.Response.ContentType = $ContentType
+        $Context.Response.ContentLength64 = $Bytes.Length
+        $Context.Response.OutputStream.Write($Bytes, 0, $Bytes.Length)
+        return $true
+    } catch [System.ObjectDisposedException], [System.InvalidOperationException], [System.Net.HttpListenerException] {
+        return $false
+    } finally {
+        Complete-Response -Context $Context
+    }
+}
+
+function Test-ResponseWritable {
+    param([System.Net.HttpListenerContext]$Context)
+    try {
+        return $null -ne $Context.Response -and $Context.Response.OutputStream -and $Context.Response.OutputStream.CanWrite
+    } catch {
+        return $false
+    }
+}
+
+function Complete-Response {
+    param([System.Net.HttpListenerContext]$Context)
+    try {
+        if ($null -ne $Context.Response.OutputStream) {
+            $Context.Response.OutputStream.Close()
+        }
+    } catch {
+    }
+    try {
+        $Context.Response.Close()
+    } catch {
+    }
 }
 
 function Send-Json {
@@ -138,6 +170,25 @@ function Send-Text {
         [string]$Body
     )
     Send-Bytes -Context $Context -StatusCode $StatusCode -Bytes ([Text.Encoding]::UTF8.GetBytes($Body)) -ContentType "text/plain; charset=utf-8"
+}
+
+function Try-SendServerError {
+    param(
+        [System.Net.HttpListenerContext]$Context,
+        [int]$StatusCode,
+        [string]$Code,
+        [string]$Message
+    )
+    if (Test-ResponseWritable -Context $Context) {
+        [void](Send-Json -Context $Context -StatusCode $StatusCode -Body @{
+            error = @{
+                code = $Code
+                message = $Message
+            }
+        })
+    } else {
+        Write-Warning "${Code}: $Message"
+    }
 }
 
 function Get-ContentType {
@@ -196,19 +247,25 @@ function Invoke-Proxy {
     }
 
     try {
-        $response = $httpClient.SendAsync($message).GetAwaiter().GetResult()
-        $bytes = $response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
-        $contentType = "application/json; charset=utf-8"
-        if ($response.Content.Headers.ContentType) {
-            $contentType = $response.Content.Headers.ContentType.ToString()
-        }
-        Send-Bytes -Context $Context -StatusCode ([int]$response.StatusCode) -Bytes $bytes -ContentType $contentType
-    } catch {
-        Send-Json -Context $Context -StatusCode 502 -Body @{
-            error = @{
-                code = "PROXY_ERROR"
-                message = $_.Exception.Message
+        $response = $null
+        try {
+            $response = $httpClient.SendAsync($message).GetAwaiter().GetResult()
+            $bytes = $response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
+            $contentType = "application/json; charset=utf-8"
+            if ($response.Content.Headers.ContentType) {
+                $contentType = $response.Content.Headers.ContentType.ToString()
             }
+            [void](Send-Bytes -Context $Context -StatusCode ([int]$response.StatusCode) -Bytes $bytes -ContentType $contentType)
+        } finally {
+            if ($response) {
+                $response.Dispose()
+            }
+        }
+    } catch {
+        Try-SendServerError -Context $Context -StatusCode 502 -Code "PROXY_ERROR" -Message $_.Exception.Message
+    } finally {
+        if ($message) {
+            $message.Dispose()
         }
     }
 }
@@ -281,7 +338,7 @@ function Invoke-Geocode {
         $geocodeCache[$cacheKey] = $body
         Send-Json -Context $Context -StatusCode 200 -Body $body
     } catch {
-        Send-Json -Context $Context -StatusCode 502 -Body @{ error = @{ code = "GEOCODE_PROXY_ERROR"; message = $_.Exception.Message } }
+        Try-SendServerError -Context $Context -StatusCode 502 -Code "GEOCODE_PROXY_ERROR" -Message $_.Exception.Message
     }
 }
 
@@ -339,7 +396,7 @@ try {
             $bytes = [IO.File]::ReadAllBytes($filePath)
             Send-Bytes -Context $context -StatusCode 200 -Bytes $bytes -ContentType (Get-ContentType -Path $filePath)
         } catch {
-            Send-Json -Context $context -StatusCode 500 -Body @{ error = @{ code = "SERVER_ERROR"; message = $_.Exception.Message } }
+            Try-SendServerError -Context $context -StatusCode 500 -Code "SERVER_ERROR" -Message $_.Exception.Message
         }
     }
 } finally {

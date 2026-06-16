@@ -19,4 +19,14 @@ pub struct NatalReadingResponseV2 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub calculation: Option<Value>,
     pub reading: GenerateReadingResponse,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub debug: Option<Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct NatalInspectionResponseV2 {
+    pub metadata: ResponseMetadataCommon,
+    pub quality: QualityMetadataCommon,
+    pub calculation: Value,
+    pub llm_request: Value,
 }

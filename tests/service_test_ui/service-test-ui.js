@@ -193,6 +193,10 @@
     gatewayServices: PUBLIC_SERVICES.slice().sort((a, b) => a.sort_order - b.sort_order),
     diagnosticServices: [],
     natalChartByFingerprint: null,
+    natalInspector: {
+      simplified: { tier: "free", result: null },
+      full: { tier: "free", result: null },
+    },
     results: {},
     locationAuto: true,
     locationResolveToken: 0,
@@ -204,6 +208,8 @@
       horoscope_period: MODES.complete,
     },
   };
+
+  const AUDIT_UNAVAILABLE = Symbol("audit_unavailable");
 
   function todayIso() {
     return new Date().toISOString().slice(0, 10);
@@ -606,6 +612,9 @@
       }
 
       const subframesHost = frameNode.querySelector(".frame-subsections");
+      if (frame.key === "natal") {
+        subframesHost.appendChild(renderNatalInspectorSection());
+      }
       frame.subframes.forEach((subframe) => {
         const subNode = subframeTemplate.content.firstElementChild.cloneNode(true);
         subNode.dataset.subframeKey = subframe.key;
@@ -643,6 +652,123 @@
 
       container.appendChild(frameNode);
     });
+  }
+
+  function renderNatalInspectorSection() {
+    const section = document.createElement("section");
+    section.className = "subframe natal-inspector";
+    section.innerHTML = [
+      `<div class="subframe-header">`,
+      `<div>`,
+      `<h3 class="subframe-title">Inspection calcul natal</h3>`,
+      `<p class="subframe-description">Affiche le calcul renvoye par le backend et la requete exacte construite pour le process de prompt LLM.</p>`,
+      `</div>`,
+      `</div>`,
+      `<div class="natal-inspector-grid"></div>`,
+    ].join("");
+    const grid = section.querySelector(".natal-inspector-grid");
+    ["simplified", "full"].forEach((variant) => {
+      grid.appendChild(renderNatalInspectorCard(variant));
+    });
+    return section;
+  }
+
+  function renderNatalInspectorCard(variant) {
+    const config = state.natalInspector[variant];
+    const card = document.createElement("article");
+    card.className = "service-card natal-inspector-card";
+    card.dataset.variant = variant;
+    const title = variant === "simplified" ? "Theme natal simplifie" : "Theme natal full";
+    const timeHint = variant === "full" ? "Heure requise." : "Heure optionnelle.";
+    const service = findNatalInspectorService(variant, config.tier);
+    const blockedReason = service ? serviceCanRun(service, readForm()) : "Service introuvable.";
+    const result = config.result;
+    const isRunning = result && result.status === "running";
+    card.innerHTML = [
+      `<header class="service-card-header">`,
+      `<div><h3>${escapeHtml(title)}</h3><p class="service-description">Tier public inspecte: ${escapeHtml(config.tier)}. ${escapeHtml(timeHint)}</p></div>`,
+      `<span class="availability">${escapeHtml(config.tier)}</span>`,
+      `</header>`,
+      `<div class="natal-inspector-controls">`,
+      `<label class="field"><span>Tier</span><select class="natal-inspector-tier">`,
+      ["free", "basic", "premium"].map((tier) => `<option value="${tier}"${tier === config.tier ? " selected" : ""}>${tier}</option>`).join(""),
+      `</select></label>`,
+      `<div class="service-actions natal-inspector-actions">`,
+      `<button type="button" class="run-inspector">Executer</button>`,
+      `<button type="button" class="show-calculation secondary">Voir calcul</button>`,
+      `<button type="button" class="show-llm-request secondary">Voir requete LLM</button>`,
+      `<button type="button" class="copy-llm-request secondary">Copier requete LLM</button>`,
+      `</div>`,
+      `</div>`,
+      `<div class="service-note" aria-live="polite"></div>`,
+      `<div class="tech-details natal-inspector-summary"></div>`,
+    ].join("");
+
+    const tierSelect = card.querySelector(".natal-inspector-tier");
+    tierSelect.addEventListener("change", () => {
+      state.natalInspector[variant].tier = tierSelect.value;
+      state.natalInspector[variant].result = null;
+      renderServices();
+    });
+
+    const runButton = card.querySelector(".run-inspector");
+    runButton.disabled = isRunning || Boolean(blockedReason);
+    runButton.textContent = isRunning ? "Execution..." : "Executer";
+    runButton.addEventListener("click", () => runNatalInspector(variant));
+
+    const showCalculation = card.querySelector(".show-calculation");
+    const showLlmRequest = card.querySelector(".show-llm-request");
+    const copyLlmRequest = card.querySelector(".copy-llm-request");
+    const calculation = result ? result.calculation : null;
+    const llmRequest = result ? result.llmRequest : null;
+    showCalculation.disabled = !calculation;
+    showLlmRequest.disabled = !llmRequest;
+    copyLlmRequest.disabled = !llmRequest;
+    showCalculation.addEventListener("click", () => openJsonModal(`${title} - calcul`, config.tier, calculation));
+    showLlmRequest.addEventListener("click", () => openJsonModal(`${title} - requete LLM`, config.tier, llmRequest));
+    copyLlmRequest.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(JSON.stringify(llmRequest, null, 2));
+        flashButtonLabel(copyLlmRequest, "Copie");
+      } catch (err) {
+        flashButtonLabel(copyLlmRequest, "Copie impossible");
+      }
+    });
+
+    const note = card.querySelector(".service-note");
+    note.textContent = blockedReason || "";
+    card.querySelector(".natal-inspector-summary").innerHTML = buildNatalInspectorSummary(result, service);
+    return card;
+  }
+
+  function buildNatalInspectorSummary(result, service) {
+    if (!result) {
+      return `<div class="empty-copy">Aucune inspection lancee pour l'instant.</div>`;
+    }
+    if (result.errorMessage) {
+      return `<div class="error-text">${escapeHtml(result.errorMessage)}</div>`;
+    }
+    const lines = [
+      service ? `Endpoint: ${escapeHtml(natalInspectorEndpoint(service).replace("/api/gateway", ""))}` : "",
+      result.runId ? `Run: ${escapeHtml(result.runId)}` : "",
+      result.calculation ? `Calcul: disponible` : "Calcul: indisponible",
+      result.llmRequest ? `Requete LLM: disponible` : "Requete LLM: indisponible",
+      result.promptTraceCount ? `Traces prompt: ${escapeHtml(String(result.promptTraceCount))}` : "",
+      `Duree: ${escapeHtml(formatMs(result.elapsedMs || 0))}`,
+    ].filter(Boolean);
+    const preview = result.llmRequest
+      ? `<div class="empty-copy">La requete complete est disponible via "Voir requete LLM" ou "Copier requete LLM".</div>`
+      : `<div class="empty-copy">La requete LLM n'est pas exposee par la reponse.</div>`;
+    return `<div>${lines.join("<br>")}</div>${preview}`;
+  }
+
+  function findNatalInspectorService(variant, tier) {
+    const kind = variant === "simplified" ? "natal_simplified" : "natal_full";
+    return state.gatewayServices.find((service) => service.kind === kind && service.tier === tier) || null;
+  }
+
+  function natalInspectorEndpoint(service) {
+    return `${service.endpoint}/inspect`;
   }
 
   function renderPlaceholderFrame(frame) {
@@ -839,6 +965,67 @@
     }
   }
 
+  async function runNatalInspector(variant) {
+    const config = state.natalInspector[variant];
+    const service = findNatalInspectorService(variant, config.tier);
+    const input = readForm();
+    const blockedReason = service ? serviceCanRun(service, input) : "Service introuvable.";
+    if (blockedReason) {
+      state.natalInspector[variant].result = {
+        status: "failed",
+        errorMessage: blockedReason,
+        elapsedMs: 0,
+        calculation: null,
+        llmRequest: null,
+        runId: null,
+        promptTraceCount: 0,
+      };
+      renderServices();
+      return;
+    }
+
+    const started = Date.now();
+    state.natalInspector[variant].result = {
+      status: "running",
+      errorMessage: "",
+      elapsedMs: 0,
+      calculation: null,
+      llmRequest: null,
+      runId: null,
+      promptTraceCount: 0,
+    };
+    renderServices();
+
+    try {
+      const response = await apiFetch(natalInspectorEndpoint(service), {
+        method: "POST",
+        body: JSON.stringify(buildGatewayNatalRequest(input)),
+      });
+      state.natalInspector[variant].result = {
+        status: "completed",
+        errorMessage: "",
+        elapsedMs: Date.now() - started,
+        calculation: response && response.calculation ? response.calculation : null,
+        llmRequest: extractNatalLlmRequest(response) || response.llm_request || null,
+        runId: null,
+        promptTraceCount: 0,
+      };
+      renderServices();
+      return;
+    } catch (err) {
+      state.natalInspector[variant].result = {
+        status: "failed",
+        errorMessage: err.message,
+        elapsedMs: Date.now() - started,
+        calculation: null,
+        llmRequest: null,
+        runId: null,
+        promptTraceCount: 0,
+      };
+    }
+    renderServices();
+  }
+
   async function runService(service, options) {
     const input = readForm();
     const blockedReason = serviceCanRun(service, input);
@@ -920,16 +1107,15 @@
     const normalized = normalizeGatewayReadingSections(response);
     const runId = extractRunId(response);
     const inlineAudit = extractInlineAudit(response);
-    const fetchedAudit = runId ? await fetchRunAudit(runId) : null;
-    const audit = fetchedAudit && !fetchedAudit.error ? fetchedAudit : inlineAudit;
-    const promptPayload = extractPromptPayload(response, audit);
+    const initialAudit = inlineAudit && !inlineAudit.error ? inlineAudit : null;
+    const initialPromptPayload = extractPromptPayload(response, initialAudit);
     const readingText = joinSectionsForCopy(normalized);
     const current = state.results[service.service_code];
     state.results[service.service_code] = {
       ...current,
       status: "completed",
       elapsedMs,
-      progressLabel: audit ? "Reponse + audit charges" : "Reponse chargee",
+      progressLabel: initialAudit ? "Reponse + audit charges" : "Reponse chargee",
       response,
       jsonText: JSON.stringify(response, null, 2),
       sections: normalized,
@@ -937,20 +1123,39 @@
       productCode: readField(response, ["metadata", "product_code"]) || "",
       variant: readField(response, ["metadata", "variant"]) || "",
       runId,
-      audit,
-      promptPayload,
-      promptAvailable: Boolean(promptPayload && Array.isArray(promptPayload.traces) && promptPayload.traces.length),
+      audit: initialAudit,
+      promptPayload: initialPromptPayload,
+      promptAvailable: Boolean(initialPromptPayload && Array.isArray(initialPromptPayload.traces) && initialPromptPayload.traces.length),
       errorMessage: "",
-      steps: mergeUiAndAuditSteps(current.steps, audit),
+      steps: mergeUiAndAuditSteps(current.steps, initialAudit),
     };
+    renderServices();
+    if (runId) {
+      hydrateRunAudit(service.service_code, runId, response);
+    }
   }
 
   async function fetchRunAudit(runId) {
     try {
       return await apiFetch(`/api/llm/v1/runs/${encodeURIComponent(runId)}`, { method: "GET" });
     } catch (err) {
-      return { error: err.message, steps: [] };
+      return AUDIT_UNAVAILABLE;
     }
+  }
+
+  async function hydrateRunAudit(serviceCode, runId, response) {
+    const fetchedAudit = await fetchRunAudit(runId);
+    if (fetchedAudit === AUDIT_UNAVAILABLE) return;
+    const result = state.results[serviceCode];
+    if (!result || result.runId !== runId) return;
+    const audit = fetchedAudit && !fetchedAudit.error ? fetchedAudit : result.audit;
+    const promptPayload = extractPromptPayload(response, audit);
+    result.audit = audit;
+    result.promptPayload = promptPayload;
+    result.promptAvailable = Boolean(promptPayload && Array.isArray(promptPayload.traces) && promptPayload.traces.length);
+    result.progressLabel = audit ? "Reponse + audit charges" : result.progressLabel;
+    result.steps = mergeUiAndAuditSteps(result.steps, audit);
+    renderServices();
   }
 
   function extractInlineAudit(payload) {
@@ -970,6 +1175,13 @@
       ["debug", "audit", "run_id"],
       ["reading", "run_id"],
       ["result", "run_id"],
+    ]);
+  }
+
+  function extractNatalLlmRequest(payload) {
+    return firstValueAtPaths(payload, [
+      ["debug", "llm_request"],
+      ["llm_request"],
     ]);
   }
 
@@ -1095,11 +1307,31 @@
   function mergeUiAndAuditSteps(existingSteps, audit) {
     const uiSteps = (existingSteps || []).map((step) => ({ ...step }));
     if (!audit || !Array.isArray(audit.steps) || !audit.steps.length) return uiSteps;
-    const auditSteps = audit.steps.map((step) => ({
-      label: step.step_type || "backend_step",
-      state: step.status === "failed" ? "error" : "done",
-      meta: compactAuditMeta(step),
-    }));
+    const seenAuditKeys = new Set(
+      uiSteps
+        .filter((step) => step && step.auditKey)
+        .map((step) => step.auditKey)
+    );
+    const auditSteps = audit.steps
+      .map((step) => {
+        const auditKey = [
+          step.step_type || "backend_step",
+          step.chapter_code || "",
+          step.status || "",
+          step.created_at || "",
+        ].join("|");
+        return {
+          label: step.step_type || "backend_step",
+          state: step.status === "failed" ? "error" : "done",
+          meta: compactAuditMeta(step),
+          auditKey,
+        };
+      })
+      .filter((step) => {
+        if (seenAuditKeys.has(step.auditKey)) return false;
+        seenAuditKeys.add(step.auditKey);
+        return true;
+      });
     return uiSteps.concat(auditSteps);
   }
 
@@ -1331,6 +1563,13 @@
     modalSubtitle.textContent = subtitle || "";
     modalContent.innerHTML = content;
     root.hidden = false;
+  }
+
+  function openJsonModal(title, subtitle, payload) {
+    const content = payload
+      ? `<pre class="prompt-box">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>`
+      : `<div class="empty-copy">Aucune donnee disponible.</div>`;
+    openModal(title, subtitle, content);
   }
 
   function closeModal() {
@@ -1645,6 +1884,7 @@
     composeCopiedReading,
     combineHoroscopeMode,
     extractRunId,
+    extractNatalLlmRequest,
     extractPromptPayload,
     isAutoLocationEnabled,
     isHoroscopeService,

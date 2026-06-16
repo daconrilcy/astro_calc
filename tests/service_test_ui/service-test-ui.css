@@ -271,8 +271,53 @@ h3 {
   margin-top: 14px;
 }
 
+.natal-inspector-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 14px;
+}
+
 .service-card {
   padding: 16px;
+}
+
+.natal-inspector-card {
+  background: linear-gradient(180deg, #fffaf3 0%, #fffdf8 100%);
+}
+
+.natal-inspector-controls {
+  display: grid;
+  grid-template-columns: minmax(140px, 180px) 1fr;
+  gap: 14px;
+  align-items: end;
+  margin-bottom: 12px;
+}
+
+.natal-inspector-controls .field span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.natal-inspector-actions {
+  justify-content: flex-start;
+}
+
+.natal-inspector-summary {
+  display: grid;
+  gap: 12px;
+}
+
+.natal-inspector-preview {
+  margin: 0;
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #f8f2e8;
+  padding: 12px;
+  font-size: 12px;
 }
 
 .availability {
@@ -540,7 +585,8 @@ h3 {
 }
 
 @media (max-width: 1200px) {
-  .service-grid {
+  .service-grid,
+  .natal-inspector-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -548,6 +594,7 @@ h3 {
 @media (max-width: 960px) {
   .input-panel,
   .service-grid,
+  .natal-inspector-grid,
   .usage-grid {
     grid-template-columns: 1fr;
   }
@@ -555,6 +602,10 @@ h3 {
   .api-key-field,
   .actions {
     grid-column: auto;
+  }
+
+  .natal-inspector-controls {
+    grid-template-columns: 1fr;
   }
 
   .topbar,
@@ -580,7 +631,8 @@ h3 {
   .service-card-header,
   .service-actions,
   .header-actions,
-  .actions {
+  .actions,
+  .natal-inspector-actions {
     flex-direction: column;
     align-items: stretch;
   }

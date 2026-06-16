@@ -36,14 +36,32 @@ pub fn router_with_timeout(state: AppState, request_timeout: std::time::Duration
         .route("/health/live", get(health))
         .route("/health/ready", get(health_ready))
         .route("/v2/natal/simplified/free", post(natal_simplified_free))
+        .route(
+            "/v2/natal/simplified/free/inspect",
+            post(natal_simplified_free_inspect),
+        )
         .route("/v2/natal/simplified/basic", post(natal_simplified_basic))
+        .route(
+            "/v2/natal/simplified/basic/inspect",
+            post(natal_simplified_basic_inspect),
+        )
         .route(
             "/v2/natal/simplified/premium",
             post(natal_simplified_premium),
         )
+        .route(
+            "/v2/natal/simplified/premium/inspect",
+            post(natal_simplified_premium_inspect),
+        )
         .route("/v2/natal/full/free", post(natal_full_free))
+        .route("/v2/natal/full/free/inspect", post(natal_full_free_inspect))
         .route("/v2/natal/full/basic", post(natal_full_basic))
+        .route("/v2/natal/full/basic/inspect", post(natal_full_basic_inspect))
         .route("/v2/natal/full/premium", post(natal_full_premium))
+        .route(
+            "/v2/natal/full/premium/inspect",
+            post(natal_full_premium_inspect),
+        )
         .route("/v2/horoscope/daily/free", post(horoscope_daily_free))
         .route("/v2/horoscope/daily/basic", post(horoscope_daily_basic))
         .route("/v2/horoscope/daily/premium", post(horoscope_daily_premium))
@@ -76,11 +94,25 @@ async fn natal_simplified_free(
     natal_handler(state, NatalVariant::Simplified, ProductTier::Free, request).await
 }
 
+async fn natal_simplified_free_inspect(
+    State(state): State<AppState>,
+    Json(request): Json<NatalReadingRequestV2>,
+) -> Result<Json<serde_json::Value>, crate::error::GatewayError> {
+    natal_inspect_handler(state, NatalVariant::Simplified, ProductTier::Free, request).await
+}
+
 async fn natal_simplified_basic(
     State(state): State<AppState>,
     Json(request): Json<NatalReadingRequestV2>,
 ) -> Result<Json<serde_json::Value>, crate::error::GatewayError> {
     natal_handler(state, NatalVariant::Simplified, ProductTier::Basic, request).await
+}
+
+async fn natal_simplified_basic_inspect(
+    State(state): State<AppState>,
+    Json(request): Json<NatalReadingRequestV2>,
+) -> Result<Json<serde_json::Value>, crate::error::GatewayError> {
+    natal_inspect_handler(state, NatalVariant::Simplified, ProductTier::Basic, request).await
 }
 
 async fn natal_simplified_premium(
@@ -96,11 +128,31 @@ async fn natal_simplified_premium(
     .await
 }
 
+async fn natal_simplified_premium_inspect(
+    State(state): State<AppState>,
+    Json(request): Json<NatalReadingRequestV2>,
+) -> Result<Json<serde_json::Value>, crate::error::GatewayError> {
+    natal_inspect_handler(
+        state,
+        NatalVariant::Simplified,
+        ProductTier::Premium,
+        request,
+    )
+    .await
+}
+
 async fn natal_full_free(
     State(state): State<AppState>,
     Json(request): Json<NatalReadingRequestV2>,
 ) -> Result<Json<serde_json::Value>, crate::error::GatewayError> {
     natal_handler(state, NatalVariant::Full, ProductTier::Free, request).await
+}
+
+async fn natal_full_free_inspect(
+    State(state): State<AppState>,
+    Json(request): Json<NatalReadingRequestV2>,
+) -> Result<Json<serde_json::Value>, crate::error::GatewayError> {
+    natal_inspect_handler(state, NatalVariant::Full, ProductTier::Free, request).await
 }
 
 async fn natal_full_basic(
@@ -110,11 +162,25 @@ async fn natal_full_basic(
     natal_handler(state, NatalVariant::Full, ProductTier::Basic, request).await
 }
 
+async fn natal_full_basic_inspect(
+    State(state): State<AppState>,
+    Json(request): Json<NatalReadingRequestV2>,
+) -> Result<Json<serde_json::Value>, crate::error::GatewayError> {
+    natal_inspect_handler(state, NatalVariant::Full, ProductTier::Basic, request).await
+}
+
 async fn natal_full_premium(
     State(state): State<AppState>,
     Json(request): Json<NatalReadingRequestV2>,
 ) -> Result<Json<serde_json::Value>, crate::error::GatewayError> {
     natal_handler(state, NatalVariant::Full, ProductTier::Premium, request).await
+}
+
+async fn natal_full_premium_inspect(
+    State(state): State<AppState>,
+    Json(request): Json<NatalReadingRequestV2>,
+) -> Result<Json<serde_json::Value>, crate::error::GatewayError> {
+    natal_inspect_handler(state, NatalVariant::Full, ProductTier::Premium, request).await
 }
 
 async fn horoscope_daily_free(
@@ -198,6 +264,22 @@ async fn natal_handler(
     let response = state
         .natal_use_case()
         .execute(NatalGatewayPolicy { variant, tier }, request)
+        .await?;
+    let payload = serde_json::to_value(response).map_err(|err| {
+        crate::error::GatewayError::Internal(format!("serialization failed: {err}"))
+    })?;
+    Ok(Json(payload))
+}
+
+async fn natal_inspect_handler(
+    state: AppState,
+    variant: NatalVariant,
+    tier: ProductTier,
+    request: NatalReadingRequestV2,
+) -> Result<Json<serde_json::Value>, crate::error::GatewayError> {
+    let response = state
+        .natal_use_case()
+        .inspect(NatalGatewayPolicy { variant, tier }, request)
         .await?;
     let payload = serde_json::to_value(response).map_err(|err| {
         crate::error::GatewayError::Internal(format!("serialization failed: {err}"))

@@ -9,7 +9,7 @@ pub mod routes;
 pub mod state;
 
 pub use config::AppConfig;
-pub use contracts::{NatalReadingRequestV2, NatalReadingResponseV2};
+pub use contracts::{NatalInspectionResponseV2, NatalReadingRequestV2, NatalReadingResponseV2};
 pub use horoscope::{
     GenerateHoroscopeDailyReadingUseCase, GenerateHoroscopePeriodReadingUseCase,
     HoroscopeReadingResponseV2,
