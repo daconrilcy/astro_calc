@@ -3463,6 +3463,12 @@ Les services horoscope V1 (`horoscope_basic_daily_natal_3_slots` et
 pas le payload natal/basic existant et consomment un `chart_calculation_id` deja
 calcule.
 
+Les builders de requete horoscope dans `astral_llm_application` restent
+locales au gateway: ils reconstruisent les contrats `horoscope_calculation_request`
+et `horoscope_period_calculation_request` depuis le catalogue JSON du workspace
+et `astral_time_window`, sans dependance directe au repository SQL du
+calculateur.
+
 Le service Premium V1 `horoscope_premium_daily_local_2h_slots` est cadre dans le
 meme document. Il conserve la meme infrastructure async, ajoute une localisation
 obligatoire, 12 creneaux publics de 2 heures, `local_chart` par slot et des

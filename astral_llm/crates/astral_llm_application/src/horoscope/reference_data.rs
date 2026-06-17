@@ -67,12 +67,16 @@ pub(crate) struct ReferenceData {
 }
 #[derive(Clone)]
 pub(crate) struct ServiceProfile {
+    pub(crate) house_system_code: Option<String>,
+    pub(crate) time_slot_profile_code: Option<String>,
     pub(crate) period_profile_code: Option<String>,
     pub(crate) detail_profile_code: Option<String>,
     pub(crate) scan_profile_code: Option<String>,
 }
 #[derive(Clone)]
 pub(crate) struct ScanProfile {
+    pub(crate) granularity: String,
+    pub(crate) reference_time_local: String,
     pub(crate) expected_snapshots_per_day: usize,
 }
 #[derive(Clone)]
@@ -299,6 +303,14 @@ pub(crate) fn service_profile(service_code: &str) -> Result<ServiceProfile, Gene
         .find(|row| row.get("service_code").and_then(|v| v.as_str()) == Some(service_code))
         .ok_or_else(|| horoscope_error("HOROSCOPE_SERVICE_NOT_IMPLEMENTED"))?;
     Ok(ServiceProfile {
+        house_system_code: row
+            .get("house_system_code")
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
+        time_slot_profile_code: row
+            .get("time_slot_profile_code")
+            .and_then(|v| v.as_str())
+            .map(str::to_string),
         period_profile_code: row
             .get("period_profile_code")
             .and_then(|v| v.as_str())
@@ -337,6 +349,16 @@ pub(crate) fn scan_profile(scan_profile_code: &str) -> Result<ScanProfile, Gener
         })
         .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"))?;
     Ok(ScanProfile {
+        granularity: row
+            .get("granularity")
+            .and_then(Value::as_str)
+            .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"))?
+            .to_string(),
+        reference_time_local: row
+            .get("reference_time_local")
+            .and_then(Value::as_str)
+            .ok_or_else(|| horoscope_error("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID"))?
+            .to_string(),
         expected_snapshots_per_day: row
             .get("expected_snapshots_per_day")
             .and_then(Value::as_u64)

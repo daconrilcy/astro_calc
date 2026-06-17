@@ -1,23 +1,20 @@
 use std::sync::Arc;
 
-use astral_calculator::features::horoscope::{
-    build_horoscope_daily_calculation_request_from_public,
-    build_horoscope_period_calculation_request_from_public,
-};
 use astral_contracts::{
-    ProductTier, QualityMetadataCommon, ResponseMetadataCommon, HOROSCOPE_FREE_DAILY_SERVICE_CODE,
-    HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+    HOROSCOPE_FREE_DAILY_SERVICE_CODE, HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
-    HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE,
+    HOROSCOPE_PREMIUM_NEXT_7_DAYS_NATAL_SERVICE_CODE, ProductTier, QualityMetadataCommon,
+    ResponseMetadataCommon,
 };
 use astral_llm_application::{
-    build_interpretation_request, build_period_writer_request, period_editorial_audit,
-    score_calculation, validate_horoscope_response_schema, validate_period_public_request,
+    HoroscopePeriodPublicRequest, HoroscopePublicRequest, build_calculation_request_for_service,
+    build_interpretation_request, build_period_calculation_request_for_service,
+    build_period_writer_request, period_editorial_audit, score_calculation,
+    validate_horoscope_response_schema, validate_period_public_request,
     validate_period_response_contract, validate_public_request, validate_response_evidence,
-    HoroscopePeriodPublicRequest, HoroscopePublicRequest,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use uuid::Uuid;
 
 use crate::{
@@ -61,21 +58,11 @@ impl GenerateHoroscopeDailyReadingUseCase {
             GatewayError::bad_request(format!("invalid horoscope request serialization: {err}"))
         })?)
         .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
-        let public_value = serde_json::to_value(&public).map_err(|err| {
-            GatewayError::Internal(format!("invalid horoscope request serialization: {err}"))
-        })?;
-        let calculation_request =
-            build_horoscope_daily_calculation_request_from_public(service_code, &public_value)
-                .map_err(GatewayError::bad_request)?;
+        let calculation_request = build_calculation_request_for_service(service_code, &public)
+            .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
         let calculation = self
             .calculator
-            .calculate_horoscope_daily_natal(&serde_json::to_value(&calculation_request).map_err(
-                |err| {
-                    GatewayError::Internal(format!(
-                        "invalid horoscope daily calculation request serialization: {err}"
-                    ))
-                },
-            )?)
+            .calculate_horoscope_daily_natal(&calculation_request)
             .await?;
         let signals = score_calculation(&calculation)
             .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
@@ -127,23 +114,12 @@ impl GenerateHoroscopePeriodReadingUseCase {
                 ))
             })?)
             .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
-        let public_value = serde_json::to_value(&public).map_err(|err| {
-            GatewayError::Internal(format!(
-                "invalid horoscope period request serialization: {err}"
-            ))
-        })?;
         let calculation_request =
-            build_horoscope_period_calculation_request_from_public(service_code, &public_value)
-                .map_err(GatewayError::bad_request)?;
+            build_period_calculation_request_for_service(service_code, &public)
+                .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
         let calculation = self
             .calculator
-            .calculate_horoscope_period_natal(&serde_json::to_value(&calculation_request).map_err(
-                |err| {
-                    GatewayError::Internal(format!(
-                        "invalid horoscope period calculation request serialization: {err}"
-                    ))
-                },
-            )?)
+            .calculate_horoscope_period_natal(&calculation_request)
             .await?;
         let mut writer_request = build_period_writer_request(&public, &calculation)
             .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
