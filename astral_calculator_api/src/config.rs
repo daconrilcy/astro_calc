@@ -100,7 +100,7 @@ pub fn validate_path_within(path: &Path, allowed_dir: &Path) -> Result<(), Strin
         path.parent()
             .unwrap_or(path)
             .canonicalize()
-            .and_then(|parent| Ok(parent.join(path.file_name().unwrap_or_default())))
+            .map(|parent| parent.join(path.file_name().unwrap_or_default()))
     }
     .map_err(|e| format!("invalid path {}: {e}", path.display()))?;
 

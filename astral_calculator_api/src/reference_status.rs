@@ -1,5 +1,7 @@
 use astral_calculator::config::ephemeris_path_from_env;
-use astral_calculator::infra::db::runtime_repository::RuntimeRepository;
+use astral_calculator::infra::db::{
+    catalog_repository::CatalogRepository, reference_repository::ReferenceRepository,
+};
 use serde::Serialize;
 use serde_json::{json, Value};
 use sqlx::PgPool;
@@ -22,7 +24,8 @@ pub struct ReferenceChecks {
 }
 
 pub async fn check_reference_status(pool: &PgPool) -> ReferenceStatus {
-    let repository = RuntimeRepository::new(pool.clone());
+    let references = ReferenceRepository::new(pool.clone());
+    let catalogs = CatalogRepository::new(pool.clone());
     let mut checks = ReferenceChecks {
         zodiac_signs: false,
         planets: false,
@@ -32,28 +35,28 @@ pub async fn check_reference_status(pool: &PgPool) -> ReferenceStatus {
         ephemeris_path: Some(ephemeris_files_present()),
     };
 
-    if let Ok(signs) = repository.sign_references().await {
+    if let Ok(signs) = references.sign_references().await {
         checks.zodiac_signs = signs.len() == 12;
     }
 
-    if let Ok(houses) = repository.house_references().await {
+    if let Ok(houses) = references.house_references().await {
         checks.houses = houses.len() == 12;
     }
 
-    if let Ok(aspects) = repository.aspect_definitions().await {
+    if let Ok(aspects) = references.aspect_definitions().await {
         checks.aspects = !aspects.is_empty();
     }
 
-    if let Ok(reference_version_id) = repository.default_reference_version_id().await {
-        if let Ok(objects) = repository.active_chart_objects(reference_version_id).await {
+    if let Ok(reference_version_id) = references.default_reference_version_id().await {
+        if let Ok(objects) = references.active_chart_objects(reference_version_id).await {
             checks.planets = !objects.is_empty();
         }
 
-        if let Ok(profile) = repository
+        if let Ok(profile) = catalogs
             .basic_product_scoring_profile("basic", "natal_structured_v13")
             .await
         {
-            if let Ok(rules) = repository
+            if let Ok(rules) = catalogs
                 .essential_dignity_rule_references(
                     reference_version_id,
                     profile.essential_dignity_score_profile_id,
