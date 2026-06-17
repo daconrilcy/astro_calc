@@ -36,6 +36,20 @@ changement Docker, modification des contrats JSON.
 
 Aucun finding ouvert.
 
+## Cycle 3
+
+### Findings
+
+Aucun finding ouvert.
+
+### Verification adversariale
+
+- Recherche recursive sur `astral_calculator_api`, `astral_gateway`,
+  `astral_llm`, `contracts`, `docs`, `scripts` et `tests`.
+- Les references restantes a `/v1/calculations/*` sont limitees aux aliases
+  runtime, contrats legacy, tests de compatibilite, documentation de
+  transition et artefacts de review.
+
 ## Conclusion
 
 Aucun finding ouvert.

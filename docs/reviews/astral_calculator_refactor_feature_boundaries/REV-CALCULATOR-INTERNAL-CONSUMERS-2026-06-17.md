@@ -31,6 +31,21 @@ internes vers `/v1/internal/calculations/*`.
 
 Aucun finding ouvert.
 
+## Cycle 3
+
+### Findings
+
+Aucun finding ouvert.
+
+### Verification adversariale
+
+- Aucun consommateur interne courant ne depend des routes legacy
+  `/v1/calculations/*`.
+- Les references legacy restantes documentent la compatibilite ou testent les
+  aliases existants.
+- Les frontieres restent inchangees : aucune dependance HTTP n'est introduite
+  dans `astral_calculator`.
+
 ## Conclusion
 
 Aucun finding ouvert.
