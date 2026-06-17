@@ -1087,3 +1087,20 @@ Reviews:
 - `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-W00-adversarial.md`
 - `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-W00-followup-1.md`
 - `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-FINAL.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-b994848-adversarial-loop.md`
+- `docs/reviews/astral_calculator_refactor/REV-b994848-adversarial-loop.md`
+
+## 2026-06-17 - Review adversariale du commit b994848
+
+Resume court:
+- review adversariale du dernier commit `b994848 refactor(calculator): tighten boundaries and projections`;
+- aucun finding ouvert apres scans d'imports, lecture ciblee des services/runtime/wrappers et verification des contrats;
+- aucune correction code requise dans cette boucle.
+
+Commandes de verification:
+- `cargo test -p astral_calculator --test refactor_governance_tests`
+- `cargo test -p astral_calculator`
+- `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`
+- `cargo test -p astral_calculator_api --test astral_calculator_api_tests`
+- `cargo test -p astral_llm_api --test contracts_publish_tests`
+- `git show --check HEAD`
