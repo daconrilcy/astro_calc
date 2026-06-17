@@ -1,6 +1,6 @@
 # Guide débutant — Docker, APIs et contrats Astral
 
-Ce guide explique comment **installer**, **démarrer** et **utiliser** la stack locale Astral avec Docker Compose : calculateur astral (`astral_calculator_api`), gateway LLM (`astral_llm_api`) et PostgreSQL.
+Ce guide explique comment **installer**, **démarrer** et **utiliser** la stack locale Astral avec Docker Compose : calculateur astral (`astral_calculator_api`), API LLM (`astral_llm_api`), gateway publique (`astral_gateway`) et PostgreSQL.
 
 Public visé : développeur ou intégrateur qui découvre le projet et veut un parcours pas à pas, sans supposer une connaissance préalable du dépôt.
 
@@ -31,12 +31,13 @@ Public visé : développeur ou intégrateur qui découvre le projet et veut un p
 
 ## 1. Vue d'ensemble
 
-Le projet expose **deux services HTTP** complémentaires :
+Le projet expose **trois services HTTP** complémentaires :
 
 | Service | Port (hôte) | Rôle |
 |---------|---------------|------|
-| **astral_calculator_api** | `8080` | Calcule un thème natal (positions, maisons, aspects…) à partir de données de naissance |
-| **astral_llm_api** | `8081` | Génère une **lecture textuelle** structurée à partir du résultat du calculateur |
+| **astral_calculator_api** | `8080` | API technique interne de calcul (`/v1/internal/calculations/*`, aliases legacy `/v1/calculations/*`) |
+| **astral_llm_api** | `8081` | API LLM, intégration async par jobs (`/v1/jobs`) et rendu interne |
+| **astral_gateway** | `8082` | Façade publique recommandée (`/v2/natal/*`, `/v2/horoscope/*`) |
 | **PostgreSQL** | interne (`5432`) | Référentiels astrologiques, profils LLM, persistance des runs |
 
 La surface publique recommandee est maintenant la **gateway V2** : `POST /v2/natal/*` et `POST /v2/horoscope/*`.
@@ -77,10 +78,14 @@ Espace disque : prévoir **plusieurs Go** pour les images Docker et le build Rus
 │  └──────┬───────┘                                           │
 │         │            ┌─────────────────────┐               │
 │         └───────────►│   astral_llm_api    │ :8081         │
+│                      └──────────┬──────────┘               │
+│                                 │                          │
+│                      ┌──────────▼──────────┐               │
+│                      │   astral_gateway    │ :8082         │
 │                      └─────────────────────┘               │
 └─────────────────────────────────────────────────────────────┘
          ▲                              ▲
-         │ localhost:5432 (optionnel)   │ localhost:8080 / :8081
+         │ localhost:5432 (optionnel)   │ localhost:8080 / :8081 / :8082
          └──────── hôte ────────────────┘
 ```
 
@@ -107,10 +112,10 @@ docker compose up -d postgres astral_calculator_api
 
 ### Accès réseau
 
-| Depuis | URL calculateur | URL LLM |
-|--------|-----------------|---------|
-| Votre machine (navigateur, curl, Postman) | `http://localhost:8080` | `http://localhost:8081` |
-| Un autre conteneur sur `astral_net` | `http://astral_calculator_api:8080` | `http://astral_llm_api:8081` |
+| Depuis | URL calculateur technique | URL LLM | URL gateway publique |
+|--------|---------------------------|---------|---------------------|
+| Votre machine (navigateur, curl, Postman) | `http://localhost:8080` | `http://localhost:8081` | `http://localhost:8082` |
+| Un autre conteneur sur `astral_net` | `http://astral_calculator_api:8080` | `http://astral_llm_api:8081` | `http://astral_gateway:8082` |
 
 ---
 
@@ -598,10 +603,12 @@ Route retiree du runtime courant.
 
 | Service | Méthode | Endpoint | Description |
 |---------|---------|----------|-------------|
-| Calculateur | POST | `/v1/calculations/validate` | Valide un JSON sans calculer |
+| Gateway | POST | `/v2/natal/*`, `/v2/horoscope/*` | Façade publique recommandée |
+| Calculateur | POST | `/v1/internal/calculations/validate` | Valide un JSON sans calculer (route interne canonique) |
 | Calculateur | GET | `/v1/reference/status` | État DB + éphémérides |
 | LLM | POST | `/v1/readings/validate` | Valide une lecture JSON |
-| Calculateur | POST | `/v1/calculations/natal/simplified` | Calcul partiel (contrats `astro_simplified_*`) |
+| Calculateur | POST | `/v1/internal/calculations/natal/simplified` | Calcul partiel inter-services (contrats `astro_simplified_*`) |
+| Calculateur | POST | `/v1/calculations/*` | Aliases legacy compatibles |
 | LLM | GET | `/v1/providers` | Modèles, `default_provider`, circuit breakers |
 | LLM | GET | `/v1/runs/{run_id}` | Audit d'un run (si persistance active) |
 
@@ -616,7 +623,9 @@ Route retiree du runtime courant.
      │
      │  POST /v2/natal/simplified/free
      ▼
-  [astral_llm_api] ──HTTP interne──► [astral_calculator_api]
+  [astral_gateway] ──HTTP interne──► [astral_calculator_api]
+        │                         POST /v1/internal/calculations/*
+        └────────HTTP interne──► [astral_llm_api]
      │
      │  reading + calculation dans la réponse
      ▼

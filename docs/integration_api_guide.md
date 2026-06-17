@@ -2,7 +2,11 @@
 
 Guide pratique pour connecter une application externe à `astral_llm_api`. Contrat normatif : [integration_api_contract.md](integration_api_contract.md).
 
-Pour une orchestration publique metier, preferer `astral_gateway` et ses endpoints `/v2/*`. `astral_llm_api` reste la surface d'integration async par jobs.
+Pour une orchestration publique metier, preferer `astral_gateway` et ses
+endpoints `/v2/*`. `astral_llm_api` reste la surface d'integration async par
+jobs. `astral_calculator_api` est une surface technique interne : les nouveaux
+appels inter-services utilisent `/v1/internal/calculations/*`; les anciens
+`/v1/calculations/*` restent des aliases compatibles.
 
 Breaking change facade publique du 2026-06-14:
 
@@ -25,8 +29,9 @@ python scripts/import_json_db_to_postgres.py
 docker compose up -d astral_llm_worker
 ```
 
-- Calculateur : `http://localhost:8080`
+- Calculateur technique interne : `http://localhost:8080`
 - LLM API : `http://localhost:8081`
+- Gateway publique V2 : `http://localhost:8082`
 - Worker : traite les jobs `queued` en arrière-plan
 
 Smoke intégration : `.\scripts\test_integration_jobs_e2e.ps1`
@@ -288,6 +293,8 @@ Hub local Docker : `http://localhost:3000/.well-known/mercure`
 | Besoin | Route |
 |--------|-------|
 | Orchestration publique recommandee | `POST /v2/natal/*`, `POST /v2/horoscope/*` |
+| Calcul inter-services technique | `POST /v1/internal/calculations/*` |
+| Calcul direct legacy compatible | `POST /v1/calculations/*` |
 | Orchestration manuelle legacy calcul + lecture | retiree du runtime courant |
 | Sync one-shot simplified legacy | retiree du runtime courant |
 | **Intégration async certifiée** | `POST /v1/jobs` |

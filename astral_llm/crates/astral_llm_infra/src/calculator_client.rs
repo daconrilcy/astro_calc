@@ -11,6 +11,13 @@ pub struct CalculatorClient {
 }
 
 impl CalculatorClient {
+    const SIMPLIFIED_NATAL_PATH: &'static str = "/v1/internal/calculations/natal/simplified";
+    const FULL_NATAL_PATH: &'static str = "/v1/internal/calculations/natal";
+    const HOROSCOPE_DAILY_NATAL_PATH: &'static str =
+        "/v1/internal/calculations/horoscope/daily-natal";
+    const HOROSCOPE_PERIOD_NATAL_PATH: &'static str =
+        "/v1/internal/calculations/horoscope/period/natal";
+
     pub fn new(base_url: String, api_key: Option<String>, timeout_ms: u64) -> Result<Self, String> {
         let client = Client::builder()
             .timeout(std::time::Duration::from_millis(timeout_ms.max(1_000)))
@@ -27,19 +34,18 @@ impl CalculatorClient {
         &self,
         request: &Value,
     ) -> Result<Value, GenerationError> {
-        self.post_json("/v1/calculations/natal/simplified", request)
-            .await
+        self.post_json(Self::SIMPLIFIED_NATAL_PATH, request).await
     }
 
     pub async fn calculate_natal(&self, request: &Value) -> Result<Value, GenerationError> {
-        self.post_json("/v1/calculations/natal", request).await
+        self.post_json(Self::FULL_NATAL_PATH, request).await
     }
 
     pub async fn calculate_horoscope_daily_natal(
         &self,
         request: &Value,
     ) -> Result<Value, GenerationError> {
-        self.post_json("/v1/calculations/horoscope/daily-natal", request)
+        self.post_json(Self::HOROSCOPE_DAILY_NATAL_PATH, request)
             .await
     }
 
@@ -47,7 +53,7 @@ impl CalculatorClient {
         &self,
         request: &Value,
     ) -> Result<Value, GenerationError> {
-        self.post_json("/v1/calculations/horoscope/period/natal", request)
+        self.post_json(Self::HOROSCOPE_PERIOD_NATAL_PATH, request)
             .await
     }
 
@@ -106,4 +112,29 @@ pub fn calculator_api_key_from_env() -> Option<String> {
         .ok()
         .map(|v| v.trim().to_string())
         .filter(|v| !v.is_empty())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CalculatorClient;
+
+    #[test]
+    fn calculator_client_uses_internal_calculation_paths() {
+        assert_eq!(
+            CalculatorClient::SIMPLIFIED_NATAL_PATH,
+            "/v1/internal/calculations/natal/simplified"
+        );
+        assert_eq!(
+            CalculatorClient::FULL_NATAL_PATH,
+            "/v1/internal/calculations/natal"
+        );
+        assert_eq!(
+            CalculatorClient::HOROSCOPE_DAILY_NATAL_PATH,
+            "/v1/internal/calculations/horoscope/daily-natal"
+        );
+        assert_eq!(
+            CalculatorClient::HOROSCOPE_PERIOD_NATAL_PATH,
+            "/v1/internal/calculations/horoscope/period/natal"
+        );
+    }
 }

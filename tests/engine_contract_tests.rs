@@ -5,11 +5,11 @@ use jsonschema::JSONSchema;
 use serde_json::{json, Value};
 
 use astral_calculator::domain::{BasicPayload, RuntimeOptions};
+use astral_calculator::engine::projection::{
+    build_llm_projection_natal_v1, is_active_major_aspect_signal, LlmProjectionBuildContext,
+};
 use astral_calculator::engine::{
     build_engine_response, ResolvedEngineRequest, RESPONSE_CONTRACT_VERSION,
-};
-use astral_calculator::features::llm_projection::{
-    build_llm_projection_natal_v1, is_active_major_aspect_signal, LlmProjectionBuildContext,
 };
 use astral_calculator::infra::db::projection_repository::ProjectionRepository;
 
@@ -83,7 +83,7 @@ fn sample_resolved(level: &str, payload: &BasicPayload) -> ResolvedEngineRequest
 
 fn load_profile_from_db(
     level: &str,
-) -> Option<astral_calculator::features::llm_projection::LlmProjectionProfile> {
+) -> Option<astral_calculator::engine::projection::LlmProjectionProfile> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()

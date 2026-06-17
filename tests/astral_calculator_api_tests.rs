@@ -549,6 +549,113 @@ async fn validate_rejects_invalid_natal_request() {
 }
 
 #[tokio::test]
+async fn internal_calculation_validate_route_matches_legacy_route() {
+    let Some(mut state) = build_test_state().await else {
+        eprintln!(
+            "SKIP internal_calculation_validate_route_matches_legacy_route: database unavailable"
+        );
+        return;
+    };
+    state.config.api_key = None;
+
+    let base = spawn_test_server(state).await;
+    let client = reqwest::Client::new();
+    let body = serde_json::json!({
+        "schema_version": "astro_engine_request_v1",
+        "payload": { "invalid": true }
+    });
+
+    let legacy = client
+        .post(format!("{base}/v1/calculations/validate"))
+        .json(&body)
+        .send()
+        .await
+        .expect("legacy request");
+    let internal = client
+        .post(format!("{base}/v1/internal/calculations/validate"))
+        .json(&body)
+        .send()
+        .await
+        .expect("internal request");
+
+    assert_eq!(internal.status(), legacy.status());
+    let legacy_body: serde_json::Value = legacy.json().await.expect("legacy json");
+    let internal_body: serde_json::Value = internal.json().await.expect("internal json");
+    assert_eq!(internal_body["error"]["code"], legacy_body["error"]["code"]);
+}
+
+#[tokio::test]
+async fn internal_calculation_routes_match_legacy_route_statuses() {
+    let Some(mut state) = build_test_state().await else {
+        eprintln!(
+            "SKIP internal_calculation_routes_match_legacy_route_statuses: database unavailable"
+        );
+        return;
+    };
+    state.config.api_key = None;
+
+    let base = spawn_test_server(state).await;
+    let client = reqwest::Client::new();
+    let cases = [
+        (
+            "/v1/calculations/validate",
+            "/v1/internal/calculations/validate",
+            serde_json::json!({
+                "schema_version": "astro_engine_request_v1",
+                "payload": { "invalid": true }
+            }),
+        ),
+        (
+            "/v1/calculations/natal",
+            "/v1/internal/calculations/natal",
+            serde_json::json!({ "invalid": true }),
+        ),
+        (
+            "/v1/calculations/natal/simplified",
+            "/v1/internal/calculations/natal/simplified",
+            serde_json::json!({ "invalid": true }),
+        ),
+        (
+            "/v1/calculations/horoscope/daily-natal",
+            "/v1/internal/calculations/horoscope/daily-natal",
+            serde_json::json!({ "invalid": true }),
+        ),
+        (
+            "/v1/calculations/horoscope/period/natal",
+            "/v1/internal/calculations/horoscope/period/natal",
+            serde_json::json!({ "invalid": true }),
+        ),
+    ];
+
+    for (legacy_path, internal_path, body) in cases {
+        let legacy = client
+            .post(format!("{base}{legacy_path}"))
+            .json(&body)
+            .send()
+            .await
+            .expect("legacy request");
+        let internal = client
+            .post(format!("{base}{internal_path}"))
+            .json(&body)
+            .send()
+            .await
+            .expect("internal request");
+
+        assert_eq!(
+            internal.status(),
+            legacy.status(),
+            "{internal_path} status should match {legacy_path}"
+        );
+        let legacy_body: serde_json::Value = legacy.json().await.expect("legacy json");
+        let internal_body: serde_json::Value = internal.json().await.expect("internal json");
+        assert_eq!(
+            internal_body["error"]["code"], legacy_body["error"]["code"],
+            "{internal_path} error code should match {legacy_path}"
+        );
+    }
+}
+
+#[tokio::test]
 async fn contracts_and_schema_discovery() {
     let Some(state) = build_test_state().await else {
         eprintln!("SKIP contracts_and_schema_discovery: database unavailable");
@@ -565,6 +672,15 @@ async fn contracts_and_schema_discovery() {
         .await
         .expect("json");
     assert_eq!(contracts["openapi"], "/openapi.yaml");
+    assert_eq!(contracts["surface"], "internal_calculator_http");
+    assert_eq!(
+        contracts["canonical_calculation_base_path"],
+        "/v1/internal/calculations"
+    );
+    assert_eq!(
+        contracts["legacy_calculation_base_path"],
+        "/v1/calculations"
+    );
 
     let schema = client
         .get(format!("{base}/v1/schemas/astro_engine_request_v1"))

@@ -3674,6 +3674,36 @@ Les tests dedies sont stockes dans `tests/text_reprocessing_domain_tests.rs`
 et `tests/text_reprocessing_application_tests.rs`, puis rattaches aux crates par
 targets `[[test]]`.
 
+## Refacto surfaces API calculateur internes (2026-06-17)
+
+Vague progressive sans breaking change : `astral_calculator_api` conserve les
+aliases legacy `/v1/calculations/*`, mais publie les routes canoniques
+inter-services `/v1/internal/calculations/*`. Le client calculateur utilise
+desormais ces routes internes. `astral_gateway` reste la facade publique
+recommandee pour `/v2/natal/*` et `/v2/horoscope/*`.
+
+Invariants de couche :
+
+- `astral_calculator` reste le moteur et ne prend pas de dependance HTTP/Axum.
+- `astral_calculator_api` reste un adapter HTTP technique du calculateur.
+- Aucun renommage de crate, service Docker ou conteneur dans cette vague.
+- Les contrats JSON publics existants et les routes legacy restent compatibles.
+
+Verification :
+
+```powershell
+cargo test -p astral_calculator_api --test astral_calculator_api_tests
+cargo test -p astral_calculator_api --test astral_calculator_api_unit_regression_tests
+cargo test -p astral_gateway
+cargo test -p astral_llm_api --test integration_jobs_tests
+cargo test -p astral_llm_api --test astral_llm_tests
+```
+
+Reviews :
+
+- `docs/reviews/astral_calculator_refactor/REV-CALCULATOR-INTERNAL-API-SURFACE-2026-06-17.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-CALCULATOR-INTERNAL-API-SURFACE-2026-06-17.md`
+
 ## Branchement text_reprocessing service par service (2026-06-08)
 
 Le module `text_reprocessing` est branche progressivement via

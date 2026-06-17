@@ -40,6 +40,23 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/contracts", get(list_contracts))
         .route("/v1/schemas/{version}", get(get_schema))
         .route("/v1/reference/status", get(reference_status))
+        .route(
+            "/v1/internal/calculations/validate",
+            post(validate_calculation),
+        )
+        .route("/v1/internal/calculations/natal", post(calculate_natal))
+        .route(
+            "/v1/internal/calculations/natal/simplified",
+            post(calculate_natal_simplified),
+        )
+        .route(
+            "/v1/internal/calculations/horoscope/daily-natal",
+            post(calculate_horoscope_daily_natal),
+        )
+        .route(
+            "/v1/internal/calculations/horoscope/period/natal",
+            post(calculate_horoscope_period_natal),
+        )
         .route("/v1/calculations/validate", post(validate_calculation))
         .route("/v1/calculations/natal", post(calculate_natal))
         .route(
@@ -87,6 +104,9 @@ async fn health_ready(State(state): State<AppState>) -> Response {
 async fn list_contracts(State(state): State<AppState>) -> impl IntoResponse {
     Json(json!({
         "service": "astral_calculator_api",
+        "surface": "internal_calculator_http",
+        "canonical_calculation_base_path": "/v1/internal/calculations",
+        "legacy_calculation_base_path": "/v1/calculations",
         "contracts": state.schema_registry.contract_links(),
         "openapi": "/openapi.yaml"
     }))

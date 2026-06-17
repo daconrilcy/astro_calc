@@ -11,9 +11,10 @@ Applications sur le reseau `astral_net` :
 ```txt
 http://astral_calculator_api:8080
 http://astral_llm_api:8081
+http://astral_gateway:8082
 ```
 
-Depuis l hote : `http://localhost:8080` et `http://localhost:8081`.
+Depuis l hote : `http://localhost:8080`, `http://localhost:8081` et `http://localhost:8082`.
 
 ## Modes d integration
 
@@ -25,6 +26,14 @@ Depuis l hote : `http://localhost:8080` et `http://localhost:8081`.
 4. `POST /v2/horoscope/period/{free|basic|premium}`
 
 La gateway V2 porte la facade publique d'orchestration. Elle appelle `astral_calculator` pour le calcul et `astral_llm` pour la generation, sans exposer les contrats techniques intermediaires.
+
+### Surface calculateur interne — V1
+
+`astral_calculator_api` est une API HTTP technique du calculateur. Les appels
+inter-services doivent utiliser les routes canoniques
+`/v1/internal/calculations/*`. Les anciennes routes `/v1/calculations/*`
+restent disponibles comme aliases legacy compatibles pour l'outillage local et
+les scripts existants.
 
 ### Mode integration async V1
 
@@ -55,7 +64,12 @@ Schémas : `integration_*_v1.schema.json` dans `contracts/llm/`.
 
 `POST /v1/natal/readings/from-birth` — non implemente.
 
-Le calculateur conserve `POST /v1/calculations/natal/simplified` comme contrat de calcul partiel. Les champs `llm_payload` exposent `forbidden_interpretation_topics` comme nom canonique (`forbidden_topics` = alias de sortie calculateur conserve pour compatibilite descendante de donnees).
+Le calculateur conserve `POST /v1/calculations/natal/simplified` comme alias
+legacy du contrat de calcul partiel. Le chemin canonique inter-services est
+`POST /v1/internal/calculations/natal/simplified`. Les champs `llm_payload`
+exposent `forbidden_interpretation_topics` comme nom canonique
+(`forbidden_topics` = alias de sortie calculateur conserve pour compatibilite
+descendante de donnees).
 
 Documentation métier : [`docs/natal_simplified_reading_contract.md`](../docs/natal_simplified_reading_contract.md), [`docs/natal_simplified_forbidden_topics.md`](../docs/natal_simplified_forbidden_topics.md).
 

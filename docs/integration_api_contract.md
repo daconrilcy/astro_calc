@@ -268,6 +268,8 @@ Le catalogue V1 publie `api_surface` pour distinguer explicitement :
 
 - `astral_gateway` porte la surface publique recommandee pour l'orchestration metier (`/v2/natal/*`, `/v2/horoscope/*`)
 - `astral_llm_api` conserve le contrat async V1 pour l'integration par jobs (`/v1/services`, `/v1/jobs`)
+- `astral_calculator_api` est une surface HTTP technique interne au calculateur ; les appels inter-services utilisent `/v1/internal/calculations/*`
+- les routes calculateur historiques `/v1/calculations/*` restent des aliases legacy compatibles, pas l'entree recommandee pour les nouveaux appels internes
 - les routes sync heritagees restent hors contrat public V2 et sont exposees comme `legacy` dans `api_surface`
 
 ## Legacy runtime

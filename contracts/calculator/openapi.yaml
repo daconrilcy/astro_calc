@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: astral_calculator_api
   version: 1.0.0
-  description: API HTTP du moteur de calcul astral.
+  description: API HTTP technique du moteur de calcul astral. Les appels inter-services utilisent les routes canoniques `/v1/internal/calculations/*`; les routes `/v1/calculations/*` restent exposees comme aliases legacy compatibles.
 servers:
   - url: http://astral_calculator_api:8080
     description: Reseau Docker astral_net
@@ -47,9 +47,107 @@ paths:
       responses:
         "200":
           description: Checks referentiel
+  /v1/internal/calculations/validate:
+    post:
+      summary: Valider un payload contre un schema (route interne canonique)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Payload valide
+        "422":
+          description: error_response_v1 — `VALIDATION_FAILED` (payload ou schema invalide)
+  /v1/internal/calculations/natal:
+    post:
+      summary: Calcul natal (route interne canonique)
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./astro_engine_request_v1.schema.json"
+      responses:
+        "200":
+          description: astro_engine_response_v1
+          content:
+            application/json:
+              schema:
+                $ref: "./astro_engine_response_v1.schema.json"
+        "422":
+          description: error_response_v1 — `VALIDATION_FAILED` ou `CALCULATION_FAILED`
+  /v1/internal/calculations/natal/simplified:
+    post:
+      summary: Calcul natal simplifie (route interne canonique)
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./astro_simplified_natal_request_v1.schema.json"
+      responses:
+        "200":
+          description: astro_simplified_natal_response_v1
+          content:
+            application/json:
+              schema:
+                $ref: "./astro_simplified_natal_response_v1.schema.json"
+        "422":
+          description: error_response_v1 — entree invalide (`VALIDATION_FAILED`)
+  /v1/internal/calculations/horoscope/daily-natal:
+    post:
+      summary: Calcul horoscope quotidien depuis theme natal (route interne canonique)
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./horoscope_calculation_request.schema.json"
+      responses:
+        "200":
+          description: horoscope_calculation_response
+          content:
+            application/json:
+              schema:
+                $ref: "./horoscope_calculation_response.schema.json"
+        "422":
+          description: error_response_v1 — `VALIDATION_FAILED` ou theme natal introuvable
+  /v1/internal/calculations/horoscope/period/natal:
+    post:
+      summary: Calcul horoscope periode depuis theme natal (route interne canonique)
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./horoscope_period_calculation_request.schema.json"
+      responses:
+        "200":
+          description: horoscope_period_calculation_response
+          content:
+            application/json:
+              schema:
+                $ref: "./horoscope_period_calculation_response.schema.json"
+        "422":
+          description: error_response_v1 — `VALIDATION_FAILED` ou theme natal introuvable
   /v1/calculations/validate:
     post:
-      summary: Valider un payload contre un schema
+      summary: Valider un payload contre un schema (alias legacy compatible)
       requestBody:
         required: true
         content:
@@ -63,7 +161,7 @@ paths:
           description: error_response_v1 — `VALIDATION_FAILED` (payload ou schema invalide)
   /v1/calculations/natal:
     post:
-      summary: Calcul natal
+      summary: Calcul natal (alias legacy compatible)
       security:
         - bearerAuth: []
         - apiKeyAuth: []
@@ -84,7 +182,7 @@ paths:
           description: error_response_v1 — `VALIDATION_FAILED` ou `CALCULATION_FAILED`
   /v1/calculations/natal/simplified:
     post:
-      summary: Calcul natal simplifie (donnees incompletes)
+      summary: Calcul natal simplifie (alias legacy compatible)
       security:
         - bearerAuth: []
         - apiKeyAuth: []
@@ -106,6 +204,48 @@ paths:
             error_response_v1 — entree invalide (`VALIDATION_FAILED`) : contrat obsolete, format date,
             date calendaire impossible, coordonnees hors bornes, heure sans timezone, JSON invalide.
             Le calculateur n'utilise pas HTTP 400 pour ces erreurs metier.
+  /v1/calculations/horoscope/daily-natal:
+    post:
+      summary: Calcul horoscope quotidien depuis theme natal (alias legacy compatible)
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./horoscope_calculation_request.schema.json"
+      responses:
+        "200":
+          description: horoscope_calculation_response
+          content:
+            application/json:
+              schema:
+                $ref: "./horoscope_calculation_response.schema.json"
+        "422":
+          description: error_response_v1 — `VALIDATION_FAILED` ou theme natal introuvable
+  /v1/calculations/horoscope/period/natal:
+    post:
+      summary: Calcul horoscope periode depuis theme natal (alias legacy compatible)
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./horoscope_period_calculation_request.schema.json"
+      responses:
+        "200":
+          description: horoscope_period_calculation_response
+          content:
+            application/json:
+              schema:
+                $ref: "./horoscope_period_calculation_response.schema.json"
+        "422":
+          description: error_response_v1 — `VALIDATION_FAILED` ou theme natal introuvable
   /openapi.yaml:
     get:
       summary: Cette specification OpenAPI
