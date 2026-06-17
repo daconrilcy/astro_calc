@@ -4,7 +4,7 @@ use astral_calculator::config::{ephemeris_path_from_env, runtime_options_from_en
 use astral_calculator::db::connect_from_env;
 use astral_calculator::domain::ObjectPositionFact;
 use astral_calculator::ephemeris::SwissEphemerisEngine;
-use astral_calculator::horoscope::{
+use astral_calculator::features::horoscope::{
     calculate_horoscope_daily_natal, calculate_horoscope_period_natal,
     calculate_horoscope_period_natal_from_positions,
     calculate_horoscope_period_natal_from_transits, normalize_horoscope_period_request_utc,
@@ -288,7 +288,7 @@ fn horoscope_daily_premium_calculator_emits_local_chart_and_reference_utc() {
             timezone: "Europe/Paris".to_string(),
         },
         chart_calculation_id: "123".to_string(),
-        location: Some(astral_calculator::horoscope::HoroscopeLocation {
+        location: Some(astral_calculator::features::horoscope::HoroscopeLocation {
             latitude: 48.8566,
             longitude: 2.3522,
             label: Some("Paris".to_string()),

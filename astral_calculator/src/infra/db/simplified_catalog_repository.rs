@@ -1,6 +1,6 @@
 use sqlx::PgPool;
 
-use crate::simplified::catalog::{
+use crate::features::simplified::catalog::{
     CalculationScope, InputPrecisionLevel, LimitationCode, ReliabilityLevel, SimplifiedCatalog,
     SimplifiedPolicy,
 };
@@ -96,8 +96,8 @@ pub async fn load_simplified_catalog(pool: &PgPool) -> Result<SimplifiedCatalog,
 
 pub async fn load_profile_feature_exclusions(
     pool: &PgPool,
-) -> Result<Vec<crate::simplified::catalog::ProfileFeatureExclusion>, RuntimeError> {
-    sqlx::query_as::<_, crate::simplified::catalog::ProfileFeatureExclusion>(
+) -> Result<Vec<crate::features::simplified::catalog::ProfileFeatureExclusion>, RuntimeError> {
+    sqlx::query_as::<_, crate::features::simplified::catalog::ProfileFeatureExclusion>(
         r#"
         SELECT profile_code, computed_scope_code, feature_code, exclusion_kind, sort_order
         FROM astral_simplified_profile_feature_exclusions

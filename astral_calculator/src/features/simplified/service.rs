@@ -11,7 +11,7 @@ use crate::aspects::detect_aspects;
 use crate::domain::{CalculatedChartFacts, NatalChartInput, ObjectPositionFact};
 use crate::ephemeris::EphemerisEngine;
 use crate::infra::db::models::{AspectDefinition, ChartObject};
-use crate::repositories::RuntimeRepository;
+use crate::infra::db::runtime_repository::RuntimeRepository;
 use crate::runtime::validate_calculation_references;
 use crate::runtime::RuntimeError;
 

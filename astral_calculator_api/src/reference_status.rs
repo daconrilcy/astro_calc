@@ -1,5 +1,5 @@
 use astral_calculator::config::ephemeris_path_from_env;
-use astral_calculator::repositories::RuntimeRepository;
+use astral_calculator::infra::db::runtime_repository::RuntimeRepository;
 use serde::Serialize;
 use serde_json::{json, Value};
 use sqlx::PgPool;

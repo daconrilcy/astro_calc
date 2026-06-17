@@ -1,4 +1,4 @@
-use astral_calculator::horoscope::{
+use astral_calculator::features::horoscope::{
     build_horoscope_daily_calculation_request_from_public,
     build_horoscope_period_calculation_request_from_public,
     HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE, HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,

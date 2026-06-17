@@ -1,4 +1,4 @@
-use astral_calculator::simplified::{
+use astral_calculator::features::simplified::{
     build_response, build_uncertainty_window, dedupe_preserve_order, sample_points_utc,
     validate_and_resolve, AmbiguousSignFactResponse, AstroSimplifiedNatalRequest, CalculationScope,
     CollectedSignFacts, InputPrecisionLevel, LimitationCode, ProfileFeatureExclusion,
@@ -325,7 +325,7 @@ fn llm_controls_block_ambiguous_and_allow_stable() {
 
 #[test]
 fn llm_controls_deserializes_legacy_forbidden_topics_alias() {
-    use astral_calculator::simplified::LlmPayloadControls;
+    use astral_calculator::features::simplified::LlmPayloadControls;
 
     let legacy = json!({
         "profile_code": "natal_simplified",
@@ -363,7 +363,7 @@ fn datetime_without_location_adds_limitation() {
 fn moon_can_span_multiple_signs_on_world_window() {
     use astral_calculator::config::ephemeris_path_from_env;
     use astral_calculator::domain::SignReference;
-    use astral_calculator::simplified::{build_uncertainty_window, collect_window_sign_facts};
+    use astral_calculator::features::simplified::{build_uncertainty_window, collect_window_sign_facts};
 
     let catalog = test_catalog();
     let ephemeris_path = ephemeris_path_from_env();

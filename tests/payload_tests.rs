@@ -2,7 +2,7 @@ use chrono::{TimeZone, Utc};
 use serde_json::json;
 
 use astral_calculator::domain::*;
-use astral_calculator::payload::*;
+use astral_calculator::features::payload::*;
 
 fn input() -> NatalChartInput {
     NatalChartInput {

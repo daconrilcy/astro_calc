@@ -21,7 +21,7 @@ pub fn build_period_calculation_request_for_service(
         )
     })?;
     let calculation_request =
-        astral_calculator::horoscope::build_horoscope_period_calculation_request_from_public(
+        astral_calculator::features::horoscope::build_horoscope_period_calculation_request_from_public(
             service_code,
             &payload,
         )

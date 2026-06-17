@@ -11,22 +11,21 @@ use crate::engine::{
     AstroEngineRequest, AstroEngineResponse, LLM_PROJECTION_CONTRACT_VERSION,
 };
 use crate::ephemeris::EphemerisEngine;
-use crate::horoscope::{
+use crate::features::horoscope::{
     calculate_horoscope_daily_natal, calculate_horoscope_period_natal_from_transits,
     normalize_horoscope_period_request_utc, HoroscopeCalculationRequest,
     HoroscopeCalculationResponse, HoroscopePeriodCalculationRequest,
     HoroscopePeriodCalculationResponse,
 };
 use crate::idempotency::{advisory_lock_key, idempotency_key, input_hash};
-use crate::llm_projection::resolve_projection_profile;
+use crate::features::llm_projection::resolve_projection_profile;
 use crate::infra::db::models::ChartCalculationRow;
-use crate::payload::build_basic_payload_with_accidental_references;
-use crate::repositories::RuntimeRepository;
-use crate::signals::aggregate_basic_signals;
-
-use crate::simplified::{
+use crate::features::payload::build_basic_payload_with_accidental_references;
+use crate::features::signals::aggregate_basic_signals;
+use crate::features::simplified::{
     calculate_simplified_natal, AstroSimplifiedNatalRequest, AstroSimplifiedNatalResponse,
 };
+use crate::infra::db::runtime_repository::RuntimeRepository;
 
 use crate::runtime::error::RuntimeError;
 use crate::runtime::payload_freshness::{

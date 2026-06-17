@@ -1,5 +1,5 @@
 use astral_calculator::domain::*;
-use astral_calculator::signals::*;
+use astral_calculator::features::signals::*;
 use serde_json::json;
 
 fn with_signal_scoring(mut position: ObjectPositionFact) -> ObjectPositionFact {

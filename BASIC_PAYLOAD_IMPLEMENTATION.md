@@ -1,7 +1,7 @@
 # 2026-06-16 - `astral_calculator` structural layering refactor
 
-- Added internal architecture layers for the calculator crate without changing public imports or JSON contracts: `application/`, `domain/`, `infra/db/`, and `features/`.
-- Preserved compatibility facades for `astral_calculator::domain`, `models`, `repositories`, `payload`, `payload_rules`, `payload_shared`, `runtime`, `signals`, `simplified`, `horoscope`, and `llm_projection`.
+- Added internal architecture layers for the calculator crate without changing JSON contracts: `application/`, `domain/`, `infra/db/`, and `features/`.
+- Exposed the real layered structure instead of compatibility facades: `astral_calculator::domain`, `astral_calculator::features::*`, `astral_calculator::infra::db::*`, and `astral_calculator::runtime`.
 - Split the former monolithic `domain.rs` into focused domain files for natal input, chart facts, references, scoring snapshots, and payload DTOs.
 - Moved SQL-facing models and runtime repository code under `infra/db/`, and moved the natal runtime service orchestration under `application/`.
 - Grouped functional modules under `features/` while keeping the previous public module paths intact.
@@ -21,8 +21,8 @@
 
 # 2026-06-16 - Horoscope calculator domain split
 
-- Refactored `astral_calculator::horoscope` into focused domain submodules: `contracts`, `daily`, and `period`.
-- Kept `astral_calculator::horoscope` as a thin public facade over `astral_calculator/src/features/horoscope/` so existing horoscope APIs and exported service codes remain stable.
+- Refactored horoscope support into `astral_calculator::features::horoscope` with focused submodules: `contracts`, `daily`, and `period`.
+- Removed the root horoscope facade so the crate now exposes the actual feature path.
 - Reused `astral_calculator::facts::normalize_degrees` from horoscope period logic instead of keeping duplicate math helpers inside the domain.
 - Centralized horoscope RFC3339 UTC normalization and local-time-to-UTC conversion behind one shared helper layer so `builders` and period calculation no longer maintain duplicate temporal rules.
 
@@ -53,7 +53,7 @@
 
 # DB-backed reference model coverage - 2026-06-16
 
-- Added SQLx row models in `astral_calculator/src/models.rs` for:
+- Added SQLx row models in `astral_calculator/src/infra/db/models.rs` for:
   - `horoscope_services`
   - `horoscope_time_slot_profiles`
   - `astral_time_period_profiles`
@@ -61,7 +61,7 @@
   - `horoscope_orb_weight_bands`
   - `astral_zodiacal_reference_systems`
   - `astral_coordinate_reference_systems`
-- Added repository read methods for the tables above so these seeded DB rows can be loaded directly from Postgres; the public `repositories` facade now delegates to `astral_calculator/src/infra/db/runtime_repository.rs`.
+- Added repository read methods for the tables above so these seeded DB rows can be loaded directly from Postgres in `astral_calculator/src/infra/db/runtime_repository.rs`.
 - Existing coverage already present for `astral_house_systems`, `astral_house_axis_definitions`, and `astral_llm_projection_profiles`.
 
 # Service test UI grouped execution and observability - 2026-06-15

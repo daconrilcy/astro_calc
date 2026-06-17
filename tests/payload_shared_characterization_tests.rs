@@ -5,7 +5,7 @@ use astral_calculator::domain::{
     HouseAxisReference, LunarPhaseReference, NatalChartInput, ObjectPositionFact,
 };
 use astral_calculator::domain::HouseReference;
-use astral_calculator::payload::{build_basic_payload, build_basic_payload_with_all_references};
+use astral_calculator::features::payload::{build_basic_payload, build_basic_payload_with_all_references};
 use astral_calculator::runtime::validate_house_axis_references;
 
 fn input() -> NatalChartInput {

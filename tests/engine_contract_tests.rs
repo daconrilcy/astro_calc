@@ -8,10 +8,10 @@ use astral_calculator::domain::{BasicPayload, RuntimeOptions};
 use astral_calculator::engine::{
     build_engine_response, ResolvedEngineRequest, RESPONSE_CONTRACT_VERSION,
 };
-use astral_calculator::llm_projection::{
+use astral_calculator::features::llm_projection::{
     build_llm_projection_natal_v1, is_active_major_aspect_signal, LlmProjectionBuildContext,
 };
-use astral_calculator::repositories::RuntimeRepository;
+use astral_calculator::infra::db::runtime_repository::RuntimeRepository;
 
 const V13_GOLDEN: &str = "../tests/golden/natal_payload_v13_paris_1990.json";
 const LLM_SCHEMA: &str = "schemas/llm_projection_natal_v1.schema.json";
@@ -83,7 +83,7 @@ fn sample_resolved(level: &str, payload: &BasicPayload) -> ResolvedEngineRequest
 
 fn load_profile_from_db(
     level: &str,
-) -> Option<astral_calculator::llm_projection::LlmProjectionProfile> {
+) -> Option<astral_calculator::features::llm_projection::LlmProjectionProfile> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()

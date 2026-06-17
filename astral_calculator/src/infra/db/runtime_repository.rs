@@ -835,7 +835,7 @@ impl RuntimeRepository {
         &self,
         contract_version: &str,
         level_code: &str,
-    ) -> Result<crate::llm_projection::LlmProjectionProfile, RuntimeError> {
+    ) -> Result<crate::features::llm_projection::LlmProjectionProfile, RuntimeError> {
         let row = sqlx::query_as::<_, LlmProjectionProfileRow>(
             r#"
             SELECT id,
@@ -1798,7 +1798,7 @@ impl From<ObjectSectAffinityReferenceRow> for crate::domain::ObjectSectAffinityR
     }
 }
 
-impl From<LlmProjectionProfileRow> for crate::llm_projection::LlmProjectionProfile {
+impl From<LlmProjectionProfileRow> for crate::features::llm_projection::LlmProjectionProfile {
     fn from(row: LlmProjectionProfileRow) -> Self {
         let level_code = row.level_code.clone();
         Self {
@@ -1812,11 +1812,11 @@ impl From<LlmProjectionProfileRow> for crate::llm_projection::LlmProjectionProfi
             max_dominant_objects: row.max_dominant_objects as usize,
             max_house_axes: row.max_house_axes as usize,
             max_aspects: row.max_aspects as usize,
-            max_background_placements: crate::llm_projection::default_max_background_placements(
+            max_background_placements: crate::features::llm_projection::default_max_background_placements(
                 &level_code,
             ),
             max_accidental_conditions_per_object:
-                crate::llm_projection::default_max_accidental_conditions(&level_code),
+                crate::features::llm_projection::default_max_accidental_conditions(&level_code),
             include_accidental_conditions: row.include_accidental_conditions,
             include_rulership_details: row.include_rulership_details,
             include_minor_evidence: row.include_minor_evidence,

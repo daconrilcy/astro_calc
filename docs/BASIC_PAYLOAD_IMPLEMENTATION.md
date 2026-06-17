@@ -358,22 +358,22 @@ lecture en Rust.
   majeurs (`canonical_aspect_orb_deg`, `detect_aspects`) et calcul de l'orbe
   observe, de la phase et de la force brute.
 - `astral_calculator/src/dignities.rs` : detection MVP des dignites essentielles majeures.
-- `astral_calculator/src/payload/accidental_dignities.rs` : evaluation MVP
+- `astral_calculator/src/features/payload/accidental_dignities.rs` : evaluation MVP
   des dignites accidentelles et projection vers positions, signaux et dominantes.
-- `astral_calculator/src/payload/lunar_phase.rs` : construction de
+- `astral_calculator/src/features/payload/lunar_phase.rs` : construction de
   `lunar_phase_context` depuis les references lunaires.
-- `astral_calculator/src/signals/` : construction, filtrage et
+- `astral_calculator/src/features/signals/` : construction, filtrage et
   priorisation des signaux du payload route basic.
-- `astral_calculator/src/payload/` : assemblage du payload final et de
+- `astral_calculator/src/features/payload/` : assemblage du payload final et de
   ses blocs contractuels.
-- `astral_calculator/src/repositories.rs` : persistance, relecture des
+- `astral_calculator/src/infra/db/runtime_repository.rs` : persistance, relecture des
   positions et enrichissement SQL depuis les referentiels de signes, maisons,
   objets, angles et aspects.
 - `astral_calculator/src/runtime/` : orchestration runtime,
   validation des references (`validate_aspect_definitions`,
-  `major_aspect_family_reference` dans `repositories.rs`) et regeneration des
+  `major_aspect_family_reference` dans `infra/db/runtime_repository.rs`) et regeneration des
   anciens payloads.
-- `astral_calculator/src/runtime/service.rs` : `calculate_natal_basic`
+- `astral_calculator/src/application/natal_runtime_service.rs` : `calculate_natal_basic`
   (chargement `aspect_definitions`, validation, puis calcul ephemeride).
 - `json_db/astral_accidental_dignity_condition_definitions.json` : definitions
   canoniques des 15 conditions accidentelles MVP.
@@ -382,7 +382,7 @@ lecture en Rust.
 - `json_db/astral_aspects.json` : referentiel des aspects (codes, angles, orbes).
 - `json_db/astral_aspect_families.json` : familles d'aspects,
   `expected_aspect_count` et `max_default_orb_deg`.
-- `astral_calculator/src/models.rs` : `AspectDefinition` (avec
+- `astral_calculator/src/infra/db/models.rs` : `AspectDefinition` (avec
   `max_default_orb_deg` issu du JOIN famille) et `MajorAspectFamilyReference`.
 - `scripts/patch_astral_aspects_default_orb_deg.py` : colonne et orbes
   `astral_aspects.default_orb_deg`, coherence effectif / famille.
@@ -1848,9 +1848,9 @@ Voir aussi l'etape **3G** (fin de document) pour les criteres d'acceptation de c
 
 ## Organisation du module payload
 
-`astral_calculator/src/payload.rs` a ete remplace par le dossier
-`astral_calculator/src/payload/` afin de separer les responsabilites
-sans modifier le contrat public `astral_calculator::payload`.
+La construction du payload natal est maintenant portee par
+`astral_calculator/src/features/payload/` et exposee publiquement via
+`astral_calculator::features::payload`.
 
 - `mod.rs` orchestre la construction du payload moteur route basic.
 - `angles.rs`, `chart_context.rs`, `dignities.rs`, `emphasis.rs`,
@@ -1894,7 +1894,7 @@ servir le cluster, `mc_ruler` la direction publique / carriere, et
 `descendant_ruler` la sphère relationnelle (maison 7). Ces decisions
 appartiennent a la couche LLM (`astral_llm`), pas au payload moteur.
 
-Implementation calculateur : `astral_calculator/src/payload/rulership.rs`
+Implementation calculateur : `astral_calculator/src/features/payload/rulership.rs`
 (`angle_ruler("descendant", "relationship_angle_ruler", …)`). Test :
 `basic_payload_exposes_rulership_context_from_reference_rules` dans
 `tests/payload_tests.rs`.
@@ -1960,10 +1960,9 @@ au module quand elles ne font pas partie de l'API publique.
 
 ## Organisation du module signals
 
-`astral_calculator/src/signals.rs` a ete remplace par le dossier
-`astral_calculator/src/signals/` afin de separer l'agregation des
-signaux du payload route basic par responsabilite, sans modifier l'API publique
-`astral_calculator::signals`.
+L'agregation des signaux est maintenant portee par
+`astral_calculator/src/features/signals/` et exposee publiquement via
+`astral_calculator::features::signals`.
 
 - `mod.rs` conserve l'orchestration de `aggregate_basic_signals`.
 - `constants.rs` centralise les constantes partagees du module.
@@ -2302,7 +2301,7 @@ Cas verifies dans `tests/contract_basic_v8_tests.rs` :
 
 ### Artefacts
 
-- `astral_calculator/src/payload/accidental_dignities.rs` ;
+- `astral_calculator/src/features/payload/accidental_dignities.rs` ;
 - `astral_calculator/src/runtime/payload_freshness/accidental_dignities.rs` ;
 - `astral_calculator/schemas/natal_structured_v13.schema.json` ;
 - `tests/golden/natal_payload_v13_paris_1990.json` ;
@@ -2514,9 +2513,9 @@ production et n'alimente pas `detect_aspects`.
 - `astral_calculator/src/aspects.rs` ;
 - `astral_calculator/src/runtime/references.rs` ;
 - `astral_calculator/src/runtime/mod.rs` ;
-- `astral_calculator/src/runtime/service.rs` ;
+- `astral_calculator/src/application/natal_runtime_service.rs` ;
 - `astral_calculator/src/ephemeris.rs` ;
-- `astral_calculator/src/repositories.rs` ;
+- `astral_calculator/src/infra/db/runtime_repository.rs` ;
 - `tests/common/json_db.rs` ;
 - `tests/aspects_tests.rs` ;
 - `tests/runtime_tests.rs` ;
@@ -2552,7 +2551,7 @@ niveau de projection influence le calcul brut.
 - `astral_calculator/src/engine/` : types requete/reponse, resolution
   timezone (`chrono-tz`), mapping vers `NatalChartInput`, assemblage de
   `AstroEngineResponse` ;
-- `astral_calculator/src/llm_projection/` : mapper
+- `astral_calculator/src/features/llm_projection/` : mapper
   `natal_structured_v13` → `llm_projection_natal_v1` (voir section **4B** pour
   l'architecture `builder` / `dynamics` / `clean_text` et les regles de
   humanisation) ;
@@ -3100,7 +3099,7 @@ signaux actifs, et que les tags `lunar_phase` et `sun_moon_cycle` sont presents.
 
 Les artefacts ajoutes sont:
 
-- `astral_calculator/src/payload/lunar_phase.rs`;
+- `astral_calculator/src/features/payload/lunar_phase.rs`;
 - `astral_calculator/src/runtime/payload_freshness/lunar_phase.rs`;
 - `astral_calculator/schemas/natal_structured_v12.schema.json`;
 - `tests/golden/natal_payload_v12_paris_1990.json`;
@@ -3261,7 +3260,7 @@ docker compose up -d --build
 
 ## Natal simplifié (v2.4)
 
-Moteur : `astral_calculator/src/simplified/` — résolution `input_precision`, fenêtre d'incertitude, fiabilité faits, payload `natal_simplified_structured_v1`.
+Moteur : `astral_calculator/src/features/simplified/` — résolution `input_precision`, fenêtre d'incertitude, fiabilité faits, payload `natal_simplified_structured_v1`.
 
 ### Tables canoniques (`json_db/` → Postgres)
 
@@ -3273,7 +3272,7 @@ Moteur : `astral_calculator/src/simplified/` — résolution `input_precision`, 
 | `astral_simplified_limitation_codes` | causes (`birth_time_missing`, …) |
 | `astral_fact_reliability_levels` | stable / ambiguous / reference_based / … |
 
-Repository : `load_simplified_catalog()` dans `simplified/repository.rs`.
+Repository : `load_simplified_catalog()` dans `infra/db/simplified_catalog_repository.rs`.
 
 ### Algorithme fenêtre (CS-004 / CS-005)
 
@@ -3301,7 +3300,7 @@ Repository : `load_simplified_catalog()` dans `simplified/repository.rs`.
 | `allowed_limitation_mentions` | Limitations mentionnables en UX |
 | `forbidden_interpretation_topics` | Agrégat documentaire (prompt interne) ; `forbidden_topics` reste un alias déprécié en sortie |
 
-Implémentation : `astral_calculator/src/simplified/payload.rs` (`build_llm_controls`), exclusions profil via `SimplifiedCatalog::profile_feature_exclusions_for` (DB, pas de constante Rust).
+Implémentation : `astral_calculator/src/features/simplified/payload.rs` (`build_llm_controls`), exclusions profil via `SimplifiedCatalog::profile_feature_exclusions_for` (DB, pas de constante Rust).
 
 ### Données canoniques exclusions profil (F-07)
 

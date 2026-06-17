@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::domain::BasicPayload;
-use crate::llm_projection::LlmProjectionNatalV1;
+use crate::features::llm_projection::LlmProjectionNatalV1;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AstroEngineResponse {

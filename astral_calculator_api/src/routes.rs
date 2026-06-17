@@ -2,11 +2,11 @@ use astral_calculator::config::{ephemeris_path_from_env, runtime_options_from_en
 use astral_calculator::db::connect_from_env;
 use astral_calculator::engine::AstroEngineRequest;
 use astral_calculator::ephemeris::SwissEphemerisEngine;
-use astral_calculator::horoscope::{
+use astral_calculator::features::horoscope::{
     HoroscopeCalculationRequest, HoroscopePeriodCalculationRequest,
 };
 use astral_calculator::runtime::ChartCalculationRuntimeService;
-use astral_calculator::simplified::AstroSimplifiedNatalRequest;
+use astral_calculator::features::simplified::AstroSimplifiedNatalRequest;
 use axum::{
     extract::{Path, State},
     http::StatusCode,

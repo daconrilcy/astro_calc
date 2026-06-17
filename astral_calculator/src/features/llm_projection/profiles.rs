@@ -1,5 +1,5 @@
 use super::types::{LlmEffectiveLimits, LlmProjectionLimitsEnvelope, LlmProjectionProfile};
-use crate::repositories::RuntimeRepository;
+use crate::infra::db::runtime_repository::RuntimeRepository;
 use crate::runtime::RuntimeError;
 
 pub fn profile_from_level(level: &str) -> Result<LlmProjectionProfile, RuntimeError> {

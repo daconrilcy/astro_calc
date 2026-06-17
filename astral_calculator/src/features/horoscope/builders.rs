@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::repositories::RuntimeRepository;
+use crate::infra::db::runtime_repository::RuntimeRepository;
 use crate::time::{local_to_utc, require_canonical_utc_offset};
 use chrono::{NaiveDate, NaiveTime};
 use chrono_tz::Tz;

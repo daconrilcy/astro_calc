@@ -3,7 +3,7 @@ use std::sync::OnceLock;
 
 use tokio::runtime::Handle;
 
-use crate::repositories::RuntimeRepository;
+use crate::infra::db::runtime_repository::RuntimeRepository;
 
 fn zodiac_key_by_id() -> &'static HashMap<i32, String> {
     static MAP: OnceLock<HashMap<i32, String>> = OnceLock::new();
