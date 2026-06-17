@@ -80,8 +80,9 @@ fn business_layers_do_not_use_runtime_db_shortcuts() {
     let restricted_roots = [
         root.join("domain"),
         root.join("engine"),
-        root.join("horoscope"),
-        root.join("simplified"),
+        root.join("features/natal"),
+        root.join("features/horoscope"),
+        root.join("features/simplified"),
     ];
 
     for restricted_root in restricted_roots {
@@ -99,9 +100,59 @@ fn business_layers_do_not_use_runtime_db_shortcuts() {
 }
 
 #[test]
-fn simplified_and_horoscope_do_not_import_natal_internal_calculators() {
+fn product_features_are_physically_grouped_under_features() {
+    let root = workspace_root().join("astral_calculator/src/features");
+    for feature in ["natal", "simplified", "horoscope"] {
+        let path = root.join(feature);
+        assert!(
+            path.is_dir(),
+            "missing product feature directory {}",
+            path.display()
+        );
+    }
+}
+
+#[test]
+fn legacy_root_feature_modules_are_compatibility_wrappers_only() {
     let root = workspace_root().join("astral_calculator/src");
-    for restricted_root in [root.join("simplified"), root.join("horoscope")] {
+    for feature in ["natal", "simplified", "horoscope"] {
+        let legacy_dir = root.join(feature);
+        let files = collect_rs_files(&legacy_dir);
+        assert_eq!(
+            files.len(),
+            1,
+            "legacy feature directory {} must only contain mod.rs",
+            legacy_dir.display()
+        );
+
+        let mod_path = legacy_dir.join("mod.rs");
+        assert_eq!(
+            read(&mod_path).trim(),
+            format!("pub use crate::features::{feature}::*;"),
+            "legacy feature wrapper {} must stay a pure compatibility re-export",
+            mod_path.display()
+        );
+    }
+}
+
+#[test]
+fn legacy_public_feature_paths_still_compile() {
+    let _ = std::any::type_name::<
+        astral_calculator::natal::application::NatalCalculationService<
+            astral_calculator::ephemeris::SwissEphemerisEngine,
+        >,
+    >();
+    let _ = std::any::type_name::<astral_calculator::simplified::AstroSimplifiedNatalRequest>();
+    let _ = std::any::type_name::<astral_calculator::horoscope::HoroscopeCalculationRequest>();
+}
+
+#[test]
+fn simplified_and_horoscope_do_not_import_natal_internals() {
+    let root = workspace_root().join("astral_calculator/src");
+    for restricted_root in [
+        root.join("features/simplified"),
+        root.join("features/horoscope"),
+    ] {
         for file in collect_rs_files(&restricted_root) {
             let content = read(&file);
             assert!(
@@ -112,6 +163,11 @@ fn simplified_and_horoscope_do_not_import_natal_internal_calculators() {
             assert!(
                 !content.contains("crate::natal::ephemeris"),
                 "{} imports crate::natal::ephemeris",
+                file.display()
+            );
+            assert!(
+                !content.contains("crate::features::natal::"),
+                "{} imports crate::features::natal internals",
                 file.display()
             );
         }
@@ -133,6 +189,24 @@ fn astrology_module_exists_and_feature_shared_is_not_used_for_astrology() {
         assert!(
             !content.contains("features/shared"),
             "{} references forbidden features/shared path",
+            file.display()
+        );
+    }
+}
+
+#[test]
+fn internal_code_uses_calculate_chart_instead_of_legacy_calculate_natal() {
+    let root = workspace_root().join("astral_calculator/src");
+    for file in collect_rs_files(&root) {
+        let relative = file.strip_prefix(&root).expect("relative source path");
+        if relative == Path::new("astrology").join("ephemeris.rs") {
+            continue;
+        }
+
+        let content = read(&file);
+        assert!(
+            !content.contains(".calculate_natal("),
+            "{} calls legacy EphemerisEngine::calculate_natal",
             file.display()
         );
     }
@@ -162,6 +236,10 @@ fn feature_boundary_refactor_reviews_are_closed() {
         "REV-IMPLEMENTATION-001-adversarial.md",
         "REV-IMPLEMENTATION-002-adversarial.md",
         "REV-IMPLEMENTATION-003-adversarial.md",
+        "REV-IMPLEMENTATION-004-adversarial.md",
+        "REV-IMPLEMENTATION-005-adversarial.md",
+        "REV-IMPLEMENTATION-006-adversarial.md",
+        "REV-IMPLEMENTATION-007-adversarial.md",
         "REV-FINAL.md",
     ];
 
@@ -181,4 +259,23 @@ fn feature_boundary_refactor_reviews_are_closed() {
             path.display()
         );
     }
+}
+
+#[test]
+fn general_refactor_review_for_physical_features_is_closed() {
+    let path = workspace_root()
+        .join("docs/reviews/astral_calculator_refactor/REV-PHYSICAL-FEATURES-adversarial.md");
+    assert!(path.exists(), "missing review artifact {}", path.display());
+
+    let content = read(&path);
+    assert!(
+        content.contains("Status: `closed`") || content.contains("Statut: closed"),
+        "{} is not marked closed",
+        path.display()
+    );
+    assert!(
+        content.contains("Aucun finding ouvert") || content.contains("Findings restants: Aucun"),
+        "{} does not record a zero-open-finding state",
+        path.display()
+    );
 }

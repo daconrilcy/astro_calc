@@ -4,19 +4,19 @@ use crate::engine::{
     build_engine_response, validate_and_resolve_request, validate_request_early,
     AstroEngineRequest, AstroEngineResponse, LLM_PROJECTION_CONTRACT_VERSION,
 };
-use crate::horoscope::{
+use crate::features::horoscope::{
     HoroscopeCalculationRequest, HoroscopeCalculationResponse, HoroscopePeriodCalculationRequest,
     HoroscopePeriodCalculationResponse,
 };
+use crate::features::natal::application::NatalCalculationService;
+use crate::features::simplified::application::SimplifiedNatalService;
 use crate::infra::db::{
     projection_repository::ProjectionRepository, reference_repository::ReferenceRepository,
 };
-use crate::natal::application::NatalCalculationService;
 use crate::shared::error::RuntimeError;
-use crate::simplified::application::SimplifiedNatalService;
 
-use crate::horoscope::application::HoroscopeService;
-use crate::simplified::{AstroSimplifiedNatalRequest, AstroSimplifiedNatalResponse};
+use crate::features::horoscope::application::HoroscopeService;
+use crate::features::simplified::{AstroSimplifiedNatalRequest, AstroSimplifiedNatalResponse};
 
 pub struct EngineFacadeService<E> {
     natal: NatalCalculationService<E>,

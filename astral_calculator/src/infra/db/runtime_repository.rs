@@ -9,6 +9,7 @@ use crate::domain::{
     AspectFact, BasicPayload, CalculatedChartFacts, HouseCuspFact, InterpretationSignalDraft,
     NatalChartInput, ObjectPositionFact, RuntimeOptions,
 };
+use crate::features::natal::catalog::BasicPayloadCatalog;
 use crate::infra::db::models::{
     AccidentalConditionTriggerRow, AccidentalDignityConditionReferenceRow,
     AccidentalPolarityBandRow, AccidentalScoringParamsRow, AnglePointReference, AspectDefinition,
@@ -20,7 +21,6 @@ use crate::infra::db::models::{
     MajorAspectFamilyReference, MotionStateReference, ObjectSectAffinityReferenceRow,
     PersistedAspectFact, PersistedObjectPositionFact, SignReference,
 };
-use crate::natal::catalog::BasicPayloadCatalog;
 use crate::shared::error::RuntimeError;
 
 #[derive(Clone)]

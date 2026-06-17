@@ -2,6 +2,7 @@ pub mod astrology;
 pub mod bootstrap;
 pub mod domain;
 pub mod engine;
+pub mod features;
 pub mod horoscope;
 pub mod infra;
 pub mod natal;
@@ -16,7 +17,7 @@ pub mod aspects {
 }
 
 pub mod catalog {
-    pub use crate::natal::catalog::*;
+    pub use crate::features::natal::catalog::*;
 }
 
 pub mod cli {
@@ -32,7 +33,7 @@ pub mod db {
 }
 
 pub mod dignities {
-    pub use crate::natal::dignities::*;
+    pub use crate::features::natal::dignities::*;
 }
 
 pub mod ephemeris {
@@ -41,20 +42,6 @@ pub mod ephemeris {
 
 pub mod facts {
     pub use crate::shared::astro_math::*;
-}
-
-pub mod features {
-    pub use crate::engine::projection as llm_projection;
-    pub use crate::horoscope;
-    pub use crate::simplified;
-
-    pub mod payload {
-        pub use crate::natal::payload::build::*;
-    }
-
-    pub mod signals {
-        pub use crate::natal::signals::*;
-    }
 }
 
 pub mod idempotency {

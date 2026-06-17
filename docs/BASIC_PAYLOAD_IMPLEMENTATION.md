@@ -1,3 +1,40 @@
+# 2026-06-17 - `astral_calculator` refacto physical features namespace
+
+Resume court:
+- deplacement physique des orchestrateurs produit sous `astral_calculator/src/features/`:
+  `natal`, `simplified`, `horoscope`;
+- conservation des anciens modules racine `natal`, `simplified` et `horoscope`
+  comme wrappers de compatibilite;
+- maintien des contrats publics `astral_calculator::features::*`,
+  `astral_calculator::natal::*`, `astral_calculator::simplified::*` et
+  `astral_calculator::horoscope::*`;
+- durcissement du test de gouvernance pour verifier la presence de
+  `src/features/{natal,simplified,horoscope}`, l'absence d'appels internes au
+  wrapper legacy `calculate_natal` et l'absence d'import de details `natal`
+  depuis `simplified` ou `horoscope`.
+
+Invariants de couche:
+- les features produit orchestrent les contrats, repositories, calculateurs
+  `astrology::*` et assemblages de sortie;
+- les calculs astrologiques reutilisables restent sous `astrology/`;
+- `domain` conserve les types metier stables et ne depend pas d'`infra`;
+- `infra/db` reste le seul emplacement des details SQLx;
+- les wrappers legacy ne doivent pas redevenir des lieux d'implementation.
+
+Commandes de verification:
+- `cargo fmt`
+- `cargo test -p astral_calculator --test refactor_governance_tests`
+- `cargo test -p astral_calculator`
+- `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`
+- `cargo test -p astral_calculator_api --test astral_calculator_api_tests`
+
+Review:
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-IMPLEMENTATION-004-adversarial.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-IMPLEMENTATION-005-adversarial.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-IMPLEMENTATION-006-adversarial.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-IMPLEMENTATION-007-adversarial.md`
+- `docs/reviews/astral_calculator_refactor/REV-PHYSICAL-FEATURES-adversarial.md`
+
 # 2026-06-17 - `astral_calculator` refacto feature boundaries W0-W4
 
 Resume court:

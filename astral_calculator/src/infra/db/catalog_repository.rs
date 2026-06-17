@@ -2,7 +2,7 @@ use sqlx::PgPool;
 
 use super::runtime_repository::RuntimeRepository;
 use crate::domain::{BasicProductScoringProfile, EssentialDignityRuleReference};
-use crate::natal::catalog::BasicPayloadCatalog;
+use crate::features::natal::catalog::BasicPayloadCatalog;
 use crate::shared::error::RuntimeError;
 
 #[derive(Clone)]
