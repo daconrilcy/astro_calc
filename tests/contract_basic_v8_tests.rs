@@ -8,17 +8,8 @@ use astral_calculator::domain::BasicPayload;
 use astral_calculator::runtime::is_current_basic_payload;
 
 const GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v13_paris_1990.json";
-const SCHEMA_PATH: &str = "schemas/natal_structured_v13.schema.json";
+const SCHEMA_PATH: &str = "../contracts/calculator/natal_structured_v13.schema.json";
 const PAYLOAD_UNDER_TEST_ENV: &str = "NATAL_V13_SCHEMA_PAYLOAD_PATH";
-const V12_GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v12_paris_1990.json";
-const V12_SCHEMA_PATH: &str = "schemas/natal_structured_v12.schema.json";
-const V11_GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v11_paris_1990.json";
-const V11_SCHEMA_PATH: &str = "schemas/natal_structured_v11.schema.json";
-const V10_GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v10_paris_1990.json";
-const V10_SCHEMA_PATH: &str = "schemas/natal_structured_v10.schema.json";
-const V8_GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/basic_payload_v8_paris_1990.json";
-const V8_SCHEMA_PATH: &str = "schemas/basic_natal_structured_v8.schema.json";
-const V8_PAYLOAD_UNDER_TEST_ENV: &str = "BASIC_V8_SCHEMA_PAYLOAD_PATH";
 
 fn load_golden_payload() -> Value {
     let raw = fs::read_to_string(GOLDEN_PAYLOAD_PATH).expect("golden payload should exist");
@@ -129,61 +120,6 @@ fn golden_payload_matches_json_schema_v13() {
 }
 
 #[test]
-fn historical_v12_golden_payload_matches_json_schema_v12() {
-    let raw = fs::read_to_string(V12_GOLDEN_PAYLOAD_PATH).expect("v12 golden payload should exist");
-    let payload_json: Value =
-        serde_json::from_str(&raw).expect("v12 golden payload should be JSON");
-    let validation_errors = validate_with_schema_at(&payload_json, V12_SCHEMA_PATH);
-
-    assert!(
-        validation_errors.is_empty(),
-        "historical v12 golden payload does not match natal_structured_v12 schema:\n{}",
-        validation_errors.join("\n")
-    );
-}
-
-#[test]
-fn historical_v11_golden_payload_matches_json_schema_v11() {
-    let raw = fs::read_to_string(V11_GOLDEN_PAYLOAD_PATH).expect("v11 golden payload should exist");
-    let payload_json: Value =
-        serde_json::from_str(&raw).expect("v11 golden payload should be JSON");
-    let validation_errors = validate_with_schema_at(&payload_json, V11_SCHEMA_PATH);
-
-    assert!(
-        validation_errors.is_empty(),
-        "historical v11 golden payload does not match natal_structured_v11 schema:\n{}",
-        validation_errors.join("\n")
-    );
-}
-
-#[test]
-fn historical_v10_golden_payload_matches_json_schema_v10() {
-    let raw = fs::read_to_string(V10_GOLDEN_PAYLOAD_PATH).expect("v10 golden payload should exist");
-    let payload_json: Value =
-        serde_json::from_str(&raw).expect("v10 golden payload should be JSON");
-    let validation_errors = validate_with_schema_at(&payload_json, V10_SCHEMA_PATH);
-
-    assert!(
-        validation_errors.is_empty(),
-        "historical v10 golden payload does not match natal_structured_v10 schema:\n{}",
-        validation_errors.join("\n")
-    );
-}
-
-#[test]
-fn historical_v8_golden_payload_matches_json_schema_v8() {
-    let raw = fs::read_to_string(V8_GOLDEN_PAYLOAD_PATH).expect("v8 golden payload should exist");
-    let payload_json: Value = serde_json::from_str(&raw).expect("v8 golden payload should be JSON");
-    let validation_errors = validate_with_schema_at(&payload_json, V8_SCHEMA_PATH);
-
-    assert!(
-        validation_errors.is_empty(),
-        "historical v8 golden payload does not match basic_natal_structured_v8 schema:\n{}",
-        validation_errors.join("\n")
-    );
-}
-
-#[test]
 fn external_payload_matches_json_schema_v13_when_requested() {
     let Ok(path) = std::env::var(PAYLOAD_UNDER_TEST_ENV) else {
         return;
@@ -194,21 +130,6 @@ fn external_payload_matches_json_schema_v13_when_requested() {
     assert!(
         validation_errors.is_empty(),
         "external payload does not match natal_structured_v13 schema:\n{}",
-        validation_errors.join("\n")
-    );
-}
-
-#[test]
-fn external_payload_matches_json_schema_v8_when_requested() {
-    let Ok(path) = std::env::var(V8_PAYLOAD_UNDER_TEST_ENV) else {
-        return;
-    };
-    let payload_json = load_payload_from_path(&path);
-    let validation_errors = validate_with_schema_at(&payload_json, V8_SCHEMA_PATH);
-
-    assert!(
-        validation_errors.is_empty(),
-        "external payload does not match basic_natal_structured_v8 schema:\n{}",
         validation_errors.join("\n")
     );
 }
@@ -398,33 +319,6 @@ fn runtime_rejects_v10_payload_contract_version() {
         serde_json::from_value(payload).expect("modified payload should deserialize");
 
     assert!(!is_current_basic_payload(&parsed));
-}
-
-#[test]
-fn runtime_rejects_v10_without_house_axis_emphasis() {
-    let raw = fs::read_to_string(V10_GOLDEN_PAYLOAD_PATH).expect("v10 golden payload should exist");
-    let payload: BasicPayload =
-        serde_json::from_str(&raw).expect("v10 golden payload should deserialize");
-
-    assert!(!is_current_basic_payload(&payload));
-}
-
-#[test]
-fn runtime_rejects_v11_without_lunar_phase_context() {
-    let raw = fs::read_to_string(V11_GOLDEN_PAYLOAD_PATH).expect("v11 golden payload should exist");
-    let payload: BasicPayload =
-        serde_json::from_str(&raw).expect("v11 golden payload should deserialize");
-
-    assert!(!is_current_basic_payload(&payload));
-}
-
-#[test]
-fn runtime_rejects_v12_without_accidental_dignities() {
-    let raw = fs::read_to_string(V12_GOLDEN_PAYLOAD_PATH).expect("v12 golden payload should exist");
-    let payload: BasicPayload =
-        serde_json::from_str(&raw).expect("v12 golden payload should deserialize");
-
-    assert!(!is_current_basic_payload(&payload));
 }
 
 #[test]

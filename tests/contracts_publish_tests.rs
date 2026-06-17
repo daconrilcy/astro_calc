@@ -5,7 +5,6 @@ use std::path::{Path, PathBuf};
 use astral_llm_application::SchemaRegistry;
 use astral_llm_domain::{GenerateReadingRequest, GenerateReadingResponse};
 use schemars::schema_for;
-use sha2::{Digest, Sha256};
 
 #[test]
 fn integration_schemas_exist_in_contracts_dir() {
@@ -39,85 +38,35 @@ fn repo_root() -> PathBuf {
         .expect("repo root")
 }
 
-fn sha256_file(path: &Path) -> String {
-    let bytes = fs::read(path).unwrap_or_else(|_| panic!("missing file: {}", path.display()));
-    format!("{:x}", Sha256::digest(bytes))
-}
-
-fn assert_schemas_match(source: &Path, published: &Path) {
-    assert!(
-        published.exists(),
-        "published schema missing: {}",
-        published.display()
-    );
-    assert_eq!(
-        sha256_file(source),
-        sha256_file(published),
-        "schema drift: {} vs {}",
-        source.display(),
-        published.display()
-    );
-}
-
 #[test]
-fn calculator_schemas_match_published_contracts() {
+fn calculator_schemas_exist_in_contracts_dir() {
     let root = repo_root();
-    let source_dir = root.join("astral_calculator/schemas");
-    let published_dir = root.join("contracts/calculator");
+    let dir = root.join("contracts/calculator");
 
-    let pairs = [
-        (
-            "astro_engine_request_v1.schema.json",
-            "astro_engine_request_v1.schema.json",
-        ),
-        (
-            "astro_engine_response_v1.schema.json",
-            "astro_engine_response_v1.schema.json",
-        ),
-        (
-            "natal_structured_v13.schema.json",
-            "natal_structured_v13.schema.json",
-        ),
-        (
-            "llm_projection_natal_v1.schema.json",
-            "llm_projection_natal_v1.schema.json",
-        ),
-        (
-            "astro_simplified_natal_request_v1.schema.json",
-            "astro_simplified_natal_request_v1.schema.json",
-        ),
-        (
-            "astro_simplified_natal_response_v1.schema.json",
-            "astro_simplified_natal_response_v1.schema.json",
-        ),
-        (
-            "natal_simplified_structured_v1.schema.json",
-            "natal_simplified_structured_v1.schema.json",
-        ),
-        (
-            "llm_projection_natal_simplified_v1.schema.json",
-            "llm_projection_natal_simplified_v1.schema.json",
-        ),
-        (
-            "horoscope_calculation_request.schema.json",
-            "horoscope_calculation_request.schema.json",
-        ),
-        (
-            "horoscope_calculation_response.schema.json",
-            "horoscope_calculation_response.schema.json",
-        ),
-        (
-            "horoscope_period_calculation_request.schema.json",
-            "horoscope_period_calculation_request.schema.json",
-        ),
-        (
-            "horoscope_period_calculation_response.schema.json",
-            "horoscope_period_calculation_response.schema.json",
-        ),
+    let files = [
+        "astro_engine_request_v1.schema.json",
+        "astro_engine_response_v1.schema.json",
+        "natal_structured_v13.schema.json",
+        "llm_projection_natal_v1.schema.json",
+        "astro_simplified_natal_request_v1.schema.json",
+        "astro_simplified_natal_response_v1.schema.json",
+        "natal_simplified_structured_v1.schema.json",
+        "llm_projection_natal_simplified_v1.schema.json",
+        "horoscope_calculation_request.schema.json",
+        "horoscope_calculation_response.schema.json",
+        "horoscope_period_calculation_request.schema.json",
+        "horoscope_period_calculation_response.schema.json",
     ];
 
-    for (src, dst) in pairs {
-        assert_schemas_match(&source_dir.join(src), &published_dir.join(dst));
+    for file in files {
+        let path = dir.join(file);
+        assert!(
+            path.exists(),
+            "missing calculator schema: {}",
+            path.display()
+        );
+        let _: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&path).expect("read")).expect("json");
     }
 }
 

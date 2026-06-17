@@ -8,8 +8,9 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $crateDir = Join-Path $repoRoot "astral_calculator"
-$responseSchema = Join-Path $crateDir "schemas\astro_engine_response_v1.schema.json"
-$llmSchema = Join-Path $crateDir "schemas\llm_projection_natal_v1.schema.json"
+$contractsDir = Join-Path $repoRoot "contracts\calculator"
+$responseSchema = Join-Path $contractsDir "astro_engine_response_v1.schema.json"
+$llmSchema = Join-Path $contractsDir "llm_projection_natal_v1.schema.json"
 
 function Read-JsonFile($path) {
     Get-Content -Raw -LiteralPath $path | ConvertFrom-Json

@@ -72,19 +72,12 @@ impl AppConfig {
 
 fn default_schemas_dir() -> PathBuf {
     if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
-        let candidate = PathBuf::from(&dir)
+        let candidate = PathBuf::from(dir)
             .join("..")
             .join("contracts")
             .join("calculator");
         if candidate.is_dir() {
             return candidate;
-        }
-        let fallback = PathBuf::from(dir)
-            .join("..")
-            .join("astral_calculator")
-            .join("schemas");
-        if fallback.is_dir() {
-            return fallback;
         }
     }
     PathBuf::from("contracts/calculator")

@@ -409,18 +409,10 @@ lecture en Rust.
   `json_db/astral_aspects.json` (`include_str!`) pour eviter la derive entre seed
   et tests.
 - `tests/runtime_tests.rs` : validation referentiel aspects (`validate_aspect_definitions_*`).
-- `astral_calculator/schemas/basic_natal_structured_v8.schema.json` :
-  schema JSON historique du contrat Basic v8.
-- `astral_calculator/schemas/natal_structured_v9.schema.json` :
-  schema JSON historique du contrat v9.
-- `astral_calculator/schemas/natal_structured_v10.schema.json` :
-  schema JSON historique du contrat `natal_structured_v10`.
-- `astral_calculator/schemas/natal_structured_v11.schema.json` :
-  schema JSON historique du contrat `natal_structured_v11`.
-- `astral_calculator/schemas/natal_structured_v12.schema.json` :
-  schema JSON historique du contrat `natal_structured_v12`.
-- `astral_calculator/schemas/natal_structured_v13.schema.json` :
+- `contracts/calculator/natal_structured_v13.schema.json` :
   schema JSON du contrat courant `natal_structured_v13`.
+- Les schemas historiques v8 a v12 ont ete retires du depot lors de la
+  centralisation des contrats calculateur sous `contracts/calculator`.
 - `tests/golden/basic_payload_v8_paris_1990.json` : fixture golden historique
   du contrat Basic v8.
 - `tests/golden/natal_payload_v9_paris_1990.json` : fixture golden du contrat
@@ -435,17 +427,11 @@ lecture en Rust.
   courant v13 (`chart_calculation_id: 27`).
 - `tests/contract_basic_v8_tests.rs` : validation schema, golden et invariants
   metier non negociables pour le contrat courant v13.
-- `scripts/verify_basic_v8_golden.ps1` : verification CI/local de projection
-  stable historique v8. Ce script ne regenere plus le payload courant ; il
-  valide le golden v8 conserve, ou un fichier v8 fourni explicitement.
-- `scripts/verify_natal_v9_golden.ps1` : verification CI/local de projection
-  stable historique v9 apres regeneration du payload par le moteur.
-- `scripts/verify_natal_v10_golden.ps1` : verification CI/local historique de
-  projection stable v10 apres regeneration du payload par le moteur.
-- `scripts/verify_natal_v11_golden.ps1` : verification CI/local historique de
-  projection stable v11 apres regeneration du payload par le moteur.
-- `scripts/verify_natal_v12_golden.ps1` : verification CI/local historique de
-  projection stable v12.
+- `scripts/verify_basic_v8_golden.ps1`, `scripts/verify_natal_v9_golden.ps1`,
+  `scripts/verify_natal_v10_golden.ps1`, `scripts/verify_natal_v11_golden.ps1`
+  et `scripts/verify_natal_v12_golden.ps1` : comparaisons historiques de
+  projection golden, sans validation JSON Schema depuis le retrait des schemas
+  v8 a v12.
 - `scripts/verify_natal_v13_golden.ps1` : verification CI/local de projection
   stable v13 apres regeneration du payload par le moteur (`signal_keys` triees
   avant diff).
@@ -1378,7 +1364,7 @@ Depuis l'etape 3E, `natal_structured_v13` est le contrat
 courant verrouille par trois niveaux complementaires :
 
 - le JSON Schema
-  `astral_calculator/schemas/natal_structured_v13.schema.json`
+  `contracts/calculator/natal_structured_v13.schema.json`
   valide la forme du contrat moteur, les blocs obligatoires, les quatre angles,
   les bornes de score, `chart_context`, `house_axis_emphasis`,
   `lunar_phase_context`, `accidental_dignities`,
@@ -1388,8 +1374,7 @@ courant verrouille par trois niveaux complementaires :
 - la fixture `tests/golden/natal_payload_v13_paris_1990.json` conserve un
   payload complet de reference pour le scenario Paris 1990 ;
 - `tests/contract_basic_v8_tests.rs` valide les invariants metier du contrat
-  courant v13 et conserve aussi une validation schema des goldens historiques
-  v8, v10, v11 et v12.
+  courant v13.
 
 `natal_structured_v12` reste historique avec `lunar_phase_context` uniquement.
 
@@ -1397,7 +1382,7 @@ Avant 3E, `natal_structured_v12` etait le contrat courant verrouille par trois
 niveaux complementaires :
 
 - le JSON Schema
-  `astral_calculator/schemas/natal_structured_v12.schema.json`
+  historique v12, retire du depot lors de la centralisation des contrats,
   valide la forme du contrat moteur, les blocs obligatoires, les quatre angles,
   les bornes de score, `chart_context`, `house_axis_emphasis`,
   `lunar_phase_context` et les contraintes schema exprimables.
@@ -1407,8 +1392,8 @@ niveaux complementaires :
   ou sans flag `is_visible` booleen ;
 - la fixture `tests/golden/natal_payload_v12_paris_1990.json` conserve un
   payload complet de reference pour le scenario Paris 1990 ;
-- `tests/contract_basic_v8_tests.rs` valide les invariants metier du contrat
-  courant v12 et conserve aussi une validation schema des goldens historiques v8, v10 et v11 :
+- `tests/contract_basic_v8_tests.rs` validait alors les invariants metier du
+  contrat courant v12 et des goldens historiques v8, v10 et v11 :
   sources de plan existantes, absence d'aspect angle-angle actif, conservation
   de `aspect:jupiter:uranus:opposition`, unicite des signaux primaires et
   garde-fous contre des sections autonomes `chart_emphasis` / `chart_context`,
@@ -1438,20 +1423,12 @@ verification. Il peut aussi comparer un fichier deja genere via :
 .\scripts\verify_natal_v13_golden.ps1 -GeneratedPayloadPath .\output\basic_payload_current.json
 ```
 
-`scripts/verify_natal_v12_golden.ps1` reste disponible pour le golden historique
-v12.
-
-Le script `scripts/verify_basic_v8_golden.ps1` reste disponible uniquement pour
-valider le golden historique v8 ou un fichier v8 fourni explicitement. Il ne
+Les scripts historiques v8 a v12 restent disponibles pour comparer une
+projection golden, mais ils ne lancent plus de validation JSON Schema depuis le
+retrait des schemas historiques. `scripts/verify_basic_v8_golden.ps1` ne
 regenere plus de payload depuis le moteur courant, car celui-ci produit
 desormais `natal_structured_v13` lorsque les references lunaires, accidentelles
 et secte sont chargees.
-Le script `scripts/verify_natal_v11_golden.ps1` reste disponible pour le golden
-historique v11.
-Le script `scripts/verify_natal_v9_golden.ps1` reste disponible pour le golden
-historique v9.
-Le script `scripts/verify_natal_v10_golden.ps1` reste disponible pour le golden
-historique v10.
 
 ## Annexe historique - handoff LLM retire
 
@@ -1963,7 +1940,8 @@ avec d'anciennes sources de maitrise est rejete et reconstruit.
 
 Artefacts ajoutes:
 
-- `astral_calculator/schemas/natal_structured_v10.schema.json`;
+- schema historique `natal_structured_v10` retire du depot lors de la
+  centralisation des contrats calculateur ;
 - `tests/golden/natal_payload_v10_paris_1990.json`;
 - `scripts/verify_natal_v10_golden.ps1`.
 
@@ -2135,7 +2113,8 @@ incomplete ou incoherente echoue donc avant persistance d'un payload v11.
 
 Artefacts historiques de l'etape 3C :
 
-- `astral_calculator/schemas/natal_structured_v11.schema.json`;
+- schema historique `natal_structured_v11` retire du depot lors de la
+  centralisation des contrats calculateur ;
 - `tests/golden/natal_payload_v11_paris_1990.json`;
 - `scripts/verify_natal_v11_golden.ps1`;
 - tests de non-regression dans `tests/payload_tests.rs`,
@@ -2317,7 +2296,7 @@ Cas verifies dans `tests/contract_basic_v8_tests.rs` :
 
 - `astral_calculator/src/features/payload/accidental_dignities.rs` ;
 - `astral_calculator/src/runtime/payload_freshness/accidental_dignities.rs` ;
-- `astral_calculator/schemas/natal_structured_v13.schema.json` ;
+- `contracts/calculator/natal_structured_v13.schema.json` ;
 - `tests/golden/natal_payload_v13_paris_1990.json` ;
 - `scripts/verify_natal_v13_golden.ps1` ;
 - tests dans `tests/payload_tests.rs`, `tests/runtime_tests.rs`,
@@ -2543,13 +2522,13 @@ niveau de projection influence le calcul brut.
 
 ### Contrats JSON
 
-- `astral_calculator/schemas/astro_engine_request_v1.schema.json` :
+- `contracts/calculator/astro_engine_request_v1.schema.json` :
   entree moteur (`calculation.type`, `birth.date/time/timezone`, localisation,
   `projection.level`) ;
-- `astral_calculator/schemas/astro_engine_response_v1.schema.json` :
+- `contracts/calculator/astro_engine_response_v1.schema.json` :
   enveloppe de sortie (`request_echo`, `calculation_result`, `audit_payload`,
   `llm_payload`) ;
-- `astral_calculator/schemas/llm_projection_natal_v1.schema.json` :
+- `contracts/calculator/llm_projection_natal_v1.schema.json` :
   structure fixe de la projection LLM (cles stables ; la richesse varie par
   tableaux et limites, pas par schema).
 
@@ -3115,7 +3094,8 @@ Les artefacts ajoutes sont:
 
 - `astral_calculator/src/features/payload/lunar_phase.rs`;
 - `astral_calculator/src/runtime/payload_freshness/lunar_phase.rs`;
-- `astral_calculator/schemas/natal_structured_v12.schema.json`;
+- schema historique `natal_structured_v12` retire du depot lors de la
+  centralisation des contrats calculateur ;
 - `tests/golden/natal_payload_v12_paris_1990.json`;
 - `scripts/verify_natal_v12_golden.ps1`;
 - tests de non-regression dans `tests/payload_tests.rs`,

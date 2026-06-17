@@ -14,9 +14,9 @@ use astral_calculator::features::llm_projection::{
 use astral_calculator::infra::db::projection_repository::ProjectionRepository;
 
 const V13_GOLDEN: &str = "../tests/golden/natal_payload_v13_paris_1990.json";
-const LLM_SCHEMA: &str = "schemas/llm_projection_natal_v1.schema.json";
-const REQUEST_SCHEMA: &str = "schemas/astro_engine_request_v1.schema.json";
-const RESPONSE_SCHEMA: &str = "schemas/astro_engine_response_v1.schema.json";
+const LLM_SCHEMA: &str = "../contracts/calculator/llm_projection_natal_v1.schema.json";
+const REQUEST_SCHEMA: &str = "../contracts/calculator/astro_engine_request_v1.schema.json";
+const RESPONSE_SCHEMA: &str = "../contracts/calculator/astro_engine_response_v1.schema.json";
 const ENGINE_RESPONSE_GOLDEN_RICH: &str =
     "../tests/golden/astro_engine_response_v1_paris_1990_rich.json";
 
