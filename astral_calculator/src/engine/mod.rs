@@ -1,7 +1,9 @@
+pub mod application;
 mod request;
 #[allow(dead_code)]
 pub mod calculation_refs;
 pub mod env;
+pub mod projection;
 mod resolve;
 mod response;
 
@@ -25,8 +27,8 @@ pub use response::{
 };
 
 use crate::domain::{BasicPayload, RuntimeOptions};
-use crate::features::llm_projection::{build_llm_projection_natal_v1, LlmProjectionBuildContext};
-use crate::runtime::RuntimeError;
+use crate::engine::projection::{build_llm_projection_natal_v1, LlmProjectionBuildContext};
+use crate::shared::error::RuntimeError;
 
 #[allow(clippy::too_many_arguments)]
 pub fn build_engine_response(
@@ -37,7 +39,7 @@ pub fn build_engine_response(
     coordinate_label: &str,
     house_system_label: &str,
     house_axes: &[crate::domain::HouseAxisReference],
-    profile: &crate::features::llm_projection::LlmProjectionProfile,
+    profile: &crate::engine::projection::LlmProjectionProfile,
 ) -> Result<AstroEngineResponse, RuntimeError> {
     let raw_contract = audit
         .chart_context

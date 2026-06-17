@@ -11,7 +11,7 @@ use astral_calculator::engine::{
 use astral_calculator::features::llm_projection::{
     build_llm_projection_natal_v1, is_active_major_aspect_signal, LlmProjectionBuildContext,
 };
-use astral_calculator::infra::db::runtime_repository::RuntimeRepository;
+use astral_calculator::infra::db::projection_repository::ProjectionRepository;
 
 const V13_GOLDEN: &str = "../tests/golden/natal_payload_v13_paris_1990.json";
 const LLM_SCHEMA: &str = "schemas/llm_projection_natal_v1.schema.json";
@@ -90,7 +90,7 @@ fn load_profile_from_db(
         .expect("tokio runtime");
     runtime.block_on(async {
         let pool = astral_calculator::db::connect_from_env().await.ok()?;
-        let repository = RuntimeRepository::new(pool);
+        let repository = ProjectionRepository::new(pool);
         repository
             .llm_projection_profile("llm_projection_natal_v1", level)
             .await

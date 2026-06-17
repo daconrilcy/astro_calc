@@ -3,7 +3,7 @@ use std::sync::OnceLock;
 
 use tokio::runtime::Handle;
 
-use crate::infra::db::runtime_repository::RuntimeRepository;
+use crate::infra::db::reference_repository::ReferenceRepository;
 
 fn zodiac_key_by_id() -> &'static HashMap<i32, String> {
     static MAP: OnceLock<HashMap<i32, String>> = OnceLock::new();
@@ -20,10 +20,10 @@ fn house_code_by_id() -> &'static HashMap<i32, String> {
     MAP.get_or_init(load_house_code_by_id)
 }
 
-fn load_repository() -> RuntimeRepository {
-    let pool = run_blocking(crate::db::connect_from_env())
+fn load_repository() -> ReferenceRepository {
+    let pool = run_blocking(crate::bootstrap::db::connect_from_env())
         .expect("database must be reachable for engine refs");
-    RuntimeRepository::new(pool)
+    ReferenceRepository::new(pool)
 }
 
 fn run_blocking<F, T>(future: F) -> Result<T, sqlx::Error>

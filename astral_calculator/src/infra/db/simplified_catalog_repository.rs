@@ -1,16 +1,16 @@
 use sqlx::PgPool;
 
-use crate::features::simplified::catalog::{
+use crate::simplified::catalog::{
     CalculationScope, InputPrecisionLevel, LimitationCode, ReliabilityLevel, SimplifiedCatalog,
     SimplifiedPolicy,
 };
-use crate::runtime::RuntimeError;
+use crate::shared::error::RuntimeError;
 
 fn map_catalog_db_error(err: sqlx::Error) -> RuntimeError {
     let msg = err.to_string();
     if msg.contains("does not exist") {
         RuntimeError::InvalidRuntimeTable(format!(
-            "simplified natal catalog tables missing in database — run: python scripts/import_json_db_to_postgres.py ({msg})"
+            "simplified natal catalog tables missing in database â€” run: python scripts/import_json_db_to_postgres.py ({msg})"
         ))
     } else {
         RuntimeError::Database(err)
@@ -96,8 +96,8 @@ pub async fn load_simplified_catalog(pool: &PgPool) -> Result<SimplifiedCatalog,
 
 pub async fn load_profile_feature_exclusions(
     pool: &PgPool,
-) -> Result<Vec<crate::features::simplified::catalog::ProfileFeatureExclusion>, RuntimeError> {
-    sqlx::query_as::<_, crate::features::simplified::catalog::ProfileFeatureExclusion>(
+) -> Result<Vec<crate::simplified::catalog::ProfileFeatureExclusion>, RuntimeError> {
+    sqlx::query_as::<_, crate::simplified::catalog::ProfileFeatureExclusion>(
         r#"
         SELECT profile_code, computed_scope_code, feature_code, exclusion_kind, sort_order
         FROM astral_simplified_profile_feature_exclusions

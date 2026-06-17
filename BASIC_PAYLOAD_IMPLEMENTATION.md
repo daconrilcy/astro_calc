@@ -1,3 +1,24 @@
+# 2026-06-17 - `astral_calculator` refacto structurelle par contextes metier
+
+- Recompose `astral_calculator/src` autour des contextes explicites `bootstrap/`, `shared/`, `natal/`, `simplified/`, `horoscope/` et `engine/`.
+- Deplace les anciens fichiers racine `cli.rs`, `config.rs`, `db.rs`, `time.rs`, `idempotency.rs`, `facts.rs`, `aspects.rs`, `dignities.rs`, `ephemeris.rs` et `catalog.rs` dans leurs contextes cibles, avec facades de compatibilite minimales conservees dans `lib.rs`.
+- Fusionne les zones de payload natal sous `natal/payload/`:
+  `build/` pour la construction,
+  `rules/` pour les invariants partages,
+  `validate/` pour les controles de fraicheur/reutilisation.
+- Remplace l’orchestration monolithique par des services explicites:
+  `natal::application::NatalCalculationService`,
+  `simplified::application::SimplifiedNatalService`,
+  `horoscope::application::HoroscopeService`,
+  `engine::application::EngineFacadeService`.
+- Scinde l’acces DB par responsabilite via `ReferenceRepository`, `CatalogRepository`, `CalculationRepository`, `ProjectionRepository` et `HoroscopeRepository`, tout en conservant le SQL existant.
+- Reduit `runtime` a une facade de compatibilite mince vers les nouveaux modules.
+- Nettoie les vestiges non compiles de l’ancienne topologie (`src/features`, `src/application`, `src/engine_env.rs`, ancien `runtime/payload_freshness.rs`).
+- Verification executee:
+  `cargo check -p astral_calculator`
+  `cargo test -p astral_calculator`
+  `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`
+
 # 2026-06-16 - `astral_calculator` structural layering refactor
 
 - Added internal architecture layers for the calculator crate without changing JSON contracts: `application/`, `domain/`, `infra/db/`, and `features/`.

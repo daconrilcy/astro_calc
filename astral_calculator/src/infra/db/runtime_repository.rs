@@ -1,7 +1,7 @@
 use serde_json::Value;
 use sqlx::{PgPool, Postgres, Transaction};
 
-use crate::catalog::BasicPayloadCatalog;
+use crate::natal::catalog::BasicPayloadCatalog;
 use crate::domain::{
     AccidentalConditionTrigger, AccidentalPolarityBand, AccidentalScoringParams,
     BasicProductScoringProfile, EssentialDignityRuleReference,
@@ -21,7 +21,7 @@ use crate::infra::db::models::{
     MajorAspectFamilyReference, MotionStateReference, ObjectSectAffinityReferenceRow,
     PersistedAspectFact, PersistedObjectPositionFact, SignReference,
 };
-use crate::runtime::RuntimeError;
+use crate::shared::error::RuntimeError;
 
 #[derive(Clone)]
 pub struct RuntimeRepository {
@@ -835,7 +835,7 @@ impl RuntimeRepository {
         &self,
         contract_version: &str,
         level_code: &str,
-    ) -> Result<crate::features::llm_projection::LlmProjectionProfile, RuntimeError> {
+    ) -> Result<crate::engine::projection::LlmProjectionProfile, RuntimeError> {
         let row = sqlx::query_as::<_, LlmProjectionProfileRow>(
             r#"
             SELECT id,
@@ -1044,26 +1044,6 @@ impl RuntimeRepository {
             ));
         };
         Ok(serde_json::from_value(value)?)
-    }
-
-    pub async fn active_signals(
-        &self,
-        chart_calculation_id: i32,
-    ) -> Result<Vec<InterpretationSignalRow>, RuntimeError> {
-        Ok(sqlx::query_as::<_, InterpretationSignalRow>(
-            r#"
-            SELECT id, signal_key, theme_code, title, summary,
-                   priority_score::float8 AS priority_score,
-                   confidence_score::float8 AS confidence_score, payload_json
-            FROM astral_interpretation_signals
-            WHERE chart_calculation_id = $1 AND suppression_state = 'active'
-            ORDER BY priority_score DESC, id
-            LIMIT 12
-            "#,
-        )
-        .bind(chart_calculation_id)
-        .fetch_all(&self.pool)
-        .await?)
     }
 
     pub async fn aspects_for_payload(
@@ -1798,7 +1778,7 @@ impl From<ObjectSectAffinityReferenceRow> for crate::domain::ObjectSectAffinityR
     }
 }
 
-impl From<LlmProjectionProfileRow> for crate::features::llm_projection::LlmProjectionProfile {
+impl From<LlmProjectionProfileRow> for crate::engine::projection::LlmProjectionProfile {
     fn from(row: LlmProjectionProfileRow) -> Self {
         let level_code = row.level_code.clone();
         Self {
@@ -1812,11 +1792,11 @@ impl From<LlmProjectionProfileRow> for crate::features::llm_projection::LlmProje
             max_dominant_objects: row.max_dominant_objects as usize,
             max_house_axes: row.max_house_axes as usize,
             max_aspects: row.max_aspects as usize,
-            max_background_placements: crate::features::llm_projection::default_max_background_placements(
+            max_background_placements: crate::engine::projection::default_max_background_placements(
                 &level_code,
             ),
             max_accidental_conditions_per_object:
-                crate::features::llm_projection::default_max_accidental_conditions(&level_code),
+                crate::engine::projection::default_max_accidental_conditions(&level_code),
             include_accidental_conditions: row.include_accidental_conditions,
             include_rulership_details: row.include_rulership_details,
             include_minor_evidence: row.include_minor_evidence,

@@ -3,7 +3,7 @@ use chrono_tz::Tz;
 
 use crate::domain::NatalChartInput;
 use crate::engine::request::{AstroEngineRequest, REQUEST_CONTRACT_VERSION};
-use crate::runtime::RuntimeError;
+use crate::shared::error::RuntimeError;
 
 pub struct ResolvedEngineRequest {
     pub natal_input: NatalChartInput,
