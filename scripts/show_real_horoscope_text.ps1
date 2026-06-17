@@ -124,7 +124,7 @@ if ($natalRequest.projection -and $natalRequest.projection.level) {
 }
 
 Write-Host "Calculating natal chart..." -ForegroundColor Cyan
-$natalResponse = Invoke-AstralJson -Method Post -Uri "$CalculatorUrl/v1/calculations/natal" -Headers $calculatorHeaders -Body $natalRequest
+$natalResponse = Invoke-AstralJson -Method Post -Uri "$CalculatorUrl/v1/internal/calculations/natal" -Headers $calculatorHeaders -Body $natalRequest
 if ($natalResponse.response_contract_version -ne "astro_engine_response_v1") {
     throw "Unexpected natal response contract: $($natalResponse.response_contract_version)"
 }

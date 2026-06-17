@@ -674,7 +674,7 @@ function Test-SimplifiedCatalogReady {
         request_contract_version = "astro_simplified_natal_request_v1"
         birth                    = [ordered]@{ date = "1990-06-15" }
     }
-    $uri = "$($CalculatorBase.TrimEnd('/'))/v1/calculations/natal/simplified"
+    $uri = "$($CalculatorBase.TrimEnd('/'))/v1/internal/calculations/natal/simplified"
     $result = Invoke-AstralHttpWithStatus -Method Post -Uri $uri -Headers $Headers -Body $probe -TimeoutSec 30
 
     if ($result.Ok) { return $null }

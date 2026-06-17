@@ -3704,6 +3704,49 @@ Reviews :
 - `docs/reviews/astral_calculator_refactor/REV-CALCULATOR-INTERNAL-API-SURFACE-2026-06-17.md`
 - `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-CALCULATOR-INTERNAL-API-SURFACE-2026-06-17.md`
 
+## Refacto consommateurs API calculateur internes (2026-06-17)
+
+Deuxieme vague sans breaking change : les scripts, E2E, helpers et outils de
+developpement qui appellent directement le calculateur utilisent desormais les
+routes canoniques `/v1/internal/calculations/*`. Les anciens endpoints
+`/v1/calculations/*` restent actifs uniquement pour compatibilite, contrats
+OpenAPI, tests legacy et documentation de transition.
+
+Invariants de couche :
+
+- Les nouveaux consommateurs internes du calculateur utilisent
+  `/v1/internal/calculations/*`.
+- Les aliases `/v1/calculations/*` ne sont pas supprimes et restent testes.
+- Aucun payload JSON, port Docker, nom de crate, service ou conteneur ne change.
+- `astral_gateway` reste la facade publique recommandee pour les appels
+  externes.
+- Un test de gouvernance interdit le retour des anciens chemins dans les
+  consommateurs internes courants, avec une allowlist stricte pour la
+  compatibilite.
+
+Verification :
+
+```powershell
+cargo test -p astral_calculator_api --test astral_calculator_api_tests
+cargo test -p astral_calculator_api --test astral_calculator_api_unit_regression_tests
+cargo test -p astral_calculator --test refactor_governance_tests
+cargo test -p astral_gateway
+cargo test -p astral_llm_api --test integration_jobs_tests
+cargo test -p astral_llm_api --test astral_llm_tests
+```
+
+Optionnel Docker :
+
+```powershell
+.\scripts\docker_compose_smoke.ps1
+.\scripts\test_natal_simplified_calculator.ps1
+```
+
+Reviews :
+
+- `docs/reviews/astral_calculator_refactor/REV-CALCULATOR-INTERNAL-CONSUMERS-2026-06-17.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-CALCULATOR-INTERNAL-CONSUMERS-2026-06-17.md`
+
 ## Branchement text_reprocessing service par service (2026-06-08)
 
 Le module `text_reprocessing` est branche progressivement via

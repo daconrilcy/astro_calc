@@ -1,0 +1,36 @@
+# Review adversariale - frontieres consommateurs internes calculateur
+
+Date: 2026-06-17
+Statut: closed
+
+## Perimetre
+
+Validation des frontieres de couche pour la vague de migration des consommateurs
+internes vers `/v1/internal/calculations/*`.
+
+## Cycle 1
+
+### Findings
+
+- P2 - Les mentions de compatibilite du guide Docker avaient ete migrees par
+  erreur vers le chemin canonique interne, ce qui brouillait la distinction
+  entre facade interne courante et alias legacy.
+
+### Corrections
+
+- Les docs de compatibilite conservent explicitement `/v1/calculations/*`.
+- Les scripts, E2E, helpers et outils de dev utilisent les routes canoniques
+  internes.
+- Aucun appel HTTP n'a ete introduit dans `astral_calculator`; le moteur reste
+  independant d'Axum et de la surface API.
+- Aucun changement de payload, port Docker, crate, service ou conteneur.
+
+## Cycle 2
+
+### Findings
+
+Aucun finding ouvert.
+
+## Conclusion
+
+Aucun finding ouvert.

@@ -212,7 +212,7 @@ $chartCalculationId = $UseExistingChartCalculationId
 if ([string]::IsNullOrWhiteSpace($chartCalculationId)) {
     $natalRequestPath = Join-Path $repoRoot "contracts\integration\examples\natal_calculation_request_v1.paris_1990.json"
     $natalRequest = Get-Content -LiteralPath $natalRequestPath -Raw | ConvertFrom-Json
-    $natalResponse = Invoke-AstralJson -Method Post -Uri "$CalculatorUrl/v1/calculations/natal" -Headers $calcHeaders -Body $natalRequest
+    $natalResponse = Invoke-AstralJson -Method Post -Uri "$CalculatorUrl/v1/internal/calculations/natal" -Headers $calcHeaders -Body $natalRequest
     if ($natalResponse.calculation_result.status -ne "completed") {
         throw "Natal calculation did not complete"
     }

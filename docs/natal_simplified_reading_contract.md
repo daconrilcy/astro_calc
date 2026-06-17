@@ -139,7 +139,7 @@ Retournée uniquement lorsque le calculateur a répondu **200** et que la géné
 
 | Endpoint | HTTP | Code métier | Enveloppe `{ calculation, reading }` |
 |----------|------|-------------|----------------------------------------|
-| `POST /v1/calculations/natal/simplified` | **422** | `VALIDATION_FAILED` | Non (error_response_v1) |
+| `POST /v1/internal/calculations/natal/simplified` | **422** | `VALIDATION_FAILED` | Non (error_response_v1) |
 | `POST /v1/readings/natal/simplified` | **400** | `INVALID_INPUT` | Non (error_response_v1) |
 
 Recette historique fermee : **12/12** calculateur (7 positifs + 5 négatifs **422**), **7/7** lectures positives, **5/5** négatifs orchestration **400**.
@@ -174,7 +174,7 @@ Validation gateway (`validate_simplified_calculation_request`) ou rejet calculat
 Cas concernés : contrat obsolète, format date (`not-a-date`), lieu sans lat/lon, heure sans timezone.  
 Une date calendaire impossible (`2024-02-30`) passe le format gateway mais est rejetée par le **calculateur** (même chemin 400 avec détail calculateur dans `error.details`).
 
-### Calculateur seul (`POST /v1/calculations/natal/simplified`)
+### Calculateur seul (`POST /v1/internal/calculations/natal/simplified`)
 
 Erreurs métier entrée → **422** `VALIDATION_FAILED` (format, date impossible, coordonnées, contrat, heure sans timezone). Voir scripts `test_natal_simplified_calculator.ps1` (cas négatifs).
 

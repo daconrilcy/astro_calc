@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Tests HTTP reels — POST /v1/calculations/natal/simplified (tous les cas positifs + negatifs).
+    Tests HTTP reels — POST /v1/internal/calculations/natal/simplified (tous les cas positifs + negatifs).
 
 .DESCRIPTION
     Valide la matrice input_precision / computed_scope, llm_payload, limitations et erreurs 422 (calculateur seul).
@@ -71,7 +71,7 @@ $failed = 0
 $failuresAll = [System.Collections.Generic.List[string]]::new()
 
 foreach ($testCase in $cases) {
-    $uri = "$($CalculatorBase.TrimEnd('/'))/v1/calculations/natal/simplified"
+    $uri = "$($CalculatorBase.TrimEnd('/'))/v1/internal/calculations/natal/simplified"
     $result = Invoke-AstralHttpWithStatus -Method Post -Uri $uri -Headers $headers -Body $testCase.Request -TimeoutSec $TimeoutSec
 
     if ($testCase.ExpectedStatus) {

@@ -566,7 +566,7 @@ $headers = @{
   "Authorization" = "Bearer ma-cle-calculateur-secrete"
 }
 $body = Get-Content contracts/integration/examples/natal_calculation_request_v1.paris_1990.json -Raw
-Invoke-RestMethod -Method Post -Uri "http://localhost:8080/v1/calculations/natal" -Headers $headers -Body $body
+Invoke-RestMethod -Method Post -Uri "http://localhost:8080/v1/internal/calculations/natal" -Headers $headers -Body $body
 ```
 
 Réponse attendue : `response_contract_version: astro_engine_response_v1`, `calculation_result.status: completed`.
@@ -585,7 +585,7 @@ $body = @{
   birth = @{ date = "1990-06-15" }
 } | ConvertTo-Json -Depth 5
 
-Invoke-RestMethod -Method Post -Uri "http://localhost:8080/v1/calculations/natal/simplified" `
+Invoke-RestMethod -Method Post -Uri "http://localhost:8080/v1/internal/calculations/natal/simplified" `
   -Headers $headers -Body $body
 ```
 
@@ -784,7 +784,7 @@ En Docker Compose, définissez **les deux clés** dans `.env` avant le premier `
 
 **Natal simplifié — même payload invalide, code HTTP selon l'endpoint :**
 
-- `POST /v1/calculations/natal/simplified` → **422** `VALIDATION_FAILED`
+- `POST /v1/internal/calculations/natal/simplified` → **422** `VALIDATION_FAILED`
 - `POST /v1/readings/natal/simplified` → route retiree du runtime courant
 
 Les erreurs **métier de génération** (échec LLM après acceptation de la requête) utilisent plutôt `generate_reading_response_v1` avec `status: failed`.

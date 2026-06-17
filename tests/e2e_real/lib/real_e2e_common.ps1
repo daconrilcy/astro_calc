@@ -131,7 +131,7 @@ function Invoke-E2ENatalCalculation {
         [Parameter(Mandatory = $true)][hashtable]$Headers
     )
     $request = New-E2ENatalEngineRequest -RepoRoot $RepoRoot
-    $response = Invoke-AstralJson -Method Post -Uri "$CalculatorUrl/v1/calculations/natal" -Headers $Headers -Body $request
+    $response = Invoke-AstralJson -Method Post -Uri "$CalculatorUrl/v1/internal/calculations/natal" -Headers $Headers -Body $request
     if ($response.response_contract_version -ne "astro_engine_response_v1") {
         throw "Unexpected natal response contract"
     }

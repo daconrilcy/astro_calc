@@ -25,7 +25,7 @@ bootstrap, de seed et de verification golden dans `scripts/` :
 Manques couverts par ce dossier :
 
 - regroupement dedie des E2E reels HTTP Docker ;
-- couverture directe du calculateur `POST /v1/calculations/horoscope/daily-natal` ;
+- couverture directe du calculateur `POST /v1/internal/calculations/horoscope/daily-natal` ;
 - verification dynamique de tous les services `active` / `beta` exposes par
   `GET /v1/services` ;
 - runner unique pour lancer toute la suite E2E reelle.

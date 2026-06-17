@@ -440,7 +440,7 @@
     if (state.natalChartByFingerprint && state.natalChartByFingerprint.fingerprint === fingerprint) {
       return state.natalChartByFingerprint.chartCalculationId;
     }
-    const response = await apiFetch("/api/calculator/v1/calculations/natal", {
+    const response = await apiFetch("/api/calculator/v1/internal/calculations/natal", {
       method: "POST",
       body: JSON.stringify(buildCalculatorNatalPayload(input)),
     });

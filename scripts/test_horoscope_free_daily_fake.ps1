@@ -26,7 +26,7 @@ if (-not (Test-Path -LiteralPath $natalRequestPath)) {
     throw "Fixture introuvable : $natalRequestPath"
 }
 $natalRequest = Get-Content -LiteralPath $natalRequestPath -Raw | ConvertFrom-Json
-$natalResponse = Invoke-AstralJson -Method Post -Uri "$CalculatorUrl/v1/calculations/natal" -Headers $calcHeaders -Body $natalRequest
+$natalResponse = Invoke-AstralJson -Method Post -Uri "$CalculatorUrl/v1/internal/calculations/natal" -Headers $calcHeaders -Body $natalRequest
 if ($natalResponse.calculation_result.status -ne "completed") {
     throw "Natal calculation did not complete"
 }

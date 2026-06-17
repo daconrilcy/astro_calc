@@ -29,6 +29,50 @@ fn collect_rs_files_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
     }
 }
 
+fn collect_governance_text_files(root: &Path) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+    collect_governance_text_files_recursive(root, &mut files);
+    files
+}
+
+fn collect_governance_text_files_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            collect_governance_text_files_recursive(&path, files);
+            continue;
+        }
+
+        let Some(extension) = path.extension().and_then(|ext| ext.to_str()) else {
+            continue;
+        };
+
+        if matches!(extension, "rs" | "ps1" | "js" | "md" | "yaml" | "yml") {
+            files.push(path);
+        }
+    }
+}
+
+fn allows_legacy_calculator_route_reference(relative_path: &Path) -> bool {
+    let path = relative_path.to_string_lossy().replace('\\', "/");
+    matches!(
+        path.as_str(),
+        "astral_calculator_api/src/routes.rs"
+            | "contracts/README.md"
+            | "contracts/calculator/openapi.yaml"
+            | "docs/BASIC_PAYLOAD_IMPLEMENTATION.md"
+            | "docs/GUIDE_DEBUTANT_DOCKER.md"
+            | "docs/integration_api_contract.md"
+            | "docs/integration_api_guide.md"
+            | "tests/astral_calculator_api_tests.rs"
+            | "tests/refactor_governance_tests.rs"
+    ) || path.starts_with("docs/reviews/")
+}
+
 fn read(path: &Path) -> String {
     fs::read_to_string(path)
         .unwrap_or_else(|err| panic!("failed to read {}: {err}", path.display()))
@@ -278,4 +322,56 @@ fn general_refactor_review_for_physical_features_is_closed() {
         "{} does not record a zero-open-finding state",
         path.display()
     );
+}
+
+#[test]
+fn internal_calculator_consumers_use_canonical_calculation_routes() {
+    let root = workspace_root();
+    let scan_roots = [
+        "astral_calculator_api",
+        "astral_gateway",
+        "astral_llm",
+        "contracts",
+        "docs",
+        "scripts",
+        "tests",
+    ];
+
+    for scan_root in scan_roots {
+        for file in collect_governance_text_files(&root.join(scan_root)) {
+            let relative = file.strip_prefix(&root).expect("relative workspace path");
+            let content = read(&file);
+            if content.contains("/v1/calculations")
+                && !allows_legacy_calculator_route_reference(relative)
+            {
+                panic!(
+                    "{} references legacy calculator routes; internal consumers must use /v1/internal/calculations/*",
+                    relative.display()
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn calculator_internal_consumer_refactor_reviews_are_closed() {
+    let root = workspace_root();
+    for review_path in [
+        "docs/reviews/astral_calculator_refactor/REV-CALCULATOR-INTERNAL-CONSUMERS-2026-06-17.md",
+        "docs/reviews/astral_calculator_refactor_feature_boundaries/REV-CALCULATOR-INTERNAL-CONSUMERS-2026-06-17.md",
+    ] {
+        let path = root.join(review_path);
+        assert!(path.exists(), "missing review artifact {}", path.display());
+        let content = read(&path);
+        assert!(
+            content.contains("Statut: closed") || content.contains("Status: `closed`"),
+            "{} is not marked closed",
+            path.display()
+        );
+        assert!(
+            content.contains("Aucun finding ouvert"),
+            "{} does not record a zero-open-finding state",
+            path.display()
+        );
+    }
 }

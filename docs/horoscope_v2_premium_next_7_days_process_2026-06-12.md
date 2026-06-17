@@ -32,7 +32,7 @@ flowchart TD
 
     M1 --> N["CalculatorClient::calculate_horoscope_period_natal()\nastral_llm/crates/astral_llm_infra/src/calculator_client.rs"]
 
-    N --> O["POST /v1/calculations/horoscope/period/natal\ncalculate_horoscope_period_natal()\nastral_calculator_api/src/routes.rs"]
+    N --> O["POST /v1/internal/calculations/horoscope/period/natal\ncalculate_horoscope_period_natal()\nastral_calculator_api/src/routes.rs"]
 
     O --> P["schema_registry.validate('horoscope_period_calculation_request')\nastral_calculator_api/src/routes.rs"]
     P --> Q["ensure_horoscope_natal_chart_ready()\nastral_calculator_api/src/routes.rs"]

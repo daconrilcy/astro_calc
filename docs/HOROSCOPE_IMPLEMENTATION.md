@@ -888,7 +888,7 @@ Implementation initiale :
   reponse publique ;
 - referentiels JSON ajoutes pour slots, poids de scoring, mappings themes,
   shortlist et bandes d'intensite ;
-- endpoint calculateur fake `/v1/calculations/horoscope/daily-natal` ;
+- endpoint calculateur fake `/v1/internal/calculations/horoscope/daily-natal` ;
 - module applicatif `astral_llm_application::horoscope` avec validation,
   construction de requete calculateur, scoring deterministe, aggregation,
   construction du payload LLM filtre et garde de preuves astrologiques ;

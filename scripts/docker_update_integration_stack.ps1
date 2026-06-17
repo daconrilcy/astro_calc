@@ -237,7 +237,7 @@ function Get-HoroscopeChartCalculationId {
         }
     }
 
-    $response = Invoke-RestMethod -Uri "$CalculatorUrl/v1/calculations/natal" `
+    $response = Invoke-RestMethod -Uri "$CalculatorUrl/v1/internal/calculations/natal" `
         -Method Post `
         -Headers $calculatorHeaders `
         -Body ($body | ConvertTo-Json -Depth 20) `
