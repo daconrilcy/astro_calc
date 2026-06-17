@@ -57,23 +57,20 @@ impl GenerateHoroscopeDailyReadingUseCase {
         let public = validate_public_request(&serde_json::to_value(&request).map_err(|err| {
             GatewayError::bad_request(format!("invalid horoscope request serialization: {err}"))
         })?)
-        .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+        .map_err(horoscope_bad_request)?;
         let calculation_request = build_calculation_request_for_service(service_code, &public)
-            .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+            .map_err(horoscope_bad_request)?;
         let calculation = self
             .calculator
             .calculate_horoscope_daily_natal(&calculation_request)
             .await?;
-        let signals = score_calculation(&calculation)
-            .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+        let signals = score_calculation(&calculation).map_err(horoscope_bad_request)?;
         let mut interpretation = build_interpretation_request(&public, &calculation, &signals)
-            .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+            .map_err(horoscope_bad_request)?;
         interpretation["debug_run_id"] = json!(llm_run_id);
         let reading = self.llm.render_horoscope_daily(&interpretation).await?;
-        validate_horoscope_response_schema(&reading)
-            .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
-        validate_response_evidence(&interpretation, &reading)
-            .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+        validate_horoscope_response_schema(&reading).map_err(horoscope_bad_request)?;
+        validate_response_evidence(&interpretation, &reading).map_err(horoscope_bad_request)?;
         let audit = self.llm.get_run_audit(&llm_run_id).await.ok();
 
         Ok(HoroscopeReadingResponseV2 {
@@ -113,20 +110,20 @@ impl GenerateHoroscopePeriodReadingUseCase {
                     "invalid horoscope period request serialization: {err}"
                 ))
             })?)
-            .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+            .map_err(horoscope_bad_request)?;
         let calculation_request =
             build_period_calculation_request_for_service(service_code, &public)
-                .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+                .map_err(horoscope_bad_request)?;
         let calculation = self
             .calculator
             .calculate_horoscope_period_natal(&calculation_request)
             .await?;
-        let mut writer_request = build_period_writer_request(&public, &calculation)
-            .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+        let mut writer_request =
+            build_period_writer_request(&public, &calculation).map_err(horoscope_bad_request)?;
         writer_request["debug_run_id"] = json!(llm_run_id);
         let reading = self.llm.render_horoscope_period(&writer_request).await?;
         validate_period_response_contract(&writer_request, &reading)
-            .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+            .map_err(horoscope_bad_request)?;
         let audit = self.llm.get_run_audit(&llm_run_id).await.ok();
 
         let mut debug = build_horoscope_debug_payload(
@@ -191,4 +188,8 @@ fn build_horoscope_debug_payload(
         debug["period_editorial_audit"] = editorial_audit;
     }
     debug
+}
+
+fn horoscope_bad_request(err: astral_llm_domain::GenerationError) -> GatewayError {
+    GatewayError::bad_request(err.detail().message.clone())
 }
