@@ -4,9 +4,8 @@ use crate::natal::catalog::accidental_polarity_bands_are_valid;
 use crate::domain::{
     AccidentalConditionTrigger, AccidentalDignityConditionReference, AccidentalPolarityBand,
     AccidentalScoringParams, CalculationReferenceData, HouseAxisReference, HouseReference,
-    LunarPhaseReference, ObjectSectAffinityReference,
+    LunarPhaseReference, ObjectSectAffinityReference, AspectDefinition, ChartObject,
 };
-use crate::infra::db::models::{AspectDefinition, ChartObject};
 
 use crate::shared::error::RuntimeError;
 

@@ -1,10 +1,10 @@
 use sqlx::{postgres::PgPool, Postgres, Transaction};
 
-use super::models::{ChartCalculationRow, InterpretationSignalRow};
+use super::models::ChartCalculationRow;
 use super::runtime_repository::RuntimeRepository;
 use crate::domain::{
-    AspectFact, BasicPayload, CalculatedChartFacts, NatalChartInput, ObjectPositionFact,
-    RuntimeOptions,
+    AspectFact, BasicPayload, CalculatedChartFacts, InterpretationSignalRow, NatalChartInput,
+    ObjectPositionFact, RuntimeOptions,
 };
 use crate::shared::error::RuntimeError;
 
@@ -79,8 +79,25 @@ impl CalculationRepository {
         reference_version_id: i32,
         signals: &[crate::domain::InterpretationSignalDraft],
     ) -> Result<Vec<InterpretationSignalRow>, RuntimeError> {
-        RuntimeRepository::persist_signals(tx, chart_calculation_id, reference_version_id, signals)
-            .await
+        Ok(RuntimeRepository::persist_signals(
+            tx,
+            chart_calculation_id,
+            reference_version_id,
+            signals,
+        )
+        .await?
+        .into_iter()
+        .map(|row| InterpretationSignalRow {
+            id: row.id,
+            signal_key: row.signal_key,
+            theme_code: row.theme_code,
+            title: row.title,
+            summary: row.summary,
+            priority_score: row.priority_score,
+            confidence_score: row.confidence_score,
+            payload_json: row.payload_json,
+        })
+        .collect())
     }
 
     pub async fn persist_basic_payload(

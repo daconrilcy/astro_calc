@@ -84,3 +84,7 @@ required-features = ["swisseph-engine"]
 [[test]]
 name = "horoscope_builders_tests"
 path = "../tests/horoscope_builders_tests.rs"
+
+[[test]]
+name = "refactor_governance_tests"
+path = "../tests/refactor_governance_tests.rs"

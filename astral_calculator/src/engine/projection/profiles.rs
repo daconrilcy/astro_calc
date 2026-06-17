@@ -2,10 +2,13 @@ use super::types::{LlmEffectiveLimits, LlmProjectionLimitsEnvelope, LlmProjectio
 use crate::infra::db::projection_repository::ProjectionRepository;
 use crate::shared::error::RuntimeError;
 
-pub fn profile_from_level(level: &str) -> Result<LlmProjectionProfile, RuntimeError> {
-    let repository = load_repository()?;
-    tokio::runtime::Handle::current()
-        .block_on(repository.llm_projection_profile("llm_projection_natal_v1", level))
+pub async fn profile_from_level(
+    repository: &ProjectionRepository,
+    level: &str,
+) -> Result<LlmProjectionProfile, RuntimeError> {
+    repository
+        .llm_projection_profile("llm_projection_natal_v1", level)
+        .await
 }
 
 pub async fn resolve_projection_profile(
@@ -19,26 +22,6 @@ pub async fn resolve_projection_profile(
     {
         Ok(profile) => Ok(profile),
         Err(error) => Err(error),
-    }
-}
-
-fn load_repository() -> Result<ProjectionRepository, RuntimeError> {
-    let pool = run_blocking(crate::bootstrap::db::connect_from_env()).map_err(RuntimeError::Database)?;
-    Ok(ProjectionRepository::new(pool))
-}
-
-fn run_blocking<F, T>(future: F) -> Result<T, sqlx::Error>
-where
-    F: std::future::Future<Output = Result<T, sqlx::Error>>,
-{
-    if let Ok(handle) = tokio::runtime::Handle::try_current() {
-        handle.block_on(future)
-    } else {
-        tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("tokio runtime")
-            .block_on(future)
     }
 }
 

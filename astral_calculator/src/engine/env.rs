@@ -4,10 +4,12 @@ use crate::engine::{
     AstroEngineRequest, EngineBirthLocation, EngineBirthRequest, EngineCalculationRequest,
     EngineProjectionRequest, REQUEST_CONTRACT_VERSION,
 };
+use crate::infra::db::reference_repository::ReferenceRepository;
 
 pub use crate::engine::calculation_refs::{
     coordinate_reference_system_id_from_env, coordinate_reference_system_key_from_env,
-    house_system_code_from_env, zodiacal_reference_system_key_from_env,
+    house_system_code_from_env, house_system_id_from_env, zodiacal_reference_system_id_from_env,
+    zodiacal_reference_system_key_from_env,
 };
 
 pub fn birth_datetime_utc_from_env() -> Result<DateTime<Utc>, Box<dyn std::error::Error>> {
@@ -34,7 +36,9 @@ pub fn birth_datetime_utc_from_env() -> Result<DateTime<Utc>, Box<dyn std::error
 
 const PROJECTION_LEVELS: &[&str] = &["compact", "standard", "rich", "expert"];
 
-pub fn engine_request_from_env() -> Result<AstroEngineRequest, Box<dyn std::error::Error>> {
+pub async fn engine_request_from_env(
+    repository: &ReferenceRepository,
+) -> Result<AstroEngineRequest, Box<dyn std::error::Error>> {
     let (date, time, timezone) = birth_fields_from_env()?;
     let projection_level = projection_level_from_env()?;
 
@@ -44,9 +48,10 @@ pub fn engine_request_from_env() -> Result<AstroEngineRequest, Box<dyn std::erro
         idempotency_key: optional_non_empty_env("ASTRAL_IDEMPOTENCY_KEY"),
         calculation: EngineCalculationRequest {
             calculation_type: "natal".to_string(),
-            zodiacal_reference_system: zodiacal_reference_system_key_from_env()?,
-            coordinate_reference_system: coordinate_reference_system_key_from_env()?,
-            house_system: house_system_code_from_env()?,
+            zodiacal_reference_system: zodiacal_reference_system_key_from_env(repository).await?,
+            coordinate_reference_system: coordinate_reference_system_key_from_env(repository)
+                .await?,
+            house_system: house_system_code_from_env(repository).await?,
         },
         birth: EngineBirthRequest {
             date,

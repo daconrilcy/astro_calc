@@ -7,10 +7,10 @@ use super::repository::{load_profile_feature_exclusions, load_simplified_catalog
 use super::request::AstroSimplifiedNatalRequest;
 use super::resolve::{build_uncertainty_window, declared_datetime_utc, validate_and_resolve};
 use super::response::{AstroSimplifiedNatalResponse, RECOMMENDED_SIMPLIFIED_PROFILE_CODE};
+use crate::domain::{AspectDefinition, ChartObject};
 use crate::natal::aspects::detect_aspects;
 use crate::domain::{CalculatedChartFacts, NatalChartInput, ObjectPositionFact};
 use crate::natal::ephemeris::EphemerisEngine;
-use crate::infra::db::models::{AspectDefinition, ChartObject};
 use crate::infra::db::reference_repository::ReferenceRepository;
 use crate::runtime::validate_calculation_references;
 use crate::shared::error::RuntimeError;

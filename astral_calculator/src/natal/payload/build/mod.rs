@@ -15,10 +15,9 @@ use std::collections::{HashMap, HashSet};
 use crate::natal::catalog::BasicPayloadCatalog;
 use crate::domain::{
     AccidentalDignityConditionReference, BasicObjectPosition, BasicPayload, BasicSignal,
-    HouseAxisReference, LunarPhaseReference, NatalChartInput, ObjectPositionFact,
-    ObjectSectAffinityReference,
+    HouseAxisReference, InterpretationSignalRow, LunarPhaseReference, NatalChartInput,
+    ObjectPositionFact, ObjectSectAffinityReference,
 };
-use crate::infra::db::models::InterpretationSignalRow;
 use angles::{
     angle_object_codes_from_positions, build_payload_angles, structural_axis_pairs_from_positions,
 };

@@ -11,6 +11,7 @@ use astral_calculator::engine::{
 };
 use astral_calculator::engine_request_from_env;
 use astral_calculator::ephemeris::SwissEphemerisEngine;
+use astral_calculator::infra::db::reference_repository::ReferenceRepository;
 use astral_calculator::runtime::ChartCalculationRuntimeService;
 
 #[tokio::main]
@@ -18,17 +19,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     load_dotenv();
     let cli = cli_options_from_args(std::env::args().skip(1), output_mode_from_env())?;
     let pool = connect_from_env().await?;
+    let references = ReferenceRepository::new(pool.clone());
     let ephemeris = SwissEphemerisEngine::new(ephemeris_path_from_env());
     let service = ChartCalculationRuntimeService::new(pool, ephemeris, runtime_options_from_env());
 
     let json = match cli.output_contract {
         OutputContract::Engine => {
-            let request = engine_request_from_env()?;
+            let request = engine_request_from_env(&references).await?;
             let response = service.calculate_natal_engine(request).await?;
             serde_json::to_string_pretty(&response)?
         }
         OutputContract::AuditOnly => {
-            let input = natal_input_from_env()?;
+            let input = natal_input_from_env(&references).await?;
             let output = service.calculate_natal_basic(input).await?;
             serde_json::to_string_pretty(&output)?
         }
@@ -49,7 +51,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn natal_input_from_env() -> Result<NatalChartInput, Box<dyn std::error::Error>> {
+async fn natal_input_from_env(
+    references: &ReferenceRepository,
+) -> Result<NatalChartInput, Box<dyn std::error::Error>> {
     let idempotency_key = std::env::var("ASTRAL_IDEMPOTENCY_KEY")
         .ok()
         .map(|value| value.trim().to_string())
@@ -63,9 +67,9 @@ fn natal_input_from_env() -> Result<NatalChartInput, Box<dyn std::error::Error>>
         altitude_m: optional_parse("ASTRAL_ALTITUDE_M")?,
         reference_version_id: optional_parse("ASTRAL_REFERENCE_VERSION_ID")?.unwrap_or(1),
         calculation_profile_id: optional_parse("ASTRAL_CALCULATION_PROFILE_ID")?,
-        zodiacal_reference_system_id: zodiacal_reference_system_id_from_env()?,
-        coordinate_reference_system_id: coordinate_reference_system_id_from_env()?,
-        house_system_id: house_system_id_from_env()?,
+        zodiacal_reference_system_id: zodiacal_reference_system_id_from_env(references).await?,
+        coordinate_reference_system_id: coordinate_reference_system_id_from_env(references).await?,
+        house_system_id: house_system_id_from_env(references).await?,
         product_code: Some(
             std::env::var("ASTRAL_PRODUCT_CODE").unwrap_or_else(|_| "basic".to_string()),
         ),

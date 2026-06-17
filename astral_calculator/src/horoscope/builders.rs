@@ -55,7 +55,8 @@ struct ScanProfile {
     expected_snapshots_per_day: usize,
 }
 
-pub fn build_horoscope_daily_calculation_request_from_public(
+pub async fn build_horoscope_daily_calculation_request_from_public(
+    repository: &HoroscopeRepository,
     service_code: &str,
     payload: &Value,
 ) -> Result<HoroscopeCalculationRequest, String> {
@@ -63,9 +64,8 @@ pub fn build_horoscope_daily_calculation_request_from_public(
     let request: DailyPublicRequest =
         serde_json::from_value(payload.clone()).map_err(|err| err.to_string())?;
     validate_daily_public_request(service_code, &request)?;
-    let repository = load_repository()?;
-    let profile = service_profile(&repository, service_code)?;
-    let mut slots = slot_profiles(&repository, service_code)?;
+    let profile = service_profile(repository, service_code).await?;
+    let mut slots = slot_profiles(repository, service_code).await?;
     slots.sort_by_key(|slot| slot.sort_order);
     Ok(HoroscopeCalculationRequest {
         contract_version: "horoscope_calculation_request".into(),
@@ -114,7 +114,8 @@ pub fn build_horoscope_daily_calculation_request_from_public(
     })
 }
 
-pub fn build_horoscope_period_calculation_request_from_public(
+pub async fn build_horoscope_period_calculation_request_from_public(
+    repository: &HoroscopeRepository,
     service_code: &str,
     payload: &Value,
 ) -> Result<HoroscopePeriodCalculationRequest, String> {
@@ -128,22 +129,18 @@ pub fn build_horoscope_period_calculation_request_from_public(
         .parse::<Tz>()
         .map_err(|_| "HOROSCOPE_PERIOD_TIMEZONE_REQUIRED".to_string())?;
 
-    let repository = load_repository()?;
-    let profile = period_service_profile(&repository, service_code)?;
+    let profile = period_service_profile(repository, service_code).await?;
     let period_profile_code = profile
         .period_profile_code
         .ok_or_else(|| "HOROSCOPE_PERIOD_PROFILE_UNSUPPORTED".to_string())?;
     let scan_profile_code = profile
         .scan_profile_code
         .ok_or_else(|| "HOROSCOPE_PERIOD_SCAN_PLAN_INVALID".to_string())?;
-    let period_resolution = resolve_period_window(
-        &repository,
-        &period_profile_code,
-        &request.anchor_date,
-        &request.timezone,
-    )?;
-    let scan_plan = build_scan_plan(&repository, &period_resolution, &scan_profile_code)?;
-    validate_scan_plan_value(&repository, &period_resolution, &scan_plan)?;
+    let period_resolution =
+        resolve_period_window(repository, &period_profile_code, &request.anchor_date, &request.timezone)
+            .await?;
+    let scan_plan = build_scan_plan(repository, &period_resolution, &scan_profile_code).await?;
+    validate_scan_plan_value(repository, &period_resolution, &scan_plan).await?;
 
     let scan_plan: HoroscopeScanPlan =
         serde_json::from_value(scan_plan).map_err(|err| err.to_string())?;
@@ -211,52 +208,13 @@ fn validate_daily_public_request(
     Ok(())
 }
 
-fn load_repository() -> Result<HoroscopeRepository, String> {
-    let pool = run_blocking(crate::bootstrap::db::connect_from_env()).map_err(|err| err.to_string())?;
-    Ok(HoroscopeRepository::new(pool))
-}
-
-fn run_blocking<F, T, E>(future: F) -> Result<T, E>
-where
-    F: std::future::Future<Output = Result<T, E>> + Send + 'static,
-    T: Send + 'static,
-    E: Send + 'static,
-{
-    if let Ok(handle) = tokio::runtime::Handle::try_current() {
-        match handle.runtime_flavor() {
-            tokio::runtime::RuntimeFlavor::MultiThread => {
-                tokio::task::block_in_place(|| handle.block_on(future))
-            }
-            tokio::runtime::RuntimeFlavor::CurrentThread => std::thread::spawn(move || {
-                tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("tokio runtime")
-                    .block_on(future)
-            })
-            .join()
-            .expect("runtime bridge thread"),
-            _ => tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("tokio runtime")
-                .block_on(future),
-        }
-    } else {
-        tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("tokio runtime")
-            .block_on(future)
-    }
-}
-
-fn service_profile(
+async fn service_profile(
     repository: &HoroscopeRepository,
     service_code: &str,
 ) -> Result<ServiceProfile, String> {
-    let repository = repository.clone();
-    let row = run_blocking(async move { repository.horoscope_services().await })
+    let row = repository
+        .horoscope_services()
+        .await
         .map_err(|err| err.to_string())?
         .into_iter()
         .find(|row| row.service_code == service_code)
@@ -268,23 +226,24 @@ fn service_profile(
     })
 }
 
-fn period_service_profile(
+async fn period_service_profile(
     repository: &HoroscopeRepository,
     service_code: &str,
 ) -> Result<ServiceProfile, String> {
-    let profile = service_profile(repository, service_code)?;
+    let profile = service_profile(repository, service_code).await?;
     if profile.period_profile_code.is_none() || profile.scan_profile_code.is_none() {
         return Err("HOROSCOPE_PERIOD_PROFILE_UNSUPPORTED".to_string());
     }
     Ok(profile)
 }
 
-fn slot_profiles(
+async fn slot_profiles(
     repository: &HoroscopeRepository,
     service_code: &str,
 ) -> Result<Vec<SlotProfileRow>, String> {
-    let repository = repository.clone();
-    let mut slots = run_blocking(async move { repository.horoscope_time_slot_profiles().await })
+    let mut slots = repository
+        .horoscope_time_slot_profiles()
+        .await
         .map_err(|err| err.to_string())?
         .into_iter()
         .filter(|row| row.service_code == service_code)
@@ -300,14 +259,15 @@ fn slot_profiles(
     Ok(slots)
 }
 
-fn resolve_period_window(
+async fn resolve_period_window(
     repository: &HoroscopeRepository,
     period_profile_code: &str,
     anchor_date: &str,
     timezone: &str,
 ) -> Result<Value, String> {
-    let repository = repository.clone();
-    let profiles = run_blocking(async move { repository.astral_time_period_profiles().await })
+    let profiles = repository
+        .astral_time_period_profiles()
+        .await
         .map_err(|err| err.to_string())?;
     let profile_defs = serde_json::from_value::<Vec<astral_time_window::PeriodProfileDefinition>>(
         serde_json::to_value(profiles).map_err(|err| err.to_string())?,
@@ -363,12 +323,12 @@ fn map_period_window_error(err: astral_time_window::PeriodWindowError) -> String
     }
 }
 
-fn build_scan_plan(
+async fn build_scan_plan(
     repository: &HoroscopeRepository,
     period_resolution: &Value,
     scan_profile_code: &str,
 ) -> Result<Value, String> {
-    let scan_profile = scan_profile(repository, scan_profile_code)?;
+    let scan_profile = scan_profile(repository, scan_profile_code).await?;
     let tz = period_resolution["timezone"]
         .as_str()
         .ok_or_else(|| "HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH".to_string())?
@@ -418,7 +378,7 @@ fn build_scan_plan(
     }))
 }
 
-fn validate_scan_plan_value(
+async fn validate_scan_plan_value(
     repository: &HoroscopeRepository,
     period_resolution: &Value,
     scan_plan: &Value,
@@ -455,7 +415,7 @@ fn validate_scan_plan_value(
     let scan_profile_code = scan_plan["scan_profile_code"]
         .as_str()
         .ok_or_else(|| "HOROSCOPE_PERIOD_SCAN_PLAN_INVALID".to_string())?;
-    let scan_profile = scan_profile(repository, scan_profile_code)?;
+    let scan_profile = scan_profile(repository, scan_profile_code).await?;
     if snapshots.len() != included.len() * scan_profile.expected_snapshots_per_day {
         return Err("HOROSCOPE_PERIOD_SCAN_PLAN_INVALID".to_string());
     }
@@ -490,12 +450,13 @@ fn validate_scan_plan_value(
     Ok(())
 }
 
-fn scan_profile(
+async fn scan_profile(
     repository: &HoroscopeRepository,
     scan_profile_code: &str,
 ) -> Result<ScanProfile, String> {
-    let repository = repository.clone();
-    let row = run_blocking(async move { repository.horoscope_scan_profiles().await })
+    let row = repository
+        .horoscope_scan_profiles()
+        .await
         .map_err(|err| err.to_string())?
         .into_iter()
         .find(|row| row.scan_profile_code == scan_profile_code && row.is_enabled)

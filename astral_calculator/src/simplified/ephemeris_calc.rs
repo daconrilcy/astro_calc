@@ -6,7 +6,7 @@ use std::sync::{Mutex, OnceLock};
 use chrono::{DateTime, Utc};
 
 use crate::shared::astro_math::normalize_degrees;
-use crate::infra::db::models::SignReference;
+use crate::domain::SignReference;
 use crate::shared::error::RuntimeError;
 
 #[cfg(feature = "swisseph-engine")]

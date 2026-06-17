@@ -2,6 +2,7 @@ use std::path::Path;
 
 use chrono::{DateTime, Utc};
 
+use crate::domain::{ChartObject, SignReference};
 use super::catalog::SimplifiedCatalog;
 use super::ephemeris_calc::{
     dedupe_preserve_order, distance_to_sign_boundary_deg, julian_day_utc, sign_code_at_jd,
@@ -9,7 +10,6 @@ use super::ephemeris_calc::{
 use super::resolve::ResolvedSimplifiedInput;
 use super::response::{AmbiguousSignFactResponse, CuspWarningResponse, SignFactResponse};
 use super::uncertainty_window::build_sampling_schedule;
-use crate::infra::db::models::{ChartObject, SignReference};
 use crate::shared::error::RuntimeError;
 
 pub const RELIABILITY_STABLE: &str = "stable_across_uncertainty_window";

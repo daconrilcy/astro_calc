@@ -1,3 +1,17 @@
+# 2026-06-17 - `astral_calculator` refacto boundary / governance wave
+
+- Remplace les alias de `domain/references.rs` vers `infra::db::models` par de vrais types domaine pour les references centrales (`ChartObject`, `AspectDefinition`, `HouseSystem`, `SignReference`, `HouseReference`, `MotionStateReference`, `HorizonPositionReference`, `AnglePointReference`, `DomicileRulerReference`, `InterpretationSignalRow`).
+- Rebranche les repositories infra sur ces types domaine pour les lectures de references et les rows de signaux persistes, sans changer les contrats JSON publics.
+- Retire les imports directs `crate::infra::db::models::*` depuis `natal`, `simplified` et les couches de projection concernées.
+- Ajoute un test de gouvernance racine dans [`tests/refactor_governance_tests.rs`](../tests/refactor_governance_tests.rs) et l’enregistre dans `astral_calculator/Cargo.toml`.
+- Rebranche `engine/calculation_refs.rs`, `engine/env.rs` et `main.rs` sur des repositories injectes et async pour conserver les resolutions canoniques depuis la DB sans `block_on`.
+- Convertit `horoscope/builders.rs` et ses tests en async pour supprimer le pont DB synchrone legacy.
+- Conserve `engine/projection/profiles.rs` comme helper async sur `ProjectionRepository`, sans ouverture DB locale.
+- Verification executee:
+  - `cargo test -p astral_calculator`
+  - `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`
+  - `cargo test -p astral_calculator --test refactor_governance_tests`
+
 # Implementation du payload moteur route basic
 
 ## Workspace Cargo

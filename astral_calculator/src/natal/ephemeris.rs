@@ -2,8 +2,14 @@ use std::path::{Path, PathBuf};
 #[cfg(feature = "swisseph-engine")]
 use std::sync::{Mutex, OnceLock};
 
-use crate::domain::{CalculatedChartFacts, CalculationReferenceData, NatalChartInput};
-use crate::infra::db::models::{AspectDefinition, ChartObject, HouseSystem};
+use crate::domain::{
+    AspectDefinition, CalculatedChartFacts, CalculationReferenceData, ChartObject, HouseSystem,
+    NatalChartInput,
+};
+#[cfg(feature = "swisseph-engine")]
+use crate::domain::{
+    AnglePointReference, HouseReference, MotionStateReference, SignReference,
+};
 use crate::shared::error::RuntimeError;
 
 pub trait EphemerisEngine {
@@ -227,7 +233,7 @@ impl EphemerisEngine for SwissEphemerisEngine {
 }
 
 #[cfg(feature = "swisseph-engine")]
-fn sign_context(sign: &crate::infra::db::models::SignReference) -> serde_json::Value {
+fn sign_context(sign: &SignReference) -> serde_json::Value {
     serde_json::json!({
         "element": &sign.element_code,
         "element_label": &sign.element_label,
@@ -240,7 +246,7 @@ fn sign_context(sign: &crate::infra::db::models::SignReference) -> serde_json::V
 }
 
 #[cfg(feature = "swisseph-engine")]
-fn house_modality(house: &crate::infra::db::models::HouseReference) -> Option<serde_json::Value> {
+fn house_modality(house: &HouseReference) -> Option<serde_json::Value> {
     house.modality_code.as_ref().map(|code| {
         serde_json::json!({
             "code": code,
@@ -253,7 +259,7 @@ fn house_modality(house: &crate::infra::db::models::HouseReference) -> Option<se
 }
 
 #[cfg(feature = "swisseph-engine")]
-fn house_context(house: &crate::infra::db::models::HouseReference) -> serde_json::Value {
+fn house_context(house: &HouseReference) -> serde_json::Value {
     serde_json::json!({
         "theme_code": &house.theme_code
     })
@@ -361,7 +367,7 @@ fn add_angle_positions(
 
 #[cfg(feature = "swisseph-engine")]
 fn angle_longitude(
-    angle: &crate::infra::db::models::AnglePointReference,
+    angle: &AnglePointReference,
     ascendant_longitude: f64,
     mc_longitude: f64,
 ) -> Result<f64, RuntimeError> {
@@ -416,7 +422,7 @@ fn horizon_position_id(
 }
 
 #[cfg(feature = "swisseph-engine")]
-fn motion_context(motion_state: &crate::infra::db::models::MotionStateReference) -> serde_json::Value {
+fn motion_context(motion_state: &MotionStateReference) -> serde_json::Value {
     serde_json::json!({
         "motion_state": motion_state.code,
         "label": motion_state.label,
@@ -426,9 +432,9 @@ fn motion_context(motion_state: &crate::infra::db::models::MotionStateReference)
 
 #[cfg(feature = "swisseph-engine")]
 fn sign_reference_for_zodiac_slot(
-    signs: &[crate::infra::db::models::SignReference],
+    signs: &[SignReference],
     zodiac_slot: i32,
-) -> Result<&crate::infra::db::models::SignReference, RuntimeError> {
+) -> Result<&SignReference, RuntimeError> {
     if !(1..=12).contains(&zodiac_slot) {
         return Err(RuntimeError::Ephemeris(format!(
             "invalid zodiac slot {zodiac_slot}"
@@ -450,9 +456,9 @@ fn sign_reference_for_zodiac_slot(
 
 #[cfg(feature = "swisseph-engine")]
 fn house_reference_for_number(
-    houses: &[crate::infra::db::models::HouseReference],
+    houses: &[HouseReference],
     house_number: i32,
-) -> Result<&crate::infra::db::models::HouseReference, RuntimeError> {
+) -> Result<&HouseReference, RuntimeError> {
     houses
         .iter()
         .find(|house| house.number == house_number)
