@@ -2,11 +2,11 @@ use std::collections::HashMap;
 
 use serde_json::json;
 
+use crate::domain::{CalculatedChartFacts, InterpretationSignalDraft, ObjectPositionFact};
 use crate::natal::catalog::BasicPayloadCatalog;
 use crate::natal::dignities::{
     dignity_is_signal_worthy, dignity_source_weight_delta, essential_dignities_for_positions,
 };
-use crate::domain::{CalculatedChartFacts, InterpretationSignalDraft, ObjectPositionFact};
 
 use super::constants::{SUPPRESSION_ACTIVE, THEME_FUNCTIONAL_CHALLENGE, THEME_FUNCTIONAL_STRENGTH};
 use super::dignity_helpers::{

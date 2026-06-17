@@ -14,7 +14,10 @@ pub(crate) fn canonical_axis(axis_code: &str) -> Option<CanonicalAxis> {
         _ => return None,
     };
 
-    Some(CanonicalAxis { houses, theme_codes })
+    Some(CanonicalAxis {
+        houses,
+        theme_codes,
+    })
 }
 
 pub(crate) fn axis_label(axis_code: &str) -> &'static str {

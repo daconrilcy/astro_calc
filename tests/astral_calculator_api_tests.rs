@@ -12,7 +12,7 @@ use astral_calculator::features::horoscope::{
     HoroscopePeriodCalculationRequest, HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE,
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
 };
-use astral_calculator::runtime::ChartCalculationRuntimeService;
+use astral_calculator::runtime::build_runtime_service;
 use astral_calculator_api::{
     build_app, config::AppConfig, reference_status::check_reference_status,
     schema_registry::SchemaRegistry, state::AppState,
@@ -23,8 +23,7 @@ async fn build_test_state() -> Option<AppState> {
     let pool = connect_from_env().await.ok()?;
     let config = AppConfig::from_env();
     let ephemeris = SwissEphemerisEngine::new(ephemeris_path_from_env());
-    let service =
-        ChartCalculationRuntimeService::new(pool.clone(), ephemeris, runtime_options_from_env());
+    let service = build_runtime_service(pool.clone(), ephemeris, runtime_options_from_env());
     let schema_registry = SchemaRegistry::from_dir(&config.schemas_dir).ok()?;
 
     Some(AppState {

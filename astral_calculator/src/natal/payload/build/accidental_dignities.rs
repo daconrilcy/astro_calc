@@ -2,12 +2,12 @@ use std::collections::{HashMap, HashSet};
 
 use serde_json::{json, Value};
 
-use crate::natal::catalog::BasicPayloadCatalog;
 use crate::domain::{
     AccidentalDignityConditionReference, BasicAccidentalDignityCondition,
     BasicAccidentalDignityContextSummary, BasicAccidentalDignityEvaluation, BasicChartEmphasis,
     BasicSignal, ObjectPositionFact, ObjectSectAffinityReference,
 };
+use crate::natal::catalog::BasicPayloadCatalog;
 use crate::natal::payload::rules::chart_context::is_angle_role;
 
 use super::json::position_context;

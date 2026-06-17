@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use serde_json::json;
 
-use crate::natal::catalog::BasicPayloadCatalog;
 use crate::domain::{CalculatedChartFacts, InterpretationSignalDraft, ObjectPositionFact};
+use crate::natal::catalog::BasicPayloadCatalog;
 
 use super::angles::is_core_chart_object;
 use super::constants::{SIGNAL_PREFIX_CLUSTER, SUPPRESSION_ACTIVE, SUPPRESSION_MERGED};

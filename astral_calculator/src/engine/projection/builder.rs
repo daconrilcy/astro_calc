@@ -8,10 +8,6 @@
 // redaction/interpretation.
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use crate::domain::{
-    BasicAccidentalDignityEvaluation, BasicHouseAxisEmphasis, BasicObjectPosition, BasicPayload,
-    HouseAxisReference,
-};
 use super::axis_labels::house_axis_label;
 use super::dynamics::build_dynamics;
 use super::humanize::{
@@ -22,6 +18,10 @@ use super::humanize::{
 };
 use super::profiles::limits_envelope;
 use super::types::*;
+use crate::domain::{
+    BasicAccidentalDignityEvaluation, BasicHouseAxisEmphasis, BasicObjectPosition, BasicPayload,
+    HouseAxisReference,
+};
 
 pub struct LlmProjectionBuildContext<'a> {
     pub birth_location_label: &'a str,

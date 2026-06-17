@@ -1,8 +1,8 @@
 use crate::domain::{BasicObjectPosition, BasicSignal};
-use crate::natal::payload::shared::text::{has_text, is_normalized_score};
 use crate::natal::payload::rules::chart_context::{
     horizon_position_for_altitude, is_angle_role, is_horizon_position,
 };
+use crate::natal::payload::shared::text::{has_text, is_normalized_score};
 
 use super::json;
 

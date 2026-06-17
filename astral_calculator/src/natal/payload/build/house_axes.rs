@@ -1,10 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::natal::catalog::BasicPayloadCatalog;
 use crate::domain::{
     BasicAngleFact, BasicChartEmphasis, BasicDignity, BasicHouseAxisEmphasis, BasicHouseAxisScore,
     BasicRulershipContext, BasicSignal, HouseAxisReference, ObjectPositionFact,
 };
+use crate::natal::catalog::BasicPayloadCatalog;
 use crate::natal::payload::rules::chart_context::is_angle_role;
 
 use super::json::position_context;

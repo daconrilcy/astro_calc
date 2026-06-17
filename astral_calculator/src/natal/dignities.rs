@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use crate::natal::catalog::{BasicPayloadCatalog, EssentialDignityScoringWeight};
 use crate::domain::{EssentialDignityRuleReference, ObjectPositionFact};
+use crate::natal::catalog::{BasicPayloadCatalog, EssentialDignityScoringWeight};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EssentialDignityFact {

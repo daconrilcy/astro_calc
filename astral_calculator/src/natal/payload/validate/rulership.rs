@@ -9,5 +9,8 @@ pub(super) fn matches_domicile_ruler_references(
     context: &BasicRulershipContext,
     domicile_rulers: &[DomicileRulerReference],
 ) -> bool {
-    crate::natal::payload::rules::rulership::matches_domicile_ruler_references(context, domicile_rulers)
+    crate::natal::payload::rules::rulership::matches_domicile_ruler_references(
+        context,
+        domicile_rulers,
+    )
 }

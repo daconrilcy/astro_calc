@@ -24,7 +24,14 @@
   aucune dependance `domain -> infra` ;
   aucun `connect_from_env`, `PgPool`, `block_on` ou `run_blocking` dans les couches metier (`domain`, `engine`, `horoscope`, `simplified`, regles pures) ;
   aucune constante canonique codee en dur si la valeur peut venir de la DB ;
-  chaque vague de refacto documentee dans `docs/BASIC_PAYLOAD_IMPLEMENTATION.md` ;
+  les features produit (`natal`, `simplified`, `horoscope`) sont des orchestrateurs de contrats: elles valident l'entree, chargent les donnees via repositories, appellent les calculs communs, puis assemblent leur sortie ;
+  les calculs astrologiques intrinseques reutilisables doivent vivre sous `astrology/` (`aspects`, `ephemeris`, positions, maisons, transits si necessaire), pas sous une feature produit ;
+  une feature ne doit pas importer les details internes d'une autre feature. Exemple interdit: `simplified` ou `horoscope` important `crate::natal::aspects` ou `crate::natal::ephemeris` ;
+  `features/shared` est interdit pour les calculs metier astrologiques; utiliser un module au nom metier explicite sous `astrology/` ;
+  les anciens chemins publics peuvent rester en wrappers/re-exports temporaires, mais tout nouveau code doit utiliser les chemins canoniques ;
+  les changements de structure doivent conserver les contrats JSON publics, sauf decision documentee explicitement ;
+  chaque vague de refacto documentee dans `docs/BASIC_PAYLOAD_IMPLEMENTATION.md` avec un resume court, les invariants de couche, les commandes de verification et les liens vers les reviews ;
+  chaque vague doit avoir une review adversariale sous `docs/reviews/astral_calculator_refactor_feature_boundaries/`, suivie de corrections puis re-review jusqu'a `Aucun finding ouvert` ;
   reviews adversariales obligatoires par vague sous `docs/reviews/astral_calculator_refactor/`.
 - **Moteur natal** : produit unique `natal_prompter` + profil `interpretation_profile_code` (`natal_light`, `natal_basic`, `natal_premium`, `natal_premium_plus`). Profils JSON : `config/natal_interpretation_profiles/`, commande `.\scripts\manage_natal_interpretation_profiles.ps1` (-Submit, -List, -Get, -Delete), puis redemarrer `astral_llm_api`.
 - **Modeles LLM par produit** : editer `config/llm_product_models.conf`, puis `.\scripts\set_product_llm_models.ps1`, redemarrer `astral_llm_api`.

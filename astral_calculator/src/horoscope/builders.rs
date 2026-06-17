@@ -136,9 +136,13 @@ pub async fn build_horoscope_period_calculation_request_from_public(
     let scan_profile_code = profile
         .scan_profile_code
         .ok_or_else(|| "HOROSCOPE_PERIOD_SCAN_PLAN_INVALID".to_string())?;
-    let period_resolution =
-        resolve_period_window(repository, &period_profile_code, &request.anchor_date, &request.timezone)
-            .await?;
+    let period_resolution = resolve_period_window(
+        repository,
+        &period_profile_code,
+        &request.anchor_date,
+        &request.timezone,
+    )
+    .await?;
     let scan_plan = build_scan_plan(repository, &period_resolution, &scan_profile_code).await?;
     validate_scan_plan_value(repository, &period_resolution, &scan_plan).await?;
 

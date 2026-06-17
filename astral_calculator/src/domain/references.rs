@@ -238,4 +238,3 @@ pub struct BasicProductScoringProfile {
     pub aspect_min_strength: f64,
     pub max_house_axis_emphasis: usize,
 }
-

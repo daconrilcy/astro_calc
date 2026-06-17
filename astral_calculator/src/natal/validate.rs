@@ -1,11 +1,11 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::natal::catalog::accidental_polarity_bands_are_valid;
 use crate::domain::{
     AccidentalConditionTrigger, AccidentalDignityConditionReference, AccidentalPolarityBand,
-    AccidentalScoringParams, CalculationReferenceData, HouseAxisReference, HouseReference,
-    LunarPhaseReference, ObjectSectAffinityReference, AspectDefinition, ChartObject,
+    AccidentalScoringParams, AspectDefinition, CalculationReferenceData, ChartObject,
+    HouseAxisReference, HouseReference, LunarPhaseReference, ObjectSectAffinityReference,
 };
+use crate::natal::catalog::accidental_polarity_bands_are_valid;
 
 use crate::shared::error::RuntimeError;
 

@@ -1,7 +1,5 @@
-use sqlx::PgPool;
-use std::sync::Arc;
-
-use crate::domain::{BasicPayload, NatalChartInput, RuntimeOptions};
+use crate::astrology::ephemeris::EphemerisEngine;
+use crate::domain::{BasicPayload, NatalChartInput};
 use crate::engine::{
     build_engine_response, validate_and_resolve_request, validate_request_early,
     AstroEngineRequest, AstroEngineResponse, LLM_PROJECTION_CONTRACT_VERSION,
@@ -11,11 +9,9 @@ use crate::horoscope::{
     HoroscopePeriodCalculationResponse,
 };
 use crate::infra::db::{
-    calculation_repository::CalculationRepository, projection_repository::ProjectionRepository,
-    reference_repository::ReferenceRepository,
+    projection_repository::ProjectionRepository, reference_repository::ReferenceRepository,
 };
 use crate::natal::application::NatalCalculationService;
-use crate::natal::ephemeris::EphemerisEngine;
 use crate::shared::error::RuntimeError;
 use crate::simplified::application::SimplifiedNatalService;
 
@@ -34,20 +30,19 @@ impl<E> EngineFacadeService<E>
 where
     E: EphemerisEngine,
 {
-    pub fn new(pool: PgPool, ephemeris: E, options: RuntimeOptions) -> Self {
-        let ephemeris = Arc::new(ephemeris);
+    pub fn new(
+        natal: NatalCalculationService<E>,
+        simplified: SimplifiedNatalService<E>,
+        horoscope: HoroscopeService<E>,
+        projections: ProjectionRepository,
+        references: ReferenceRepository,
+    ) -> Self {
         Self {
-            natal: NatalCalculationService::new(
-                CalculationRepository::new(pool.clone()),
-                crate::infra::db::catalog_repository::CatalogRepository::new(pool.clone()),
-                ReferenceRepository::new(pool.clone()),
-                ephemeris.clone(),
-                options,
-            ),
-            simplified: SimplifiedNatalService::new(pool.clone(), ephemeris.clone()),
-            horoscope: HoroscopeService::new(pool.clone(), ephemeris),
-            projections: ProjectionRepository::new(pool.clone()),
-            references: ReferenceRepository::new(pool),
+            natal,
+            simplified,
+            horoscope,
+            projections,
+            references,
         }
     }
 

@@ -1061,3 +1061,29 @@ Exclus du parcours automatique car moteur LLM reel :
 
 - Cause: le workspace force `tmp_target` dans `.cargo/config.toml`, alors que les Dockerfiles copiaient encore les binaires depuis `/app/target/release`.
 - Correction: alignement des mounts cache Docker BuildKit et des chemins `cp` sur `/app/tmp_target/release` pour `astral_calculator_api`, `astral_gateway`, `astral_llm_api` et `astral_llm_worker`.
+## 2026-06-17 - Refacto feature boundaries W0-W2
+
+Resume court:
+- creation du module canonique `astral_calculator/src/astrology/` pour les calculs communs `aspects` et `ephemeris`;
+- conservation des anciens chemins publics `natal::aspects` et `natal::ephemeris` via wrappers de compatibilite;
+- migration des nouveaux appels internes vers `crate::astrology::*` et `EphemerisEngine::calculate_chart`;
+- sortie de `PgPool` des services metier `engine`, `simplified` et `horoscope` via un builder runtime en bordure.
+
+Invariants de couche:
+- `natal`, `simplified` et `horoscope` restent des orchestrateurs produit;
+- les calculs astrologiques reutilisables vivent sous `astrology/`, pas sous une feature produit;
+- aucune dependance `domain -> infra`;
+- aucun `PgPool`, `connect_from_env`, `block_on` ou `run_blocking` dans les couches metier verrouillees par test;
+- aucun import `crate::natal::aspects` ou `crate::natal::ephemeris` depuis `simplified` ou `horoscope`.
+
+Commandes de verification:
+- `cargo fmt`
+- `cargo test -p astral_calculator --test refactor_governance_tests`
+- `cargo test -p astral_calculator`
+- `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`
+
+Reviews:
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-W00-plan.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-W00-adversarial.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-W00-followup-1.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-FINAL.md`

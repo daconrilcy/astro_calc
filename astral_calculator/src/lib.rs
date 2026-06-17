@@ -1,3 +1,4 @@
+pub mod astrology;
 pub mod bootstrap;
 pub mod domain;
 pub mod engine;
@@ -11,7 +12,7 @@ pub mod simplified;
 pub use engine::engine_request_from_env;
 
 pub mod aspects {
-    pub use crate::natal::aspects::*;
+    pub use crate::astrology::aspects::*;
 }
 
 pub mod catalog {
@@ -35,7 +36,7 @@ pub mod dignities {
 }
 
 pub mod ephemeris {
-    pub use crate::natal::ephemeris::*;
+    pub use crate::astrology::ephemeris::*;
 }
 
 pub mod facts {

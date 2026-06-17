@@ -1,10 +1,10 @@
 use serde_json::json;
 
+use crate::domain::ObjectPositionFact;
 use crate::natal::catalog::BasicPayloadCatalog;
 use crate::natal::dignities::{
     dignity_priority_delta_for_position, essential_dignities_for_position, EssentialDignityFact,
 };
-use crate::domain::ObjectPositionFact;
 
 use super::constants::THEME_OBJECT_POSITION;
 use super::context::{placement_context_object, placement_context_str, placement_context_value};

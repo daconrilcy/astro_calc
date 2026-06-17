@@ -17,7 +17,10 @@ pub(crate) fn build_reading_plan(
         signal_keys_for_objects(signals, &["sun", "moon", "ascendant"], 3),
     );
 
-    if let Some(cluster) = signals.iter().find(|signal| signal.signal_key.starts_with("cluster:")) {
+    if let Some(cluster) = signals
+        .iter()
+        .find(|signal| signal.signal_key.starts_with("cluster:"))
+    {
         let mut source_signal_keys = vec![cluster.signal_key.clone()];
         source_signal_keys.extend(
             cluster
@@ -28,7 +31,11 @@ pub(crate) fn build_reading_plan(
                 .into_iter()
                 .flatten()
                 .filter_map(|value| value.as_str())
-                .filter(|source_key| signals.iter().any(|signal| signal.signal_key == *source_key))
+                .filter(|source_key| {
+                    signals
+                        .iter()
+                        .any(|signal| signal.signal_key == *source_key)
+                })
                 .map(ToString::to_string),
         );
         source_signal_keys.extend(cluster_source_dignity_keys(signals, cluster));
@@ -258,8 +265,9 @@ fn finalize_reading_plan(plan: &mut Vec<BasicReadingPlanItem>) {
         let mut secondary_slot_candidates = Vec::new();
 
         for signal_key in item.source_signal_keys.drain(..) {
-            if let Some((_, primary_slot)) =
-                primary_slots.iter().find(|(assigned_key, _)| assigned_key == &signal_key)
+            if let Some((_, primary_slot)) = primary_slots
+                .iter()
+                .find(|(assigned_key, _)| assigned_key == &signal_key)
             {
                 secondary_slot_candidates.push(BasicSecondarySlotCandidate {
                     signal_key,

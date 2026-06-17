@@ -12,7 +12,7 @@ use astral_calculator::engine::{
 use astral_calculator::engine_request_from_env;
 use astral_calculator::ephemeris::SwissEphemerisEngine;
 use astral_calculator::infra::db::reference_repository::ReferenceRepository;
-use astral_calculator::runtime::ChartCalculationRuntimeService;
+use astral_calculator::runtime::build_runtime_service;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -21,7 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pool = connect_from_env().await?;
     let references = ReferenceRepository::new(pool.clone());
     let ephemeris = SwissEphemerisEngine::new(ephemeris_path_from_env());
-    let service = ChartCalculationRuntimeService::new(pool, ephemeris, runtime_options_from_env());
+    let service = build_runtime_service(pool, ephemeris, runtime_options_from_env());
 
     let json = match cli.output_contract {
         OutputContract::Engine => {

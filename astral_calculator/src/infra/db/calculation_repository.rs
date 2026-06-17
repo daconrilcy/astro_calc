@@ -53,7 +53,9 @@ impl CalculationRepository {
         &self,
         chart_calculation_id: i32,
     ) -> Result<NatalChartInput, RuntimeError> {
-        self.inner.natal_input_for_calculation(chart_calculation_id).await
+        self.inner
+            .natal_input_for_calculation(chart_calculation_id)
+            .await
     }
 
     pub async fn lock_idempotency(

@@ -80,7 +80,12 @@ pub(crate) fn build_rulership_context(
             })
         })
         .collect();
-    let dispositor_links = dispositor_links(positions, &rules_by_sign, &positions_by_object, &signal_keys);
+    let dispositor_links = dispositor_links(
+        positions,
+        &rules_by_sign,
+        &positions_by_object,
+        &signal_keys,
+    );
     let rulership_chains = rulership_chains(positions, &rules_by_sign);
     let final_dispositors = final_dispositors(&rulership_chains);
     let mutual_receptions = mutual_receptions(&rulership_chains);
@@ -103,9 +108,18 @@ pub(crate) fn has_current_rulership_context(context: &BasicRulershipContext) -> 
         .ascendant_ruler
         .as_ref()
         .is_some_and(has_current_ruler_context)
-        && context.mc_ruler.as_ref().is_some_and(has_current_ruler_context)
-        && context.dominant_house_rulers.iter().all(has_current_ruler_context)
-        && context.dominant_sign_rulers.iter().all(has_current_ruler_context)
+        && context
+            .mc_ruler
+            .as_ref()
+            .is_some_and(has_current_ruler_context)
+        && context
+            .dominant_house_rulers
+            .iter()
+            .all(has_current_ruler_context)
+        && context
+            .dominant_sign_rulers
+            .iter()
+            .all(has_current_ruler_context)
         && context.dispositor_links.iter().all(|link| {
             !link.object_code.trim().is_empty()
                 && !link.object_sign_code.trim().is_empty()
@@ -122,14 +136,23 @@ pub(crate) fn has_current_rulership_context(context: &BasicRulershipContext) -> 
         && context.final_dispositors.iter().all(|dispositor| {
             !dispositor.object_code.trim().is_empty()
                 && !dispositor.source_objects.is_empty()
-                && dispositor.source_objects.iter().all(|object_code| !object_code.trim().is_empty())
+                && dispositor
+                    .source_objects
+                    .iter()
+                    .all(|object_code| !object_code.trim().is_empty())
         })
         && final_dispositors_match_chains(context)
         && context.mutual_receptions.iter().all(|reception| {
             reception.object_codes.len() == 2
-                && reception.object_codes.iter().all(|object_code| !object_code.trim().is_empty())
+                && reception
+                    .object_codes
+                    .iter()
+                    .all(|object_code| !object_code.trim().is_empty())
                 && !reception.source_objects.is_empty()
-                && reception.source_objects.iter().all(|object_code| !object_code.trim().is_empty())
+                && reception
+                    .source_objects
+                    .iter()
+                    .all(|object_code| !object_code.trim().is_empty())
         })
         && mutual_receptions_match_chains(context)
 }
@@ -226,8 +249,11 @@ fn ruler_context_for_sign(
 ) -> Option<BasicRulerContext> {
     let rules = rules_by_sign.get(sign_code)?;
     let primary = rules.first()?;
-    let ruler_position = positions_by_object.get(primary.object_code.as_str()).copied();
-    let ruler_position_signal_key = ruler_position_signal_key(&primary.object_code, signal_keys, ruler_position);
+    let ruler_position = positions_by_object
+        .get(primary.object_code.as_str())
+        .copied();
+    let ruler_position_signal_key =
+        ruler_position_signal_key(&primary.object_code, signal_keys, ruler_position);
 
     Some(BasicRulerContext {
         context_key: format!("{source_kind}:{source_code}:ruler"),
@@ -242,7 +268,13 @@ fn ruler_context_for_sign(
         interpretive_role: interpretive_role.to_string(),
         strength_context: strength_context(ruler_position),
         ruler_sources: rules.iter().map(|rule| ruler_source(rule)).collect(),
-        interpretive_hint: interpretive_hint(source_kind, source_code, sign_code, primary, ruler_position),
+        interpretive_hint: interpretive_hint(
+            source_kind,
+            source_code,
+            sign_code,
+            primary,
+            ruler_position,
+        ),
     })
 }
 
@@ -258,12 +290,18 @@ fn dispositor_links(
         .filter_map(|position| {
             let rules = rules_by_sign.get(position.sign_code.as_str())?;
             let primary = rules.first()?;
-            let dispositor_position = positions_by_object.get(primary.object_code.as_str()).copied();
+            let dispositor_position = positions_by_object
+                .get(primary.object_code.as_str())
+                .copied();
             Some(BasicDispositorLink {
                 object_code: position.object_code.clone(),
                 object_sign_code: position.sign_code.clone(),
                 dispositor_object_code: primary.object_code.clone(),
-                dispositor_signal_key: dispositor_signal_key(primary, signal_keys, dispositor_position),
+                dispositor_signal_key: dispositor_signal_key(
+                    primary,
+                    signal_keys,
+                    dispositor_position,
+                ),
                 ruler_sources: rules.iter().map(|rule| ruler_source(rule)).collect(),
                 interpretive_hint: format!(
                     "{} in {} is routed through {} by domicile rulership.",
@@ -294,7 +332,9 @@ fn rulership_chains(
             let mut termination = "unresolved".to_string();
 
             for _ in 0..MAX_CHAIN_DEPTH {
-                let Some(sign_code) = position_sign_by_object.get(current).copied() else { break; };
+                let Some(sign_code) = position_sign_by_object.get(current).copied() else {
+                    break;
+                };
                 let Some(next) = rules_by_sign
                     .get(sign_code)
                     .and_then(|rules| rules.first())
@@ -308,11 +348,12 @@ fn rulership_chains(
                     break;
                 }
                 if !seen.insert(next.to_string()) {
-                    termination = if chain.len() >= 3 && chain[chain.len() - 3] == chain[chain.len() - 1] {
-                        "mutual_reception".to_string()
-                    } else {
-                        "cycle".to_string()
-                    };
+                    termination =
+                        if chain.len() >= 3 && chain[chain.len() - 3] == chain[chain.len() - 1] {
+                            "mutual_reception".to_string()
+                        } else {
+                            "cycle".to_string()
+                        };
                     break;
                 }
                 current = next;
@@ -335,7 +376,10 @@ fn final_dispositors(chains: &[BasicRulershipChain]) -> Vec<BasicFinalDispositor
     for chain in chains {
         if chain.termination == "final_dispositor" {
             if let Some(last) = chain.chain.last() {
-                grouped.entry(last.clone()).or_default().push(chain.object_code.clone());
+                grouped
+                    .entry(last.clone())
+                    .or_default()
+                    .push(chain.object_code.clone());
             }
         }
     }
@@ -345,7 +389,10 @@ fn final_dispositors(chains: &[BasicRulershipChain]) -> Vec<BasicFinalDispositor
         .map(|(object_code, mut source_objects)| {
             source_objects.sort();
             source_objects.dedup();
-            BasicFinalDispositor { object_code, source_objects }
+            BasicFinalDispositor {
+                object_code,
+                source_objects,
+            }
         })
         .collect::<Vec<_>>();
     values.sort_by(|left, right| left.object_code.cmp(&right.object_code));
@@ -354,8 +401,13 @@ fn final_dispositors(chains: &[BasicRulershipChain]) -> Vec<BasicFinalDispositor
 
 fn mutual_receptions(chains: &[BasicRulershipChain]) -> Vec<BasicMutualReception> {
     let mut grouped: HashMap<String, BasicMutualReception> = HashMap::new();
-    for chain in chains.iter().filter(|chain| chain.termination == "mutual_reception") {
-        let Some(pair) = mutual_reception_pair(chain) else { continue; };
+    for chain in chains
+        .iter()
+        .filter(|chain| chain.termination == "mutual_reception")
+    {
+        let Some(pair) = mutual_reception_pair(chain) else {
+            continue;
+        };
         let key = pair.join(":");
         let entry = grouped.entry(key).or_insert_with(|| BasicMutualReception {
             object_codes: pair,
@@ -399,7 +451,10 @@ fn dispositor_signal_key(
     signal_keys: &HashSet<&str>,
     position: Option<&ObjectPositionFact>,
 ) -> String {
-    let dignity_key = format!("dignity:{}:{}:{}", rule.object_code, rule.dignity_type, rule.sign_code);
+    let dignity_key = format!(
+        "dignity:{}:{}:{}",
+        rule.object_code, rule.dignity_type, rule.sign_code
+    );
     if signal_keys.contains(dignity_key.as_str()) {
         dignity_key
     } else {
@@ -431,7 +486,9 @@ fn unique_ruler_object_codes(rules: &[&DomicileRulerReference]) -> Vec<String> {
 }
 
 fn strength_context(position: Option<&ObjectPositionFact>) -> Vec<String> {
-    let Some(position) = position else { return Vec::new(); };
+    let Some(position) = position else {
+        return Vec::new();
+    };
     let mut context = Vec::new();
     if matches!(position.house_number, Some(1 | 4 | 7 | 10)) {
         context.push("angular_house".to_string());
@@ -478,8 +535,13 @@ fn has_current_ruler_context(context: &BasicRulerContext) -> bool {
         && !context.source_code.trim().is_empty()
         && !context.sign_code.trim().is_empty()
         && !context.ruler_object_codes.is_empty()
-        && context.ruler_object_codes.iter().all(|object_code| !object_code.trim().is_empty())
-        && context.ruler_object_codes.contains(&context.ruler_object_code)
+        && context
+            .ruler_object_codes
+            .iter()
+            .all(|object_code| !object_code.trim().is_empty())
+        && context
+            .ruler_object_codes
+            .contains(&context.ruler_object_code)
         && !context.ruler_object_code.trim().is_empty()
         && !context.interpretive_role.trim().is_empty()
         && !context.interpretive_hint.trim().is_empty()
@@ -498,14 +560,16 @@ fn ruler_context_matches_references(
     context: &BasicRulerContext,
     domicile_rulers: &[DomicileRulerReference],
 ) -> bool {
-    source_signatures(&context.ruler_sources) == reference_signatures(context.sign_code.as_str(), domicile_rulers)
+    source_signatures(&context.ruler_sources)
+        == reference_signatures(context.sign_code.as_str(), domicile_rulers)
 }
 
 fn dispositor_link_matches_references(
     link: &BasicDispositorLink,
     domicile_rulers: &[DomicileRulerReference],
 ) -> bool {
-    source_signatures(&link.ruler_sources) == reference_signatures(link.object_sign_code.as_str(), domicile_rulers)
+    source_signatures(&link.ruler_sources)
+        == reference_signatures(link.object_sign_code.as_str(), domicile_rulers)
 }
 
 fn source_signatures(sources: &[BasicRulerSource]) -> Vec<RulerSourceSignature> {
@@ -525,7 +589,10 @@ fn source_signatures(sources: &[BasicRulerSource]) -> Vec<RulerSourceSignature> 
     signatures
 }
 
-fn reference_signatures(sign_code: &str, domicile_rulers: &[DomicileRulerReference]) -> Vec<RulerSourceSignature> {
+fn reference_signatures(
+    sign_code: &str,
+    domicile_rulers: &[DomicileRulerReference],
+) -> Vec<RulerSourceSignature> {
     let mut signatures = domicile_rulers
         .iter()
         .filter(|ruler| ruler.sign_code == sign_code)
@@ -556,15 +623,27 @@ struct RulerSourceSignature {
 
 fn final_dispositors_match_chains(context: &BasicRulershipContext) -> bool {
     let mut expected: BTreeMap<String, Vec<String>> = BTreeMap::new();
-    for chain in context.rulership_chains.iter().filter(|chain| chain.termination == "final_dispositor") {
-        let Some(last) = chain.chain.last() else { return false; };
-        expected.entry(last.clone()).or_default().push(chain.object_code.clone());
+    for chain in context
+        .rulership_chains
+        .iter()
+        .filter(|chain| chain.termination == "final_dispositor")
+    {
+        let Some(last) = chain.chain.last() else {
+            return false;
+        };
+        expected
+            .entry(last.clone())
+            .or_default()
+            .push(chain.object_code.clone());
     }
     normalize_map_values(&mut expected);
 
     let mut actual = BTreeMap::new();
     for final_dispositor in &context.final_dispositors {
-        actual.insert(final_dispositor.object_code.clone(), final_dispositor.source_objects.clone());
+        actual.insert(
+            final_dispositor.object_code.clone(),
+            final_dispositor.source_objects.clone(),
+        );
     }
     normalize_map_values(&mut actual);
     actual == expected
@@ -572,9 +651,18 @@ fn final_dispositors_match_chains(context: &BasicRulershipContext) -> bool {
 
 fn mutual_receptions_match_chains(context: &BasicRulershipContext) -> bool {
     let mut expected: BTreeMap<Vec<String>, Vec<String>> = BTreeMap::new();
-    for chain in context.rulership_chains.iter().filter(|chain| chain.termination == "mutual_reception") {
-        let Some(pair) = mutual_reception_pair(chain) else { return false; };
-        expected.entry(pair).or_default().push(chain.object_code.clone());
+    for chain in context
+        .rulership_chains
+        .iter()
+        .filter(|chain| chain.termination == "mutual_reception")
+    {
+        let Some(pair) = mutual_reception_pair(chain) else {
+            return false;
+        };
+        expected
+            .entry(pair)
+            .or_default()
+            .push(chain.object_code.clone());
     }
     normalize_map_values(&mut expected);
 

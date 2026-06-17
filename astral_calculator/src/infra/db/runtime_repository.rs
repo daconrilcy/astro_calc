@@ -1,7 +1,6 @@
 use serde_json::Value;
 use sqlx::{PgPool, Postgres, Transaction};
 
-use crate::natal::catalog::BasicPayloadCatalog;
 use crate::domain::{
     AccidentalConditionTrigger, AccidentalPolarityBand, AccidentalScoringParams,
     BasicProductScoringProfile, EssentialDignityRuleReference,
@@ -21,6 +20,7 @@ use crate::infra::db::models::{
     MajorAspectFamilyReference, MotionStateReference, ObjectSectAffinityReferenceRow,
     PersistedAspectFact, PersistedObjectPositionFact, SignReference,
 };
+use crate::natal::catalog::BasicPayloadCatalog;
 use crate::shared::error::RuntimeError;
 
 #[derive(Clone)]

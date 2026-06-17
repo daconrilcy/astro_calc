@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use serde_json::json;
 
-use crate::natal::catalog::BasicPayloadCatalog;
 use crate::domain::{InterpretationSignalDraft, ObjectPositionFact};
+use crate::natal::catalog::BasicPayloadCatalog;
 
 use super::constants::SUPPRESSION_ACTIVE;
 use super::context::{placement_context_object, placement_context_str, placement_context_value};

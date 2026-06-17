@@ -1,8 +1,8 @@
 use serde_json::json;
 
+use crate::domain::ObjectPositionFact;
 use crate::natal::catalog::BasicPayloadCatalog;
 use crate::natal::dignities::{dignity_priority_delta, EssentialDignityFact};
-use crate::domain::ObjectPositionFact;
 
 use super::constants::{THEME_FUNCTIONAL_CHALLENGE, THEME_FUNCTIONAL_STRENGTH};
 use super::positions::object_signal_scoring_number;

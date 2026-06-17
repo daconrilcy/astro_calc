@@ -1,12 +1,12 @@
 use serde_json::{json, Value};
 
-use crate::natal::catalog::BasicPayloadCatalog;
-use crate::natal::catalog::accidental_polarity_bands_are_valid;
 use crate::domain::{
     BasicAccidentalScoringSnapshot, BasicCalculationReliability, BasicChartContext,
     BasicHemisphereEmphasis, BasicObjectPosition, BasicPayload, BasicPayloadContract,
     BasicProductScoringSnapshot, BasicSectContext, NatalChartInput, ObjectPositionFact,
 };
+use crate::natal::catalog::accidental_polarity_bands_are_valid;
+use crate::natal::catalog::BasicPayloadCatalog;
 use crate::natal::payload::shared::contract::{
     CALCULATION_SCOPE_FULL_NATAL, CHART_TYPE_NATAL, CONTRACT_VERSION_V13,
     INTERPRETATION_SCOPE_STRUCTURED, PROJECTION_DEPTH_RICH,
@@ -23,7 +23,9 @@ pub(crate) fn build_chart_context(
     contract_version: &str,
     catalog: Option<&BasicPayloadCatalog>,
 ) -> BasicChartContext {
-    let sun_position = positions.iter().find(|position| position.object_code == "sun");
+    let sun_position = positions
+        .iter()
+        .find(|position| position.object_code == "sun");
     let sun_horizon_position = sun_position.and_then(horizon_position_code_for_fact);
     let chart_sect = sun_horizon_position
         .as_deref()
@@ -220,13 +222,13 @@ fn visibility_flag_for_fact(position: &ObjectPositionFact) -> Option<bool> {
         return None;
     }
 
-    position
-        .is_visible
-        .or_else(|| match horizon_position_code_for_fact(position).as_deref() {
+    position.is_visible.or_else(
+        || match horizon_position_code_for_fact(position).as_deref() {
             Some(ABOVE_HORIZON) | Some(ON_HORIZON) => Some(true),
             Some(BELOW_HORIZON) => Some(false),
             _ => None,
-        })
+        },
+    )
 }
 
 fn build_hemisphere_emphasis(positions: &[ObjectPositionFact]) -> BasicHemisphereEmphasis {
@@ -234,7 +236,10 @@ fn build_hemisphere_emphasis(positions: &[ObjectPositionFact]) -> BasicHemispher
     let mut below_horizon_count = 0;
     let mut on_horizon_count = 0;
 
-    for position in positions.iter().filter(|position| !is_angle_position_fact(position)) {
+    for position in positions
+        .iter()
+        .filter(|position| !is_angle_position_fact(position))
+    {
         match horizon_position_code_for_fact(position).as_deref() {
             Some(ABOVE_HORIZON) => above_horizon_count += 1,
             Some(BELOW_HORIZON) => below_horizon_count += 1,
@@ -292,7 +297,9 @@ fn has_chart_context(payload: &BasicPayload) -> bool {
         && context.payload_contract.calculation_scope == CALCULATION_SCOPE_FULL_NATAL
         && context.payload_contract.interpretation_scope == INTERPRETATION_SCOPE_STRUCTURED
         && context.payload_contract.projection_depth == PROJECTION_DEPTH_RICH
-        && context.calculation_reliability.birth_time_precision_required
+        && context
+            .calculation_reliability
+            .birth_time_precision_required
         && context.calculation_reliability.house_system_sensitive
         && context
             .sect
@@ -339,7 +346,9 @@ fn has_valid_v13_scoring_snapshots(context: &BasicChartContext) -> bool {
 fn has_current_visibility_context(position: &BasicObjectPosition) -> bool {
     let value = &position.visibility_context;
     let is_angle = is_angle_position(position);
-    let horizon_position = value.get("horizon_position").and_then(|value| value.as_str());
+    let horizon_position = value
+        .get("horizon_position")
+        .and_then(|value| value.as_str());
     let altitude_deg = value.get("altitude_deg").and_then(|value| value.as_f64());
     let source = value.get("source").and_then(|value| value.as_str());
 
@@ -351,14 +360,18 @@ fn has_current_visibility_context(position: &BasicObjectPosition) -> bool {
         && source.is_some_and(|source| !source.trim().is_empty())
         && if is_angle {
             source == Some("angle_context")
-                && value.get("altitude_deg").is_some_and(|value| value.is_null())
+                && value
+                    .get("altitude_deg")
+                    .is_some_and(|value| value.is_null())
                 && value.get("is_visible").is_some_and(|value| value.is_null())
         } else {
             let Some(altitude_deg) = altitude_deg.filter(|altitude| altitude.is_finite()) else {
                 return false;
             };
 
-            value.get("is_visible").is_some_and(|value| value.is_boolean())
+            value
+                .get("is_visible")
+                .is_some_and(|value| value.is_boolean())
                 && source == Some("calculated_altitude")
                 && horizon_position == Some(horizon_position_for_altitude(altitude_deg))
         }
@@ -386,7 +399,10 @@ fn has_consistent_sun_sect(payload: &BasicPayload) -> bool {
         && payload.chart_context.sect.chart_sect.as_deref()
             == chart_sect_for_sun_horizon(sun_horizon_position)
         && payload.chart_context.sect.source.as_deref()
-            == sun.visibility_context.get("source").and_then(|value| value.as_str())
+            == sun
+                .visibility_context
+                .get("source")
+                .and_then(|value| value.as_str())
 }
 
 fn has_consistent_hemisphere_counts(payload: &BasicPayload) -> bool {
@@ -411,7 +427,15 @@ fn has_consistent_hemisphere_counts(payload: &BasicPayload) -> bool {
         }
     }
 
-    payload.chart_context.hemisphere_emphasis.above_horizon_count == above_horizon_count
-        && payload.chart_context.hemisphere_emphasis.below_horizon_count == below_horizon_count
+    payload
+        .chart_context
+        .hemisphere_emphasis
+        .above_horizon_count
+        == above_horizon_count
+        && payload
+            .chart_context
+            .hemisphere_emphasis
+            .below_horizon_count
+            == below_horizon_count
         && payload.chart_context.hemisphere_emphasis.on_horizon_count == on_horizon_count
 }

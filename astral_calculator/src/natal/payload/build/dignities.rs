@@ -1,8 +1,8 @@
+use crate::domain::{BasicDignity, BasicSignal, ObjectPositionFact};
 use crate::natal::catalog::BasicPayloadCatalog;
 use crate::natal::dignities::{
     dignity_is_signal_worthy, essential_dignities_for_position, essential_dignities_for_positions,
 };
-use crate::domain::{BasicDignity, BasicSignal, ObjectPositionFact};
 
 pub(super) fn position_dignity_context(
     position: &ObjectPositionFact,

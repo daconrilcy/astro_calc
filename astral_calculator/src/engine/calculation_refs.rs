@@ -25,7 +25,9 @@ pub async fn coordinate_reference_system_key_from_env(
     )
 }
 
-pub async fn house_system_code_from_env(repository: &ReferenceRepository) -> Result<String, String> {
+pub async fn house_system_code_from_env(
+    repository: &ReferenceRepository,
+) -> Result<String, String> {
     reference_key_from_env(
         "ASTRAL_HOUSE_SYSTEM",
         "ASTRAL_HOUSE_SYSTEM_ID",
@@ -124,7 +126,9 @@ fn reference_id_from_env(
     Ok(default_id)
 }
 
-async fn zodiac_key_by_id(repository: &ReferenceRepository) -> Result<HashMap<i32, String>, String> {
+async fn zodiac_key_by_id(
+    repository: &ReferenceRepository,
+) -> Result<HashMap<i32, String>, String> {
     static MAP: OnceLock<HashMap<i32, String>> = OnceLock::new();
     if let Some(map) = MAP.get() {
         return Ok(map.clone());
@@ -156,7 +160,9 @@ async fn coordinate_key_by_id(
     Ok(map)
 }
 
-async fn house_code_by_id(repository: &ReferenceRepository) -> Result<HashMap<i32, String>, String> {
+async fn house_code_by_id(
+    repository: &ReferenceRepository,
+) -> Result<HashMap<i32, String>, String> {
     static MAP: OnceLock<HashMap<i32, String>> = OnceLock::new();
     if let Some(map) = MAP.get() {
         return Ok(map.clone());

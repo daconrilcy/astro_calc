@@ -12,12 +12,12 @@ mod signal_filters;
 
 use std::collections::{HashMap, HashSet};
 
-use crate::natal::catalog::BasicPayloadCatalog;
 use crate::domain::{
     AccidentalDignityConditionReference, BasicObjectPosition, BasicPayload, BasicSignal,
     HouseAxisReference, InterpretationSignalRow, LunarPhaseReference, NatalChartInput,
     ObjectPositionFact, ObjectSectAffinityReference,
 };
+use crate::natal::catalog::BasicPayloadCatalog;
 use angles::{
     angle_object_codes_from_positions, build_payload_angles, structural_axis_pairs_from_positions,
 };
@@ -140,7 +140,9 @@ pub fn build_basic_payload_with_accidental_references(
     })
 }
 
-pub(crate) fn build_basic_payload_from(builder_input: BasicPayloadBuilderInput<'_>) -> BasicPayload {
+pub(crate) fn build_basic_payload_from(
+    builder_input: BasicPayloadBuilderInput<'_>,
+) -> BasicPayload {
     let BasicPayloadBuilderInput {
         chart_calculation_id,
         input,

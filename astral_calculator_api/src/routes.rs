@@ -5,8 +5,8 @@ use astral_calculator::ephemeris::SwissEphemerisEngine;
 use astral_calculator::features::horoscope::{
     HoroscopeCalculationRequest, HoroscopePeriodCalculationRequest,
 };
-use astral_calculator::runtime::ChartCalculationRuntimeService;
 use astral_calculator::features::simplified::AstroSimplifiedNatalRequest;
+use astral_calculator::runtime::build_runtime_service;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -457,8 +457,7 @@ pub async fn serve(config: AppConfig) -> Result<(), Box<dyn std::error::Error>> 
 
     let pool = connect_from_env().await?;
     let ephemeris = SwissEphemerisEngine::new(ephemeris_path_from_env());
-    let service =
-        ChartCalculationRuntimeService::new(pool.clone(), ephemeris, runtime_options_from_env());
+    let service = build_runtime_service(pool.clone(), ephemeris, runtime_options_from_env());
     let schema_registry = SchemaRegistry::from_dir(&config.schemas_dir)
         .map_err(|err| format!("schema bootstrap: {err}"))?;
 

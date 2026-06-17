@@ -1,11 +1,13 @@
 use chrono::{TimeZone, Utc};
 use serde_json::json;
 
+use astral_calculator::domain::HouseReference;
 use astral_calculator::domain::{
     HouseAxisReference, LunarPhaseReference, NatalChartInput, ObjectPositionFact,
 };
-use astral_calculator::domain::HouseReference;
-use astral_calculator::features::payload::{build_basic_payload, build_basic_payload_with_all_references};
+use astral_calculator::features::payload::{
+    build_basic_payload, build_basic_payload_with_all_references,
+};
 use astral_calculator::runtime::validate_house_axis_references;
 
 fn input() -> NatalChartInput {
@@ -380,8 +382,9 @@ fn shared_lunar_phase_wraparound_mapping_builds_expected_context() {
         .expect("expected lunar phase context");
     assert_eq!(lunar_phase.phase_code, "new_moon");
     assert!((lunar_phase.sun_moon_angle_deg - 20.0).abs() <= 0.0001);
-    assert!(lunar_phase
-        .related_signal_keys
-        .iter()
-        .all(|key| ["object_position:sun", "object_position:moon"].contains(&key.as_str())));
+    assert!(lunar_phase.related_signal_keys.iter().all(|key| [
+        "object_position:sun",
+        "object_position:moon"
+    ]
+    .contains(&key.as_str())));
 }

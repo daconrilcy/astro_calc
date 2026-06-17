@@ -38,11 +38,11 @@ use relations::{
 pub use utils::indefinite_article;
 use utils::round4;
 
+use crate::domain::{CalculatedChartFacts, InterpretationSignalDraft};
 use crate::natal::catalog::BasicPayloadCatalog;
 use crate::natal::dignities::{
     dignity_source_weight_delta_for_position, essential_dignities_for_position,
 };
-use crate::domain::{CalculatedChartFacts, InterpretationSignalDraft};
 
 pub fn aggregate_basic_signals(
     facts: &CalculatedChartFacts,

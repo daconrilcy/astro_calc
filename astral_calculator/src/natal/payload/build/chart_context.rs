@@ -1,7 +1,7 @@
 use serde_json::Value;
 
-use crate::natal::catalog::BasicPayloadCatalog;
 use crate::domain::{BasicChartContext, NatalChartInput, ObjectPositionFact};
+use crate::natal::catalog::BasicPayloadCatalog;
 
 pub(super) fn build_chart_context(
     input: &NatalChartInput,

@@ -8,14 +8,20 @@ pub(super) fn is_structural_axis_aspect_signal(
     signal: &BasicSignal,
     structural_axis_pairs: &HashSet<(String, String)>,
 ) -> bool {
-    crate::natal::payload::rules::angles::is_structural_axis_aspect_signal(signal, structural_axis_pairs)
+    crate::natal::payload::rules::angles::is_structural_axis_aspect_signal(
+        signal,
+        structural_axis_pairs,
+    )
 }
 
 pub(super) fn is_angle_to_angle_aspect_signal(
     signal: &BasicSignal,
     angle_object_codes: &HashSet<String>,
 ) -> bool {
-    crate::natal::payload::rules::angles::is_angle_to_angle_aspect_signal(signal, angle_object_codes)
+    crate::natal::payload::rules::angles::is_angle_to_angle_aspect_signal(
+        signal,
+        angle_object_codes,
+    )
 }
 
 pub(super) fn has_current_aspect_context(signal: &BasicSignal) -> bool {

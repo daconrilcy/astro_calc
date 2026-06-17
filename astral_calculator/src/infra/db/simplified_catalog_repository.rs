@@ -1,10 +1,10 @@
 use sqlx::PgPool;
 
+use crate::shared::error::RuntimeError;
 use crate::simplified::catalog::{
     CalculationScope, InputPrecisionLevel, LimitationCode, ReliabilityLevel, SimplifiedCatalog,
     SimplifiedPolicy,
 };
-use crate::shared::error::RuntimeError;
 
 fn map_catalog_db_error(err: sqlx::Error) -> RuntimeError {
     let msg = err.to_string();

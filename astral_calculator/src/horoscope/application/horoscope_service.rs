@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
-use sqlx::PgPool;
 use std::sync::Arc;
 
+use crate::astrology::ephemeris::EphemerisEngine;
 use crate::domain::CalculationReferenceData;
 use crate::horoscope::{
     calculate_horoscope_daily_natal, calculate_horoscope_period_natal_from_transits,
@@ -13,7 +13,6 @@ use crate::infra::db::{
     calculation_repository::CalculationRepository, horoscope_repository::HoroscopeRepository,
     reference_repository::ReferenceRepository,
 };
-use crate::natal::ephemeris::EphemerisEngine;
 use crate::shared::error::RuntimeError;
 
 pub struct HoroscopeService<E> {
@@ -27,11 +26,16 @@ impl<E> HoroscopeService<E>
 where
     E: EphemerisEngine,
 {
-    pub fn new(pool: PgPool, ephemeris: Arc<E>) -> Self {
+    pub fn new(
+        calculations: CalculationRepository,
+        horoscope: HoroscopeRepository,
+        references: ReferenceRepository,
+        ephemeris: Arc<E>,
+    ) -> Self {
         Self {
-            calculations: CalculationRepository::new(pool.clone()),
-            horoscope: HoroscopeRepository::new(pool.clone()),
-            references: ReferenceRepository::new(pool),
+            calculations,
+            horoscope,
+            references,
             ephemeris,
         }
     }
@@ -99,7 +103,7 @@ where
             let mut transit_input = natal_input.clone();
             transit_input.birth_datetime_utc = reference_datetime_utc;
             transit_input.product_code = Some("horoscope_period_transit".to_string());
-            let facts = self.ephemeris.calculate_natal(
+            let facts = self.ephemeris.calculate_chart(
                 &transit_input,
                 &chart_objects,
                 &aspect_definitions,

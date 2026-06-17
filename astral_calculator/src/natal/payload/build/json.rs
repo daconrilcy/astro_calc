@@ -1,5 +1,5 @@
-use crate::domain::ObjectPositionFact;
 use crate::domain::InterpretationSignalRow;
+use crate::domain::ObjectPositionFact;
 pub(super) fn payload_value(
     signal: &InterpretationSignalRow,
     key: &str,

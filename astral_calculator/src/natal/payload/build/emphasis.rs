@@ -1,9 +1,9 @@
-use crate::natal::catalog::BasicPayloadCatalog;
-use crate::natal::dignities::dignity_emphasis_weight;
 use crate::domain::{
     BasicChartEmphasis, BasicDignity, BasicDominantHouse, BasicDominantObject, BasicDominantSign,
     BasicSignal, ObjectPositionFact,
 };
+use crate::natal::catalog::BasicPayloadCatalog;
+use crate::natal::dignities::dignity_emphasis_weight;
 use std::collections::HashMap;
 
 use super::json::position_context;

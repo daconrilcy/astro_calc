@@ -3,8 +3,8 @@ use astral_contracts::{
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
 };
 use astral_llm_application::{
-    HoroscopePeriodPublicRequest, HoroscopePublicRequest, build_calculation_request_for_service,
-    build_period_calculation_request_for_service,
+    build_calculation_request_for_service, build_period_calculation_request_for_service,
+    HoroscopePeriodPublicRequest, HoroscopePublicRequest,
 };
 
 fn daily_request(date: &str) -> HoroscopePublicRequest {
@@ -86,13 +86,11 @@ fn premium_daily_builder_uses_catalog_slot_profile_and_local_options() {
     );
     assert_eq!(payload["house_system_code"], serde_json::json!("placidus"));
     assert_eq!(payload["slots"].as_array().expect("slots").len(), 12);
-    assert!(
-        payload["calculation_features"]
-            .as_array()
-            .expect("features")
-            .iter()
-            .any(|feature| feature.as_str() == Some("local_chart"))
-    );
+    assert!(payload["calculation_features"]
+        .as_array()
+        .expect("features")
+        .iter()
+        .any(|feature| feature.as_str() == Some("local_chart")));
 }
 
 #[test]

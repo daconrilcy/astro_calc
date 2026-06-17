@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use chrono::Utc;
+use crate::astrology::ephemeris::EphemerisEngine;
 use crate::domain::{
     BasicPayload, CalculatedChartFacts, CalculationReferenceData, NatalChartInput, RuntimeOptions,
 };
@@ -9,22 +9,19 @@ use crate::infra::db::{
     calculation_repository::CalculationRepository, catalog_repository::CatalogRepository,
     models::ChartCalculationRow, reference_repository::ReferenceRepository,
 };
-use crate::natal::ephemeris::EphemerisEngine;
 use crate::natal::payload::build::build_basic_payload_with_accidental_references;
+use crate::natal::payload::validate::{has_current_rulership_references, is_current_basic_payload};
 use crate::natal::signals::aggregate_basic_signals;
-use crate::natal::payload::validate::{
-    has_current_rulership_references, is_current_basic_payload,
-};
 use crate::runtime::{
-    validate_accidental_condition_triggers, validate_accidental_polarity_bands,
-    validate_accidental_scoring_params,
-    validate_accidental_dignity_condition_references, validate_aspect_definitions,
-    validate_calculation_references, validate_chart_object_signal_profiles,
-    validate_house_axis_references, validate_lunar_phase_references,
-    validate_object_sect_affinity_references,
+    validate_accidental_condition_triggers, validate_accidental_dignity_condition_references,
+    validate_accidental_polarity_bands, validate_accidental_scoring_params,
+    validate_aspect_definitions, validate_calculation_references,
+    validate_chart_object_signal_profiles, validate_house_axis_references,
+    validate_lunar_phase_references, validate_object_sect_affinity_references,
 };
 use crate::shared::error::RuntimeError;
 use crate::shared::idempotency::{advisory_lock_key, idempotency_key, input_hash};
+use chrono::Utc;
 
 pub struct NatalCalculationService<E> {
     calculations: CalculationRepository,
@@ -121,7 +118,9 @@ where
         validate_object_sect_affinity_references(&sect_affinities)?;
 
         let mut tx = self.calculations.pool().begin().await?;
-        self.calculations.lock_idempotency(&mut tx, lock_key).await?;
+        self.calculations
+            .lock_idempotency(&mut tx, lock_key)
+            .await?;
 
         let existing = self
             .calculations
@@ -141,7 +140,10 @@ where
                     return Ok(payload);
                 }
             }
-            let positions = self.calculations.positions_for_payload(completed_id).await?;
+            let positions = self
+                .calculations
+                .positions_for_payload(completed_id)
+                .await?;
             if has_reusable_persisted_positions(&positions, &references) {
                 let aspects = self.calculations.aspects_for_payload(completed_id).await?;
                 let signal_drafts = aggregate_basic_signals(
@@ -188,7 +190,9 @@ where
             }
         } else if let Some(running) = existing.iter().find(|row| row.status == "running") {
             if is_stale(running, self.options.stale_after_seconds) {
-                self.calculations.mark_stale_failed(&mut tx, running.id).await?;
+                self.calculations
+                    .mark_stale_failed(&mut tx, running.id)
+                    .await?;
             } else {
                 let chart_calculation_id = running.id;
                 tx.commit().await?;
@@ -218,7 +222,7 @@ where
             .heartbeat(&mut tx, chart_calculation_id, "calculating_facts")
             .await?;
 
-        let facts = match self.ephemeris.calculate_natal(
+        let facts = match self.ephemeris.calculate_chart(
             &input,
             &chart_objects,
             &aspect_definitions,

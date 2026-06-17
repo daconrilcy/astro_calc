@@ -1,18 +1,16 @@
 use sqlx::PgPool;
 
 use super::models::{
-    AnglePointReference as AnglePointReferenceRow,
-    AspectDefinition as AspectDefinitionRow,
-    ChartObject as ChartObjectRow,
-    DomicileRulerReference as DomicileRulerReferenceRow,
-    HouseReference as HouseReferenceRow, HouseSystem as HouseSystemRow,
-    HorizonPositionReference as HorizonPositionReferenceRow, MajorAspectFamilyReference,
+    AnglePointReference as AnglePointReferenceRow, AspectDefinition as AspectDefinitionRow,
+    ChartObject as ChartObjectRow, DomicileRulerReference as DomicileRulerReferenceRow,
+    HorizonPositionReference as HorizonPositionReferenceRow, HouseReference as HouseReferenceRow,
+    HouseSystem as HouseSystemRow, MajorAspectFamilyReference,
     MotionStateReference as MotionStateReferenceRow, SignReference as SignReferenceRow,
 };
 use super::runtime_repository::RuntimeRepository;
 use crate::domain::{
-    AnglePointReference, AspectDefinition, ChartObject, DomicileRulerReference, HouseReference,
-    HouseSystem, HorizonPositionReference, MotionStateReference, SignReference,
+    AnglePointReference, AspectDefinition, ChartObject, DomicileRulerReference,
+    HorizonPositionReference, HouseReference, HouseSystem, MotionStateReference, SignReference,
 };
 use crate::shared::error::RuntimeError;
 
@@ -65,7 +63,9 @@ impl ReferenceRepository {
         &self,
         id: i32,
     ) -> Result<String, RuntimeError> {
-        self.inner.coordinate_reference_system_display_name(id).await
+        self.inner
+            .coordinate_reference_system_display_name(id)
+            .await
     }
 
     pub async fn house_system(&self, id: i32) -> Result<HouseSystem, RuntimeError> {
