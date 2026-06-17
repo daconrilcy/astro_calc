@@ -1,3 +1,49 @@
+# 2026-06-17 - `astral_calculator` refacto feature boundaries W0-W4
+
+Resume court:
+- creation du module canonique `astral_calculator/src/astrology/` pour les calculs communs `aspects` et `ephemeris`;
+- conservation des anciens chemins publics `natal::aspects` et `natal::ephemeris` via wrappers de compatibilite;
+- migration des appels internes vers `crate::astrology::*` et `EphemerisEngine::calculate_chart`;
+- ajout des noms canoniques neutres horoscope `calculate_horoscope_daily`, `calculate_horoscope_period`, `calculate_horoscope_period_from_positions` et `calculate_horoscope_period_from_transits`;
+- conservation des anciens noms publics horoscope `*_natal` comme wrappers de compatibilite.
+
+Invariants de couche:
+- `natal`, `simplified` et `horoscope` restent des orchestrateurs produit;
+- les calculs astrologiques reutilisables vivent sous `astrology/`, pas sous une feature produit;
+- aucune dependance `domain -> infra`;
+- aucun `PgPool`, `connect_from_env`, `block_on` ou `run_blocking` dans les couches metier verrouillees par test;
+- aucun import `crate::natal::aspects` ou `crate::natal::ephemeris` depuis `simplified` ou `horoscope`;
+- les champs contractuels publics contenant `natal` dans horoscope restent inchanges.
+
+Commandes de verification:
+- `cargo fmt`
+- `cargo test -p astral_calculator --test refactor_governance_tests`
+- `cargo test -p astral_calculator`
+- `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`
+- `cargo test -p astral_calculator_api --test astral_calculator_api_tests`
+
+Reviews:
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-W00-plan.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-W00-adversarial.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-W00-followup-1.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-W01-plan.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-W01-adversarial.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-W01-followup-1.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-W02-plan.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-W02-adversarial.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-W02-followup-1.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-W03-plan.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-W03-adversarial.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-W03-followup-1.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-W04-plan.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-W04-adversarial.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-W04-followup-1.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-GLOBAL-adversarial.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-IMPLEMENTATION-001-adversarial.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-IMPLEMENTATION-002-adversarial.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-IMPLEMENTATION-003-adversarial.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-FINAL.md`
+
 # 2026-06-17 - `astral_calculator` refacto boundary / governance wave
 
 - Remplace les alias de `domain/references.rs` vers `infra::db::models` par de vrais types domaine pour les references centrales (`ChartObject`, `AspectDefinition`, `HouseSystem`, `SignReference`, `HouseReference`, `MotionStateReference`, `HorizonPositionReference`, `AnglePointReference`, `DomicileRulerReference`, `InterpretationSignalRow`).

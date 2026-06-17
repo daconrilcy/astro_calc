@@ -21,18 +21,18 @@ pub fn normalize_horoscope_period_request_utc(
     Ok(request)
 }
 
-pub fn calculate_horoscope_period_natal(
+pub fn calculate_horoscope_period(
     request: HoroscopePeriodCalculationRequest,
 ) -> HoroscopePeriodCalculationResponse {
-    calculate_horoscope_period_natal_from_positions(request, &[], 8.0)
+    calculate_horoscope_period_from_positions(request, &[], 8.0)
 }
 
-pub fn calculate_horoscope_period_natal_from_positions(
+pub fn calculate_horoscope_period_from_positions(
     request: HoroscopePeriodCalculationRequest,
     natal_positions: &[ObjectPositionFact],
     period_max_major_aspect_orb_deg: f64,
 ) -> HoroscopePeriodCalculationResponse {
-    calculate_horoscope_period_natal_from_transits(
+    calculate_horoscope_period_from_transits(
         request,
         natal_positions,
         &[],
@@ -40,7 +40,7 @@ pub fn calculate_horoscope_period_natal_from_positions(
     )
 }
 
-pub fn calculate_horoscope_period_natal_from_transits(
+pub fn calculate_horoscope_period_from_transits(
     request: HoroscopePeriodCalculationRequest,
     natal_positions: &[ObjectPositionFact],
     transit_snapshots: &[(String, Vec<ObjectPositionFact>)],
@@ -92,6 +92,38 @@ pub fn calculate_horoscope_period_natal_from_transits(
         calculation_warnings: Vec::new(),
         evidence_keys,
     }
+}
+
+pub fn calculate_horoscope_period_natal(
+    request: HoroscopePeriodCalculationRequest,
+) -> HoroscopePeriodCalculationResponse {
+    calculate_horoscope_period(request)
+}
+
+pub fn calculate_horoscope_period_natal_from_positions(
+    request: HoroscopePeriodCalculationRequest,
+    natal_positions: &[ObjectPositionFact],
+    period_max_major_aspect_orb_deg: f64,
+) -> HoroscopePeriodCalculationResponse {
+    calculate_horoscope_period_from_positions(
+        request,
+        natal_positions,
+        period_max_major_aspect_orb_deg,
+    )
+}
+
+pub fn calculate_horoscope_period_natal_from_transits(
+    request: HoroscopePeriodCalculationRequest,
+    natal_positions: &[ObjectPositionFact],
+    transit_snapshots: &[(String, Vec<ObjectPositionFact>)],
+    max_major_aspect_orb_deg: f64,
+) -> HoroscopePeriodCalculationResponse {
+    calculate_horoscope_period_from_transits(
+        request,
+        natal_positions,
+        transit_snapshots,
+        max_major_aspect_orb_deg,
+    )
 }
 
 fn normalize_period_resolution_utc_field(

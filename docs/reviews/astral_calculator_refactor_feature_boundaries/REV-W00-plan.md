@@ -11,3 +11,4 @@
   - casser des imports publics historiques;
   - oublier un import interne interdit;
   - deplacer de la logique metier dans une facade de feature.
+- Findings restants: Aucun.

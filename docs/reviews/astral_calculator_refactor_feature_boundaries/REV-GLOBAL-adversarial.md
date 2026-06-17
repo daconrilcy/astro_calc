@@ -1,0 +1,21 @@
+# REV-GLOBAL adversarial
+
+- Statut: closed
+- Portee:
+  - Wave 0 gouvernance;
+  - Wave 1 extraction aspects;
+  - Wave 2 extraction ephemerides;
+  - Wave 3 clarification horoscope/simplified;
+  - Wave 4 nettoyage final compatible.
+- Checks globaux:
+  - absence d'import interdit `crate::natal::aspects` ou `crate::natal::ephemeris` depuis `simplified` et `horoscope`;
+  - `astrology/` porte les calculs communs extraits;
+  - `calculate_chart` est utilise par les services applicatifs;
+  - les wrappers publics restent sans logique propre;
+  - les contrats JSON publics ne sont pas modifies.
+- Commandes de verification:
+  - `cargo test -p astral_calculator --test refactor_governance_tests`
+  - `cargo test -p astral_calculator`
+  - `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`
+  - `cargo test -p astral_calculator_api --test astral_calculator_api_tests`
+- Findings restants: Aucun.

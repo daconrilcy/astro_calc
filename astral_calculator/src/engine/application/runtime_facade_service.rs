@@ -118,10 +118,24 @@ where
         &self,
         request: HoroscopeCalculationRequest,
     ) -> Result<HoroscopeCalculationResponse, RuntimeError> {
-        self.horoscope.calculate_daily(request).await
+        self.calculate_horoscope_daily(request).await
     }
 
     pub async fn calculate_horoscope_period_natal(
+        &self,
+        request: HoroscopePeriodCalculationRequest,
+    ) -> Result<HoroscopePeriodCalculationResponse, RuntimeError> {
+        self.calculate_horoscope_period(request).await
+    }
+
+    pub async fn calculate_horoscope_daily(
+        &self,
+        request: HoroscopeCalculationRequest,
+    ) -> Result<HoroscopeCalculationResponse, RuntimeError> {
+        self.horoscope.calculate_daily(request).await
+    }
+
+    pub async fn calculate_horoscope_period(
         &self,
         request: HoroscopePeriodCalculationRequest,
     ) -> Result<HoroscopePeriodCalculationResponse, RuntimeError> {

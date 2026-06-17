@@ -137,3 +137,48 @@ fn astrology_module_exists_and_feature_shared_is_not_used_for_astrology() {
         );
     }
 }
+
+#[test]
+fn feature_boundary_refactor_reviews_are_closed() {
+    let review_root =
+        workspace_root().join("docs/reviews/astral_calculator_refactor_feature_boundaries");
+    let expected_files = [
+        "REV-W00-plan.md",
+        "REV-W00-adversarial.md",
+        "REV-W00-followup-1.md",
+        "REV-W01-plan.md",
+        "REV-W01-adversarial.md",
+        "REV-W01-followup-1.md",
+        "REV-W02-plan.md",
+        "REV-W02-adversarial.md",
+        "REV-W02-followup-1.md",
+        "REV-W03-plan.md",
+        "REV-W03-adversarial.md",
+        "REV-W03-followup-1.md",
+        "REV-W04-plan.md",
+        "REV-W04-adversarial.md",
+        "REV-W04-followup-1.md",
+        "REV-GLOBAL-adversarial.md",
+        "REV-IMPLEMENTATION-001-adversarial.md",
+        "REV-IMPLEMENTATION-002-adversarial.md",
+        "REV-IMPLEMENTATION-003-adversarial.md",
+        "REV-FINAL.md",
+    ];
+
+    for file_name in expected_files {
+        let path = review_root.join(file_name);
+        assert!(path.exists(), "missing review artifact {}", path.display());
+        let content = read(&path);
+        assert!(
+            content.contains("Statut: closed") || content.contains("Statut final: closed"),
+            "{} is not marked closed",
+            path.display()
+        );
+        assert!(
+            content.contains("Aucun finding ouvert")
+                || content.contains("Findings restants: Aucun"),
+            "{} does not record a zero-open-finding state",
+            path.display()
+        );
+    }
+}

@@ -4,7 +4,7 @@ use std::sync::Arc;
 use crate::astrology::ephemeris::EphemerisEngine;
 use crate::domain::CalculationReferenceData;
 use crate::horoscope::{
-    calculate_horoscope_daily_natal, calculate_horoscope_period_natal_from_transits,
+    calculate_horoscope_daily, calculate_horoscope_period_from_transits,
     normalize_horoscope_period_request_utc, HoroscopeCalculationRequest,
     HoroscopeCalculationResponse, HoroscopePeriodCalculationRequest,
     HoroscopePeriodCalculationResponse,
@@ -44,7 +44,7 @@ where
         &self,
         request: HoroscopeCalculationRequest,
     ) -> Result<HoroscopeCalculationResponse, RuntimeError> {
-        Ok(calculate_horoscope_daily_natal(request))
+        Ok(calculate_horoscope_daily(request))
     }
 
     pub async fn calculate_period(
@@ -119,7 +119,7 @@ where
             .into_iter()
             .map(|band| band.max_orb_deg)
             .fold(0.0, f64::max);
-        Ok(calculate_horoscope_period_natal_from_transits(
+        Ok(calculate_horoscope_period_from_transits(
             request,
             &natal_positions,
             &transit_snapshots,

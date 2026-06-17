@@ -4,9 +4,16 @@
 - Portee closee dans cette implementation:
   - Wave 0 gouvernance;
   - Wave 1 extraction des aspects;
-  - Wave 2 extraction du moteur d'ephemerides avec compatibilite.
+  - Wave 2 extraction du moteur d'ephemerides avec compatibilite;
+  - Wave 3 clarification des noms internes horoscope/simplified;
+  - Wave 4 nettoyage final avec wrappers publics conserves.
+- Reviews d'implementation:
+  - `REV-IMPLEMENTATION-001-adversarial.md`;
+  - `REV-IMPLEMENTATION-002-adversarial.md`;
+  - `REV-IMPLEMENTATION-003-adversarial.md`.
 - Verification attendue:
   - `cargo test -p astral_calculator`
   - `cargo test -p astral_calculator --test refactor_governance_tests`
   - `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`
+  - `cargo test -p astral_calculator_api --test astral_calculator_api_tests`
 - Findings restants: Aucun.

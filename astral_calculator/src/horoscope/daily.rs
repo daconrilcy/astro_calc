@@ -6,7 +6,7 @@ use super::{
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
 };
 
-pub fn calculate_horoscope_daily_natal(
+pub fn calculate_horoscope_daily(
     request: HoroscopeCalculationRequest,
 ) -> HoroscopeCalculationResponse {
     let service_code = request.service_code.clone();
@@ -30,6 +30,12 @@ pub fn calculate_horoscope_daily_natal(
         calculation_warnings: Vec::new(),
         evidence_keys,
     }
+}
+
+pub fn calculate_horoscope_daily_natal(
+    request: HoroscopeCalculationRequest,
+) -> HoroscopeCalculationResponse {
+    calculate_horoscope_daily(request)
 }
 
 fn fake_slot(
