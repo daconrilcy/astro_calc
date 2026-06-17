@@ -18,7 +18,7 @@ use crate::domain::{
     HouseAxisReference, LunarPhaseReference, NatalChartInput, ObjectPositionFact,
     ObjectSectAffinityReference,
 };
-use crate::models::InterpretationSignalRow;
+use crate::infra::db::models::InterpretationSignalRow;
 use angles::{
     angle_object_codes_from_positions, build_payload_angles, structural_axis_pairs_from_positions,
 };

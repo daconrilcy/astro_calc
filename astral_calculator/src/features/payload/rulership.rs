@@ -9,7 +9,7 @@ pub(super) fn build_rulership_context(
     rulers: &[DomicileRulerReference],
     signals: &[BasicSignal],
 ) -> BasicRulershipContext {
-    crate::payload_rules::rulership::build_rulership_context(
+    crate::features::payload_rules::rulership::build_rulership_context(
         positions,
         chart_emphasis,
         rulers,

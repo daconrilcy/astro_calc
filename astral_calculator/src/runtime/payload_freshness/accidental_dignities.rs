@@ -4,8 +4,8 @@ use crate::domain::{
     BasicAccidentalDignityCondition, BasicAccidentalDignityEvaluation, BasicObjectPosition,
     BasicPayload, BasicSignal,
 };
-use crate::payload_shared::contract::CONTRACT_VERSION_V13;
-use crate::payload_shared::text::{has_text, is_normalized_score};
+use crate::features::payload_shared::contract::CONTRACT_VERSION_V13;
+use crate::features::payload_shared::text::{has_text, is_normalized_score};
 
 use crate::catalog::overall_polarity_for_score_with_bands;
 

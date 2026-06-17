@@ -13,7 +13,7 @@ use astral_calculator::domain::{
 };
 mod common;
 
-use astral_calculator::models::{
+use astral_calculator::domain::{
     AnglePointReference, AspectDefinition, ChartObject, DomicileRulerReference, HouseReference,
     SignReference,
 };
@@ -1981,24 +1981,24 @@ fn reference_data() -> CalculationReferenceData {
                 interpretation_weight: Some("high".to_string()),
             })
             .collect(),
-        motion_states: vec![astral_calculator::models::MotionStateReference {
+        motion_states: vec![astral_calculator::domain::MotionStateReference {
             id: 1,
             code: "direct".to_string(),
             label: "Direct".to_string(),
             motion_family: "forward".to_string(),
         }],
         horizon_positions: vec![
-            astral_calculator::models::HorizonPositionReference {
+            astral_calculator::domain::HorizonPositionReference {
                 id: 1,
                 code: "above_horizon".to_string(),
                 label: "Above horizon".to_string(),
             },
-            astral_calculator::models::HorizonPositionReference {
+            astral_calculator::domain::HorizonPositionReference {
                 id: 2,
                 code: "below_horizon".to_string(),
                 label: "Below horizon".to_string(),
             },
-            astral_calculator::models::HorizonPositionReference {
+            astral_calculator::domain::HorizonPositionReference {
                 id: 3,
                 code: "on_horizon".to_string(),
                 label: "On horizon".to_string(),

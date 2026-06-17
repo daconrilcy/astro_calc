@@ -11,7 +11,7 @@
 
 # 2026-06-16 - `payload_rules` refactor for shared natal payload rules
 
-- Added an internal `astral_calculator::payload_rules` layer as the single source of truth for shared natal payload rules used by both payload build and runtime freshness validation.
+- Added an internal `astral_calculator::features::payload_rules` layer as the single source of truth for shared natal payload rules used by both payload build and runtime freshness validation.
 - Moved the duplicated pure rules for `angles`, `chart_context`, `lunar_phase`, `reading_plan`, `rulership`, and canonical `house_axes` into the `payload_rules` layer (currently backed by `astral_calculator/src/features/payload_rules/`).
 - Reduced the `payload` layer (currently backed by `astral_calculator/src/features/payload/`) to orchestration wrappers for those domains: it now prepares inputs, calls `payload_rules`, and assembles `BasicPayload`.
 - Reduced `astral_calculator/src/runtime/payload_freshness/` to validation wrappers for those same domains: it now checks payload freshness through the same shared rules instead of recomputing them locally.

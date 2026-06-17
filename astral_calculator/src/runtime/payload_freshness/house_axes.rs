@@ -1,8 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::domain::{BasicHouseAxisEmphasis, BasicPayload, BasicSignal};
-use crate::payload_rules::house_axes::{axis_label, canonical_axis};
-use crate::payload_shared::text::{
+use crate::features::payload_rules::house_axes::{axis_label, canonical_axis};
+use crate::features::payload_shared::text::{
     has_text, has_unique_non_empty_strings, is_normalized_score, push_unique,
 };
 

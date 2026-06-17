@@ -1,11 +1,11 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::domain::{BasicAngleFact, BasicPayload, BasicSignal, ObjectPositionFact};
-use crate::payload_shared::aspect::{
+use crate::features::payload_shared::aspect::{
     angle_object_codes, aspect_code, is_marked_structural_axis, object_pair_from_aspect_signal,
     structural_axis_pairs,
 };
-use crate::payload_shared::text::has_text;
+use crate::features::payload_shared::text::has_text;
 
 pub(crate) fn build_payload_angles<F>(
     positions: &[ObjectPositionFact],

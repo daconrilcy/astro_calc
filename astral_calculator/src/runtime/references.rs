@@ -6,7 +6,7 @@ use crate::domain::{
     AccidentalScoringParams, CalculationReferenceData, HouseAxisReference, HouseReference,
     LunarPhaseReference, ObjectSectAffinityReference,
 };
-use crate::models::{AspectDefinition, ChartObject};
+use crate::infra::db::models::{AspectDefinition, ChartObject};
 
 use super::RuntimeError;
 

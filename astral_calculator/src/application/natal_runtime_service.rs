@@ -19,7 +19,7 @@ use crate::horoscope::{
 };
 use crate::idempotency::{advisory_lock_key, idempotency_key, input_hash};
 use crate::llm_projection::resolve_projection_profile;
-use crate::models::ChartCalculationRow;
+use crate::infra::db::models::ChartCalculationRow;
 use crate::payload::build_basic_payload_with_accidental_references;
 use crate::repositories::RuntimeRepository;
 use crate::signals::aggregate_basic_signals;

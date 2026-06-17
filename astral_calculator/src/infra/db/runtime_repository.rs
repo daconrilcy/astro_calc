@@ -10,7 +10,7 @@ use crate::domain::{
     AspectFact, BasicPayload, CalculatedChartFacts, HouseCuspFact, InterpretationSignalDraft,
     NatalChartInput, ObjectPositionFact, RuntimeOptions,
 };
-use crate::models::{
+use crate::infra::db::models::{
     AccidentalConditionTriggerRow, AccidentalDignityConditionReferenceRow,
     AccidentalPolarityBandRow, AccidentalScoringParamsRow, AnglePointReference, AspectDefinition,
     AstralTimePeriodProfileRow, BasicProductScoringProfileRow, ChartCalculationRow, ChartObject,
@@ -716,9 +716,9 @@ impl RuntimeRepository {
 
     pub async fn zodiacal_reference_systems(
         &self,
-    ) -> Result<Vec<crate::models::ZodiacalReferenceSystemRow>, RuntimeError> {
+    ) -> Result<Vec<crate::infra::db::models::ZodiacalReferenceSystemRow>, RuntimeError> {
         Ok(
-            sqlx::query_as::<_, crate::models::ZodiacalReferenceSystemRow>(
+            sqlx::query_as::<_, crate::infra::db::models::ZodiacalReferenceSystemRow>(
                 r#"
             SELECT id,
                    key,
@@ -759,9 +759,9 @@ impl RuntimeRepository {
 
     pub async fn coordinate_reference_systems(
         &self,
-    ) -> Result<Vec<crate::models::CoordinateReferenceSystemRow>, RuntimeError> {
+    ) -> Result<Vec<crate::infra::db::models::CoordinateReferenceSystemRow>, RuntimeError> {
         Ok(
-            sqlx::query_as::<_, crate::models::CoordinateReferenceSystemRow>(
+            sqlx::query_as::<_, crate::infra::db::models::CoordinateReferenceSystemRow>(
                 r#"
             SELECT id,
                    key,

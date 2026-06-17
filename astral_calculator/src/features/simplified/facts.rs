@@ -9,7 +9,7 @@ use super::ephemeris_calc::{
 use super::resolve::ResolvedSimplifiedInput;
 use super::response::{AmbiguousSignFactResponse, CuspWarningResponse, SignFactResponse};
 use super::uncertainty_window::build_sampling_schedule;
-use crate::models::{ChartObject, SignReference};
+use crate::infra::db::models::{ChartObject, SignReference};
 use crate::runtime::RuntimeError;
 
 pub const RELIABILITY_STABLE: &str = "stable_across_uncertainty_window";

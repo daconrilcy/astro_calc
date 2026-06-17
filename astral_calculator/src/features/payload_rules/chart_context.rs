@@ -7,11 +7,11 @@ use crate::domain::{
     BasicHemisphereEmphasis, BasicObjectPosition, BasicPayload, BasicPayloadContract,
     BasicProductScoringSnapshot, BasicSectContext, NatalChartInput, ObjectPositionFact,
 };
-use crate::payload_shared::contract::{
+use crate::features::payload_shared::contract::{
     CALCULATION_SCOPE_FULL_NATAL, CHART_TYPE_NATAL, CONTRACT_VERSION_V13,
     INTERPRETATION_SCOPE_STRUCTURED, PROJECTION_DEPTH_RICH,
 };
-use crate::payload_shared::text::{has_text, is_normalized_score};
+use crate::features::payload_shared::text::{has_text, is_normalized_score};
 
 const ABOVE_HORIZON: &str = "above_horizon";
 const BELOW_HORIZON: &str = "below_horizon";

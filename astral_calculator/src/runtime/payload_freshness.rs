@@ -12,8 +12,7 @@ mod plan;
 mod rulership;
 mod text;
 
-use crate::domain::{BasicPayload, BasicSignal};
-use crate::models::DomicileRulerReference;
+use crate::domain::{BasicPayload, BasicSignal, DomicileRulerReference};
 
 pub fn is_current_basic_payload(payload: &BasicPayload) -> bool {
     let structural_axis_pairs = angles::structural_axis_pairs_from_payload(payload);

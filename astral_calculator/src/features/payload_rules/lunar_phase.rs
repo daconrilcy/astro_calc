@@ -4,7 +4,7 @@ use crate::domain::{
     BasicLunarPhaseContext, BasicPayload, BasicReadingPlanItem, BasicSignal, LunarPhaseReference,
     ObjectPositionFact,
 };
-use crate::payload_shared::text::has_unique_non_empty_strings;
+use crate::features::payload_shared::text::has_unique_non_empty_strings;
 
 pub(crate) fn build_lunar_phase_context(
     references: &[LunarPhaseReference],

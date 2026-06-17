@@ -362,7 +362,7 @@ fn datetime_without_location_adds_limitation() {
 #[test]
 fn moon_can_span_multiple_signs_on_world_window() {
     use astral_calculator::config::ephemeris_path_from_env;
-    use astral_calculator::models::SignReference;
+    use astral_calculator::domain::SignReference;
     use astral_calculator::simplified::{build_uncertainty_window, collect_window_sign_facts};
 
     let catalog = test_catalog();
@@ -388,7 +388,7 @@ fn moon_can_span_multiple_signs_on_world_window() {
         })
         .collect();
 
-    let moon_object = astral_calculator::models::ChartObject {
+    let moon_object = astral_calculator::domain::ChartObject {
         id: 2,
         code: "moon".into(),
         name: "Moon".into(),

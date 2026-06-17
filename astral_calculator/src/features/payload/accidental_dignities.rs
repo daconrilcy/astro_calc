@@ -8,7 +8,7 @@ use crate::domain::{
     BasicAccidentalDignityContextSummary, BasicAccidentalDignityEvaluation, BasicChartEmphasis,
     BasicSignal, ObjectPositionFact, ObjectSectAffinityReference,
 };
-use crate::payload_rules::chart_context::is_angle_role;
+use crate::features::payload_rules::chart_context::is_angle_role;
 
 use super::json::position_context;
 
@@ -273,7 +273,7 @@ fn horizon_condition(
     definitions: &HashMap<&str, &AccidentalDignityConditionReference>,
     catalog: &BasicPayloadCatalog,
 ) -> Option<BasicAccidentalDignityCondition> {
-    let visibility = crate::payload_rules::chart_context::visibility_context(position);
+    let visibility = crate::features::payload_rules::chart_context::visibility_context(position);
     let horizon_position = visibility
         .get("horizon_position")
         .and_then(|value| value.as_str())?;

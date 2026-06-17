@@ -9,7 +9,7 @@ pub(super) fn build_lunar_phase_context(
     signals: &[BasicSignal],
     reading_plan: &[BasicReadingPlanItem],
 ) -> Option<BasicLunarPhaseContext> {
-    crate::payload_rules::lunar_phase::build_lunar_phase_context(
+    crate::features::payload_rules::lunar_phase::build_lunar_phase_context(
         references,
         positions,
         signals,

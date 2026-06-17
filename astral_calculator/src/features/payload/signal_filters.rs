@@ -1,5 +1,5 @@
 use crate::domain::BasicSignal;
-use crate::payload_shared::aspect::is_marked_structural_axis;
+use crate::features::payload_shared::aspect::is_marked_structural_axis;
 use std::collections::HashSet;
 pub(super) fn is_interpretive_tension_aspect(signal: &BasicSignal) -> bool {
     if !is_interpretive_aspect_signal(signal) {
@@ -41,14 +41,14 @@ pub(super) fn is_structural_axis_signal_for_pairs(
     signal: &BasicSignal,
     structural_axis_pairs: &HashSet<(String, String)>,
 ) -> bool {
-    crate::payload_rules::angles::is_structural_axis_aspect_signal(signal, structural_axis_pairs)
+    crate::features::payload_rules::angles::is_structural_axis_aspect_signal(signal, structural_axis_pairs)
 }
 
 pub(super) fn is_angle_to_angle_aspect_signal(
     signal: &BasicSignal,
     angle_object_codes: &HashSet<String>,
 ) -> bool {
-    crate::payload_rules::angles::is_angle_to_angle_aspect_signal(signal, angle_object_codes)
+    crate::features::payload_rules::angles::is_angle_to_angle_aspect_signal(signal, angle_object_codes)
 }
 
 fn aspect_context_str<'a>(signal: &'a BasicSignal, key: &str) -> Option<&'a str> {

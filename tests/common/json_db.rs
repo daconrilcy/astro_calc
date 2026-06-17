@@ -1,4 +1,4 @@
-use astral_calculator::models::AspectDefinition;
+use astral_calculator::domain::AspectDefinition;
 use serde_json::Value;
 
 const ASTRAL_ASPECTS_JSON: &str = include_str!("../../json_db/astral_aspects.json");

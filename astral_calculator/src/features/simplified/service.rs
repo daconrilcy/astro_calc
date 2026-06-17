@@ -10,7 +10,7 @@ use super::response::{AstroSimplifiedNatalResponse, RECOMMENDED_SIMPLIFIED_PROFI
 use crate::aspects::detect_aspects;
 use crate::domain::{CalculatedChartFacts, NatalChartInput, ObjectPositionFact};
 use crate::ephemeris::EphemerisEngine;
-use crate::models::{AspectDefinition, ChartObject};
+use crate::infra::db::models::{AspectDefinition, ChartObject};
 use crate::repositories::RuntimeRepository;
 use crate::runtime::validate_calculation_references;
 use crate::runtime::RuntimeError;

@@ -1,13 +1,15 @@
-pub type AnglePointReference = crate::models::AnglePointReference;
-pub type AspectDefinition = crate::models::AspectDefinition;
-pub type ChartObject = crate::models::ChartObject;
-pub type DomicileRulerReference = crate::models::DomicileRulerReference;
-pub type HorizonPositionReference = crate::models::HorizonPositionReference;
-pub type HouseReference = crate::models::HouseReference;
-pub type HouseSystem = crate::models::HouseSystem;
-pub type InterpretationSignalRow = crate::models::InterpretationSignalRow;
-pub type MotionStateReference = crate::models::MotionStateReference;
-pub type SignReference = crate::models::SignReference;
+use serde::{Deserialize, Serialize};
+
+pub type AnglePointReference = crate::infra::db::models::AnglePointReference;
+pub type AspectDefinition = crate::infra::db::models::AspectDefinition;
+pub type ChartObject = crate::infra::db::models::ChartObject;
+pub type DomicileRulerReference = crate::infra::db::models::DomicileRulerReference;
+pub type HorizonPositionReference = crate::infra::db::models::HorizonPositionReference;
+pub type HouseReference = crate::infra::db::models::HouseReference;
+pub type HouseSystem = crate::infra::db::models::HouseSystem;
+pub type InterpretationSignalRow = crate::infra::db::models::InterpretationSignalRow;
+pub type MotionStateReference = crate::infra::db::models::MotionStateReference;
+pub type SignReference = crate::infra::db::models::SignReference;
 
 pub struct CalculationReferenceData {
     pub signs: Vec<SignReference>,
@@ -124,4 +126,3 @@ pub struct BasicProductScoringProfile {
     pub max_house_axis_emphasis: usize,
 }
 
-use serde::{Deserialize, Serialize};

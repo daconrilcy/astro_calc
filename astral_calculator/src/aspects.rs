@@ -2,7 +2,7 @@ use serde_json::json;
 
 use crate::domain::{AspectFact, ObjectPositionFact};
 use crate::facts::shortest_angular_distance;
-use crate::models::AspectDefinition;
+use crate::infra::db::models::AspectDefinition;
 
 pub fn canonical_aspect_orb_deg(aspect: &AspectDefinition) -> Option<f64> {
     let max = aspect.max_default_orb_deg;

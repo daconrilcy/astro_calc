@@ -4,7 +4,7 @@ use serde_json::json;
 use astral_calculator::domain::{
     HouseAxisReference, LunarPhaseReference, NatalChartInput, ObjectPositionFact,
 };
-use astral_calculator::models::HouseReference;
+use astral_calculator::domain::HouseReference;
 use astral_calculator::payload::{build_basic_payload, build_basic_payload_with_all_references};
 use astral_calculator::runtime::validate_house_axis_references;
 
@@ -159,8 +159,8 @@ fn positions() -> Vec<ObjectPositionFact> {
     ]
 }
 
-fn angle_signal_row() -> astral_calculator::models::InterpretationSignalRow {
-    astral_calculator::models::InterpretationSignalRow {
+fn angle_signal_row() -> astral_calculator::domain::InterpretationSignalRow {
+    astral_calculator::domain::InterpretationSignalRow {
         id: 1,
         signal_key: "angle:ascendant:sign:aries".to_string(),
         theme_code: Some("identity".to_string()),
@@ -187,7 +187,7 @@ fn angle_signal_row() -> astral_calculator::models::InterpretationSignalRow {
 fn shared_angle_pair_extraction_keeps_axis_aspects_out_of_payload() {
     let positions = positions();
     let signals = vec![
-        astral_calculator::models::InterpretationSignalRow {
+        astral_calculator::domain::InterpretationSignalRow {
             id: 10,
             signal_key: "aspect:descendant:ascendant:opposition".to_string(),
             theme_code: Some("relationships".to_string()),
@@ -214,7 +214,7 @@ fn shared_angle_pair_extraction_keeps_axis_aspects_out_of_payload() {
                 }
             })),
         },
-        astral_calculator::models::InterpretationSignalRow {
+        astral_calculator::domain::InterpretationSignalRow {
             id: 11,
             ..angle_signal_row()
         },

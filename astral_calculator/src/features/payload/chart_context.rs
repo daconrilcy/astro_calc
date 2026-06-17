@@ -9,7 +9,7 @@ pub(super) fn build_chart_context(
     contract_version: &str,
     catalog: Option<&BasicPayloadCatalog>,
 ) -> BasicChartContext {
-    crate::payload_rules::chart_context::build_chart_context(
+    crate::features::payload_rules::chart_context::build_chart_context(
         input,
         positions,
         contract_version,
@@ -18,5 +18,5 @@ pub(super) fn build_chart_context(
 }
 
 pub(super) fn visibility_context(position: &ObjectPositionFact) -> Value {
-    crate::payload_rules::chart_context::visibility_context(position)
+    crate::features::payload_rules::chart_context::visibility_context(position)
 }
