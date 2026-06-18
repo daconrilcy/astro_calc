@@ -1,3 +1,7 @@
+//! Charge, conserve et valide les schemas JSON exposes par le service HTTP.
+//! Le registre garde les versions canoniques en memoire pour la validation et la
+//! publication des liens de contrat.
+
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -7,12 +11,14 @@ use serde_json::Value;
 
 use crate::config::validate_path_within;
 
+/// Contient les schemas bruts et les validateurs JSON Schema precompiles.
 pub struct SchemaRegistry {
     schemas: HashMap<String, Value>,
     validators: HashMap<String, JSONSchema>,
 }
 
 impl SchemaRegistry {
+    /// Charge tous les schemas connus depuis un repertoire donne.
     pub fn from_dir(dir: &Path) -> Result<Self, String> {
         let mut registry = Self {
             schemas: HashMap::new(),
@@ -83,10 +89,12 @@ impl SchemaRegistry {
         Ok(registry)
     }
 
+    /// Retourne le schema brut associe a une version donnee.
     pub fn get(&self, version: &str) -> Option<&Value> {
         self.schemas.get(version)
     }
 
+    /// Verifie qu'un payload respecte un schema JSON connu.
     pub fn validate(&self, version: &str, payload: &Value) -> Result<(), Vec<String>> {
         let validator = self
             .validators
@@ -100,6 +108,7 @@ impl SchemaRegistry {
             .map_or(Ok(()), Err)
     }
 
+    /// Construit la table des versions de contrats et de leurs URLs publiques.
     pub fn contract_links(&self) -> HashMap<String, String> {
         self.schemas
             .keys()
@@ -108,6 +117,7 @@ impl SchemaRegistry {
     }
 }
 
+/// Lit le fichier OpenAPI en s'assurant qu'il reste dans le repertoire autorise.
 pub fn openapi_bytes(path: &Path, allowed_dir: &Path) -> Result<Vec<u8>, String> {
     validate_path_within(path, allowed_dir)?;
     if !path.is_file() {
@@ -116,6 +126,7 @@ pub fn openapi_bytes(path: &Path, allowed_dir: &Path) -> Result<Vec<u8>, String>
     fs::read(path).map_err(|e| format!("failed to read OpenAPI at {}: {e}", path.display()))
 }
 
+/// Renvoie le repertoire racine des contrats calcule a partir du depot.
 pub fn repo_contracts_calculator_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("..")

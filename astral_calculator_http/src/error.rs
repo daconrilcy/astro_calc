@@ -1,3 +1,7 @@
+//! Fabrique les reponses d'erreur HTTP normalisees pour l'API calculateur.
+//! Le module centralise les codes, les messages et les conversions d'erreurs
+//! internes afin de conserver un format stable cote client.
+
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -5,6 +9,8 @@ use serde_json::{json, Value};
 use tracing::error;
 use uuid::Uuid;
 
+/// Construit une reponse d'erreur JSON standardisee.
+/// Tous les chemins d'erreur HTTP du service passent par cette fonction.
 pub fn error_response(
     status: StatusCode,
     code: &str,
@@ -23,6 +29,7 @@ pub fn error_response(
     (status, Json(body)).into_response()
 }
 
+/// Produit une erreur 401 pour les requetes non authentifiees.
 pub fn unauthorized() -> Response {
     error_response(
         StatusCode::UNAUTHORIZED,
@@ -32,6 +39,7 @@ pub fn unauthorized() -> Response {
     )
 }
 
+/// Produit une erreur 422 pour les payloads invalides ou incoherents.
 pub fn validation_failed(message: impl Into<String>, details: Option<Value>) -> Response {
     error_response(
         StatusCode::UNPROCESSABLE_ENTITY,
@@ -41,6 +49,7 @@ pub fn validation_failed(message: impl Into<String>, details: Option<Value>) -> 
     )
 }
 
+/// Produit une erreur 503 lorsque le service n'est pas pret a traiter la requete.
 pub fn service_not_ready(message: impl Into<String>, details: Value) -> Response {
     error_response(
         StatusCode::SERVICE_UNAVAILABLE,
@@ -50,6 +59,7 @@ pub fn service_not_ready(message: impl Into<String>, details: Value) -> Response
     )
 }
 
+/// Produit une erreur 500 pour les defaillances internes non detaillees au client.
 pub fn internal_error(message: impl Into<String>) -> Response {
     error_response(
         StatusCode::INTERNAL_SERVER_ERROR,
@@ -59,6 +69,7 @@ pub fn internal_error(message: impl Into<String>) -> Response {
     )
 }
 
+/// Produit une erreur 422 pour un echec de calcul metier.
 pub fn calculation_failed(message: impl Into<String>, details: Option<Value>) -> Response {
     error_response(
         StatusCode::UNPROCESSABLE_ENTITY,
@@ -68,6 +79,7 @@ pub fn calculation_failed(message: impl Into<String>, details: Option<Value>) ->
     )
 }
 
+/// Convertit un rejet de JSON Axum en reponse d'erreur compatible API.
 pub fn json_rejection(rejection: axum::extract::rejection::JsonRejection) -> Response {
     validation_failed(
         "Request body must be valid JSON.",
@@ -75,6 +87,7 @@ pub fn json_rejection(rejection: axum::extract::rejection::JsonRejection) -> Res
     )
 }
 
+/// Transforme une erreur runtime du moteur en reponse HTTP adaptee.
 pub fn map_runtime_error(err: astral_calculator::runtime::RuntimeError) -> Response {
     match err {
         astral_calculator::runtime::RuntimeError::InvalidEngineRequest(msg) => {

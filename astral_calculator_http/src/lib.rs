@@ -1,3 +1,7 @@
+//! Point d'entree de la bibliotheque HTTP pour le moteur de calcul astral.
+//! Le crate expose la construction du routeur, la configuration et le demarrage
+//! du serveur afin que `main` reste minimal.
+
 //! Serveur HTTP du moteur de calcul astral.
 
 pub mod app;

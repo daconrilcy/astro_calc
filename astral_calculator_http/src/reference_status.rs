@@ -1,3 +1,7 @@
+//! Evalue l'etat des donnees de reference et des ephemerides pour le service HTTP.
+//! Ces verifications alimentent les routes de readiness et les diagnostics exposes
+//! aux consommateurs internes.
+
 use astral_calculator::config::ephemeris_path_from_env;
 use astral_calculator::infra::db::{
     catalog_repository::CatalogRepository, reference_repository::ReferenceRepository,
@@ -6,12 +10,14 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use sqlx::PgPool;
 
+/// Resume des verifications de disponibilite des references du moteur.
 #[derive(Debug, Clone, Serialize)]
 pub struct ReferenceStatus {
     pub status: String,
     pub checks: ReferenceChecks,
 }
 
+/// Detaille les points de controle utilises pour declarer le service pret.
 #[derive(Debug, Clone, Serialize)]
 pub struct ReferenceChecks {
     pub zodiac_signs: bool,
@@ -23,6 +29,7 @@ pub struct ReferenceChecks {
     pub ephemeris_path: Option<bool>,
 }
 
+/// Verifie en base et sur disque que les references minimales sont presentes.
 pub async fn check_reference_status(pool: &PgPool) -> ReferenceStatus {
     let references = ReferenceRepository::new(pool.clone());
     let catalogs = CatalogRepository::new(pool.clone());
@@ -81,6 +88,7 @@ pub async fn check_reference_status(pool: &PgPool) -> ReferenceStatus {
     }
 }
 
+/// Verifie si les fichiers d'ephemerides attendus sont disponibles localement.
 pub fn ephemeris_files_present() -> bool {
     let path = ephemeris_path_from_env();
     if path.is_file() {
@@ -97,14 +105,17 @@ pub fn ephemeris_files_present() -> bool {
         .any(|entry| entry.path().extension().is_some_and(|ext| ext == "se1"))
 }
 
+/// Indique si le resume de references signale un etat totalement pret.
 pub fn is_ready(status: &ReferenceStatus) -> bool {
     status.status == "ready"
 }
 
+/// Verifie que la base repond a une requete minimale.
 pub async fn database_ready(pool: &PgPool) -> bool {
     sqlx::query("SELECT 1").execute(pool).await.is_ok()
 }
 
+/// Construit le sous-ensemble de verifications expose dans les reponses HTTP.
 pub fn reference_check_details(status: &ReferenceStatus) -> Value {
     json!({
         "zodiac_signs": status.checks.zodiac_signs,
@@ -116,6 +127,7 @@ pub fn reference_check_details(status: &ReferenceStatus) -> Value {
     })
 }
 
+/// Assemble le diagnostic global de readiness combine base et references.
 pub fn readiness_report(db_ok: bool, status: &ReferenceStatus) -> Value {
     json!({
         "database": db_ok,
@@ -123,6 +135,7 @@ pub fn readiness_report(db_ok: bool, status: &ReferenceStatus) -> Value {
     })
 }
 
+/// Retourne `Ok(())` seulement si la base et les references sont disponibles.
 pub async fn ensure_ready(pool: &PgPool) -> Result<(), Value> {
     let db_ok = database_ready(pool).await;
     let status = check_reference_status(pool).await;

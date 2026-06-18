@@ -1,5 +1,9 @@
+//! Binaire de demarrage du service HTTP.
+//! Il configure le tracing, charge la configuration runtime puis lance le serveur.
+
 use astral_calculator_http::{serve, AppConfig};
 
+/// Initialise le serveur HTTP et arrete le processus si le demarrage echoue.
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()

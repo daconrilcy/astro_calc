@@ -1,3 +1,7 @@
+//! Definit les routes HTTP du calculateur et les handlers associes.
+//! Ce module orchestre la validation des entrees, les appels au runtime et la
+//! mise en forme des reponses pour les routes publiques et internes.
+
 use astral_calculator::config::{ephemeris_path_from_env, runtime_options_from_env};
 use astral_calculator::db::connect_from_env;
 use astral_calculator::engine::AstroEngineRequest;
@@ -32,6 +36,7 @@ use crate::reference_status::{
 use crate::schema_registry::{openapi_bytes, SchemaRegistry};
 use crate::state::AppState;
 
+/// Construit le routeur principal avec toutes les routes exposees par le service.
 pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/health", get(health_live))
@@ -75,6 +80,7 @@ pub fn router(state: AppState) -> Router {
         .with_state(state)
 }
 
+/// Renvoie un indicateur de sante minimale du service HTTP.
 async fn health_live() -> impl IntoResponse {
     Json(json!({
         "status": "ok",
@@ -82,6 +88,7 @@ async fn health_live() -> impl IntoResponse {
     }))
 }
 
+/// Verifie si la base et les references sont suffisamment saines pour servir.
 async fn health_ready(State(state): State<AppState>) -> Response {
     let db_ok = database_ready(&state.pool).await;
     let status = check_reference_status(&state.pool).await;
@@ -101,6 +108,7 @@ async fn health_ready(State(state): State<AppState>) -> Response {
     .into_response()
 }
 
+/// Liste les contrats JSON et le chemin OpenAPI exposes par ce service.
 async fn list_contracts(State(state): State<AppState>) -> impl IntoResponse {
     Json(json!({
         "service": "astral_calculator_http",
@@ -112,6 +120,7 @@ async fn list_contracts(State(state): State<AppState>) -> impl IntoResponse {
     }))
 }
 
+/// Renvoie le schema JSON correspondant a une version donnee.
 async fn get_schema(
     State(state): State<AppState>,
     Path(version): Path<String>,
@@ -131,6 +140,7 @@ async fn get_schema(
         })
 }
 
+/// Renvoie l'etat de reference courant avec le detail des verifications.
 async fn reference_status(State(state): State<AppState>) -> impl IntoResponse {
     let db_ok = database_ready(&state.pool).await;
     let status = check_reference_status(&state.pool).await;
@@ -141,12 +151,14 @@ async fn reference_status(State(state): State<AppState>) -> impl IntoResponse {
     }))
 }
 
+/// Corps de requete utilise par l'endpoint de validation de schema.
 #[derive(Debug, Deserialize)]
 struct ValidateBody {
     schema_version: String,
     payload: Value,
 }
 
+/// Valide un payload arbitraire contre un schema connu.
 async fn validate_calculation(
     State(state): State<AppState>,
     body: Result<Json<ValidateBody>, axum::extract::rejection::JsonRejection>,
@@ -168,6 +180,7 @@ async fn validate_calculation(
     }
 }
 
+/// Lance un calcul natal complet apres validation du contrat et de la readiness.
 async fn calculate_natal(
     State(state): State<AppState>,
     body: Result<Json<Value>, axum::extract::rejection::JsonRejection>,
@@ -222,6 +235,7 @@ async fn calculate_natal(
     }
 }
 
+/// Lance un calcul natal simplifie avec le contrat dedie.
 async fn calculate_natal_simplified(
     State(state): State<AppState>,
     body: Result<Json<Value>, axum::extract::rejection::JsonRejection>,
@@ -280,6 +294,7 @@ async fn calculate_natal_simplified(
     }
 }
 
+/// Lance le calcul d'horoscope journalier a partir d'un theme natal.
 async fn calculate_horoscope_daily_natal(
     State(state): State<AppState>,
     body: Result<Json<Value>, axum::extract::rejection::JsonRejection>,
@@ -340,6 +355,7 @@ async fn calculate_horoscope_daily_natal(
     }
 }
 
+/// Lance le calcul d'horoscope par periode a partir d'un theme natal.
 async fn calculate_horoscope_period_natal(
     State(state): State<AppState>,
     body: Result<Json<Value>, axum::extract::rejection::JsonRejection>,
@@ -407,6 +423,7 @@ async fn calculate_horoscope_period_natal(
     }
 }
 
+/// Verifie qu'un `chart_calculation_id` reference bien un natal termine et compatible.
 async fn ensure_horoscope_natal_chart_ready(
     pool: &sqlx::PgPool,
     raw_id: &str,
@@ -454,6 +471,7 @@ async fn ensure_horoscope_natal_chart_ready(
     Ok(())
 }
 
+/// Sert le fichier OpenAPI stocke sur disque en respectant le repertoire autorise.
 async fn openapi_spec(State(state): State<AppState>) -> Result<Response, Response> {
     let bytes =
         openapi_bytes(&state.config.openapi_path, &state.config.schemas_dir).map_err(|err| {
@@ -472,6 +490,7 @@ async fn openapi_spec(State(state): State<AppState>) -> Result<Response, Respons
         .into_response())
 }
 
+/// Demarre le serveur HTTP apres avoir prepare la base, le runtime et les schemas.
 pub async fn serve(config: AppConfig) -> Result<(), Box<dyn std::error::Error>> {
     config.validate()?;
 

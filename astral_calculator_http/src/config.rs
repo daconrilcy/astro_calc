@@ -1,8 +1,13 @@
+//! Charge, normalise et valide la configuration du serveur HTTP.
+//! Ce module lit les variables d'environnement, applique les valeurs par defaut
+//! et bloque le demarrage si les chemins ou les conditions reseau sont incoherents.
+
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 
 use astral_calculator::config::load_dotenv;
 
+/// Regroupe tous les parametres utilises par le service HTTP.
 #[derive(Debug, Clone)]
 pub struct AppConfig {
     pub bind_addr: SocketAddr,
@@ -15,6 +20,8 @@ pub struct AppConfig {
 }
 
 impl AppConfig {
+    /// Construit la configuration a partir de l'environnement courant.
+    /// Les variables invalides retombent sur des valeurs par defaut explicites.
     pub fn from_env() -> Self {
         load_dotenv();
 
@@ -40,12 +47,15 @@ impl AppConfig {
         }
     }
 
+    /// Indique si le serveur doit exiger une authentification par cle API.
     pub fn requires_auth(&self) -> bool {
         self.api_key
             .as_ref()
             .is_some_and(|key| !key.trim().is_empty())
     }
 
+    /// Verifie que la configuration est exploitable avant le demarrage.
+    /// Cette validation couvre le bind reseau, les schemas et le fichier OpenAPI.
     pub fn validate(&self) -> Result<(), String> {
         if self.bind_addr.ip().is_unspecified() && !self.allow_public_bind {
             return Err(format!(
@@ -70,6 +80,7 @@ impl AppConfig {
     }
 }
 
+/// Retrouve le repertoire de schemas par defaut dans le depot.
 fn default_schemas_dir() -> PathBuf {
     if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
         let candidate = PathBuf::from(dir)
@@ -83,6 +94,7 @@ fn default_schemas_dir() -> PathBuf {
     PathBuf::from("contracts/calculator")
 }
 
+/// Verifie qu'un chemin reste dans le repertoire autorise apres resolution.
 pub fn validate_path_within(path: &Path, allowed_dir: &Path) -> Result<(), String> {
     let allowed = allowed_dir
         .canonicalize()
@@ -107,6 +119,7 @@ pub fn validate_path_within(path: &Path, allowed_dir: &Path) -> Result<(), Strin
     Ok(())
 }
 
+/// Lit un entier `u16` depuis l'environnement avec repli sur une valeur par defaut.
 fn parse_env_u16(name: &str, default: u16) -> u16 {
     env_var(name)
         .and_then(|v| v.parse().ok())
@@ -118,6 +131,7 @@ fn parse_env_u16(name: &str, default: u16) -> u16 {
         })
 }
 
+/// Lit un entier `u64` depuis l'environnement avec repli sur une valeur par defaut.
 fn parse_env_u64(name: &str, default: u64) -> u64 {
     env_var(name)
         .and_then(|v| v.parse().ok())
@@ -129,6 +143,7 @@ fn parse_env_u64(name: &str, default: u64) -> u64 {
         })
 }
 
+/// Lit un entier `usize` depuis l'environnement avec repli sur une valeur par defaut.
 fn parse_env_usize(name: &str, default: usize) -> usize {
     env_var(name)
         .and_then(|v| v.parse().ok())
@@ -140,6 +155,7 @@ fn parse_env_usize(name: &str, default: usize) -> usize {
         })
 }
 
+/// Recupere une variable d'environnement, en supprimant les blancs superflus.
 fn env_var(name: &str) -> Option<String> {
     std::env::var(name)
         .ok()
@@ -147,6 +163,7 @@ fn env_var(name: &str) -> Option<String> {
         .filter(|v| !v.is_empty())
 }
 
+/// Recupere une variable booleenne avec des formes textuelles courantes.
 fn env_bool(name: &str, default: bool) -> bool {
     env_var(name)
         .map(|v| matches!(v.to_ascii_lowercase().as_str(), "1" | "true" | "yes" | "on"))

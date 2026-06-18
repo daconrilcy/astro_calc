@@ -1,8 +1,15 @@
+//! Middleware d'authentification applique aux routes protegees du service HTTP.
+//! Le module autorise certaines routes publiques, puis verifie une cle API via
+//! `Authorization: Bearer ...` ou `x-api-key` selon la configuration.
+
 use axum::{body::Body, extract::State, http::Request, middleware::Next, response::Response};
 
 use crate::error;
 use crate::state::AppState;
 
+/// Verifie si la requete peut continuer vers le routeur protege.
+/// Les routes publiques passent sans controle; sinon la cle fournie est comparee
+/// en temps quasi constant pour limiter les risques de fuite par temporisation.
 pub async fn require_api_key(
     State(state): State<AppState>,
     request: Request<Body>,
@@ -27,6 +34,8 @@ pub async fn require_api_key(
     }
 }
 
+/// Extrait un token Bearer depuis un en-tete HTTP `Authorization`.
+/// Retourne `None` si le format est invalide ou si le jeton est vide.
 fn bearer_token(value: Option<&axum::http::HeaderValue>) -> Option<&str> {
     let raw = value?.to_str().ok()?;
     let scheme_end = raw.find(' ')?;
@@ -41,6 +50,7 @@ fn bearer_token(value: Option<&axum::http::HeaderValue>) -> Option<&str> {
     }
 }
 
+/// Indique si le chemin fait partie des routes exposes sans authentification.
 fn is_public_path(path: &str) -> bool {
     matches!(
         path,
@@ -48,6 +58,8 @@ fn is_public_path(path: &str) -> bool {
     ) || path.starts_with("/v1/schemas/")
 }
 
+/// Compare deux chaines en limitant les variations de temps d'execution.
+/// Cette comparaison n'est utilisee que pour des secrets de meme longueur.
 fn constant_time_eq(a: &str, b: &str) -> bool {
     if a.len() != b.len() {
         return false;
