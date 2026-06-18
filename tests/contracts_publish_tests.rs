@@ -46,7 +46,7 @@ fn calculator_schemas_exist_in_contracts_dir() {
     let files = [
         "astro_engine_request_v1.schema.json",
         "astro_engine_response_v1.schema.json",
-        "natal_structured_v13.schema.json",
+        "natal_structured_v14.schema.json",
         "llm_projection_natal_v1.schema.json",
         "astro_simplified_natal_request_v1.schema.json",
         "astro_simplified_natal_response_v1.schema.json",

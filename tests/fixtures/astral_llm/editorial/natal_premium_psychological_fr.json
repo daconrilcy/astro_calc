@@ -60,7 +60,7 @@
       "generation_mode": "chapter_orchestrated",
       "prompt_family": "natal_prompter",
       "prompt_version": "v1",
-      "astro_contract_version": "natal_structured_v13",
+      "astro_contract_version": "natal_structured_v14",
       "fallback_used": false
     }
   }

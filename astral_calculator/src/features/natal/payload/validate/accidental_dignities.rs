@@ -6,7 +6,7 @@ use crate::domain::{
     BasicAccidentalDignityCondition, BasicAccidentalDignityEvaluation, BasicObjectPosition,
     BasicPayload, BasicSignal,
 };
-use crate::features::natal::payload::shared::contract::CONTRACT_VERSION_V13;
+use crate::features::natal::payload::shared::contract::CONTRACT_VERSION_V14;
 use crate::features::natal::payload::shared::text::{has_text, is_normalized_score};
 
 use crate::features::natal::catalog::overall_polarity_for_score_with_bands;
@@ -15,7 +15,7 @@ const SCORE_TOLERANCE: f64 = 0.001;
 const ANGLE_ORB_TOLERANCE_DEG: f64 = 0.01;
 
 pub(super) fn has_current_accidental_dignities(payload: &BasicPayload) -> bool {
-    payload.chart_context.payload_contract.contract_version == CONTRACT_VERSION_V13
+    payload.chart_context.payload_contract.contract_version == CONTRACT_VERSION_V14
         && has_valid_accidental_dignities_block(payload)
         && payload
             .positions

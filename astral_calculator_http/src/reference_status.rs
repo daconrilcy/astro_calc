@@ -60,7 +60,7 @@ pub async fn check_reference_status(pool: &PgPool) -> ReferenceStatus {
         }
 
         if let Ok(profile) = catalogs
-            .basic_product_scoring_profile("basic", "natal_structured_v13")
+            .basic_product_scoring_profile("basic", "natal_structured_v14")
             .await
         {
             if let Ok(rules) = catalogs

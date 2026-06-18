@@ -13,6 +13,7 @@ use crate::features::natal::catalog::BasicPayloadCatalog;
 use crate::features::natal::payload::rules::chart_context::is_angle_role;
 
 use super::json::position_context;
+use super::projection_reasons::reason_simple;
 
 pub(super) struct AccidentalDignityBuild {
     pub evaluations: Vec<BasicAccidentalDignityEvaluation>,
@@ -144,11 +145,13 @@ pub(super) fn apply_accidental_context_to_emphasis(
     for dominant in chart_emphasis.dominant_objects.iter_mut() {
         if objects_with_accidental.contains(dominant.object_code.as_str())
             && !dominant
-                .reasons
+                .reason_details
                 .iter()
-                .any(|reason| reason == "accidental_context")
+                .any(|reason| reason.reason_code == "accidental_context")
         {
-            dominant.reasons.push("accidental_context".to_string());
+            dominant
+                .reason_details
+                .push(reason_simple("accidental_context"));
         }
     }
 }

@@ -79,7 +79,7 @@ fn premium_request(data: serde_json::Value) -> GenerateReadingRequest {
             audience_level: AudienceLevel::Intermediate,
         },
         astro_result: AstroCalculationPayload {
-            contract_version: "natal_structured_v13".into(),
+            contract_version: "natal_structured_v14".into(),
             chart_type: "natal".into(),
             data,
         },
@@ -147,7 +147,7 @@ fn build_use_case(catalog: Arc<CanonicalCatalog>) -> GenerateReadingUseCase {
 #[test]
 fn premium_rejects_domain_score_only_chapter_basis() {
     let facts = normalize_facts(&AstroCalculationPayload {
-        contract_version: "natal_structured_v13".into(),
+        contract_version: "natal_structured_v14".into(),
         chart_type: "natal".into(),
         data: premium_payload_with_scores_only(),
     });
@@ -184,7 +184,7 @@ fn premium_rejects_domain_score_only_chapter_basis() {
 #[test]
 fn premium_accepts_domain_score_plus_placement() {
     let facts = normalize_facts(&AstroCalculationPayload {
-        contract_version: "natal_structured_v13".into(),
+        contract_version: "natal_structured_v14".into(),
         chart_type: "natal".into(),
         data: premium_payload_with_placements(),
     });
@@ -231,7 +231,7 @@ async fn premium_e2e_fails_without_interpretive_payload() {
 
 fn v13_golden_path() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../tests/golden/natal_payload_v13_paris_1990.json")
+        .join("../../../tests/golden/natal_payload_v14_paris_1990.json")
 }
 
 fn rich_premium_payload() -> serde_json::Value {

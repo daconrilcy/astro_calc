@@ -6,7 +6,9 @@ use async_trait::async_trait;
 
 use super::runtime_queries::RuntimeQueries;
 use crate::application::ports::PayloadCatalogStore;
-use crate::domain::{BasicProductScoringProfile, EssentialDignityRuleReference};
+use crate::domain::{
+    BasicProductScoringProfile, EssentialDignityRuleReference, ProjectionReasonDefinition,
+};
 use crate::features::natal::catalog::BasicPayloadCatalog;
 use crate::shared::error::RuntimeError;
 
@@ -58,6 +60,12 @@ impl PayloadCatalogStore for CatalogRepository {
         )
         .await
     }
+
+    async fn projection_reason_definitions(
+        &self,
+    ) -> Result<Vec<ProjectionReasonDefinition>, RuntimeError> {
+        CatalogRepository::projection_reason_definitions(self).await
+    }
 }
 
 impl CatalogRepository {
@@ -100,5 +108,12 @@ impl CatalogRepository {
         self.inner
             .essential_dignity_rule_references(reference_version_id, score_profile_id)
             .await
+    }
+
+    /// Fonction projection_reason_definitions.
+    pub async fn projection_reason_definitions(
+        &self,
+    ) -> Result<Vec<ProjectionReasonDefinition>, RuntimeError> {
+        self.inner.projection_reason_definitions().await
     }
 }

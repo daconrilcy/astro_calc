@@ -49,7 +49,7 @@ impl CalculatorPort for FakeCalculator {
             "response_contract_version": "astro_engine_response_v1",
             "calculation_result": { "status": "completed" },
             "audit_payload": {
-                "contract_version": "natal_structured_v13",
+                "contract_version": "natal_structured_v14",
                 "payload": { "positions": [], "signals": [] }
             }
         }))

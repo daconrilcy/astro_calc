@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use crate::domain::{
     AccidentalConditionTrigger, AccidentalDignityConditionReference, AccidentalPolarityBand,
     AccidentalScoringParams, BasicProductScoringProfile, EssentialDignityRuleReference,
-    ObjectSectAffinityReference,
+    ObjectSectAffinityReference, ProjectionReasonDefinition,
 };
 
 #[derive(Debug, Clone)]
@@ -16,9 +16,11 @@ pub struct BasicPayloadCatalog {
     pub accidental_triggers: Vec<AccidentalConditionTrigger>,
     pub accidental_scoring: AccidentalScoringParams,
     pub accidental_polarity_bands: Vec<AccidentalPolarityBand>,
+    pub projection_reason_definitions: Vec<ProjectionReasonDefinition>,
     essential_by_object_sign: HashMap<(String, String), Vec<EssentialDignityRuleReference>>,
     triggers_by_family: HashMap<String, Vec<AccidentalConditionTrigger>>,
     dignity_weight_by_type: HashMap<String, EssentialDignityScoringWeight>,
+    projection_reason_by_code: HashMap<String, ProjectionReasonDefinition>,
 }
 
 #[derive(Debug, Clone)]
@@ -38,6 +40,7 @@ impl BasicPayloadCatalog {
         accidental_triggers: Vec<AccidentalConditionTrigger>,
         accidental_scoring: AccidentalScoringParams,
         accidental_polarity_bands: Vec<AccidentalPolarityBand>,
+        projection_reason_definitions: Vec<ProjectionReasonDefinition>,
     ) -> Self {
         let mut essential_by_object_sign = HashMap::new();
         let mut dignity_weight_by_type = HashMap::new();
@@ -64,15 +67,23 @@ impl BasicPayloadCatalog {
                 .push(trigger.clone());
         }
 
+        let projection_reason_by_code = projection_reason_definitions
+            .iter()
+            .cloned()
+            .map(|definition| (definition.reason_code.clone(), definition))
+            .collect();
+
         Self {
             product_scoring,
             essential_dignity_rules,
             accidental_triggers,
             accidental_scoring,
             accidental_polarity_bands,
+            projection_reason_definitions,
             essential_by_object_sign,
             triggers_by_family,
             dignity_weight_by_type,
+            projection_reason_by_code,
         }
     }
 
@@ -172,6 +183,14 @@ impl BasicPayloadCatalog {
             .iter()
             .map(|definition| definition.condition_code.as_str())
             .collect()
+    }
+
+    /// Fonction projection_reason_definition.
+    pub fn projection_reason_definition(
+        &self,
+        reason_code: &str,
+    ) -> Option<&ProjectionReasonDefinition> {
+        self.projection_reason_by_code.get(reason_code)
     }
 }
 
@@ -303,6 +322,294 @@ fn test_essential_dignity_rules() -> Vec<EssentialDignityRuleReference> {
     ]
 }
 
+fn test_projection_reason_definitions() -> Vec<ProjectionReasonDefinition> {
+    fn definition(
+        reason_code: &str,
+        reason_family: &str,
+        label_template_en: &str,
+        requires_object: bool,
+        requires_dignity_type: bool,
+        requires_sign_code: bool,
+        requires_house_number: bool,
+        requires_theme_code: bool,
+        requires_angle_code: bool,
+        requires_signal_key: bool,
+        requires_context_key: bool,
+        sort_order: i32,
+    ) -> ProjectionReasonDefinition {
+        ProjectionReasonDefinition {
+            reason_code: reason_code.to_string(),
+            reason_family: reason_family.to_string(),
+            label_template_en: label_template_en.to_string(),
+            requires_object,
+            requires_dignity_type,
+            requires_sign_code,
+            requires_house_number,
+            requires_theme_code,
+            requires_angle_code,
+            requires_signal_key,
+            requires_context_key,
+            is_active: true,
+            sort_order,
+        }
+    }
+
+    vec![
+        definition(
+            "object_in_sign",
+            "placement",
+            "{object} in sign",
+            true,
+            false,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            10,
+        ),
+        definition(
+            "object_in_house",
+            "placement",
+            "{object} in house",
+            true,
+            false,
+            false,
+            true,
+            true,
+            false,
+            false,
+            false,
+            20,
+        ),
+        definition(
+            "placement",
+            "placement",
+            "Strong placement",
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            30,
+        ),
+        definition(
+            "multiple_objects",
+            "cluster",
+            "Several chart factors are concentrated in the same sign and house",
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            40,
+        ),
+        definition(
+            "sign_house_cluster",
+            "cluster",
+            "Several chart factors are concentrated in the same sign and house",
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            50,
+        ),
+        definition(
+            "cluster",
+            "cluster",
+            "Dominant house cluster",
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            60,
+        ),
+        definition(
+            "cluster_participant",
+            "cluster",
+            "Participant in dominant theme",
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            70,
+        ),
+        definition(
+            "essential_dignity",
+            "dignity",
+            "{object} in {dignity}",
+            true,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            80,
+        ),
+        definition(
+            "sign_emphasis",
+            "sign",
+            "{sign} emphasis",
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            90,
+        ),
+        definition(
+            "strong_aspect_participant",
+            "aspect",
+            "Involved in a strong major aspect",
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            100,
+        ),
+        definition(
+            "accidental_context",
+            "context",
+            "Reinforced or modified by accidental conditions",
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            110,
+        ),
+        definition(
+            "dominant_house",
+            "axis",
+            "Dominant house emphasis",
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            120,
+        ),
+        definition(
+            "luminary_in_house",
+            "axis",
+            "{object} highlights this house",
+            true,
+            false,
+            false,
+            true,
+            true,
+            false,
+            false,
+            false,
+            130,
+        ),
+        definition(
+            "angle_in_house",
+            "axis",
+            "{angle} emphasizes this house",
+            false,
+            false,
+            false,
+            true,
+            true,
+            true,
+            false,
+            false,
+            140,
+        ),
+        definition(
+            "active_signal",
+            "axis",
+            "Active chart signal",
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            150,
+        ),
+        definition(
+            "rulership_context",
+            "axis",
+            "Supported by rulership links",
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            160,
+        ),
+        definition(
+            "theme_emphasis",
+            "axis",
+            "{theme} theme emphasized",
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            170,
+        ),
+        definition(
+            "cross_axis_aspect",
+            "axis",
+            "A major aspect connects both sides of this house axis",
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            180,
+        ),
+    ]
+}
+
 /// Catalogue minimal pour les tests unitaires et les builders sans connexion DB.
 pub fn test_catalog() -> BasicPayloadCatalog {
     use crate::domain::{
@@ -313,7 +620,7 @@ pub fn test_catalog() -> BasicPayloadCatalog {
     BasicPayloadCatalog::build(
         BasicProductScoringProfile {
             product_code: "basic".to_string(),
-            payload_contract_version: "natal_structured_v13".to_string(),
+            payload_contract_version: "natal_structured_v14".to_string(),
             essential_dignity_score_profile_id: 5,
             accidental_scoring_params_id: 1,
             default_major_orb_deg: 8.0,
@@ -392,6 +699,7 @@ pub fn test_catalog() -> BasicPayloadCatalog {
                 sort_order: 4,
             },
         ],
+        test_projection_reason_definitions(),
     )
 }
 

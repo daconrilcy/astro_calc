@@ -106,7 +106,7 @@ fn legacy_product_code_rejects_profile_mismatch() {
             audience_level: AudienceLevel::Beginner,
         },
         astro_result: AstroCalculationPayload {
-            contract_version: "natal_structured_v13".into(),
+            contract_version: "natal_structured_v14".into(),
             chart_type: "natal".into(),
             data: serde_json::json!({}),
         },
@@ -156,7 +156,7 @@ fn legacy_natal_premium_product_code_migrates_at_normalize() {
             audience_level: AudienceLevel::Beginner,
         },
         astro_result: AstroCalculationPayload {
-            contract_version: "natal_structured_v13".into(),
+            contract_version: "natal_structured_v14".into(),
             chart_type: "natal".into(),
             data: serde_json::json!({}),
         },

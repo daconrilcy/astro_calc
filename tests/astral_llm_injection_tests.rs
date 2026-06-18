@@ -76,7 +76,7 @@ fn base_request() -> GenerateReadingRequest {
             audience_level: AudienceLevel::Beginner,
         },
         astro_result: AstroCalculationPayload {
-            contract_version: "natal_structured_v13".into(),
+            contract_version: "natal_structured_v14".into(),
             chart_type: "natal".into(),
             data: serde_json::json!({ "domain_scores": { "identity": 0.7 } }),
         },
@@ -121,7 +121,7 @@ async fn birth_date_not_in_normalized_facts_for_llm() {
     use astral_llm_domain::{AstroCalculationPayload, PrivacyPolicy};
 
     let payload = AstroCalculationPayload {
-        contract_version: "natal_structured_v13".into(),
+        contract_version: "natal_structured_v14".into(),
         chart_type: "natal".into(),
         data: serde_json::json!({
             "planets": { "sun": { "house": 1, "birth_date": "1990-01-01" } }

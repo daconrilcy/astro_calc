@@ -10,7 +10,7 @@ use crate::domain::{
 use crate::features::natal::catalog::accidental_polarity_bands_are_valid;
 use crate::features::natal::catalog::BasicPayloadCatalog;
 use crate::features::natal::payload::shared::contract::{
-    CALCULATION_SCOPE_FULL_NATAL, CHART_TYPE_NATAL, CONTRACT_VERSION_V13,
+    CALCULATION_SCOPE_FULL_NATAL, CHART_TYPE_NATAL, CONTRACT_VERSION_V14,
     INTERPRETATION_SCOPE_STRUCTURED, PROJECTION_DEPTH_RICH,
 };
 use crate::features::natal::payload::shared::text::{has_text, is_normalized_score};
@@ -300,7 +300,7 @@ fn has_chart_context(payload: &BasicPayload) -> bool {
         && context.house_system_id > 0
         && context.reference_version_id > 0
         && context.reference_version_id == payload.reference_version_id
-        && context.payload_contract.contract_version == CONTRACT_VERSION_V13
+        && context.payload_contract.contract_version == CONTRACT_VERSION_V14
         && context.payload_contract.calculation_scope == CALCULATION_SCOPE_FULL_NATAL
         && context.payload_contract.interpretation_scope == INTERPRETATION_SCOPE_STRUCTURED
         && context.payload_contract.projection_depth == PROJECTION_DEPTH_RICH
@@ -323,11 +323,11 @@ fn has_chart_context(payload: &BasicPayload) -> bool {
         && context.hemisphere_emphasis.above_horizon_count >= 0
         && context.hemisphere_emphasis.below_horizon_count >= 0
         && context.hemisphere_emphasis.on_horizon_count >= 0
-        && has_valid_v13_scoring_snapshots(context)
+        && has_valid_v14_scoring_snapshots(context)
 }
 
-/// Fonction has_valid_v13_scoring_snapshots.
-fn has_valid_v13_scoring_snapshots(context: &BasicChartContext) -> bool {
+/// Fonction has_valid_v14_scoring_snapshots.
+fn has_valid_v14_scoring_snapshots(context: &BasicChartContext) -> bool {
     let Some(accidental) = context.accidental_scoring.as_ref() else {
         return false;
     };

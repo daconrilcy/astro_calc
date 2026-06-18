@@ -7,9 +7,10 @@ use astral_calculator::domain::{
     BasicCalculationReliability, BasicChartContext, BasicChartEmphasis, BasicDignity,
     BasicDominantHouse, BasicDominantObject, BasicDominantSign, BasicHemisphereEmphasis,
     BasicHouseAxisEmphasis, BasicHouseAxisScore, BasicLunarPhaseContext, BasicObjectPosition,
-    BasicPayload, BasicPayloadContract, BasicReadingPlanItem, BasicRulerContext, BasicRulerSource,
-    BasicRulershipContext, BasicSecondarySlotCandidate, BasicSectContext, BasicSignal,
-    CalculationReferenceData, HouseAxisReference, LunarPhaseReference, ObjectSectAffinityReference,
+    BasicPayload, BasicPayloadContract, BasicProjectionReason, BasicReadingPlanItem,
+    BasicRulerContext, BasicRulerSource, BasicRulershipContext, BasicSecondarySlotCandidate,
+    BasicSectContext, BasicSignal, CalculationReferenceData, HouseAxisReference,
+    LunarPhaseReference, ObjectSectAffinityReference,
 };
 mod common;
 
@@ -30,6 +31,13 @@ use common::json_db::{
     major_aspect_family_max_default_orb_deg_from_json_db_seed,
 };
 
+fn simple_reason(reason_code: &str) -> BasicProjectionReason {
+    BasicProjectionReason {
+        reason_code: reason_code.to_string(),
+        ..BasicProjectionReason::default()
+    }
+}
+
 fn current_payload() -> BasicPayload {
     BasicPayload {
         product_code: "basic".to_string(),
@@ -44,7 +52,7 @@ fn current_payload() -> BasicPayload {
             house_system_id: 1,
             reference_version_id: 1,
             payload_contract: BasicPayloadContract {
-                contract_version: "natal_structured_v13".to_string(),
+                contract_version: "natal_structured_v14".to_string(),
                 calculation_scope: "full_natal".to_string(),
                 interpretation_scope: "structured_interpretation".to_string(),
                 projection_depth: "rich".to_string(),
@@ -246,18 +254,29 @@ fn current_payload() -> BasicPayload {
             dominant_signs: vec![BasicDominantSign {
                 sign_code: "gemini".to_string(),
                 score: 0.2174,
-                reasons: vec!["sun_in_sign".to_string()],
+                reason_details: vec![BasicProjectionReason {
+                    reason_code: "object_in_sign".to_string(),
+                    object_code: Some("sun".to_string()),
+                    sign_code: Some("gemini".to_string()),
+                    ..BasicProjectionReason::default()
+                }],
             }],
             dominant_houses: vec![BasicDominantHouse {
                 house_number: 9,
                 theme_code: "beliefs".to_string(),
                 score: 0.2174,
-                reasons: vec!["sun_in_house".to_string()],
+                reason_details: vec![BasicProjectionReason {
+                    reason_code: "object_in_house".to_string(),
+                    object_code: Some("sun".to_string()),
+                    house_number: Some(9),
+                    theme_code: Some("beliefs".to_string()),
+                    ..BasicProjectionReason::default()
+                }],
             }],
             dominant_objects: vec![BasicDominantObject {
                 object_code: "sun".to_string(),
                 score: 0.4167,
-                reasons: vec!["placement".to_string()],
+                reason_details: vec![simple_reason("placement")],
             }],
         },
         rulership_context: BasicRulershipContext {
@@ -288,16 +307,30 @@ fn current_payload() -> BasicPayload {
                     house_number: 3,
                     theme_code: "communication".to_string(),
                     score: 0.1,
-                    reasons: vec!["communication_theme".to_string()],
+                    reason_details: vec![BasicProjectionReason {
+                        reason_code: "theme_emphasis".to_string(),
+                        theme_code: Some("communication".to_string()),
+                        ..BasicProjectionReason::default()
+                    }],
                 },
                 BasicHouseAxisScore {
                     house_number: 9,
                     theme_code: "beliefs".to_string(),
                     score: 0.45,
-                    reasons: vec![
-                        "dominant_house".to_string(),
-                        "sun_in_house".to_string(),
-                        "beliefs_theme".to_string(),
+                    reason_details: vec![
+                        simple_reason("dominant_house"),
+                        BasicProjectionReason {
+                            reason_code: "object_in_house".to_string(),
+                            object_code: Some("sun".to_string()),
+                            house_number: Some(9),
+                            theme_code: Some("beliefs".to_string()),
+                            ..BasicProjectionReason::default()
+                        },
+                        BasicProjectionReason {
+                            reason_code: "theme_emphasis".to_string(),
+                            theme_code: Some("beliefs".to_string()),
+                            ..BasicProjectionReason::default()
+                        },
                     ],
                 },
             ],
@@ -307,10 +340,20 @@ fn current_payload() -> BasicPayload {
             polarity_balance: "secondary_house_dominant".to_string(),
             source_signal_keys: vec!["object_position:sun".to_string()],
             source_context_keys: Vec::new(),
-            reasons: vec![
-                "dominant_house".to_string(),
-                "sun_in_house".to_string(),
-                "beliefs_theme".to_string(),
+            reason_details: vec![
+                simple_reason("dominant_house"),
+                BasicProjectionReason {
+                    reason_code: "object_in_house".to_string(),
+                    object_code: Some("sun".to_string()),
+                    house_number: Some(9),
+                    theme_code: Some("beliefs".to_string()),
+                    ..BasicProjectionReason::default()
+                },
+                BasicProjectionReason {
+                    reason_code: "theme_emphasis".to_string(),
+                    theme_code: Some("beliefs".to_string()),
+                    ..BasicProjectionReason::default()
+                },
             ],
             interpretive_hint:
                 "Local and Distant is activated mainly through house 9 (beliefs), with house 3 (communication) present as a secondary counterpoint."
@@ -726,7 +769,12 @@ fn current_payload_rejects_unsorted_chart_emphasis() {
         .push(BasicDominantObject {
             object_code: "moon".to_string(),
             score: 0.9,
-            reasons: vec!["moon_in_sign".to_string()],
+            reason_details: vec![BasicProjectionReason {
+                reason_code: "object_in_sign".to_string(),
+                object_code: Some("moon".to_string()),
+                sign_code: Some("leo".to_string()),
+                ..BasicProjectionReason::default()
+            }],
         });
 
     assert!(!is_current_basic_payload(&payload));
@@ -741,7 +789,12 @@ fn current_payload_rejects_weak_secondary_chart_emphasis() {
         .push(BasicDominantSign {
             sign_code: "taurus".to_string(),
             score: 0.2,
-            reasons: vec!["mars_in_sign".to_string()],
+            reason_details: vec![BasicProjectionReason {
+                reason_code: "object_in_sign".to_string(),
+                object_code: Some("mars".to_string()),
+                sign_code: Some("taurus".to_string()),
+                ..BasicProjectionReason::default()
+            }],
         });
 
     assert!(!is_current_basic_payload(&payload));
@@ -757,7 +810,7 @@ fn current_payload_rejects_placement_only_secondary_dominant_object() {
         .push(BasicDominantObject {
             object_code: "moon".to_string(),
             score: 0.6,
-            reasons: vec!["placement".to_string()],
+            reason_details: vec![simple_reason("placement")],
         });
 
     assert!(!is_current_basic_payload(&payload));

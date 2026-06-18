@@ -19,6 +19,7 @@ impl RuntimeQueries {
             )
             .await?;
         let accidental_triggers = self.accidental_condition_triggers().await?;
+        let projection_reason_definitions = self.projection_reason_definitions().await?;
         let accidental_scoring = self
             .accidental_scoring_params(product_scoring.accidental_scoring_params_id)
             .await?;
@@ -31,6 +32,7 @@ impl RuntimeQueries {
             accidental_triggers,
             accidental_scoring,
             accidental_polarity_bands,
+            projection_reason_definitions,
         ))
     }
 

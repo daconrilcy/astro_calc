@@ -73,6 +73,7 @@ where
 
     ChartCalculationRuntimeService::new(
         natal,
+        CatalogRepository::new(pool.clone()),
         simplified,
         horoscope,
         ProjectionRepository::new(pool.clone()),

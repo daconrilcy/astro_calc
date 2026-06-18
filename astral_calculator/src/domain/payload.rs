@@ -116,7 +116,7 @@ pub struct BasicDominantSign {
     pub sign_code: String,
     pub score: f64,
     #[serde(default)]
-    pub reasons: Vec<String>,
+    pub reason_details: Vec<BasicProjectionReason>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -126,7 +126,7 @@ pub struct BasicDominantHouse {
     pub theme_code: String,
     pub score: f64,
     #[serde(default)]
-    pub reasons: Vec<String>,
+    pub reason_details: Vec<BasicProjectionReason>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -135,7 +135,29 @@ pub struct BasicDominantObject {
     pub object_code: String,
     pub score: f64,
     #[serde(default)]
-    pub reasons: Vec<String>,
+    pub reason_details: Vec<BasicProjectionReason>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// Structure BasicProjectionReason.
+pub struct BasicProjectionReason {
+    pub reason_code: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub object_code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dignity_type: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sign_code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub house_number: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme_code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub angle_code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signal_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_key: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -266,7 +288,7 @@ pub struct BasicHouseAxisEmphasis {
     #[serde(default)]
     pub source_context_keys: Vec<String>,
     #[serde(default)]
-    pub reasons: Vec<String>,
+    pub reason_details: Vec<BasicProjectionReason>,
     pub interpretive_hint: String,
 }
 
@@ -277,7 +299,7 @@ pub struct BasicHouseAxisScore {
     pub theme_code: String,
     pub score: f64,
     #[serde(default)]
-    pub reasons: Vec<String>,
+    pub reason_details: Vec<BasicProjectionReason>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

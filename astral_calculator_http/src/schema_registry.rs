@@ -34,7 +34,7 @@ impl SchemaRegistry {
                 "astro_engine_response_v1",
                 "astro_engine_response_v1.schema.json",
             ),
-            ("natal_structured_v13", "natal_structured_v13.schema.json"),
+            ("natal_structured_v14", "natal_structured_v14.schema.json"),
             (
                 "llm_projection_natal_v1",
                 "llm_projection_natal_v1.schema.json",

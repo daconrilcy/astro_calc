@@ -24,6 +24,7 @@ use crate::features::simplified::{AstroSimplifiedNatalRequest, AstroSimplifiedNa
 /// Structure EngineFacadeService.
 pub struct EngineFacadeService<C, P, R, H, S, L, E> {
     natal: NatalCalculationService<C, P, R, E>,
+    payload_catalogs: P,
     simplified: SimplifiedNatalService<R, S, E>,
     horoscope: HoroscopeService<C, H, R, E>,
     projections: L,
@@ -43,6 +44,7 @@ where
     /// Fonction new.
     pub fn new(
         natal: NatalCalculationService<C, P, R, E>,
+        payload_catalogs: P,
         simplified: SimplifiedNatalService<R, S, E>,
         horoscope: HoroscopeService<C, H, R, E>,
         projections: L,
@@ -50,6 +52,7 @@ where
     ) -> Self {
         Self {
             natal,
+            payload_catalogs,
             simplified,
             horoscope,
             projections,
@@ -105,6 +108,14 @@ where
             .natal
             .calculate_basic(resolved.natal_input.clone())
             .await?;
+        let payload_catalog = self
+            .payload_catalogs
+            .basic_payload_catalog(
+                &audit.product_code,
+                &audit.chart_context.payload_contract.contract_version,
+                audit.reference_version_id,
+            )
+            .await?;
 
         build_engine_response(
             &resolved,
@@ -114,6 +125,7 @@ where
             &coordinate_label,
             &house_system_label,
             &house_axes,
+            &payload_catalog.projection_reason_definitions,
             &profile,
         )
     }

@@ -4,18 +4,24 @@ use std::collections::{HashMap, HashSet};
 
 use crate::domain::{
     BasicAngleFact, BasicChartEmphasis, BasicDignity, BasicHouseAxisEmphasis, BasicHouseAxisScore,
-    BasicRulershipContext, BasicSignal, HouseAxisReference, ObjectPositionFact,
+    BasicProjectionReason, BasicRulershipContext, BasicSignal, HouseAxisReference,
+    ObjectPositionFact,
 };
 use crate::features::natal::catalog::BasicPayloadCatalog;
 use crate::features::natal::payload::rules::chart_context::is_angle_role;
 
 use super::json::position_context;
+use super::projection_reasons::{
+    reason_active_signal, reason_angle_in_house, reason_cross_axis_aspect,
+    reason_essential_dignity, reason_luminary_in_house, reason_object_in_house,
+    reason_rulership_context, reason_simple, reason_theme_emphasis,
+};
 
 #[derive(Default)]
 /// Structure HouseScoreDraft.
 struct HouseScoreDraft {
     raw_score: f64,
-    reasons: Vec<String>,
+    reason_details: Vec<BasicProjectionReason>,
     source_signal_keys: Vec<String>,
     source_context_keys: Vec<String>,
 }
@@ -82,7 +88,6 @@ pub(super) fn build_house_axis_emphasis(
 }
 
 #[allow(clippy::too_many_arguments)]
-/// Fonction build_axis.
 fn build_axis(
     reference: &HouseAxisReference,
     positions: &[ObjectPositionFact],
@@ -145,8 +150,8 @@ fn build_axis(
     source_signal_keys.retain(|key| signal_keys.contains(key.as_str()));
     let mut source_context_keys = first.source_context_keys.clone();
     push_unique_all(&mut source_context_keys, &second.source_context_keys);
-    let mut reasons = first.reasons.clone();
-    push_unique_all(&mut reasons, &second.reasons);
+    let mut reason_details = first.reason_details.clone();
+    push_unique_reasons(&mut reason_details, &second.reason_details);
 
     let polarity_balance = polarity_balance(first_score, second_score, scoring);
 
@@ -162,13 +167,13 @@ fn build_axis(
                 house_number: reference.house_a_number,
                 theme_code: reference.theme_a_code.clone(),
                 score: first_score,
-                reasons: first.reasons,
+                reason_details: first.reason_details,
             },
             BasicHouseAxisScore {
                 house_number: reference.house_b_number,
                 theme_code: reference.theme_b_code.clone(),
                 score: second_score,
-                reasons: second.reasons,
+                reason_details: second.reason_details,
             },
         ],
         primary_house,
@@ -177,13 +182,12 @@ fn build_axis(
         polarity_balance: polarity_balance.clone(),
         source_signal_keys,
         source_context_keys,
-        reasons,
+        reason_details,
         interpretive_hint: interpretive_hint(reference, &polarity_balance),
     }
 }
 
 #[allow(clippy::too_many_arguments)]
-/// Fonction score_house.
 fn score_house(
     house_number: i32,
     theme_code: &str,
@@ -203,7 +207,11 @@ fn score_house(
         .iter()
         .find(|entry| entry.house_number == house_number)
     {
-        add_score(&mut draft, dominant.score * 0.75, "dominant_house");
+        add_score(
+            &mut draft,
+            dominant.score * 0.75,
+            reason_simple("dominant_house"),
+        );
     }
 
     for position in positions
@@ -214,17 +222,21 @@ fn score_house(
         add_score(
             &mut draft,
             object_source_weight(position) * 0.35,
-            &format!("{object_code}_in_house"),
+            reason_object_in_house(object_code, house_number, Some(theme_code)),
         );
         if is_luminary(position) {
             add_score(
                 &mut draft,
                 0.25,
-                &format!("{object_code}_luminary_in_house"),
+                reason_luminary_in_house(object_code, house_number, theme_code),
             );
         }
         if is_angle(position) {
-            add_score(&mut draft, 0.35, &format!("{object_code}_angle_in_house"));
+            add_score(
+                &mut draft,
+                0.35,
+                reason_angle_in_house(object_code, house_number, theme_code),
+            );
         }
         push_signal_if_exists(
             &mut draft.source_signal_keys,
@@ -240,7 +252,7 @@ fn score_house(
         add_score(
             &mut draft,
             0.25,
-            &format!("{}_angle_in_house", angle.angle_code),
+            reason_angle_in_house(&angle.angle_code, house_number, theme_code),
         );
         push_signal_prefix(
             &mut draft.source_signal_keys,
@@ -251,13 +263,17 @@ fn score_house(
 
     for signal in signals {
         if cluster_house_number(signal) == Some(house_number) {
-            add_score(&mut draft, signal.priority_score / 100.0 * 0.45, "cluster");
+            add_score(
+                &mut draft,
+                signal.priority_score / 100.0 * 0.45,
+                reason_simple("cluster"),
+            );
             push_unique(&mut draft.source_signal_keys, signal.signal_key.clone());
         } else if signal_matches_house(signal, house_number, position_house_by_object) {
             add_score(
                 &mut draft,
                 signal.source_weight.unwrap_or(0.0).min(1.0) * 0.2,
-                "active_signal",
+                reason_active_signal(&signal.signal_key),
             );
             push_unique(&mut draft.source_signal_keys, signal.signal_key.clone());
         }
@@ -272,7 +288,7 @@ fn score_house(
             add_score(
                 &mut draft,
                 dignity_weight(&dignity.dignity_type),
-                &format!("{}_{}", dignity.object_code, dignity.dignity_type),
+                reason_essential_dignity(&dignity.object_code, &dignity.dignity_type),
             );
             if let Some(signal_key) = &dignity.signal_key {
                 push_signal_if_exists(&mut draft.source_signal_keys, signal_keys, signal_key);
@@ -282,14 +298,13 @@ fn score_house(
 
     add_rulership_context(house_number, rulership_context, &mut draft);
 
-    if !draft.reasons.is_empty() {
-        add_reason(&mut draft, &format!("{}_theme", theme_code));
+    if !draft.reason_details.is_empty() {
+        add_reason(&mut draft, reason_theme_emphasis(theme_code));
     }
 
     draft
 }
 
-/// Fonction add_rulership_context.
 fn add_rulership_context(
     house_number: i32,
     rulership_context: &BasicRulershipContext,
@@ -306,7 +321,7 @@ fn add_rulership_context(
             || (context.source_kind == "dominant_house"
                 && context.source_code == format!("house_{house_number}"))
         {
-            add_score(draft, 0.2, "rulership_context");
+            add_score(draft, 0.2, reason_rulership_context(&context.context_key));
             push_unique(&mut draft.source_context_keys, context.context_key.clone());
             if let Some(signal_key) = &context.ruler_position_signal_key {
                 push_unique(&mut draft.source_signal_keys, signal_key.clone());
@@ -315,7 +330,6 @@ fn add_rulership_context(
     }
 }
 
-/// Fonction add_cross_axis_aspects.
 fn add_cross_axis_aspects(
     reference: &HouseAxisReference,
     signals: &[BasicSignal],
@@ -335,15 +349,14 @@ fn add_cross_axis_aspects(
         if object_houses.contains(&reference.house_a_number)
             && object_houses.contains(&reference.house_b_number)
         {
-            add_reason(first, "cross_axis_aspect");
-            add_reason(second, "cross_axis_aspect");
+            add_reason(first, reason_cross_axis_aspect(&signal.signal_key));
+            add_reason(second, reason_cross_axis_aspect(&signal.signal_key));
             push_unique(&mut first.source_signal_keys, signal.signal_key.clone());
             push_unique(&mut second.source_signal_keys, signal.signal_key.clone());
         }
     }
 }
 
-/// Fonction signal_matches_house.
 fn signal_matches_house(
     signal: &BasicSignal,
     house_number: i32,
@@ -366,7 +379,6 @@ fn signal_matches_house(
     })
 }
 
-/// Fonction signal_object_codes.
 fn signal_object_codes(signal: &BasicSignal) -> Vec<String> {
     let mut object_codes = Vec::new();
     if let Some(evidence) = &signal.evidence {
@@ -396,7 +408,6 @@ fn signal_object_codes(signal: &BasicSignal) -> Vec<String> {
     object_codes
 }
 
-/// Fonction cluster_house_number.
 fn cluster_house_number(signal: &BasicSignal) -> Option<i32> {
     if !signal.signal_key.starts_with("cluster:") {
         return None;
@@ -409,7 +420,6 @@ fn cluster_house_number(signal: &BasicSignal) -> Option<i32> {
         .and_then(|value| i32::try_from(value).ok())
 }
 
-/// Fonction object_source_weight.
 fn object_source_weight(position: &ObjectPositionFact) -> f64 {
     position_context(position, "object_context")
         .and_then(|context| {
@@ -421,14 +431,12 @@ fn object_source_weight(position: &ObjectPositionFact) -> f64 {
         .unwrap_or(0.0)
 }
 
-/// Fonction is_luminary.
 fn is_luminary(position: &ObjectPositionFact) -> bool {
     position_context(position, "object_context")
         .and_then(|context| context.get("is_luminary").and_then(|value| value.as_bool()))
         .unwrap_or(false)
 }
 
-/// Fonction is_angle.
 fn is_angle(position: &ObjectPositionFact) -> bool {
     let role = position_context(position, "object_context").and_then(|context| {
         context
@@ -450,7 +458,6 @@ fn is_angle(position: &ObjectPositionFact) -> bool {
             .is_some()
 }
 
-/// Fonction dignity_weight.
 fn dignity_weight(dignity_type: &str) -> f64 {
     match dignity_type {
         "domicile" => 0.35,
@@ -461,12 +468,10 @@ fn dignity_weight(dignity_type: &str) -> f64 {
     }
 }
 
-/// Fonction normalized_house_score.
 fn normalized_house_score(raw_score: f64, house_axis_full_score: f64) -> f64 {
     round4((raw_score / house_axis_full_score).clamp(0.0, 1.0))
 }
 
-/// Fonction polarity_balance.
 fn polarity_balance(
     first_score: f64,
     second_score: f64,
@@ -485,7 +490,6 @@ fn polarity_balance(
     }
 }
 
-/// Fonction interpretive_hint.
 fn interpretive_hint(reference: &HouseAxisReference, polarity_balance: &str) -> String {
     match polarity_balance {
         "primary_house_dominant" => format!(
@@ -523,8 +527,7 @@ fn interpretive_hint(reference: &HouseAxisReference, polarity_balance: &str) -> 
     }
 }
 
-/// Fonction add_score.
-fn add_score(draft: &mut HouseScoreDraft, score: f64, reason: &str) {
+fn add_score(draft: &mut HouseScoreDraft, score: f64, reason: BasicProjectionReason) {
     if score <= 0.0 {
         return;
     }
@@ -532,19 +535,22 @@ fn add_score(draft: &mut HouseScoreDraft, score: f64, reason: &str) {
     add_reason(draft, reason);
 }
 
-/// Fonction add_reason.
-fn add_reason(draft: &mut HouseScoreDraft, reason: &str) {
-    push_unique(&mut draft.reasons, reason.to_string());
+fn add_reason(draft: &mut HouseScoreDraft, reason: BasicProjectionReason) {
+    if !draft
+        .reason_details
+        .iter()
+        .any(|existing| existing == &reason)
+    {
+        draft.reason_details.push(reason);
+    }
 }
 
-/// Fonction push_signal_if_exists.
 fn push_signal_if_exists(target: &mut Vec<String>, signal_keys: &HashSet<&str>, signal_key: &str) {
     if signal_keys.contains(signal_key) {
         push_unique(target, signal_key.to_string());
     }
 }
 
-/// Fonction push_signal_prefix.
 fn push_signal_prefix(target: &mut Vec<String>, signals: &[BasicSignal], prefix: &str) {
     for signal in signals
         .iter()
@@ -554,21 +560,26 @@ fn push_signal_prefix(target: &mut Vec<String>, signals: &[BasicSignal], prefix:
     }
 }
 
-/// Fonction push_unique.
 fn push_unique(target: &mut Vec<String>, value: String) {
     if !target.iter().any(|existing| existing == &value) {
         target.push(value);
     }
 }
 
-/// Fonction push_unique_all.
 fn push_unique_all(target: &mut Vec<String>, values: &[String]) {
     for value in values {
         push_unique(target, value.clone());
     }
 }
 
-/// Fonction round4.
+fn push_unique_reasons(target: &mut Vec<BasicProjectionReason>, values: &[BasicProjectionReason]) {
+    for value in values {
+        if !target.iter().any(|existing| existing == value) {
+            target.push(value.clone());
+        }
+    }
+}
+
 fn round4(value: f64) -> f64 {
     (value * 10_000.0).round() / 10_000.0
 }

@@ -33,7 +33,7 @@ pub fn assert_compiled_prompt_is_safe(prompts_root: &std::path::Path) -> Result<
     };
 
     let payload = AstroCalculationPayload {
-        contract_version: "natal_structured_v13".into(),
+        contract_version: "natal_structured_v14".into(),
         chart_type: "natal".into(),
         data: serde_json::json!({
             "birth_date": "1990-01-01",
@@ -158,7 +158,7 @@ pub fn assert_premium_plus_prompt_structure(prompts_root: &std::path::Path) -> R
         c
     });
     let payload = AstroCalculationPayload {
-        contract_version: "natal_structured_v13".into(),
+        contract_version: "natal_structured_v14".into(),
         chart_type: "natal".into(),
         data: serde_json::json!({
             "planets": { "sun": { "sign": "capricorn", "house": 2 } }
@@ -297,7 +297,7 @@ pub fn assert_premium_compact_prompt_structure(
         c
     });
     let payload = AstroCalculationPayload {
-        contract_version: "natal_structured_v13".into(),
+        contract_version: "natal_structured_v14".into(),
         chart_type: "natal".into(),
         data: serde_json::json!({
             "planets": { "sun": { "sign": "capricorn", "house": 2 } }

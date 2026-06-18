@@ -307,6 +307,24 @@ pub struct AccidentalConditionTriggerRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure ProjectionReasonDefinitionRow.
+pub struct ProjectionReasonDefinitionRow {
+    pub reason_code: String,
+    pub reason_family: String,
+    pub label_template_en: String,
+    pub requires_object: bool,
+    pub requires_dignity_type: bool,
+    pub requires_sign_code: bool,
+    pub requires_house_number: bool,
+    pub requires_theme_code: bool,
+    pub requires_angle_code: bool,
+    pub requires_signal_key: bool,
+    pub requires_context_key: bool,
+    pub is_active: bool,
+    pub sort_order: i32,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
 /// Structure AccidentalScoringParamsRow.
 pub struct AccidentalScoringParamsRow {
     pub code: String,

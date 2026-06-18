@@ -2,7 +2,7 @@
   "calculator": {
     "astro_engine_request": "astro_engine_request_v1",
     "astro_engine_response": "astro_engine_response_v1",
-    "natal_structured": "natal_structured_v13",
+    "natal_structured": "natal_structured_v14",
     "llm_projection": "llm_projection_natal_v1",
     "astro_simplified_natal_request": "astro_simplified_natal_request_v1",
     "astro_simplified_natal_response": "astro_simplified_natal_response_v1",

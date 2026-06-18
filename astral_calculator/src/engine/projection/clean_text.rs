@@ -2,6 +2,8 @@
 
 use std::collections::HashMap;
 
+use crate::domain::{BasicProjectionReason, ProjectionReasonDefinition};
+
 /// Fonction title_case_sign.
 pub fn title_case_sign(sign_code: &str) -> String {
     let mut chars = sign_code.chars();
@@ -40,77 +42,88 @@ pub fn accidental_overall_label(expression_quality: &str, polarity: &str) -> Str
     }
 }
 
-/// Fonction humanize_reason.
-pub fn humanize_reason(reason: &str, object_names: &HashMap<String, String>) -> String {
+/// Fonction render_projection_reason.
+pub fn render_projection_reason(
+    reason: &BasicProjectionReason,
+    reason_definitions: &HashMap<String, ProjectionReasonDefinition>,
+    object_names: &HashMap<String, String>,
+    theme_labels: &HashMap<String, String>,
+) -> String {
+    let Some(definition) = reason_definitions.get(&reason.reason_code) else {
+        return format!("reason:{}", reason.reason_code);
+    };
+
     let object_label = |code: &str| {
         object_names
             .get(code)
             .cloned()
             .unwrap_or_else(|| title_case_sign(code))
     };
+    let dignity_label = |code: &str| match code {
+        "domicile" => "domicile".to_string(),
+        "exaltation" => "exaltation".to_string(),
+        "detriment" => "detriment".to_string(),
+        "fall" => "fall".to_string(),
+        other => other.replace('_', " "),
+    };
+    let angle_label = |code: &str| match code {
+        "ascendant" => "Ascendant".to_string(),
+        "descendant" => "Descendant".to_string(),
+        "mc" => "The Midheaven".to_string(),
+        "ic" => "The IC".to_string(),
+        other => title_case_sign(other),
+    };
+    let theme_label = |code: &str| {
+        theme_labels
+            .get(code)
+            .cloned()
+            .unwrap_or_else(|| humanize_theme_code(code))
+    };
 
-    if let Some((obj, rest)) = reason.split_once('_') {
-        match (obj, rest) {
-            (
-                "sun" | "moon" | "mercury" | "venus" | "mars" | "jupiter" | "saturn" | "uranus"
-                | "neptune" | "pluto",
-                "in_sign",
-            ) => {
-                return format!("{} in sign", object_label(obj));
-            }
-            (obj, "in_house") => return format!("{} in house", object_label(obj)),
-            (obj, "domicile") => return format!("{} in domicile", object_label(obj)),
-            (sign, "emphasis") => return format!("{} emphasis", title_case_sign(sign)),
-            _ => {}
-        }
+    let object_value = reason
+        .object_code
+        .as_deref()
+        .map(object_label)
+        .unwrap_or_default();
+    let dignity_value = reason
+        .dignity_type
+        .as_deref()
+        .map(dignity_label)
+        .unwrap_or_default();
+    let sign_value = reason
+        .sign_code
+        .as_deref()
+        .map(title_case_sign)
+        .unwrap_or_default();
+    let theme_value = reason
+        .theme_code
+        .as_deref()
+        .map(theme_label)
+        .unwrap_or_default();
+    let angle_value = reason
+        .angle_code
+        .as_deref()
+        .map(angle_label)
+        .unwrap_or_default();
+
+    let mut rendered = definition
+        .label_template_en
+        .replace("{object}", &object_value)
+        .replace("{dignity}", &dignity_value)
+        .replace("{sign}", &sign_value)
+        .replace("{theme}", &theme_value)
+        .replace("{angle}", &angle_value);
+
+    if definition.requires_object
+        && !object_value.is_empty()
+        && !rendered
+            .to_ascii_lowercase()
+            .contains(&object_value.to_ascii_lowercase())
+    {
+        rendered = format!("{object_value} {}", rendered.trim_start());
     }
 
-    match reason {
-        "multiple_objects" => {
-            "Several chart factors are concentrated in the same sign and house".to_string()
-        }
-        "cluster" => "Dominant house cluster".to_string(),
-        "sign_house_cluster" => {
-            "Several chart factors are concentrated in the same sign and house".to_string()
-        }
-        "saturn_domicile" => "Saturn in domicile".to_string(),
-        "placement" => "Strong placement".to_string(),
-        "cluster_participant" => "Participant in dominant theme".to_string(),
-        "accidental_context" => "Reinforced or modified by accidental conditions".to_string(),
-        "ascendant_in_house" => "Ascendant highlights this house".to_string(),
-        "dominant_house" => "Dominant house emphasis".to_string(),
-        "active_signal" => "Active chart signal".to_string(),
-        "rulership_context" => "Supported by rulership links".to_string(),
-        "resources_theme" => "Resources theme emphasized".to_string(),
-        "shared_resources_theme" => "Shared resources theme emphasized".to_string(),
-        "identity_theme" => "Identity theme emphasized".to_string(),
-        "relationships_theme" => "Partnership theme emphasized".to_string(),
-        "roots_theme" => "Roots theme emphasized".to_string(),
-        "career_theme" => "Career theme emphasized".to_string(),
-        "ascendant_angle_in_house" => "Ascendant emphasizes this house".to_string(),
-        "descendant_angle_in_house" => "Descendant emphasizes this house".to_string(),
-        "ic_angle_in_house" => "The IC emphasizes this house".to_string(),
-        "mc_angle_in_house" => "The Midheaven emphasizes this house".to_string(),
-        "ic_in_house" => "The IC highlights this house".to_string(),
-        "mc_in_house" => "The Midheaven highlights this house".to_string(),
-        "descendant_in_house" => "Descendant highlights this house".to_string(),
-        "jupiter_exaltation" => "Jupiter in exaltation".to_string(),
-        "cross_axis_aspect" => "A major aspect connects both sides of this house axis".to_string(),
-        "sun_luminary_in_house" => "The Sun highlights this house".to_string(),
-        "moon_luminary_in_house" => "The Moon highlights this house".to_string(),
-        "strong_aspect_participant" => "Involved in a strong major aspect".to_string(),
-        "domicile" => "In domicile".to_string(),
-        "exaltation" => "In exaltation".to_string(),
-        "detriment" => "In detriment".to_string(),
-        "fall" => "In fall".to_string(),
-        code if code.chars().all(|c| c.is_ascii_lowercase() || c == '_') => {
-            if let Some((obj, "domicile")) = code.split_once('_') {
-                return format!("{} in domicile", object_label(obj));
-            }
-            code.replace('_', " ")
-        }
-        code => code.to_string(),
-    }
+    rendered
 }
 
 /// Fonction humanize_condition.

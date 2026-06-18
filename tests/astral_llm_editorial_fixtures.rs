@@ -56,7 +56,7 @@ fn request_from_fixture(file: &EditorialFixtureFile) -> GenerateReadingRequest {
             audience_level: parse_audience(&file.audience_level),
         },
         astro_result: AstroCalculationPayload {
-            contract_version: "natal_structured_v13".into(),
+            contract_version: "natal_structured_v14".into(),
             chart_type: "natal".into(),
             data: serde_json::json!({
                 "domain_scores": {

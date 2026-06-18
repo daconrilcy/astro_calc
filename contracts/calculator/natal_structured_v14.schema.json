@@ -1,0 +1,2571 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://astral-calculation.local/schemas/natal_structured_v14.schema.json",
+  "title": "Natal Structured Payload v14",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "product_code",
+    "chart_calculation_id",
+    "reference_version_id",
+    "subject_label",
+    "birth_datetime_utc",
+    "chart_context",
+    "positions",
+    "angles",
+    "dignities",
+    "chart_emphasis",
+    "rulership_context",
+    "house_axis_emphasis",
+    "lunar_phase_context",
+    "accidental_dignities",
+    "signals",
+    "reading_plan"
+  ],
+  "properties": {
+    "product_code": {
+      "const": "basic"
+    },
+    "chart_calculation_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "reference_version_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "subject_label": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "birth_datetime_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "chart_context": {
+      "$ref": "#/$defs/chart_context"
+    },
+    "positions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/position"
+      }
+    },
+    "angles": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "allOf": [
+        {
+          "contains": {
+            "properties": {
+              "angle_code": {
+                "const": "ascendant"
+              }
+            },
+            "required": [
+              "angle_code"
+            ]
+          }
+        },
+        {
+          "contains": {
+            "properties": {
+              "angle_code": {
+                "const": "descendant"
+              }
+            },
+            "required": [
+              "angle_code"
+            ]
+          }
+        },
+        {
+          "contains": {
+            "properties": {
+              "angle_code": {
+                "const": "mc"
+              }
+            },
+            "required": [
+              "angle_code"
+            ]
+          }
+        },
+        {
+          "contains": {
+            "properties": {
+              "angle_code": {
+                "const": "ic"
+              }
+            },
+            "required": [
+              "angle_code"
+            ]
+          }
+        }
+      ],
+      "items": {
+        "$ref": "#/$defs/angle"
+      }
+    },
+    "dignities": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/dignity"
+      }
+    },
+    "chart_emphasis": {
+      "$ref": "#/$defs/chart_emphasis"
+    },
+    "rulership_context": {
+      "$ref": "#/$defs/rulership_context"
+    },
+    "house_axis_emphasis": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/$defs/house_axis_emphasis"
+      }
+    },
+    "lunar_phase_context": {
+      "$ref": "#/$defs/lunar_phase_context"
+    },
+    "accidental_dignities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/accidental_dignity_evaluation"
+      }
+    },
+    "signals": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "items": {
+        "$ref": "#/$defs/signal"
+      }
+    },
+    "reading_plan": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/reading_plan_item"
+      }
+    }
+  },
+  "$defs": {
+    "chart_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "chart_type",
+        "zodiacal_reference_system_id",
+        "coordinate_reference_system_id",
+        "house_system_id",
+        "reference_version_id",
+        "payload_contract",
+        "calculation_reliability",
+        "sect",
+        "hemisphere_emphasis"
+      ],
+      "properties": {
+        "chart_type": {
+          "const": "natal"
+        },
+        "zodiacal_reference_system_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "coordinate_reference_system_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "house_system_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reference_version_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "payload_contract": {
+          "$ref": "#/$defs/payload_contract"
+        },
+        "calculation_reliability": {
+          "$ref": "#/$defs/calculation_reliability"
+        },
+        "sect": {
+          "$ref": "#/$defs/sect_context"
+        },
+        "hemisphere_emphasis": {
+          "$ref": "#/$defs/hemisphere_emphasis"
+        },
+        "accidental_scoring": {
+          "$ref": "#/$defs/accidental_scoring_snapshot"
+        },
+        "product_scoring": {
+          "$ref": "#/$defs/product_scoring_snapshot"
+        }
+      }
+    },
+    "accidental_scoring_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "overall_score_baseline",
+        "overall_score_min",
+        "overall_score_max",
+        "angle_proximity_max_orb_deg",
+        "polarity_bands"
+      ],
+      "properties": {
+        "overall_score_baseline": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "overall_score_min": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "overall_score_max": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "angle_proximity_max_orb_deg": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "polarity_bands": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/accidental_polarity_band"
+          }
+        }
+      }
+    },
+    "accidental_polarity_band": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "polarity_code",
+        "expression_quality_code",
+        "min_score",
+        "max_score",
+        "sort_order"
+      ],
+      "properties": {
+        "polarity_code": {
+          "$ref": "#/$defs/accidental_overall_polarity"
+        },
+        "expression_quality_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "min_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "max_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "sort_order": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "product_scoring_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sign_house_emphasis_min_score",
+        "object_emphasis_min_score",
+        "max_dominant_signs",
+        "max_dominant_houses",
+        "max_dominant_objects",
+        "max_active_signals",
+        "aspect_min_strength",
+        "max_house_axis_emphasis"
+      ],
+      "properties": {
+        "sign_house_emphasis_min_score": {
+          "type": "number",
+          "minimum": 0
+        },
+        "object_emphasis_min_score": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_dominant_signs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_dominant_houses": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_dominant_objects": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_active_signals": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "aspect_min_strength": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "max_house_axis_emphasis": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "payload_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "calculation_scope",
+        "interpretation_scope",
+        "projection_depth"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "natal_structured_v14"
+        },
+        "calculation_scope": {
+          "const": "full_natal"
+        },
+        "interpretation_scope": {
+          "const": "structured_interpretation"
+        },
+        "projection_depth": {
+          "const": "rich"
+        }
+      }
+    },
+    "calculation_reliability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "birth_time_precision_required",
+        "house_system_sensitive"
+      ],
+      "properties": {
+        "birth_time_precision_required": {
+          "const": true
+        },
+        "house_system_sensitive": {
+          "const": true
+        }
+      }
+    },
+    "sect_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "chart_sect",
+        "sun_horizon_position",
+        "source"
+      ],
+      "properties": {
+        "chart_sect": {
+          "enum": [
+            "day",
+            "night",
+            "all"
+          ]
+        },
+        "sun_horizon_position": {
+          "$ref": "#/$defs/horizon_position"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "hemisphere_emphasis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "above_horizon_count",
+        "count_scope",
+        "below_horizon_count",
+        "on_horizon_count",
+        "interpretive_hint"
+      ],
+      "properties": {
+        "count_scope": {
+          "const": "mobile_chart_objects_only"
+        },
+        "above_horizon_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "below_horizon_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "on_horizon_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "interpretive_hint": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      }
+    },
+    "position": {
+      "type": "object",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "object_context": {
+                "properties": {
+                  "role": {
+                    "const": "angle"
+                  }
+                },
+                "required": [
+                  "role"
+                ]
+              }
+            },
+            "required": [
+              "object_context"
+            ]
+          },
+          "then": {
+            "properties": {
+              "visibility_context": {
+                "$ref": "#/$defs/angle_visibility_context"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "visibility_context": {
+                "$ref": "#/$defs/mobile_visibility_context"
+              }
+            }
+          }
+        }
+      ],
+      "required": [
+        "object_code",
+        "object_name",
+        "longitude_deg",
+        "sign_id",
+        "sign_code",
+        "sign_name",
+        "house_id",
+        "house_number",
+        "house_name",
+        "motion_state_id",
+        "sign_context",
+        "house_context",
+        "house_modality",
+        "object_context",
+        "motion_context",
+        "dignity_context",
+        "visibility_context",
+        "accidental_dignity_context"
+      ],
+      "properties": {
+        "object_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "object_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "longitude_deg": {
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMaximum": 360
+        },
+        "sign_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sign_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sign_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "house_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "house_number": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 12
+        },
+        "house_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "motion_state_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "sign_context": {
+          "$ref": "#/$defs/sign_context"
+        },
+        "house_context": {
+          "$ref": "#/$defs/house_context"
+        },
+        "house_modality": {
+          "$ref": "#/$defs/house_modality"
+        },
+        "object_context": {
+          "$ref": "#/$defs/object_context"
+        },
+        "motion_context": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/motion_context"
+            }
+          ]
+        },
+        "dignity_context": {
+          "type": "array"
+        },
+        "visibility_context": {
+          "$ref": "#/$defs/visibility_context"
+        },
+        "accidental_dignity_context": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/accidental_dignity_context_summary"
+          }
+        }
+      }
+    },
+    "visibility_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "horizon_position_id",
+        "horizon_position",
+        "altitude_deg",
+        "is_visible",
+        "source"
+      ],
+      "properties": {
+        "horizon_position_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "horizon_position": {
+          "$ref": "#/$defs/horizon_position"
+        },
+        "altitude_deg": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "is_visible": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "mobile_visibility_context": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/visibility_context"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "altitude_deg": {
+              "type": "number"
+            },
+            "is_visible": {
+              "type": "boolean"
+            },
+            "source": {
+              "const": "calculated_altitude"
+            }
+          }
+        }
+      ]
+    },
+    "angle_visibility_context": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/visibility_context"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "altitude_deg": {
+              "type": "null"
+            },
+            "is_visible": {
+              "type": "null"
+            },
+            "source": {
+              "const": "angle_context"
+            }
+          }
+        }
+      ]
+    },
+    "horizon_position": {
+      "enum": [
+        "above_horizon",
+        "below_horizon",
+        "on_horizon"
+      ]
+    },
+    "angle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "angle_code",
+        "angle_name",
+        "axis",
+        "opposite_angle_code",
+        "longitude_deg",
+        "sign_id",
+        "sign_code",
+        "sign_name",
+        "house_id",
+        "house_number",
+        "house_name"
+      ],
+      "properties": {
+        "angle_code": {
+          "enum": [
+            "ascendant",
+            "descendant",
+            "mc",
+            "ic"
+          ]
+        },
+        "angle_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "axis": {
+          "enum": [
+            "horizontal",
+            "vertical"
+          ]
+        },
+        "opposite_angle_code": {
+          "enum": [
+            "ascendant",
+            "descendant",
+            "mc",
+            "ic"
+          ]
+        },
+        "longitude_deg": {
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMaximum": 360
+        },
+        "sign_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sign_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sign_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "house_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "house_number": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12
+        },
+        "house_name": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "dignity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "object_code",
+        "object_name",
+        "sign_id",
+        "sign_code",
+        "sign_name",
+        "dignity_type",
+        "dignity_label",
+        "polarity",
+        "strength_score",
+        "signal_key"
+      ],
+      "properties": {
+        "object_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "object_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sign_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sign_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sign_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dignity_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dignity_label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "polarity": {
+          "enum": [
+            "dignity",
+            "debility"
+          ]
+        },
+        "strength_score": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "signal_key": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "chart_emphasis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dominant_signs",
+        "dominant_houses",
+        "dominant_objects"
+      ],
+      "properties": {
+        "dominant_signs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/dominant_sign"
+          }
+        },
+        "dominant_houses": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/dominant_house"
+          }
+        },
+        "dominant_objects": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/dominant_object"
+          }
+        }
+      }
+    },
+    "dominant_sign": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sign_code",
+        "score",
+        "reason_details"
+      ],
+      "properties": {
+        "sign_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "score": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
+        "reason_details": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/projection_reason"
+          }
+        }
+      }
+    },
+    "dominant_house": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "house_number",
+        "theme_code",
+        "score",
+        "reason_details"
+      ],
+      "properties": {
+        "house_number": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12
+        },
+        "theme_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "score": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
+        "reason_details": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/projection_reason"
+          }
+        }
+      }
+    },
+    "dominant_object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "object_code",
+        "score",
+        "reason_details"
+      ],
+      "properties": {
+        "object_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "score": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
+        "reason_details": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/projection_reason"
+          }
+        }
+      }
+    },
+    "rulership_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ascendant_ruler",
+        "mc_ruler",
+        "dominant_house_rulers",
+        "dominant_sign_rulers",
+        "dispositor_links",
+        "rulership_chains",
+        "final_dispositors",
+        "mutual_receptions"
+      ],
+      "properties": {
+        "ascendant_ruler": {
+          "$ref": "#/$defs/ruler_context"
+        },
+        "mc_ruler": {
+          "$ref": "#/$defs/ruler_context"
+        },
+        "descendant_ruler": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ruler_context"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dominant_house_rulers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ruler_context"
+          }
+        },
+        "dominant_sign_rulers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ruler_context"
+          }
+        },
+        "dispositor_links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/dispositor_link"
+          }
+        },
+        "rulership_chains": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/rulership_chain"
+          }
+        },
+        "final_dispositors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/final_dispositor"
+          }
+        },
+        "mutual_receptions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/mutual_reception"
+          }
+        }
+      }
+    },
+    "ruler_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "context_key",
+        "source_kind",
+        "source_code",
+        "sign_code",
+        "ruler_object_codes",
+        "ruler_object_code",
+        "ruler_position_signal_key",
+        "ruler_house_number",
+        "ruler_sign_code",
+        "interpretive_role",
+        "strength_context",
+        "ruler_sources",
+        "interpretive_hint"
+      ],
+      "properties": {
+        "context_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_kind": {
+          "enum": [
+            "angle",
+            "dominant_house",
+            "dominant_sign"
+          ]
+        },
+        "source_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sign_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ruler_object_codes": {
+          "$ref": "#/$defs/non_empty_string_array"
+        },
+        "ruler_object_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ruler_position_signal_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "ruler_house_number": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 12
+        },
+        "ruler_sign_code": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "interpretive_role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "strength_context": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "ruler_sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/ruler_source"
+          }
+        },
+        "interpretive_hint": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "ruler_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "object_code",
+        "reference_version_id",
+        "astral_system_id",
+        "astral_system_code",
+        "dignity_type",
+        "weight",
+        "is_primary"
+      ],
+      "properties": {
+        "object_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reference_version_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "astral_system_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "astral_system_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dignity_type": {
+          "const": "domicile"
+        },
+        "weight": {
+          "type": "number"
+        },
+        "is_primary": {
+          "type": "boolean"
+        }
+      }
+    },
+    "dispositor_link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "object_code",
+        "object_sign_code",
+        "dispositor_object_code",
+        "dispositor_signal_key",
+        "ruler_sources",
+        "interpretive_hint"
+      ],
+      "properties": {
+        "object_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "object_sign_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dispositor_object_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dispositor_signal_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ruler_sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/ruler_source"
+          }
+        },
+        "interpretive_hint": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "rulership_chain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "object_code",
+        "chain",
+        "termination"
+      ],
+      "properties": {
+        "object_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "chain": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 7,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "termination": {
+          "enum": [
+            "final_dispositor",
+            "mutual_reception",
+            "cycle",
+            "max_depth",
+            "unresolved"
+          ]
+        }
+      }
+    },
+    "final_dispositor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "object_code",
+        "source_objects"
+      ],
+      "properties": {
+        "object_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_objects": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "mutual_reception": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "object_codes",
+        "source_objects"
+      ],
+      "properties": {
+        "object_codes": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "source_objects": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "house_axis_emphasis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "axis_code",
+        "houses",
+        "theme_codes",
+        "house_scores",
+        "primary_house",
+        "secondary_house",
+        "axis_score",
+        "polarity_balance",
+        "source_signal_keys",
+        "source_context_keys",
+        "reason_details",
+        "interpretive_hint"
+      ],
+      "properties": {
+        "axis_code": {
+          "enum": [
+            "self_relationship",
+            "resources_sharing",
+            "local_distant",
+            "private_public",
+            "creation_collective",
+            "control_surrender"
+          ]
+        },
+        "houses": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12
+          }
+        },
+        "theme_codes": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "house_scores": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "$ref": "#/$defs/house_axis_score"
+          }
+        },
+        "primary_house": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12
+        },
+        "secondary_house": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12
+        },
+        "axis_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "polarity_balance": {
+          "enum": [
+            "primary_house_dominant",
+            "secondary_house_dominant",
+            "balanced_axis"
+          ]
+        },
+        "source_signal_keys": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "source_context_keys": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "interpretive_hint": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason_details": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/projection_reason"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "axis_code": {
+                "const": "self_relationship"
+              }
+            },
+            "required": [
+              "axis_code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "houses": {
+                "const": [
+                  1,
+                  7
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "axis_code": {
+                "const": "resources_sharing"
+              }
+            },
+            "required": [
+              "axis_code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "houses": {
+                "const": [
+                  2,
+                  8
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "axis_code": {
+                "const": "local_distant"
+              }
+            },
+            "required": [
+              "axis_code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "houses": {
+                "const": [
+                  3,
+                  9
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "axis_code": {
+                "const": "private_public"
+              }
+            },
+            "required": [
+              "axis_code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "houses": {
+                "const": [
+                  4,
+                  10
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "axis_code": {
+                "const": "creation_collective"
+              }
+            },
+            "required": [
+              "axis_code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "houses": {
+                "const": [
+                  5,
+                  11
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "axis_code": {
+                "const": "control_surrender"
+              }
+            },
+            "required": [
+              "axis_code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "houses": {
+                "const": [
+                  6,
+                  12
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "house_axis_score": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "house_number",
+        "theme_code",
+        "score",
+        "reason_details"
+      ],
+      "properties": {
+        "house_number": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12
+        },
+        "theme_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "reason_details": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/projection_reason"
+          }
+        }
+      }
+    },
+    "accidental_dignity_context_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "condition_code",
+        "condition_family",
+        "polarity",
+        "strength_score"
+      ],
+      "properties": {
+        "condition_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "condition_family": {
+          "$ref": "#/$defs/accidental_condition_family"
+        },
+        "polarity": {
+          "$ref": "#/$defs/accidental_polarity"
+        },
+        "strength_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "accidental_dignity_condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "condition_code",
+        "condition_family",
+        "polarity",
+        "strength_score",
+        "score_delta",
+        "source",
+        "interpretive_hint"
+      ],
+      "properties": {
+        "condition_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "condition_family": {
+          "$ref": "#/$defs/accidental_condition_family"
+        },
+        "polarity": {
+          "$ref": "#/$defs/accidental_polarity"
+        },
+        "strength_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "score_delta": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "source": {
+          "type": "object"
+        },
+        "interpretive_hint": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "accidental_dignity_evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "object_code",
+        "object_name",
+        "overall_score",
+        "overall_polarity",
+        "expression_quality",
+        "conditions"
+      ],
+      "properties": {
+        "object_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "object_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "overall_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "clamp(0.5 + sum(score_delta), 0, 1). Polarity bands: fortified >= 0.70; mixed_or_contextual >= 0.45; weakened >= 0.30; strongly_weakened < 0.30."
+        },
+        "overall_polarity": {
+          "$ref": "#/$defs/accidental_overall_polarity"
+        },
+        "expression_quality": {
+          "type": "string",
+          "minLength": 1
+        },
+        "related_signal_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "conditions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/accidental_dignity_condition"
+          }
+        }
+      }
+    },
+    "accidental_condition_family": {
+      "enum": [
+        "house_modality",
+        "angle_proximity",
+        "motion",
+        "horizon",
+        "sect"
+      ]
+    },
+    "accidental_polarity": {
+      "enum": [
+        "dignity",
+        "debility",
+        "contextual",
+        "intensifier"
+      ]
+    },
+    "accidental_overall_polarity": {
+      "description": "Derived from overall_score: fortified >= 0.70; mixed_or_contextual >= 0.45; weakened >= 0.30; strongly_weakened < 0.30.",
+      "enum": [
+        "fortified",
+        "mixed_or_contextual",
+        "weakened",
+        "strongly_weakened"
+      ]
+    },
+    "lunar_phase_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "phase_code",
+        "phase_label",
+        "cycle_family",
+        "sun_object_code",
+        "moon_object_code",
+        "sun_longitude_deg",
+        "moon_longitude_deg",
+        "sun_moon_angle_deg",
+        "phase_angle_range_deg",
+        "exact_phase_anchor_deg",
+        "distance_to_exact_phase_deg",
+        "phase_progress_ratio",
+        "is_major_lunar_phase",
+        "related_signal_keys",
+        "related_reading_slots",
+        "semantic_tags",
+        "interpretive_hint"
+      ],
+      "properties": {
+        "phase_code": {
+          "$ref": "#/$defs/lunar_phase_code"
+        },
+        "phase_label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cycle_family": {
+          "enum": [
+            "conjunction",
+            "waxing",
+            "opposition",
+            "waning"
+          ]
+        },
+        "sun_object_code": {
+          "const": "sun"
+        },
+        "moon_object_code": {
+          "const": "moon"
+        },
+        "sun_longitude_deg": {
+          "$ref": "#/$defs/zodiac_degree"
+        },
+        "moon_longitude_deg": {
+          "$ref": "#/$defs/zodiac_degree"
+        },
+        "sun_moon_angle_deg": {
+          "$ref": "#/$defs/zodiac_degree"
+        },
+        "phase_angle_range_deg": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "$ref": "#/$defs/zodiac_degree"
+          }
+        },
+        "exact_phase_anchor_deg": {
+          "$ref": "#/$defs/zodiac_degree"
+        },
+        "distance_to_exact_phase_deg": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 180
+        },
+        "phase_progress_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "is_major_lunar_phase": {
+          "type": "boolean"
+        },
+        "related_signal_keys": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/non_empty_string_array"
+            },
+            {
+              "uniqueItems": true
+            }
+          ]
+        },
+        "related_reading_slots": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/non_empty_string_array"
+            },
+            {
+              "uniqueItems": true
+            }
+          ]
+        },
+        "semantic_tags": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/non_empty_string_array"
+            },
+            {
+              "uniqueItems": true
+            }
+          ]
+        },
+        "interpretive_hint": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "signal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signal_key",
+        "theme_code",
+        "title",
+        "summary",
+        "priority_score",
+        "confidence_score",
+        "interpretive_hint",
+        "semantic_tags",
+        "source_weight",
+        "aggregation_group",
+        "aspect_context",
+        "evidence"
+      ],
+      "properties": {
+        "signal_key": {
+          "type": "string",
+          "pattern": "^(object_position|angle|dignity|cluster|aspect):",
+          "minLength": 1
+        },
+        "theme_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "priority_score": {
+          "type": "number",
+          "minimum": 0
+        },
+        "confidence_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "interpretive_hint": {
+          "type": "string",
+          "minLength": 1
+        },
+        "semantic_tags": {
+          "$ref": "#/$defs/non_empty_string_array"
+        },
+        "source_weight": {
+          "type": "number",
+          "minimum": 0
+        },
+        "aggregation_group": {
+          "type": "string",
+          "minLength": 1
+        },
+        "aspect_context": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/aspect_context"
+            }
+          ]
+        },
+        "evidence": {
+          "type": "object"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "signal_key": {
+                "pattern": "^aspect:"
+              }
+            },
+            "required": [
+              "signal_key"
+            ]
+          },
+          "then": {
+            "properties": {
+              "aspect_context": {
+                "$ref": "#/$defs/aspect_context"
+              },
+              "evidence": {
+                "$ref": "#/$defs/aspect_evidence"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "signal_key": {
+                "pattern": "^object_position:"
+              }
+            },
+            "required": [
+              "signal_key"
+            ]
+          },
+          "then": {
+            "properties": {
+              "aspect_context": {
+                "type": "null"
+              },
+              "evidence": {
+                "$ref": "#/$defs/object_position_evidence"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "signal_key": {
+                "pattern": "^angle:"
+              }
+            },
+            "required": [
+              "signal_key"
+            ]
+          },
+          "then": {
+            "properties": {
+              "aspect_context": {
+                "type": "null"
+              },
+              "evidence": {
+                "$ref": "#/$defs/angle_evidence"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "signal_key": {
+                "pattern": "^dignity:"
+              }
+            },
+            "required": [
+              "signal_key"
+            ]
+          },
+          "then": {
+            "properties": {
+              "aspect_context": {
+                "type": "null"
+              },
+              "evidence": {
+                "$ref": "#/$defs/dignity_evidence"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "signal_key": {
+                "pattern": "^cluster:"
+              }
+            },
+            "required": [
+              "signal_key"
+            ]
+          },
+          "then": {
+            "properties": {
+              "aspect_context": {
+                "type": "null"
+              },
+              "evidence": {
+                "$ref": "#/$defs/cluster_evidence"
+              }
+            }
+          }
+        },
+        {
+          "not": {
+            "properties": {
+              "signal_key": {
+                "pattern": "^aspect:(ascendant|descendant|mc|ic):(ascendant|descendant|mc|ic):"
+              }
+            },
+            "required": [
+              "signal_key"
+            ]
+          }
+        }
+      ]
+    },
+    "aspect_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "aspect_family",
+        "primary_valence",
+        "intensity_modifier",
+        "secondary_effect",
+        "dynamic_quality",
+        "phase_state",
+        "valence_family",
+        "is_tonal_valence",
+        "is_intensity_modifier"
+      ],
+      "properties": {
+        "aspect_family": {
+          "type": "string",
+          "minLength": 1
+        },
+        "primary_valence": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "intensity_modifier": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "secondary_effect": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "dynamic_quality": {
+          "enum": [
+            "flow",
+            "tension",
+            "adjustment",
+            "intensification",
+            "symbolic",
+            "integration",
+            "contextual"
+          ]
+        },
+        "phase_state": {
+          "type": "string",
+          "minLength": 1
+        },
+        "valence_family": {
+          "type": "string",
+          "minLength": 1
+        },
+        "is_tonal_valence": {
+          "type": "boolean"
+        },
+        "is_intensity_modifier": {
+          "type": "boolean"
+        }
+      },
+      "anyOf": [
+        {
+          "properties": {
+            "primary_valence": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "primary_valence"
+          ]
+        },
+        {
+          "properties": {
+            "intensity_modifier": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "intensity_modifier"
+          ]
+        },
+        {
+          "properties": {
+            "secondary_effect": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "secondary_effect"
+          ]
+        }
+      ]
+    },
+    "sign_context": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "element",
+        "modality",
+        "polarity"
+      ],
+      "properties": {
+        "element": {
+          "type": "string",
+          "minLength": 1
+        },
+        "modality": {
+          "type": "string",
+          "minLength": 1
+        },
+        "polarity": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "house_context": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "theme_code"
+      ],
+      "properties": {
+        "theme_code": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "house_modality": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "code"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "object_context": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "role"
+      ],
+      "properties": {
+        "role": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "motion_context": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "motion_state"
+      ],
+      "properties": {
+        "motion_state": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "placement_context": {
+      "type": "object",
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "object_context": {
+                "properties": {
+                  "role": {
+                    "const": "angle"
+                  }
+                },
+                "required": [
+                  "role"
+                ]
+              }
+            },
+            "required": [
+              "object_context"
+            ]
+          },
+          "then": {
+            "properties": {
+              "visibility_context": {
+                "$ref": "#/$defs/angle_visibility_context"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "visibility_context": {
+                "$ref": "#/$defs/mobile_visibility_context"
+              }
+            }
+          }
+        }
+      ],
+      "required": [
+        "sign_context",
+        "house_context",
+        "house_modality",
+        "object_context",
+        "motion_context",
+        "visibility_context"
+      ],
+      "properties": {
+        "sign_context": {
+          "$ref": "#/$defs/sign_context"
+        },
+        "house_context": {
+          "$ref": "#/$defs/house_context"
+        },
+        "house_modality": {
+          "$ref": "#/$defs/house_modality"
+        },
+        "object_context": {
+          "$ref": "#/$defs/object_context"
+        },
+        "motion_context": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/motion_context"
+            }
+          ]
+        },
+        "visibility_context": {
+          "$ref": "#/$defs/visibility_context"
+        },
+        "accidental_dignity_context": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/accidental_dignity_context_summary"
+          }
+        }
+      }
+    },
+    "object_position_evidence": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "fact_type",
+        "object_code",
+        "sign_code",
+        "placement_context",
+        "essential_dignities"
+      ],
+      "allOf": [
+        {
+          "properties": {
+            "placement_context": {
+              "required": [
+                "accidental_dignity_context"
+              ]
+            }
+          }
+        }
+      ],
+      "properties": {
+        "fact_type": {
+          "const": "object_position"
+        },
+        "object_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sign_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "placement_context": {
+          "$ref": "#/$defs/placement_context"
+        },
+        "essential_dignities": {
+          "type": "array"
+        }
+      }
+    },
+    "angle_evidence": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "fact_type",
+        "angle_code",
+        "opposite_angle_code",
+        "opposite_angle_object_code",
+        "sign_code",
+        "placement_context"
+      ],
+      "properties": {
+        "fact_type": {
+          "const": "chart_angle"
+        },
+        "angle_code": {
+          "enum": [
+            "ascendant",
+            "descendant",
+            "mc",
+            "ic"
+          ]
+        },
+        "opposite_angle_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "opposite_angle_object_code": {
+          "enum": [
+            "ascendant",
+            "descendant",
+            "mc",
+            "ic"
+          ]
+        },
+        "sign_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "placement_context": {
+          "$ref": "#/$defs/placement_context"
+        }
+      }
+    },
+    "aspect_evidence": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "fact_type",
+        "source_object_code",
+        "target_object_code",
+        "aspect_code",
+        "strength_score"
+      ],
+      "properties": {
+        "fact_type": {
+          "const": "aspect"
+        },
+        "source_object_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_object_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "aspect_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "strength_score": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "dignity_evidence": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "fact_type",
+        "chart_object",
+        "sign_code",
+        "dignity_type"
+      ],
+      "properties": {
+        "fact_type": {
+          "const": "essential_dignity"
+        },
+        "chart_object": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sign_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dignity_type": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "cluster_evidence": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "fact_type",
+        "cluster_type",
+        "sign_code",
+        "house_number",
+        "house_theme_code",
+        "source_signals",
+        "source_objects"
+      ],
+      "properties": {
+        "fact_type": {
+          "const": "position_cluster"
+        },
+        "cluster_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sign_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "house_number": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12
+        },
+        "house_theme_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_signals": {
+          "$ref": "#/$defs/non_empty_string_array"
+        },
+        "source_objects": {
+          "$ref": "#/$defs/non_empty_string_array"
+        }
+      }
+    },
+    "reading_plan_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "slot",
+        "title",
+        "source_signal_keys",
+        "primary_signal_keys",
+        "secondary_slot_candidates"
+      ],
+      "properties": {
+        "slot": {
+          "$ref": "#/$defs/reading_slot"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_signal_keys": {
+          "$ref": "#/$defs/non_empty_string_array"
+        },
+        "primary_signal_keys": {
+          "$ref": "#/$defs/non_empty_string_array"
+        },
+        "secondary_slot_candidates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/secondary_slot_candidate"
+          }
+        }
+      }
+    },
+    "secondary_slot_candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signal_key",
+        "primary_slot",
+        "candidate_slot"
+      ],
+      "properties": {
+        "signal_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "primary_slot": {
+          "$ref": "#/$defs/reading_slot"
+        },
+        "candidate_slot": {
+          "$ref": "#/$defs/reading_slot"
+        }
+      }
+    },
+    "reading_slot": {
+      "enum": [
+        "core_identity",
+        "dominant_cluster",
+        "main_tension_or_support",
+        "expression_style",
+        "background_factors"
+      ]
+    },
+    "lunar_phase_code": {
+      "enum": [
+        "new_moon",
+        "waxing_crescent",
+        "first_quarter",
+        "waxing_gibbous",
+        "full_moon",
+        "waning_gibbous",
+        "last_quarter",
+        "waning_crescent"
+      ]
+    },
+    "zodiac_degree": {
+      "type": "number",
+      "minimum": 0,
+      "exclusiveMaximum": 360
+    },
+    "non_empty_string_array": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "projection_reason": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reason_code"
+      ],
+      "properties": {
+        "reason_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "object_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "dignity_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sign_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "house_number": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 12
+        },
+        "theme_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "angle_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "signal_key": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "context_key": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}

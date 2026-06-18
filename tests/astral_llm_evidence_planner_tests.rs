@@ -30,7 +30,7 @@ fn catalog_with_evidence() -> CanonicalCatalog {
 
 fn minimal_payload() -> AstroCalculationPayload {
     AstroCalculationPayload {
-        contract_version: "natal_structured_v13".into(),
+        contract_version: "natal_structured_v14".into(),
         chart_type: "natal".into(),
         data: serde_json::json!({
             "domain_scores": {
@@ -51,11 +51,11 @@ fn minimal_payload() -> AstroCalculationPayload {
 
 fn rich_payload_from_golden() -> AstroCalculationPayload {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../tests/golden/natal_payload_v13_paris_1990.json");
+        .join("../../../tests/golden/natal_payload_v14_paris_1990.json");
     let raw = std::fs::read_to_string(&path).expect("golden payload");
     let data: serde_json::Value = serde_json::from_str(&raw).expect("parse golden");
     AstroCalculationPayload {
-        contract_version: "natal_structured_v13".into(),
+        contract_version: "natal_structured_v14".into(),
         chart_type: "natal".into(),
         data,
     }

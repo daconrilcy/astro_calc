@@ -8,7 +8,7 @@ use crate::features::natal::payload::shared::text::{
     has_text, has_unique_non_empty_strings, is_normalized_score, push_unique,
 };
 
-use super::emphasis::product_scoring_snapshot;
+use super::emphasis::{product_scoring_snapshot, valid_projection_reasons};
 
 pub(super) fn has_current_house_axis_emphasis(payload: &BasicPayload) -> bool {
     let Some(scoring) = product_scoring_snapshot(payload) else {
@@ -109,8 +109,7 @@ fn has_current_axis(
         && axis.secondary_house == expected_secondary_house
         && expected_polarity_balance != "weak_axis"
         && axis.polarity_balance == expected_polarity_balance
-        && !axis.reasons.is_empty()
-        && axis.reasons.iter().all(|reason| has_text(reason))
+        && valid_projection_reasons(&axis.reason_details)
         && has_unique_non_empty_strings(&axis.source_signal_keys)
         && has_unique_non_empty_strings(&axis.source_context_keys)
         && axis
@@ -124,8 +123,7 @@ fn has_current_axis(
             score.house_number == axis.houses[index]
                 && score.theme_code == axis.theme_codes[index]
                 && axis_score_is_valid(score.score)
-                && !score.reasons.is_empty()
-                && score.reasons.iter().all(|reason| has_text(reason))
+                && valid_projection_reasons(&score.reason_details)
         })
 }
 
@@ -143,14 +141,14 @@ fn has_current_cross_axis_aspect_context(
             && aspect_bridges_axis(signal, axis, position_house_by_object)
     });
     let axis_has_reason = axis
-        .reasons
+        .reason_details
         .iter()
-        .any(|reason| reason == "cross_axis_aspect");
+        .any(|reason| reason.reason_code == "cross_axis_aspect");
     let house_scores_have_reason = axis.house_scores.iter().all(|score| {
         score
-            .reasons
+            .reason_details
             .iter()
-            .any(|reason| reason == "cross_axis_aspect")
+            .any(|reason| reason.reason_code == "cross_axis_aspect")
     });
 
     if has_bridge_aspect {
@@ -159,9 +157,9 @@ fn has_current_cross_axis_aspect_context(
         !axis_has_reason
             && axis.house_scores.iter().all(|score| {
                 !score
-                    .reasons
+                    .reason_details
                     .iter()
-                    .any(|reason| reason == "cross_axis_aspect")
+                    .any(|reason| reason.reason_code == "cross_axis_aspect")
             })
     }
 }

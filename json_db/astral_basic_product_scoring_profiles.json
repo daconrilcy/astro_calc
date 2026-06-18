@@ -53,6 +53,31 @@
       "aspect_min_strength": 0.4,
       "max_house_axis_emphasis": 3,
       "is_active": true
+    },
+    {
+      "id": 2,
+      "product_code": "basic",
+      "payload_contract_version": "natal_structured_v14",
+      "essential_dignity_score_profile_id": 5,
+      "accidental_scoring_params_id": 1,
+      "default_major_orb_deg": 8.0,
+      "sign_emphasis_full_score": 4.6,
+      "house_emphasis_full_score": 4.6,
+      "object_emphasis_full_score": 2.4,
+      "sign_house_emphasis_min_score": 0.35,
+      "object_emphasis_min_score": 0.5,
+      "house_axis_full_score": 2.5,
+      "axis_min_score": 0.35,
+      "axis_secondary_weight": 0.35,
+      "axis_polarity_dominance_delta": 0.2,
+      "axis_balanced_min_score": 0.35,
+      "max_dominant_signs": 3,
+      "max_dominant_houses": 3,
+      "max_dominant_objects": 5,
+      "max_active_signals": 12,
+      "aspect_min_strength": 0.4,
+      "max_house_axis_emphasis": 3,
+      "is_active": true
     }
   ]
 }

@@ -39,7 +39,7 @@ fn humanizer_sets_french_factor_on_basis_item() {
     let cat = catalog();
     let h = AstroLabelHumanizer::new(cat.as_ref());
     let facts = NormalizedAstroFacts {
-        contract_version: "natal_structured_v13".into(),
+        contract_version: "natal_structured_v14".into(),
         facts: vec![NormalizedAstroFact {
             id: "signal:object_position:moon".into(),
             kind: AstroFactKind::PlanetPosition,
@@ -72,7 +72,7 @@ fn enrich_replaces_unknown_label_from_evidence() {
     let cat = catalog();
     let h = AstroLabelHumanizer::new(cat.as_ref());
     let facts = NormalizedAstroFacts {
-        contract_version: "natal_structured_v13".into(),
+        contract_version: "natal_structured_v14".into(),
         facts: vec![NormalizedAstroFact {
             id: "signal:object_position:venus".into(),
             kind: AstroFactKind::PlanetPosition,
@@ -110,7 +110,7 @@ fn enrich_overwrites_llm_paraphrase_factor_with_canonical_label() {
     let cat = catalog();
     let h = AstroLabelHumanizer::new(cat.as_ref());
     let facts = NormalizedAstroFacts {
-        contract_version: "natal_structured_v13".into(),
+        contract_version: "natal_structured_v14".into(),
         facts: vec![
             NormalizedAstroFact {
                 id: "placement:mc:leo:house:10".into(),

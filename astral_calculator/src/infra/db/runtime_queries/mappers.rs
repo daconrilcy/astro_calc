@@ -177,6 +177,27 @@ impl From<AccidentalConditionTriggerRow> for AccidentalConditionTrigger {
     }
 }
 
+impl From<ProjectionReasonDefinitionRow> for crate::domain::ProjectionReasonDefinition {
+    /// Fonction from.
+    fn from(row: ProjectionReasonDefinitionRow) -> Self {
+        Self {
+            reason_code: row.reason_code,
+            reason_family: row.reason_family,
+            label_template_en: row.label_template_en,
+            requires_object: row.requires_object,
+            requires_dignity_type: row.requires_dignity_type,
+            requires_sign_code: row.requires_sign_code,
+            requires_house_number: row.requires_house_number,
+            requires_theme_code: row.requires_theme_code,
+            requires_angle_code: row.requires_angle_code,
+            requires_signal_key: row.requires_signal_key,
+            requires_context_key: row.requires_context_key,
+            is_active: row.is_active,
+            sort_order: row.sort_order,
+        }
+    }
+}
+
 impl From<AccidentalScoringParamsRow> for AccidentalScoringParams {
     /// Fonction from.
     fn from(row: AccidentalScoringParamsRow) -> Self {

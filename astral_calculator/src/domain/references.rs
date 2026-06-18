@@ -207,6 +207,24 @@ pub struct EssentialDignityRuleReference {
 }
 
 #[derive(Debug, Clone)]
+/// Structure ProjectionReasonDefinition.
+pub struct ProjectionReasonDefinition {
+    pub reason_code: String,
+    pub reason_family: String,
+    pub label_template_en: String,
+    pub requires_object: bool,
+    pub requires_dignity_type: bool,
+    pub requires_sign_code: bool,
+    pub requires_house_number: bool,
+    pub requires_theme_code: bool,
+    pub requires_angle_code: bool,
+    pub requires_signal_key: bool,
+    pub requires_context_key: bool,
+    pub is_active: bool,
+    pub sort_order: i32,
+}
+
+#[derive(Debug, Clone)]
 /// Structure AccidentalConditionTrigger.
 pub struct AccidentalConditionTrigger {
     pub trigger_family: String,

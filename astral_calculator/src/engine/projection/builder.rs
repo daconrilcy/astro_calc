@@ -15,14 +15,14 @@ use super::dynamics::build_dynamics;
 use super::humanize::{
     accidental_overall_label, axis_balance_label, axis_importance, chart_sect_label,
     dignity_meaning, hemisphere_dominant_area, humanize_axis_summary, humanize_condition,
-    humanize_motion_label, humanize_reason, importance_label, is_unremarkable_motion_condition,
-    limit_keywords, push_unique, reading_slot_section, title_case_sign,
+    humanize_motion_label, importance_label, is_unremarkable_motion_condition, limit_keywords,
+    push_unique, reading_slot_section, render_projection_reason, title_case_sign,
 };
 use super::profiles::limits_envelope;
 use super::types::*;
 use crate::domain::{
     BasicAccidentalDignityEvaluation, BasicHouseAxisEmphasis, BasicObjectPosition, BasicPayload,
-    HouseAxisReference,
+    BasicProjectionReason, HouseAxisReference, ProjectionReasonDefinition,
 };
 
 /// Structure LlmProjectionBuildContext.
@@ -32,6 +32,7 @@ pub struct LlmProjectionBuildContext<'a> {
     pub coordinate_label: &'a str,
     pub house_system_label: &'a str,
     pub house_axes: &'a [HouseAxisReference],
+    pub projection_reason_definitions: &'a [ProjectionReasonDefinition],
 }
 
 // Assemble la projection complete `llm_projection_natal_v1`.
@@ -43,6 +44,8 @@ pub fn build_llm_projection_natal_v1(
 ) -> LlmProjectionNatalV1 {
     let limits = limits_envelope(profile);
     let object_names = object_name_map(payload);
+    let reason_definitions = projection_reason_definition_map(ctx.projection_reason_definitions);
+    let theme_labels = theme_label_map(payload);
     let dynamics = build_dynamics(payload, profile);
     let reading_order = build_reading_order(payload, profile, &dynamics);
     let keywords = build_keywords(payload, profile, &dynamics);
@@ -54,13 +57,25 @@ pub fn build_llm_projection_natal_v1(
         chart: build_chart(payload, ctx),
         reading_order,
         core_identity: build_core_identity(payload, profile, &object_names),
-        dominant_themes: build_dominant_themes(payload, profile, &object_names),
+        dominant_themes: build_dominant_themes(
+            payload,
+            profile,
+            &object_names,
+            &reason_definitions,
+            &theme_labels,
+        ),
         placements: build_placements(payload, profile),
         angles: build_angles(payload, profile),
         strengths: build_strengths(payload, profile),
         relationship_network: build_relationship_network(payload, profile, &object_names),
         dynamics,
-        house_axes: build_house_axes(payload, profile, ctx.house_axes),
+        house_axes: build_house_axes(
+            payload,
+            profile,
+            ctx.house_axes,
+            &reason_definitions,
+            &theme_labels,
+        ),
         keywords,
     }
 }
@@ -73,6 +88,36 @@ fn object_name_map(payload: &BasicPayload) -> HashMap<String, String> {
         .iter()
         .map(|p| (p.object_code.clone(), p.object_name.clone()))
         .collect()
+}
+
+fn projection_reason_definition_map(
+    definitions: &[ProjectionReasonDefinition],
+) -> HashMap<String, ProjectionReasonDefinition> {
+    definitions
+        .iter()
+        .cloned()
+        .map(|definition| (definition.reason_code.clone(), definition))
+        .collect()
+}
+
+fn theme_label_map(payload: &BasicPayload) -> HashMap<String, String> {
+    let mut labels = HashMap::new();
+    for position in &payload.positions {
+        if let Some(theme_code) = position
+            .house_context
+            .as_ref()
+            .and_then(|ctx| ctx.get("theme_code"))
+            .and_then(|value| value.as_str())
+        {
+            labels.entry(theme_code.to_string()).or_insert_with(|| {
+                position
+                    .house_name
+                    .clone()
+                    .unwrap_or_else(|| title_case_sign(theme_code))
+            });
+        }
+    }
+    labels
 }
 
 // Construit le bloc `chart` avec les metadonnees de calcul et de naissance.
@@ -374,6 +419,8 @@ fn build_dominant_themes(
     payload: &BasicPayload,
     profile: &LlmProjectionProfile,
     object_names: &HashMap<String, String>,
+    reason_definitions: &HashMap<String, ProjectionReasonDefinition>,
+    theme_labels: &HashMap<String, String>,
 ) -> LlmDominantThemes {
     let signs = payload
         .chart_emphasis
@@ -385,9 +432,11 @@ fn build_dominant_themes(
             LlmDominantSign {
                 name: sign.clone(),
                 importance: importance_label(entry.score).to_string(),
-                supporting_factors: dedupe_humanized_reasons(
-                    &entry.reasons,
+                supporting_factors: dedupe_rendered_reasons(
+                    &entry.reason_details,
+                    reason_definitions,
                     object_names,
+                    theme_labels,
                     profile.max_keywords_per_item,
                 ),
                 keywords: sign_keywords_from_positions(
@@ -411,9 +460,11 @@ fn build_dominant_themes(
                 number: house_ref.number,
                 theme: house_ref.theme,
                 importance: importance_label(entry.score).to_string(),
-                supporting_factors: dedupe_humanized_reasons(
-                    &entry.reasons,
+                supporting_factors: dedupe_rendered_reasons(
+                    &entry.reason_details,
+                    reason_definitions,
                     object_names,
+                    theme_labels,
                     profile.max_keywords_per_item,
                 ),
                 score: profile.include_scores.then_some(entry.score),
@@ -432,9 +483,11 @@ fn build_dominant_themes(
                 .cloned()
                 .unwrap_or_else(|| title_case_sign(&entry.object_code)),
             importance: importance_label(entry.score).to_string(),
-            supporting_factors: dedupe_humanized_reasons(
-                &entry.reasons,
+            supporting_factors: dedupe_rendered_reasons(
+                &entry.reason_details,
+                reason_definitions,
                 object_names,
+                theme_labels,
                 profile.max_keywords_per_item,
             ),
             score: profile.include_scores.then_some(entry.score),
@@ -787,13 +840,25 @@ fn build_house_axes(
     payload: &BasicPayload,
     profile: &LlmProjectionProfile,
     axis_refs: &[HouseAxisReference],
+    reason_definitions: &HashMap<String, ProjectionReasonDefinition>,
+    theme_labels: &HashMap<String, String>,
 ) -> Vec<LlmHouseAxis> {
     let object_names = object_name_map(payload);
     payload
         .house_axis_emphasis
         .iter()
         .take(profile.max_house_axes)
-        .map(|axis| house_axis_to_llm(axis, axis_refs, payload, profile, &object_names))
+        .map(|axis| {
+            house_axis_to_llm(
+                axis,
+                axis_refs,
+                payload,
+                profile,
+                &object_names,
+                reason_definitions,
+                theme_labels,
+            )
+        })
         .collect()
 }
 
@@ -805,6 +870,8 @@ fn house_axis_to_llm(
     payload: &BasicPayload,
     profile: &LlmProjectionProfile,
     object_names: &HashMap<String, String>,
+    reason_definitions: &HashMap<String, ProjectionReasonDefinition>,
+    theme_labels: &HashMap<String, String>,
 ) -> LlmHouseAxis {
     let axis_title = house_axis_label(&axis.axis_code, axis_refs);
     let houses: Vec<LlmHouseRef> = axis
@@ -813,8 +880,13 @@ fn house_axis_to_llm(
         .map(|score| house_ref_from_payload(score.house_number, &score.theme_code, payload))
         .collect();
 
-    let supporting_factors =
-        dedupe_humanized_reasons(&axis.reasons, object_names, profile.max_keywords_per_item);
+    let supporting_factors = dedupe_rendered_reasons(
+        &axis.reason_details,
+        reason_definitions,
+        object_names,
+        theme_labels,
+        profile.max_keywords_per_item,
+    );
 
     let theme_in_parens: Vec<(String, String)> = axis
         .house_scores
@@ -1051,14 +1123,17 @@ fn position_conditions(
 
 // Dedouble et humanise les raisons d'une emphase astrologique.
 /// Fonction dedupe_humanized_reasons.
-fn dedupe_humanized_reasons(
-    reasons: &[String],
+fn dedupe_rendered_reasons(
+    reasons: &[BasicProjectionReason],
+    reason_definitions: &HashMap<String, ProjectionReasonDefinition>,
     object_names: &HashMap<String, String>,
+    theme_labels: &HashMap<String, String>,
     limit: usize,
 ) -> Vec<String> {
     let mut out = Vec::new();
     for reason in reasons {
-        let human = humanize_reason(reason, object_names);
+        let human =
+            render_projection_reason(reason, reason_definitions, object_names, theme_labels);
         push_unique(&mut out, human);
         if out.len() >= limit {
             break;

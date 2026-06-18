@@ -98,8 +98,8 @@ foreach ($key in $required) {
 if ($generated.response_contract_version -ne "astro_engine_response_v1") {
     throw "response_contract_version must be astro_engine_response_v1"
 }
-if ($generated.audit_payload.contract_version -ne "natal_structured_v13") {
-    throw "audit_payload.contract_version must be natal_structured_v13"
+if ($generated.audit_payload.contract_version -ne "natal_structured_v14") {
+    throw "audit_payload.contract_version must be natal_structured_v14"
 }
 if ($generated.llm_payload.contract_version -ne "llm_projection_natal_v1") {
     throw "llm_payload.contract_version must be llm_projection_natal_v1"

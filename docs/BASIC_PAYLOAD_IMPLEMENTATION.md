@@ -1,3 +1,45 @@
+# 2026-06-18 - `natal_structured_v14` reasons typees et referentielles
+
+Resume court:
+- rupture de contrat payload de `natal_structured_v13` vers
+  `natal_structured_v14` pour remplacer les `reasons: Vec<String>` par
+  `reason_details: Vec<BasicProjectionReason>` sur les blocs de dominantes et
+  d'axes;
+- introduction du type domaine `BasicProjectionReason` et du referentiel DB
+  `astral_projection_reason_definitions`, seed via `json_db/` et charge par
+  `BasicPayloadCatalog`;
+- suppression des codes combinatoires payload/projection
+  (`jupiter_exaltation`, `sun_luminary_in_house`, etc.) au profit de
+  `reason_code` + attributs structures;
+- conservation du contrat public `llm_projection_natal_v1`: seule la forme du
+  payload brut/audit change;
+- rendu LLM reconstruit a partir des templates de definitions referentielles,
+  sans fallback metier silencieux en runtime.
+
+Invariants de couche:
+- aucune constante canonique de reason ne vit hors du referentiel DB ou du seed
+  strictement identique de `test_catalog()`;
+- les builders natal produisent des raisons typees, sans concatener de codes
+  metier lisibles par le LLM;
+- la validation payload rejette toute `reason_code` inconnue, inactive ou
+  incomplete selon les `requires_*` du catalogue;
+- la projection LLM consomme uniquement `reason_details` et des definitions
+  chargees depuis le catalogue, sans connaissance specifique de combinaisons
+  `object + dignity` ou `luminary + house`;
+- `llm_projection_natal_v1` reste stable; les goldens et schemas payload
+  courants basculent vers `natal_structured_v14`.
+
+Commandes de verification:
+- `cargo fmt`
+- `cargo test -p astral_calculator`
+- `cargo test -p astral_calculator_http --test astral_calculator_http_tests`
+- `cargo test -p astral_llm_api --test contracts_publish_tests`
+- `cargo test -p astral_calculator --test refactor_governance_tests`
+
+Reviews:
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-PROJECTION-REASONS-V14-2026-06-18.md`
+- `docs/reviews/astral_calculator_refactor/REV-PROJECTION-REASONS-V14-2026-06-18.md`
+
 # 2026-06-18 - `astral_calculator` suppression des wrappers racine legacy
 
 Resume court:

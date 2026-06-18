@@ -8,7 +8,7 @@ use crate::domain::{
     CalculatedChartFacts, ChartObject, DomicileRulerReference, EssentialDignityRuleReference,
     HouseAxisReference, HouseSystem, InterpretationSignalDraft, InterpretationSignalRow,
     LunarPhaseReference, NatalChartInput, ObjectPositionFact, ObjectSectAffinityReference,
-    RuntimeOptions,
+    ProjectionReasonDefinition, RuntimeOptions,
 };
 use crate::engine::projection::LlmProjectionProfile;
 use crate::features::horoscope::{HoroscopeSignalThemeMapping, HoroscopeSupportedObject};
@@ -123,6 +123,9 @@ pub trait PayloadCatalogStore: Send + Sync {
         reference_version_id: i32,
         score_profile_id: i32,
     ) -> Result<Vec<EssentialDignityRuleReference>, RuntimeError>;
+    async fn projection_reason_definitions(
+        &self,
+    ) -> Result<Vec<ProjectionReasonDefinition>, RuntimeError>;
 }
 
 #[async_trait]

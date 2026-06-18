@@ -21,6 +21,13 @@ fn input() -> NatalChartInput {
     }
 }
 
+fn reason_codes(reasons: &[BasicProjectionReason]) -> Vec<&str> {
+    reasons
+        .iter()
+        .map(|reason| reason.reason_code.as_str())
+        .collect()
+}
+
 fn with_signal_scoring(mut position: ObjectPositionFact) -> ObjectPositionFact {
     let scoring = match position.object_code.as_str() {
         "sun" | "moon" => json!({
@@ -631,16 +638,16 @@ fn basic_payload_exposes_chart_emphasis_summary() {
     assert_eq!(dominant_sign.sign_code, "capricorn");
     assert!(dominant_sign.score >= 0.85);
     assert!(dominant_sign.score < 1.0);
-    assert!(dominant_sign.reasons.contains(&"sun_in_sign".to_string()));
-    assert!(dominant_sign
-        .reasons
-        .contains(&"saturn_domicile".to_string()));
-    assert!(dominant_sign
-        .reasons
-        .contains(&"sign_house_cluster".to_string()));
-    assert!(dominant_sign
-        .reasons
-        .contains(&"multiple_objects".to_string()));
+    assert!(dominant_sign.reason_details.iter().any(|reason| {
+        reason.reason_code == "object_in_sign" && reason.object_code.as_deref() == Some("sun")
+    }));
+    assert!(dominant_sign.reason_details.iter().any(|reason| {
+        reason.reason_code == "essential_dignity"
+            && reason.object_code.as_deref() == Some("saturn")
+            && reason.dignity_type.as_deref() == Some("domicile")
+    }));
+    assert!(reason_codes(&dominant_sign.reason_details).contains(&"sign_house_cluster"));
+    assert!(reason_codes(&dominant_sign.reason_details).contains(&"multiple_objects"));
 
     let dominant_house = payload
         .chart_emphasis
@@ -649,8 +656,10 @@ fn basic_payload_exposes_chart_emphasis_summary() {
         .expect("expected dominant house");
     assert_eq!(dominant_house.house_number, 2);
     assert_eq!(dominant_house.theme_code, "resources");
-    assert!(dominant_house.reasons.contains(&"sun_in_house".to_string()));
-    assert!(dominant_house.reasons.contains(&"cluster".to_string()));
+    assert!(dominant_house.reason_details.iter().any(|reason| {
+        reason.reason_code == "object_in_house" && reason.object_code.as_deref() == Some("sun")
+    }));
+    assert!(reason_codes(&dominant_house.reason_details).contains(&"cluster"));
 
     let saturn = payload
         .chart_emphasis
@@ -659,12 +668,16 @@ fn basic_payload_exposes_chart_emphasis_summary() {
         .find(|entry| entry.object_code == "saturn")
         .expect("expected saturn emphasis");
     assert!(saturn.score > 0.0);
-    assert!(saturn.reasons.contains(&"domicile".to_string()));
-    assert!(saturn.reasons.contains(&"cluster_participant".to_string()));
-    assert!(saturn.reasons.contains(&"capricorn_emphasis".to_string()));
-    assert!(saturn
-        .reasons
-        .contains(&"strong_aspect_participant".to_string()));
+    assert!(saturn.reason_details.iter().any(|reason| {
+        reason.reason_code == "essential_dignity"
+            && reason.object_code.as_deref() == Some("saturn")
+            && reason.dignity_type.as_deref() == Some("domicile")
+    }));
+    assert!(reason_codes(&saturn.reason_details).contains(&"cluster_participant"));
+    assert!(saturn.reason_details.iter().any(|reason| {
+        reason.reason_code == "sign_emphasis" && reason.sign_code.as_deref() == Some("capricorn")
+    }));
+    assert!(reason_codes(&saturn.reason_details).contains(&"strong_aspect_participant"));
 }
 
 #[test]
@@ -738,14 +751,12 @@ fn chart_emphasis_omits_placement_only_objects_when_stronger_evidence_exists() {
         .dominant_objects
         .iter()
         .any(|entry| entry.object_code == "mercury"));
-    assert!(
-        !payload
-            .chart_emphasis
-            .dominant_objects
-            .iter()
-            .any(|entry| entry.object_code == "moon"
-                && entry.reasons == vec!["placement".to_string()])
-    );
+    assert!(!payload
+        .chart_emphasis
+        .dominant_objects
+        .iter()
+        .any(|entry| entry.object_code == "moon"
+            && reason_codes(&entry.reason_details) == vec!["placement"]));
 }
 
 #[test]
@@ -861,7 +872,10 @@ fn chart_emphasis_scores_do_not_overstate_weak_distributions() {
     assert!(dominant_sign.score < 0.35);
     assert!(dominant_house.score < 0.35);
     assert!(dominant_object.score < 0.5);
-    assert_eq!(dominant_object.reasons, vec!["placement"]);
+    assert_eq!(
+        reason_codes(&dominant_object.reason_details),
+        vec!["placement"]
+    );
 }
 
 #[test]
@@ -1329,8 +1343,9 @@ fn structural_axis_aspects_are_excluded_from_payload_planning_and_emphasis() {
         !payload.chart_emphasis.dominant_objects.iter().any(|entry| {
             entry.object_code == "ascendant"
                 && entry
-                    .reasons
-                    .contains(&"strong_aspect_participant".to_string())
+                    .reason_details
+                    .iter()
+                    .any(|reason| reason.reason_code == "strong_aspect_participant")
         })
     );
 }
@@ -1868,7 +1883,7 @@ fn v13_contains_lunar_phase_context_from_reference_phases() {
 
     assert_eq!(
         payload.chart_context.payload_contract.contract_version,
-        "natal_structured_v13"
+        "natal_structured_v14"
     );
     assert_eq!(phase.phase_code, "waxing_crescent");
     assert_eq!(phase.cycle_family, "waxing");

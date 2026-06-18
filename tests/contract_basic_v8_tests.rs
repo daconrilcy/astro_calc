@@ -7,9 +7,9 @@ use serde_json::Value;
 use astral_calculator::domain::BasicPayload;
 use astral_calculator::runtime::is_current_basic_payload;
 
-const GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v13_paris_1990.json";
-const SCHEMA_PATH: &str = "../contracts/calculator/natal_structured_v13.schema.json";
-const PAYLOAD_UNDER_TEST_ENV: &str = "NATAL_V13_SCHEMA_PAYLOAD_PATH";
+const GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v14_paris_1990.json";
+const SCHEMA_PATH: &str = "../contracts/calculator/natal_structured_v14.schema.json";
+const PAYLOAD_UNDER_TEST_ENV: &str = "NATAL_V14_SCHEMA_PAYLOAD_PATH";
 
 fn load_golden_payload() -> Value {
     let raw = fs::read_to_string(GOLDEN_PAYLOAD_PATH).expect("golden payload should exist");
@@ -91,6 +91,16 @@ fn source_keys(item: &Value) -> Vec<&str> {
         .collect()
 }
 
+fn reason_array<'a>(value: &'a Value, key: &str) -> &'a Vec<Value> {
+    array(value, key)
+}
+
+fn has_reason_code(value: &Value, key: &str, reason_code: &str) -> bool {
+    reason_array(value, key)
+        .iter()
+        .any(|reason| reason["reason_code"] == reason_code)
+}
+
 fn assert_source(item: &Value, signal_key: &str) {
     assert!(
         source_keys(item).contains(&signal_key),
@@ -108,19 +118,19 @@ fn assert_source_prefix(item: &Value, prefix: &str) {
 }
 
 #[test]
-fn golden_payload_matches_json_schema_v13() {
+fn golden_payload_matches_json_schema_v14() {
     let payload_json = load_golden_payload();
     let validation_errors = validate_with_schema(&payload_json);
 
     assert!(
         validation_errors.is_empty(),
-        "golden payload does not match natal_structured_v13 schema:\n{}",
+        "golden payload does not match natal_structured_v14 schema:\n{}",
         validation_errors.join("\n")
     );
 }
 
 #[test]
-fn external_payload_matches_json_schema_v13_when_requested() {
+fn external_payload_matches_json_schema_v14_when_requested() {
     let Ok(path) = std::env::var(PAYLOAD_UNDER_TEST_ENV) else {
         return;
     };
@@ -129,7 +139,7 @@ fn external_payload_matches_json_schema_v13_when_requested() {
 
     assert!(
         validation_errors.is_empty(),
-        "external payload does not match natal_structured_v13 schema:\n{}",
+        "external payload does not match natal_structured_v14 schema:\n{}",
         validation_errors.join("\n")
     );
 }
@@ -456,18 +466,18 @@ fn runtime_rejects_missing_cross_axis_reason_when_aspect_bridges_axis() {
         .iter_mut()
         .find(|axis| axis["axis_code"] == "resources_sharing")
         .expect("resources_sharing axis");
-    axis["reasons"]
+    axis["reason_details"]
         .as_array_mut()
-        .expect("axis reasons should be an array")
-        .retain(|reason| reason != "cross_axis_aspect");
+        .expect("axis reason_details should be an array")
+        .retain(|reason| reason["reason_code"] != "cross_axis_aspect");
     for score in axis["house_scores"]
         .as_array_mut()
         .expect("house_scores should be an array")
     {
-        score["reasons"]
+        score["reason_details"]
             .as_array_mut()
-            .expect("house score reasons should be an array")
-            .retain(|reason| reason != "cross_axis_aspect");
+            .expect("house score reason_details should be an array")
+            .retain(|reason| reason["reason_code"] != "cross_axis_aspect");
     }
     let parsed: BasicPayload =
         serde_json::from_value(payload).expect("modified payload should deserialize");
@@ -484,18 +494,18 @@ fn runtime_rejects_cross_axis_reason_without_bridge_aspect() {
         .iter_mut()
         .find(|axis| axis["axis_code"] == "self_relationship")
         .expect("self_relationship axis");
-    axis["reasons"]
+    axis["reason_details"]
         .as_array_mut()
-        .expect("axis reasons should be an array")
-        .push(Value::String("cross_axis_aspect".to_string()));
+        .expect("axis reason_details should be an array")
+        .push(serde_json::json!({"reason_code": "cross_axis_aspect", "signal_key": "aspect:moon:mars:square"}));
     for score in axis["house_scores"]
         .as_array_mut()
         .expect("house_scores should be an array")
     {
-        score["reasons"]
+        score["reason_details"]
             .as_array_mut()
-            .expect("house score reasons should be an array")
-            .push(Value::String("cross_axis_aspect".to_string()));
+            .expect("house score reason_details should be an array")
+            .push(serde_json::json!({"reason_code": "cross_axis_aspect", "signal_key": "aspect:moon:mars:square"}));
     }
     let parsed: BasicPayload =
         serde_json::from_value(payload).expect("modified payload should deserialize");
@@ -527,7 +537,7 @@ fn v11_contains_house_axis_emphasis() {
 }
 
 #[test]
-fn v13_contains_lunar_phase_context() {
+fn v14_contains_lunar_phase_context() {
     let payload = load_golden_payload();
     let phase = &payload["lunar_phase_context"];
 
@@ -554,18 +564,18 @@ fn accidental_has_condition(evaluation: &Value, condition_code: &str) -> bool {
 }
 
 #[test]
-fn v13_contains_accidental_dignities() {
+fn v14_contains_accidental_dignities() {
     let payload = load_golden_payload();
 
     assert_eq!(
         payload["chart_context"]["payload_contract"]["contract_version"],
-        "natal_structured_v13"
+        "natal_structured_v14"
     );
     assert!(!array(&payload, "accidental_dignities").is_empty());
 }
 
 #[test]
-fn v13_rejects_missing_accidental_dignities() {
+fn v14_rejects_missing_accidental_dignities() {
     let mut payload = load_golden_payload();
     payload
         .as_object_mut()
@@ -757,7 +767,7 @@ fn runtime_rejects_accidental_expression_quality_mismatch() {
 }
 
 #[test]
-fn runtime_rejects_v13_without_accidental_scoring_snapshot() {
+fn runtime_rejects_v14_without_accidental_scoring_snapshot() {
     let mut payload = load_golden_payload();
     payload["chart_context"]["accidental_scoring"] = Value::Null;
     let parsed: BasicPayload =
@@ -767,7 +777,7 @@ fn runtime_rejects_v13_without_accidental_scoring_snapshot() {
 }
 
 #[test]
-fn runtime_rejects_v13_without_product_scoring_snapshot() {
+fn runtime_rejects_v14_without_product_scoring_snapshot() {
     let mut payload = load_golden_payload();
     payload["chart_context"]["product_scoring"] = Value::Null;
     let parsed: BasicPayload =
@@ -777,7 +787,7 @@ fn runtime_rejects_v13_without_product_scoring_snapshot() {
 }
 
 #[test]
-fn runtime_rejects_v13_with_non_contiguous_polarity_bands() {
+fn runtime_rejects_v14_with_non_contiguous_polarity_bands() {
     let mut payload = load_golden_payload();
     payload["chart_context"]["accidental_scoring"]["polarity_bands"][1]["min_score"] =
         serde_json::json!(0.5);
@@ -970,9 +980,7 @@ fn resources_sharing_axis_is_detected() {
         axis["interpretive_hint"],
         "Resources and Sharing is activated mainly through house 2 (resources), with house 8 (shared_resources) present as a secondary counterpoint."
     );
-    assert!(array(axis, "reasons")
-        .iter()
-        .any(|value| value == "cross_axis_aspect"));
+    assert!(has_reason_code(axis, "reason_details", "cross_axis_aspect"));
     assert!(array(axis, "source_signal_keys")
         .iter()
         .any(|value| value == "cluster:capricorn:house_2"));
@@ -1001,9 +1009,7 @@ fn cross_axis_aspect_reason_is_exposed_on_both_house_scores() {
 
     for house_score in array(axis, "house_scores") {
         assert!(
-            array(house_score, "reasons")
-                .iter()
-                .any(|value| value == "cross_axis_aspect"),
+            has_reason_code(house_score, "reason_details", "cross_axis_aspect"),
             "house {} should expose cross_axis_aspect",
             house_score["house_number"]
         );

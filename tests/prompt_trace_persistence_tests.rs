@@ -267,7 +267,7 @@ async fn run_audit_route_returns_prompt_traces() {
         idempotency_key: None,
         product_code: "natal_prompter".into(),
         user_language: "fr".into(),
-        astro_contract_version: "natal_structured_v13".into(),
+        astro_contract_version: "natal_structured_v14".into(),
         output_schema_version: "natal_reading_v1".into(),
         prompt_family: "test".into(),
         prompt_version: "v1".into(),

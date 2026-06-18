@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 use std::fs;
+use std::sync::OnceLock;
 
 use jsonschema::JSONSchema;
 use serde_json::{json, Value};
@@ -13,7 +14,7 @@ use astral_calculator::engine::{
 };
 use astral_calculator::infra::db::projection_repository::ProjectionRepository;
 
-const V13_GOLDEN: &str = "../tests/golden/natal_payload_v13_paris_1990.json";
+const V14_GOLDEN: &str = "../tests/golden/natal_payload_v14_paris_1990.json";
 const LLM_SCHEMA: &str = "../contracts/calculator/llm_projection_natal_v1.schema.json";
 const REQUEST_SCHEMA: &str = "../contracts/calculator/astro_engine_request_v1.schema.json";
 const RESPONSE_SCHEMA: &str = "../contracts/calculator/astro_engine_response_v1.schema.json";
@@ -25,9 +26,9 @@ const LLM_GOLDEN_STANDARD: &str =
     "../tests/golden/llm_projection_natal_v1_paris_1990_standard.json";
 const LLM_GOLDEN_RICH: &str = "../tests/golden/llm_projection_natal_v1_paris_1990_rich.json";
 
-fn load_v13_golden() -> BasicPayload {
-    let raw = fs::read_to_string(V13_GOLDEN).expect("v13 golden");
-    serde_json::from_str(&raw).expect("v13 golden json")
+fn load_v14_golden() -> BasicPayload {
+    let raw = fs::read_to_string(V14_GOLDEN).expect("v14 golden");
+    serde_json::from_str(&raw).expect("v14 golden json")
 }
 
 fn validate_schema(value: &Value, schema_path: &str) -> Vec<String> {
@@ -44,12 +45,18 @@ fn validate_schema(value: &Value, schema_path: &str) -> Vec<String> {
 }
 
 fn projection_context() -> LlmProjectionBuildContext<'static> {
+    static REASON_DEFINITIONS: OnceLock<
+        Vec<astral_calculator::domain::ProjectionReasonDefinition>,
+    > = OnceLock::new();
     LlmProjectionBuildContext {
         birth_location_label: "Paris, France",
         zodiac_label: "Tropical",
         coordinate_label: "Geocentric",
         house_system_label: "Placidus",
         house_axes: &[],
+        projection_reason_definitions: REASON_DEFINITIONS.get_or_init(|| {
+            astral_calculator::catalog::test_catalog().projection_reason_definitions
+        }),
     }
 }
 
@@ -99,7 +106,7 @@ fn load_profile_from_db(
 }
 
 fn build_engine_envelope(level: &str) -> Option<Value> {
-    let payload = load_v13_golden();
+    let payload = load_v14_golden();
     let profile = load_profile_from_db(level)?;
     let resolved = sample_resolved(level, &payload);
     let response = build_engine_response(
@@ -110,6 +117,7 @@ fn build_engine_envelope(level: &str) -> Option<Value> {
         "Geocentric",
         "Placidus",
         &[],
+        &astral_calculator::catalog::test_catalog().projection_reason_definitions,
         &profile,
     )
     .expect("engine response");
@@ -117,7 +125,7 @@ fn build_engine_envelope(level: &str) -> Option<Value> {
 }
 
 fn build_level(level: &str) -> Option<Value> {
-    let payload = load_v13_golden();
+    let payload = load_v14_golden();
     let profile = load_profile_from_db(level)?;
     let projection = build_llm_projection_natal_v1(&payload, &profile, &projection_context());
     Some(serde_json::to_value(projection).expect("projection json"))
@@ -386,7 +394,7 @@ fn write_llm_projection_goldens_when_env_set() {
 }
 
 #[test]
-fn engine_envelope_is_not_flat_v13_payload() {
+fn engine_envelope_is_not_flat_v14_payload() {
     let Some(envelope) = build_engine_envelope("rich") else {
         return;
     };
@@ -443,8 +451,8 @@ fn audit_payload_identical_across_projection_levels_in_envelope() {
 }
 
 #[test]
-fn engine_response_envelope_shape_from_v13_golden() {
-    let payload = load_v13_golden();
+fn engine_response_envelope_shape_from_v14_golden() {
+    let payload = load_v14_golden();
     let Some(profile) = load_profile_from_db("rich") else {
         return;
     };
@@ -472,11 +480,11 @@ fn engine_response_envelope_shape_from_v13_golden() {
             "chart_calculation_id": payload.chart_calculation_id,
             "engine_version": "test",
             "ephemeris_version": "test",
-            "raw_payload_contract_version": "natal_structured_v13",
+            "raw_payload_contract_version": "natal_structured_v14",
             "llm_projection_contract_version": "llm_projection_natal_v1"
         },
         "audit_payload": {
-            "contract_version": "natal_structured_v13",
+            "contract_version": "natal_structured_v14",
             "payload": payload
         },
         "llm_payload": llm_value
@@ -521,7 +529,7 @@ fn llm_projection_contains_all_top_level_sections() {
 
 #[test]
 fn llm_projection_includes_active_major_aspect() {
-    let payload = load_v13_golden();
+    let payload = load_v14_golden();
     let aspect_count = payload
         .signals
         .iter()
@@ -582,6 +590,36 @@ fn llm_projection_humanizes_dominant_theme_reasons() {
         .join(" ");
     assert!(!joined.contains("strong_aspect_participant"));
     assert!(!joined.contains("accidental_context"));
+}
+
+#[test]
+fn llm_projection_keeps_object_name_in_essential_dignity_reasons() {
+    let Some(rich) = build_level("rich") else {
+        return;
+    };
+    let objects = rich["dominant_themes"]["objects"]
+        .as_array()
+        .expect("dominant objects");
+    let saturn = objects
+        .iter()
+        .find(|item| item["name"] == "Saturn")
+        .expect("Saturn dominant object");
+    let factors = saturn["supporting_factors"]
+        .as_array()
+        .expect("supporting_factors");
+    let labels = factors
+        .iter()
+        .filter_map(|value| value.as_str())
+        .collect::<Vec<_>>();
+
+    assert!(
+        labels.contains(&"Saturn in domicile"),
+        "expected rendered dignity label with object name, got {labels:?}"
+    );
+    assert!(
+        !labels.contains(&"In domicile"),
+        "truncated dignity label leaked into projection: {labels:?}"
+    );
 }
 
 #[test]

@@ -1,20 +1,26 @@
 //! Module astral_calculator\src\features\natal\payload\build\emphasis.rs du moteur astral_calculator.
 
+use std::collections::HashMap;
+
 use crate::domain::{
     BasicChartEmphasis, BasicDignity, BasicDominantHouse, BasicDominantObject, BasicDominantSign,
-    BasicSignal, ObjectPositionFact,
+    BasicProjectionReason, BasicSignal, ObjectPositionFact,
 };
 use crate::features::natal::catalog::BasicPayloadCatalog;
 use crate::features::natal::dignities::dignity_emphasis_weight;
-use std::collections::HashMap;
 
 use super::json::position_context;
+use super::projection_reasons::{
+    reason_essential_dignity, reason_object_in_house, reason_object_in_sign, reason_sign_emphasis,
+    reason_simple,
+};
 use super::signal_filters::{aspect_strength_score, is_structural_axis_signal};
+
 #[derive(Default)]
 /// Structure EmphasisScore.
 struct EmphasisScore {
     score: f64,
-    reasons: Vec<String>,
+    reason_details: Vec<BasicProjectionReason>,
 }
 
 pub(super) fn build_chart_emphasis(
@@ -39,24 +45,25 @@ pub(super) fn build_chart_emphasis(
         add_score(
             sign_scores.entry(position.sign_code.clone()).or_default(),
             object_weight,
-            format!("{}_in_sign", position.object_code),
+            reason_object_in_sign(&position.object_code, &position.sign_code),
         );
         add_score(
             object_scores
                 .entry(position.object_code.clone())
                 .or_default(),
             object_weight,
-            "placement".to_string(),
+            reason_simple("placement"),
         );
 
         if let Some(house_number) = position.house_number {
-            if let Some(theme_code) = house_theme_code(position) {
+            let theme_code = house_theme_code(position);
+            if let Some(theme_code) = theme_code.clone() {
                 house_theme_codes.entry(house_number).or_insert(theme_code);
             }
             add_score(
                 house_scores.entry(house_number).or_default(),
                 object_weight,
-                format!("{}_in_house", position.object_code),
+                reason_object_in_house(&position.object_code, house_number, theme_code.as_deref()),
             );
         }
     }
@@ -86,7 +93,6 @@ pub(super) fn build_chart_emphasis(
     }
 }
 
-/// Fonction add_multiple_object_reasons.
 fn add_multiple_object_reasons(
     positions: &[ObjectPositionFact],
     sign_scores: &mut HashMap<String, EmphasisScore>,
@@ -105,7 +111,7 @@ fn add_multiple_object_reasons(
         if count >= 2 {
             add_reason(
                 sign_scores.entry(sign_code.to_string()).or_default(),
-                "multiple_objects",
+                reason_simple("multiple_objects"),
             );
         }
     }
@@ -113,13 +119,12 @@ fn add_multiple_object_reasons(
         if count >= 2 {
             add_reason(
                 house_scores.entry(house_number).or_default(),
-                "multiple_objects",
+                reason_simple("multiple_objects"),
             );
         }
     }
 }
 
-/// Fonction add_dignity_emphasis.
 fn add_dignity_emphasis(
     dignities: &[BasicDignity],
     positions_by_object: &HashMap<&str, &ObjectPositionFact>,
@@ -130,17 +135,18 @@ fn add_dignity_emphasis(
 ) {
     for dignity in dignities {
         let dignity_weight = dignity_emphasis_weight(&dignity.dignity_type, catalog);
+        let reason = reason_essential_dignity(&dignity.object_code, &dignity.dignity_type);
         add_score(
             sign_scores.entry(dignity.sign_code.clone()).or_default(),
             dignity_weight,
-            format!("{}_{}", dignity.object_code, dignity.dignity_type),
+            reason.clone(),
         );
         add_score(
             object_scores
                 .entry(dignity.object_code.clone())
                 .or_default(),
             dignity_weight,
-            dignity.dignity_type.clone(),
+            reason.clone(),
         );
 
         if let Some(position) = positions_by_object.get(dignity.object_code.as_str()) {
@@ -148,14 +154,13 @@ fn add_dignity_emphasis(
                 add_score(
                     house_scores.entry(house_number).or_default(),
                     dignity_weight,
-                    format!("{}_{}", dignity.object_code, dignity.dignity_type),
+                    reason,
                 );
             }
         }
     }
 }
 
-/// Fonction add_signal_emphasis.
 fn add_signal_emphasis(
     signals: &[BasicSignal],
     sign_scores: &mut HashMap<String, EmphasisScore>,
@@ -181,7 +186,6 @@ fn add_signal_emphasis(
     }
 }
 
-/// Fonction add_cluster_emphasis.
 fn add_cluster_emphasis(
     signal: &BasicSignal,
     sign_scores: &mut HashMap<String, EmphasisScore>,
@@ -198,7 +202,7 @@ fn add_cluster_emphasis(
         add_score(
             sign_scores.entry(sign_code.to_string()).or_default(),
             cluster_weight,
-            "sign_house_cluster".to_string(),
+            reason_simple("sign_house_cluster"),
         );
     }
     if let Some(house_number) = evidence
@@ -216,7 +220,7 @@ fn add_cluster_emphasis(
         add_score(
             house_scores.entry(house_number as i32).or_default(),
             cluster_weight,
-            "cluster".to_string(),
+            reason_simple("cluster"),
         );
     }
     if let Some(source_objects) = evidence
@@ -227,13 +231,12 @@ fn add_cluster_emphasis(
             add_score(
                 object_scores.entry(object_code.to_string()).or_default(),
                 0.35,
-                "cluster_participant".to_string(),
+                reason_simple("cluster_participant"),
             );
         }
     }
 }
 
-/// Fonction add_aspect_object_emphasis.
 fn add_aspect_object_emphasis(
     signal: &BasicSignal,
     object_scores: &mut HashMap<String, EmphasisScore>,
@@ -258,12 +261,11 @@ fn add_aspect_object_emphasis(
         add_score(
             object_scores.entry(object_code.to_string()).or_default(),
             strength * 0.35,
-            "strong_aspect_participant".to_string(),
+            reason_simple("strong_aspect_participant"),
         );
     }
 }
 
-/// Fonction add_sign_emphasis_to_objects.
 fn add_sign_emphasis_to_objects(
     positions: &[ObjectPositionFact],
     sign_scores: &HashMap<String, EmphasisScore>,
@@ -297,13 +299,12 @@ fn add_sign_emphasis_to_objects(
                 object_scores
                     .entry(position.object_code.clone())
                     .or_default(),
-                &format!("{}_emphasis", position.sign_code),
+                reason_sign_emphasis(&position.sign_code),
             );
         }
     }
 }
 
-/// Fonction normalized_signs.
 fn normalized_signs(
     scores: HashMap<String, EmphasisScore>,
     scoring: &crate::domain::BasicProductScoringProfile,
@@ -314,7 +315,7 @@ fn normalized_signs(
         .map(|(sign_code, entry)| BasicDominantSign {
             sign_code,
             score: normalized_emphasis_score(entry.score, scoring.sign_emphasis_full_score),
-            reasons: entry.reasons,
+            reason_details: entry.reason_details,
         })
         .collect();
     values.sort_by(|left, right| {
@@ -325,7 +326,6 @@ fn normalized_signs(
     values
 }
 
-/// Fonction normalized_houses.
 fn normalized_houses(
     scores: HashMap<i32, EmphasisScore>,
     house_theme_codes: &HashMap<i32, String>,
@@ -341,7 +341,7 @@ fn normalized_houses(
                 .cloned()
                 .unwrap_or_else(|| "object_position".to_string()),
             score: normalized_emphasis_score(entry.score, scoring.house_emphasis_full_score),
-            reasons: entry.reasons,
+            reason_details: entry.reason_details,
         })
         .collect();
     values.sort_by(|left, right| {
@@ -357,7 +357,6 @@ fn normalized_houses(
     values
 }
 
-/// Fonction normalized_objects.
 fn normalized_objects(
     scores: HashMap<String, EmphasisScore>,
     scoring: &crate::domain::BasicProductScoringProfile,
@@ -368,7 +367,7 @@ fn normalized_objects(
         .map(|(object_code, entry)| BasicDominantObject {
             object_code,
             score: normalized_emphasis_score(entry.score, scoring.object_emphasis_full_score),
-            reasons: entry.reasons,
+            reason_details: entry.reason_details,
         })
         .collect();
     values.sort_by(|left, right| {
@@ -384,7 +383,6 @@ fn normalized_objects(
     values
 }
 
-/// Fonction retain_strong_or_top_signs.
 fn retain_strong_or_top_signs(
     values: &mut Vec<BasicDominantSign>,
     scoring: &crate::domain::BasicProductScoringProfile,
@@ -398,7 +396,6 @@ fn retain_strong_or_top_signs(
     }
 }
 
-/// Fonction retain_strong_or_top_houses.
 fn retain_strong_or_top_houses(
     values: &mut Vec<BasicDominantHouse>,
     scoring: &crate::domain::BasicProductScoringProfile,
@@ -412,7 +409,6 @@ fn retain_strong_or_top_houses(
     }
 }
 
-/// Fonction retain_strong_or_top_objects.
 fn retain_strong_or_top_objects(
     values: &mut Vec<BasicDominantObject>,
     scoring: &crate::domain::BasicProductScoringProfile,
@@ -421,9 +417,9 @@ fn retain_strong_or_top_objects(
     values.retain(|entry| {
         entry.score >= scoring.object_emphasis_min_score
             && entry
-                .reasons
+                .reason_details
                 .iter()
-                .any(|reason| reason.as_str() != "placement")
+                .any(|reason| reason.reason_code != "placement")
     });
     if values.is_empty() {
         if let Some(top) = top {
@@ -432,7 +428,6 @@ fn retain_strong_or_top_objects(
     }
 }
 
-/// Fonction normalized_emphasis_score.
 fn normalized_emphasis_score(score: f64, full_score: f64) -> f64 {
     if full_score <= 0.0 {
         0.0
@@ -441,7 +436,6 @@ fn normalized_emphasis_score(score: f64, full_score: f64) -> f64 {
     }
 }
 
-/// Fonction sort_emphasis.
 fn sort_emphasis<T: Ord>(
     left_score: f64,
     left_key: &T,
@@ -454,20 +448,21 @@ fn sort_emphasis<T: Ord>(
         .then_with(|| left_key.cmp(right_key))
 }
 
-/// Fonction add_score.
-fn add_score(entry: &mut EmphasisScore, score: f64, reason: String) {
+fn add_score(entry: &mut EmphasisScore, score: f64, reason: BasicProjectionReason) {
     entry.score += score;
-    add_reason(entry, &reason);
+    add_reason(entry, reason);
 }
 
-/// Fonction add_reason.
-fn add_reason(entry: &mut EmphasisScore, reason: &str) {
-    if !entry.reasons.iter().any(|existing| existing == reason) {
-        entry.reasons.push(reason.to_string());
+fn add_reason(entry: &mut EmphasisScore, reason: BasicProjectionReason) {
+    if !entry
+        .reason_details
+        .iter()
+        .any(|existing| existing == &reason)
+    {
+        entry.reason_details.push(reason);
     }
 }
 
-/// Fonction object_source_weight.
 fn object_source_weight(position: &ObjectPositionFact) -> f64 {
     position_context(position, "object_context")
         .and_then(|context| {
@@ -479,7 +474,6 @@ fn object_source_weight(position: &ObjectPositionFact) -> f64 {
         .unwrap_or(0.0)
 }
 
-/// Fonction house_theme_code.
 fn house_theme_code(position: &ObjectPositionFact) -> Option<String> {
     position_context(position, "house_context").and_then(|context| {
         context
@@ -489,7 +483,6 @@ fn house_theme_code(position: &ObjectPositionFact) -> Option<String> {
     })
 }
 
-/// Fonction round4.
 fn round4(value: f64) -> f64 {
     (value * 10_000.0).round() / 10_000.0
 }

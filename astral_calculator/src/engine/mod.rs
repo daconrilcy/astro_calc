@@ -48,6 +48,7 @@ pub fn build_engine_response(
     coordinate_label: &str,
     house_system_label: &str,
     house_axes: &[crate::domain::HouseAxisReference],
+    projection_reason_definitions: &[crate::domain::ProjectionReasonDefinition],
     profile: &crate::engine::projection::LlmProjectionProfile,
 ) -> Result<AstroEngineResponse, RuntimeError> {
     let raw_contract = audit
@@ -65,6 +66,7 @@ pub fn build_engine_response(
             coordinate_label,
             house_system_label,
             house_axes,
+            projection_reason_definitions,
         },
     );
 

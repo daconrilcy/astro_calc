@@ -452,6 +452,37 @@ impl RuntimeQueries {
         .collect())
     }
 
+    /// Fonction projection_reason_definitions.
+    pub async fn projection_reason_definitions(
+        &self,
+    ) -> Result<Vec<ProjectionReasonDefinition>, RuntimeError> {
+        Ok(sqlx::query_as::<_, ProjectionReasonDefinitionRow>(
+            r#"
+            SELECT reason_code,
+                   reason_family,
+                   label_template_en,
+                   requires_object,
+                   requires_dignity_type,
+                   requires_sign_code,
+                   requires_house_number,
+                   requires_theme_code,
+                   requires_angle_code,
+                   requires_signal_key,
+                   requires_context_key,
+                   is_active,
+                   sort_order
+            FROM astral_projection_reason_definitions
+            WHERE is_active = true
+            ORDER BY sort_order, reason_code
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(Into::into)
+        .collect())
+    }
+
     /// Fonction accidental_scoring_params.
     pub async fn accidental_scoring_params(
         &self,

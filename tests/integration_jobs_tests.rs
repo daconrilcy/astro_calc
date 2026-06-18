@@ -205,7 +205,7 @@ fn from_payload_gate_rejects_profile_mismatch() {
                 "interpretation_profile_code": "natal_premium"
             },
             "astro_result": {
-                "contract_version": "natal_structured_v13",
+                "contract_version": "natal_structured_v14",
                 "chart_type": "natal",
                 "data": {}
             }
@@ -232,7 +232,7 @@ fn envelope_service_code_must_match_catalogue_service() {
                 "interpretation_profile_code": "natal_basic"
             },
             "astro_result": {
-                "contract_version": "natal_structured_v13",
+                "contract_version": "natal_structured_v14",
                 "chart_type": "natal",
                 "data": {}
             }
@@ -307,5 +307,5 @@ fn engine_reading_golden_minimal_response() {
         req.product_context.interpretation_profile_code.as_deref(),
         Some("natal_basic")
     );
-    assert_eq!(req.astro_result.contract_version, "natal_structured_v13");
+    assert_eq!(req.astro_result.contract_version, "natal_structured_v14");
 }

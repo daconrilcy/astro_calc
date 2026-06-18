@@ -91,7 +91,7 @@ fn sample_request_with_engine(
             audience_level: AudienceLevel::Beginner,
         },
         astro_result: AstroCalculationPayload {
-            contract_version: "natal_structured_v13".into(),
+            contract_version: "natal_structured_v14".into(),
             chart_type: "natal".into(),
             data: serde_json::json!({
                 "domain_scores": {

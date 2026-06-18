@@ -86,7 +86,7 @@ where
             .catalogs
             .basic_payload_catalog(
                 &product_code,
-                "natal_structured_v13",
+                "natal_structured_v14",
                 input.reference_version_id,
             )
             .await?;

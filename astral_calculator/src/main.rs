@@ -46,7 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 write_timestamped_output_file(root_output_dir(), &json, cli.output_contract)?;
             let label = match cli.output_contract {
                 OutputContract::Engine => "astro_engine_response_v1",
-                OutputContract::AuditOnly => "natal_structured_v13 audit payload",
+                OutputContract::AuditOnly => "natal_structured_v14 audit payload",
             };
             println!("{label} written to {}", path.display());
         }

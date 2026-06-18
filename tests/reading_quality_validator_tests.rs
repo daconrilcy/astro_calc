@@ -38,7 +38,7 @@ fn premium_request(profile_code: &str) -> GenerateReadingRequest {
             audience_level: AudienceLevel::Intermediate,
         },
         astro_result: AstroCalculationPayload {
-            contract_version: "natal_structured_v13".into(),
+            contract_version: "natal_structured_v14".into(),
             chart_type: "natal".into(),
             data: serde_json::json!({
                 "domain_scores": { "identity": 0.5 },
@@ -122,7 +122,7 @@ fn good_reading() -> NatalReadingResponse {
             generation_mode: GenerationMode::ChapterOrchestrated,
             prompt_family: "natal_prompter".into(),
             prompt_version: "v1".into(),
-            astro_contract_version: "natal_structured_v13".into(),
+            astro_contract_version: "natal_structured_v14".into(),
             fallback_used: false,
         },
     }

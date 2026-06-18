@@ -4,7 +4,7 @@ use astral_llm_domain::astro_fact::{AstroFactKind, AstroFactUsage, NormalizedAst
 use astral_llm_domain::{GenerationError, GenerationErrorCode, PrivacyPolicy};
 use astral_llm_infra::payload_redaction::redact_value;
 
-const NATAL_CONTRACT: &str = "natal_structured_v13";
+const NATAL_CONTRACT: &str = "natal_structured_v14";
 const SIMPLIFIED_CONTRACT: &str = "natal_simplified_structured_v1";
 const PROJECTION_CONTRACT: &str = "llm_projection_natal_v1";
 const PROJECTION_SIMPLIFIED_CONTRACT: &str = "llm_projection_natal_simplified_v1";

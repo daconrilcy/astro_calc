@@ -15,6 +15,7 @@ mod house_axes;
 mod json;
 /// Module lunar_phase.
 mod lunar_phase;
+mod projection_reasons;
 /// Module reading_plan.
 mod reading_plan;
 /// Module rulership.
@@ -224,7 +225,7 @@ pub(crate) fn build_basic_payload_from(
         && !sect_affinities.is_empty()
         && lunar_phase_context.is_some();
     let contract_version = if has_accidental_references {
-        "natal_structured_v13"
+        "natal_structured_v14"
     } else if lunar_phase_context.is_some() {
         "natal_structured_v12"
     } else {
