@@ -1,9 +1,9 @@
-//! Module astral_calculator\src\shared\mod.rs du moteur astral_calculator.
+//! Briques utilitaires transverses réutilisées dans le crate.
 
 pub mod astro_math;
-/// Module error.
+/// Type d'erreur runtime partagé.
 pub mod error;
-/// Module idempotency.
+/// Calcul de signatures stables et de clés d'idempotence.
 pub mod idempotency;
-/// Module time.
+/// Helpers temporels indépendants des features produit.
 pub mod time;

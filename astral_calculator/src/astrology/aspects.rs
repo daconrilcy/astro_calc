@@ -1,11 +1,12 @@
-//! Module astral_calculator\src\astrology\aspects.rs du moteur astral_calculator.
+//! Détection des aspects à partir de positions déjà calculées.
 
 use serde_json::json;
 
 use crate::domain::{AspectDefinition, AspectFact, ObjectPositionFact};
 use crate::shared::astro_math::shortest_angular_distance;
 
-/// Fonction canonical_aspect_orb_deg.
+/// Retourne l'orbe effectivement exploitable pour un aspect en respectant les
+/// bornes définies dans le référentiel.
 pub fn canonical_aspect_orb_deg(aspect: &AspectDefinition) -> Option<f64> {
     let max = aspect.max_default_orb_deg;
     aspect
@@ -13,7 +14,8 @@ pub fn canonical_aspect_orb_deg(aspect: &AspectDefinition) -> Option<f64> {
         .filter(|orb| orb.is_finite() && *orb > 0.0 && max.is_finite() && max > 0.0 && *orb <= max)
 }
 
-/// Fonction detect_aspects.
+/// Produit les faits d'aspect entre chaque paire d'objets compatible avec les
+/// définitions de référence.
 pub fn detect_aspects(
     positions: &[ObjectPositionFact],
     aspect_definitions: &[AspectDefinition],
@@ -79,7 +81,8 @@ pub fn detect_aspects(
     facts
 }
 
-/// Fonction canonical_pair.
+/// Rend l'ordre source/cible stable pour éviter les doublons selon l'ordre
+/// d'entrée des positions.
 fn canonical_pair<'a>(
     left: &'a ObjectPositionFact,
     right: &'a ObjectPositionFact,
@@ -91,7 +94,8 @@ fn canonical_pair<'a>(
     }
 }
 
-/// Fonction is_structural_axis_aspect.
+/// Ignore les oppositions structurelles ASC/DSC et MC/IC, déjà portées par les
+/// axes natifs du thème.
 fn is_structural_axis_aspect(
     left: &ObjectPositionFact,
     right: &ObjectPositionFact,
@@ -114,12 +118,12 @@ fn is_structural_axis_aspect(
         && angle_context_str(left, "axis") == angle_context_str(right, "axis")
 }
 
-/// Fonction angle_identity_code.
+/// Utilise le code d'angle enrichi quand il existe, sinon le code objet.
 fn angle_identity_code(position: &ObjectPositionFact) -> &str {
     angle_context_str(position, "angle_point_code").unwrap_or(position.object_code.as_str())
 }
 
-/// Fonction angle_context_str.
+/// Lit une chaîne du bloc `angle_context` si ce contexte a été injecté.
 fn angle_context_str<'a>(position: &'a ObjectPositionFact, key: &str) -> Option<&'a str> {
     position
         .facts_json
@@ -129,7 +133,8 @@ fn angle_context_str<'a>(position: &'a ObjectPositionFact, key: &str) -> Option<
         .and_then(|value| value.as_str())
 }
 
-/// Fonction is_applying.
+/// Estime si l'aspect se resserre au pas suivant à partir des vitesses
+/// apparentes journalières.
 fn is_applying(
     left: &ObjectPositionFact,
     right: &ObjectPositionFact,
@@ -150,7 +155,7 @@ fn is_applying(
     next_orb < current_orb
 }
 
-/// Fonction phase_state.
+/// Convertit l'état numérique de l'orbe en libellé métier stable.
 fn phase_state(orb: f64, is_applying: bool) -> &'static str {
     if orb <= 0.1 {
         "exact"
@@ -161,7 +166,7 @@ fn phase_state(orb: f64, is_applying: bool) -> &'static str {
     }
 }
 
-/// Fonction round4.
+/// Uniformise les degrés stockés dans les faits à quatre décimales.
 fn round4(value: f64) -> f64 {
     (value * 10_000.0).round() / 10_000.0
 }

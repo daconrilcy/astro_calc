@@ -1,4 +1,5 @@
-//! Module astral_calculator\src\astrology\ephemeris.rs du moteur astral_calculator.
+//! Adaptateurs de calcul éphémérides et assemblage des faits astrologiques
+//! bruts.
 
 use std::path::{Path, PathBuf};
 #[cfg(feature = "swisseph-engine")]
@@ -12,9 +13,9 @@ use crate::domain::{
 };
 use crate::shared::error::RuntimeError;
 
-/// Trait EphemerisEngine.
+/// Abstraction du moteur capable de produire un thème natal calculé.
 pub trait EphemerisEngine {
-    /// Fonction calculate_chart.
+    /// Calcule l'ensemble des positions, cuspides et aspects d'un thème.
     fn calculate_chart(
         &self,
         input: &NatalChartInput,
@@ -24,7 +25,7 @@ pub trait EphemerisEngine {
         references: &CalculationReferenceData,
     ) -> Result<CalculatedChartFacts, RuntimeError>;
 
-    /// Fonction calculate_natal.
+    /// Alias explicite pour les appels métier orientés thème natal.
     fn calculate_natal(
         &self,
         input: &NatalChartInput,
@@ -38,25 +39,26 @@ pub trait EphemerisEngine {
 }
 
 #[derive(Debug, Clone)]
-/// Structure SwissEphemerisEngine.
+/// Implémentation basée sur Swiss Ephemeris et un répertoire local
+/// d'éphémérides.
 pub struct SwissEphemerisEngine {
     ephemeris_path: PathBuf,
 }
 
 impl SwissEphemerisEngine {
-    /// Fonction new.
+    /// Construit un moteur pointant vers un dossier d'éphémérides.
     pub fn new(ephemeris_path: impl Into<PathBuf>) -> Self {
         Self {
             ephemeris_path: ephemeris_path.into(),
         }
     }
 
-    /// Fonction default_from_workspace.
+    /// Utilise l'emplacement standard du workspace pour les fichiers `.se1`.
     pub fn default_from_workspace() -> Self {
         Self::new(Path::new("..").join("ephe").join("se-2026a"))
     }
 
-    /// Fonction ephemeris_path.
+    /// Expose le chemin effectif utilisé par le moteur.
     pub fn ephemeris_path(&self) -> &Path {
         &self.ephemeris_path
     }
@@ -64,7 +66,8 @@ impl SwissEphemerisEngine {
 
 impl EphemerisEngine for SwissEphemerisEngine {
     #[cfg(feature = "swisseph-engine")]
-    /// Fonction calculate_chart.
+    /// Calcule le thème en interrogeant Swiss Ephemeris puis enrichit les faits
+    /// avec les références métier chargées depuis la base.
     fn calculate_chart(
         &self,
         input: &NatalChartInput,
@@ -234,7 +237,8 @@ impl EphemerisEngine for SwissEphemerisEngine {
     }
 
     #[cfg(not(feature = "swisseph-engine"))]
-    /// Fonction calculate_chart.
+    /// Signale explicitement qu'aucun calcul réel n'est disponible sans la
+    /// feature `swisseph-engine`.
     fn calculate_chart(
         &self,
         _input: &NatalChartInput,
@@ -253,7 +257,7 @@ impl EphemerisEngine for SwissEphemerisEngine {
 }
 
 #[cfg(feature = "swisseph-engine")]
-/// Fonction sign_context.
+/// Sérialise le contexte interprétatif d'un signe pour les faits calculés.
 fn sign_context(sign: &SignReference) -> serde_json::Value {
     serde_json::json!({
         "element": &sign.element_code,
@@ -267,7 +271,7 @@ fn sign_context(sign: &SignReference) -> serde_json::Value {
 }
 
 #[cfg(feature = "swisseph-engine")]
-/// Fonction house_modality.
+/// Extrait les métadonnées de modalité de maison quand elles existent.
 fn house_modality(house: &HouseReference) -> Option<serde_json::Value> {
     house.modality_code.as_ref().map(|code| {
         serde_json::json!({
@@ -281,7 +285,7 @@ fn house_modality(house: &HouseReference) -> Option<serde_json::Value> {
 }
 
 #[cfg(feature = "swisseph-engine")]
-/// Fonction house_context.
+/// Expose le thème métier associé à une maison.
 fn house_context(house: &HouseReference) -> serde_json::Value {
     serde_json::json!({
         "theme_code": &house.theme_code
@@ -289,7 +293,7 @@ fn house_context(house: &HouseReference) -> serde_json::Value {
 }
 
 #[cfg(feature = "swisseph-engine")]
-/// Fonction object_context.
+/// Conserve les métadonnées d'objet utiles au scoring et à l'interprétation.
 fn object_context(object: &ChartObject) -> serde_json::Value {
     serde_json::json!({
         "role": &object.role_code,
@@ -307,7 +311,8 @@ fn object_context(object: &ChartObject) -> serde_json::Value {
 }
 
 #[cfg(feature = "swisseph-engine")]
-/// Fonction add_angle_positions.
+/// Injecte les angles structurels (ASC, DSC, MC, IC) comme positions
+/// synthétiques alignées sur le même contrat que les objets calculés.
 fn add_angle_positions(
     input: &NatalChartInput,
     chart_objects: &[ChartObject],
@@ -391,7 +396,7 @@ fn add_angle_positions(
 }
 
 #[cfg(feature = "swisseph-engine")]
-/// Fonction angle_longitude.
+/// Convertit un code d'angle en longitude à partir de l'ASC et du MC calculés.
 fn angle_longitude(
     angle: &AnglePointReference,
     ascendant_longitude: f64,
@@ -412,7 +417,7 @@ fn angle_longitude(
 }
 
 #[cfg(feature = "swisseph-engine")]
-/// Fonction horizon_position_code_for_altitude.
+/// Classe la visibilité d'un objet selon son altitude apparente.
 fn horizon_position_code_for_altitude(altitude_deg: f64) -> &'static str {
     if altitude_deg > 0.0 {
         "above_horizon"
@@ -424,7 +429,7 @@ fn horizon_position_code_for_altitude(altitude_deg: f64) -> &'static str {
 }
 
 #[cfg(feature = "swisseph-engine")]
-/// Fonction angle_horizon_position_code.
+/// Donne la position horizon canonique d'un angle structurel.
 fn angle_horizon_position_code(angle_code: &str) -> Result<&'static str, RuntimeError> {
     match angle_code {
         "asc" | "dsc" => Ok("on_horizon"),
@@ -437,7 +442,7 @@ fn angle_horizon_position_code(angle_code: &str) -> Result<&'static str, Runtime
 }
 
 #[cfg(feature = "swisseph-engine")]
-/// Fonction horizon_position_id.
+/// Résout l'identifiant DB d'une position relative à l'horizon.
 fn horizon_position_id(
     references: &CalculationReferenceData,
     code: &str,
@@ -451,7 +456,7 @@ fn horizon_position_id(
 }
 
 #[cfg(feature = "swisseph-engine")]
-/// Fonction motion_context.
+/// Sérialise le contexte de mouvement direct/rétrograde/stationnaire.
 fn motion_context(motion_state: &MotionStateReference) -> serde_json::Value {
     serde_json::json!({
         "motion_state": motion_state.code,
@@ -461,7 +466,7 @@ fn motion_context(motion_state: &MotionStateReference) -> serde_json::Value {
 }
 
 #[cfg(feature = "swisseph-engine")]
-/// Fonction sign_reference_for_zodiac_slot.
+/// Résout le signe correspondant à un slot zodiacal 1..=12.
 fn sign_reference_for_zodiac_slot(
     signs: &[SignReference],
     zodiac_slot: i32,
@@ -486,7 +491,7 @@ fn sign_reference_for_zodiac_slot(
 }
 
 #[cfg(feature = "swisseph-engine")]
-/// Fonction house_reference_for_number.
+/// Résout la référence d'une maison par son numéro canonique.
 fn house_reference_for_number(
     houses: &[HouseReference],
     house_number: i32,
@@ -502,14 +507,16 @@ fn house_reference_for_number(
 }
 
 #[cfg(feature = "swisseph-engine")]
-/// Fonction swiss_ephemeris_lock.
+/// Protège l'accès au moteur Swiss Ephemeris, dont l'état global n'est pas sûr
+/// pour des appels concurrents non coordonnés.
 fn swiss_ephemeris_lock() -> &'static Mutex<()> {
     static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
     LOCK.get_or_init(|| Mutex::new(()))
 }
 
 #[cfg(feature = "swisseph-engine")]
-/// Fonction validate_supported_reference_systems.
+/// Refuse les référentiels non encore pris en charge par l'implémentation
+/// courante.
 fn validate_supported_reference_systems(input: &NatalChartInput) -> Result<(), RuntimeError> {
     if input.zodiacal_reference_system_id != 1 {
         return Err(RuntimeError::Ephemeris(format!(
@@ -527,7 +534,7 @@ fn validate_supported_reference_systems(input: &NatalChartInput) -> Result<(), R
 }
 
 #[cfg(feature = "swisseph-engine")]
-/// Fonction julian_day_ut.
+/// Convertit la date UTC d'entrée en jour julien utilisé par Swiss Ephemeris.
 fn julian_day_ut(input: &NatalChartInput) -> Result<f64, RuntimeError> {
     use chrono::{Datelike, Timelike};
     use swiss_eph::safe::julday;
@@ -547,7 +554,8 @@ fn julian_day_ut(input: &NatalChartInput) -> Result<f64, RuntimeError> {
 }
 
 #[cfg(feature = "swisseph-engine")]
-/// Fonction house_system_code.
+/// Mappe le code métier du système de maisons vers l'énumération Swiss
+/// Ephemeris.
 fn house_system_code(code: &str) -> Result<swiss_eph::safe::HouseSystem, RuntimeError> {
     use swiss_eph::safe::HouseSystem;
 
@@ -563,7 +571,7 @@ fn house_system_code(code: &str) -> Result<swiss_eph::safe::HouseSystem, Runtime
 }
 
 #[cfg(feature = "swisseph-engine")]
-/// Fonction round4.
+/// Aligne les sorties numériques sur la précision publique du contrat.
 fn round4(value: f64) -> f64 {
     (value * 10_000.0).round() / 10_000.0
 }

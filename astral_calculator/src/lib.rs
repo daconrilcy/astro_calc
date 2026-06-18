@@ -1,64 +1,64 @@
-//! Module astral_calculator/src/lib.rs du moteur astral_calculator.
+//! API publique du crate `astral_calculator`.
 
 pub mod astrology;
-/// Module bootstrap.
+/// Bootstrap des variables d'environnement, de la CLI et de la connexion DB.
 pub mod bootstrap;
-/// Module domain.
+/// Contrats métier purs partagés entre les fonctionnalités.
 pub mod domain;
-/// Module engine.
+/// Orchestration des calculs et assemblage des réponses runtime.
 pub mod engine;
-/// Module features.
+/// Produits exposés par le calculateur: natal, simplified et horoscope.
 pub mod features;
-/// Module infra.
+/// Adaptateurs d'infrastructure, principalement l'accès PostgreSQL.
 pub mod infra;
-/// Module runtime.
+/// Construction du runtime prêt à exécuter une demande complète.
 pub mod runtime;
-/// Module shared.
+/// Outils transverses sans dépendance métier produit.
 pub mod shared;
 
 pub use engine::engine_request_from_env;
 
-/// Module aspects.
+/// Alias historique vers les utilitaires de détection d'aspects.
 pub mod aspects {
     pub use crate::astrology::aspects::*;
 }
 
-/// Module catalog.
+/// Alias historique vers le catalogue natal.
 pub mod catalog {
     pub use crate::features::natal::catalog::*;
 }
 
-/// Module cli.
+/// Alias historique vers les helpers CLI.
 pub mod cli {
     pub use crate::bootstrap::cli::*;
 }
 
-/// Module config.
+/// Alias historique vers le chargement de configuration d'environnement.
 pub mod config {
     pub use crate::bootstrap::env::*;
 }
 
-/// Module db.
+/// Alias historique vers le bootstrap de connexion PostgreSQL.
 pub mod db {
     pub use crate::bootstrap::db::*;
 }
 
-/// Module dignities.
+/// Alias historique vers les helpers de dignités natales.
 pub mod dignities {
     pub use crate::features::natal::dignities::*;
 }
 
-/// Module ephemeris.
+/// Alias historique vers le moteur d'éphémérides.
 pub mod ephemeris {
     pub use crate::astrology::ephemeris::*;
 }
 
-/// Module facts.
+/// Alias historique vers les helpers de calcul sur les faits astrologiques.
 pub mod facts {
     pub use crate::shared::astro_math::*;
 }
 
-/// Module idempotency.
+/// Alias historique vers les primitives d'idempotence.
 pub mod idempotency {
     pub use crate::shared::idempotency::*;
 }

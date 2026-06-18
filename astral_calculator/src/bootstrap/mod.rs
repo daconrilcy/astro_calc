@@ -1,7 +1,7 @@
-//! Module astral_calculator\src\bootstrap\mod.rs du moteur astral_calculator.
+//! Point d'entrée des helpers de bootstrap du crate.
 
 pub mod cli;
-/// Module db.
+/// Connexion PostgreSQL et résolution de `DATABASE_URL`.
 pub mod db;
-/// Module env.
+/// Chargement de l'environnement runtime.
 pub mod env;

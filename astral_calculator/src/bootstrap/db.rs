@@ -1,11 +1,12 @@
-//! Module astral_calculator\src\bootstrap\db.rs du moteur astral_calculator.
+//! Construction de la connexion PostgreSQL utilisée au démarrage du binaire.
 
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 
 use crate::bootstrap::env::load_dotenv;
 
-/// Fonction connect_from_env.
+/// Ouvre un pool SQLx à partir de `DATABASE_URL` ou des variables PostgreSQL
+/// individuelles.
 pub async fn connect_from_env() -> Result<PgPool, sqlx::Error> {
     load_dotenv();
     PgPoolOptions::new()
@@ -14,7 +15,8 @@ pub async fn connect_from_env() -> Result<PgPool, sqlx::Error> {
         .await
 }
 
-/// Fonction database_url.
+/// Résout l'URL de connexion en privilégiant la variable canonique
+/// `DATABASE_URL`, puis en reconstruisant l'URL depuis les variables de base.
 fn database_url() -> String {
     if let Ok(url) = std::env::var("DATABASE_URL") {
         return url;
