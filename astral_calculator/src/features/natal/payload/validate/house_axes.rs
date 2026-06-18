@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\validate\house_axes.rs du moteur astral_calculator.
+
 use std::collections::{HashMap, HashSet};
 
 use crate::domain::{BasicHouseAxisEmphasis, BasicPayload, BasicSignal};
@@ -60,6 +62,7 @@ pub(super) fn has_current_house_axis_emphasis(payload: &BasicPayload) -> bool {
     true
 }
 
+/// Fonction has_current_axis.
 fn has_current_axis(
     axis: &BasicHouseAxisEmphasis,
     signals_by_key: &HashMap<&str, &BasicSignal>,
@@ -126,6 +129,7 @@ fn has_current_axis(
         })
 }
 
+/// Fonction has_current_cross_axis_aspect_context.
 fn has_current_cross_axis_aspect_context(
     axis: &BasicHouseAxisEmphasis,
     signals_by_key: &HashMap<&str, &BasicSignal>,
@@ -162,6 +166,7 @@ fn has_current_cross_axis_aspect_context(
     }
 }
 
+/// Fonction aspect_bridges_axis.
 fn aspect_bridges_axis(
     signal: &BasicSignal,
     axis: &BasicHouseAxisEmphasis,
@@ -175,6 +180,7 @@ fn aspect_bridges_axis(
     object_houses.contains(&axis.houses[0]) && object_houses.contains(&axis.houses[1])
 }
 
+/// Fonction signal_object_codes.
 fn signal_object_codes(signal: &BasicSignal) -> Vec<String> {
     let mut object_codes = Vec::new();
     if let Some(evidence) = &signal.evidence {
@@ -194,10 +200,12 @@ fn signal_object_codes(signal: &BasicSignal) -> Vec<String> {
     object_codes
 }
 
+/// Fonction axis_score_is_valid.
 fn axis_score_is_valid(score: f64) -> bool {
     is_normalized_score(score)
 }
 
+/// Fonction polarity_balance.
 fn polarity_balance(first_score: f64, second_score: f64) -> String {
     if first_score >= second_score + 0.2 {
         "primary_house_dominant".to_string()
@@ -210,14 +218,17 @@ fn polarity_balance(first_score: f64, second_score: f64) -> String {
     }
 }
 
+/// Fonction score_matches.
 fn score_matches(left: f64, right: f64) -> bool {
     (left - right).abs() <= 0.0001
 }
 
+/// Fonction round4.
 fn round4(value: f64) -> f64 {
     (value * 10_000.0).round() / 10_000.0
 }
 
+/// Fonction expected_interpretive_hint.
 fn expected_interpretive_hint(axis: &BasicHouseAxisEmphasis) -> String {
     match axis.polarity_balance.as_str() {
         "primary_house_dominant" => format!(

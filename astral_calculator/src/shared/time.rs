@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\shared\time.rs du moteur astral_calculator.
+
 use chrono::{DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
 use chrono_tz::Tz;
 

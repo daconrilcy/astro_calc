@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\rules\reading_plan.rs du moteur astral_calculator.
+
 use std::collections::{HashMap, HashSet};
 
 use crate::domain::{BasicPayload, BasicReadingPlanItem, BasicSecondarySlotCandidate, BasicSignal};
@@ -143,6 +145,7 @@ pub(crate) fn reading_slot_order(slot: &str) -> Option<usize> {
     }
 }
 
+/// Fonction main_dynamic_aspect_keys.
 fn main_dynamic_aspect_keys(
     signals: &[BasicSignal],
     is_interpretive_aspect_signal: fn(&BasicSignal) -> bool,
@@ -201,6 +204,7 @@ fn main_dynamic_aspect_keys(
     keys
 }
 
+/// Fonction push_balanced_aspect_key.
 fn push_balanced_aspect_key(
     keys: &mut Vec<String>,
     new_key: String,
@@ -238,6 +242,7 @@ fn push_balanced_aspect_key(
     keys[replacement_index] = new_key;
 }
 
+/// Fonction push_plan_item.
 fn push_plan_item(
     plan: &mut Vec<BasicReadingPlanItem>,
     slot: &str,
@@ -257,6 +262,7 @@ fn push_plan_item(
     });
 }
 
+/// Fonction finalize_reading_plan.
 fn finalize_reading_plan(plan: &mut Vec<BasicReadingPlanItem>) {
     let mut primary_slots: Vec<(String, String)> = Vec::new();
 
@@ -288,6 +294,7 @@ fn finalize_reading_plan(plan: &mut Vec<BasicReadingPlanItem>) {
     plan.retain(|item| !item.source_signal_keys.is_empty());
 }
 
+/// Fonction signal_keys_for_objects.
 fn signal_keys_for_objects(
     signals: &[BasicSignal],
     object_codes: &[&str],
@@ -311,6 +318,7 @@ fn signal_keys_for_objects(
     keys
 }
 
+/// Fonction position_signal_key_for_object.
 fn position_signal_key_for_object(signals: &[BasicSignal], object_code: &str) -> Option<String> {
     let object_position_key = format!("object_position:{object_code}");
     if signals
@@ -327,6 +335,7 @@ fn position_signal_key_for_object(signals: &[BasicSignal], object_code: &str) ->
         .map(|signal| signal.signal_key.clone())
 }
 
+/// Fonction cluster_source_dignity_keys.
 fn cluster_source_dignity_keys(signals: &[BasicSignal], cluster: &BasicSignal) -> Vec<String> {
     cluster
         .evidence
@@ -340,6 +349,7 @@ fn cluster_source_dignity_keys(signals: &[BasicSignal], cluster: &BasicSignal) -
         .collect()
 }
 
+/// Fonction dignity_signal_keys_for_object.
 fn dignity_signal_keys_for_object(signals: &[BasicSignal], object_code: &str) -> Vec<String> {
     let prefix = format!("dignity:{object_code}:");
     signals
@@ -349,6 +359,7 @@ fn dignity_signal_keys_for_object(signals: &[BasicSignal], object_code: &str) ->
         .collect()
 }
 
+/// Fonction dedupe_strings.
 fn dedupe_strings(values: &mut Vec<String>) {
     let mut deduped = Vec::new();
     for value in values.drain(..) {
@@ -359,6 +370,7 @@ fn dedupe_strings(values: &mut Vec<String>) {
     *values = deduped;
 }
 
+/// Fonction secondary_candidates_are_valid.
 fn secondary_candidates_are_valid(
     item: &BasicReadingPlanItem,
     signal_keys: &HashSet<&str>,

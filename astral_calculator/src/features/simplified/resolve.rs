@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\simplified\resolve.rs du moteur astral_calculator.
+
 use chrono::{DateTime, Duration, NaiveDate, NaiveTime, TimeZone, Utc};
 use chrono_tz::Tz;
 
@@ -6,6 +8,7 @@ use super::request::AstroSimplifiedNatalRequest;
 use crate::shared::error::RuntimeError;
 
 #[derive(Debug, Clone)]
+/// Structure ResolvedSimplifiedInput.
 pub struct ResolvedSimplifiedInput {
     pub input_precision_level: String,
     pub computed_scope: String,
@@ -26,6 +29,7 @@ const ANGULAR_SCOPE: &str = "angular_chart";
 
 const EXCLUDED_WITHOUT_ANGULAR: &[&str] = &["ascendant", "houses", "sect", "house_placements"];
 
+/// Fonction validate_and_resolve.
 pub fn validate_and_resolve(
     request: &AstroSimplifiedNatalRequest,
     catalog: &SimplifiedCatalog,
@@ -127,6 +131,7 @@ pub fn validate_and_resolve(
     })
 }
 
+/// Fonction classify_input_precision.
 fn classify_input_precision(
     location_provided: bool,
     time_provided: bool,
@@ -143,17 +148,20 @@ fn classify_input_precision(
     }
 }
 
+/// Fonction parse_time.
 fn parse_time(raw: &str) -> Result<NaiveTime, RuntimeError> {
     NaiveTime::parse_from_str(raw, "%H:%M:%S")
         .or_else(|_| NaiveTime::parse_from_str(raw, "%H:%M"))
         .map_err(|_| RuntimeError::InvalidEngineRequest("birth.time must be HH:MM:SS".into()))
 }
 
+/// Fonction parse_timezone.
 fn parse_timezone(raw: &str) -> Result<Tz, RuntimeError> {
     raw.parse()
         .map_err(|_| RuntimeError::InvalidEngineRequest(format!("invalid timezone: {raw}")))
 }
 
+/// Fonction validate_coordinates.
 fn validate_coordinates(latitude: f64, longitude: f64) -> Result<(), RuntimeError> {
     if !(-90.0..=90.0).contains(&latitude) {
         return Err(RuntimeError::InvalidEngineRequest(
@@ -168,6 +176,7 @@ fn validate_coordinates(latitude: f64, longitude: f64) -> Result<(), RuntimeErro
     Ok(())
 }
 
+/// Fonction declared_datetime_utc.
 pub fn declared_datetime_utc(
     resolved: &ResolvedSimplifiedInput,
 ) -> Result<Option<DateTime<Utc>>, RuntimeError> {
@@ -191,6 +200,7 @@ pub fn declared_datetime_utc(
         .map(Some)
 }
 
+/// Fonction build_uncertainty_window.
 pub fn build_uncertainty_window(
     resolved: &ResolvedSimplifiedInput,
     catalog: &SimplifiedCatalog,

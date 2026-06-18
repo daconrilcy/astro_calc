@@ -1,7 +1,10 @@
+//! Module astral_calculator\src\infra\db\models.rs du moteur astral_calculator.
+
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure ChartObject.
 pub struct ChartObject {
     pub id: i32,
     pub code: String,
@@ -19,6 +22,7 @@ pub struct ChartObject {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure AspectDefinition.
 pub struct AspectDefinition {
     pub id: i32,
     pub code: String,
@@ -30,12 +34,14 @@ pub struct AspectDefinition {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure MajorAspectFamilyReference.
 pub struct MajorAspectFamilyReference {
     pub expected_aspect_count: i32,
     pub max_default_orb_deg: f64,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure HouseSystem.
 pub struct HouseSystem {
     pub id: i32,
     pub code: String,
@@ -44,6 +50,7 @@ pub struct HouseSystem {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure ZodiacalReferenceSystemRow.
 pub struct ZodiacalReferenceSystemRow {
     pub id: i32,
     pub key: String,
@@ -55,6 +62,7 @@ pub struct ZodiacalReferenceSystemRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure CoordinateReferenceSystemRow.
 pub struct CoordinateReferenceSystemRow {
     pub id: i32,
     pub key: String,
@@ -65,6 +73,7 @@ pub struct CoordinateReferenceSystemRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure HoroscopeServiceRow.
 pub struct HoroscopeServiceRow {
     pub service_code: String,
     pub product_level_code: String,
@@ -86,6 +95,7 @@ pub struct HoroscopeServiceRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure HoroscopeTimeSlotProfileRow.
 pub struct HoroscopeTimeSlotProfileRow {
     pub service_code: String,
     pub slot_code: String,
@@ -98,6 +108,7 @@ pub struct HoroscopeTimeSlotProfileRow {
 }
 
 #[derive(Debug, Clone, serde::Serialize, sqlx::FromRow)]
+/// Structure AstralTimePeriodProfileRow.
 pub struct AstralTimePeriodProfileRow {
     pub period_profile_code: String,
     pub resolution_strategy: String,
@@ -109,6 +120,7 @@ pub struct AstralTimePeriodProfileRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure HoroscopeScanProfileRow.
 pub struct HoroscopeScanProfileRow {
     pub scan_profile_code: String,
     pub granularity: String,
@@ -119,6 +131,7 @@ pub struct HoroscopeScanProfileRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure HoroscopeOrbWeightBandRow.
 pub struct HoroscopeOrbWeightBandRow {
     pub band_code: String,
     pub min_orb_deg: f64,
@@ -127,6 +140,7 @@ pub struct HoroscopeOrbWeightBandRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure SignReference.
 pub struct SignReference {
     pub id: i32,
     pub code: String,
@@ -142,6 +156,7 @@ pub struct SignReference {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure HouseReference.
 pub struct HouseReference {
     pub id: i32,
     pub number: i32,
@@ -155,6 +170,7 @@ pub struct HouseReference {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure MotionStateReference.
 pub struct MotionStateReference {
     pub id: i32,
     pub code: String,
@@ -163,6 +179,7 @@ pub struct MotionStateReference {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure HorizonPositionReference.
 pub struct HorizonPositionReference {
     pub id: i32,
     pub code: String,
@@ -170,6 +187,7 @@ pub struct HorizonPositionReference {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure AnglePointReference.
 pub struct AnglePointReference {
     pub id: i32,
     pub code: String,
@@ -186,6 +204,7 @@ pub struct AnglePointReference {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure DomicileRulerReference.
 pub struct DomicileRulerReference {
     pub reference_version_id: Option<i32>,
     pub astral_system_id: i32,
@@ -202,6 +221,7 @@ pub struct DomicileRulerReference {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure HouseAxisReferenceRow.
 pub struct HouseAxisReferenceRow {
     pub axis_code: String,
     pub house_a_number: i32,
@@ -213,6 +233,7 @@ pub struct HouseAxisReferenceRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure LunarPhaseReferenceRow.
 pub struct LunarPhaseReferenceRow {
     pub phase_code: String,
     pub label: String,
@@ -225,6 +246,7 @@ pub struct LunarPhaseReferenceRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure AccidentalDignityConditionReferenceRow.
 pub struct AccidentalDignityConditionReferenceRow {
     pub condition_code: String,
     pub condition_family: String,
@@ -236,6 +258,7 @@ pub struct AccidentalDignityConditionReferenceRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure ObjectSectAffinityReferenceRow.
 pub struct ObjectSectAffinityReferenceRow {
     pub object_code: String,
     pub sect_affinity_code: String,
@@ -244,6 +267,7 @@ pub struct ObjectSectAffinityReferenceRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure EssentialDignityRuleReferenceRow.
 pub struct EssentialDignityRuleReferenceRow {
     pub object_code: String,
     pub sign_code: String,
@@ -258,6 +282,7 @@ pub struct EssentialDignityRuleReferenceRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure AccidentalConditionTriggerRow.
 pub struct AccidentalConditionTriggerRow {
     pub trigger_family: String,
     pub source_code: Option<String>,
@@ -266,6 +291,7 @@ pub struct AccidentalConditionTriggerRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure AccidentalScoringParamsRow.
 pub struct AccidentalScoringParamsRow {
     pub code: String,
     pub overall_score_baseline: f64,
@@ -275,6 +301,7 @@ pub struct AccidentalScoringParamsRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure AccidentalPolarityBandRow.
 pub struct AccidentalPolarityBandRow {
     pub polarity_code: String,
     pub expression_quality_code: String,
@@ -284,6 +311,7 @@ pub struct AccidentalPolarityBandRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure BasicProductScoringProfileRow.
 pub struct BasicProductScoringProfileRow {
     pub product_code: String,
     pub payload_contract_version: String,
@@ -309,6 +337,7 @@ pub struct BasicProductScoringProfileRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure InterpretationSignalRow.
 pub struct InterpretationSignalRow {
     pub id: i32,
     pub signal_key: String,
@@ -321,6 +350,7 @@ pub struct InterpretationSignalRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure ChartCalculationRow.
 pub struct ChartCalculationRow {
     pub id: i32,
     pub status: String,
@@ -379,6 +409,7 @@ pub(crate) struct PersistedAspectFact {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure LlmProjectionProfileRow.
 pub struct LlmProjectionProfileRow {
     pub id: i32,
     pub contract_version: String,

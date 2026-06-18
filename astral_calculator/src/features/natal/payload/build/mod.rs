@@ -1,13 +1,25 @@
+//! Module astral_calculator\src\features\natal\payload\build\mod.rs du moteur astral_calculator.
+
 mod accidental_dignities;
+/// Module angles.
 mod angles;
+/// Module chart_context.
 mod chart_context;
+/// Module dignities.
 mod dignities;
+/// Module emphasis.
 mod emphasis;
+/// Module house_axes.
 mod house_axes;
+/// Module json.
 mod json;
+/// Module lunar_phase.
 mod lunar_phase;
+/// Module reading_plan.
 mod reading_plan;
+/// Module rulership.
 mod rulership;
+/// Module signal_filters.
 mod signal_filters;
 
 use std::collections::{HashMap, HashSet};
@@ -45,6 +57,7 @@ pub(crate) struct BasicPayloadBuilderInput<'a> {
     pub(crate) catalog: &'a BasicPayloadCatalog,
 }
 
+/// Fonction build_basic_payload.
 pub fn build_basic_payload(
     chart_calculation_id: i32,
     input: &NatalChartInput,
@@ -54,6 +67,7 @@ pub fn build_basic_payload(
     build_basic_payload_with_rulership(chart_calculation_id, input, positions, signals, &[])
 }
 
+/// Fonction build_basic_payload_with_rulership.
 pub fn build_basic_payload_with_rulership(
     chart_calculation_id: i32,
     input: &NatalChartInput,
@@ -71,6 +85,7 @@ pub fn build_basic_payload_with_rulership(
     )
 }
 
+/// Fonction build_basic_payload_with_references.
 pub fn build_basic_payload_with_references(
     chart_calculation_id: i32,
     input: &NatalChartInput,
@@ -90,6 +105,7 @@ pub fn build_basic_payload_with_references(
     )
 }
 
+/// Fonction build_basic_payload_with_all_references.
 pub fn build_basic_payload_with_all_references(
     chart_calculation_id: i32,
     input: &NatalChartInput,
@@ -114,6 +130,7 @@ pub fn build_basic_payload_with_all_references(
 }
 
 #[allow(clippy::too_many_arguments)]
+/// Fonction build_basic_payload_with_accidental_references.
 pub fn build_basic_payload_with_accidental_references(
     chart_calculation_id: i32,
     input: &NatalChartInput,

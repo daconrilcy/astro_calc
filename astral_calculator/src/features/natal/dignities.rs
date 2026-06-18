@@ -1,9 +1,12 @@
+//! Module astral_calculator\src\features\natal\dignities.rs du moteur astral_calculator.
+
 use serde::{Deserialize, Serialize};
 
 use crate::domain::{EssentialDignityRuleReference, ObjectPositionFact};
 use crate::features::natal::catalog::{BasicPayloadCatalog, EssentialDignityScoringWeight};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// Structure EssentialDignityFact.
 pub struct EssentialDignityFact {
     pub chart_object_id: i32,
     pub object_code: String,
@@ -18,6 +21,7 @@ pub struct EssentialDignityFact {
     pub is_major: bool,
 }
 
+/// Fonction essential_dignity_for_position.
 pub fn essential_dignity_for_position(
     position: &ObjectPositionFact,
     catalog: &BasicPayloadCatalog,
@@ -27,6 +31,7 @@ pub fn essential_dignity_for_position(
         .next()
 }
 
+/// Fonction essential_dignities_for_position.
 pub fn essential_dignities_for_position(
     position: &ObjectPositionFact,
     catalog: &BasicPayloadCatalog,
@@ -38,6 +43,7 @@ pub fn essential_dignities_for_position(
         .collect()
 }
 
+/// Fonction essential_dignities_for_positions.
 pub fn essential_dignities_for_positions(
     positions: &[ObjectPositionFact],
     catalog: &BasicPayloadCatalog,
@@ -48,6 +54,7 @@ pub fn essential_dignities_for_positions(
         .collect()
 }
 
+/// Fonction dignity_priority_delta.
 pub fn dignity_priority_delta(
     dignity: &EssentialDignityFact,
     catalog: &BasicPayloadCatalog,
@@ -58,6 +65,7 @@ pub fn dignity_priority_delta(
         .unwrap_or(0.0)
 }
 
+/// Fonction dignity_source_weight_delta.
 pub fn dignity_source_weight_delta(
     dignity: &EssentialDignityFact,
     catalog: &BasicPayloadCatalog,
@@ -68,6 +76,7 @@ pub fn dignity_source_weight_delta(
         .unwrap_or(0.0)
 }
 
+/// Fonction dignity_is_signal_worthy.
 pub fn dignity_is_signal_worthy(
     dignity: &EssentialDignityFact,
     catalog: &BasicPayloadCatalog,
@@ -80,6 +89,7 @@ pub fn dignity_is_signal_worthy(
                 .unwrap_or(0.7)
 }
 
+/// Fonction dignity_priority_delta_for_position.
 pub fn dignity_priority_delta_for_position(
     position: &ObjectPositionFact,
     catalog: &BasicPayloadCatalog,
@@ -91,6 +101,7 @@ pub fn dignity_priority_delta_for_position(
         .min(9.0)
 }
 
+/// Fonction dignity_source_weight_delta_for_position.
 pub fn dignity_source_weight_delta_for_position(
     position: &ObjectPositionFact,
     catalog: &BasicPayloadCatalog,
@@ -102,6 +113,7 @@ pub fn dignity_source_weight_delta_for_position(
         .min(0.2)
 }
 
+/// Fonction dignity_emphasis_weight.
 pub fn dignity_emphasis_weight(dignity_type: &str, catalog: &BasicPayloadCatalog) -> f64 {
     catalog
         .dignity_scoring_weight(dignity_type)
@@ -109,6 +121,7 @@ pub fn dignity_emphasis_weight(dignity_type: &str, catalog: &BasicPayloadCatalog
         .unwrap_or(0.25)
 }
 
+/// Fonction dignity_fact_from_rule.
 fn dignity_fact_from_rule(
     position: &ObjectPositionFact,
     rule: &EssentialDignityRuleReference,

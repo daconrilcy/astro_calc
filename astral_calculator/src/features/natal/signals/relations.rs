@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\signals\relations.rs du moteur astral_calculator.
+
 use std::collections::{HashMap, HashSet};
 
 use crate::domain::ObjectPositionFact;

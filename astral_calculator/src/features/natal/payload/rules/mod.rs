@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\rules\mod.rs du moteur astral_calculator.
+
 pub(crate) mod angles;
 pub(crate) mod chart_context;
 pub(crate) mod house_axes;

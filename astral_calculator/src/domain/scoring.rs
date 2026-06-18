@@ -1,4 +1,7 @@
+//! Module astral_calculator\src\domain\scoring.rs du moteur astral_calculator.
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+/// Structure BasicAccidentalScoringSnapshot.
 pub struct BasicAccidentalScoringSnapshot {
     pub overall_score_baseline: f64,
     pub overall_score_min: f64,
@@ -8,6 +11,7 @@ pub struct BasicAccidentalScoringSnapshot {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+/// Structure BasicProductScoringSnapshot.
 pub struct BasicProductScoringSnapshot {
     pub sign_house_emphasis_min_score: f64,
     pub object_emphasis_min_score: f64,

@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\simplified\ephemeris_calc.rs du moteur astral_calculator.
+
 #[cfg(feature = "swisseph-engine")]
 use std::path::Path;
 #[cfg(feature = "swisseph-engine")]
@@ -10,6 +12,7 @@ use crate::shared::astro_math::normalize_degrees;
 use crate::shared::error::RuntimeError;
 
 #[cfg(feature = "swisseph-engine")]
+/// Fonction julian_day_utc.
 pub fn julian_day_utc(datetime: DateTime<Utc>) -> f64 {
     use chrono::{Datelike, Timelike};
     use swiss_eph::safe::julday;
@@ -28,6 +31,7 @@ pub fn julian_day_utc(datetime: DateTime<Utc>) -> f64 {
 }
 
 #[cfg(feature = "swisseph-engine")]
+/// Fonction sign_code_at_jd.
 pub fn sign_code_at_jd(
     ephemeris_path: &Path,
     jd_ut: f64,
@@ -60,12 +64,14 @@ pub fn sign_code_at_jd(
 }
 
 #[cfg(feature = "swisseph-engine")]
+/// Fonction swiss_ephemeris_lock.
 fn swiss_ephemeris_lock() -> &'static Mutex<()> {
     static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
     LOCK.get_or_init(|| Mutex::new(()))
 }
 
 #[cfg(not(feature = "swisseph-engine"))]
+/// Fonction sign_code_at_jd.
 pub fn sign_code_at_jd(
     _ephemeris_path: &std::path::Path,
     _jd_ut: f64,
@@ -78,10 +84,12 @@ pub fn sign_code_at_jd(
 }
 
 #[cfg(not(feature = "swisseph-engine"))]
+/// Fonction julian_day_utc.
 pub fn julian_day_utc(_datetime: DateTime<Utc>) -> f64 {
     0.0
 }
 
+/// Fonction dedupe_preserve_order.
 pub fn dedupe_preserve_order(values: &[String]) -> Vec<String> {
     let mut seen = std::collections::HashSet::new();
     let mut out = Vec::new();
@@ -93,6 +101,7 @@ pub fn dedupe_preserve_order(values: &[String]) -> Vec<String> {
     out
 }
 
+/// Fonction distance_to_sign_boundary_deg.
 pub fn distance_to_sign_boundary_deg(longitude_deg: f64) -> f64 {
     let normalized = normalize_degrees(longitude_deg);
     let within_sign = normalized % 30.0;

@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\validate\emphasis.rs du moteur astral_calculator.
+
 use crate::domain::{BasicPayload, BasicProductScoringSnapshot};
 
 pub(super) fn has_current_chart_emphasis(payload: &BasicPayload) -> bool {
@@ -57,14 +59,17 @@ pub(super) fn product_scoring_snapshot(
     payload.chart_context.product_scoring.as_ref()
 }
 
+/// Fonction valid_emphasis_score.
 fn valid_emphasis_score(score: f64) -> bool {
     score.is_finite() && score > 0.0
 }
 
+/// Fonction valid_emphasis_reasons.
 fn valid_emphasis_reasons(reasons: &[String]) -> bool {
     !reasons.is_empty() && reasons.iter().all(|reason| !reason.trim().is_empty())
 }
 
+/// Fonction has_non_placement_emphasis_reason.
 fn has_non_placement_emphasis_reason(reasons: &[String]) -> bool {
     reasons.iter().any(|reason| reason != "placement")
 }

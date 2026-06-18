@@ -1,10 +1,18 @@
+//! Module astral_calculator\src\engine\mod.rs du moteur astral_calculator.
+
 pub mod application;
 #[allow(dead_code)]
+/// Module calculation_refs.
 pub mod calculation_refs;
+/// Module env.
 pub mod env;
+/// Module projection.
 pub mod projection;
+/// Module request.
 mod request;
+/// Module resolve.
 mod resolve;
+/// Module response.
 mod response;
 
 pub use calculation_refs::{
@@ -31,6 +39,7 @@ use crate::engine::projection::{build_llm_projection_natal_v1, LlmProjectionBuil
 use crate::shared::error::RuntimeError;
 
 #[allow(clippy::too_many_arguments)]
+/// Fonction build_engine_response.
 pub fn build_engine_response(
     resolved: &ResolvedEngineRequest,
     audit: BasicPayload,

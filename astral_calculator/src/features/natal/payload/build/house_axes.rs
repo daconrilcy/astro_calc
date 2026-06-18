@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\build\house_axes.rs du moteur astral_calculator.
+
 use std::collections::{HashMap, HashSet};
 
 use crate::domain::{
@@ -10,6 +12,7 @@ use crate::features::natal::payload::rules::chart_context::is_angle_role;
 use super::json::position_context;
 
 #[derive(Default)]
+/// Structure HouseScoreDraft.
 struct HouseScoreDraft {
     raw_score: f64,
     reasons: Vec<String>,
@@ -79,6 +82,7 @@ pub(super) fn build_house_axis_emphasis(
 }
 
 #[allow(clippy::too_many_arguments)]
+/// Fonction build_axis.
 fn build_axis(
     reference: &HouseAxisReference,
     positions: &[ObjectPositionFact],
@@ -179,6 +183,7 @@ fn build_axis(
 }
 
 #[allow(clippy::too_many_arguments)]
+/// Fonction score_house.
 fn score_house(
     house_number: i32,
     theme_code: &str,
@@ -284,6 +289,7 @@ fn score_house(
     draft
 }
 
+/// Fonction add_rulership_context.
 fn add_rulership_context(
     house_number: i32,
     rulership_context: &BasicRulershipContext,
@@ -309,6 +315,7 @@ fn add_rulership_context(
     }
 }
 
+/// Fonction add_cross_axis_aspects.
 fn add_cross_axis_aspects(
     reference: &HouseAxisReference,
     signals: &[BasicSignal],
@@ -336,6 +343,7 @@ fn add_cross_axis_aspects(
     }
 }
 
+/// Fonction signal_matches_house.
 fn signal_matches_house(
     signal: &BasicSignal,
     house_number: i32,
@@ -358,6 +366,7 @@ fn signal_matches_house(
     })
 }
 
+/// Fonction signal_object_codes.
 fn signal_object_codes(signal: &BasicSignal) -> Vec<String> {
     let mut object_codes = Vec::new();
     if let Some(evidence) = &signal.evidence {
@@ -387,6 +396,7 @@ fn signal_object_codes(signal: &BasicSignal) -> Vec<String> {
     object_codes
 }
 
+/// Fonction cluster_house_number.
 fn cluster_house_number(signal: &BasicSignal) -> Option<i32> {
     if !signal.signal_key.starts_with("cluster:") {
         return None;
@@ -399,6 +409,7 @@ fn cluster_house_number(signal: &BasicSignal) -> Option<i32> {
         .and_then(|value| i32::try_from(value).ok())
 }
 
+/// Fonction object_source_weight.
 fn object_source_weight(position: &ObjectPositionFact) -> f64 {
     position_context(position, "object_context")
         .and_then(|context| {
@@ -410,12 +421,14 @@ fn object_source_weight(position: &ObjectPositionFact) -> f64 {
         .unwrap_or(0.0)
 }
 
+/// Fonction is_luminary.
 fn is_luminary(position: &ObjectPositionFact) -> bool {
     position_context(position, "object_context")
         .and_then(|context| context.get("is_luminary").and_then(|value| value.as_bool()))
         .unwrap_or(false)
 }
 
+/// Fonction is_angle.
 fn is_angle(position: &ObjectPositionFact) -> bool {
     let role = position_context(position, "object_context").and_then(|context| {
         context
@@ -437,6 +450,7 @@ fn is_angle(position: &ObjectPositionFact) -> bool {
             .is_some()
 }
 
+/// Fonction dignity_weight.
 fn dignity_weight(dignity_type: &str) -> f64 {
     match dignity_type {
         "domicile" => 0.35,
@@ -447,10 +461,12 @@ fn dignity_weight(dignity_type: &str) -> f64 {
     }
 }
 
+/// Fonction normalized_house_score.
 fn normalized_house_score(raw_score: f64, house_axis_full_score: f64) -> f64 {
     round4((raw_score / house_axis_full_score).clamp(0.0, 1.0))
 }
 
+/// Fonction polarity_balance.
 fn polarity_balance(
     first_score: f64,
     second_score: f64,
@@ -469,6 +485,7 @@ fn polarity_balance(
     }
 }
 
+/// Fonction interpretive_hint.
 fn interpretive_hint(reference: &HouseAxisReference, polarity_balance: &str) -> String {
     match polarity_balance {
         "primary_house_dominant" => format!(
@@ -506,6 +523,7 @@ fn interpretive_hint(reference: &HouseAxisReference, polarity_balance: &str) -> 
     }
 }
 
+/// Fonction add_score.
 fn add_score(draft: &mut HouseScoreDraft, score: f64, reason: &str) {
     if score <= 0.0 {
         return;
@@ -514,16 +532,19 @@ fn add_score(draft: &mut HouseScoreDraft, score: f64, reason: &str) {
     add_reason(draft, reason);
 }
 
+/// Fonction add_reason.
 fn add_reason(draft: &mut HouseScoreDraft, reason: &str) {
     push_unique(&mut draft.reasons, reason.to_string());
 }
 
+/// Fonction push_signal_if_exists.
 fn push_signal_if_exists(target: &mut Vec<String>, signal_keys: &HashSet<&str>, signal_key: &str) {
     if signal_keys.contains(signal_key) {
         push_unique(target, signal_key.to_string());
     }
 }
 
+/// Fonction push_signal_prefix.
 fn push_signal_prefix(target: &mut Vec<String>, signals: &[BasicSignal], prefix: &str) {
     for signal in signals
         .iter()
@@ -533,18 +554,21 @@ fn push_signal_prefix(target: &mut Vec<String>, signals: &[BasicSignal], prefix:
     }
 }
 
+/// Fonction push_unique.
 fn push_unique(target: &mut Vec<String>, value: String) {
     if !target.iter().any(|existing| existing == &value) {
         target.push(value);
     }
 }
 
+/// Fonction push_unique_all.
 fn push_unique_all(target: &mut Vec<String>, values: &[String]) {
     for value in values {
         push_unique(target, value.clone());
     }
 }
 
+/// Fonction round4.
 fn round4(value: f64) -> f64 {
     (value * 10_000.0).round() / 10_000.0
 }

@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\signals\tags.rs du moteur astral_calculator.
+
 pub(super) fn cluster_semantic_tags(
     sign_code: &str,
     house_number: i32,

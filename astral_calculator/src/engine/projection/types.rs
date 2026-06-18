@@ -1,6 +1,9 @@
+//! Module astral_calculator\src\engine\projection\types.rs du moteur astral_calculator.
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmProjectionProfile.
 pub struct LlmProjectionProfile {
     pub contract_version: String,
     pub level_code: String,
@@ -22,6 +25,7 @@ pub struct LlmProjectionProfile {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmProjectionNatalV1.
 pub struct LlmProjectionNatalV1 {
     pub contract_version: String,
     pub projection_level: String,
@@ -40,12 +44,14 @@ pub struct LlmProjectionNatalV1 {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmProjectionLimitsEnvelope.
 pub struct LlmProjectionLimitsEnvelope {
     pub level: String,
     pub effective_limits: LlmEffectiveLimits,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmEffectiveLimits.
 pub struct LlmEffectiveLimits {
     pub max_keywords_per_item: usize,
     pub max_core_placements: usize,
@@ -65,6 +71,7 @@ pub struct LlmEffectiveLimits {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmChart.
 pub struct LlmChart {
     #[serde(rename = "type")]
     pub chart_type: String,
@@ -77,12 +84,14 @@ pub struct LlmChart {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmChartBirth.
 pub struct LlmChartBirth {
     pub datetime_utc: String,
     pub location: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmChartCalculation.
 pub struct LlmChartCalculation {
     pub zodiac: String,
     pub coordinates: String,
@@ -90,18 +99,21 @@ pub struct LlmChartCalculation {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmHemisphereEmphasis.
 pub struct LlmHemisphereEmphasis {
     pub dominant_area: String,
     pub summary: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmReadingOrderItem.
 pub struct LlmReadingOrderItem {
     pub section: String,
     pub focus: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+/// Structure LlmCoreIdentity.
 pub struct LlmCoreIdentity {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sun: Option<LlmCoreBody>,
@@ -112,6 +124,7 @@ pub struct LlmCoreIdentity {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmCoreBody.
 pub struct LlmCoreBody {
     pub placement: LlmPlacement,
     pub keywords: Vec<String>,
@@ -121,6 +134,7 @@ pub struct LlmCoreBody {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmAscendantBody.
 pub struct LlmAscendantBody {
     pub sign: String,
     pub keywords: Vec<String>,
@@ -130,6 +144,7 @@ pub struct LlmAscendantBody {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmAscendantRulers.
 pub struct LlmAscendantRulers {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub traditional: Option<String>,
@@ -138,6 +153,7 @@ pub struct LlmAscendantRulers {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmDominantThemes.
 pub struct LlmDominantThemes {
     pub signs: Vec<LlmDominantSign>,
     pub houses: Vec<LlmDominantHouse>,
@@ -145,6 +161,7 @@ pub struct LlmDominantThemes {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmDominantSign.
 pub struct LlmDominantSign {
     pub name: String,
     pub importance: String,
@@ -155,6 +172,7 @@ pub struct LlmDominantSign {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmDominantHouse.
 pub struct LlmDominantHouse {
     pub number: i32,
     pub theme: String,
@@ -165,6 +183,7 @@ pub struct LlmDominantHouse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmDominantObject.
 pub struct LlmDominantObject {
     pub name: String,
     pub importance: String,
@@ -174,6 +193,7 @@ pub struct LlmDominantObject {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmPlacementsGroup.
 pub struct LlmPlacementsGroup {
     pub primary: Vec<LlmPlacement>,
     pub supporting: Vec<LlmPlacement>,
@@ -181,6 +201,7 @@ pub struct LlmPlacementsGroup {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmPlacement.
 pub struct LlmPlacement {
     pub object: String,
     pub sign: String,
@@ -198,12 +219,14 @@ pub struct LlmPlacement {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmHouseRef.
 pub struct LlmHouseRef {
     pub number: i32,
     pub theme: String,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+/// Structure LlmAngles.
 pub struct LlmAngles {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ascendant: Option<LlmAngleEntry>,
@@ -216,6 +239,7 @@ pub struct LlmAngles {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmAngleEntry.
 pub struct LlmAngleEntry {
     pub sign: String,
     pub house: i32,
@@ -224,12 +248,14 @@ pub struct LlmAngleEntry {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmStrengths.
 pub struct LlmStrengths {
     pub essential_dignities: Vec<LlmEssentialDignity>,
     pub accidental_conditions: Vec<LlmAccidentalCondition>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmEssentialDignity.
 pub struct LlmEssentialDignity {
     pub object: String,
     pub dignity: String,
@@ -240,6 +266,7 @@ pub struct LlmEssentialDignity {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmAccidentalCondition.
 pub struct LlmAccidentalCondition {
     pub object: String,
     pub overall: String,
@@ -249,6 +276,7 @@ pub struct LlmAccidentalCondition {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+/// Structure LlmRelationshipNetwork.
 pub struct LlmRelationshipNetwork {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ascendant_ruler: Option<LlmAscendantRulerNetwork>,
@@ -261,6 +289,7 @@ pub struct LlmRelationshipNetwork {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmAscendantRulerNetwork.
 pub struct LlmAscendantRulerNetwork {
     pub ascendant_sign: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -271,6 +300,7 @@ pub struct LlmAscendantRulerNetwork {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmMcRulerNetwork.
 pub struct LlmMcRulerNetwork {
     pub midheaven_sign: String,
     pub ruler: String,
@@ -278,18 +308,21 @@ pub struct LlmMcRulerNetwork {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmFinalDispositor.
 pub struct LlmFinalDispositor {
     pub object: String,
     pub source_objects: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmMutualReception.
 pub struct LlmMutualReception {
     pub objects: Vec<String>,
     pub source_objects: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+/// Structure LlmDynamics.
 pub struct LlmDynamics {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lunar_phase: Option<LlmLunarPhase>,
@@ -298,6 +331,7 @@ pub struct LlmDynamics {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmLunarPhase.
 pub struct LlmLunarPhase {
     pub phase: String,
     pub cycle: String,
@@ -306,6 +340,7 @@ pub struct LlmLunarPhase {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmMajorAspect.
 pub struct LlmMajorAspect {
     pub aspect: String,
     pub objects: Vec<String>,
@@ -317,6 +352,7 @@ pub struct LlmMajorAspect {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmHouseAxis.
 pub struct LlmHouseAxis {
     pub axis: String,
     pub houses: Vec<LlmHouseRef>,
@@ -328,6 +364,7 @@ pub struct LlmHouseAxis {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure LlmKeywords.
 pub struct LlmKeywords {
     pub main: Vec<String>,
     pub by_area: std::collections::BTreeMap<String, Vec<String>>,

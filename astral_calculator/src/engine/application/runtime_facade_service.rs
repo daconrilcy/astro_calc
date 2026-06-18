@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\engine\application\runtime_facade_service.rs du moteur astral_calculator.
+
 use crate::astrology::ephemeris::EphemerisEngine;
 use crate::domain::{BasicPayload, NatalChartInput};
 use crate::engine::{
@@ -18,6 +20,7 @@ use crate::shared::error::RuntimeError;
 use crate::features::horoscope::application::HoroscopeService;
 use crate::features::simplified::{AstroSimplifiedNatalRequest, AstroSimplifiedNatalResponse};
 
+/// Structure EngineFacadeService.
 pub struct EngineFacadeService<E> {
     natal: NatalCalculationService<E>,
     simplified: SimplifiedNatalService<E>,
@@ -30,6 +33,7 @@ impl<E> EngineFacadeService<E>
 where
     E: EphemerisEngine,
 {
+    /// Fonction new.
     pub fn new(
         natal: NatalCalculationService<E>,
         simplified: SimplifiedNatalService<E>,
@@ -46,6 +50,7 @@ where
         }
     }
 
+    /// Fonction calculate_natal_engine.
     pub async fn calculate_natal_engine(
         &self,
         request: AstroEngineRequest,
@@ -106,6 +111,7 @@ where
         )
     }
 
+    /// Fonction calculate_simplified_natal_engine.
     pub async fn calculate_simplified_natal_engine(
         &self,
         request: AstroSimplifiedNatalRequest,
@@ -114,6 +120,7 @@ where
         self.simplified.calculate(request, ephemeris_path).await
     }
 
+    /// Fonction calculate_horoscope_daily_natal.
     pub async fn calculate_horoscope_daily_natal(
         &self,
         request: HoroscopeCalculationRequest,
@@ -121,6 +128,7 @@ where
         self.calculate_horoscope_daily(request).await
     }
 
+    /// Fonction calculate_horoscope_period_natal.
     pub async fn calculate_horoscope_period_natal(
         &self,
         request: HoroscopePeriodCalculationRequest,
@@ -128,6 +136,7 @@ where
         self.calculate_horoscope_period(request).await
     }
 
+    /// Fonction calculate_horoscope_daily.
     pub async fn calculate_horoscope_daily(
         &self,
         request: HoroscopeCalculationRequest,
@@ -135,6 +144,7 @@ where
         self.horoscope.calculate_daily(request).await
     }
 
+    /// Fonction calculate_horoscope_period.
     pub async fn calculate_horoscope_period(
         &self,
         request: HoroscopePeriodCalculationRequest,
@@ -142,6 +152,7 @@ where
         self.horoscope.calculate_period(request).await
     }
 
+    /// Fonction calculate_natal_basic.
     pub async fn calculate_natal_basic(
         &self,
         input: NatalChartInput,

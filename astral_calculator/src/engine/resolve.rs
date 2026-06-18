@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\engine\resolve.rs du moteur astral_calculator.
+
 use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
 use chrono_tz::Tz;
 
@@ -5,6 +7,7 @@ use crate::domain::NatalChartInput;
 use crate::engine::request::{AstroEngineRequest, REQUEST_CONTRACT_VERSION};
 use crate::shared::error::RuntimeError;
 
+/// Structure ResolvedEngineRequest.
 pub struct ResolvedEngineRequest {
     pub natal_input: NatalChartInput,
     pub projection_level: String,
@@ -18,6 +21,7 @@ pub struct ResolvedEngineRequest {
     pub calculation_type: String,
 }
 
+/// Fonction validate_request_early.
 pub fn validate_request_early(request: &AstroEngineRequest) -> Result<(), RuntimeError> {
     if request.request_contract_version != REQUEST_CONTRACT_VERSION {
         return Err(RuntimeError::InvalidEngineRequest(format!(
@@ -54,6 +58,7 @@ pub fn validate_request_early(request: &AstroEngineRequest) -> Result<(), Runtim
     Ok(())
 }
 
+/// Fonction local_birth_to_utc.
 pub fn local_birth_to_utc(
     date: &str,
     time: &str,
@@ -81,6 +86,7 @@ pub fn local_birth_to_utc(
         .map(|local| local.with_timezone(&Utc))
 }
 
+/// Fonction validate_and_resolve_request.
 pub fn validate_and_resolve_request(
     request: &AstroEngineRequest,
     reference_version_id: i32,

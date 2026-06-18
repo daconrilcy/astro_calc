@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\build\dignities.rs du moteur astral_calculator.
+
 use crate::domain::{BasicDignity, BasicSignal, ObjectPositionFact};
 use crate::features::natal::catalog::BasicPayloadCatalog;
 use crate::features::natal::dignities::{
@@ -55,6 +57,7 @@ pub(super) fn build_payload_dignities(
         .collect()
 }
 
+/// Fonction dignity_signal_key.
 fn dignity_signal_key(
     dignity: &crate::features::natal::dignities::EssentialDignityFact,
     catalog: &BasicPayloadCatalog,

@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\simplified\response.rs du moteur astral_calculator.
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -5,6 +7,7 @@ pub const SIMPLIFIED_RESPONSE_CONTRACT_VERSION: &str = "astro_simplified_natal_r
 pub const SIMPLIFIED_PAYLOAD_CONTRACT: &str = "natal_simplified_structured_v1";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure AstroSimplifiedNatalResponse.
 pub struct AstroSimplifiedNatalResponse {
     pub response_contract_version: String,
     pub input_precision: InputPrecisionResponse,
@@ -21,6 +24,7 @@ pub struct AstroSimplifiedNatalResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure InputPrecisionResponse.
 pub struct InputPrecisionResponse {
     pub level: String,
     pub date_provided: bool,
@@ -30,6 +34,7 @@ pub struct InputPrecisionResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure LimitationResponse.
 pub struct LimitationResponse {
     pub code: String,
     pub severity: String,
@@ -37,6 +42,7 @@ pub struct LimitationResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure SignFactResponse.
 pub struct SignFactResponse {
     pub object_code: String,
     pub fact_type: String,
@@ -47,6 +53,7 @@ pub struct SignFactResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure AmbiguousSignFactResponse.
 pub struct AmbiguousSignFactResponse {
     pub object_code: String,
     pub fact_type: String,
@@ -55,6 +62,7 @@ pub struct AmbiguousSignFactResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure CuspWarningResponse.
 pub struct CuspWarningResponse {
     pub object_code: String,
     pub message_code: String,
@@ -62,12 +70,14 @@ pub struct CuspWarningResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure SimplifiedPayloadEnvelope.
 pub struct SimplifiedPayloadEnvelope {
     pub payload_contract: String,
     pub payload: Value,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure LlmPayloadControls.
 pub struct LlmPayloadControls {
     pub profile_code: String,
     pub allowed_fact_codes: Vec<String>,
@@ -93,6 +103,7 @@ pub struct LlmPayloadControls {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure ReadingHintResponse.
 pub struct ReadingHintResponse {
     pub recommended_profile_code: String,
     pub reading_completeness: String,

@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\validate\dignities.rs du moteur astral_calculator.
+
 use crate::domain::{BasicDignity, BasicPayload, BasicSignal};
 
 pub(super) fn has_current_dignities(payload: &BasicPayload) -> bool {
@@ -36,6 +38,7 @@ pub(super) fn has_current_dignities(payload: &BasicPayload) -> bool {
             })
 }
 
+/// Fonction signal_matches_structured_dignity.
 fn signal_matches_structured_dignity(signal: &BasicSignal, dignity: &BasicDignity) -> bool {
     let Some(evidence) = signal.evidence.as_ref() else {
         return false;

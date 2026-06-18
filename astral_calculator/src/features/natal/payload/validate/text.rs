@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\validate\text.rs du moteur astral_calculator.
+
 pub(super) fn has_text(value: &Option<String>) -> bool {
     value
         .as_deref()

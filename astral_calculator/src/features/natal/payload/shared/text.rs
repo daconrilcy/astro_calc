@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\shared\text.rs du moteur astral_calculator.
+
 pub(crate) fn has_text(value: &str) -> bool {
     !value.trim().is_empty()
 }

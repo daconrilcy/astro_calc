@@ -1,5 +1,8 @@
+//! Module astral_calculator\src\engine\projection\clean_text.rs du moteur astral_calculator.
+
 use std::collections::HashMap;
 
+/// Fonction title_case_sign.
 pub fn title_case_sign(sign_code: &str) -> String {
     let mut chars = sign_code.chars();
     match chars.next() {
@@ -8,6 +11,7 @@ pub fn title_case_sign(sign_code: &str) -> String {
     }
 }
 
+/// Fonction importance_label.
 pub fn importance_label(score: f64) -> &'static str {
     if score >= 0.85 {
         "Very high"
@@ -20,6 +24,7 @@ pub fn importance_label(score: f64) -> &'static str {
     }
 }
 
+/// Fonction accidental_overall_label.
 pub fn accidental_overall_label(expression_quality: &str, polarity: &str) -> String {
     match expression_quality {
         "strongly_constrained_expression" => "Strongly weakened".to_string(),
@@ -35,6 +40,7 @@ pub fn accidental_overall_label(expression_quality: &str, polarity: &str) -> Str
     }
 }
 
+/// Fonction humanize_reason.
 pub fn humanize_reason(reason: &str, object_names: &HashMap<String, String>) -> String {
     let object_label = |code: &str| {
         object_names
@@ -107,6 +113,7 @@ pub fn humanize_reason(reason: &str, object_names: &HashMap<String, String>) -> 
     }
 }
 
+/// Fonction humanize_condition.
 pub fn humanize_condition(code: &str, chart_sect: Option<&str>) -> String {
     match code {
         "angular_house" => "Angular house".to_string(),
@@ -134,6 +141,7 @@ pub fn humanize_condition(code: &str, chart_sect: Option<&str>) -> String {
     }
 }
 
+/// Fonction humanize_dynamic_quality.
 pub fn humanize_dynamic_quality(quality: &str) -> String {
     match quality {
         "tension" => "Tension".to_string(),
@@ -147,6 +155,7 @@ pub fn humanize_dynamic_quality(quality: &str) -> String {
     }
 }
 
+/// Fonction humanize_valence.
 pub fn humanize_valence(valence: &str) -> String {
     match valence {
         "polarizing" => "Polarizing".to_string(),
@@ -164,6 +173,7 @@ pub fn humanize_valence(valence: &str) -> String {
     }
 }
 
+/// Fonction humanize_phase.
 pub fn humanize_phase(phase: &str) -> String {
     match phase {
         "separating" => "Separating".to_string(),
@@ -173,6 +183,7 @@ pub fn humanize_phase(phase: &str) -> String {
     }
 }
 
+/// Fonction dignity_meaning.
 pub fn dignity_meaning(dignity_type: &str) -> &'static str {
     match dignity_type {
         "domicile" => "Strong functional expression",
@@ -183,6 +194,7 @@ pub fn dignity_meaning(dignity_type: &str) -> &'static str {
     }
 }
 
+/// Fonction chart_sect_label.
 pub fn chart_sect_label(sect: &str) -> String {
     match sect {
         "day" => "Day chart".to_string(),
@@ -191,6 +203,7 @@ pub fn chart_sect_label(sect: &str) -> String {
     }
 }
 
+/// Fonction hemisphere_dominant_area.
 pub fn hemisphere_dominant_area(hint: &str, above: i32, below: i32) -> String {
     if hint.contains("private") || hint.contains("interior") || below > above {
         "Below horizon".to_string()
@@ -201,6 +214,7 @@ pub fn hemisphere_dominant_area(hint: &str, above: i32, below: i32) -> String {
     }
 }
 
+/// Fonction reading_slot_section.
 pub fn reading_slot_section(slot: &str, title: &str) -> String {
     match slot {
         "core_identity" => "Core identity".to_string(),
@@ -212,6 +226,7 @@ pub fn reading_slot_section(slot: &str, title: &str) -> String {
     }
 }
 
+/// Fonction axis_balance_label.
 pub fn axis_balance_label(
     polarity_balance: &str,
     primary_house: i32,
@@ -225,10 +240,12 @@ pub fn axis_balance_label(
     }
 }
 
+/// Fonction axis_importance.
 pub fn axis_importance(score: f64) -> &'static str {
     importance_label(score)
 }
 
+/// Fonction limit_keywords.
 pub fn limit_keywords(keywords: &[String], limit: usize) -> Vec<String> {
     let mut out = Vec::new();
     for kw in keywords {
@@ -250,6 +267,7 @@ pub fn limit_keywords(keywords: &[String], limit: usize) -> Vec<String> {
     out
 }
 
+/// Fonction clean_semantic_tags.
 pub fn clean_semantic_tags(tags: &[String], limit: usize) -> Vec<String> {
     let filtered: Vec<String> = tags
         .iter()
@@ -259,6 +277,7 @@ pub fn clean_semantic_tags(tags: &[String], limit: usize) -> Vec<String> {
     limit_keywords(&filtered, limit)
 }
 
+/// Fonction is_technical_keyword.
 pub fn is_technical_keyword(tag: &str) -> bool {
     matches!(
         tag,
@@ -282,6 +301,7 @@ pub fn is_technical_keyword(tag: &str) -> bool {
         || tag.ends_with("_code")
 }
 
+/// Fonction push_unique.
 pub fn push_unique(out: &mut Vec<String>, value: String) {
     if !out
         .iter()
@@ -291,6 +311,7 @@ pub fn push_unique(out: &mut Vec<String>, value: String) {
     }
 }
 
+/// Fonction humanize_theme_code.
 pub fn humanize_theme_code(theme_code: &str) -> String {
     match theme_code {
         "shared_resources" => "Shared resources".to_string(),
@@ -324,6 +345,7 @@ pub fn humanize_axis_summary(hint: &str, theme_in_parens: &[(String, String)]) -
     summary
 }
 
+/// Fonction humanize_residual_snake_case.
 fn humanize_residual_snake_case(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut chars = text.chars().peekable();
@@ -352,6 +374,7 @@ fn humanize_residual_snake_case(text: &str) -> String {
     out
 }
 
+/// Fonction is_unremarkable_motion_condition.
 pub fn is_unremarkable_motion_condition(label: &str, motion: Option<&str>) -> bool {
     let lower = label.to_ascii_lowercase();
     if lower == "direct motion" || lower == "direct" {
@@ -365,6 +388,7 @@ pub fn is_unremarkable_motion_condition(label: &str, motion: Option<&str>) -> bo
     false
 }
 
+/// Fonction humanize_motion_label.
 pub fn humanize_motion_label(label: &str) -> String {
     match label {
         "Direct" | "direct" => "Direct motion".to_string(),

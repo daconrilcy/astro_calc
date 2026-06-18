@@ -1,7 +1,10 @@
+//! Module astral_calculator\src\domain\references.rs du moteur astral_calculator.
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Debug, Clone)]
+/// Structure ChartObject.
 pub struct ChartObject {
     pub id: i32,
     pub code: String,
@@ -19,6 +22,7 @@ pub struct ChartObject {
 }
 
 #[derive(Debug, Clone)]
+/// Structure AspectDefinition.
 pub struct AspectDefinition {
     pub id: i32,
     pub code: String,
@@ -30,6 +34,7 @@ pub struct AspectDefinition {
 }
 
 #[derive(Debug, Clone)]
+/// Structure HouseSystem.
 pub struct HouseSystem {
     pub id: i32,
     pub code: String,
@@ -38,6 +43,7 @@ pub struct HouseSystem {
 }
 
 #[derive(Debug, Clone)]
+/// Structure SignReference.
 pub struct SignReference {
     pub id: i32,
     pub code: String,
@@ -53,6 +59,7 @@ pub struct SignReference {
 }
 
 #[derive(Debug, Clone)]
+/// Structure HouseReference.
 pub struct HouseReference {
     pub id: i32,
     pub number: i32,
@@ -66,6 +73,7 @@ pub struct HouseReference {
 }
 
 #[derive(Debug, Clone)]
+/// Structure MotionStateReference.
 pub struct MotionStateReference {
     pub id: i32,
     pub code: String,
@@ -74,6 +82,7 @@ pub struct MotionStateReference {
 }
 
 #[derive(Debug, Clone)]
+/// Structure HorizonPositionReference.
 pub struct HorizonPositionReference {
     pub id: i32,
     pub code: String,
@@ -81,6 +90,7 @@ pub struct HorizonPositionReference {
 }
 
 #[derive(Debug, Clone)]
+/// Structure AnglePointReference.
 pub struct AnglePointReference {
     pub id: i32,
     pub code: String,
@@ -97,6 +107,7 @@ pub struct AnglePointReference {
 }
 
 #[derive(Debug, Clone)]
+/// Structure DomicileRulerReference.
 pub struct DomicileRulerReference {
     pub reference_version_id: Option<i32>,
     pub astral_system_id: i32,
@@ -113,6 +124,7 @@ pub struct DomicileRulerReference {
 }
 
 #[derive(Debug, Clone)]
+/// Structure InterpretationSignalRow.
 pub struct InterpretationSignalRow {
     pub id: i32,
     pub signal_key: String,
@@ -124,6 +136,7 @@ pub struct InterpretationSignalRow {
     pub payload_json: Option<Value>,
 }
 
+/// Structure CalculationReferenceData.
 pub struct CalculationReferenceData {
     pub signs: Vec<SignReference>,
     pub houses: Vec<HouseReference>,
@@ -133,6 +146,7 @@ pub struct CalculationReferenceData {
 }
 
 #[derive(Debug, Clone)]
+/// Structure HouseAxisReference.
 pub struct HouseAxisReference {
     pub axis_code: String,
     pub house_a_number: i32,
@@ -144,6 +158,7 @@ pub struct HouseAxisReference {
 }
 
 #[derive(Debug, Clone)]
+/// Structure LunarPhaseReference.
 pub struct LunarPhaseReference {
     pub phase_code: String,
     pub label: String,
@@ -156,6 +171,7 @@ pub struct LunarPhaseReference {
 }
 
 #[derive(Debug, Clone)]
+/// Structure AccidentalDignityConditionReference.
 pub struct AccidentalDignityConditionReference {
     pub condition_code: String,
     pub condition_family: String,
@@ -167,6 +183,7 @@ pub struct AccidentalDignityConditionReference {
 }
 
 #[derive(Debug, Clone)]
+/// Structure ObjectSectAffinityReference.
 pub struct ObjectSectAffinityReference {
     pub object_code: String,
     pub sect_affinity_code: String,
@@ -175,6 +192,7 @@ pub struct ObjectSectAffinityReference {
 }
 
 #[derive(Debug, Clone)]
+/// Structure EssentialDignityRuleReference.
 pub struct EssentialDignityRuleReference {
     pub object_code: String,
     pub sign_code: String,
@@ -189,6 +207,7 @@ pub struct EssentialDignityRuleReference {
 }
 
 #[derive(Debug, Clone)]
+/// Structure AccidentalConditionTrigger.
 pub struct AccidentalConditionTrigger {
     pub trigger_family: String,
     pub source_code: Option<String>,
@@ -197,6 +216,7 @@ pub struct AccidentalConditionTrigger {
 }
 
 #[derive(Debug, Clone)]
+/// Structure AccidentalScoringParams.
 pub struct AccidentalScoringParams {
     pub code: String,
     pub overall_score_baseline: f64,
@@ -206,6 +226,7 @@ pub struct AccidentalScoringParams {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure AccidentalPolarityBand.
 pub struct AccidentalPolarityBand {
     pub polarity_code: String,
     pub expression_quality_code: String,
@@ -215,6 +236,7 @@ pub struct AccidentalPolarityBand {
 }
 
 #[derive(Debug, Clone)]
+/// Structure BasicProductScoringProfile.
 pub struct BasicProductScoringProfile {
     pub product_code: String,
     pub payload_contract_version: String,

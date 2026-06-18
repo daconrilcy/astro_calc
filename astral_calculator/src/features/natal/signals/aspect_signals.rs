@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\signals\aspect_signals.rs du moteur astral_calculator.
+
 use serde_json::json;
 
 use crate::domain::AspectFact;
@@ -46,6 +48,7 @@ pub(super) fn aspect_context(aspect: &AspectFact) -> serde_json::Value {
     })
 }
 
+/// Fonction aspect_dynamic_quality.
 fn aspect_dynamic_quality(aspect: &AspectFact) -> &'static str {
     match aspect.primary_valence.as_deref() {
         Some(
@@ -73,6 +76,7 @@ pub(super) fn aspect_interpretive_hint(aspect: &AspectFact, aspect_name: &str) -
     )
 }
 
+/// Fonction aspect_hint_quality_phrase.
 fn aspect_hint_quality_phrase(aspect: &AspectFact) -> String {
     let base = match aspect.primary_valence.as_deref() {
         Some("supportive") => "a supportive flow",
@@ -98,6 +102,7 @@ fn aspect_hint_quality_phrase(aspect: &AspectFact) -> String {
     }
 }
 
+/// Fonction intensity_only_aspect_hint_phrase.
 fn intensity_only_aspect_hint_phrase(aspect: &AspectFact) -> &'static str {
     match aspect.intensity_modifier.as_deref() {
         Some("amplifying") => "an amplifying contact",
@@ -107,6 +112,7 @@ fn intensity_only_aspect_hint_phrase(aspect: &AspectFact) -> &'static str {
     }
 }
 
+/// Fonction dynamic_quality_aspect_hint_phrase.
 fn dynamic_quality_aspect_hint_phrase(aspect: &AspectFact) -> &'static str {
     match aspect_dynamic_quality(aspect) {
         "flow" => "a flow",

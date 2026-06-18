@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\signals\angles.rs du moteur astral_calculator.
+
 use std::collections::HashMap;
 
 use serde_json::json;
@@ -75,10 +77,12 @@ pub(super) fn angle_signal(
     }
 }
 
+/// Fonction angle_priority.
 fn angle_priority(position: &ObjectPositionFact) -> f64 {
     round4((angle_priority_base(position) + house_modality_priority_delta(position)).min(100.0))
 }
 
+/// Fonction angle_context.
 fn angle_context(
     position: &ObjectPositionFact,
     angle_point_object_codes: &HashMap<String, String>,
@@ -99,6 +103,7 @@ fn angle_context(
     })
 }
 
+/// Fonction opposite_angle_object_code.
 fn opposite_angle_object_code(
     position: &ObjectPositionFact,
     angle_point_object_codes: &HashMap<String, String>,
@@ -108,6 +113,7 @@ fn opposite_angle_object_code(
         .cloned()
 }
 
+/// Fonction angle_interpretive_hint.
 fn angle_interpretive_hint(position: &ObjectPositionFact) -> String {
     match position.object_code.as_str() {
         "ascendant" => format!(
@@ -130,6 +136,7 @@ fn angle_interpretive_hint(position: &ObjectPositionFact) -> String {
     }
 }
 
+/// Fonction angle_semantic_tags.
 fn angle_semantic_tags(position: &ObjectPositionFact) -> Vec<String> {
     let mut tags = vec![
         "angle".to_string(),
@@ -157,6 +164,7 @@ fn angle_semantic_tags(position: &ObjectPositionFact) -> Vec<String> {
     dedupe_tags(tags)
 }
 
+/// Fonction angle_associated_house.
 fn angle_associated_house(position: &ObjectPositionFact) -> Option<i32> {
     placement_context_value(position, "angle_context", "associated_house_number")
         .and_then(|value| value.as_i64())

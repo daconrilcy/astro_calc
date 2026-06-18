@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\infra\db\runtime_repository.rs du moteur astral_calculator.
+
 use serde_json::Value;
 use sqlx::{PgPool, Postgres, Transaction};
 
@@ -24,19 +26,23 @@ use crate::infra::db::models::{
 use crate::shared::error::RuntimeError;
 
 #[derive(Clone)]
+/// Structure RuntimeRepository.
 pub struct RuntimeRepository {
     pool: PgPool,
 }
 
 impl RuntimeRepository {
+    /// Fonction new.
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 
+    /// Fonction pool.
     pub fn pool(&self) -> &PgPool {
         &self.pool
     }
 
+    /// Fonction active_chart_objects.
     pub async fn active_chart_objects(
         &self,
         reference_version_id: i32,
@@ -74,6 +80,7 @@ impl RuntimeRepository {
         .await?)
     }
 
+    /// Fonction aspect_definitions.
     pub async fn aspect_definitions(&self) -> Result<Vec<AspectDefinition>, RuntimeError> {
         Ok(sqlx::query_as::<_, AspectDefinition>(
             r#"
@@ -94,6 +101,7 @@ impl RuntimeRepository {
         .await?)
     }
 
+    /// Fonction major_aspect_family_reference.
     pub async fn major_aspect_family_reference(
         &self,
     ) -> Result<MajorAspectFamilyReference, RuntimeError> {
@@ -128,6 +136,7 @@ impl RuntimeRepository {
         Ok(row)
     }
 
+    /// Fonction sign_references.
     pub async fn sign_references(&self) -> Result<Vec<SignReference>, RuntimeError> {
         Ok(sqlx::query_as::<_, SignReference>(
             r#"
@@ -153,6 +162,7 @@ impl RuntimeRepository {
         .await?)
     }
 
+    /// Fonction house_references.
     pub async fn house_references(&self) -> Result<Vec<HouseReference>, RuntimeError> {
         Ok(sqlx::query_as::<_, HouseReference>(
             r#"
@@ -171,6 +181,7 @@ impl RuntimeRepository {
         .await?)
     }
 
+    /// Fonction motion_state_references.
     pub async fn motion_state_references(&self) -> Result<Vec<MotionStateReference>, RuntimeError> {
         Ok(sqlx::query_as::<_, MotionStateReference>(
             r#"
@@ -184,6 +195,7 @@ impl RuntimeRepository {
         .await?)
     }
 
+    /// Fonction horizon_position_references.
     pub async fn horizon_position_references(
         &self,
     ) -> Result<Vec<HorizonPositionReference>, RuntimeError> {
@@ -198,6 +210,7 @@ impl RuntimeRepository {
         .await?)
     }
 
+    /// Fonction angle_point_references.
     pub async fn angle_point_references(&self) -> Result<Vec<AnglePointReference>, RuntimeError> {
         Ok(sqlx::query_as::<_, AnglePointReference>(
             r#"
@@ -225,6 +238,7 @@ impl RuntimeRepository {
         .await?)
     }
 
+    /// Fonction domicile_ruler_references.
     pub async fn domicile_ruler_references(
         &self,
         reference_version_id: i32,
@@ -265,6 +279,7 @@ impl RuntimeRepository {
         .await?)
     }
 
+    /// Fonction house_axis_references.
     pub async fn house_axis_references(
         &self,
     ) -> Result<Vec<crate::domain::HouseAxisReference>, RuntimeError> {
@@ -295,6 +310,7 @@ impl RuntimeRepository {
         .collect())
     }
 
+    /// Fonction lunar_phase_references.
     pub async fn lunar_phase_references(
         &self,
     ) -> Result<Vec<crate::domain::LunarPhaseReference>, RuntimeError> {
@@ -320,6 +336,7 @@ impl RuntimeRepository {
         .collect())
     }
 
+    /// Fonction accidental_dignity_condition_references.
     pub async fn accidental_dignity_condition_references(
         &self,
     ) -> Result<Vec<crate::domain::AccidentalDignityConditionReference>, RuntimeError> {
@@ -344,6 +361,7 @@ impl RuntimeRepository {
         .collect())
     }
 
+    /// Fonction object_sect_affinity_references.
     pub async fn object_sect_affinity_references(
         &self,
     ) -> Result<Vec<crate::domain::ObjectSectAffinityReference>, RuntimeError> {
@@ -365,6 +383,7 @@ impl RuntimeRepository {
         .collect())
     }
 
+    /// Fonction basic_product_scoring_profile.
     pub async fn basic_product_scoring_profile(
         &self,
         product_code: &str,
@@ -406,6 +425,7 @@ impl RuntimeRepository {
         Ok(row.into())
     }
 
+    /// Fonction essential_dignity_rule_references.
     pub async fn essential_dignity_rule_references(
         &self,
         reference_version_id: i32,
@@ -450,6 +470,7 @@ impl RuntimeRepository {
         .collect())
     }
 
+    /// Fonction accidental_condition_triggers.
     pub async fn accidental_condition_triggers(
         &self,
     ) -> Result<Vec<AccidentalConditionTrigger>, RuntimeError> {
@@ -471,6 +492,7 @@ impl RuntimeRepository {
         .collect())
     }
 
+    /// Fonction accidental_scoring_params.
     pub async fn accidental_scoring_params(
         &self,
         params_id: i32,
@@ -493,6 +515,7 @@ impl RuntimeRepository {
         Ok(row.into())
     }
 
+    /// Fonction accidental_overall_polarity_bands.
     pub async fn accidental_overall_polarity_bands(
         &self,
         params_id: i32,
@@ -517,6 +540,7 @@ impl RuntimeRepository {
         .collect())
     }
 
+    /// Fonction basic_payload_catalog.
     pub async fn basic_payload_catalog(
         &self,
         product_code: &str,
@@ -548,6 +572,7 @@ impl RuntimeRepository {
         ))
     }
 
+    /// Fonction house_system.
     pub async fn house_system(&self, id: i32) -> Result<HouseSystem, RuntimeError> {
         Ok(sqlx::query_as::<_, HouseSystem>(
             r#"
@@ -561,6 +586,7 @@ impl RuntimeRepository {
         .await?)
     }
 
+    /// Fonction house_systems.
     pub async fn house_systems(&self) -> Result<Vec<HouseSystem>, RuntimeError> {
         Ok(sqlx::query_as::<_, HouseSystem>(
             r#"
@@ -574,6 +600,7 @@ impl RuntimeRepository {
         .await?)
     }
 
+    /// Fonction horoscope_services.
     pub async fn horoscope_services(&self) -> Result<Vec<HoroscopeServiceRow>, RuntimeError> {
         Ok(sqlx::query_as::<_, HoroscopeServiceRow>(
             r#"
@@ -602,6 +629,7 @@ impl RuntimeRepository {
         .await?)
     }
 
+    /// Fonction horoscope_time_slot_profiles.
     pub async fn horoscope_time_slot_profiles(
         &self,
     ) -> Result<Vec<HoroscopeTimeSlotProfileRow>, RuntimeError> {
@@ -623,6 +651,7 @@ impl RuntimeRepository {
         .await?)
     }
 
+    /// Fonction astral_time_period_profiles.
     pub async fn astral_time_period_profiles(
         &self,
     ) -> Result<Vec<AstralTimePeriodProfileRow>, RuntimeError> {
@@ -643,6 +672,7 @@ impl RuntimeRepository {
         .await?)
     }
 
+    /// Fonction horoscope_scan_profiles.
     pub async fn horoscope_scan_profiles(
         &self,
     ) -> Result<Vec<HoroscopeScanProfileRow>, RuntimeError> {
@@ -662,6 +692,7 @@ impl RuntimeRepository {
         .await?)
     }
 
+    /// Fonction horoscope_orb_weight_bands.
     pub async fn horoscope_orb_weight_bands(
         &self,
     ) -> Result<Vec<HoroscopeOrbWeightBandRow>, RuntimeError> {
@@ -679,6 +710,7 @@ impl RuntimeRepository {
         .await?)
     }
 
+    /// Fonction house_system_id_by_code.
     pub async fn house_system_id_by_code(&self, code: &str) -> Result<i32, RuntimeError> {
         let id = sqlx::query_scalar::<_, i32>(
             r#"
@@ -695,6 +727,7 @@ impl RuntimeRepository {
         })
     }
 
+    /// Fonction zodiacal_reference_system_id_by_key.
     pub async fn zodiacal_reference_system_id_by_key(
         &self,
         key: &str,
@@ -714,6 +747,7 @@ impl RuntimeRepository {
         })
     }
 
+    /// Fonction zodiacal_reference_systems.
     pub async fn zodiacal_reference_systems(
         &self,
     ) -> Result<Vec<crate::infra::db::models::ZodiacalReferenceSystemRow>, RuntimeError> {
@@ -736,6 +770,7 @@ impl RuntimeRepository {
         )
     }
 
+    /// Fonction coordinate_reference_system_id_by_key.
     pub async fn coordinate_reference_system_id_by_key(
         &self,
         key: &str,
@@ -757,6 +792,7 @@ impl RuntimeRepository {
         })
     }
 
+    /// Fonction coordinate_reference_systems.
     pub async fn coordinate_reference_systems(
         &self,
     ) -> Result<Vec<crate::infra::db::models::CoordinateReferenceSystemRow>, RuntimeError> {
@@ -778,6 +814,7 @@ impl RuntimeRepository {
         )
     }
 
+    /// Fonction zodiacal_reference_system_display_name.
     pub async fn zodiacal_reference_system_display_name(
         &self,
         id: i32,
@@ -795,6 +832,7 @@ impl RuntimeRepository {
         name.ok_or_else(|| RuntimeError::InvalidRuntimeTable(format!("zodiac system {id} missing")))
     }
 
+    /// Fonction coordinate_reference_system_display_name.
     pub async fn coordinate_reference_system_display_name(
         &self,
         id: i32,
@@ -814,6 +852,7 @@ impl RuntimeRepository {
         })
     }
 
+    /// Fonction default_reference_version_id.
     pub async fn default_reference_version_id(&self) -> Result<i32, RuntimeError> {
         let id = sqlx::query_scalar::<_, i32>(
             r#"
@@ -831,6 +870,7 @@ impl RuntimeRepository {
         })
     }
 
+    /// Fonction llm_projection_profile.
     pub async fn llm_projection_profile(
         &self,
         contract_version: &str,
@@ -872,6 +912,7 @@ impl RuntimeRepository {
         })
     }
 
+    /// Fonction language_id_for_code.
     pub async fn language_id_for_code(&self, code: &str) -> Result<i32, RuntimeError> {
         Ok(sqlx::query_scalar::<_, i32>(
             r#"
@@ -885,6 +926,7 @@ impl RuntimeRepository {
         .await?)
     }
 
+    /// Fonction existing_basic_payload.
     pub async fn existing_basic_payload(
         &self,
         chart_calculation_id: i32,
@@ -911,6 +953,7 @@ impl RuntimeRepository {
             .map(Option::flatten)
     }
 
+    /// Fonction positions_for_payload.
     pub async fn positions_for_payload(
         &self,
         chart_calculation_id: i32,
@@ -1022,6 +1065,7 @@ impl RuntimeRepository {
         .collect())
     }
 
+    /// Fonction natal_input_for_calculation.
     pub async fn natal_input_for_calculation(
         &self,
         chart_calculation_id: i32,
@@ -1046,6 +1090,7 @@ impl RuntimeRepository {
         Ok(serde_json::from_value(value)?)
     }
 
+    /// Fonction aspects_for_payload.
     pub async fn aspects_for_payload(
         &self,
         chart_calculation_id: i32,
@@ -1154,6 +1199,7 @@ impl RuntimeRepository {
         .collect())
     }
 
+    /// Fonction aspects_for_payload_in_tx.
     pub async fn aspects_for_payload_in_tx(
         tx: &mut Transaction<'_, Postgres>,
         chart_calculation_id: i32,
@@ -1262,6 +1308,7 @@ impl RuntimeRepository {
         .collect())
     }
 
+    /// Fonction lock_idempotency.
     pub async fn lock_idempotency(
         tx: &mut Transaction<'_, Postgres>,
         lock_key: i64,
@@ -1273,6 +1320,7 @@ impl RuntimeRepository {
         Ok(())
     }
 
+    /// Fonction calculations_for_key.
     pub async fn calculations_for_key(
         tx: &mut Transaction<'_, Postgres>,
         idempotency_key: &str,
@@ -1291,6 +1339,7 @@ impl RuntimeRepository {
         .await?)
     }
 
+    /// Fonction mark_stale_failed.
     pub async fn mark_stale_failed(
         tx: &mut Transaction<'_, Postgres>,
         chart_calculation_id: i32,
@@ -1311,6 +1360,7 @@ impl RuntimeRepository {
         Ok(())
     }
 
+    /// Fonction insert_running_calculation.
     pub async fn insert_running_calculation(
         tx: &mut Transaction<'_, Postgres>,
         input: &NatalChartInput,
@@ -1355,6 +1405,7 @@ impl RuntimeRepository {
         Ok(id)
     }
 
+    /// Fonction heartbeat.
     pub async fn heartbeat(
         tx: &mut Transaction<'_, Postgres>,
         chart_calculation_id: i32,
@@ -1374,6 +1425,7 @@ impl RuntimeRepository {
         Ok(())
     }
 
+    /// Fonction persist_facts.
     pub async fn persist_facts(
         tx: &mut Transaction<'_, Postgres>,
         chart_calculation_id: i32,
@@ -1391,6 +1443,7 @@ impl RuntimeRepository {
         Ok(())
     }
 
+    /// Fonction persist_signals.
     pub async fn persist_signals(
         tx: &mut Transaction<'_, Postgres>,
         chart_calculation_id: i32,
@@ -1461,6 +1514,7 @@ impl RuntimeRepository {
         .await?)
     }
 
+    /// Fonction persist_basic_payload.
     pub async fn persist_basic_payload(
         tx: &mut Transaction<'_, Postgres>,
         input: &NatalChartInput,
@@ -1492,6 +1546,7 @@ impl RuntimeRepository {
         Ok(())
     }
 
+    /// Fonction mark_completed.
     pub async fn mark_completed(
         tx: &mut Transaction<'_, Postgres>,
         chart_calculation_id: i32,
@@ -1512,6 +1567,7 @@ impl RuntimeRepository {
         Ok(())
     }
 
+    /// Fonction mark_failed.
     pub async fn mark_failed(
         tx: &mut Transaction<'_, Postgres>,
         chart_calculation_id: i32,
@@ -1538,6 +1594,7 @@ impl RuntimeRepository {
     }
 }
 
+/// Fonction parse_existing_basic_payload_value.
 pub fn parse_existing_basic_payload_value(
     value: Value,
 ) -> Result<Option<BasicPayload>, RuntimeError> {
@@ -1548,10 +1605,12 @@ pub fn parse_existing_basic_payload_value(
     }
 }
 
+/// Fonction is_stale_basic_payload_shape.
 fn is_stale_basic_payload_shape(error: &serde_json::Error) -> bool {
     error.is_data() && error.to_string().contains("missing field")
 }
 
+/// Fonction insert_house_cusp.
 async fn insert_house_cusp(
     tx: &mut Transaction<'_, Postgres>,
     chart_calculation_id: i32,
@@ -1579,6 +1638,7 @@ async fn insert_house_cusp(
     Ok(())
 }
 
+/// Fonction insert_position.
 async fn insert_position(
     tx: &mut Transaction<'_, Postgres>,
     chart_calculation_id: i32,
@@ -1630,6 +1690,7 @@ async fn insert_position(
     Ok(())
 }
 
+/// Fonction insert_aspect.
 async fn insert_aspect(
     tx: &mut Transaction<'_, Postgres>,
     chart_calculation_id: i32,
@@ -1671,6 +1732,7 @@ async fn insert_aspect(
     Ok(())
 }
 
+/// Fonction next_id.
 async fn next_id(
     tx: &mut Transaction<'_, Postgres>,
     table_name: &str,
@@ -1684,6 +1746,7 @@ async fn next_id(
         .await?)
 }
 
+/// Fonction ensure_runtime_table_name.
 fn ensure_runtime_table_name(table_name: &str) -> Result<(), RuntimeError> {
     match table_name {
         "astral_chart_calculations"
@@ -1697,6 +1760,7 @@ fn ensure_runtime_table_name(table_name: &str) -> Result<(), RuntimeError> {
 }
 
 impl From<PersistedObjectPositionFact> for ObjectPositionFact {
+    /// Fonction from.
     fn from(row: PersistedObjectPositionFact) -> Self {
         Self {
             chart_object_id: row.chart_object_id,
@@ -1723,6 +1787,7 @@ impl From<PersistedObjectPositionFact> for ObjectPositionFact {
 }
 
 impl From<HouseAxisReferenceRow> for crate::domain::HouseAxisReference {
+    /// Fonction from.
     fn from(row: HouseAxisReferenceRow) -> Self {
         Self {
             axis_code: row.axis_code,
@@ -1737,6 +1802,7 @@ impl From<HouseAxisReferenceRow> for crate::domain::HouseAxisReference {
 }
 
 impl From<LunarPhaseReferenceRow> for crate::domain::LunarPhaseReference {
+    /// Fonction from.
     fn from(row: LunarPhaseReferenceRow) -> Self {
         Self {
             phase_code: row.phase_code,
@@ -1754,6 +1820,7 @@ impl From<LunarPhaseReferenceRow> for crate::domain::LunarPhaseReference {
 impl From<AccidentalDignityConditionReferenceRow>
     for crate::domain::AccidentalDignityConditionReference
 {
+    /// Fonction from.
     fn from(row: AccidentalDignityConditionReferenceRow) -> Self {
         Self {
             condition_code: row.condition_code,
@@ -1768,6 +1835,7 @@ impl From<AccidentalDignityConditionReferenceRow>
 }
 
 impl From<ObjectSectAffinityReferenceRow> for crate::domain::ObjectSectAffinityReference {
+    /// Fonction from.
     fn from(row: ObjectSectAffinityReferenceRow) -> Self {
         Self {
             object_code: row.object_code,
@@ -1779,6 +1847,7 @@ impl From<ObjectSectAffinityReferenceRow> for crate::domain::ObjectSectAffinityR
 }
 
 impl From<LlmProjectionProfileRow> for crate::engine::projection::LlmProjectionProfile {
+    /// Fonction from.
     fn from(row: LlmProjectionProfileRow) -> Self {
         let level_code = row.level_code.clone();
         Self {
@@ -1807,6 +1876,7 @@ impl From<LlmProjectionProfileRow> for crate::engine::projection::LlmProjectionP
 }
 
 impl From<BasicProductScoringProfileRow> for BasicProductScoringProfile {
+    /// Fonction from.
     fn from(row: BasicProductScoringProfileRow) -> Self {
         Self {
             product_code: row.product_code,
@@ -1835,6 +1905,7 @@ impl From<BasicProductScoringProfileRow> for BasicProductScoringProfile {
 }
 
 impl From<EssentialDignityRuleReferenceRow> for EssentialDignityRuleReference {
+    /// Fonction from.
     fn from(row: EssentialDignityRuleReferenceRow) -> Self {
         Self {
             object_code: row.object_code,
@@ -1852,6 +1923,7 @@ impl From<EssentialDignityRuleReferenceRow> for EssentialDignityRuleReference {
 }
 
 impl From<AccidentalConditionTriggerRow> for AccidentalConditionTrigger {
+    /// Fonction from.
     fn from(row: AccidentalConditionTriggerRow) -> Self {
         Self {
             trigger_family: row.trigger_family,
@@ -1863,6 +1935,7 @@ impl From<AccidentalConditionTriggerRow> for AccidentalConditionTrigger {
 }
 
 impl From<AccidentalScoringParamsRow> for AccidentalScoringParams {
+    /// Fonction from.
     fn from(row: AccidentalScoringParamsRow) -> Self {
         Self {
             code: row.code,
@@ -1875,6 +1948,7 @@ impl From<AccidentalScoringParamsRow> for AccidentalScoringParams {
 }
 
 impl From<AccidentalPolarityBandRow> for AccidentalPolarityBand {
+    /// Fonction from.
     fn from(row: AccidentalPolarityBandRow) -> Self {
         Self {
             polarity_code: row.polarity_code,
@@ -1887,6 +1961,7 @@ impl From<AccidentalPolarityBandRow> for AccidentalPolarityBand {
 }
 
 impl From<PersistedAspectFact> for AspectFact {
+    /// Fonction from.
     fn from(row: PersistedAspectFact) -> Self {
         Self {
             source_chart_object_id: row.source_chart_object_id,

@@ -1,4 +1,7 @@
+//! Module astral_calculator\src\domain\natal_input.rs du moteur astral_calculator.
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure NatalChartInput.
 pub struct NatalChartInput {
     pub subject_label: Option<String>,
     pub birth_datetime_utc: DateTime<Utc>,
@@ -16,12 +19,14 @@ pub struct NatalChartInput {
 }
 
 impl NatalChartInput {
+    /// Fonction product_code.
     pub fn product_code(&self) -> &str {
         self.product_code.as_deref().unwrap_or("basic")
     }
 }
 
 #[derive(Debug, Clone)]
+/// Structure RuntimeOptions.
 pub struct RuntimeOptions {
     pub engine_version: String,
     pub ephemeris_version: String,
@@ -29,6 +34,7 @@ pub struct RuntimeOptions {
 }
 
 impl Default for RuntimeOptions {
+    /// Fonction default.
     fn default() -> Self {
         Self {
             engine_version: env!("CARGO_PKG_VERSION").to_string(),

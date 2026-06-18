@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\validate\angles.rs du moteur astral_calculator.
+
 use std::collections::HashSet;
 
 use crate::domain::{BasicPayload, BasicSignal};

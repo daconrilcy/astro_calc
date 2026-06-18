@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\engine\projection\dynamics.rs du moteur astral_calculator.
+
 use super::clean_text::{
     clean_semantic_tags, humanize_dynamic_quality, humanize_phase, humanize_valence,
     limit_keywords, title_case_sign,
@@ -5,6 +7,7 @@ use super::clean_text::{
 use super::types::{LlmDynamics, LlmLunarPhase, LlmMajorAspect, LlmProjectionProfile};
 use crate::domain::{BasicPayload, BasicSignal};
 
+/// Fonction build_dynamics.
 pub fn build_dynamics(payload: &BasicPayload, profile: &LlmProjectionProfile) -> LlmDynamics {
     let lunar_phase = payload.lunar_phase_context.as_ref().map(|phase| {
         let keywords = clean_semantic_tags(&phase.semantic_tags, profile.max_keywords_per_item);
@@ -39,6 +42,7 @@ pub fn build_dynamics(payload: &BasicPayload, profile: &LlmProjectionProfile) ->
     }
 }
 
+/// Fonction is_active_major_aspect_signal.
 pub fn is_active_major_aspect_signal(signal: &BasicSignal) -> bool {
     if !signal.signal_key.starts_with("aspect:") {
         return false;
@@ -65,6 +69,7 @@ pub fn is_active_major_aspect_signal(signal: &BasicSignal) -> bool {
     family == Some("major")
 }
 
+/// Fonction aspect_signal_to_llm.
 fn aspect_signal_to_llm(
     signal: &BasicSignal,
     payload: &BasicPayload,

@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\runtime\mod.rs du moteur astral_calculator.
+
 pub use crate::engine::application::EngineFacadeService as ChartCalculationRuntimeService;
 pub use crate::engine::{AstroEngineRequest, AstroEngineResponse};
 pub use crate::features::natal::payload::validate::{
@@ -28,6 +30,7 @@ use crate::infra::db::{
     reference_repository::ReferenceRepository,
 };
 
+/// Fonction build_runtime_service.
 pub fn build_runtime_service<E>(
     pool: PgPool,
     ephemeris: E,

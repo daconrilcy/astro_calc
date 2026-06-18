@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\application\natal_calculation_service.rs du moteur astral_calculator.
+
 use std::collections::HashSet;
 use std::sync::Arc;
 
@@ -25,6 +27,7 @@ use crate::shared::error::RuntimeError;
 use crate::shared::idempotency::{advisory_lock_key, idempotency_key, input_hash};
 use chrono::Utc;
 
+/// Structure NatalCalculationService.
 pub struct NatalCalculationService<E> {
     calculations: CalculationRepository,
     catalogs: CatalogRepository,
@@ -37,6 +40,7 @@ impl<E> NatalCalculationService<E>
 where
     E: EphemerisEngine,
 {
+    /// Fonction new.
     pub fn new(
         calculations: CalculationRepository,
         catalogs: CatalogRepository,
@@ -53,10 +57,12 @@ where
         }
     }
 
+    /// Fonction options.
     pub fn options(&self) -> &RuntimeOptions {
         &self.options
     }
 
+    /// Fonction calculate_basic.
     pub async fn calculate_basic(
         &self,
         input: NatalChartInput,
@@ -294,6 +300,7 @@ where
     }
 }
 
+/// Fonction has_reusable_persisted_positions.
 fn has_reusable_persisted_positions(
     positions: &[crate::domain::ObjectPositionFact],
     references: &CalculationReferenceData,
@@ -316,6 +323,7 @@ fn has_reusable_persisted_positions(
         })
 }
 
+/// Fonction has_reusable_horizon_context.
 fn has_reusable_horizon_context(position: &crate::domain::ObjectPositionFact) -> bool {
     position
         .horizon_position_id
@@ -323,6 +331,7 @@ fn has_reusable_horizon_context(position: &crate::domain::ObjectPositionFact) ->
         && position.is_visible.is_some()
 }
 
+/// Fonction is_angle_position.
 fn is_angle_position(position: &crate::domain::ObjectPositionFact) -> bool {
     position
         .facts_json
@@ -338,6 +347,7 @@ fn is_angle_position(position: &crate::domain::ObjectPositionFact) -> bool {
             .is_some()
 }
 
+/// Fonction is_stale.
 fn is_stale(row: &ChartCalculationRow, default_stale_after_seconds: i32) -> bool {
     let Some(heartbeat_at) = row.heartbeat_at else {
         return true;

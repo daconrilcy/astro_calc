@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\build\chart_context.rs du moteur astral_calculator.
+
 use serde_json::Value;
 
 use crate::domain::{BasicChartContext, NatalChartInput, ObjectPositionFact};

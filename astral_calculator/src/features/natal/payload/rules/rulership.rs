@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\rules\rulership.rs du moteur astral_calculator.
+
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use crate::domain::{
@@ -200,6 +202,7 @@ pub(crate) fn is_mobile_position(position: &ObjectPositionFact) -> bool {
     !role_is_angle && !has_angle_context
 }
 
+/// Fonction rules_by_sign.
 fn rules_by_sign(rulers: &[DomicileRulerReference]) -> HashMap<&str, Vec<&DomicileRulerReference>> {
     let mut map: HashMap<&str, Vec<&DomicileRulerReference>> = HashMap::new();
     for ruler in rulers {
@@ -208,6 +211,7 @@ fn rules_by_sign(rulers: &[DomicileRulerReference]) -> HashMap<&str, Vec<&Domici
     map
 }
 
+/// Fonction angle_ruler.
 fn angle_ruler(
     angle_code: &str,
     interpretive_role: &str,
@@ -238,6 +242,7 @@ fn angle_ruler(
     )
 }
 
+/// Fonction ruler_context_for_sign.
 fn ruler_context_for_sign(
     source_kind: &str,
     source_code: &str,
@@ -278,6 +283,7 @@ fn ruler_context_for_sign(
     })
 }
 
+/// Fonction dispositor_links.
 fn dispositor_links(
     positions: &[ObjectPositionFact],
     rules_by_sign: &HashMap<&str, Vec<&DomicileRulerReference>>,
@@ -312,6 +318,7 @@ fn dispositor_links(
         .collect()
 }
 
+/// Fonction rulership_chains.
 fn rulership_chains(
     positions: &[ObjectPositionFact],
     rules_by_sign: &HashMap<&str, Vec<&DomicileRulerReference>>,
@@ -371,6 +378,7 @@ fn rulership_chains(
         .collect()
 }
 
+/// Fonction final_dispositors.
 fn final_dispositors(chains: &[BasicRulershipChain]) -> Vec<BasicFinalDispositor> {
     let mut grouped: HashMap<String, Vec<String>> = HashMap::new();
     for chain in chains {
@@ -399,6 +407,7 @@ fn final_dispositors(chains: &[BasicRulershipChain]) -> Vec<BasicFinalDispositor
     values
 }
 
+/// Fonction mutual_receptions.
 fn mutual_receptions(chains: &[BasicRulershipChain]) -> Vec<BasicMutualReception> {
     let mut grouped: HashMap<String, BasicMutualReception> = HashMap::new();
     for chain in chains
@@ -425,6 +434,7 @@ fn mutual_receptions(chains: &[BasicRulershipChain]) -> Vec<BasicMutualReception
     values
 }
 
+/// Fonction dominant_house_sign.
 fn dominant_house_sign(positions: &[ObjectPositionFact], house_number: i32) -> Option<&str> {
     positions
         .iter()
@@ -433,6 +443,7 @@ fn dominant_house_sign(positions: &[ObjectPositionFact], house_number: i32) -> O
         .map(|position| position.sign_code.as_str())
 }
 
+/// Fonction ruler_position_signal_key.
 fn ruler_position_signal_key(
     object_code: &str,
     signal_keys: &HashSet<&str>,
@@ -446,6 +457,7 @@ fn ruler_position_signal_key(
     }
 }
 
+/// Fonction dispositor_signal_key.
 fn dispositor_signal_key(
     rule: &DomicileRulerReference,
     signal_keys: &HashSet<&str>,
@@ -463,6 +475,7 @@ fn dispositor_signal_key(
     }
 }
 
+/// Fonction ruler_source.
 fn ruler_source(rule: &DomicileRulerReference) -> BasicRulerSource {
     BasicRulerSource {
         object_code: rule.object_code.clone(),
@@ -475,6 +488,7 @@ fn ruler_source(rule: &DomicileRulerReference) -> BasicRulerSource {
     }
 }
 
+/// Fonction unique_ruler_object_codes.
 fn unique_ruler_object_codes(rules: &[&DomicileRulerReference]) -> Vec<String> {
     let mut object_codes = Vec::new();
     for rule in rules {
@@ -485,6 +499,7 @@ fn unique_ruler_object_codes(rules: &[&DomicileRulerReference]) -> Vec<String> {
     object_codes
 }
 
+/// Fonction strength_context.
 fn strength_context(position: Option<&ObjectPositionFact>) -> Vec<String> {
     let Some(position) = position else {
         return Vec::new();
@@ -508,6 +523,7 @@ fn strength_context(position: Option<&ObjectPositionFact>) -> Vec<String> {
     context
 }
 
+/// Fonction interpretive_hint.
 fn interpretive_hint(
     source_kind: &str,
     source_code: &str,
@@ -529,6 +545,7 @@ fn interpretive_hint(
     }
 }
 
+/// Fonction has_current_ruler_context.
 fn has_current_ruler_context(context: &BasicRulerContext) -> bool {
     !context.context_key.trim().is_empty()
         && !context.source_kind.trim().is_empty()
@@ -556,6 +573,7 @@ fn has_current_ruler_context(context: &BasicRulerContext) -> bool {
         })
 }
 
+/// Fonction ruler_context_matches_references.
 fn ruler_context_matches_references(
     context: &BasicRulerContext,
     domicile_rulers: &[DomicileRulerReference],
@@ -564,6 +582,7 @@ fn ruler_context_matches_references(
         == reference_signatures(context.sign_code.as_str(), domicile_rulers)
 }
 
+/// Fonction dispositor_link_matches_references.
 fn dispositor_link_matches_references(
     link: &BasicDispositorLink,
     domicile_rulers: &[DomicileRulerReference],
@@ -572,6 +591,7 @@ fn dispositor_link_matches_references(
         == reference_signatures(link.object_sign_code.as_str(), domicile_rulers)
 }
 
+/// Fonction source_signatures.
 fn source_signatures(sources: &[BasicRulerSource]) -> Vec<RulerSourceSignature> {
     let mut signatures = sources
         .iter()
@@ -589,6 +609,7 @@ fn source_signatures(sources: &[BasicRulerSource]) -> Vec<RulerSourceSignature> 
     signatures
 }
 
+/// Fonction reference_signatures.
 fn reference_signatures(
     sign_code: &str,
     domicile_rulers: &[DomicileRulerReference],
@@ -611,6 +632,7 @@ fn reference_signatures(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+/// Structure RulerSourceSignature.
 struct RulerSourceSignature {
     reference_version_id: Option<i32>,
     astral_system_id: i32,
@@ -621,6 +643,7 @@ struct RulerSourceSignature {
     is_primary: bool,
 }
 
+/// Fonction final_dispositors_match_chains.
 fn final_dispositors_match_chains(context: &BasicRulershipContext) -> bool {
     let mut expected: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for chain in context
@@ -649,6 +672,7 @@ fn final_dispositors_match_chains(context: &BasicRulershipContext) -> bool {
     actual == expected
 }
 
+/// Fonction mutual_receptions_match_chains.
 fn mutual_receptions_match_chains(context: &BasicRulershipContext) -> bool {
     let mut expected: BTreeMap<Vec<String>, Vec<String>> = BTreeMap::new();
     for chain in context
@@ -680,6 +704,7 @@ fn mutual_receptions_match_chains(context: &BasicRulershipContext) -> bool {
     actual == expected
 }
 
+/// Fonction mutual_reception_pair.
 fn mutual_reception_pair(chain: &BasicRulershipChain) -> Option<Vec<String>> {
     let len = chain.chain.len();
     if len < 3 || chain.chain[len - 1] != chain.chain[len - 3] {
@@ -691,6 +716,7 @@ fn mutual_reception_pair(chain: &BasicRulershipChain) -> Option<Vec<String>> {
     (pair.len() == 2).then_some(pair)
 }
 
+/// Fonction normalize_map_values.
 fn normalize_map_values<K: Ord>(map: &mut BTreeMap<K, Vec<String>>) {
     for values in map.values_mut() {
         values.sort();

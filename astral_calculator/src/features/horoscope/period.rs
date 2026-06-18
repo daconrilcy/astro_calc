@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\horoscope\period.rs du moteur astral_calculator.
+
 use std::collections::HashSet;
 
 use crate::domain::ObjectPositionFact;
@@ -9,6 +11,7 @@ use super::{
     HoroscopeSnapshotRequest, HoroscopeTransitFact,
 };
 
+/// Fonction normalize_horoscope_period_request_utc.
 pub fn normalize_horoscope_period_request_utc(
     mut request: HoroscopePeriodCalculationRequest,
 ) -> Result<HoroscopePeriodCalculationRequest, String> {
@@ -21,12 +24,14 @@ pub fn normalize_horoscope_period_request_utc(
     Ok(request)
 }
 
+/// Fonction calculate_horoscope_period.
 pub fn calculate_horoscope_period(
     request: HoroscopePeriodCalculationRequest,
 ) -> HoroscopePeriodCalculationResponse {
     calculate_horoscope_period_from_positions(request, &[], 8.0)
 }
 
+/// Fonction calculate_horoscope_period_from_positions.
 pub fn calculate_horoscope_period_from_positions(
     request: HoroscopePeriodCalculationRequest,
     natal_positions: &[ObjectPositionFact],
@@ -40,6 +45,7 @@ pub fn calculate_horoscope_period_from_positions(
     )
 }
 
+/// Fonction calculate_horoscope_period_from_transits.
 pub fn calculate_horoscope_period_from_transits(
     request: HoroscopePeriodCalculationRequest,
     natal_positions: &[ObjectPositionFact],
@@ -94,12 +100,14 @@ pub fn calculate_horoscope_period_from_transits(
     }
 }
 
+/// Fonction calculate_horoscope_period_natal.
 pub fn calculate_horoscope_period_natal(
     request: HoroscopePeriodCalculationRequest,
 ) -> HoroscopePeriodCalculationResponse {
     calculate_horoscope_period(request)
 }
 
+/// Fonction calculate_horoscope_period_natal_from_positions.
 pub fn calculate_horoscope_period_natal_from_positions(
     request: HoroscopePeriodCalculationRequest,
     natal_positions: &[ObjectPositionFact],
@@ -112,6 +120,7 @@ pub fn calculate_horoscope_period_natal_from_positions(
     )
 }
 
+/// Fonction calculate_horoscope_period_natal_from_transits.
 pub fn calculate_horoscope_period_natal_from_transits(
     request: HoroscopePeriodCalculationRequest,
     natal_positions: &[ObjectPositionFact],
@@ -126,6 +135,7 @@ pub fn calculate_horoscope_period_natal_from_transits(
     )
 }
 
+/// Fonction normalize_period_resolution_utc_field.
 fn normalize_period_resolution_utc_field(
     period_resolution: &mut serde_json::Value,
     field: &str,
@@ -138,6 +148,7 @@ fn normalize_period_resolution_utc_field(
     Ok(())
 }
 
+/// Fonction validate_horoscope_period_request_scan_plan.
 fn validate_horoscope_period_request_scan_plan(
     request: &HoroscopePeriodCalculationRequest,
 ) -> Result<(), String> {
@@ -172,6 +183,7 @@ fn validate_horoscope_period_request_scan_plan(
     Ok(())
 }
 
+/// Fonction real_period_snapshot.
 fn real_period_snapshot(
     index: usize,
     snapshot: &HoroscopeSnapshotRequest,
@@ -305,6 +317,7 @@ fn real_period_snapshot(
     }
 }
 
+/// Fonction visible_objects.
 fn visible_objects(transit_positions: Option<&[ObjectPositionFact]>) -> Vec<String> {
     let objects = transit_positions
         .into_iter()
@@ -328,6 +341,7 @@ fn visible_objects(transit_positions: Option<&[ObjectPositionFact]>) -> Vec<Stri
     objects
 }
 
+/// Fonction nearest_major_aspect.
 fn nearest_major_aspect(left: f64, right: f64) -> Option<(&'static str, f64)> {
     let separation = shortest_angular_distance(left, right);
     let mut best = ("conjunction", separation.abs());
@@ -345,6 +359,7 @@ fn nearest_major_aspect(left: f64, right: f64) -> Option<(&'static str, f64)> {
     Some(best)
 }
 
+/// Fonction sign_for_longitude.
 fn sign_for_longitude(longitude: f64) -> &'static str {
     match (normalize_degrees(longitude) / 30.0).floor() as i32 {
         0 => "aries",
@@ -362,6 +377,7 @@ fn sign_for_longitude(longitude: f64) -> &'static str {
     }
 }
 
+/// Fonction period_theme_for.
 fn period_theme_for(object: &str, aspect: &str, natal_house: Option<i32>) -> &'static str {
     if object == "moon" {
         return match natal_house.unwrap_or(1) {
@@ -380,6 +396,7 @@ fn period_theme_for(object: &str, aspect: &str, natal_house: Option<i32>) -> &'s
     }
 }
 
+/// Fonction period_tone_for.
 fn period_tone_for(aspect: &str) -> &'static str {
     match aspect {
         "square" | "opposition" => "careful",
@@ -389,6 +406,7 @@ fn period_tone_for(aspect: &str) -> &'static str {
     }
 }
 
+/// Fonction round1.
 fn round1(value: f64) -> f64 {
     (value * 10.0).round() / 10.0
 }

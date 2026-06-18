@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\validate\placements.rs du moteur astral_calculator.
+
 use crate::domain::{BasicObjectPosition, BasicSignal};
 use crate::features::natal::payload::rules::chart_context::{
     horizon_position_for_altitude, is_angle_role, is_horizon_position,
@@ -38,6 +40,7 @@ pub(super) fn has_current_position_context(position: &BasicObjectPosition) -> bo
         && has_current_accidental_dignity_context(position, is_angle)
 }
 
+/// Fonction has_current_accidental_dignity_context.
 fn has_current_accidental_dignity_context(position: &BasicObjectPosition, is_angle: bool) -> bool {
     if is_angle {
         return position.accidental_dignity_context.is_empty();
@@ -79,6 +82,7 @@ pub(super) fn has_current_placement_context(signal: &BasicSignal) -> bool {
             .is_some_and(|value| value.is_array())
 }
 
+/// Fonction has_current_mobile_visibility_context.
 fn has_current_mobile_visibility_context(value: Option<&serde_json::Value>) -> bool {
     let Some(value) = value else {
         return false;

@@ -1,6 +1,9 @@
+//! Module astral_calculator\src\features\horoscope\contracts.rs du moteur astral_calculator.
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure HoroscopeCalculationRequest.
 pub struct HoroscopeCalculationRequest {
     pub contract_version: String,
     pub service_code: String,
@@ -18,6 +21,7 @@ pub struct HoroscopeCalculationRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure HoroscopeLocation.
 pub struct HoroscopeLocation {
     pub latitude: f64,
     pub longitude: f64,
@@ -26,12 +30,14 @@ pub struct HoroscopeLocation {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure HoroscopePeriod.
 pub struct HoroscopePeriod {
     pub date: String,
     pub timezone: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure HoroscopeCalculationSlotRequest.
 pub struct HoroscopeCalculationSlotRequest {
     pub slot_code: String,
     pub start_local_time: String,
@@ -40,6 +46,7 @@ pub struct HoroscopeCalculationSlotRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure HoroscopeCalculationResponse.
 pub struct HoroscopeCalculationResponse {
     pub contract_version: String,
     pub service_code: String,
@@ -50,6 +57,7 @@ pub struct HoroscopeCalculationResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure HoroscopeCalculationSlot.
 pub struct HoroscopeCalculationSlot {
     pub slot_code: String,
     pub reference_local_time: String,
@@ -71,6 +79,7 @@ pub struct HoroscopeCalculationSlot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure HoroscopeTransitFact.
 pub struct HoroscopeTransitFact {
     pub evidence_key: String,
     pub fact_type: String,
@@ -83,6 +92,7 @@ pub struct HoroscopeTransitFact {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure HoroscopePeriodCalculationRequest.
 pub struct HoroscopePeriodCalculationRequest {
     pub contract_version: String,
     pub service_code: String,
@@ -92,6 +102,7 @@ pub struct HoroscopePeriodCalculationRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure HoroscopeScanPlan.
 pub struct HoroscopeScanPlan {
     pub scan_profile_code: String,
     pub granularity: String,
@@ -100,6 +111,7 @@ pub struct HoroscopeScanPlan {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure HoroscopeSnapshotRequest.
 pub struct HoroscopeSnapshotRequest {
     pub snapshot_key: String,
     pub date: String,
@@ -109,6 +121,7 @@ pub struct HoroscopeSnapshotRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure HoroscopePeriodCalculationResponse.
 pub struct HoroscopePeriodCalculationResponse {
     pub contract_version: String,
     pub service_code: String,
@@ -120,6 +133,7 @@ pub struct HoroscopePeriodCalculationResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure HoroscopePeriodSnapshot.
 pub struct HoroscopePeriodSnapshot {
     pub snapshot_key: String,
     pub date: String,

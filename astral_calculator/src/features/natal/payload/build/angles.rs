@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\build\angles.rs du moteur astral_calculator.
+
 use crate::domain::{BasicAngleFact, ObjectPositionFact};
 use std::collections::HashSet;
 

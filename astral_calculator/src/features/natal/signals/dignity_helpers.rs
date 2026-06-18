@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\signals\dignity_helpers.rs du moteur astral_calculator.
+
 use serde_json::json;
 
 use crate::domain::ObjectPositionFact;

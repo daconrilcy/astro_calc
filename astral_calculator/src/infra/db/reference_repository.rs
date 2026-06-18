@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\infra\db\reference_repository.rs du moteur astral_calculator.
+
 use sqlx::PgPool;
 
 use super::models::{
@@ -15,25 +17,30 @@ use crate::domain::{
 use crate::shared::error::RuntimeError;
 
 #[derive(Clone)]
+/// Structure ReferenceRepository.
 pub struct ReferenceRepository {
     inner: RuntimeRepository,
 }
 
 impl ReferenceRepository {
+    /// Fonction new.
     pub fn new(pool: PgPool) -> Self {
         Self {
             inner: RuntimeRepository::new(pool),
         }
     }
 
+    /// Fonction pool.
     pub fn pool(&self) -> &PgPool {
         self.inner.pool()
     }
 
+    /// Fonction default_reference_version_id.
     pub async fn default_reference_version_id(&self) -> Result<i32, RuntimeError> {
         self.inner.default_reference_version_id().await
     }
 
+    /// Fonction zodiacal_reference_system_id_by_key.
     pub async fn zodiacal_reference_system_id_by_key(
         &self,
         key: &str,
@@ -41,6 +48,7 @@ impl ReferenceRepository {
         self.inner.zodiacal_reference_system_id_by_key(key).await
     }
 
+    /// Fonction coordinate_reference_system_id_by_key.
     pub async fn coordinate_reference_system_id_by_key(
         &self,
         key: &str,
@@ -48,10 +56,12 @@ impl ReferenceRepository {
         self.inner.coordinate_reference_system_id_by_key(key).await
     }
 
+    /// Fonction house_system_id_by_code.
     pub async fn house_system_id_by_code(&self, code: &str) -> Result<i32, RuntimeError> {
         self.inner.house_system_id_by_code(code).await
     }
 
+    /// Fonction zodiacal_reference_system_display_name.
     pub async fn zodiacal_reference_system_display_name(
         &self,
         id: i32,
@@ -59,6 +69,7 @@ impl ReferenceRepository {
         self.inner.zodiacal_reference_system_display_name(id).await
     }
 
+    /// Fonction coordinate_reference_system_display_name.
     pub async fn coordinate_reference_system_display_name(
         &self,
         id: i32,
@@ -68,11 +79,13 @@ impl ReferenceRepository {
             .await
     }
 
+    /// Fonction house_system.
     pub async fn house_system(&self, id: i32) -> Result<HouseSystem, RuntimeError> {
         let row = self.inner.house_system(id).await?;
         Ok(map_house_system(row))
     }
 
+    /// Fonction active_chart_objects.
     pub async fn active_chart_objects(
         &self,
         reference_version_id: i32,
@@ -86,6 +99,7 @@ impl ReferenceRepository {
             .collect())
     }
 
+    /// Fonction aspect_definitions.
     pub async fn aspect_definitions(&self) -> Result<Vec<AspectDefinition>, RuntimeError> {
         Ok(self
             .inner
@@ -96,12 +110,14 @@ impl ReferenceRepository {
             .collect())
     }
 
+    /// Fonction major_aspect_family_reference.
     pub async fn major_aspect_family_reference(
         &self,
     ) -> Result<MajorAspectFamilyReference, RuntimeError> {
         self.inner.major_aspect_family_reference().await
     }
 
+    /// Fonction sign_references.
     pub async fn sign_references(&self) -> Result<Vec<SignReference>, RuntimeError> {
         Ok(self
             .inner
@@ -112,6 +128,7 @@ impl ReferenceRepository {
             .collect())
     }
 
+    /// Fonction house_references.
     pub async fn house_references(&self) -> Result<Vec<HouseReference>, RuntimeError> {
         Ok(self
             .inner
@@ -122,6 +139,7 @@ impl ReferenceRepository {
             .collect())
     }
 
+    /// Fonction motion_state_references.
     pub async fn motion_state_references(&self) -> Result<Vec<MotionStateReference>, RuntimeError> {
         Ok(self
             .inner
@@ -132,6 +150,7 @@ impl ReferenceRepository {
             .collect())
     }
 
+    /// Fonction horizon_position_references.
     pub async fn horizon_position_references(
         &self,
     ) -> Result<Vec<HorizonPositionReference>, RuntimeError> {
@@ -144,6 +163,7 @@ impl ReferenceRepository {
             .collect())
     }
 
+    /// Fonction angle_point_references.
     pub async fn angle_point_references(&self) -> Result<Vec<AnglePointReference>, RuntimeError> {
         Ok(self
             .inner
@@ -154,18 +174,21 @@ impl ReferenceRepository {
             .collect())
     }
 
+    /// Fonction zodiacal_reference_systems.
     pub async fn zodiacal_reference_systems(
         &self,
     ) -> Result<Vec<super::models::ZodiacalReferenceSystemRow>, RuntimeError> {
         self.inner.zodiacal_reference_systems().await
     }
 
+    /// Fonction coordinate_reference_systems.
     pub async fn coordinate_reference_systems(
         &self,
     ) -> Result<Vec<super::models::CoordinateReferenceSystemRow>, RuntimeError> {
         self.inner.coordinate_reference_systems().await
     }
 
+    /// Fonction house_systems.
     pub async fn house_systems(&self) -> Result<Vec<HouseSystem>, RuntimeError> {
         Ok(self
             .inner
@@ -176,6 +199,7 @@ impl ReferenceRepository {
             .collect())
     }
 
+    /// Fonction domicile_ruler_references.
     pub async fn domicile_ruler_references(
         &self,
         reference_version_id: i32,
@@ -189,35 +213,41 @@ impl ReferenceRepository {
             .collect())
     }
 
+    /// Fonction house_axis_references.
     pub async fn house_axis_references(
         &self,
     ) -> Result<Vec<crate::domain::HouseAxisReference>, RuntimeError> {
         self.inner.house_axis_references().await
     }
 
+    /// Fonction lunar_phase_references.
     pub async fn lunar_phase_references(
         &self,
     ) -> Result<Vec<crate::domain::LunarPhaseReference>, RuntimeError> {
         self.inner.lunar_phase_references().await
     }
 
+    /// Fonction accidental_dignity_condition_references.
     pub async fn accidental_dignity_condition_references(
         &self,
     ) -> Result<Vec<crate::domain::AccidentalDignityConditionReference>, RuntimeError> {
         self.inner.accidental_dignity_condition_references().await
     }
 
+    /// Fonction object_sect_affinity_references.
     pub async fn object_sect_affinity_references(
         &self,
     ) -> Result<Vec<crate::domain::ObjectSectAffinityReference>, RuntimeError> {
         self.inner.object_sect_affinity_references().await
     }
 
+    /// Fonction language_id_for_code.
     pub async fn language_id_for_code(&self, code: &str) -> Result<i32, RuntimeError> {
         self.inner.language_id_for_code(code).await
     }
 }
 
+/// Fonction map_chart_object.
 fn map_chart_object(row: ChartObjectRow) -> ChartObject {
     ChartObject {
         id: row.id,
@@ -236,6 +266,7 @@ fn map_chart_object(row: ChartObjectRow) -> ChartObject {
     }
 }
 
+/// Fonction map_aspect_definition.
 fn map_aspect_definition(row: AspectDefinitionRow) -> AspectDefinition {
     AspectDefinition {
         id: row.id,
@@ -248,6 +279,7 @@ fn map_aspect_definition(row: AspectDefinitionRow) -> AspectDefinition {
     }
 }
 
+/// Fonction map_house_system.
 fn map_house_system(row: HouseSystemRow) -> HouseSystem {
     HouseSystem {
         id: row.id,
@@ -257,6 +289,7 @@ fn map_house_system(row: HouseSystemRow) -> HouseSystem {
     }
 }
 
+/// Fonction map_sign_reference.
 fn map_sign_reference(row: SignReferenceRow) -> SignReference {
     SignReference {
         id: row.id,
@@ -273,6 +306,7 @@ fn map_sign_reference(row: SignReferenceRow) -> SignReference {
     }
 }
 
+/// Fonction map_house_reference.
 fn map_house_reference(row: HouseReferenceRow) -> HouseReference {
     HouseReference {
         id: row.id,
@@ -287,6 +321,7 @@ fn map_house_reference(row: HouseReferenceRow) -> HouseReference {
     }
 }
 
+/// Fonction map_motion_state_reference.
 fn map_motion_state_reference(row: MotionStateReferenceRow) -> MotionStateReference {
     MotionStateReference {
         id: row.id,
@@ -296,6 +331,7 @@ fn map_motion_state_reference(row: MotionStateReferenceRow) -> MotionStateRefere
     }
 }
 
+/// Fonction map_horizon_position_reference.
 fn map_horizon_position_reference(row: HorizonPositionReferenceRow) -> HorizonPositionReference {
     HorizonPositionReference {
         id: row.id,
@@ -304,6 +340,7 @@ fn map_horizon_position_reference(row: HorizonPositionReferenceRow) -> HorizonPo
     }
 }
 
+/// Fonction map_angle_point_reference.
 fn map_angle_point_reference(row: AnglePointReferenceRow) -> AnglePointReference {
     AnglePointReference {
         id: row.id,
@@ -321,6 +358,7 @@ fn map_angle_point_reference(row: AnglePointReferenceRow) -> AnglePointReference
     }
 }
 
+/// Fonction map_domicile_ruler_reference.
 fn map_domicile_ruler_reference(row: DomicileRulerReferenceRow) -> DomicileRulerReference {
     DomicileRulerReference {
         reference_version_id: row.reference_version_id,

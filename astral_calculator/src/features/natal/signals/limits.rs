@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\signals\limits.rs du moteur astral_calculator.
+
 use std::collections::HashSet;
 
 use crate::domain::{AspectFact, InterpretationSignalDraft};
@@ -106,6 +108,7 @@ pub(super) fn preserve_strong_non_structural_aspect(
     signals[aspect_index].suppression_state = SUPPRESSION_ACTIVE.to_string();
 }
 
+/// Fonction is_strong_non_structural_aspect_signal.
 fn is_strong_non_structural_aspect_signal(
     signal: &InterpretationSignalDraft,
     angle_object_codes: &HashSet<String>,
@@ -116,6 +119,7 @@ fn is_strong_non_structural_aspect_signal(
         && aspect_strength_score(signal) >= 0.75
 }
 
+/// Fonction is_strong_tension_signal.
 fn is_strong_tension_signal(
     signal: &InterpretationSignalDraft,
     angle_object_codes: &HashSet<String>,
@@ -147,6 +151,7 @@ fn is_strong_tension_signal(
     matches!(aspect_code, Some("square" | "opposition")) && strength_score >= 0.75
 }
 
+/// Fonction aspect_strength_score.
 fn aspect_strength_score(signal: &InterpretationSignalDraft) -> f64 {
     signal
         .payload_json
@@ -157,6 +162,7 @@ fn aspect_strength_score(signal: &InterpretationSignalDraft) -> f64 {
         .unwrap_or(signal.priority_score / 80.0)
 }
 
+/// Fonction is_basic_required_signal.
 fn is_basic_required_signal(signal: &InterpretationSignalDraft) -> bool {
     if signal.signal_key.starts_with(SIGNAL_PREFIX_CLUSTER) {
         return true;
@@ -207,6 +213,7 @@ pub(super) fn fill_basic_active_limit(
     }
 }
 
+/// Fonction is_basic_fill_eligible.
 fn is_basic_fill_eligible(
     signal: &InterpretationSignalDraft,
     angle_object_codes: &HashSet<String>,
@@ -217,6 +224,7 @@ fn is_basic_fill_eligible(
         && !is_angle_to_angle_aspect_signal(signal, angle_object_codes)
 }
 
+/// Fonction is_weak_aspect_signal.
 fn is_weak_aspect_signal(signal: &InterpretationSignalDraft, aspect_min_strength: f64) -> bool {
     if !signal.signal_key.starts_with(SIGNAL_PREFIX_ASPECT) {
         return false;
@@ -248,6 +256,7 @@ pub(super) fn is_structural_axis_aspect(
             )))
 }
 
+/// Fonction is_structural_axis_signal.
 fn is_structural_axis_signal(signal: &InterpretationSignalDraft) -> bool {
     signal
         .payload_json
@@ -265,6 +274,7 @@ fn is_structural_axis_signal(signal: &InterpretationSignalDraft) -> bool {
             .unwrap_or(false)
 }
 
+/// Fonction is_angle_to_angle_aspect_signal.
 fn is_angle_to_angle_aspect_signal(
     signal: &InterpretationSignalDraft,
     angle_object_codes: &HashSet<String>,
@@ -286,6 +296,7 @@ pub(super) fn is_angle_to_angle_aspect(
         && angle_object_codes.contains(&aspect.target_object_code)
 }
 
+/// Fonction object_pair_from_signal.
 fn object_pair_from_signal(signal: &InterpretationSignalDraft) -> Option<(String, String)> {
     let evidence_pair = signal
         .payload_json

@@ -1,9 +1,17 @@
+//! Module astral_calculator\src\engine\projection\mod.rs du moteur astral_calculator.
+
 mod axis_labels;
+/// Module builder.
 mod builder;
+/// Module clean_text.
 mod clean_text;
+/// Module dynamics.
 mod dynamics;
+/// Module humanize.
 mod humanize;
+/// Module profiles.
 mod profiles;
+/// Module types.
 mod types;
 
 pub use profiles::{

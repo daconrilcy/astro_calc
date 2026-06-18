@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\horoscope\daily.rs du moteur astral_calculator.
+
 use crate::shared::time::reference_datetime_utc;
 
 use super::{
@@ -6,6 +8,7 @@ use super::{
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
 };
 
+/// Fonction calculate_horoscope_daily.
 pub fn calculate_horoscope_daily(
     request: HoroscopeCalculationRequest,
 ) -> HoroscopeCalculationResponse {
@@ -32,12 +35,14 @@ pub fn calculate_horoscope_daily(
     }
 }
 
+/// Fonction calculate_horoscope_daily_natal.
 pub fn calculate_horoscope_daily_natal(
     request: HoroscopeCalculationRequest,
 ) -> HoroscopeCalculationResponse {
     calculate_horoscope_daily(request)
 }
 
+/// Fonction fake_slot.
 fn fake_slot(
     request: &HoroscopeCalculationRequest,
     slot: &HoroscopeCalculationSlotRequest,
@@ -132,6 +137,7 @@ fn fake_slot(
     }
 }
 
+/// Fonction fake_premium_slot.
 fn fake_premium_slot(
     request: &HoroscopeCalculationRequest,
     slot: &HoroscopeCalculationSlotRequest,
@@ -250,6 +256,7 @@ fn fake_premium_slot(
     }
 }
 
+/// Fonction round1.
 fn round1(value: f64) -> f64 {
     (value * 10.0).round() / 10.0
 }

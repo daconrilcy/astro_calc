@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\validate.rs du moteur astral_calculator.
+
 use std::collections::{HashMap, HashSet};
 
 use crate::domain::{
@@ -9,6 +11,7 @@ use crate::features::natal::catalog::accidental_polarity_bands_are_valid;
 
 use crate::shared::error::RuntimeError;
 
+/// Fonction validate_calculation_references.
 pub fn validate_calculation_references(
     references: &CalculationReferenceData,
 ) -> Result<(), RuntimeError> {
@@ -124,6 +127,7 @@ pub fn validate_calculation_references(
     Ok(())
 }
 
+/// Fonction validate_aspect_definitions.
 pub fn validate_aspect_definitions(
     aspects: &[AspectDefinition],
     product_default_major_orb_deg: f64,
@@ -197,10 +201,12 @@ pub fn validate_aspect_definitions(
     Ok(())
 }
 
+/// Fonction major_aspect_angle_is_valid.
 fn major_aspect_angle_is_valid(angle: f64) -> bool {
     angle.is_finite() && (0.0..=180.0).contains(&angle)
 }
 
+/// Fonction validate_chart_object_signal_profiles.
 pub fn validate_chart_object_signal_profiles(
     chart_objects: &[ChartObject],
 ) -> Result<(), RuntimeError> {
@@ -235,6 +241,7 @@ pub fn validate_chart_object_signal_profiles(
     Ok(())
 }
 
+/// Fonction validate_house_axis_references.
 pub fn validate_house_axis_references(
     references: &[HouseAxisReference],
     houses: &[HouseReference],
@@ -286,6 +293,7 @@ pub fn validate_house_axis_references(
     Ok(())
 }
 
+/// Fonction validate_lunar_phase_references.
 pub fn validate_lunar_phase_references(
     references: &[LunarPhaseReference],
 ) -> Result<(), RuntimeError> {
@@ -329,22 +337,27 @@ pub fn validate_lunar_phase_references(
     Ok(())
 }
 
+/// Fonction degree_matches.
 fn degree_matches(left: f64, right: f64) -> bool {
     (left - right).abs() <= 0.0001
 }
 
+/// Fonction valid_cycle_family.
 fn valid_cycle_family(value: &str) -> bool {
     matches!(value, "conjunction" | "waxing" | "opposition" | "waning")
 }
 
+/// Fonction valid_degree.
 fn valid_degree(value: f64) -> bool {
     value.is_finite() && (0.0..360.0).contains(&value)
 }
 
+/// Fonction phase_width.
 fn phase_width(reference: &LunarPhaseReference) -> f64 {
     normalize_360(reference.range_end_deg - reference.range_start_deg)
 }
 
+/// Fonction contains_angle.
 fn contains_angle(range_start_deg: f64, range_end_deg: f64, angle: f64) -> bool {
     if range_start_deg <= range_end_deg {
         angle >= range_start_deg && angle < range_end_deg
@@ -353,10 +366,12 @@ fn contains_angle(range_start_deg: f64, range_end_deg: f64, angle: f64) -> bool 
     }
 }
 
+/// Fonction normalize_360.
 fn normalize_360(value: f64) -> f64 {
     value.rem_euclid(360.0)
 }
 
+/// Fonction lunar_phase_ranges_cover_cycle.
 fn lunar_phase_ranges_cover_cycle(references: &[LunarPhaseReference]) -> bool {
     let mut intervals = references
         .iter()
@@ -384,6 +399,7 @@ fn lunar_phase_ranges_cover_cycle(references: &[LunarPhaseReference]) -> bool {
             .is_some_and(|(first, last)| degree_matches(last.1, first.0 + 360.0))
 }
 
+/// Fonction validate_accidental_dignity_condition_references.
 pub fn validate_accidental_dignity_condition_references(
     references: &[AccidentalDignityConditionReference],
     triggers: &[AccidentalConditionTrigger],
@@ -432,6 +448,7 @@ pub fn validate_accidental_dignity_condition_references(
     Ok(())
 }
 
+/// Fonction validate_accidental_condition_triggers.
 pub fn validate_accidental_condition_triggers(
     triggers: &[AccidentalConditionTrigger],
 ) -> Result<(), RuntimeError> {
@@ -459,6 +476,7 @@ pub fn validate_accidental_condition_triggers(
     Ok(())
 }
 
+/// Fonction validate_accidental_scoring_params.
 pub fn validate_accidental_scoring_params(
     params: &AccidentalScoringParams,
 ) -> Result<(), RuntimeError> {
@@ -474,6 +492,7 @@ pub fn validate_accidental_scoring_params(
     Ok(())
 }
 
+/// Fonction validate_accidental_polarity_bands.
 pub fn validate_accidental_polarity_bands(
     bands: &[AccidentalPolarityBand],
 ) -> Result<(), RuntimeError> {
@@ -486,6 +505,7 @@ pub fn validate_accidental_polarity_bands(
     Ok(())
 }
 
+/// Fonction validate_object_sect_affinity_references.
 pub fn validate_object_sect_affinity_references(
     references: &[ObjectSectAffinityReference],
 ) -> Result<(), RuntimeError> {

@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\infra\db\simplified_catalog_repository.rs du moteur astral_calculator.
+
 use sqlx::PgPool;
 
 use crate::features::simplified::catalog::{
@@ -6,6 +8,7 @@ use crate::features::simplified::catalog::{
 };
 use crate::shared::error::RuntimeError;
 
+/// Fonction map_catalog_db_error.
 fn map_catalog_db_error(err: sqlx::Error) -> RuntimeError {
     let msg = err.to_string();
     if msg.contains("does not exist") {
@@ -17,6 +20,7 @@ fn map_catalog_db_error(err: sqlx::Error) -> RuntimeError {
     }
 }
 
+/// Fonction load_simplified_catalog.
 pub async fn load_simplified_catalog(pool: &PgPool) -> Result<SimplifiedCatalog, RuntimeError> {
     let policy = sqlx::query_as::<_, SimplifiedPolicy>(
         r#"
@@ -94,6 +98,7 @@ pub async fn load_simplified_catalog(pool: &PgPool) -> Result<SimplifiedCatalog,
     })
 }
 
+/// Fonction load_profile_feature_exclusions.
 pub async fn load_profile_feature_exclusions(
     pool: &PgPool,
 ) -> Result<Vec<crate::features::simplified::catalog::ProfileFeatureExclusion>, RuntimeError> {

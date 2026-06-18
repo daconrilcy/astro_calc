@@ -1,4 +1,7 @@
+//! Module astral_calculator\src\domain\chart_facts.rs du moteur astral_calculator.
+
 #[derive(Debug, Clone)]
+/// Structure ObjectPositionFact.
 pub struct ObjectPositionFact {
     pub chart_object_id: i32,
     pub object_code: String,
@@ -22,6 +25,7 @@ pub struct ObjectPositionFact {
 }
 
 #[derive(Debug, Clone)]
+/// Structure HouseCuspFact.
 pub struct HouseCuspFact {
     pub house_id: i32,
     pub house_number: i32,
@@ -30,6 +34,7 @@ pub struct HouseCuspFact {
 }
 
 #[derive(Debug, Clone)]
+/// Structure AspectFact.
 pub struct AspectFact {
     pub source_chart_object_id: i32,
     pub source_object_code: String,
@@ -56,6 +61,7 @@ pub struct AspectFact {
 }
 
 #[derive(Debug, Clone)]
+/// Structure CalculatedChartFacts.
 pub struct CalculatedChartFacts {
     pub positions: Vec<ObjectPositionFact>,
     pub house_cusps: Vec<HouseCuspFact>,
@@ -63,6 +69,7 @@ pub struct CalculatedChartFacts {
 }
 
 #[derive(Debug, Clone)]
+/// Structure InterpretationSignalDraft.
 pub struct InterpretationSignalDraft {
     pub signal_key: String,
     pub signal_type_id: Option<i32>,

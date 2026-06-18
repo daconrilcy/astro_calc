@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\build\rulership.rs du moteur astral_calculator.
+
 use crate::domain::{
     BasicChartEmphasis, BasicRulershipContext, BasicSignal, DomicileRulerReference,
     ObjectPositionFact,

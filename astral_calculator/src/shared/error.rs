@@ -1,6 +1,9 @@
+//! Module astral_calculator\src\shared\error.rs du moteur astral_calculator.
+
 use thiserror::Error;
 
 #[derive(Debug, Error)]
+/// Enum RuntimeError.
 pub enum RuntimeError {
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
@@ -20,6 +23,7 @@ pub enum RuntimeError {
 }
 
 impl RuntimeError {
+    /// Fonction code.
     pub fn code(&self) -> &'static str {
         match self {
             Self::Database(_) => "database_error",

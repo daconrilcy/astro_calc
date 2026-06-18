@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\build\lunar_phase.rs du moteur astral_calculator.
+
 use crate::domain::{
     BasicLunarPhaseContext, BasicReadingPlanItem, BasicSignal, LunarPhaseReference,
     ObjectPositionFact,

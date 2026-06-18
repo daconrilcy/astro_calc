@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\shared\idempotency.rs du moteur astral_calculator.
+
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
@@ -5,6 +7,7 @@ use crate::domain::{NatalChartInput, RuntimeOptions};
 use crate::shared::error::RuntimeError;
 
 #[derive(Debug, Serialize)]
+/// Structure StableIdempotencyDocument.
 struct StableIdempotencyDocument<'a> {
     chart_type: &'static str,
     input: StableCalculationInput<'a>,
@@ -19,6 +22,7 @@ struct StableIdempotencyDocument<'a> {
 }
 
 #[derive(Debug, Serialize)]
+/// Structure StableCalculationInput.
 struct StableCalculationInput<'a> {
     subject_label: &'a Option<String>,
     birth_datetime_utc: chrono::DateTime<chrono::Utc>,
@@ -27,10 +31,12 @@ struct StableCalculationInput<'a> {
     altitude_m: Option<f64>,
 }
 
+/// Fonction input_hash.
 pub fn input_hash(input: &NatalChartInput) -> Result<String, RuntimeError> {
     sha256_json(&stable_calculation_input(input))
 }
 
+/// Fonction idempotency_key.
 pub fn idempotency_key(
     input: &NatalChartInput,
     options: &RuntimeOptions,
@@ -54,6 +60,7 @@ pub fn idempotency_key(
     sha256_json(&document)
 }
 
+/// Fonction stable_calculation_input.
 fn stable_calculation_input(input: &NatalChartInput) -> StableCalculationInput<'_> {
     StableCalculationInput {
         subject_label: &input.subject_label,
@@ -64,6 +71,7 @@ fn stable_calculation_input(input: &NatalChartInput) -> StableCalculationInput<'
     }
 }
 
+/// Fonction advisory_lock_key.
 pub fn advisory_lock_key(idempotency_key: &str) -> i64 {
     let digest = Sha256::digest(idempotency_key.as_bytes());
     let mut bytes = [0_u8; 8];
@@ -71,6 +79,7 @@ pub fn advisory_lock_key(idempotency_key: &str) -> i64 {
     i64::from_be_bytes(bytes)
 }
 
+/// Fonction sha256_json.
 fn sha256_json<T: Serialize>(value: &T) -> Result<String, RuntimeError> {
     let bytes = serde_json::to_vec(value)?;
     Ok(hex::encode(Sha256::digest(bytes)))

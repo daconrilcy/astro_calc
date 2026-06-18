@@ -1,8 +1,11 @@
+//! Module astral_calculator\src\bootstrap\db.rs du moteur astral_calculator.
+
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 
 use crate::bootstrap::env::load_dotenv;
 
+/// Fonction connect_from_env.
 pub async fn connect_from_env() -> Result<PgPool, sqlx::Error> {
     load_dotenv();
     PgPoolOptions::new()
@@ -11,6 +14,7 @@ pub async fn connect_from_env() -> Result<PgPool, sqlx::Error> {
         .await
 }
 
+/// Fonction database_url.
 fn database_url() -> String {
     if let Ok(url) = std::env::var("DATABASE_URL") {
         return url;

@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\signals\positions.rs du moteur astral_calculator.
+
 use serde_json::json;
 
 use crate::domain::ObjectPositionFact;
@@ -150,6 +152,7 @@ pub(super) fn placement_context(
     })
 }
 
+/// Fonction visibility_context.
 fn visibility_context(position: &ObjectPositionFact) -> serde_json::Value {
     let is_angle = placement_context_object(position, "angle_context").is_some()
         || placement_context_str(position, "object_context", "role") == Some("angle");
@@ -162,6 +165,7 @@ fn visibility_context(position: &ObjectPositionFact) -> serde_json::Value {
     })
 }
 
+/// Fonction horizon_position.
 fn horizon_position(position: &ObjectPositionFact, is_angle: bool) -> Option<String> {
     if !is_angle {
         if let Some(altitude) = position.altitude_deg {
@@ -194,6 +198,7 @@ fn horizon_position(position: &ObjectPositionFact, is_angle: bool) -> Option<Str
         })
 }
 
+/// Fonction visibility_flag.
 fn visibility_flag(position: &ObjectPositionFact) -> Option<bool> {
     position
         .is_visible
@@ -204,6 +209,7 @@ fn visibility_flag(position: &ObjectPositionFact) -> Option<bool> {
         })
 }
 
+/// Fonction visibility_source.
 fn visibility_source(position: &ObjectPositionFact) -> String {
     if position.altitude_deg.is_some() || position.is_visible.is_some() {
         "calculated_altitude".to_string()
@@ -212,6 +218,7 @@ fn visibility_source(position: &ObjectPositionFact) -> String {
     }
 }
 
+/// Fonction angle_horizon_position.
 fn angle_horizon_position(position: &ObjectPositionFact) -> Option<&'static str> {
     match placement_context_str(position, "angle_context", "angle_point_code") {
         Some("asc") | Some("dsc") => Some("on_horizon"),
@@ -229,6 +236,7 @@ pub(super) fn retrograde_summary(position: &ObjectPositionFact) -> String {
     }
 }
 
+/// Fonction retrograde_hint.
 fn retrograde_hint(position: &ObjectPositionFact) -> String {
     if is_retrograde_position(position) {
         " Read the retrograde state as a modifier for pacing, review, and internal processing."
@@ -238,6 +246,7 @@ fn retrograde_hint(position: &ObjectPositionFact) -> String {
     }
 }
 
+/// Fonction is_retrograde_position.
 fn is_retrograde_position(position: &ObjectPositionFact) -> bool {
     placement_context_str(position, "motion_context", "motion_state") == Some("retrograde")
 }
@@ -253,6 +262,7 @@ pub(super) fn dignity_summary_for_position(dignities: &[EssentialDignityFact]) -
     }
 }
 
+/// Fonction dignity_effect_phrase_for_position.
 fn dignity_effect_phrase_for_position(dignities: &[EssentialDignityFact]) -> String {
     let phrases = dignities
         .iter()

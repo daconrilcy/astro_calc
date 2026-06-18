@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\simplified\facts.rs du moteur astral_calculator.
+
 use std::path::Path;
 
 use chrono::{DateTime, Utc};
@@ -17,12 +19,14 @@ pub const RELIABILITY_AMBIGUOUS: &str = "ambiguous_across_uncertainty_window";
 pub const RELIABILITY_DECLARED: &str = "calculated_from_declared_datetime";
 
 #[derive(Debug, Clone)]
+/// Structure CollectedSignFacts.
 pub struct CollectedSignFacts {
     pub facts: Vec<SignFactResponse>,
     pub ambiguous_facts: Vec<AmbiguousSignFactResponse>,
     pub cusp_warnings: Vec<CuspWarningResponse>,
 }
 
+/// Fonction collect_window_sign_facts.
 pub fn collect_window_sign_facts(
     ephemeris_path: &Path,
     _resolved: &ResolvedSimplifiedInput,
@@ -91,6 +95,7 @@ pub fn collect_window_sign_facts(
     })
 }
 
+/// Fonction collect_declared_sign_facts.
 pub fn collect_declared_sign_facts(
     ephemeris_path: &Path,
     instant: DateTime<Utc>,

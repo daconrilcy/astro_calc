@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\build\json.rs du moteur astral_calculator.
+
 use crate::domain::InterpretationSignalRow;
 use crate::domain::ObjectPositionFact;
 pub(super) fn payload_value(

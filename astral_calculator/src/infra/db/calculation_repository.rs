@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\infra\db\calculation_repository.rs du moteur astral_calculator.
+
 use sqlx::{postgres::PgPool, Postgres, Transaction};
 
 use super::models::ChartCalculationRow;
@@ -9,21 +11,25 @@ use crate::domain::{
 use crate::shared::error::RuntimeError;
 
 #[derive(Clone)]
+/// Structure CalculationRepository.
 pub struct CalculationRepository {
     inner: RuntimeRepository,
 }
 
 impl CalculationRepository {
+    /// Fonction new.
     pub fn new(pool: PgPool) -> Self {
         Self {
             inner: RuntimeRepository::new(pool),
         }
     }
 
+    /// Fonction pool.
     pub fn pool(&self) -> &PgPool {
         self.inner.pool()
     }
 
+    /// Fonction existing_basic_payload.
     pub async fn existing_basic_payload(
         &self,
         chart_calculation_id: i32,
@@ -35,6 +41,7 @@ impl CalculationRepository {
             .await
     }
 
+    /// Fonction positions_for_payload.
     pub async fn positions_for_payload(
         &self,
         chart_calculation_id: i32,
@@ -42,6 +49,7 @@ impl CalculationRepository {
         self.inner.positions_for_payload(chart_calculation_id).await
     }
 
+    /// Fonction aspects_for_payload.
     pub async fn aspects_for_payload(
         &self,
         chart_calculation_id: i32,
@@ -49,6 +57,7 @@ impl CalculationRepository {
         self.inner.aspects_for_payload(chart_calculation_id).await
     }
 
+    /// Fonction natal_input_for_calculation.
     pub async fn natal_input_for_calculation(
         &self,
         chart_calculation_id: i32,
@@ -58,6 +67,7 @@ impl CalculationRepository {
             .await
     }
 
+    /// Fonction lock_idempotency.
     pub async fn lock_idempotency(
         &self,
         tx: &mut Transaction<'_, Postgres>,
@@ -66,6 +76,7 @@ impl CalculationRepository {
         RuntimeRepository::lock_idempotency(tx, lock_key).await
     }
 
+    /// Fonction calculations_for_key.
     pub async fn calculations_for_key(
         &self,
         tx: &mut Transaction<'_, Postgres>,
@@ -74,6 +85,7 @@ impl CalculationRepository {
         RuntimeRepository::calculations_for_key(tx, idempotency_key).await
     }
 
+    /// Fonction persist_signals.
     pub async fn persist_signals(
         &self,
         tx: &mut Transaction<'_, Postgres>,
@@ -102,6 +114,7 @@ impl CalculationRepository {
         .collect())
     }
 
+    /// Fonction persist_basic_payload.
     pub async fn persist_basic_payload(
         &self,
         tx: &mut Transaction<'_, Postgres>,
@@ -112,6 +125,7 @@ impl CalculationRepository {
         RuntimeRepository::persist_basic_payload(tx, input, payload_language_id, payload).await
     }
 
+    /// Fonction mark_stale_failed.
     pub async fn mark_stale_failed(
         &self,
         tx: &mut Transaction<'_, Postgres>,
@@ -120,6 +134,7 @@ impl CalculationRepository {
         RuntimeRepository::mark_stale_failed(tx, chart_calculation_id).await
     }
 
+    /// Fonction insert_running_calculation.
     pub async fn insert_running_calculation(
         &self,
         tx: &mut Transaction<'_, Postgres>,
@@ -140,6 +155,7 @@ impl CalculationRepository {
         .await
     }
 
+    /// Fonction heartbeat.
     pub async fn heartbeat(
         &self,
         tx: &mut Transaction<'_, Postgres>,
@@ -149,6 +165,7 @@ impl CalculationRepository {
         RuntimeRepository::heartbeat(tx, chart_calculation_id, progress_state).await
     }
 
+    /// Fonction mark_failed.
     pub async fn mark_failed(
         &self,
         tx: &mut Transaction<'_, Postgres>,
@@ -158,6 +175,7 @@ impl CalculationRepository {
         RuntimeRepository::mark_failed(tx, chart_calculation_id, error).await
     }
 
+    /// Fonction persist_facts.
     pub async fn persist_facts(
         &self,
         tx: &mut Transaction<'_, Postgres>,
@@ -167,6 +185,7 @@ impl CalculationRepository {
         RuntimeRepository::persist_facts(tx, chart_calculation_id, facts).await
     }
 
+    /// Fonction aspects_for_payload_in_tx.
     pub async fn aspects_for_payload_in_tx(
         &self,
         tx: &mut Transaction<'_, Postgres>,
@@ -175,6 +194,7 @@ impl CalculationRepository {
         RuntimeRepository::aspects_for_payload_in_tx(tx, chart_calculation_id).await
     }
 
+    /// Fonction mark_completed.
     pub async fn mark_completed(
         &self,
         tx: &mut Transaction<'_, Postgres>,

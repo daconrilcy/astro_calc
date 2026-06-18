@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\rules\house_axes.rs du moteur astral_calculator.
+
 pub(crate) struct CanonicalAxis {
     pub houses: [i32; 2],
     pub theme_codes: [&'static str; 2],

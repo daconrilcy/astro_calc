@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\signals\context.rs du moteur astral_calculator.
+
 use crate::domain::ObjectPositionFact;
 
 pub(super) fn placement_context_object(

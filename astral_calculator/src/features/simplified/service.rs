@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\simplified\service.rs du moteur astral_calculator.
+
 use std::path::Path;
 
 use super::catalog::SimplifiedCatalog;
@@ -15,6 +17,7 @@ use crate::infra::db::reference_repository::ReferenceRepository;
 use crate::runtime::validate_calculation_references;
 use crate::shared::error::RuntimeError;
 
+/// Fonction calculate_simplified_natal.
 pub async fn calculate_simplified_natal<E: EphemerisEngine>(
     repository: &ReferenceRepository,
     ephemeris: &E,
@@ -143,6 +146,7 @@ pub async fn calculate_simplified_natal<E: EphemerisEngine>(
     ))
 }
 
+/// Fonction build_planetary_only_facts.
 fn build_planetary_only_facts(
     collected: &CollectedSignFacts,
     chart_objects: &[ChartObject],

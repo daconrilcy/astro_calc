@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\signals\clusters.rs du moteur astral_calculator.
+
 use std::collections::HashMap;
 
 use serde_json::json;
@@ -166,6 +168,7 @@ pub(super) fn apply_cluster_source_deduplication(
     changed
 }
 
+/// Fonction annotate_cluster_source.
 fn annotate_cluster_source(
     signal: &mut InterpretationSignalDraft,
     cluster_key: &str,

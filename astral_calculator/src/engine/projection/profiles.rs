@@ -1,7 +1,10 @@
+//! Module astral_calculator\src\engine\projection\profiles.rs du moteur astral_calculator.
+
 use super::types::{LlmEffectiveLimits, LlmProjectionLimitsEnvelope, LlmProjectionProfile};
 use crate::infra::db::projection_repository::ProjectionRepository;
 use crate::shared::error::RuntimeError;
 
+/// Fonction profile_from_level.
 pub async fn profile_from_level(
     repository: &ProjectionRepository,
     level: &str,
@@ -11,6 +14,7 @@ pub async fn profile_from_level(
         .await
 }
 
+/// Fonction resolve_projection_profile.
 pub async fn resolve_projection_profile(
     repository: &ProjectionRepository,
     contract_version: &str,
@@ -25,10 +29,12 @@ pub async fn resolve_projection_profile(
     }
 }
 
+/// Fonction default_max_background_placements.
 pub fn default_max_background_placements(level: &str) -> usize {
     default_max_background_placements_u64(level) as usize
 }
 
+/// Fonction default_max_background_placements_u64.
 fn default_max_background_placements_u64(level: &str) -> u64 {
     match level {
         "compact" => 0,
@@ -39,10 +45,12 @@ fn default_max_background_placements_u64(level: &str) -> u64 {
     }
 }
 
+/// Fonction default_max_accidental_conditions.
 pub fn default_max_accidental_conditions(level: &str) -> usize {
     default_max_accidental_conditions_u64(level) as usize
 }
 
+/// Fonction default_max_accidental_conditions_u64.
 fn default_max_accidental_conditions_u64(level: &str) -> u64 {
     match level {
         "compact" => 2,
@@ -53,6 +61,7 @@ fn default_max_accidental_conditions_u64(level: &str) -> u64 {
     }
 }
 
+/// Fonction limits_envelope.
 pub fn limits_envelope(profile: &LlmProjectionProfile) -> LlmProjectionLimitsEnvelope {
     LlmProjectionLimitsEnvelope {
         level: profile.level_code.clone(),

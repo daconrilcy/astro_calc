@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\catalog.rs du moteur astral_calculator.
+
 use std::collections::HashMap;
 
 use crate::domain::{
@@ -7,6 +9,7 @@ use crate::domain::{
 };
 
 #[derive(Debug, Clone)]
+/// Structure BasicPayloadCatalog.
 pub struct BasicPayloadCatalog {
     pub product_scoring: BasicProductScoringProfile,
     pub essential_dignity_rules: Vec<EssentialDignityRuleReference>,
@@ -19,6 +22,7 @@ pub struct BasicPayloadCatalog {
 }
 
 #[derive(Debug, Clone)]
+/// Structure EssentialDignityScoringWeight.
 pub struct EssentialDignityScoringWeight {
     pub priority_delta: f64,
     pub signal_weight_delta: f64,
@@ -27,6 +31,7 @@ pub struct EssentialDignityScoringWeight {
 }
 
 impl BasicPayloadCatalog {
+    /// Fonction build.
     pub fn build(
         product_scoring: BasicProductScoringProfile,
         essential_dignity_rules: Vec<EssentialDignityRuleReference>,
@@ -71,6 +76,7 @@ impl BasicPayloadCatalog {
         }
     }
 
+    /// Fonction essential_rules_for.
     pub fn essential_rules_for(
         &self,
         object_code: &str,
@@ -82,6 +88,7 @@ impl BasicPayloadCatalog {
             .unwrap_or(&[])
     }
 
+    /// Fonction dignity_scoring_weight.
     pub fn dignity_scoring_weight(
         &self,
         dignity_type: &str,
@@ -89,6 +96,7 @@ impl BasicPayloadCatalog {
         self.dignity_weight_by_type.get(dignity_type)
     }
 
+    /// Fonction condition_code_for_house_modality.
     pub fn condition_code_for_house_modality(&self, modality_code: &str) -> Option<&str> {
         self.triggers_by_family
             .get("house_modality")
@@ -100,6 +108,7 @@ impl BasicPayloadCatalog {
             .map(|trigger| trigger.condition_code.as_str())
     }
 
+    /// Fonction condition_code_for_motion_state.
     pub fn condition_code_for_motion_state(&self, motion_state: &str) -> Option<&str> {
         self.triggers_by_family
             .get("motion_state")
@@ -111,6 +120,7 @@ impl BasicPayloadCatalog {
             .map(|trigger| trigger.condition_code.as_str())
     }
 
+    /// Fonction condition_code_for_horizon_position.
     pub fn condition_code_for_horizon_position(&self, horizon_position: &str) -> Option<&str> {
         self.triggers_by_family
             .get("horizon_position")
@@ -122,6 +132,7 @@ impl BasicPayloadCatalog {
             .map(|trigger| trigger.condition_code.as_str())
     }
 
+    /// Fonction angle_proximity_triggers.
     pub fn angle_proximity_triggers(&self) -> &[AccidentalConditionTrigger] {
         self.triggers_by_family
             .get("angle_proximity")
@@ -129,6 +140,7 @@ impl BasicPayloadCatalog {
             .unwrap_or(&[])
     }
 
+    /// Fonction sect_condition_code.
     pub fn sect_condition_code(
         &self,
         chart_sect: &str,
@@ -147,10 +159,12 @@ impl BasicPayloadCatalog {
             .map(|trigger| trigger.condition_code.as_str())
     }
 
+    /// Fonction overall_polarity_for_score.
     pub fn overall_polarity_for_score(&self, score: f64) -> (String, String) {
         overall_polarity_for_score_with_bands(score, &self.accidental_polarity_bands)
     }
 
+    /// Fonction valid_accidental_condition_codes.
     pub fn valid_accidental_condition_codes(
         definitions: &[AccidentalDignityConditionReference],
     ) -> Vec<&str> {
@@ -161,9 +175,11 @@ impl BasicPayloadCatalog {
     }
 }
 
+/// Fonction test_essential_dignity_rules.
 fn test_essential_dignity_rules() -> Vec<EssentialDignityRuleReference> {
     use crate::domain::EssentialDignityRuleReference;
 
+    /// Fonction rule.
     fn rule(
         object_code: &str,
         sign_code: &str,
@@ -381,6 +397,7 @@ pub fn test_catalog() -> BasicPayloadCatalog {
 
 const POLARITY_BAND_SCORE_TOLERANCE: f64 = 0.000_001;
 
+/// Fonction accidental_polarity_bands_are_valid.
 pub fn accidental_polarity_bands_are_valid(bands: &[AccidentalPolarityBand]) -> bool {
     if bands.is_empty() {
         return false;
@@ -411,6 +428,7 @@ pub fn accidental_polarity_bands_are_valid(bands: &[AccidentalPolarityBand]) -> 
     })
 }
 
+/// Fonction overall_polarity_for_score_with_bands.
 pub fn overall_polarity_for_score_with_bands(
     score: f64,
     bands: &[AccidentalPolarityBand],

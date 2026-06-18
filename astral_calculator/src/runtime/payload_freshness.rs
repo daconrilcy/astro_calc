@@ -1,19 +1,34 @@
+//! Module astral_calculator\src\runtime\payload_freshness.rs du moteur astral_calculator.
+
 mod accidental_dignities;
+/// Module angles.
 mod angles;
+/// Module aspects.
 mod aspects;
+/// Module chart_context.
 mod chart_context;
+/// Module dignities.
 mod dignities;
+/// Module emphasis.
 mod emphasis;
+/// Module house_axes.
 mod house_axes;
+/// Module json.
 mod json;
+/// Module lunar_phase.
 mod lunar_phase;
+/// Module placements.
 mod placements;
+/// Module plan.
 mod plan;
+/// Module rulership.
 mod rulership;
+/// Module text.
 mod text;
 
 use crate::domain::{BasicPayload, BasicSignal, DomicileRulerReference};
 
+/// Fonction is_current_basic_payload.
 pub fn is_current_basic_payload(payload: &BasicPayload) -> bool {
     let structural_axis_pairs = angles::structural_axis_pairs_from_payload(payload);
     let angle_object_codes = angles::angle_object_codes_from_payload(payload);
@@ -46,6 +61,7 @@ pub fn is_current_basic_payload(payload: &BasicPayload) -> bool {
         })
 }
 
+/// Fonction has_current_rulership_references.
 pub fn has_current_rulership_references(
     payload: &BasicPayload,
     domicile_rulers: &[DomicileRulerReference],
@@ -53,6 +69,7 @@ pub fn has_current_rulership_references(
     rulership::matches_domicile_ruler_references(&payload.rulership_context, domicile_rulers)
 }
 
+/// Fonction signal_is_current.
 fn signal_is_current(
     payload: &BasicPayload,
     signal: &BasicSignal,

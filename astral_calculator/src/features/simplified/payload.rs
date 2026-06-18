@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\simplified\payload.rs du moteur astral_calculator.
+
 use serde_json::{json, Value};
 
 use super::catalog::{ProfileFeatureExclusion, SimplifiedCatalog};
@@ -11,6 +13,7 @@ use super::response::{
 };
 use crate::domain::CalculatedChartFacts;
 
+/// Fonction build_response.
 pub fn build_response(
     resolved: &ResolvedSimplifiedInput,
     catalog: &SimplifiedCatalog,
@@ -59,6 +62,7 @@ pub fn build_response(
     }
 }
 
+/// Fonction build_simplified_payload.
 fn build_simplified_payload(
     resolved: &ResolvedSimplifiedInput,
     collected: &CollectedSignFacts,
@@ -92,6 +96,7 @@ fn build_simplified_payload(
     payload
 }
 
+/// Fonction build_llm_controls.
 fn build_llm_controls(
     resolved: &ResolvedSimplifiedInput,
     catalog: &SimplifiedCatalog,
@@ -161,6 +166,7 @@ fn build_llm_controls(
     }
 }
 
+/// Fonction push_unique.
 fn push_unique(out: &mut Vec<String>, value: &str) {
     if !out.iter().any(|existing| existing == value) {
         out.push(value.to_string());

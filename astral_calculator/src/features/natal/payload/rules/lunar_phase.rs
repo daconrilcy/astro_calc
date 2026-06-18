@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\rules\lunar_phase.rs du moteur astral_calculator.
+
 use std::collections::HashSet;
 
 use crate::domain::{
@@ -179,6 +181,7 @@ pub(crate) fn round4_degree(value: f64) -> f64 {
     normalize_360(round4(normalize_360(value)))
 }
 
+/// Fonction has_valid_phase_fields.
 fn has_valid_phase_fields(context: &BasicLunarPhaseContext) -> bool {
     !context.phase_code.trim().is_empty()
         && !context.phase_label.trim().is_empty()
@@ -228,6 +231,7 @@ fn has_valid_phase_fields(context: &BasicLunarPhaseContext) -> bool {
         && !context.interpretive_hint.trim().is_empty()
 }
 
+/// Fonction has_current_related_signal_keys.
 fn has_current_related_signal_keys(
     context: &BasicLunarPhaseContext,
     signal_keys: &HashSet<&str>,
@@ -255,6 +259,7 @@ fn has_current_related_signal_keys(
     true
 }
 
+/// Fonction has_current_related_reading_slots.
 fn has_current_related_reading_slots(
     context: &BasicLunarPhaseContext,
     reading_slots: &HashSet<&str>,
@@ -271,20 +276,24 @@ fn has_current_related_reading_slots(
                 .any(|slot| slot == "core_identity"))
 }
 
+/// Fonction valid_degree.
 fn valid_degree(value: f64) -> bool {
     value.is_finite() && (0.0..360.0).contains(&value)
 }
 
+/// Fonction degree_matches.
 fn degree_matches(left: f64, right: f64, tolerance: f64) -> bool {
     (left - right).abs() <= tolerance
 }
 
+/// Fonction push_if_active.
 fn push_if_active(target: &mut Vec<String>, signal_keys: &HashSet<&str>, signal_key: &str) {
     if signal_keys.contains(signal_key) {
         target.push(signal_key.to_string());
     }
 }
 
+/// Fonction interpretive_hint.
 fn interpretive_hint(reference: &LunarPhaseReference) -> String {
     format!(
         "The Sun-Moon cycle is in a {} phase, indicating a structured {} relationship between solar identity and lunar needs.",

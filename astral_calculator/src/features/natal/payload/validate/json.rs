@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\validate\json.rs du moteur astral_calculator.
+
 pub(super) fn option_json_has_text(value: &Option<serde_json::Value>, key: &str) -> bool {
     value
         .as_ref()
@@ -24,6 +26,7 @@ pub(super) fn has_bool_value(value: Option<&serde_json::Value>) -> bool {
     value.is_some_and(serde_json::Value::is_boolean)
 }
 
+/// Fonction json_value_has_text.
 fn json_value_has_text(value: &serde_json::Value) -> bool {
     value.as_str().is_some_and(|text| !text.trim().is_empty())
 }

@@ -1,4 +1,7 @@
+//! Module astral_calculator\src\domain\payload.rs du moteur astral_calculator.
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure BasicPayload.
 pub struct BasicPayload {
     pub product_code: String,
     pub chart_calculation_id: i32,
@@ -28,6 +31,7 @@ pub struct BasicPayload {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+/// Structure BasicChartContext.
 pub struct BasicChartContext {
     pub chart_type: String,
     pub zodiacal_reference_system_id: i32,
@@ -45,6 +49,7 @@ pub struct BasicChartContext {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+/// Structure BasicPayloadContract.
 pub struct BasicPayloadContract {
     pub contract_version: String,
     pub calculation_scope: String,
@@ -53,12 +58,14 @@ pub struct BasicPayloadContract {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+/// Structure BasicCalculationReliability.
 pub struct BasicCalculationReliability {
     pub birth_time_precision_required: bool,
     pub house_system_sensitive: bool,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+/// Structure BasicSectContext.
 pub struct BasicSectContext {
     pub chart_sect: Option<String>,
     pub sun_horizon_position: Option<String>,
@@ -66,6 +73,7 @@ pub struct BasicSectContext {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+/// Structure BasicHemisphereEmphasis.
 pub struct BasicHemisphereEmphasis {
     #[serde(default)]
     pub count_scope: String,
@@ -76,6 +84,7 @@ pub struct BasicHemisphereEmphasis {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure BasicAngleFact.
 pub struct BasicAngleFact {
     pub angle_code: String,
     pub angle_name: String,
@@ -91,6 +100,7 @@ pub struct BasicAngleFact {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+/// Structure BasicChartEmphasis.
 pub struct BasicChartEmphasis {
     #[serde(default)]
     pub dominant_signs: Vec<BasicDominantSign>,
@@ -101,6 +111,7 @@ pub struct BasicChartEmphasis {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure BasicDominantSign.
 pub struct BasicDominantSign {
     pub sign_code: String,
     pub score: f64,
@@ -109,6 +120,7 @@ pub struct BasicDominantSign {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure BasicDominantHouse.
 pub struct BasicDominantHouse {
     pub house_number: i32,
     pub theme_code: String,
@@ -118,6 +130,7 @@ pub struct BasicDominantHouse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure BasicDominantObject.
 pub struct BasicDominantObject {
     pub object_code: String,
     pub score: f64,
@@ -126,6 +139,7 @@ pub struct BasicDominantObject {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure BasicDignity.
 pub struct BasicDignity {
     pub object_code: String,
     pub object_name: String,
@@ -140,6 +154,7 @@ pub struct BasicDignity {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+/// Structure BasicRulershipContext.
 pub struct BasicRulershipContext {
     #[serde(default)]
     pub ascendant_ruler: Option<BasicRulerContext>,
@@ -162,6 +177,7 @@ pub struct BasicRulershipContext {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure BasicRulerContext.
 pub struct BasicRulerContext {
     pub context_key: String,
     pub source_kind: String,
@@ -182,6 +198,7 @@ pub struct BasicRulerContext {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure BasicRulerSource.
 pub struct BasicRulerSource {
     pub object_code: String,
     pub reference_version_id: Option<i32>,
@@ -193,6 +210,7 @@ pub struct BasicRulerSource {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure BasicDispositorLink.
 pub struct BasicDispositorLink {
     pub object_code: String,
     pub object_sign_code: String,
@@ -204,6 +222,7 @@ pub struct BasicDispositorLink {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure BasicRulershipChain.
 pub struct BasicRulershipChain {
     pub object_code: String,
     #[serde(default)]
@@ -212,6 +231,7 @@ pub struct BasicRulershipChain {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure BasicFinalDispositor.
 pub struct BasicFinalDispositor {
     pub object_code: String,
     #[serde(default)]
@@ -219,6 +239,7 @@ pub struct BasicFinalDispositor {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure BasicMutualReception.
 pub struct BasicMutualReception {
     #[serde(default)]
     pub object_codes: Vec<String>,
@@ -227,6 +248,7 @@ pub struct BasicMutualReception {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure BasicHouseAxisEmphasis.
 pub struct BasicHouseAxisEmphasis {
     pub axis_code: String,
     #[serde(default)]
@@ -249,6 +271,7 @@ pub struct BasicHouseAxisEmphasis {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure BasicHouseAxisScore.
 pub struct BasicHouseAxisScore {
     pub house_number: i32,
     pub theme_code: String,
@@ -258,6 +281,7 @@ pub struct BasicHouseAxisScore {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure BasicLunarPhaseContext.
 pub struct BasicLunarPhaseContext {
     pub phase_code: String,
     pub phase_label: String,
@@ -283,6 +307,7 @@ pub struct BasicLunarPhaseContext {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure BasicAccidentalDignityEvaluation.
 pub struct BasicAccidentalDignityEvaluation {
     pub object_code: String,
     pub object_name: String,
@@ -295,6 +320,7 @@ pub struct BasicAccidentalDignityEvaluation {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure BasicAccidentalDignityCondition.
 pub struct BasicAccidentalDignityCondition {
     pub condition_code: String,
     pub condition_family: String,
@@ -306,6 +332,7 @@ pub struct BasicAccidentalDignityCondition {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// Structure BasicAccidentalDignityContextSummary.
 pub struct BasicAccidentalDignityContextSummary {
     pub condition_code: String,
     pub condition_family: String,
@@ -314,6 +341,7 @@ pub struct BasicAccidentalDignityContextSummary {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure BasicObjectPosition.
 pub struct BasicObjectPosition {
     pub object_code: String,
     pub object_name: String,
@@ -346,6 +374,7 @@ pub struct BasicObjectPosition {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure BasicSignal.
 pub struct BasicSignal {
     pub signal_key: String,
     pub theme_code: Option<String>,
@@ -364,6 +393,7 @@ pub struct BasicSignal {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure BasicReadingPlanItem.
 pub struct BasicReadingPlanItem {
     pub slot: String,
     pub title: String,
@@ -376,6 +406,7 @@ pub struct BasicReadingPlanItem {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Structure BasicSecondarySlotCandidate.
 pub struct BasicSecondarySlotCandidate {
     pub signal_key: String,
     pub primary_slot: String,

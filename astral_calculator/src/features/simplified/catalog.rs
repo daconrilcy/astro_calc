@@ -1,7 +1,10 @@
+//! Module astral_calculator\src\features\simplified\catalog.rs du moteur astral_calculator.
+
 use serde::Deserialize;
 use sqlx::FromRow;
 
 #[derive(Debug, Clone)]
+/// Structure SimplifiedCatalog.
 pub struct SimplifiedCatalog {
     pub policy: SimplifiedPolicy,
     pub limitation_codes: Vec<LimitationCode>,
@@ -11,6 +14,7 @@ pub struct SimplifiedCatalog {
 }
 
 #[derive(Debug, Clone, Deserialize, FromRow)]
+/// Structure SimplifiedPolicy.
 pub struct SimplifiedPolicy {
     pub code: String,
     pub reference_time_utc: String,
@@ -22,6 +26,7 @@ pub struct SimplifiedPolicy {
 }
 
 #[derive(Debug, Clone, Deserialize, FromRow)]
+/// Structure LimitationCode.
 pub struct LimitationCode {
     pub code: String,
     pub severity: String,
@@ -29,12 +34,14 @@ pub struct LimitationCode {
 }
 
 #[derive(Debug, Clone, Deserialize, FromRow)]
+/// Structure ReliabilityLevel.
 pub struct ReliabilityLevel {
     pub code: String,
     pub allows_interpretive_affirmation: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, FromRow)]
+/// Structure CalculationScope.
 pub struct CalculationScope {
     pub code: String,
     pub min_input_precision_code: String,
@@ -46,11 +53,13 @@ pub struct CalculationScope {
 }
 
 #[derive(Debug, Clone, Deserialize, FromRow)]
+/// Structure InputPrecisionLevel.
 pub struct InputPrecisionLevel {
     pub code: String,
 }
 
 #[derive(Debug, Clone, Deserialize, FromRow)]
+/// Structure ProfileFeatureExclusion.
 pub struct ProfileFeatureExclusion {
     pub profile_code: String,
     pub computed_scope_code: Option<String>,
@@ -60,12 +69,14 @@ pub struct ProfileFeatureExclusion {
 }
 
 impl SimplifiedCatalog {
+    /// Fonction limitation.
     pub fn limitation(&self, code: &str) -> Option<&LimitationCode> {
         self.limitation_codes
             .iter()
             .find(|entry| entry.code == code)
     }
 
+    /// Fonction allows_interpretive_affirmation.
     pub fn allows_interpretive_affirmation(&self, reliability: &str) -> bool {
         self.reliability_levels
             .iter()
@@ -73,18 +84,21 @@ impl SimplifiedCatalog {
             .is_some_and(|level| level.allows_interpretive_affirmation)
     }
 
+    /// Fonction scope.
     pub fn scope(&self, code: &str) -> Option<&CalculationScope> {
         self.calculation_scopes
             .iter()
             .find(|entry| entry.code == code)
     }
 
+    /// Fonction input_precision.
     pub fn input_precision(&self, code: &str) -> Option<&InputPrecisionLevel> {
         self.input_precision_levels
             .iter()
             .find(|entry| entry.code == code)
     }
 
+    /// Fonction affected_features.
     pub fn affected_features(limitation: &LimitationCode) -> Vec<String> {
         limitation
             .affected_features_json

@@ -1,9 +1,12 @@
+//! Module astral_calculator\src\engine\response.rs du moteur astral_calculator.
+
 use serde::{Deserialize, Serialize};
 
 use crate::domain::BasicPayload;
 use crate::engine::projection::LlmProjectionNatalV1;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure AstroEngineResponse.
 pub struct AstroEngineResponse {
     pub response_contract_version: String,
     pub request_echo: EngineRequestEcho,
@@ -13,6 +16,7 @@ pub struct AstroEngineResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure EngineRequestEcho.
 pub struct EngineRequestEcho {
     pub calculation_type: String,
     pub birth_datetime_local: String,
@@ -23,6 +27,7 @@ pub struct EngineRequestEcho {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure EngineEchoLocation.
 pub struct EngineEchoLocation {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
@@ -31,6 +36,7 @@ pub struct EngineEchoLocation {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Structure EngineCalculationResult.
 pub struct EngineCalculationResult {
     pub status: String,
     pub chart_calculation_id: i32,
@@ -41,6 +47,7 @@ pub struct EngineCalculationResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Structure EngineAuditPayload.
 pub struct EngineAuditPayload {
     pub contract_version: String,
     pub payload: BasicPayload,

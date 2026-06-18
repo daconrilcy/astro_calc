@@ -1,8 +1,11 @@
+//! Module astral_calculator\src\engine\calculation_refs.rs du moteur astral_calculator.
+
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
 use crate::infra::db::reference_repository::ReferenceRepository;
 
+/// Fonction zodiacal_reference_system_key_from_env.
 pub async fn zodiacal_reference_system_key_from_env(
     repository: &ReferenceRepository,
 ) -> Result<String, String> {
@@ -14,6 +17,7 @@ pub async fn zodiacal_reference_system_key_from_env(
     )
 }
 
+/// Fonction coordinate_reference_system_key_from_env.
 pub async fn coordinate_reference_system_key_from_env(
     repository: &ReferenceRepository,
 ) -> Result<String, String> {
@@ -25,6 +29,7 @@ pub async fn coordinate_reference_system_key_from_env(
     )
 }
 
+/// Fonction house_system_code_from_env.
 pub async fn house_system_code_from_env(
     repository: &ReferenceRepository,
 ) -> Result<String, String> {
@@ -36,6 +41,7 @@ pub async fn house_system_code_from_env(
     )
 }
 
+/// Fonction reference_key_from_env.
 fn reference_key_from_env(
     key_var: &str,
     id_var: &str,
@@ -62,6 +68,7 @@ fn reference_key_from_env(
     Ok(default.to_string())
 }
 
+/// Fonction invert_map.
 fn invert_map(id_to_key: &HashMap<i32, String>) -> HashMap<String, i32> {
     id_to_key
         .iter()
@@ -69,6 +76,7 @@ fn invert_map(id_to_key: &HashMap<i32, String>) -> HashMap<String, i32> {
         .collect()
 }
 
+/// Fonction zodiacal_reference_system_id_from_env.
 pub async fn zodiacal_reference_system_id_from_env(
     repository: &ReferenceRepository,
 ) -> Result<i32, String> {
@@ -80,6 +88,7 @@ pub async fn zodiacal_reference_system_id_from_env(
     )
 }
 
+/// Fonction coordinate_reference_system_id_from_env.
 pub async fn coordinate_reference_system_id_from_env(
     repository: &ReferenceRepository,
 ) -> Result<i32, String> {
@@ -91,6 +100,7 @@ pub async fn coordinate_reference_system_id_from_env(
     )
 }
 
+/// Fonction house_system_id_from_env.
 pub async fn house_system_id_from_env(repository: &ReferenceRepository) -> Result<i32, String> {
     reference_id_from_env(
         "ASTRAL_HOUSE_SYSTEM",
@@ -100,6 +110,7 @@ pub async fn house_system_id_from_env(repository: &ReferenceRepository) -> Resul
     )
 }
 
+/// Fonction reference_id_from_env.
 fn reference_id_from_env(
     key_var: &str,
     id_var: &str,
@@ -126,6 +137,7 @@ fn reference_id_from_env(
     Ok(default_id)
 }
 
+/// Fonction zodiac_key_by_id.
 async fn zodiac_key_by_id(
     repository: &ReferenceRepository,
 ) -> Result<HashMap<i32, String>, String> {
@@ -143,6 +155,7 @@ async fn zodiac_key_by_id(
     Ok(map)
 }
 
+/// Fonction coordinate_key_by_id.
 async fn coordinate_key_by_id(
     repository: &ReferenceRepository,
 ) -> Result<HashMap<i32, String>, String> {
@@ -160,6 +173,7 @@ async fn coordinate_key_by_id(
     Ok(map)
 }
 
+/// Fonction house_code_by_id.
 async fn house_code_by_id(
     repository: &ReferenceRepository,
 ) -> Result<HashMap<i32, String>, String> {

@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\engine\env.rs du moteur astral_calculator.
+
 use chrono::{DateTime, Utc};
 
 use crate::engine::{
@@ -12,6 +14,7 @@ pub use crate::engine::calculation_refs::{
     zodiacal_reference_system_key_from_env,
 };
 
+/// Fonction birth_datetime_utc_from_env.
 pub fn birth_datetime_utc_from_env() -> Result<DateTime<Utc>, Box<dyn std::error::Error>> {
     let date = optional_non_empty_env("ASTRAL_BIRTH_DATE");
     let time = optional_non_empty_env("ASTRAL_BIRTH_TIME");
@@ -36,6 +39,7 @@ pub fn birth_datetime_utc_from_env() -> Result<DateTime<Utc>, Box<dyn std::error
 
 const PROJECTION_LEVELS: &[&str] = &["compact", "standard", "rich", "expert"];
 
+/// Fonction engine_request_from_env.
 pub async fn engine_request_from_env(
     repository: &ReferenceRepository,
 ) -> Result<AstroEngineRequest, Box<dyn std::error::Error>> {
@@ -72,6 +76,7 @@ pub async fn engine_request_from_env(
     })
 }
 
+/// Fonction projection_level_from_env.
 fn projection_level_from_env() -> Result<String, Box<dyn std::error::Error>> {
     let level = std::env::var("ASTRAL_PROJECTION_LEVEL").unwrap_or_else(|_| "rich".to_string());
     let level = level.trim().to_string();
@@ -86,6 +91,7 @@ fn projection_level_from_env() -> Result<String, Box<dyn std::error::Error>> {
     }
 }
 
+/// Fonction birth_fields_from_env.
 fn birth_fields_from_env() -> Result<(String, String, String), Box<dyn std::error::Error>> {
     let date = std::env::var("ASTRAL_BIRTH_DATE").ok();
     let time = std::env::var("ASTRAL_BIRTH_TIME").ok();
@@ -113,6 +119,7 @@ fn birth_fields_from_env() -> Result<(String, String, String), Box<dyn std::erro
     }
 }
 
+/// Fonction optional_non_empty_env.
 fn optional_non_empty_env(name: &str) -> Option<String> {
     std::env::var(name)
         .ok()
@@ -120,6 +127,7 @@ fn optional_non_empty_env(name: &str) -> Option<String> {
         .filter(|value| !value.is_empty())
 }
 
+/// Fonction required_parse.
 fn required_parse<T>(name: &str) -> Result<T, Box<dyn std::error::Error>>
 where
     T: std::str::FromStr,

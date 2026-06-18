@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\astrology\ephemeris.rs du moteur astral_calculator.
+
 use std::path::{Path, PathBuf};
 #[cfg(feature = "swisseph-engine")]
 use std::sync::{Mutex, OnceLock};
@@ -10,7 +12,9 @@ use crate::domain::{
 };
 use crate::shared::error::RuntimeError;
 
+/// Trait EphemerisEngine.
 pub trait EphemerisEngine {
+    /// Fonction calculate_chart.
     fn calculate_chart(
         &self,
         input: &NatalChartInput,
@@ -20,6 +24,7 @@ pub trait EphemerisEngine {
         references: &CalculationReferenceData,
     ) -> Result<CalculatedChartFacts, RuntimeError>;
 
+    /// Fonction calculate_natal.
     fn calculate_natal(
         &self,
         input: &NatalChartInput,
@@ -33,21 +38,25 @@ pub trait EphemerisEngine {
 }
 
 #[derive(Debug, Clone)]
+/// Structure SwissEphemerisEngine.
 pub struct SwissEphemerisEngine {
     ephemeris_path: PathBuf,
 }
 
 impl SwissEphemerisEngine {
+    /// Fonction new.
     pub fn new(ephemeris_path: impl Into<PathBuf>) -> Self {
         Self {
             ephemeris_path: ephemeris_path.into(),
         }
     }
 
+    /// Fonction default_from_workspace.
     pub fn default_from_workspace() -> Self {
         Self::new(Path::new("..").join("ephe").join("se-2026a"))
     }
 
+    /// Fonction ephemeris_path.
     pub fn ephemeris_path(&self) -> &Path {
         &self.ephemeris_path
     }
@@ -55,6 +64,7 @@ impl SwissEphemerisEngine {
 
 impl EphemerisEngine for SwissEphemerisEngine {
     #[cfg(feature = "swisseph-engine")]
+    /// Fonction calculate_chart.
     fn calculate_chart(
         &self,
         input: &NatalChartInput,
@@ -224,6 +234,7 @@ impl EphemerisEngine for SwissEphemerisEngine {
     }
 
     #[cfg(not(feature = "swisseph-engine"))]
+    /// Fonction calculate_chart.
     fn calculate_chart(
         &self,
         _input: &NatalChartInput,
@@ -242,6 +253,7 @@ impl EphemerisEngine for SwissEphemerisEngine {
 }
 
 #[cfg(feature = "swisseph-engine")]
+/// Fonction sign_context.
 fn sign_context(sign: &SignReference) -> serde_json::Value {
     serde_json::json!({
         "element": &sign.element_code,
@@ -255,6 +267,7 @@ fn sign_context(sign: &SignReference) -> serde_json::Value {
 }
 
 #[cfg(feature = "swisseph-engine")]
+/// Fonction house_modality.
 fn house_modality(house: &HouseReference) -> Option<serde_json::Value> {
     house.modality_code.as_ref().map(|code| {
         serde_json::json!({
@@ -268,6 +281,7 @@ fn house_modality(house: &HouseReference) -> Option<serde_json::Value> {
 }
 
 #[cfg(feature = "swisseph-engine")]
+/// Fonction house_context.
 fn house_context(house: &HouseReference) -> serde_json::Value {
     serde_json::json!({
         "theme_code": &house.theme_code
@@ -275,6 +289,7 @@ fn house_context(house: &HouseReference) -> serde_json::Value {
 }
 
 #[cfg(feature = "swisseph-engine")]
+/// Fonction object_context.
 fn object_context(object: &ChartObject) -> serde_json::Value {
     serde_json::json!({
         "role": &object.role_code,
@@ -292,6 +307,7 @@ fn object_context(object: &ChartObject) -> serde_json::Value {
 }
 
 #[cfg(feature = "swisseph-engine")]
+/// Fonction add_angle_positions.
 fn add_angle_positions(
     input: &NatalChartInput,
     chart_objects: &[ChartObject],
@@ -375,6 +391,7 @@ fn add_angle_positions(
 }
 
 #[cfg(feature = "swisseph-engine")]
+/// Fonction angle_longitude.
 fn angle_longitude(
     angle: &AnglePointReference,
     ascendant_longitude: f64,
@@ -395,6 +412,7 @@ fn angle_longitude(
 }
 
 #[cfg(feature = "swisseph-engine")]
+/// Fonction horizon_position_code_for_altitude.
 fn horizon_position_code_for_altitude(altitude_deg: f64) -> &'static str {
     if altitude_deg > 0.0 {
         "above_horizon"
@@ -406,6 +424,7 @@ fn horizon_position_code_for_altitude(altitude_deg: f64) -> &'static str {
 }
 
 #[cfg(feature = "swisseph-engine")]
+/// Fonction angle_horizon_position_code.
 fn angle_horizon_position_code(angle_code: &str) -> Result<&'static str, RuntimeError> {
     match angle_code {
         "asc" | "dsc" => Ok("on_horizon"),
@@ -418,6 +437,7 @@ fn angle_horizon_position_code(angle_code: &str) -> Result<&'static str, Runtime
 }
 
 #[cfg(feature = "swisseph-engine")]
+/// Fonction horizon_position_id.
 fn horizon_position_id(
     references: &CalculationReferenceData,
     code: &str,
@@ -431,6 +451,7 @@ fn horizon_position_id(
 }
 
 #[cfg(feature = "swisseph-engine")]
+/// Fonction motion_context.
 fn motion_context(motion_state: &MotionStateReference) -> serde_json::Value {
     serde_json::json!({
         "motion_state": motion_state.code,
@@ -440,6 +461,7 @@ fn motion_context(motion_state: &MotionStateReference) -> serde_json::Value {
 }
 
 #[cfg(feature = "swisseph-engine")]
+/// Fonction sign_reference_for_zodiac_slot.
 fn sign_reference_for_zodiac_slot(
     signs: &[SignReference],
     zodiac_slot: i32,
@@ -464,6 +486,7 @@ fn sign_reference_for_zodiac_slot(
 }
 
 #[cfg(feature = "swisseph-engine")]
+/// Fonction house_reference_for_number.
 fn house_reference_for_number(
     houses: &[HouseReference],
     house_number: i32,
@@ -479,12 +502,14 @@ fn house_reference_for_number(
 }
 
 #[cfg(feature = "swisseph-engine")]
+/// Fonction swiss_ephemeris_lock.
 fn swiss_ephemeris_lock() -> &'static Mutex<()> {
     static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
     LOCK.get_or_init(|| Mutex::new(()))
 }
 
 #[cfg(feature = "swisseph-engine")]
+/// Fonction validate_supported_reference_systems.
 fn validate_supported_reference_systems(input: &NatalChartInput) -> Result<(), RuntimeError> {
     if input.zodiacal_reference_system_id != 1 {
         return Err(RuntimeError::Ephemeris(format!(
@@ -502,6 +527,7 @@ fn validate_supported_reference_systems(input: &NatalChartInput) -> Result<(), R
 }
 
 #[cfg(feature = "swisseph-engine")]
+/// Fonction julian_day_ut.
 fn julian_day_ut(input: &NatalChartInput) -> Result<f64, RuntimeError> {
     use chrono::{Datelike, Timelike};
     use swiss_eph::safe::julday;
@@ -521,6 +547,7 @@ fn julian_day_ut(input: &NatalChartInput) -> Result<f64, RuntimeError> {
 }
 
 #[cfg(feature = "swisseph-engine")]
+/// Fonction house_system_code.
 fn house_system_code(code: &str) -> Result<swiss_eph::safe::HouseSystem, RuntimeError> {
     use swiss_eph::safe::HouseSystem;
 
@@ -536,6 +563,7 @@ fn house_system_code(code: &str) -> Result<swiss_eph::safe::HouseSystem, Runtime
 }
 
 #[cfg(feature = "swisseph-engine")]
+/// Fonction round4.
 fn round4(value: f64) -> f64 {
     (value * 10_000.0).round() / 10_000.0
 }

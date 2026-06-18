@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\signals\dignity.rs du moteur astral_calculator.
+
 use std::collections::HashMap;
 
 use serde_json::json;

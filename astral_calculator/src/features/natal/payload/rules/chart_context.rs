@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\rules\chart_context.rs du moteur astral_calculator.
+
 use serde_json::{json, Value};
 
 use crate::domain::{
@@ -217,6 +219,7 @@ pub(crate) fn visibility_source_for_fact(position: &ObjectPositionFact) -> Strin
     }
 }
 
+/// Fonction visibility_flag_for_fact.
 fn visibility_flag_for_fact(position: &ObjectPositionFact) -> Option<bool> {
     if is_angle_position_fact(position) {
         return None;
@@ -231,6 +234,7 @@ fn visibility_flag_for_fact(position: &ObjectPositionFact) -> Option<bool> {
     )
 }
 
+/// Fonction build_hemisphere_emphasis.
 fn build_hemisphere_emphasis(positions: &[ObjectPositionFact]) -> BasicHemisphereEmphasis {
     let mut above_horizon_count = 0;
     let mut below_horizon_count = 0;
@@ -257,6 +261,7 @@ fn build_hemisphere_emphasis(positions: &[ObjectPositionFact]) -> BasicHemispher
     }
 }
 
+/// Fonction hemisphere_hint.
 fn hemisphere_hint(above_horizon_count: i32, below_horizon_count: i32) -> Option<String> {
     if above_horizon_count > below_horizon_count {
         Some("The chart has a stronger visible or outward emphasis.".to_string())
@@ -269,6 +274,7 @@ fn hemisphere_hint(above_horizon_count: i32, below_horizon_count: i32) -> Option
     }
 }
 
+/// Fonction angle_horizon_position.
 fn angle_horizon_position(position: &ObjectPositionFact) -> Option<&'static str> {
     match position
         .facts_json
@@ -284,6 +290,7 @@ fn angle_horizon_position(position: &ObjectPositionFact) -> Option<&'static str>
     }
 }
 
+/// Fonction has_chart_context.
 fn has_chart_context(payload: &BasicPayload) -> bool {
     let context = &payload.chart_context;
 
@@ -319,6 +326,7 @@ fn has_chart_context(payload: &BasicPayload) -> bool {
         && has_valid_v13_scoring_snapshots(context)
 }
 
+/// Fonction has_valid_v13_scoring_snapshots.
 fn has_valid_v13_scoring_snapshots(context: &BasicChartContext) -> bool {
     let Some(accidental) = context.accidental_scoring.as_ref() else {
         return false;
@@ -343,6 +351,7 @@ fn has_valid_v13_scoring_snapshots(context: &BasicChartContext) -> bool {
         && product.max_house_axis_emphasis > 0
 }
 
+/// Fonction has_current_visibility_context.
 fn has_current_visibility_context(position: &BasicObjectPosition) -> bool {
     let value = &position.visibility_context;
     let is_angle = is_angle_position(position);
@@ -377,6 +386,7 @@ fn has_current_visibility_context(position: &BasicObjectPosition) -> bool {
         }
 }
 
+/// Fonction has_consistent_sun_sect.
 fn has_consistent_sun_sect(payload: &BasicPayload) -> bool {
     let Some(sun) = payload
         .positions
@@ -405,6 +415,7 @@ fn has_consistent_sun_sect(payload: &BasicPayload) -> bool {
                 .and_then(|value| value.as_str())
 }
 
+/// Fonction has_consistent_hemisphere_counts.
 fn has_consistent_hemisphere_counts(payload: &BasicPayload) -> bool {
     let mut above_horizon_count = 0;
     let mut below_horizon_count = 0;

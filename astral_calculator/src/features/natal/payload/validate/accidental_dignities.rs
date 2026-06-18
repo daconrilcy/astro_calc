@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\validate\accidental_dignities.rs du moteur astral_calculator.
+
 use std::collections::{HashMap, HashSet};
 
 use crate::domain::{
@@ -28,6 +30,7 @@ pub(super) fn has_current_accidental_dignities(payload: &BasicPayload) -> bool {
         && accidental_conditions_match_position_facts(payload)
 }
 
+/// Fonction has_valid_accidental_dignities_block.
 fn has_valid_accidental_dignities_block(payload: &BasicPayload) -> bool {
     let position_codes: HashSet<&str> = payload
         .positions
@@ -60,6 +63,7 @@ fn has_valid_accidental_dignities_block(payload: &BasicPayload) -> bool {
             .all(|evaluation| has_valid_evaluation(payload, evaluation, &signal_keys))
 }
 
+/// Fonction has_valid_evaluation.
 fn has_valid_evaluation(
     payload: &BasicPayload,
     evaluation: &BasicAccidentalDignityEvaluation,
@@ -91,6 +95,7 @@ fn has_valid_evaluation(
         && related_signal_key_matches_object(evaluation)
 }
 
+/// Fonction has_valid_condition.
 fn has_valid_condition(condition: &BasicAccidentalDignityCondition) -> bool {
     has_text(&condition.condition_code)
         && valid_condition_family(condition.condition_family.as_str())
@@ -101,6 +106,7 @@ fn has_valid_condition(condition: &BasicAccidentalDignityCondition) -> bool {
         && has_text(&condition.interpretive_hint)
 }
 
+/// Fonction has_unique_condition_codes.
 fn has_unique_condition_codes(evaluation: &BasicAccidentalDignityEvaluation) -> bool {
     let mut seen = HashSet::new();
     evaluation
@@ -109,6 +115,7 @@ fn has_unique_condition_codes(evaluation: &BasicAccidentalDignityEvaluation) -> 
         .all(|condition| seen.insert(condition.condition_code.as_str()))
 }
 
+/// Fonction related_signal_key_matches_object.
 fn related_signal_key_matches_object(evaluation: &BasicAccidentalDignityEvaluation) -> bool {
     evaluation
         .related_signal_key
@@ -116,6 +123,7 @@ fn related_signal_key_matches_object(evaluation: &BasicAccidentalDignityEvaluati
         .is_none_or(|key| key == &format!("object_position:{}", evaluation.object_code))
 }
 
+/// Fonction expression_quality_matches_polarity.
 fn expression_quality_matches_polarity(
     payload: &BasicPayload,
     polarity: &str,
@@ -131,6 +139,7 @@ fn expression_quality_matches_polarity(
         .is_some_and(|band| band.expression_quality_code == expression_quality)
 }
 
+/// Fonction has_current_position_accidental_context.
 fn has_current_position_accidental_context(position: &BasicObjectPosition) -> bool {
     position.accidental_dignity_context.iter().all(|summary| {
         has_text(&summary.condition_code)
@@ -140,6 +149,7 @@ fn has_current_position_accidental_context(position: &BasicObjectPosition) -> bo
     })
 }
 
+/// Fonction has_current_signal_accidental_context.
 fn has_current_signal_accidental_context(signal: &BasicSignal) -> bool {
     if !signal.signal_key.starts_with("object_position:") {
         return true;
@@ -197,6 +207,7 @@ pub(super) fn accidental_conditions_match_position_facts(payload: &BasicPayload)
     })
 }
 
+/// Fonction condition_matches_position.
 fn condition_matches_position(
     payload: &BasicPayload,
     condition: &BasicAccidentalDignityCondition,
@@ -234,6 +245,7 @@ fn condition_matches_position(
     }
 }
 
+/// Fonction angle_proximity_matches.
 fn angle_proximity_matches(
     payload: &BasicPayload,
     condition: &BasicAccidentalDignityCondition,
@@ -290,6 +302,7 @@ pub(super) fn accidental_signal_context_matches_positions(payload: &BasicPayload
     true
 }
 
+/// Fonction sect_matches.
 fn sect_matches(
     chart_sect: Option<&str>,
     condition: &BasicAccidentalDignityCondition,
@@ -311,6 +324,7 @@ fn sect_matches(
     (object_affinity == chart_sect) == expect_match
 }
 
+/// Fonction summaries_match_conditions.
 fn summaries_match_conditions(
     summaries: &[crate::domain::BasicAccidentalDignityContextSummary],
     conditions: &[BasicAccidentalDignityCondition],
@@ -329,6 +343,7 @@ fn summaries_match_conditions(
         })
 }
 
+/// Fonction overall_score_matches_deltas.
 fn overall_score_matches_deltas(
     payload: &BasicPayload,
     evaluation: &BasicAccidentalDignityEvaluation,
@@ -346,6 +361,7 @@ fn overall_score_matches_deltas(
     (evaluation.overall_score - expected).abs() <= SCORE_TOLERANCE
 }
 
+/// Fonction overall_polarity_matches_score.
 fn overall_polarity_matches_score(payload: &BasicPayload, score: f64, polarity: &str) -> bool {
     let Some(scoring) = payload.chart_context.accidental_scoring.as_ref() else {
         return false;
@@ -353,6 +369,7 @@ fn overall_polarity_matches_score(payload: &BasicPayload, score: f64, polarity: 
     overall_polarity_for_score_with_bands(score, &scoring.polarity_bands).0 == polarity
 }
 
+/// Fonction max_angle_orb.
 fn max_angle_orb(payload: &BasicPayload) -> f64 {
     payload
         .chart_context
@@ -362,6 +379,7 @@ fn max_angle_orb(payload: &BasicPayload) -> f64 {
         .unwrap_or(f64::INFINITY)
 }
 
+/// Fonction valid_overall_polarity.
 fn valid_overall_polarity(payload: &BasicPayload, value: &str) -> bool {
     let Some(scoring) = payload.chart_context.accidental_scoring.as_ref() else {
         return false;
@@ -372,6 +390,7 @@ fn valid_overall_polarity(payload: &BasicPayload, value: &str) -> bool {
         .any(|band| band.polarity_code == value)
 }
 
+/// Fonction valid_condition_family.
 fn valid_condition_family(value: &str) -> bool {
     matches!(
         value,
@@ -379,10 +398,12 @@ fn valid_condition_family(value: &str) -> bool {
     )
 }
 
+/// Fonction valid_polarity.
 fn valid_polarity(value: &str) -> bool {
     matches!(value, "dignity" | "debility" | "contextual" | "intensifier")
 }
 
+/// Fonction is_angle_position.
 fn is_angle_position(position: &BasicObjectPosition) -> bool {
     let role = position
         .object_context
@@ -397,6 +418,7 @@ fn is_angle_position(position: &BasicObjectPosition) -> bool {
     role == Some("angle") || role_label == Some("Angle")
 }
 
+/// Fonction is_angle_position_code.
 fn is_angle_position_code(payload: &BasicPayload, object_code: &str) -> bool {
     payload
         .positions
@@ -405,6 +427,7 @@ fn is_angle_position_code(payload: &BasicPayload, object_code: &str) -> bool {
         .is_some_and(is_angle_position)
 }
 
+/// Fonction house_modality_code.
 fn house_modality_code(position: &BasicObjectPosition) -> Option<&str> {
     position
         .house_modality
@@ -413,6 +436,7 @@ fn house_modality_code(position: &BasicObjectPosition) -> Option<&str> {
         .and_then(|value| value.as_str())
 }
 
+/// Fonction motion_state.
 fn motion_state(position: &BasicObjectPosition) -> Option<&str> {
     position
         .motion_context
@@ -421,6 +445,7 @@ fn motion_state(position: &BasicObjectPosition) -> Option<&str> {
         .and_then(|value| value.as_str())
 }
 
+/// Fonction horizon_position.
 fn horizon_position(position: &BasicObjectPosition) -> Option<&str> {
     position
         .visibility_context
@@ -428,6 +453,7 @@ fn horizon_position(position: &BasicObjectPosition) -> Option<&str> {
         .and_then(|value| value.as_str())
 }
 
+/// Fonction angle_longitudes.
 fn angle_longitudes(payload: &BasicPayload) -> HashMap<&str, f64> {
     payload
         .positions
@@ -437,6 +463,7 @@ fn angle_longitudes(payload: &BasicPayload) -> HashMap<&str, f64> {
         .collect()
 }
 
+/// Fonction zodiac_distance.
 fn zodiac_distance(left: f64, right: f64) -> f64 {
     let delta = (left - right).abs();
     delta.min(360.0 - delta)

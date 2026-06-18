@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\build\emphasis.rs du moteur astral_calculator.
+
 use crate::domain::{
     BasicChartEmphasis, BasicDignity, BasicDominantHouse, BasicDominantObject, BasicDominantSign,
     BasicSignal, ObjectPositionFact,
@@ -9,6 +11,7 @@ use std::collections::HashMap;
 use super::json::position_context;
 use super::signal_filters::{aspect_strength_score, is_structural_axis_signal};
 #[derive(Default)]
+/// Structure EmphasisScore.
 struct EmphasisScore {
     score: f64,
     reasons: Vec<String>,
@@ -83,6 +86,7 @@ pub(super) fn build_chart_emphasis(
     }
 }
 
+/// Fonction add_multiple_object_reasons.
 fn add_multiple_object_reasons(
     positions: &[ObjectPositionFact],
     sign_scores: &mut HashMap<String, EmphasisScore>,
@@ -115,6 +119,7 @@ fn add_multiple_object_reasons(
     }
 }
 
+/// Fonction add_dignity_emphasis.
 fn add_dignity_emphasis(
     dignities: &[BasicDignity],
     positions_by_object: &HashMap<&str, &ObjectPositionFact>,
@@ -150,6 +155,7 @@ fn add_dignity_emphasis(
     }
 }
 
+/// Fonction add_signal_emphasis.
 fn add_signal_emphasis(
     signals: &[BasicSignal],
     sign_scores: &mut HashMap<String, EmphasisScore>,
@@ -175,6 +181,7 @@ fn add_signal_emphasis(
     }
 }
 
+/// Fonction add_cluster_emphasis.
 fn add_cluster_emphasis(
     signal: &BasicSignal,
     sign_scores: &mut HashMap<String, EmphasisScore>,
@@ -226,6 +233,7 @@ fn add_cluster_emphasis(
     }
 }
 
+/// Fonction add_aspect_object_emphasis.
 fn add_aspect_object_emphasis(
     signal: &BasicSignal,
     object_scores: &mut HashMap<String, EmphasisScore>,
@@ -255,6 +263,7 @@ fn add_aspect_object_emphasis(
     }
 }
 
+/// Fonction add_sign_emphasis_to_objects.
 fn add_sign_emphasis_to_objects(
     positions: &[ObjectPositionFact],
     sign_scores: &HashMap<String, EmphasisScore>,
@@ -294,6 +303,7 @@ fn add_sign_emphasis_to_objects(
     }
 }
 
+/// Fonction normalized_signs.
 fn normalized_signs(
     scores: HashMap<String, EmphasisScore>,
     scoring: &crate::domain::BasicProductScoringProfile,
@@ -315,6 +325,7 @@ fn normalized_signs(
     values
 }
 
+/// Fonction normalized_houses.
 fn normalized_houses(
     scores: HashMap<i32, EmphasisScore>,
     house_theme_codes: &HashMap<i32, String>,
@@ -346,6 +357,7 @@ fn normalized_houses(
     values
 }
 
+/// Fonction normalized_objects.
 fn normalized_objects(
     scores: HashMap<String, EmphasisScore>,
     scoring: &crate::domain::BasicProductScoringProfile,
@@ -372,6 +384,7 @@ fn normalized_objects(
     values
 }
 
+/// Fonction retain_strong_or_top_signs.
 fn retain_strong_or_top_signs(
     values: &mut Vec<BasicDominantSign>,
     scoring: &crate::domain::BasicProductScoringProfile,
@@ -385,6 +398,7 @@ fn retain_strong_or_top_signs(
     }
 }
 
+/// Fonction retain_strong_or_top_houses.
 fn retain_strong_or_top_houses(
     values: &mut Vec<BasicDominantHouse>,
     scoring: &crate::domain::BasicProductScoringProfile,
@@ -398,6 +412,7 @@ fn retain_strong_or_top_houses(
     }
 }
 
+/// Fonction retain_strong_or_top_objects.
 fn retain_strong_or_top_objects(
     values: &mut Vec<BasicDominantObject>,
     scoring: &crate::domain::BasicProductScoringProfile,
@@ -417,6 +432,7 @@ fn retain_strong_or_top_objects(
     }
 }
 
+/// Fonction normalized_emphasis_score.
 fn normalized_emphasis_score(score: f64, full_score: f64) -> f64 {
     if full_score <= 0.0 {
         0.0
@@ -425,6 +441,7 @@ fn normalized_emphasis_score(score: f64, full_score: f64) -> f64 {
     }
 }
 
+/// Fonction sort_emphasis.
 fn sort_emphasis<T: Ord>(
     left_score: f64,
     left_key: &T,
@@ -437,17 +454,20 @@ fn sort_emphasis<T: Ord>(
         .then_with(|| left_key.cmp(right_key))
 }
 
+/// Fonction add_score.
 fn add_score(entry: &mut EmphasisScore, score: f64, reason: String) {
     entry.score += score;
     add_reason(entry, &reason);
 }
 
+/// Fonction add_reason.
 fn add_reason(entry: &mut EmphasisScore, reason: &str) {
     if !entry.reasons.iter().any(|existing| existing == reason) {
         entry.reasons.push(reason.to_string());
     }
 }
 
+/// Fonction object_source_weight.
 fn object_source_weight(position: &ObjectPositionFact) -> f64 {
     position_context(position, "object_context")
         .and_then(|context| {
@@ -459,6 +479,7 @@ fn object_source_weight(position: &ObjectPositionFact) -> f64 {
         .unwrap_or(0.0)
 }
 
+/// Fonction house_theme_code.
 fn house_theme_code(position: &ObjectPositionFact) -> Option<String> {
     position_context(position, "house_context").and_then(|context| {
         context
@@ -468,6 +489,7 @@ fn house_theme_code(position: &ObjectPositionFact) -> Option<String> {
     })
 }
 
+/// Fonction round4.
 fn round4(value: f64) -> f64 {
     (value * 10_000.0).round() / 10_000.0
 }

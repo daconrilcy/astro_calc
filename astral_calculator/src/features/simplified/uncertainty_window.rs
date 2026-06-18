@@ -1,7 +1,10 @@
+//! Module astral_calculator\src\features\simplified\uncertainty_window.rs du moteur astral_calculator.
+
 use chrono::{DateTime, Duration, Utc};
 
 use super::catalog::SimplifiedCatalog;
 
+/// Fonction sample_points_utc.
 pub fn sample_points_utc(
     start: DateTime<Utc>,
     end: DateTime<Utc>,
@@ -24,6 +27,7 @@ pub fn sample_points_utc(
     points
 }
 
+/// Fonction build_sampling_schedule.
 pub fn build_sampling_schedule(
     start: DateTime<Utc>,
     end: DateTime<Utc>,

@@ -1,14 +1,18 @@
+//! Module astral_calculator\src\bootstrap\cli.rs du moteur astral_calculator.
+
 use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Enum OutputMode.
 pub enum OutputMode {
     Stdout,
     File,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Enum OutputContract.
 pub enum OutputContract {
     /// Enveloppe `astro_engine_response_v1` (defaut 4A).
     Engine,
@@ -16,11 +20,13 @@ pub enum OutputContract {
     AuditOnly,
 }
 
+/// Structure CliOptions.
 pub struct CliOptions {
     pub output_mode: OutputMode,
     pub output_contract: OutputContract,
 }
 
+/// Fonction cli_options_from_args.
 pub fn cli_options_from_args(
     args: impl IntoIterator<Item = String>,
     default_mode: OutputMode,
@@ -68,6 +74,7 @@ pub fn cli_options_from_args(
     })
 }
 
+/// Fonction output_mode_from_args.
 pub fn output_mode_from_args(
     args: impl IntoIterator<Item = String>,
     default_mode: OutputMode,
@@ -75,6 +82,7 @@ pub fn output_mode_from_args(
     Ok(cli_options_from_args(args, default_mode)?.output_mode)
 }
 
+/// Fonction output_contract_from_env.
 pub fn output_contract_from_env() -> OutputContract {
     match std::env::var("ASTRAL_OUTPUT_CONTRACT")
         .ok()
@@ -87,6 +95,7 @@ pub fn output_contract_from_env() -> OutputContract {
     }
 }
 
+/// Fonction output_mode_from_env.
 pub fn output_mode_from_env() -> OutputMode {
     if env_flag_enabled("ASTRAL_OUTPUT_FILE")
         || std::env::var("ASTRAL_OUTPUT_MODE")
@@ -99,6 +108,7 @@ pub fn output_mode_from_env() -> OutputMode {
     }
 }
 
+/// Fonction root_output_dir.
 pub fn root_output_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -106,6 +116,7 @@ pub fn root_output_dir() -> PathBuf {
         .join("output")
 }
 
+/// Fonction timestamped_output_filename.
 pub fn timestamped_output_filename(datetime: DateTime<Utc>, contract: OutputContract) -> String {
     let stem = match contract {
         OutputContract::Engine => "astro_engine_response",
@@ -114,6 +125,7 @@ pub fn timestamped_output_filename(datetime: DateTime<Utc>, contract: OutputCont
     format!("{stem}_{}.json", datetime.format("%Y%m%d_%H%M%S"))
 }
 
+/// Fonction write_timestamped_output_file.
 pub fn write_timestamped_output_file(
     output_dir: impl AsRef<Path>,
     json: &str,
@@ -127,6 +139,7 @@ pub fn write_timestamped_output_file(
     Ok(path)
 }
 
+/// Fonction env_flag_enabled.
 fn env_flag_enabled(name: &str) -> bool {
     std::env::var(name).ok().is_some_and(|value| {
         matches!(

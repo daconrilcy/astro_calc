@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\horoscope\application\horoscope_service.rs du moteur astral_calculator.
+
 use chrono::{DateTime, Utc};
 use std::sync::Arc;
 
@@ -15,6 +17,7 @@ use crate::infra::db::{
 };
 use crate::shared::error::RuntimeError;
 
+/// Structure HoroscopeService.
 pub struct HoroscopeService<E> {
     calculations: CalculationRepository,
     horoscope: HoroscopeRepository,
@@ -26,6 +29,7 @@ impl<E> HoroscopeService<E>
 where
     E: EphemerisEngine,
 {
+    /// Fonction new.
     pub fn new(
         calculations: CalculationRepository,
         horoscope: HoroscopeRepository,
@@ -40,6 +44,7 @@ where
         }
     }
 
+    /// Fonction calculate_daily.
     pub async fn calculate_daily(
         &self,
         request: HoroscopeCalculationRequest,
@@ -47,6 +52,7 @@ where
         Ok(calculate_horoscope_daily(request))
     }
 
+    /// Fonction calculate_period.
     pub async fn calculate_period(
         &self,
         request: HoroscopePeriodCalculationRequest,

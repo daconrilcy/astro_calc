@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\signals\utils.rs du moteur astral_calculator.
+
 pub fn indefinite_article(phrase: &str) -> &'static str {
     match phrase
         .chars()

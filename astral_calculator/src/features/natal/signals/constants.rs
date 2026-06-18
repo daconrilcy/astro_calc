@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\signals\constants.rs du moteur astral_calculator.
+
 pub const BASIC_MAX_ACTIVE_SIGNALS: usize = 12;
 
 pub(super) const SUPPRESSION_ACTIVE: &str = "active";

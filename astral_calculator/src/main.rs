@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\main.rs du moteur astral_calculator.
+
 use astral_calculator::cli::{
     cli_options_from_args, output_mode_from_env, root_output_dir, write_timestamped_output_file,
     OutputContract, OutputMode,
@@ -15,6 +17,7 @@ use astral_calculator::infra::db::reference_repository::ReferenceRepository;
 use astral_calculator::runtime::build_runtime_service;
 
 #[tokio::main]
+/// Fonction main.
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     load_dotenv();
     let cli = cli_options_from_args(std::env::args().skip(1), output_mode_from_env())?;
@@ -51,6 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+/// Fonction natal_input_from_env.
 async fn natal_input_from_env(
     references: &ReferenceRepository,
 ) -> Result<NatalChartInput, Box<dyn std::error::Error>> {
@@ -77,6 +81,7 @@ async fn natal_input_from_env(
     })
 }
 
+/// Fonction required_parse.
 fn required_parse<T>(name: &str) -> Result<T, Box<dyn std::error::Error>>
 where
     T: std::str::FromStr,
@@ -87,6 +92,7 @@ where
         .map_err(|error| format!("{name} is invalid: {error}").into())
 }
 
+/// Fonction optional_parse.
 fn optional_parse<T>(name: &str) -> Result<Option<T>, Box<dyn std::error::Error>>
 where
     T: std::str::FromStr,

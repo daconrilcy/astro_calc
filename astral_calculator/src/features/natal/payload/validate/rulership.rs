@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\validate\rulership.rs du moteur astral_calculator.
+
 use crate::domain::BasicRulershipContext;
 use crate::domain::DomicileRulerReference;
 

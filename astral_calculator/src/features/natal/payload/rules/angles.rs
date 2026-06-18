@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\rules\angles.rs du moteur astral_calculator.
+
 use std::collections::{HashMap, HashSet};
 
 use crate::domain::{BasicAngleFact, BasicPayload, BasicSignal, ObjectPositionFact};
@@ -240,6 +242,7 @@ pub(crate) fn has_current_angle_evidence(payload: &BasicPayload, signal: &BasicS
         == Some(expected_opposite)
 }
 
+/// Fonction canonical_angle_is_valid.
 fn canonical_angle_is_valid(
     angles_by_code: &HashMap<&str, &crate::domain::BasicAngleFact>,
     angle_code: &str,

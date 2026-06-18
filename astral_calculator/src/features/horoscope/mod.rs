@@ -1,10 +1,17 @@
+//! Module astral_calculator\src\features\horoscope\mod.rs du moteur astral_calculator.
+
 // Horoscope domain facade.
 // This module keeps the public horoscope API stable while delegating
 // implementation details to focused submodules.
+/// Module application.
 pub mod application;
+/// Module builders.
 mod builders;
+/// Module contracts.
 mod contracts;
+/// Module daily.
 mod daily;
+/// Module period.
 mod period;
 
 pub use astral_contracts::{

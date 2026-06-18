@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\build\accidental_dignities.rs du moteur astral_calculator.
+
 use std::collections::{HashMap, HashSet};
 
 use serde_json::{json, Value};
@@ -151,6 +153,7 @@ pub(super) fn apply_accidental_context_to_emphasis(
     }
 }
 
+/// Fonction evaluate_mobile_object.
 fn evaluate_mobile_object(
     position: &ObjectPositionFact,
     chart_sect: Option<&str>,
@@ -183,6 +186,7 @@ fn evaluate_mobile_object(
     conditions
 }
 
+/// Fonction house_modality_condition.
 fn house_modality_condition(
     position: &ObjectPositionFact,
     definitions: &HashMap<&str, &AccidentalDignityConditionReference>,
@@ -211,6 +215,7 @@ fn house_modality_condition(
     ))
 }
 
+/// Fonction angle_proximity_conditions.
 fn angle_proximity_conditions(
     position: &ObjectPositionFact,
     definitions: &HashMap<&str, &AccidentalDignityConditionReference>,
@@ -247,6 +252,7 @@ fn angle_proximity_conditions(
     conditions
 }
 
+/// Fonction motion_condition.
 fn motion_condition(
     position: &ObjectPositionFact,
     definitions: &HashMap<&str, &AccidentalDignityConditionReference>,
@@ -268,6 +274,7 @@ fn motion_condition(
     ))
 }
 
+/// Fonction horizon_condition.
 fn horizon_condition(
     position: &ObjectPositionFact,
     definitions: &HashMap<&str, &AccidentalDignityConditionReference>,
@@ -296,6 +303,7 @@ fn horizon_condition(
     ))
 }
 
+/// Fonction sect_condition.
 fn sect_condition(
     position: &ObjectPositionFact,
     chart_sect: Option<&str>,
@@ -322,6 +330,7 @@ fn sect_condition(
     ))
 }
 
+/// Fonction build_condition.
 fn build_condition(
     definition: &AccidentalDignityConditionReference,
     source: Value,
@@ -338,6 +347,7 @@ fn build_condition(
     }
 }
 
+/// Fonction angle_longitudes_from_positions.
 fn angle_longitudes_from_positions(positions: &[ObjectPositionFact]) -> HashMap<&str, f64> {
     let mut map = HashMap::new();
     for position in positions.iter().filter(|position| is_angle(position)) {
@@ -346,6 +356,7 @@ fn angle_longitudes_from_positions(positions: &[ObjectPositionFact]) -> HashMap<
     map
 }
 
+/// Fonction is_angle.
 fn is_angle(position: &ObjectPositionFact) -> bool {
     let role = position_context(position, "object_context").and_then(|context| {
         context
@@ -362,11 +373,13 @@ fn is_angle(position: &ObjectPositionFact) -> bool {
     is_angle_role(role.as_deref(), role_label.as_deref())
 }
 
+/// Fonction zodiac_distance.
 fn zodiac_distance(left: f64, right: f64) -> f64 {
     let delta = (left - right).abs();
     delta.min(360.0 - delta)
 }
 
+/// Fonction house_modality_hint.
 fn house_modality_hint(object_name: &str, modality: &str) -> String {
     match modality {
         "angular" => format!(
@@ -382,6 +395,7 @@ fn house_modality_hint(object_name: &str, modality: &str) -> String {
     }
 }
 
+/// Fonction angle_proximity_hint.
 fn angle_proximity_hint(object_name: &str, angle_code: &str) -> String {
     let angle_label = match angle_code {
         "ascendant" => "Ascendant",
@@ -395,6 +409,7 @@ fn angle_proximity_hint(object_name: &str, angle_code: &str) -> String {
     )
 }
 
+/// Fonction motion_hint.
 fn motion_hint(object_name: &str, motion_state: &str) -> String {
     match motion_state {
         "retrograde" => format!(
@@ -407,6 +422,7 @@ fn motion_hint(object_name: &str, motion_state: &str) -> String {
     }
 }
 
+/// Fonction horizon_hint.
 fn horizon_hint(object_name: &str, horizon_position: &str) -> String {
     match horizon_position {
         "above_horizon" => format!(
@@ -422,6 +438,7 @@ fn horizon_hint(object_name: &str, horizon_position: &str) -> String {
     }
 }
 
+/// Fonction sect_hint.
 fn sect_hint(
     object_name: &str,
     chart_sect: &str,
@@ -446,6 +463,7 @@ fn sect_hint(
     }
 }
 
+/// Fonction sect_label.
 fn sect_label(sect: &str) -> &'static str {
     match sect {
         "day" => "diurnal",
@@ -454,10 +472,12 @@ fn sect_label(sect: &str) -> &'static str {
     }
 }
 
+/// Fonction round4.
 fn round4(value: f64) -> f64 {
     (value * 10_000.0).round() / 10_000.0
 }
 
+/// Fonction round4_degree.
 fn round4_degree(value: f64) -> f64 {
     round4(value.rem_euclid(360.0))
 }

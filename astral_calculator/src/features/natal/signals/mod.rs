@@ -1,17 +1,31 @@
+//! Module astral_calculator\src\features\natal\signals\mod.rs du moteur astral_calculator.
+
 use serde_json::json;
 use std::collections::HashMap;
 
+/// Module angles.
 mod angles;
+/// Module aspect_signals.
 mod aspect_signals;
+/// Module clusters.
 mod clusters;
+/// Module constants.
 mod constants;
+/// Module context.
 mod context;
+/// Module dignity.
 mod dignity;
+/// Module dignity_helpers.
 mod dignity_helpers;
+/// Module limits.
 mod limits;
+/// Module positions.
 mod positions;
+/// Module relations.
 mod relations;
+/// Module tags.
 mod tags;
+/// Module utils.
 mod utils;
 
 use angles::{angle_signal, is_angle_position};
@@ -44,6 +58,7 @@ use crate::features::natal::dignities::{
     dignity_source_weight_delta_for_position, essential_dignities_for_position,
 };
 
+/// Fonction aggregate_basic_signals.
 pub fn aggregate_basic_signals(
     facts: &CalculatedChartFacts,
     catalog: &BasicPayloadCatalog,

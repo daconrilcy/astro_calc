@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\build\signal_filters.rs du moteur astral_calculator.
+
 use crate::domain::BasicSignal;
 use crate::features::natal::payload::shared::aspect::is_marked_structural_axis;
 use std::collections::HashSet;
@@ -57,6 +59,7 @@ pub(super) fn is_angle_to_angle_aspect_signal(
     )
 }
 
+/// Fonction aspect_context_str.
 fn aspect_context_str<'a>(signal: &'a BasicSignal, key: &str) -> Option<&'a str> {
     signal
         .aspect_context

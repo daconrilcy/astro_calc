@@ -1,7 +1,10 @@
+//! Module astral_calculator\src\bootstrap\env.rs du moteur astral_calculator.
+
 use std::path::{Path, PathBuf};
 
 use crate::domain::RuntimeOptions;
 
+/// Fonction load_dotenv.
 pub fn load_dotenv() {
     for path in dotenv_candidates() {
         if path.is_file() {
@@ -12,6 +15,7 @@ pub fn load_dotenv() {
     dotenvy::dotenv().ok();
 }
 
+/// Fonction runtime_options_from_env.
 pub fn runtime_options_from_env() -> RuntimeOptions {
     RuntimeOptions {
         engine_version: std::env::var("ASTRAL_ENGINE_VERSION")
@@ -25,12 +29,14 @@ pub fn runtime_options_from_env() -> RuntimeOptions {
     }
 }
 
+/// Fonction ephemeris_path_from_env.
 pub fn ephemeris_path_from_env() -> PathBuf {
     std::env::var("ASTRAL_EPHEMERIS_PATH")
         .map(PathBuf::from)
         .unwrap_or_else(|_| PathBuf::from("..").join("ephe").join("se-2026a"))
 }
 
+/// Fonction dotenv_candidates.
 fn dotenv_candidates() -> Vec<PathBuf> {
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let mut candidates = Vec::new();

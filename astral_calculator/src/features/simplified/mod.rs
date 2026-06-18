@@ -1,13 +1,24 @@
+//! Module astral_calculator\src\features\simplified\mod.rs du moteur astral_calculator.
+
 pub mod application;
 pub(crate) mod catalog;
+/// Module ephemeris_calc.
 mod ephemeris_calc;
+/// Module facts.
 mod facts;
+/// Module payload.
 mod payload;
+/// Module repository.
 mod repository;
+/// Module request.
 mod request;
+/// Module resolve.
 mod resolve;
+/// Module response.
 mod response;
+/// Module service.
 mod service;
+/// Module uncertainty_window.
 mod uncertainty_window;
 
 pub use catalog::SimplifiedCatalog;

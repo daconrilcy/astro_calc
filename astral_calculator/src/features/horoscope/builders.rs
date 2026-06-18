@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\horoscope\builders.rs du moteur astral_calculator.
+
 use std::collections::HashSet;
 
 use crate::infra::db::horoscope_repository::HoroscopeRepository;
@@ -17,6 +19,7 @@ use super::{
 };
 
 #[derive(Debug, Clone, Deserialize)]
+/// Structure DailyPublicRequest.
 struct DailyPublicRequest {
     date: String,
     timezone: String,
@@ -26,6 +29,7 @@ struct DailyPublicRequest {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+/// Structure PeriodPublicRequest.
 struct PeriodPublicRequest {
     anchor_date: String,
     timezone: String,
@@ -33,6 +37,7 @@ struct PeriodPublicRequest {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+/// Structure SlotProfileRow.
 struct SlotProfileRow {
     slot_code: String,
     start_local_time: String,
@@ -42,6 +47,7 @@ struct SlotProfileRow {
 }
 
 #[derive(Debug, Clone)]
+/// Structure ServiceProfile.
 struct ServiceProfile {
     house_system_code: Option<String>,
     period_profile_code: Option<String>,
@@ -49,12 +55,14 @@ struct ServiceProfile {
 }
 
 #[derive(Debug, Clone)]
+/// Structure ScanProfile.
 struct ScanProfile {
     granularity: String,
     reference_time_local: String,
     expected_snapshots_per_day: usize,
 }
 
+/// Fonction build_horoscope_daily_calculation_request_from_public.
 pub async fn build_horoscope_daily_calculation_request_from_public(
     repository: &HoroscopeRepository,
     service_code: &str,
@@ -114,6 +122,7 @@ pub async fn build_horoscope_daily_calculation_request_from_public(
     })
 }
 
+/// Fonction build_horoscope_period_calculation_request_from_public.
 pub async fn build_horoscope_period_calculation_request_from_public(
     repository: &HoroscopeRepository,
     service_code: &str,
@@ -157,6 +166,7 @@ pub async fn build_horoscope_period_calculation_request_from_public(
     })
 }
 
+/// Fonction validate_daily_service_code.
 fn validate_daily_service_code(service_code: &str) -> Result<(), String> {
     if matches!(
         service_code,
@@ -170,6 +180,7 @@ fn validate_daily_service_code(service_code: &str) -> Result<(), String> {
     }
 }
 
+/// Fonction validate_period_service_code.
 fn validate_period_service_code(service_code: &str) -> Result<(), String> {
     if matches!(
         service_code,
@@ -183,6 +194,7 @@ fn validate_period_service_code(service_code: &str) -> Result<(), String> {
     }
 }
 
+/// Fonction validate_daily_public_request.
 fn validate_daily_public_request(
     service_code: &str,
     request: &DailyPublicRequest,
@@ -212,6 +224,7 @@ fn validate_daily_public_request(
     Ok(())
 }
 
+/// Fonction service_profile.
 async fn service_profile(
     repository: &HoroscopeRepository,
     service_code: &str,
@@ -230,6 +243,7 @@ async fn service_profile(
     })
 }
 
+/// Fonction period_service_profile.
 async fn period_service_profile(
     repository: &HoroscopeRepository,
     service_code: &str,
@@ -241,6 +255,7 @@ async fn period_service_profile(
     Ok(profile)
 }
 
+/// Fonction slot_profiles.
 async fn slot_profiles(
     repository: &HoroscopeRepository,
     service_code: &str,
@@ -263,6 +278,7 @@ async fn slot_profiles(
     Ok(slots)
 }
 
+/// Fonction resolve_period_window.
 async fn resolve_period_window(
     repository: &HoroscopeRepository,
     period_profile_code: &str,
@@ -309,6 +325,7 @@ async fn resolve_period_window(
     }))
 }
 
+/// Fonction map_period_window_error.
 fn map_period_window_error(err: astral_time_window::PeriodWindowError) -> String {
     match err {
         astral_time_window::PeriodWindowError::InvalidTimezone(_) => {
@@ -327,6 +344,7 @@ fn map_period_window_error(err: astral_time_window::PeriodWindowError) -> String
     }
 }
 
+/// Fonction build_scan_plan.
 async fn build_scan_plan(
     repository: &HoroscopeRepository,
     period_resolution: &Value,
@@ -382,6 +400,7 @@ async fn build_scan_plan(
     }))
 }
 
+/// Fonction validate_scan_plan_value.
 async fn validate_scan_plan_value(
     repository: &HoroscopeRepository,
     period_resolution: &Value,
@@ -454,6 +473,7 @@ async fn validate_scan_plan_value(
     Ok(())
 }
 
+/// Fonction scan_profile.
 async fn scan_profile(
     repository: &HoroscopeRepository,
     scan_profile_code: &str,
@@ -473,6 +493,7 @@ async fn scan_profile(
 }
 
 impl ScanProfile {
+    /// Fonction reference_times.
     fn reference_times(&self) -> Result<Vec<NaiveTime>, String> {
         let times = self
             .reference_time_local

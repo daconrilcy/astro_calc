@@ -1,3 +1,5 @@
+//! Module astral_calculator\src\features\natal\payload\validate\aspects.rs du moteur astral_calculator.
+
 use std::collections::HashSet;
 
 use crate::domain::BasicSignal;
@@ -45,6 +47,7 @@ pub(super) fn has_current_aspect_context(signal: &BasicSignal) -> bool {
         && json::has_bool_value(context.get("is_intensity_modifier"))
 }
 
+/// Fonction has_any_aspect_effect.
 fn has_any_aspect_effect(context: &serde_json::Value) -> bool {
     ["primary_valence", "intensity_modifier", "secondary_effect"]
         .into_iter()
