@@ -23,3 +23,7 @@ uuid.workspace = true
 
 [dev-dependencies]
 tokio.workspace = true
+
+[[test]]
+name = "calculator_client_tests"
+path = "../../../tests/calculator_client_tests.rs"

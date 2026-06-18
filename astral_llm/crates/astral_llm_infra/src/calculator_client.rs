@@ -113,28 +113,3 @@ pub fn calculator_api_key_from_env() -> Option<String> {
         .map(|v| v.trim().to_string())
         .filter(|v| !v.is_empty())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::CalculatorClient;
-
-    #[test]
-    fn calculator_client_uses_internal_calculation_paths() {
-        assert_eq!(
-            CalculatorClient::SIMPLIFIED_NATAL_PATH,
-            "/v1/internal/calculations/natal/simplified"
-        );
-        assert_eq!(
-            CalculatorClient::FULL_NATAL_PATH,
-            "/v1/internal/calculations/natal"
-        );
-        assert_eq!(
-            CalculatorClient::HOROSCOPE_DAILY_NATAL_PATH,
-            "/v1/internal/calculations/horoscope/daily-natal"
-        );
-        assert_eq!(
-            CalculatorClient::HOROSCOPE_PERIOD_NATAL_PATH,
-            "/v1/internal/calculations/horoscope/period/natal"
-        );
-    }
-}
