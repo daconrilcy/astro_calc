@@ -95,65 +95,6 @@ Cloture DB + HTTP smoke:
   anciens marqueurs string legacy, et la stabilite du contrat
   `llm_projection_natal_v1`.
 
-Prochaine vague ciblee: dette `clean_text.rs`
-
-Resume court:
-- prochaine vague sans rupture de contrat pour sortir de
-  `astral_calculator/src/engine/projection/clean_text.rs` les labels metier et
-  referentiels encore figes;
-- conservation des utilitaires purement techniques en code
-  (`limit_keywords`, `clean_semantic_tags`, `is_technical_keyword`,
-  `push_unique`, `is_unremarkable_motion_condition`, `importance_label`
-  sauf decision explicite ulterieure sur des seuils DB);
-- priorite aux tables existantes avant toute nouvelle table generique;
-- maintien strict de `natal_structured_v14` et `llm_projection_natal_v1`.
-
-Perimetre fonctionnel vise:
-- `humanize_condition` doit consommer
-  `astral_accidental_dignity_condition_definitions`;
-- les labels d'angles doivent venir de `astral_angle_points`;
-- les labels de dignites doivent reutiliser les referentiels de dignites deja
-  charges;
-- les labels de themes/maisons doivent reutiliser les references maisons/themes
-  deja presentes au runtime;
-- les labels de mouvement doivent reutiliser les references d'etats de
-  mouvement si elles couvrent tous les cas;
-- les labels strictement projection-specifiques sans source canonique existante
-  doivent etre portes par une table legere
-  `astral_projection_label_definitions`.
-
-Familles candidates pour `astral_projection_label_definitions`:
-- `dynamic_quality`
-- `valence`
-- `phase`
-- `reading_slot`
-- `axis_balance`
-- `chart_sect`
-- `hemisphere_area`
-- `dignity_meaning` uniquement si aucun referentiel existant ne couvre ce
-  texte.
-
-Invariants de couche pour la vague `clean_text.rs`:
-- nouveau type domaine `ProjectionLabelDefinition`;
-- seed JSON DB sous `json_db/` et chargement runtime/catalogue explicites;
-- `clean_text.rs` ne garde que les transformations techniques et recupere les
-  labels canoniques depuis le contexte de projection;
-- tout label projection canonique requis mais absent de la DB doit produire une
-  erreur explicite, jamais un fallback metier silencieux;
-- aucun changement des contrats JSON publics.
-
-Verification ciblee:
-- tests unitaires sur les renderers et humanizers DB-backed;
-- test negatif sur definition obligatoire absente avec erreur explicite;
-- tests de non-regression projection contre les sorties `snake_case` ou
-  fallback techniques;
-- `cargo test -p astral_calculator`
-- `cargo test -p astral_calculator_http --test astral_calculator_http_tests`
-- `cargo test -p astral_llm_api --test contracts_publish_tests`
-- `python scripts/import_json_db_to_postgres.py`
-- smoke HTTP natal sur `POST /v1/internal/calculations/natal`
-- verification finale que les labels consommes proviennent bien de PostgreSQL.
-
 # 2026-06-18 - `astral_calculator` suppression des wrappers racine legacy
 
 Resume court:

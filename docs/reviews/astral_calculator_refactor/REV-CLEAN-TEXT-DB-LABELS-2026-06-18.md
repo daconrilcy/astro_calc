@@ -77,6 +77,35 @@ Constats verifies:
 - `cargo test -p astral_calculator_http --test astral_calculator_http_tests`
 - `cargo test -p astral_llm_api --test contracts_publish_tests`
 
+## Cycle 4
+
+### Finding F5
+
+`docs/BASIC_PAYLOAD_IMPLEMENTATION.md` conservait encore une section
+`Prochaine vague ciblee: dette clean_text.rs` alors que la vague
+`clean_text` etait deja implementee, testee et cloturee dans cette review.
+La documentation de synthese restait donc en contradiction avec l'etat reel du
+code et des validations.
+
+### Correction
+
+- suppression de la section prospective obsolete dans
+  `docs/BASIC_PAYLOAD_IMPLEMENTATION.md`;
+- conservation du resume implemente en tete de document comme source de verite
+  de la vague cloturee.
+
+### Verification
+
+- relecture croisee de `docs/BASIC_PAYLOAD_IMPLEMENTATION.md`;
+- coherence verifiee avec
+  `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-CLEAN-TEXT-DB-LABELS-2026-06-18.md`;
+- coherence verifiee avec
+  `docs/reviews/astral_calculator_refactor/REV-CLEAN-TEXT-DB-LABELS-2026-06-18.md`.
+
+### Re-review
+
+Aucun finding supplementaire.
+
 ## Conclusion finale
 
 Aucun finding ouvert.

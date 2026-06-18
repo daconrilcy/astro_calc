@@ -66,6 +66,25 @@ Boucle de validation:
 - `cargo test -p astral_calculator_http --test astral_calculator_http_tests`
 - `cargo test -p astral_llm_api --test contracts_publish_tests`
 
+## Cycle 4
+
+### Finding F5
+
+La documentation de synthese de vague gardait encore une annonce de
+`prochaine vague clean_text.rs` apres la fermeture effective de cette meme
+vague. La frontiere code <-> documentation etait donc propre dans le runtime,
+mais pas dans la trace de livraison.
+
+### Correction
+
+- retrait de la section prospective obsolete dans
+  `docs/BASIC_PAYLOAD_IMPLEMENTATION.md`;
+- alignement de la synthese de vague sur l'etat reel du code et des reviews.
+
+### Re-review
+
+Aucun finding supplementaire.
+
 ## Conclusion finale
 
 Aucun finding ouvert.
