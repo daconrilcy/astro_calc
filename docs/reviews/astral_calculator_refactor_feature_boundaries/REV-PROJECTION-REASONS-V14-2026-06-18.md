@@ -47,6 +47,23 @@ traductions non anglaises, suppression du schema historique v13.
 
 ### Findings
 
+- P2 - La validation de fraicheur acceptait encore des `reason_details`
+  dupliques a structure identique. Le builder canonique les dedoublonne deja,
+  donc un payload persiste non canonique pouvait rester reusable au runtime.
+
+### Corrections
+
+- `valid_projection_reasons(...)` rejette maintenant toute duplication
+  structurelle sur la cle
+  `reason_code + object_code + dignity_type + sign_code + house_number +
+  theme_code + angle_code + signal_key + context_key`.
+- Des tests runtime dedies couvrent les doublons dans `chart_emphasis` et
+  `house_axis_emphasis`.
+
+## Cycle 3
+
+### Findings
+
 Aucun finding ouvert.
 
 ### Verification adversariale
@@ -57,6 +74,8 @@ Aucun finding ouvert.
   les facteurs lisibles.
 - Les frontieres restent nettes: builders -> payload type -> validation ->
   projection, avec definitions canoniques chargees depuis la base.
+- La fraicheur runtime n'accepte plus de `reason_details` non canoniques avec
+  doublons structures.
 
 ## Conclusion
 

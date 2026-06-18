@@ -37,6 +37,22 @@ projection LLM publique.
 
 ### Findings
 
+- P2 - La validation runtime pouvait encore reutiliser un payload persiste non
+  canonique si `reason_details` contenait plusieurs fois la meme reason
+  structuree. Cela ne cassait pas la projection, mais laissait passer une forme
+  de derive par rapport au dedoublonnage des builders.
+
+### Corrections
+
+- La validation `is_current_basic_payload(...)` rejette maintenant les reasons
+  dupliquees sur leur empreinte structurelle complete.
+- Deux regressions runtime couvrent les doublons dans les dominantes et dans
+  les axes de maisons.
+
+## Cycle 3
+
+### Findings
+
 Aucun finding ouvert.
 
 ### Verification adversariale
@@ -49,6 +65,8 @@ Aucun finding ouvert.
   `scripts/import_json_db_to_postgres.py`.
 - `llm_projection_natal_v1` reste stable; seul le payload brut/audit change de
   version.
+- Le runtime n'accepte plus de payloads persists avec `reason_details`
+  dupliques, meme si les definitions DB sont par ailleurs valides.
 
 ## Conclusion
 

@@ -1,5 +1,7 @@
 //! Module astral_calculator\src\features\natal\payload\validate\emphasis.rs du moteur astral_calculator.
 
+use std::collections::HashSet;
+
 use crate::domain::{
     BasicPayload, BasicProductScoringSnapshot, BasicProjectionReason, ProjectionReasonDefinition,
 };
@@ -68,8 +70,14 @@ pub(super) fn valid_projection_reasons(
     reasons: &[BasicProjectionReason],
     projection_reason_definitions: &[ProjectionReasonDefinition],
 ) -> bool {
+    let mut seen_reasons = HashSet::new();
+
     !reasons.is_empty()
         && reasons.iter().all(|reason| {
+            if !seen_reasons.insert(projection_reason_fingerprint(reason)) {
+                return false;
+            }
+
             let Some(definition) = projection_reason_definitions
                 .iter()
                 .find(|definition| definition.reason_code == reason.reason_code)
@@ -129,4 +137,30 @@ fn has_non_placement_emphasis_reason(reasons: &[BasicProjectionReason]) -> bool 
     reasons
         .iter()
         .any(|reason| reason.reason_code != "placement")
+}
+
+fn projection_reason_fingerprint(
+    reason: &BasicProjectionReason,
+) -> (
+    String,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<i32>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+) {
+    (
+        reason.reason_code.clone(),
+        reason.object_code.clone(),
+        reason.dignity_type.clone(),
+        reason.sign_code.clone(),
+        reason.house_number,
+        reason.theme_code.clone(),
+        reason.angle_code.clone(),
+        reason.signal_key.clone(),
+        reason.context_key.clone(),
+    )
 }

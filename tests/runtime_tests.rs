@@ -2176,3 +2176,36 @@ fn runtime_rejects_projection_reason_missing_required_theme_from_runtime_definit
         "payload should be rejected when theme_emphasis misses theme_code"
     );
 }
+
+#[test]
+fn runtime_rejects_duplicate_projection_reasons_in_chart_emphasis() {
+    let mut payload = current_payload();
+    let duplicate_reason = BasicProjectionReason {
+        reason_code: "placement".to_string(),
+        ..BasicProjectionReason::default()
+    };
+    payload.chart_emphasis.dominant_objects[0].reason_details =
+        vec![duplicate_reason.clone(), duplicate_reason];
+
+    assert!(
+        !runtime_is_current_basic_payload(&payload, &projection_reason_definitions()),
+        "payload should be rejected when chart emphasis reason_details contain structural duplicates"
+    );
+}
+
+#[test]
+fn runtime_rejects_duplicate_projection_reasons_in_house_axis_emphasis() {
+    let mut payload = current_payload();
+    let duplicate_reason = BasicProjectionReason {
+        reason_code: "theme_emphasis".to_string(),
+        theme_code: Some("beliefs".to_string()),
+        ..BasicProjectionReason::default()
+    };
+    payload.house_axis_emphasis[0].reason_details =
+        vec![duplicate_reason.clone(), duplicate_reason];
+
+    assert!(
+        !runtime_is_current_basic_payload(&payload, &projection_reason_definitions()),
+        "payload should be rejected when house axis reason_details contain structural duplicates"
+    );
+}

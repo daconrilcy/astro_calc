@@ -22,7 +22,8 @@ Invariants de couche:
 - les builders natal produisent des raisons typees, sans concatener de codes
   metier lisibles par le LLM;
 - la validation payload rejette toute `reason_code` inconnue, inactive ou
-  incomplete selon les `requires_*` du catalogue;
+  incomplete selon les `requires_*` du catalogue, ainsi que toute duplication
+  structurelle dans `reason_details`;
 - la projection LLM consomme uniquement `reason_details` et des definitions
   chargees depuis le catalogue, sans connaissance specifique de combinaisons
   `object + dignity` ou `luminary + house`;
