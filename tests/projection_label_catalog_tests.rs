@@ -103,3 +103,22 @@ fn projection_label_seed_contains_expected_family_minimums() {
         );
     }
 }
+
+#[test]
+fn projection_label_seed_contains_runtime_axis_balance_codes() {
+    let rows = projection_label_seed_rows();
+    let labels = rows
+        .iter()
+        .filter(|row| row.label_family == "axis_balance")
+        .map(|row| row.label_code.as_str())
+        .collect::<BTreeSet<_>>();
+
+    assert_eq!(
+        labels,
+        BTreeSet::from([
+            "primary_house_dominant",
+            "secondary_house_dominant",
+            "balanced_axis"
+        ])
+    );
+}

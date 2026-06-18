@@ -661,19 +661,19 @@ fn test_projection_label_definitions() -> Vec<ProjectionLabelDefinition> {
         definition("angle_display", "ic", "The IC", 40),
         definition(
             "axis_balance",
-            "primary_dominant",
+            "primary_house_dominant",
             "Mainly house {primary_house}",
             10,
         ),
         definition(
             "axis_balance",
-            "secondary_dominant",
+            "secondary_house_dominant",
             "Mainly house {secondary_house}",
             20,
         ),
         definition(
             "axis_balance",
-            "balanced",
+            "balanced_axis",
             "Balanced houses {primary_house} and {secondary_house}",
             30,
         ),

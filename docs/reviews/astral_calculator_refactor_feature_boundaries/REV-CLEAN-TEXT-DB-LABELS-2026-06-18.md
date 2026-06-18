@@ -88,3 +88,32 @@ Aucun finding supplementaire.
 ## Conclusion finale
 
 Aucun finding ouvert.
+
+## Cycle 4 - smoke runtime full natal
+
+### Finding F5
+
+Le runtime full natal Free a echoue sur
+`missing projection label definition for family 'axis_balance' and code
+'secondary_house_dominant'`. La table generique etait bien chargee, mais ses
+codes ne correspondaient pas aux valeurs canoniques emises par
+`house_axes.polarity_balance`.
+
+### Correction
+
+- remplacement des labels `axis_balance` seedes par les codes runtime
+  `primary_house_dominant`, `secondary_house_dominant` et `balanced_axis`;
+- maintien des textes publics existants;
+- ajout d'une regression de seed pour verrouiller ces codes.
+
+### Re-review
+
+Aucun finding supplementaire.
+
+Verification:
+- `cargo test -p astral_calculator --test projection_label_catalog_tests`
+- `cargo test -p astral_calculator --test engine_contract_tests llm_projection_humanizes_axis_supporting_factors`
+
+## Conclusion runtime
+
+Aucun finding ouvert.

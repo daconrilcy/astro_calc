@@ -109,3 +109,29 @@ Aucun finding supplementaire.
 ## Conclusion finale
 
 Aucun finding ouvert.
+
+## Cycle 4 - smoke runtime full natal
+
+### Finding F5
+
+Le smoke full natal Free a revele un decalage entre les codes runtime produits
+par `house_axes.polarity_balance` et les labels seedes dans
+`astral_projection_label_definitions`: le payload emet
+`primary_house_dominant`, `secondary_house_dominant` et `balanced_axis`, alors
+que le referentiel contenait `primary_dominant`, `secondary_dominant` et
+`balanced`.
+
+### Correction
+
+- alignement de la famille `axis_balance` sur les codes contractuels produits
+  par le payload;
+- ajout d'un test explicite sur les trois codes runtime `axis_balance`.
+
+### Verification
+
+- `cargo test -p astral_calculator --test projection_label_catalog_tests`
+- `cargo test -p astral_calculator --test engine_contract_tests llm_projection_humanizes_axis_supporting_factors`
+
+## Conclusion runtime
+
+Aucun finding ouvert.
