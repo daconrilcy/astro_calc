@@ -73,6 +73,10 @@ name = "engine_contract_tests"
 path = "../tests/engine_contract_tests.rs"
 
 [[test]]
+name = "projection_label_catalog_tests"
+path = "../tests/projection_label_catalog_tests.rs"
+
+[[test]]
 name = "simplified_natal_tests"
 path = "../tests/simplified_natal_tests.rs"
 required-features = ["test-utils"]

@@ -198,6 +198,19 @@ impl From<ProjectionReasonDefinitionRow> for crate::domain::ProjectionReasonDefi
     }
 }
 
+impl From<ProjectionLabelDefinitionRow> for crate::domain::ProjectionLabelDefinition {
+    /// Fonction from.
+    fn from(row: ProjectionLabelDefinitionRow) -> Self {
+        Self {
+            label_family: row.label_family,
+            label_code: row.label_code,
+            label_template_en: row.label_template_en,
+            is_active: row.is_active,
+            sort_order: row.sort_order,
+        }
+    }
+}
+
 impl From<AccidentalScoringParamsRow> for AccidentalScoringParams {
     /// Fonction from.
     fn from(row: AccidentalScoringParamsRow) -> Self {

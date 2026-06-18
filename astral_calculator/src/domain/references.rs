@@ -225,6 +225,16 @@ pub struct ProjectionReasonDefinition {
 }
 
 #[derive(Debug, Clone)]
+/// Structure ProjectionLabelDefinition.
+pub struct ProjectionLabelDefinition {
+    pub label_family: String,
+    pub label_code: String,
+    pub label_template_en: String,
+    pub is_active: bool,
+    pub sort_order: i32,
+}
+
+#[derive(Debug, Clone)]
 /// Structure AccidentalConditionTrigger.
 pub struct AccidentalConditionTrigger {
     pub trigger_family: String,

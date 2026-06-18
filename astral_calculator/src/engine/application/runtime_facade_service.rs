@@ -100,7 +100,14 @@ where
             .await?;
         let house_system = self.references.house_system(house_system_id).await?;
         let house_system_label = house_system.name;
+        let house_references = self.references.house_references().await?;
         let house_axes = self.references.house_axis_references().await?;
+        let angle_points = self.references.angle_point_references().await?;
+        let motion_states = self.references.motion_state_references().await?;
+        let accidental_condition_definitions = self
+            .references
+            .accidental_dignity_condition_references()
+            .await?;
         let (audit, payload_catalog) = self
             .natal
             .calculate_basic_with_catalog(resolved.natal_input.clone())
@@ -113,8 +120,14 @@ where
             &zodiac_label,
             &coordinate_label,
             &house_system_label,
+            &house_references,
             &house_axes,
+            &angle_points,
+            &motion_states,
+            &accidental_condition_definitions,
+            &payload_catalog.essential_dignity_rules,
             &payload_catalog.projection_reason_definitions,
+            &payload_catalog.projection_label_definitions,
             &profile,
         )
     }

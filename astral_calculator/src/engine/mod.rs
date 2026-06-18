@@ -47,8 +47,14 @@ pub fn build_engine_response(
     zodiac_label: &str,
     coordinate_label: &str,
     house_system_label: &str,
+    house_references: &[crate::domain::HouseReference],
     house_axes: &[crate::domain::HouseAxisReference],
+    angle_points: &[crate::domain::AnglePointReference],
+    motion_states: &[crate::domain::MotionStateReference],
+    accidental_condition_definitions: &[crate::domain::AccidentalDignityConditionReference],
+    essential_dignity_rules: &[crate::domain::EssentialDignityRuleReference],
     projection_reason_definitions: &[crate::domain::ProjectionReasonDefinition],
+    projection_label_definitions: &[crate::domain::ProjectionLabelDefinition],
     profile: &crate::engine::projection::LlmProjectionProfile,
 ) -> Result<AstroEngineResponse, RuntimeError> {
     let raw_contract = audit
@@ -67,6 +73,12 @@ pub fn build_engine_response(
             house_system_label,
             house_axes,
             projection_reason_definitions,
+            projection_label_definitions,
+            house_references,
+            angle_points,
+            motion_states,
+            accidental_condition_definitions,
+            essential_dignity_rules,
         },
     )?;
 

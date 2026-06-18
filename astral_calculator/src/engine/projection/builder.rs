@@ -17,12 +17,15 @@ use super::humanize::{
     dignity_meaning, hemisphere_dominant_area, humanize_axis_summary, humanize_condition,
     humanize_motion_label, importance_label, is_unremarkable_motion_condition, limit_keywords,
     push_unique, reading_slot_section, render_projection_reason, title_case_sign,
+    ProjectionTextCatalog,
 };
 use super::profiles::limits_envelope;
 use super::types::*;
 use crate::domain::{
-    BasicAccidentalDignityEvaluation, BasicHouseAxisEmphasis, BasicObjectPosition, BasicPayload,
-    BasicProjectionReason, HouseAxisReference, ProjectionReasonDefinition,
+    AccidentalDignityConditionReference, AnglePointReference, BasicAccidentalDignityEvaluation,
+    BasicHouseAxisEmphasis, BasicObjectPosition, BasicPayload, BasicProjectionReason,
+    EssentialDignityRuleReference, HouseAxisReference, HouseReference, MotionStateReference,
+    ProjectionLabelDefinition, ProjectionReasonDefinition,
 };
 use crate::shared::error::RuntimeError;
 
@@ -34,6 +37,12 @@ pub struct LlmProjectionBuildContext<'a> {
     pub house_system_label: &'a str,
     pub house_axes: &'a [HouseAxisReference],
     pub projection_reason_definitions: &'a [ProjectionReasonDefinition],
+    pub projection_label_definitions: &'a [ProjectionLabelDefinition],
+    pub house_references: &'a [HouseReference],
+    pub angle_points: &'a [AnglePointReference],
+    pub motion_states: &'a [MotionStateReference],
+    pub accidental_condition_definitions: &'a [AccidentalDignityConditionReference],
+    pub essential_dignity_rules: &'a [EssentialDignityRuleReference],
 }
 
 // Assemble la projection complete `llm_projection_natal_v1`.
@@ -45,43 +54,37 @@ pub fn build_llm_projection_natal_v1(
 ) -> Result<LlmProjectionNatalV1, RuntimeError> {
     let limits = limits_envelope(profile);
     let object_names = object_name_map(payload);
-    let reason_definitions = projection_reason_definition_map(ctx.projection_reason_definitions);
-    let theme_labels = theme_label_map(payload);
-    let dynamics = build_dynamics(payload, profile);
-    let reading_order = build_reading_order(payload, profile, &dynamics);
-    let keywords = build_keywords(payload, profile, &dynamics);
+    let resolver = ProjectionTextCatalog::build(
+        ctx.projection_reason_definitions,
+        ctx.projection_label_definitions,
+        ctx.house_references,
+        ctx.angle_points,
+        ctx.motion_states,
+        ctx.accidental_condition_definitions,
+        ctx.essential_dignity_rules,
+    );
+    let dynamics = build_dynamics(payload, profile, &resolver)?;
+    let reading_order = build_reading_order(payload, profile, &dynamics, &resolver)?;
+    let keywords = build_keywords(payload, profile, &dynamics, &resolver)?;
 
     Ok(LlmProjectionNatalV1 {
         contract_version: "llm_projection_natal_v1".to_string(),
         projection_level: profile.level_code.clone(),
         projection_limits: limits,
-        chart: build_chart(payload, ctx),
+        chart: build_chart(payload, ctx, &resolver)?,
         reading_order,
-        core_identity: build_core_identity(payload, profile, &object_names),
-        dominant_themes: build_dominant_themes(
-            payload,
-            profile,
-            &object_names,
-            &reason_definitions,
-            &theme_labels,
-        )?,
-        placements: build_placements(payload, profile),
+        core_identity: build_core_identity(payload, profile, &object_names, &resolver)?,
+        dominant_themes: build_dominant_themes(payload, profile, &object_names, &resolver)?,
+        placements: build_placements(payload, profile, &resolver)?,
         angles: build_angles(payload, profile),
-        strengths: build_strengths(payload, profile),
+        strengths: build_strengths(payload, profile, &resolver)?,
         relationship_network: build_relationship_network(payload, profile, &object_names),
         dynamics,
-        house_axes: build_house_axes(
-            payload,
-            profile,
-            ctx.house_axes,
-            &reason_definitions,
-            &theme_labels,
-        )?,
+        house_axes: build_house_axes(payload, profile, ctx.house_axes, &resolver)?,
         keywords,
     })
 }
 
-// Indexe les noms d'objets par code pour reutiliser des libelles humains.
 /// Fonction object_name_map.
 fn object_name_map(payload: &BasicPayload) -> HashMap<String, String> {
     payload
@@ -91,66 +94,45 @@ fn object_name_map(payload: &BasicPayload) -> HashMap<String, String> {
         .collect()
 }
 
-fn projection_reason_definition_map(
-    definitions: &[ProjectionReasonDefinition],
-) -> HashMap<String, ProjectionReasonDefinition> {
-    definitions
-        .iter()
-        .cloned()
-        .map(|definition| (definition.reason_code.clone(), definition))
-        .collect()
-}
-
-fn theme_label_map(payload: &BasicPayload) -> HashMap<String, String> {
-    let mut labels = HashMap::new();
-    for position in &payload.positions {
-        if let Some(theme_code) = position
-            .house_context
-            .as_ref()
-            .and_then(|ctx| ctx.get("theme_code"))
-            .and_then(|value| value.as_str())
-        {
-            labels.entry(theme_code.to_string()).or_insert_with(|| {
-                position
-                    .house_name
-                    .clone()
-                    .unwrap_or_else(|| title_case_sign(theme_code))
-            });
-        }
-    }
-    labels
-}
-
 // Construit le bloc `chart` avec les metadonnees de calcul et de naissance.
 /// Fonction build_chart.
-fn build_chart(payload: &BasicPayload, ctx: &LlmProjectionBuildContext<'_>) -> LlmChart {
+fn build_chart(
+    payload: &BasicPayload,
+    ctx: &LlmProjectionBuildContext<'_>,
+    resolver: &ProjectionTextCatalog<'_>,
+) -> Result<LlmChart, RuntimeError> {
     let sect = payload
         .chart_context
         .sect
         .chart_sect
         .as_deref()
-        .map(chart_sect_label);
+        .map(|sect| chart_sect_label(sect, resolver))
+        .transpose()?;
     let hemisphere = payload
         .chart_context
         .hemisphere_emphasis
         .interpretive_hint
         .as_ref()
-        .map(|hint| LlmHemisphereEmphasis {
-            dominant_area: hemisphere_dominant_area(
-                hint,
-                payload
-                    .chart_context
-                    .hemisphere_emphasis
-                    .above_horizon_count,
-                payload
-                    .chart_context
-                    .hemisphere_emphasis
-                    .below_horizon_count,
-            ),
-            summary: hint.clone(),
-        });
+        .map(|hint| -> Result<LlmHemisphereEmphasis, RuntimeError> {
+            Ok(LlmHemisphereEmphasis {
+                dominant_area: hemisphere_dominant_area(
+                    hint,
+                    payload
+                        .chart_context
+                        .hemisphere_emphasis
+                        .above_horizon_count,
+                    payload
+                        .chart_context
+                        .hemisphere_emphasis
+                        .below_horizon_count,
+                    resolver,
+                )?,
+                summary: hint.clone(),
+            })
+        })
+        .transpose()?;
 
-    LlmChart {
+    Ok(LlmChart {
         chart_type: "Natal chart".to_string(),
         birth: LlmChartBirth {
             datetime_utc: payload.birth_datetime_utc.to_rfc3339(),
@@ -163,7 +145,7 @@ fn build_chart(payload: &BasicPayload, ctx: &LlmProjectionBuildContext<'_>) -> L
         },
         sect,
         hemisphere_emphasis: hemisphere,
-    }
+    })
 }
 
 // Construit l'ordre de lecture attendu par le moteur de redaction.
@@ -172,25 +154,30 @@ fn build_reading_order(
     payload: &BasicPayload,
     profile: &LlmProjectionProfile,
     dynamics: &LlmDynamics,
-) -> Vec<LlmReadingOrderItem> {
+    resolver: &ProjectionTextCatalog<'_>,
+) -> Result<Vec<LlmReadingOrderItem>, RuntimeError> {
     payload
         .reading_plan
         .iter()
         .map(|item| {
             let focus = match item.slot.as_str() {
-                "dominant_cluster" => dominant_cluster_reading_focus(payload, profile),
-                "main_tension_or_support" => main_dynamic_reading_focus(dynamics, payload, profile),
-                _ => item
+                "dominant_cluster" => {
+                    dominant_cluster_reading_focus(payload, profile, dynamics, resolver)
+                }
+                "main_tension_or_support" => {
+                    Ok(main_dynamic_reading_focus(dynamics, payload, profile))
+                }
+                _ => Ok(item
                     .primary_signal_keys
                     .iter()
                     .filter_map(|key| reading_focus_from_signal(payload, key))
-                    .collect(),
-            };
+                    .collect()),
+            }?;
             let focus = limit_keywords(&focus, profile.max_keywords_per_item);
-            LlmReadingOrderItem {
-                section: reading_slot_section(&item.slot, &item.title),
+            Ok(LlmReadingOrderItem {
+                section: reading_slot_section(&item.slot, resolver)?,
                 focus,
-            }
+            })
         })
         .collect()
 }
@@ -200,7 +187,9 @@ fn build_reading_order(
 fn dominant_cluster_reading_focus(
     payload: &BasicPayload,
     profile: &LlmProjectionProfile,
-) -> Vec<String> {
+    _dynamics: &LlmDynamics,
+    resolver: &ProjectionTextCatalog<'_>,
+) -> Result<Vec<String>, RuntimeError> {
     let mut focus = Vec::new();
     if let Some(sign) = payload.chart_emphasis.dominant_signs.first() {
         push_unique(
@@ -209,7 +198,7 @@ fn dominant_cluster_reading_focus(
         );
     }
     if let Some(house) = payload.chart_emphasis.dominant_houses.first() {
-        let theme = house_ref_from_payload(house.house_number, &house.theme_code, payload);
+        let theme = house_ref_from_payload(house.house_number, &house.theme_code, resolver)?;
         push_unique(
             &mut focus,
             format!(
@@ -244,7 +233,7 @@ fn dominant_cluster_reading_focus(
             }
         }
     }
-    focus
+    Ok(focus)
 }
 
 // Produit les signaux prioritaires pour le slot `main_tension_or_support`.
@@ -320,12 +309,13 @@ fn build_core_identity(
     payload: &BasicPayload,
     profile: &LlmProjectionProfile,
     object_names: &HashMap<String, String>,
-) -> LlmCoreIdentity {
-    LlmCoreIdentity {
-        sun: mobile_body(payload, "sun", profile),
-        moon: mobile_body(payload, "moon", profile),
+    resolver: &ProjectionTextCatalog<'_>,
+) -> Result<LlmCoreIdentity, RuntimeError> {
+    Ok(LlmCoreIdentity {
+        sun: mobile_body(payload, "sun", profile, resolver)?,
+        moon: mobile_body(payload, "moon", profile, resolver)?,
         ascendant: build_ascendant_core(payload, profile, object_names),
-    }
+    })
 }
 
 // Recupere le texte de secte associe au theme pour filtrer les conditions.
@@ -340,14 +330,17 @@ fn mobile_body(
     payload: &BasicPayload,
     code: &str,
     profile: &LlmProjectionProfile,
-) -> Option<LlmCoreBody> {
-    let position = payload.positions.iter().find(|p| p.object_code == code)?;
-    Some(LlmCoreBody {
-        placement: placement_from_position(position, profile.include_degrees),
+    resolver: &ProjectionTextCatalog<'_>,
+) -> Result<Option<LlmCoreBody>, RuntimeError> {
+    let Some(position) = payload.positions.iter().find(|p| p.object_code == code) else {
+        return Ok(None);
+    };
+    Ok(Some(LlmCoreBody {
+        placement: placement_from_position(position, profile.include_degrees, resolver)?,
         keywords: limited_keywords(position, profile.max_keywords_per_item),
-        conditions: position_conditions(position, chart_sect(payload), profile),
+        conditions: position_conditions(position, chart_sect(payload), profile, resolver)?,
         importance: "high".to_string(),
-    })
+    }))
 }
 
 // Construit le bloc Ascendant, avec regence si le profil le demande.
@@ -420,8 +413,7 @@ fn build_dominant_themes(
     payload: &BasicPayload,
     profile: &LlmProjectionProfile,
     object_names: &HashMap<String, String>,
-    reason_definitions: &HashMap<String, ProjectionReasonDefinition>,
-    theme_labels: &HashMap<String, String>,
+    resolver: &ProjectionTextCatalog<'_>,
 ) -> Result<LlmDominantThemes, RuntimeError> {
     let signs = payload
         .chart_emphasis
@@ -435,9 +427,8 @@ fn build_dominant_themes(
                 importance: importance_label(entry.score).to_string(),
                 supporting_factors: dedupe_rendered_reasons(
                     &entry.reason_details,
-                    reason_definitions,
+                    resolver,
                     object_names,
-                    theme_labels,
                     profile.max_keywords_per_item,
                 )?,
                 keywords: sign_keywords_from_positions(
@@ -456,16 +447,16 @@ fn build_dominant_themes(
         .iter()
         .take(profile.max_dominant_houses)
         .map(|entry| {
-            let house_ref = house_ref_from_payload(entry.house_number, &entry.theme_code, payload);
+            let house_ref =
+                house_ref_from_payload(entry.house_number, &entry.theme_code, resolver)?;
             Ok(LlmDominantHouse {
                 number: house_ref.number,
                 theme: house_ref.theme,
                 importance: importance_label(entry.score).to_string(),
                 supporting_factors: dedupe_rendered_reasons(
                     &entry.reason_details,
-                    reason_definitions,
+                    resolver,
                     object_names,
-                    theme_labels,
                     profile.max_keywords_per_item,
                 )?,
                 score: profile.include_scores.then_some(entry.score),
@@ -487,9 +478,8 @@ fn build_dominant_themes(
                 importance: importance_label(entry.score).to_string(),
                 supporting_factors: dedupe_rendered_reasons(
                     &entry.reason_details,
-                    reason_definitions,
+                    resolver,
                     object_names,
-                    theme_labels,
                     profile.max_keywords_per_item,
                 )?,
                 score: profile.include_scores.then_some(entry.score),
@@ -529,7 +519,11 @@ fn sign_keywords_from_positions(
 
 // Construit les placements presents dans le rendu LLM.
 /// Fonction build_placements.
-fn build_placements(payload: &BasicPayload, profile: &LlmProjectionProfile) -> LlmPlacementsGroup {
+fn build_placements(
+    payload: &BasicPayload,
+    profile: &LlmProjectionProfile,
+    resolver: &ProjectionTextCatalog<'_>,
+) -> Result<LlmPlacementsGroup, RuntimeError> {
     let core_codes: HashSet<&str> = ["sun", "moon"].into_iter().collect();
     let angle_codes: HashSet<&str> = ["ascendant", "descendant", "mc", "ic"]
         .into_iter()
@@ -553,12 +547,13 @@ fn build_placements(payload: &BasicPayload, profile: &LlmProjectionProfile) -> L
     mobiles.sort_by(|a, b| object_priority(a).cmp(&object_priority(b)).reverse());
 
     for position in mobiles {
-        let mut item = placement_from_position(position, profile.include_degrees);
+        let mut item = placement_from_position(position, profile.include_degrees, resolver)?;
         item.house = position
             .house_number
-            .map(|n| house_ref_from_payload(n, house_theme_code(position), payload));
+            .map(|n| house_ref_from_payload(n, house_theme_code(position), resolver))
+            .transpose()?;
         item.keywords = limited_keywords(position, profile.max_keywords_per_item);
-        item.conditions = position_conditions(position, chart_sect(payload), profile);
+        item.conditions = position_conditions(position, chart_sect(payload), profile, resolver)?;
         item.importance =
             Some(importance_for_object(&position.object_code, &reading_codes).to_string());
 
@@ -571,7 +566,7 @@ fn build_placements(payload: &BasicPayload, profile: &LlmProjectionProfile) -> L
         }
     }
 
-    LlmPlacementsGroup {
+    Ok(LlmPlacementsGroup {
         primary,
         supporting: supporting
             .into_iter()
@@ -581,7 +576,7 @@ fn build_placements(payload: &BasicPayload, profile: &LlmProjectionProfile) -> L
             .into_iter()
             .take(profile.max_background_placements)
             .collect(),
-    }
+    })
 }
 
 // Classe les objets par priorite astrologique pour le rendu.
@@ -634,7 +629,11 @@ fn build_angles(payload: &BasicPayload, profile: &LlmProjectionProfile) -> LlmAn
 
 // Construit les sections de forces: dignites essentielles et accidentelles.
 /// Fonction build_strengths.
-fn build_strengths(payload: &BasicPayload, profile: &LlmProjectionProfile) -> LlmStrengths {
+fn build_strengths(
+    payload: &BasicPayload,
+    profile: &LlmProjectionProfile,
+    resolver: &ProjectionTextCatalog<'_>,
+) -> Result<LlmStrengths, RuntimeError> {
     let mut dignity_rows: Vec<_> = payload.dignities.iter().collect();
     dignity_rows.sort_by(|a, b| {
         b.strength_score
@@ -644,29 +643,31 @@ fn build_strengths(payload: &BasicPayload, profile: &LlmProjectionProfile) -> Ll
     let essential_dignities = dignity_rows
         .into_iter()
         .take(payload.dignities.len().max(1))
-        .map(|d| LlmEssentialDignity {
-            object: d.object_name.clone(),
-            dignity: d.dignity_label.clone(),
-            sign: d.sign_name.clone(),
-            meaning: dignity_meaning(&d.dignity_type).to_string(),
-            strength_score: profile.include_scores.then_some(d.strength_score),
+        .map(|d| -> Result<LlmEssentialDignity, RuntimeError> {
+            Ok(LlmEssentialDignity {
+                object: d.object_name.clone(),
+                dignity: d.dignity_label.clone(),
+                sign: d.sign_name.clone(),
+                meaning: dignity_meaning(&d.dignity_type, resolver)?,
+                strength_score: profile.include_scores.then_some(d.strength_score),
+            })
         })
-        .collect();
+        .collect::<Result<Vec<_>, RuntimeError>>()?;
 
     let accidental_conditions = if profile.include_accidental_conditions {
         payload
             .accidental_dignities
             .iter()
-            .map(|entry| accidental_to_llm(entry, payload, profile))
-            .collect()
+            .map(|entry| accidental_to_llm(entry, payload, profile, resolver))
+            .collect::<Result<Vec<_>, RuntimeError>>()?
     } else {
         Vec::new()
     };
 
-    LlmStrengths {
+    Ok(LlmStrengths {
         essential_dignities,
         accidental_conditions,
-    }
+    })
 }
 
 // Convertit une evaluation de dignite accidentelle en structure LLM.
@@ -675,8 +676,9 @@ fn accidental_to_llm(
     entry: &BasicAccidentalDignityEvaluation,
     payload: &BasicPayload,
     profile: &LlmProjectionProfile,
-) -> LlmAccidentalCondition {
-    LlmAccidentalCondition {
+    resolver: &ProjectionTextCatalog<'_>,
+) -> Result<LlmAccidentalCondition, RuntimeError> {
+    Ok(LlmAccidentalCondition {
         object: entry.object_name.clone(),
         overall: accidental_overall_label(&entry.expression_quality, &entry.overall_polarity),
         conditions: {
@@ -684,7 +686,7 @@ fn accidental_to_llm(
             for condition in entry.conditions.iter() {
                 push_unique(
                     &mut out,
-                    humanize_condition(&condition.condition_code, chart_sect(payload)),
+                    humanize_condition(&condition.condition_code, chart_sect(payload), resolver)?,
                 );
                 if out.len() >= profile.max_accidental_conditions_per_object {
                     break;
@@ -693,7 +695,7 @@ fn accidental_to_llm(
             out
         },
         overall_score: profile.include_scores.then_some(entry.overall_score),
-    }
+    })
 }
 
 // Construit le reseau relationnel des regences et receptions.
@@ -843,25 +845,14 @@ fn build_house_axes(
     payload: &BasicPayload,
     profile: &LlmProjectionProfile,
     axis_refs: &[HouseAxisReference],
-    reason_definitions: &HashMap<String, ProjectionReasonDefinition>,
-    theme_labels: &HashMap<String, String>,
+    resolver: &ProjectionTextCatalog<'_>,
 ) -> Result<Vec<LlmHouseAxis>, RuntimeError> {
     let object_names = object_name_map(payload);
     payload
         .house_axis_emphasis
         .iter()
         .take(profile.max_house_axes)
-        .map(|axis| {
-            house_axis_to_llm(
-                axis,
-                axis_refs,
-                payload,
-                profile,
-                &object_names,
-                reason_definitions,
-                theme_labels,
-            )
-        })
+        .map(|axis| house_axis_to_llm(axis, axis_refs, payload, profile, &object_names, resolver))
         .collect()
 }
 
@@ -870,37 +861,26 @@ fn build_house_axes(
 fn house_axis_to_llm(
     axis: &BasicHouseAxisEmphasis,
     axis_refs: &[HouseAxisReference],
-    payload: &BasicPayload,
+    _payload: &BasicPayload,
     profile: &LlmProjectionProfile,
     object_names: &HashMap<String, String>,
-    reason_definitions: &HashMap<String, ProjectionReasonDefinition>,
-    theme_labels: &HashMap<String, String>,
+    resolver: &ProjectionTextCatalog<'_>,
 ) -> Result<LlmHouseAxis, RuntimeError> {
     let axis_title = house_axis_label(&axis.axis_code, axis_refs);
     let houses: Vec<LlmHouseRef> = axis
         .house_scores
         .iter()
-        .map(|score| house_ref_from_payload(score.house_number, &score.theme_code, payload))
-        .collect();
+        .map(|score| house_ref_from_payload(score.house_number, &score.theme_code, resolver))
+        .collect::<Result<Vec<_>, RuntimeError>>()?;
 
     let supporting_factors = dedupe_rendered_reasons(
         &axis.reason_details,
-        reason_definitions,
+        resolver,
         object_names,
-        theme_labels,
         profile.max_keywords_per_item,
     )?;
 
-    let theme_in_parens: Vec<(String, String)> = axis
-        .house_scores
-        .iter()
-        .map(|score| {
-            let label =
-                house_ref_from_payload(score.house_number, &score.theme_code, payload).theme;
-            (score.theme_code.clone(), label)
-        })
-        .collect();
-    let summary = humanize_axis_summary(&axis.interpretive_hint, &theme_in_parens);
+    let summary = humanize_axis_summary(&axis.interpretive_hint, resolver)?;
 
     Ok(LlmHouseAxis {
         axis: axis_title,
@@ -909,7 +889,8 @@ fn house_axis_to_llm(
             &axis.polarity_balance,
             axis.primary_house,
             axis.secondary_house,
-        ),
+            resolver,
+        )?,
         importance: axis_importance(axis.axis_score).to_string(),
         summary,
         supporting_factors,
@@ -922,7 +903,8 @@ fn build_keywords(
     payload: &BasicPayload,
     profile: &LlmProjectionProfile,
     dynamics: &LlmDynamics,
-) -> LlmKeywords {
+    resolver: &ProjectionTextCatalog<'_>,
+) -> Result<LlmKeywords, RuntimeError> {
     let mut main = Vec::new();
     let mut by_area: BTreeMap<String, Vec<String>> = BTreeMap::new();
     let allow_technical = profile.level_code == "expert";
@@ -953,7 +935,7 @@ fn build_keywords(
         push_unique(&mut main, title_case_sign(&sign.sign_code));
     }
     if let Some(house) = payload.chart_emphasis.dominant_houses.first() {
-        let theme = house_ref_from_payload(house.house_number, &house.theme_code, payload);
+        let theme = house_ref_from_payload(house.house_number, &house.theme_code, resolver)?;
         push_unique(&mut main, theme.theme.to_lowercase());
     }
 
@@ -972,10 +954,10 @@ fn build_keywords(
         );
     }
 
-    LlmKeywords {
+    Ok(LlmKeywords {
         main: limit_keywords(&main, profile.max_keywords_per_item * 2),
         by_area,
-    }
+    })
 }
 
 // Derive une cle de domaine lisible a partir du contexte de maison.
@@ -1018,23 +1000,24 @@ fn angle_codes() -> HashSet<&'static str> {
 
 // Construit la representation LLM d'un placement individuel.
 /// Fonction placement_from_position.
-fn placement_from_position(position: &BasicObjectPosition, include_degrees: bool) -> LlmPlacement {
-    LlmPlacement {
+fn placement_from_position(
+    position: &BasicObjectPosition,
+    include_degrees: bool,
+    resolver: &ProjectionTextCatalog<'_>,
+) -> Result<LlmPlacement, RuntimeError> {
+    Ok(LlmPlacement {
         object: position.object_name.clone(),
         sign: position.sign_name.clone(),
-        house: position.house_number.map(|n| LlmHouseRef {
-            number: n,
-            theme: position
-                .house_name
-                .clone()
-                .unwrap_or_else(|| title_case_sign(house_theme_code(position))),
-        }),
-        motion: motion_label(position),
+        house: position
+            .house_number
+            .map(|n| house_ref_from_payload(n, house_theme_code(position), resolver))
+            .transpose()?,
+        motion: motion_label(position, resolver)?,
         keywords: Vec::new(),
         conditions: Vec::new(),
         importance: None,
         longitude_deg: include_degrees.then_some(position.longitude_deg),
-    }
+    })
 }
 
 // Resout une reference de maison a partir du contexte du theme.
@@ -1042,18 +1025,13 @@ fn placement_from_position(position: &BasicObjectPosition, include_degrees: bool
 fn house_ref_from_payload(
     house_number: i32,
     theme_code: &str,
-    payload: &BasicPayload,
-) -> LlmHouseRef {
-    let theme = payload
-        .positions
-        .iter()
-        .find(|pos| pos.house_number == Some(house_number))
-        .and_then(|p| p.house_name.clone())
-        .unwrap_or_else(|| title_case_sign(theme_code));
-    LlmHouseRef {
+    resolver: &ProjectionTextCatalog<'_>,
+) -> Result<LlmHouseRef, RuntimeError> {
+    let theme = resolver.house_label(house_number, theme_code)?;
+    Ok(LlmHouseRef {
         number: house_number,
         theme,
-    }
+    })
 }
 
 // Renvoie le code de theme de maison quand il est present.
@@ -1090,8 +1068,9 @@ fn position_conditions(
     position: &BasicObjectPosition,
     chart_sect: Option<&str>,
     profile: &LlmProjectionProfile,
-) -> Vec<String> {
-    let motion = motion_label(position);
+    resolver: &ProjectionTextCatalog<'_>,
+) -> Result<Vec<String>, RuntimeError> {
+    let motion = motion_label(position, resolver)?;
     let mut out = Vec::new();
     if let Some(modality) = position.house_modality.as_ref() {
         if let Some(label) = modality.get("label").and_then(|v| v.as_str()) {
@@ -1103,17 +1082,13 @@ fn position_conditions(
         .get("horizon_position")
         .and_then(|v| v.as_str())
     {
-        let label = if horizon.contains('_') {
-            humanize_condition(horizon, chart_sect)
-        } else {
-            title_case_sign(horizon)
-        };
+        let label = humanize_condition(horizon, chart_sect, resolver)?;
         if !is_unremarkable_motion_condition(&label, motion.as_deref()) {
             push_unique(&mut out, label);
         }
     }
     for summary in &position.accidental_dignity_context {
-        let label = humanize_condition(&summary.condition_code, chart_sect);
+        let label = humanize_condition(&summary.condition_code, chart_sect, resolver)?;
         if !is_unremarkable_motion_condition(&label, motion.as_deref()) {
             push_unique(&mut out, label);
         }
@@ -1121,22 +1096,20 @@ fn position_conditions(
             break;
         }
     }
-    out
+    Ok(out)
 }
 
 // Dedouble et humanise les raisons d'une emphase astrologique.
 /// Fonction dedupe_humanized_reasons.
 fn dedupe_rendered_reasons(
     reasons: &[BasicProjectionReason],
-    reason_definitions: &HashMap<String, ProjectionReasonDefinition>,
+    resolver: &ProjectionTextCatalog<'_>,
     object_names: &HashMap<String, String>,
-    theme_labels: &HashMap<String, String>,
     limit: usize,
 ) -> Result<Vec<String>, RuntimeError> {
     let mut out = Vec::new();
     for reason in reasons {
-        let human =
-            render_projection_reason(reason, reason_definitions, object_names, theme_labels)?;
+        let human = render_projection_reason(reason, resolver, object_names)?;
         push_unique(&mut out, human);
         if out.len() >= limit {
             break;
@@ -1147,11 +1120,18 @@ fn dedupe_rendered_reasons(
 
 // Traduit le contexte de mouvement d'une position en label lisible.
 /// Fonction motion_label.
-fn motion_label(position: &BasicObjectPosition) -> Option<String> {
-    position
-        .motion_context
-        .as_ref()
-        .and_then(|ctx| ctx.get("label"))
+fn motion_label(
+    position: &BasicObjectPosition,
+    resolver: &ProjectionTextCatalog<'_>,
+) -> Result<Option<String>, RuntimeError> {
+    let Some(context) = position.motion_context.as_ref() else {
+        return Ok(None);
+    };
+    let value = context
+        .get("motion_state")
         .and_then(|v| v.as_str())
-        .map(humanize_motion_label)
+        .or_else(|| context.get("label").and_then(|v| v.as_str()));
+    value
+        .map(|label| humanize_motion_label(label, resolver))
+        .transpose()
 }

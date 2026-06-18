@@ -483,6 +483,29 @@ impl RuntimeQueries {
         .collect())
     }
 
+    /// Fonction projection_label_definitions.
+    pub async fn projection_label_definitions(
+        &self,
+    ) -> Result<Vec<ProjectionLabelDefinition>, RuntimeError> {
+        Ok(sqlx::query_as::<_, ProjectionLabelDefinitionRow>(
+            r#"
+            SELECT label_family,
+                   label_code,
+                   label_template_en,
+                   is_active,
+                   sort_order
+            FROM astral_projection_label_definitions
+            WHERE is_active = true
+            ORDER BY label_family, sort_order, label_code
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?
+        .into_iter()
+        .map(Into::into)
+        .collect())
+    }
+
     /// Fonction accidental_scoring_params.
     pub async fn accidental_scoring_params(
         &self,

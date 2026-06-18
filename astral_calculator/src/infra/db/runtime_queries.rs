@@ -5,7 +5,8 @@ use sqlx::{PgPool, Postgres, Transaction};
 
 use crate::domain::{
     AccidentalConditionTrigger, AccidentalPolarityBand, AccidentalScoringParams,
-    BasicProductScoringProfile, EssentialDignityRuleReference, ProjectionReasonDefinition,
+    BasicProductScoringProfile, EssentialDignityRuleReference, ProjectionLabelDefinition,
+    ProjectionReasonDefinition,
 };
 use crate::domain::{
     AspectFact, BasicPayload, CalculatedChartFacts, HouseCuspFact, InterpretationSignalDraft,
@@ -22,7 +23,8 @@ use crate::infra::db::models::{
     HouseAxisReferenceRow, HouseReference, HouseSystem, InterpretationSignalRow,
     LlmProjectionProfileRow, LunarPhaseReferenceRow, MajorAspectFamilyReference,
     MotionStateReference, ObjectSectAffinityReferenceRow, PersistedAspectFact,
-    PersistedObjectPositionFact, ProjectionReasonDefinitionRow, SignReference,
+    PersistedObjectPositionFact, ProjectionLabelDefinitionRow, ProjectionReasonDefinitionRow,
+    SignReference,
 };
 use crate::infra::db::runtime_repository::parse_existing_basic_payload_value;
 use crate::shared::error::RuntimeError;

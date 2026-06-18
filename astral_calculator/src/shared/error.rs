@@ -22,6 +22,8 @@ pub enum RuntimeError {
     InvalidEngineRequest(String),
     #[error("invalid projection reason definition: {0}")]
     InvalidProjectionReasonDefinition(String),
+    #[error("invalid projection label definition: {0}")]
+    InvalidProjectionLabelDefinition(String),
 }
 
 impl RuntimeError {
@@ -35,6 +37,7 @@ impl RuntimeError {
             Self::RunningCalculationInProgress { .. } => "running_calculation_in_progress",
             Self::InvalidEngineRequest(_) => "invalid_engine_request",
             Self::InvalidProjectionReasonDefinition(_) => "invalid_projection_reason_definition",
+            Self::InvalidProjectionLabelDefinition(_) => "invalid_projection_label_definition",
         }
     }
 }

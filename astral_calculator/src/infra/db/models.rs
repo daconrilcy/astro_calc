@@ -325,6 +325,16 @@ pub struct ProjectionReasonDefinitionRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure ProjectionLabelDefinitionRow.
+pub struct ProjectionLabelDefinitionRow {
+    pub label_family: String,
+    pub label_code: String,
+    pub label_template_en: String,
+    pub is_active: bool,
+    pub sort_order: i32,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
 /// Structure AccidentalScoringParamsRow.
 pub struct AccidentalScoringParamsRow {
     pub code: String,

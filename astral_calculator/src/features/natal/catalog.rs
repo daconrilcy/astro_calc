@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use crate::domain::{
     AccidentalConditionTrigger, AccidentalDignityConditionReference, AccidentalPolarityBand,
     AccidentalScoringParams, BasicProductScoringProfile, EssentialDignityRuleReference,
-    ObjectSectAffinityReference, ProjectionReasonDefinition,
+    ObjectSectAffinityReference, ProjectionLabelDefinition, ProjectionReasonDefinition,
 };
 
 #[derive(Debug, Clone)]
@@ -17,10 +17,12 @@ pub struct BasicPayloadCatalog {
     pub accidental_scoring: AccidentalScoringParams,
     pub accidental_polarity_bands: Vec<AccidentalPolarityBand>,
     pub projection_reason_definitions: Vec<ProjectionReasonDefinition>,
+    pub projection_label_definitions: Vec<ProjectionLabelDefinition>,
     essential_by_object_sign: HashMap<(String, String), Vec<EssentialDignityRuleReference>>,
     triggers_by_family: HashMap<String, Vec<AccidentalConditionTrigger>>,
     dignity_weight_by_type: HashMap<String, EssentialDignityScoringWeight>,
     projection_reason_by_code: HashMap<String, ProjectionReasonDefinition>,
+    projection_label_by_family_code: HashMap<(String, String), ProjectionLabelDefinition>,
 }
 
 #[derive(Debug, Clone)]
@@ -41,6 +43,7 @@ impl BasicPayloadCatalog {
         accidental_scoring: AccidentalScoringParams,
         accidental_polarity_bands: Vec<AccidentalPolarityBand>,
         projection_reason_definitions: Vec<ProjectionReasonDefinition>,
+        projection_label_definitions: Vec<ProjectionLabelDefinition>,
     ) -> Self {
         let mut essential_by_object_sign = HashMap::new();
         let mut dignity_weight_by_type = HashMap::new();
@@ -72,6 +75,19 @@ impl BasicPayloadCatalog {
             .cloned()
             .map(|definition| (definition.reason_code.clone(), definition))
             .collect();
+        let projection_label_by_family_code = projection_label_definitions
+            .iter()
+            .cloned()
+            .map(|definition| {
+                (
+                    (
+                        definition.label_family.clone(),
+                        definition.label_code.clone(),
+                    ),
+                    definition,
+                )
+            })
+            .collect();
 
         Self {
             product_scoring,
@@ -80,10 +96,12 @@ impl BasicPayloadCatalog {
             accidental_scoring,
             accidental_polarity_bands,
             projection_reason_definitions,
+            projection_label_definitions,
             essential_by_object_sign,
             triggers_by_family,
             dignity_weight_by_type,
             projection_reason_by_code,
+            projection_label_by_family_code,
         }
     }
 
@@ -191,6 +209,16 @@ impl BasicPayloadCatalog {
         reason_code: &str,
     ) -> Option<&ProjectionReasonDefinition> {
         self.projection_reason_by_code.get(reason_code)
+    }
+
+    /// Fonction projection_label_definition.
+    pub fn projection_label_definition(
+        &self,
+        label_family: &str,
+        label_code: &str,
+    ) -> Option<&ProjectionLabelDefinition> {
+        self.projection_label_by_family_code
+            .get(&(label_family.to_string(), label_code.to_string()))
     }
 }
 
@@ -610,6 +638,127 @@ fn test_projection_reason_definitions() -> Vec<ProjectionReasonDefinition> {
     ]
 }
 
+fn test_projection_label_definitions() -> Vec<ProjectionLabelDefinition> {
+    fn definition(
+        label_family: &str,
+        label_code: &str,
+        label_template_en: &str,
+        sort_order: i32,
+    ) -> ProjectionLabelDefinition {
+        ProjectionLabelDefinition {
+            label_family: label_family.to_string(),
+            label_code: label_code.to_string(),
+            label_template_en: label_template_en.to_string(),
+            is_active: true,
+            sort_order,
+        }
+    }
+
+    vec![
+        definition("angle_display", "ascendant", "Ascendant", 10),
+        definition("angle_display", "descendant", "Descendant", 20),
+        definition("angle_display", "mc", "The Midheaven", 30),
+        definition("angle_display", "ic", "The IC", 40),
+        definition(
+            "axis_balance",
+            "primary_dominant",
+            "Mainly house {primary_house}",
+            10,
+        ),
+        definition(
+            "axis_balance",
+            "secondary_dominant",
+            "Mainly house {secondary_house}",
+            20,
+        ),
+        definition(
+            "axis_balance",
+            "balanced",
+            "Balanced houses {primary_house} and {secondary_house}",
+            30,
+        ),
+        definition("chart_sect", "day", "Day chart", 10),
+        definition("chart_sect", "night", "Night chart", 20),
+        definition(
+            "condition_variant",
+            "sect_affinity_match_day",
+            "Day sect match",
+            10,
+        ),
+        definition(
+            "condition_variant",
+            "sect_affinity_match_night",
+            "Night sect match",
+            20,
+        ),
+        definition(
+            "condition_variant",
+            "sect_affinity_match_default",
+            "Sect match",
+            30,
+        ),
+        definition(
+            "dignity_meaning",
+            "domicile",
+            "Strong functional expression",
+            10,
+        ),
+        definition("dignity_meaning", "exaltation", "Constructive emphasis", 20),
+        definition(
+            "dignity_meaning",
+            "detriment",
+            "Challenged functional expression",
+            30,
+        ),
+        definition("dignity_meaning", "fall", "Weakened expression", 40),
+        definition("dignity_meaning", "default", "Notable dignity context", 50),
+        definition("dynamic_quality", "tension", "Tension", 10),
+        definition("dynamic_quality", "flow", "Flow", 20),
+        definition("dynamic_quality", "adjustment", "Adjustment", 30),
+        definition("dynamic_quality", "symbolic", "Symbolic", 40),
+        definition("dynamic_quality", "integration", "Integration", 50),
+        definition("dynamic_quality", "intensification", "Intensification", 60),
+        definition("dynamic_quality", "contextual", "Contextual", 70),
+        definition("hemisphere_area", "below_horizon", "Below horizon", 10),
+        definition("hemisphere_area", "above_horizon", "Above horizon", 20),
+        definition("hemisphere_area", "balanced", "Balanced hemispheres", 30),
+        definition("phase", "separating", "Separating", 10),
+        definition("phase", "applying", "Applying", 20),
+        definition("phase", "exact", "Exact", 30),
+        definition("motion_display", "direct", "Direct motion", 10),
+        definition("motion_display", "retrograde", "Retrograde motion", 20),
+        definition("motion_display", "stationary", "Stationary motion", 30),
+        definition("reading_slot", "core_identity", "Core identity", 10),
+        definition("reading_slot", "dominant_cluster", "Dominant theme", 20),
+        definition(
+            "reading_slot",
+            "main_tension_or_support",
+            "Main dynamic",
+            30,
+        ),
+        definition("reading_slot", "expression_style", "Expression style", 40),
+        definition(
+            "reading_slot",
+            "background_factors",
+            "Background factors",
+            50,
+        ),
+        definition("valence", "polarizing", "Polarizing", 10),
+        definition("valence", "supportive", "Supportive", 20),
+        definition("valence", "harmonious", "Harmonious", 30),
+        definition("valence", "dynamic_challenging", "Dynamic challenging", 40),
+        definition("valence", "minor_friction", "Minor friction", 50),
+        definition("valence", "indirect_tension", "Indirect tension", 60),
+        definition("valence", "adjustment", "Adjustment", 70),
+        definition("valence", "subtle_adjustment", "Subtle adjustment", 80),
+        definition("valence", "creative", "Creative", 90),
+        definition("valence", "refined_creative", "Creative", 100),
+        definition("valence", "creative_ordering", "Creative", 110),
+        definition("valence", "symbolic_fated", "Symbolic", 120),
+        definition("valence", "spiritual_integration", "Integrating", 130),
+    ]
+}
+
 /// Catalogue minimal pour les tests unitaires et les builders sans connexion DB.
 pub fn test_catalog() -> BasicPayloadCatalog {
     use crate::domain::{
@@ -700,6 +849,7 @@ pub fn test_catalog() -> BasicPayloadCatalog {
             },
         ],
         test_projection_reason_definitions(),
+        test_projection_label_definitions(),
     )
 }
 

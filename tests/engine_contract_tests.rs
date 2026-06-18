@@ -5,7 +5,11 @@ use std::sync::OnceLock;
 use jsonschema::JSONSchema;
 use serde_json::{json, Value};
 
-use astral_calculator::domain::{BasicPayload, RuntimeOptions};
+use astral_calculator::domain::{
+    AccidentalDignityConditionReference, AnglePointReference, BasicPayload,
+    EssentialDignityRuleReference, HouseReference, MotionStateReference, ProjectionLabelDefinition,
+    ProjectionReasonDefinition, RuntimeOptions,
+};
 use astral_calculator::engine::projection::{
     build_llm_projection_natal_v1, is_active_major_aspect_signal, LlmProjectionBuildContext,
 };
@@ -25,6 +29,13 @@ const LLM_GOLDEN_COMPACT: &str = "../tests/golden/llm_projection_natal_v1_paris_
 const LLM_GOLDEN_STANDARD: &str =
     "../tests/golden/llm_projection_natal_v1_paris_1990_standard.json";
 const LLM_GOLDEN_RICH: &str = "../tests/golden/llm_projection_natal_v1_paris_1990_rich.json";
+const PROJECTION_LABELS_JSON: &str =
+    include_str!("../json_db/astral_projection_label_definitions.json");
+const HOUSES_JSON: &str = include_str!("../json_db/astral_houses.json");
+const ANGLE_POINTS_JSON: &str = include_str!("../json_db/astral_angle_points.json");
+const MOTION_STATES_JSON: &str = include_str!("../json_db/astral_object_motion_states.json");
+const ACCIDENTAL_CONDITIONS_JSON: &str =
+    include_str!("../json_db/astral_accidental_dignity_condition_definitions.json");
 
 fn load_v14_golden() -> BasicPayload {
     let raw = fs::read_to_string(V14_GOLDEN).expect("v14 golden");
@@ -45,9 +56,14 @@ fn validate_schema(value: &Value, schema_path: &str) -> Vec<String> {
 }
 
 fn projection_context() -> LlmProjectionBuildContext<'static> {
-    static REASON_DEFINITIONS: OnceLock<
-        Vec<astral_calculator::domain::ProjectionReasonDefinition>,
-    > = OnceLock::new();
+    static REASON_DEFINITIONS: OnceLock<Vec<ProjectionReasonDefinition>> = OnceLock::new();
+    static LABEL_DEFINITIONS: OnceLock<Vec<ProjectionLabelDefinition>> = OnceLock::new();
+    static HOUSE_REFERENCES: OnceLock<Vec<HouseReference>> = OnceLock::new();
+    static ANGLE_POINTS: OnceLock<Vec<AnglePointReference>> = OnceLock::new();
+    static MOTION_STATES: OnceLock<Vec<MotionStateReference>> = OnceLock::new();
+    static ACCIDENTAL_CONDITIONS: OnceLock<Vec<AccidentalDignityConditionReference>> =
+        OnceLock::new();
+    static ESSENTIAL_DIGNITIES: OnceLock<Vec<EssentialDignityRuleReference>> = OnceLock::new();
     LlmProjectionBuildContext {
         birth_location_label: "Paris, France",
         zodiac_label: "Tropical",
@@ -57,6 +73,15 @@ fn projection_context() -> LlmProjectionBuildContext<'static> {
         projection_reason_definitions: REASON_DEFINITIONS.get_or_init(|| {
             astral_calculator::catalog::test_catalog().projection_reason_definitions
         }),
+        projection_label_definitions: LABEL_DEFINITIONS
+            .get_or_init(projection_label_definitions_from_seed),
+        house_references: HOUSE_REFERENCES.get_or_init(house_references_from_seed),
+        angle_points: ANGLE_POINTS.get_or_init(angle_points_from_seed),
+        motion_states: MOTION_STATES.get_or_init(motion_states_from_seed),
+        accidental_condition_definitions: ACCIDENTAL_CONDITIONS
+            .get_or_init(accidental_conditions_from_seed),
+        essential_dignity_rules: ESSENTIAL_DIGNITIES
+            .get_or_init(|| astral_calculator::catalog::test_catalog().essential_dignity_rules),
     }
 }
 
@@ -109,6 +134,7 @@ fn build_engine_envelope(level: &str) -> Option<Value> {
     let payload = load_v14_golden();
     let profile = load_profile_from_db(level)?;
     let resolved = sample_resolved(level, &payload);
+    let catalog = astral_calculator::catalog::test_catalog();
     let response = build_engine_response(
         &resolved,
         payload,
@@ -116,8 +142,14 @@ fn build_engine_envelope(level: &str) -> Option<Value> {
         "Tropical",
         "Geocentric",
         "Placidus",
+        projection_context().house_references,
         &[],
-        &astral_calculator::catalog::test_catalog().projection_reason_definitions,
+        projection_context().angle_points,
+        projection_context().motion_states,
+        projection_context().accidental_condition_definitions,
+        &catalog.essential_dignity_rules,
+        &catalog.projection_reason_definitions,
+        &catalog.projection_label_definitions,
         &profile,
     )
     .expect("engine response");
@@ -130,6 +162,137 @@ fn build_level(level: &str) -> Option<Value> {
     let projection =
         build_llm_projection_natal_v1(&payload, &profile, &projection_context()).ok()?;
     Some(serde_json::to_value(projection).expect("projection json"))
+}
+
+fn assert_no_underscore_strings(values: &[Value], label: &str) {
+    for value in values {
+        let text = value.as_str().expect(label);
+        assert!(
+            !text.contains('_'),
+            "{label} must not contain snake_case fallback: {text}"
+        );
+    }
+}
+
+fn seed_rows(json: &str) -> Vec<Value> {
+    serde_json::from_str::<Value>(json)
+        .expect("seed json")
+        .get("data")
+        .and_then(Value::as_array)
+        .expect("seed data array")
+        .clone()
+}
+
+fn projection_label_definitions_from_seed() -> Vec<ProjectionLabelDefinition> {
+    seed_rows(PROJECTION_LABELS_JSON)
+        .into_iter()
+        .map(|row| ProjectionLabelDefinition {
+            label_family: row["label_family"]
+                .as_str()
+                .expect("label_family")
+                .to_string(),
+            label_code: row["label_code"].as_str().expect("label_code").to_string(),
+            label_template_en: row["label_template_en"]
+                .as_str()
+                .expect("label_template_en")
+                .to_string(),
+            is_active: row["is_active"].as_bool().expect("is_active"),
+            sort_order: row["sort_order"].as_i64().expect("sort_order") as i32,
+        })
+        .collect()
+}
+
+fn house_references_from_seed() -> Vec<HouseReference> {
+    seed_rows(HOUSES_JSON)
+        .into_iter()
+        .map(|row| HouseReference {
+            id: row["id"].as_i64().expect("id") as i32,
+            number: row["number"].as_i64().expect("number") as i32,
+            name: row["name"].as_str().expect("name").to_string(),
+            theme_code: row["theme_code"].as_str().expect("theme_code").to_string(),
+            modality_code: None,
+            modality_label: None,
+            accidental_strength: None,
+            modality_priority_delta: None,
+            interpretation_weight: None,
+        })
+        .collect()
+}
+
+fn angle_points_from_seed() -> Vec<AnglePointReference> {
+    seed_rows(ANGLE_POINTS_JSON)
+        .into_iter()
+        .map(|row| {
+            let code = row["code"].as_str().expect("code");
+            let (chart_object_code, chart_object_name, sort_order) = match code {
+                "asc" => ("ascendant", "Ascendant", 1),
+                "dsc" => ("descendant", "Descendant", 2),
+                "mc" => ("mc", "Midheaven", 3),
+                "ic" => ("ic", "IC", 4),
+                other => (other, other, 99),
+            };
+            AnglePointReference {
+                id: row["id"].as_i64().expect("id") as i32,
+                code: code.to_string(),
+                short_label: row["short_label"]
+                    .as_str()
+                    .expect("short_label")
+                    .to_string(),
+                full_name: row["full_name"].as_str().expect("full_name").to_string(),
+                axis: row["axis"].as_str().expect("axis").to_string(),
+                opposite_angle_code: row["opposite_angle_code"].as_str().map(str::to_string),
+                associated_house: row["associated_house"].as_i64().expect("associated_house")
+                    as i32,
+                description: row["description"]
+                    .as_str()
+                    .expect("description")
+                    .to_string(),
+                chart_object_id: row["id"].as_i64().expect("id") as i32,
+                chart_object_code: chart_object_code.to_string(),
+                chart_object_name: chart_object_name.to_string(),
+                chart_object_sort_order: sort_order,
+            }
+        })
+        .collect()
+}
+
+fn motion_states_from_seed() -> Vec<MotionStateReference> {
+    seed_rows(MOTION_STATES_JSON)
+        .into_iter()
+        .map(|row| MotionStateReference {
+            id: row["id"].as_i64().expect("id") as i32,
+            code: row["code"].as_str().expect("code").to_string(),
+            label: row["label"].as_str().expect("label").to_string(),
+            motion_family: row["motion_family"]
+                .as_str()
+                .expect("motion_family")
+                .to_string(),
+        })
+        .collect()
+}
+
+fn accidental_conditions_from_seed() -> Vec<AccidentalDignityConditionReference> {
+    seed_rows(ACCIDENTAL_CONDITIONS_JSON)
+        .into_iter()
+        .map(|row| AccidentalDignityConditionReference {
+            condition_code: row["condition_code"]
+                .as_str()
+                .expect("condition_code")
+                .to_string(),
+            condition_family: row["condition_family"]
+                .as_str()
+                .expect("condition_family")
+                .to_string(),
+            label: row["label"].as_str().expect("label").to_string(),
+            polarity: row["polarity"].as_str().expect("polarity").to_string(),
+            strength_score: row["strength_score"].as_f64().expect("strength_score"),
+            score_delta: row["score_delta"].as_f64().expect("score_delta"),
+            description: row["description"]
+                .as_str()
+                .expect("description")
+                .to_string(),
+        })
+        .collect()
 }
 
 fn top_level_keys(value: &Value) -> BTreeSet<String> {
@@ -613,11 +776,118 @@ fn llm_projection_fails_when_reason_definition_is_missing() {
             house_system_label: "Placidus",
             house_axes: &[],
             projection_reason_definitions: &definitions,
+            projection_label_definitions: projection_context().projection_label_definitions,
+            house_references: projection_context().house_references,
+            angle_points: projection_context().angle_points,
+            motion_states: projection_context().motion_states,
+            accidental_condition_definitions: projection_context().accidental_condition_definitions,
+            essential_dignity_rules: projection_context().essential_dignity_rules,
         },
     );
 
     let error = result.expect_err("projection should fail without runtime definition");
     assert_eq!(error.code(), "invalid_projection_reason_definition");
+}
+
+#[test]
+fn llm_projection_fails_when_projection_label_definition_is_missing() {
+    let payload = load_v14_golden();
+    let Some(profile) = load_profile_from_db("rich") else {
+        return;
+    };
+    let mut labels = projection_label_definitions_from_seed();
+    labels.retain(|definition| {
+        !(definition.label_family == "dynamic_quality" && definition.label_code == "tension")
+    });
+    let ctx = projection_context();
+
+    let result = build_llm_projection_natal_v1(
+        &payload,
+        &profile,
+        &LlmProjectionBuildContext {
+            birth_location_label: ctx.birth_location_label,
+            zodiac_label: ctx.zodiac_label,
+            coordinate_label: ctx.coordinate_label,
+            house_system_label: ctx.house_system_label,
+            house_axes: ctx.house_axes,
+            projection_reason_definitions: ctx.projection_reason_definitions,
+            projection_label_definitions: &labels,
+            house_references: ctx.house_references,
+            angle_points: ctx.angle_points,
+            motion_states: ctx.motion_states,
+            accidental_condition_definitions: ctx.accidental_condition_definitions,
+            essential_dignity_rules: ctx.essential_dignity_rules,
+        },
+    );
+
+    let error = result.expect_err("projection should fail without runtime projection label");
+    assert_eq!(error.code(), "invalid_projection_label_definition");
+}
+
+#[test]
+fn llm_projection_fails_when_accidental_condition_reference_is_missing() {
+    let payload = load_v14_golden();
+    let Some(profile) = load_profile_from_db("rich") else {
+        return;
+    };
+    let mut conditions = accidental_conditions_from_seed();
+    conditions.retain(|definition| definition.condition_code != "angular_house");
+    let ctx = projection_context();
+
+    let result = build_llm_projection_natal_v1(
+        &payload,
+        &profile,
+        &LlmProjectionBuildContext {
+            birth_location_label: ctx.birth_location_label,
+            zodiac_label: ctx.zodiac_label,
+            coordinate_label: ctx.coordinate_label,
+            house_system_label: ctx.house_system_label,
+            house_axes: ctx.house_axes,
+            projection_reason_definitions: ctx.projection_reason_definitions,
+            projection_label_definitions: ctx.projection_label_definitions,
+            house_references: ctx.house_references,
+            angle_points: ctx.angle_points,
+            motion_states: ctx.motion_states,
+            accidental_condition_definitions: &conditions,
+            essential_dignity_rules: ctx.essential_dignity_rules,
+        },
+    );
+
+    let error = result.expect_err("projection should fail without accidental condition reference");
+    assert_eq!(error.code(), "invalid_projection_label_definition");
+}
+
+#[test]
+fn llm_projection_fails_when_house_reference_is_missing() {
+    let payload = load_v14_golden();
+    let Some(profile) = load_profile_from_db("rich") else {
+        return;
+    };
+    let mut houses = house_references_from_seed();
+    houses.retain(|reference| reference.theme_code != "shared_resources");
+    let ctx = projection_context();
+
+    let result = build_llm_projection_natal_v1(
+        &payload,
+        &profile,
+        &LlmProjectionBuildContext {
+            birth_location_label: ctx.birth_location_label,
+            zodiac_label: ctx.zodiac_label,
+            coordinate_label: ctx.coordinate_label,
+            house_system_label: ctx.house_system_label,
+            house_axes: ctx.house_axes,
+            projection_reason_definitions: ctx.projection_reason_definitions,
+            projection_label_definitions: ctx.projection_label_definitions,
+            house_references: &houses,
+            angle_points: ctx.angle_points,
+            motion_states: ctx.motion_states,
+            accidental_condition_definitions: ctx.accidental_condition_definitions,
+            essential_dignity_rules: ctx.essential_dignity_rules,
+        },
+    );
+
+    let error = result.expect_err("projection should fail without house reference");
+    assert_eq!(error.code(), "invalid_projection_label_definition");
 }
 
 #[test]
@@ -673,6 +943,56 @@ fn llm_projection_humanizes_accidental_conditions() {
     let first = &conditions[0]["conditions"].as_array().expect("conditions")[0];
     let label = first.as_str().expect("condition label");
     assert!(!label.contains('_'));
+}
+
+#[test]
+fn llm_projection_db_backed_labels_do_not_leak_snake_case() {
+    let Some(rich) = build_level("rich") else {
+        return;
+    };
+
+    for entry in rich["strengths"]["accidental_conditions"]
+        .as_array()
+        .expect("accidental_conditions")
+    {
+        assert_no_underscore_strings(
+            entry["conditions"].as_array().expect("conditions"),
+            "condition",
+        );
+    }
+
+    for entry in rich["dominant_themes"]["objects"]
+        .as_array()
+        .expect("dominant objects")
+    {
+        assert_no_underscore_strings(
+            entry["supporting_factors"]
+                .as_array()
+                .expect("supporting_factors"),
+            "supporting_factor",
+        );
+    }
+
+    for entry in rich["house_axes"].as_array().expect("house_axes") {
+        let summary = entry["summary"].as_str().expect("summary");
+        assert!(
+            !summary.contains('_'),
+            "house axis summary must not contain snake_case fallback: {summary}"
+        );
+    }
+
+    for aspect in rich["dynamics"]["major_aspects"]
+        .as_array()
+        .expect("major_aspects")
+    {
+        for key in ["quality", "valence", "phase"] {
+            let value = aspect[key].as_str().expect("aspect label");
+            assert!(
+                !value.contains('_'),
+                "aspect {key} must not contain snake_case fallback: {value}"
+            );
+        }
+    }
 }
 
 #[test]

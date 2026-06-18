@@ -2,13 +2,18 @@
 
 use super::clean_text::{
     clean_semantic_tags, humanize_dynamic_quality, humanize_phase, humanize_valence,
-    limit_keywords, title_case_sign,
+    limit_keywords, title_case_sign, ProjectionTextCatalog,
 };
 use super::types::{LlmDynamics, LlmLunarPhase, LlmMajorAspect, LlmProjectionProfile};
 use crate::domain::{BasicPayload, BasicSignal};
+use crate::shared::error::RuntimeError;
 
 /// Fonction build_dynamics.
-pub fn build_dynamics(payload: &BasicPayload, profile: &LlmProjectionProfile) -> LlmDynamics {
+pub fn build_dynamics(
+    payload: &BasicPayload,
+    profile: &LlmProjectionProfile,
+    resolver: &ProjectionTextCatalog<'_>,
+) -> Result<LlmDynamics, RuntimeError> {
     let lunar_phase = payload.lunar_phase_context.as_ref().map(|phase| {
         let keywords = clean_semantic_tags(&phase.semantic_tags, profile.max_keywords_per_item);
         LlmLunarPhase {
@@ -33,13 +38,15 @@ pub fn build_dynamics(payload: &BasicPayload, profile: &LlmProjectionProfile) ->
     let major_aspects = aspect_signals
         .into_iter()
         .take(profile.max_aspects)
-        .filter_map(|signal| aspect_signal_to_llm(signal, payload, profile.max_keywords_per_item))
-        .collect();
+        .map(|signal| {
+            aspect_signal_to_llm(signal, payload, profile.max_keywords_per_item, resolver)
+        })
+        .collect::<Result<Vec<_>, RuntimeError>>()?;
 
-    LlmDynamics {
+    Ok(LlmDynamics {
         lunar_phase,
         major_aspects,
-    }
+    })
 }
 
 /// Fonction is_active_major_aspect_signal.
@@ -74,28 +81,62 @@ fn aspect_signal_to_llm(
     signal: &BasicSignal,
     payload: &BasicPayload,
     keyword_limit: usize,
-) -> Option<LlmMajorAspect> {
-    let evidence = signal.evidence.as_ref()?;
-    let ctx = signal.aspect_context.as_ref()?;
-    let orb = evidence.get("orb_deg").and_then(|v| v.as_f64())?;
+    resolver: &ProjectionTextCatalog<'_>,
+) -> Result<LlmMajorAspect, RuntimeError> {
+    let evidence = signal.evidence.as_ref().ok_or_else(|| {
+        RuntimeError::InvalidProjectionLabelDefinition(format!(
+            "missing aspect evidence for signal '{}'",
+            signal.signal_key
+        ))
+    })?;
+    let ctx = signal.aspect_context.as_ref().ok_or_else(|| {
+        RuntimeError::InvalidProjectionLabelDefinition(format!(
+            "missing aspect_context for signal '{}'",
+            signal.signal_key
+        ))
+    })?;
+    let orb = evidence
+        .get("orb_deg")
+        .and_then(|v| v.as_f64())
+        .ok_or_else(|| {
+            RuntimeError::InvalidProjectionLabelDefinition(format!(
+                "missing orb_deg for signal '{}'",
+                signal.signal_key
+            ))
+        })?;
     let phase = evidence
         .get("phase_state")
         .and_then(|v| v.as_str())
         .or_else(|| ctx.get("phase_state").and_then(|v| v.as_str()))
-        .unwrap_or("unknown");
-
-    let quality = ctx
+        .ok_or_else(|| {
+            RuntimeError::InvalidProjectionLabelDefinition(format!(
+                "missing phase_state for signal '{}'",
+                signal.signal_key
+            ))
+        })?;
+    let quality_code = ctx
         .get("dynamic_quality")
         .and_then(|v| v.as_str())
-        .map(humanize_dynamic_quality)
-        .unwrap_or_else(|| "Dynamic".to_string());
+        .ok_or_else(|| {
+            RuntimeError::InvalidProjectionLabelDefinition(format!(
+                "missing dynamic_quality for signal '{}'",
+                signal.signal_key
+            ))
+        })?;
 
-    let valence = ctx
+    let quality = humanize_dynamic_quality(quality_code, resolver)?;
+
+    let valence_code = ctx
         .get("primary_valence")
         .and_then(|v| v.as_str())
         .or_else(|| ctx.get("intensity_modifier").and_then(|v| v.as_str()))
-        .map(humanize_valence)
-        .unwrap_or_else(|| quality.clone());
+        .ok_or_else(|| {
+            RuntimeError::InvalidProjectionLabelDefinition(format!(
+                "missing valence code for signal '{}'",
+                signal.signal_key
+            ))
+        })?;
+    let valence = humanize_valence(valence_code, resolver)?;
 
     let source_name = evidence
         .get("source_object_name")
@@ -139,13 +180,13 @@ fn aspect_signal_to_llm(
     }
     keywords = limit_keywords(&keywords, keyword_limit);
 
-    Some(LlmMajorAspect {
+    Ok(LlmMajorAspect {
         aspect: signal.title.clone(),
         objects,
         quality,
         valence,
         orb_degrees: (orb * 100.0).round() / 100.0,
-        phase: humanize_phase(phase),
+        phase: humanize_phase(phase, resolver)?,
         keywords,
     })
 }

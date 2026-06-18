@@ -80,3 +80,28 @@ Aucun finding ouvert.
 ## Conclusion
 
 Aucun finding ouvert.
+
+## Cycle 4 - cloture DB + HTTP smoke
+
+### Findings
+
+Aucun finding ouvert.
+
+### Verification adversariale
+
+- `python scripts/import_json_db_to_postgres.py` revalide le seed et recree
+  `astral_projection_reason_definitions` dans PostgreSQL.
+- Le referentiel contient `18` reasons actives apres import.
+- `GET /health/ready` retourne un etat pret.
+- `GET /v1/reference/status` confirme `database=true` et `references=true`.
+- Le smoke `POST /v1/internal/calculations/natal` confirme
+  `natal_structured_v14`, la presence de `reason_details`, l'absence des
+  anciens marqueurs string legacy, et la stabilite de
+  `llm_projection_natal_v1`.
+- La prochaine dette explicite est isolee dans `clean_text.rs`: les labels
+  canoniques restants devront etre branches sur des references DB sans reouvrir
+  la question du contrat public.
+
+## Conclusion finale
+
+Aucun finding ouvert.
