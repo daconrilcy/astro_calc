@@ -10,6 +10,7 @@ use crate::astrology::ephemeris::EphemerisEngine;
 use crate::domain::{
     BasicPayload, CalculatedChartFacts, CalculationReferenceData, NatalChartInput, RuntimeOptions,
 };
+use crate::features::natal::catalog::BasicPayloadCatalog;
 use crate::features::natal::payload::build::build_basic_payload_with_accidental_references;
 use crate::features::natal::payload::validate::{
     has_current_rulership_references, is_current_basic_payload,
@@ -69,6 +70,15 @@ where
         &self,
         input: NatalChartInput,
     ) -> Result<BasicPayload, RuntimeError> {
+        let (payload, _) = self.calculate_basic_with_catalog(input).await?;
+        Ok(payload)
+    }
+
+    /// Fonction calculate_basic_with_catalog.
+    pub async fn calculate_basic_with_catalog(
+        &self,
+        input: NatalChartInput,
+    ) -> Result<(BasicPayload, BasicPayloadCatalog), RuntimeError> {
         let product_code = input.product_code().to_string();
         let payload_language_id = self.references.language_id_for_code("en").await?;
         let input_hash = input_hash(&input)?;
@@ -143,11 +153,11 @@ where
                 .existing_basic_payload(completed_id, &product_code, Some(payload_language_id))
                 .await?
             {
-                if is_current_basic_payload(&payload)
+                if is_current_basic_payload(&payload, &catalog.projection_reason_definitions)
                     && has_current_rulership_references(&payload, &domicile_rulers)
                 {
                     self.calculations.commit(tx).await?;
-                    return Ok(payload);
+                    return Ok((payload, catalog));
                 }
             }
             let positions = self
@@ -196,7 +206,7 @@ where
                     )
                     .await?;
                 self.calculations.commit(payload_tx).await?;
-                return Ok(payload);
+                return Ok((payload, catalog));
             }
         } else if let Some(running) = existing.iter().find(|row| row.status == "running") {
             if is_stale(running, self.options.stale_after_seconds) {
@@ -298,7 +308,7 @@ where
             .await?;
         self.calculations.commit(tx).await?;
 
-        Ok(payload)
+        Ok((payload, catalog))
     }
 }
 

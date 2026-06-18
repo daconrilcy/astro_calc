@@ -1,13 +1,13 @@
 //! Module astral_calculator\src\features\natal\payload\validate\emphasis.rs du moteur astral_calculator.
 
-use std::collections::HashMap;
-use std::sync::OnceLock;
-
 use crate::domain::{
     BasicPayload, BasicProductScoringSnapshot, BasicProjectionReason, ProjectionReasonDefinition,
 };
 
-pub(super) fn has_current_chart_emphasis(payload: &BasicPayload) -> bool {
+pub(super) fn has_current_chart_emphasis(
+    payload: &BasicPayload,
+    projection_reason_definitions: &[ProjectionReasonDefinition],
+) -> bool {
     let Some(scoring) = payload.chart_context.product_scoring.as_ref() else {
         return false;
     };
@@ -36,7 +36,7 @@ pub(super) fn has_current_chart_emphasis(payload: &BasicPayload) -> bool {
         && payload.chart_emphasis.dominant_signs.iter().all(|entry| {
             !entry.sign_code.trim().is_empty()
                 && valid_emphasis_score(entry.score)
-                && valid_projection_reasons(&entry.reason_details)
+                && valid_projection_reasons(&entry.reason_details, projection_reason_definitions)
                 && (payload.chart_emphasis.dominant_signs.len() == 1
                     || entry.score >= scoring.sign_house_emphasis_min_score)
         })
@@ -44,14 +44,14 @@ pub(super) fn has_current_chart_emphasis(payload: &BasicPayload) -> bool {
             (1..=12).contains(&entry.house_number)
                 && !entry.theme_code.trim().is_empty()
                 && valid_emphasis_score(entry.score)
-                && valid_projection_reasons(&entry.reason_details)
+                && valid_projection_reasons(&entry.reason_details, projection_reason_definitions)
                 && (payload.chart_emphasis.dominant_houses.len() == 1
                     || entry.score >= scoring.sign_house_emphasis_min_score)
         })
         && payload.chart_emphasis.dominant_objects.iter().all(|entry| {
             !entry.object_code.trim().is_empty()
                 && valid_emphasis_score(entry.score)
-                && valid_projection_reasons(&entry.reason_details)
+                && valid_projection_reasons(&entry.reason_details, projection_reason_definitions)
                 && (payload.chart_emphasis.dominant_objects.len() == 1
                     || (entry.score >= scoring.object_emphasis_min_score
                         && has_non_placement_emphasis_reason(&entry.reason_details)))
@@ -64,26 +64,20 @@ pub(super) fn product_scoring_snapshot(
     payload.chart_context.product_scoring.as_ref()
 }
 
-pub(super) fn valid_projection_reasons(reasons: &[BasicProjectionReason]) -> bool {
-    let definitions = projection_reason_definitions();
+pub(super) fn valid_projection_reasons(
+    reasons: &[BasicProjectionReason],
+    projection_reason_definitions: &[ProjectionReasonDefinition],
+) -> bool {
     !reasons.is_empty()
         && reasons.iter().all(|reason| {
-            let Some(definition) = definitions.get(&reason.reason_code) else {
+            let Some(definition) = projection_reason_definitions
+                .iter()
+                .find(|definition| definition.reason_code == reason.reason_code)
+            else {
                 return false;
             };
             valid_projection_reason(reason, definition)
         })
-}
-
-fn projection_reason_definitions() -> &'static HashMap<String, ProjectionReasonDefinition> {
-    static DEFINITIONS: OnceLock<HashMap<String, ProjectionReasonDefinition>> = OnceLock::new();
-    DEFINITIONS.get_or_init(|| {
-        crate::catalog::test_catalog()
-            .projection_reason_definitions
-            .into_iter()
-            .map(|definition| (definition.reason_code.clone(), definition))
-            .collect()
-    })
 }
 
 fn valid_projection_reason(

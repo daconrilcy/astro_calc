@@ -68,7 +68,7 @@ pub fn build_engine_response(
             house_axes,
             projection_reason_definitions,
         },
-    );
+    )?;
 
     Ok(AstroEngineResponse {
         response_contract_version: RESPONSE_CONTRACT_VERSION.to_string(),

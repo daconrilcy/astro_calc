@@ -26,10 +26,15 @@ mod rulership;
 /// Module text.
 mod text;
 
-use crate::domain::{BasicPayload, BasicSignal, DomicileRulerReference};
+use crate::domain::{
+    BasicPayload, BasicSignal, DomicileRulerReference, ProjectionReasonDefinition,
+};
 
 /// Fonction is_current_basic_payload.
-pub fn is_current_basic_payload(payload: &BasicPayload) -> bool {
+pub fn is_current_basic_payload(
+    payload: &BasicPayload,
+    projection_reason_definitions: &[ProjectionReasonDefinition],
+) -> bool {
     let structural_axis_pairs = angles::structural_axis_pairs_from_payload(payload);
     let angle_object_codes = angles::angle_object_codes_from_payload(payload);
 
@@ -46,9 +51,9 @@ pub fn is_current_basic_payload(payload: &BasicPayload) -> bool {
         && chart_context::has_current_chart_context(payload)
         && angles::has_current_angles(payload)
         && dignities::has_current_dignities(payload)
-        && emphasis::has_current_chart_emphasis(payload)
+        && emphasis::has_current_chart_emphasis(payload, projection_reason_definitions)
         && rulership::has_current_rulership_context(&payload.rulership_context)
-        && house_axes::has_current_house_axis_emphasis(payload)
+        && house_axes::has_current_house_axis_emphasis(payload, projection_reason_definitions)
         && plan::has_current_reading_plan(payload)
         && lunar_phase::has_current_lunar_phase_context(payload)
         && accidental_dignities::has_current_accidental_dignities(payload)

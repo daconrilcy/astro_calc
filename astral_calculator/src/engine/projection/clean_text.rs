@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use crate::domain::{BasicProjectionReason, ProjectionReasonDefinition};
+use crate::shared::error::RuntimeError;
 
 /// Fonction title_case_sign.
 pub fn title_case_sign(sign_code: &str) -> String {
@@ -48,9 +49,12 @@ pub fn render_projection_reason(
     reason_definitions: &HashMap<String, ProjectionReasonDefinition>,
     object_names: &HashMap<String, String>,
     theme_labels: &HashMap<String, String>,
-) -> String {
+) -> Result<String, RuntimeError> {
     let Some(definition) = reason_definitions.get(&reason.reason_code) else {
-        return format!("reason:{}", reason.reason_code);
+        return Err(RuntimeError::InvalidProjectionReasonDefinition(format!(
+            "missing projection reason definition for reason_code '{}'",
+            reason.reason_code
+        )));
     };
 
     let object_label = |code: &str| {
@@ -123,7 +127,7 @@ pub fn render_projection_reason(
         rendered = format!("{object_value} {}", rendered.trim_start());
     }
 
-    rendered
+    Ok(rendered)
 }
 
 /// Fonction humanize_condition.

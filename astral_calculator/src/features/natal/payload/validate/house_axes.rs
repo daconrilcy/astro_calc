@@ -2,7 +2,9 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::domain::{BasicHouseAxisEmphasis, BasicPayload, BasicSignal};
+use crate::domain::{
+    BasicHouseAxisEmphasis, BasicPayload, BasicSignal, ProjectionReasonDefinition,
+};
 use crate::features::natal::payload::rules::house_axes::{axis_label, canonical_axis};
 use crate::features::natal::payload::shared::text::{
     has_text, has_unique_non_empty_strings, is_normalized_score, push_unique,
@@ -10,7 +12,10 @@ use crate::features::natal::payload::shared::text::{
 
 use super::emphasis::{product_scoring_snapshot, valid_projection_reasons};
 
-pub(super) fn has_current_house_axis_emphasis(payload: &BasicPayload) -> bool {
+pub(super) fn has_current_house_axis_emphasis(
+    payload: &BasicPayload,
+    projection_reason_definitions: &[ProjectionReasonDefinition],
+) -> bool {
     let Some(scoring) = product_scoring_snapshot(payload) else {
         return false;
     };
@@ -49,7 +54,12 @@ pub(super) fn has_current_house_axis_emphasis(payload: &BasicPayload) -> bool {
         previous_score = axis.axis_score;
 
         if !seen_axes.insert(axis.axis_code.as_str())
-            || !has_current_axis(axis, &signals_by_key, &position_house_by_object)
+            || !has_current_axis(
+                axis,
+                &signals_by_key,
+                &position_house_by_object,
+                projection_reason_definitions,
+            )
             || axis
                 .source_signal_keys
                 .iter()
@@ -67,6 +77,7 @@ fn has_current_axis(
     axis: &BasicHouseAxisEmphasis,
     signals_by_key: &HashMap<&str, &BasicSignal>,
     position_house_by_object: &HashMap<&str, i32>,
+    projection_reason_definitions: &[ProjectionReasonDefinition],
 ) -> bool {
     let Some(reference) = canonical_axis(axis.axis_code.as_str()) else {
         return false;
@@ -109,7 +120,7 @@ fn has_current_axis(
         && axis.secondary_house == expected_secondary_house
         && expected_polarity_balance != "weak_axis"
         && axis.polarity_balance == expected_polarity_balance
-        && valid_projection_reasons(&axis.reason_details)
+        && valid_projection_reasons(&axis.reason_details, projection_reason_definitions)
         && has_unique_non_empty_strings(&axis.source_signal_keys)
         && has_unique_non_empty_strings(&axis.source_context_keys)
         && axis
@@ -123,7 +134,7 @@ fn has_current_axis(
             score.house_number == axis.houses[index]
                 && score.theme_code == axis.theme_codes[index]
                 && axis_score_is_valid(score.score)
-                && valid_projection_reasons(&score.reason_details)
+                && valid_projection_reasons(&score.reason_details, projection_reason_definitions)
         })
 }
 

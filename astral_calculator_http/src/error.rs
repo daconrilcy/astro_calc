@@ -105,6 +105,14 @@ pub fn map_runtime_error(err: astral_calculator::runtime::RuntimeError) -> Respo
             msg,
             None,
         ),
+        astral_calculator::runtime::RuntimeError::InvalidProjectionReasonDefinition(msg) => {
+            error_response(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "REFERENCE_DATA_MISSING",
+                msg,
+                None,
+            )
+        }
         astral_calculator::runtime::RuntimeError::Database(err) => {
             error!(error = %err, "database error");
             internal_error("An internal database error occurred.")

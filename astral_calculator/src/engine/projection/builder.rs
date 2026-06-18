@@ -24,6 +24,7 @@ use crate::domain::{
     BasicAccidentalDignityEvaluation, BasicHouseAxisEmphasis, BasicObjectPosition, BasicPayload,
     BasicProjectionReason, HouseAxisReference, ProjectionReasonDefinition,
 };
+use crate::shared::error::RuntimeError;
 
 /// Structure LlmProjectionBuildContext.
 pub struct LlmProjectionBuildContext<'a> {
@@ -41,7 +42,7 @@ pub fn build_llm_projection_natal_v1(
     payload: &BasicPayload,
     profile: &LlmProjectionProfile,
     ctx: &LlmProjectionBuildContext<'_>,
-) -> LlmProjectionNatalV1 {
+) -> Result<LlmProjectionNatalV1, RuntimeError> {
     let limits = limits_envelope(profile);
     let object_names = object_name_map(payload);
     let reason_definitions = projection_reason_definition_map(ctx.projection_reason_definitions);
@@ -50,7 +51,7 @@ pub fn build_llm_projection_natal_v1(
     let reading_order = build_reading_order(payload, profile, &dynamics);
     let keywords = build_keywords(payload, profile, &dynamics);
 
-    LlmProjectionNatalV1 {
+    Ok(LlmProjectionNatalV1 {
         contract_version: "llm_projection_natal_v1".to_string(),
         projection_level: profile.level_code.clone(),
         projection_limits: limits,
@@ -63,7 +64,7 @@ pub fn build_llm_projection_natal_v1(
             &object_names,
             &reason_definitions,
             &theme_labels,
-        ),
+        )?,
         placements: build_placements(payload, profile),
         angles: build_angles(payload, profile),
         strengths: build_strengths(payload, profile),
@@ -75,9 +76,9 @@ pub fn build_llm_projection_natal_v1(
             ctx.house_axes,
             &reason_definitions,
             &theme_labels,
-        ),
+        )?,
         keywords,
-    }
+    })
 }
 
 // Indexe les noms d'objets par code pour reutiliser des libelles humains.
@@ -421,7 +422,7 @@ fn build_dominant_themes(
     object_names: &HashMap<String, String>,
     reason_definitions: &HashMap<String, ProjectionReasonDefinition>,
     theme_labels: &HashMap<String, String>,
-) -> LlmDominantThemes {
+) -> Result<LlmDominantThemes, RuntimeError> {
     let signs = payload
         .chart_emphasis
         .dominant_signs
@@ -429,7 +430,7 @@ fn build_dominant_themes(
         .take(profile.max_dominant_signs)
         .map(|entry| {
             let sign = title_case_sign(&entry.sign_code);
-            LlmDominantSign {
+            Ok(LlmDominantSign {
                 name: sign.clone(),
                 importance: importance_label(entry.score).to_string(),
                 supporting_factors: dedupe_rendered_reasons(
@@ -438,16 +439,16 @@ fn build_dominant_themes(
                     object_names,
                     theme_labels,
                     profile.max_keywords_per_item,
-                ),
+                )?,
                 keywords: sign_keywords_from_positions(
                     payload,
                     &entry.sign_code,
                     profile.max_keywords_per_item,
                 ),
                 score: profile.include_scores.then_some(entry.score),
-            }
+            })
         })
-        .collect();
+        .collect::<Result<Vec<_>, RuntimeError>>()?;
 
     let houses = payload
         .chart_emphasis
@@ -456,7 +457,7 @@ fn build_dominant_themes(
         .take(profile.max_dominant_houses)
         .map(|entry| {
             let house_ref = house_ref_from_payload(entry.house_number, &entry.theme_code, payload);
-            LlmDominantHouse {
+            Ok(LlmDominantHouse {
                 number: house_ref.number,
                 theme: house_ref.theme,
                 importance: importance_label(entry.score).to_string(),
@@ -466,39 +467,41 @@ fn build_dominant_themes(
                     object_names,
                     theme_labels,
                     profile.max_keywords_per_item,
-                ),
+                )?,
                 score: profile.include_scores.then_some(entry.score),
-            }
+            })
         })
-        .collect();
+        .collect::<Result<Vec<_>, RuntimeError>>()?;
 
     let objects = payload
         .chart_emphasis
         .dominant_objects
         .iter()
         .take(profile.max_dominant_objects)
-        .map(|entry| LlmDominantObject {
-            name: object_names
-                .get(&entry.object_code)
-                .cloned()
-                .unwrap_or_else(|| title_case_sign(&entry.object_code)),
-            importance: importance_label(entry.score).to_string(),
-            supporting_factors: dedupe_rendered_reasons(
-                &entry.reason_details,
-                reason_definitions,
-                object_names,
-                theme_labels,
-                profile.max_keywords_per_item,
-            ),
-            score: profile.include_scores.then_some(entry.score),
+        .map(|entry| {
+            Ok(LlmDominantObject {
+                name: object_names
+                    .get(&entry.object_code)
+                    .cloned()
+                    .unwrap_or_else(|| title_case_sign(&entry.object_code)),
+                importance: importance_label(entry.score).to_string(),
+                supporting_factors: dedupe_rendered_reasons(
+                    &entry.reason_details,
+                    reason_definitions,
+                    object_names,
+                    theme_labels,
+                    profile.max_keywords_per_item,
+                )?,
+                score: profile.include_scores.then_some(entry.score),
+            })
         })
-        .collect();
+        .collect::<Result<Vec<_>, RuntimeError>>()?;
 
-    LlmDominantThemes {
+    Ok(LlmDominantThemes {
         signs,
         houses,
         objects,
-    }
+    })
 }
 
 // Extrait des mots-cles additionnels depuis les positions d'un signe.
@@ -842,7 +845,7 @@ fn build_house_axes(
     axis_refs: &[HouseAxisReference],
     reason_definitions: &HashMap<String, ProjectionReasonDefinition>,
     theme_labels: &HashMap<String, String>,
-) -> Vec<LlmHouseAxis> {
+) -> Result<Vec<LlmHouseAxis>, RuntimeError> {
     let object_names = object_name_map(payload);
     payload
         .house_axis_emphasis
@@ -872,7 +875,7 @@ fn house_axis_to_llm(
     object_names: &HashMap<String, String>,
     reason_definitions: &HashMap<String, ProjectionReasonDefinition>,
     theme_labels: &HashMap<String, String>,
-) -> LlmHouseAxis {
+) -> Result<LlmHouseAxis, RuntimeError> {
     let axis_title = house_axis_label(&axis.axis_code, axis_refs);
     let houses: Vec<LlmHouseRef> = axis
         .house_scores
@@ -886,7 +889,7 @@ fn house_axis_to_llm(
         object_names,
         theme_labels,
         profile.max_keywords_per_item,
-    );
+    )?;
 
     let theme_in_parens: Vec<(String, String)> = axis
         .house_scores
@@ -899,7 +902,7 @@ fn house_axis_to_llm(
         .collect();
     let summary = humanize_axis_summary(&axis.interpretive_hint, &theme_in_parens);
 
-    LlmHouseAxis {
+    Ok(LlmHouseAxis {
         axis: axis_title,
         houses,
         balance: axis_balance_label(
@@ -910,7 +913,7 @@ fn house_axis_to_llm(
         importance: axis_importance(axis.axis_score).to_string(),
         summary,
         supporting_factors,
-    }
+    })
 }
 
 // Construit les mots-cles globaux et par domaine.
@@ -1129,17 +1132,17 @@ fn dedupe_rendered_reasons(
     object_names: &HashMap<String, String>,
     theme_labels: &HashMap<String, String>,
     limit: usize,
-) -> Vec<String> {
+) -> Result<Vec<String>, RuntimeError> {
     let mut out = Vec::new();
     for reason in reasons {
         let human =
-            render_projection_reason(reason, reason_definitions, object_names, theme_labels);
+            render_projection_reason(reason, reason_definitions, object_names, theme_labels)?;
         push_unique(&mut out, human);
         if out.len() >= limit {
             break;
         }
     }
-    out
+    Ok(out)
 }
 
 // Traduit le contexte de mouvement d'une position en label lisible.

@@ -19,17 +19,25 @@ use astral_calculator::domain::{
     SignReference,
 };
 use astral_calculator::runtime::{
-    has_current_rulership_references, is_current_basic_payload, parse_existing_basic_payload_value,
-    validate_accidental_dignity_condition_references, validate_aspect_definitions,
-    validate_calculation_references, validate_chart_object_signal_profiles,
-    validate_house_axis_references, validate_lunar_phase_references,
-    validate_object_sect_affinity_references, RuntimeError,
+    has_current_rulership_references, is_current_basic_payload as runtime_is_current_basic_payload,
+    parse_existing_basic_payload_value, validate_accidental_dignity_condition_references,
+    validate_aspect_definitions, validate_calculation_references,
+    validate_chart_object_signal_profiles, validate_house_axis_references,
+    validate_lunar_phase_references, validate_object_sect_affinity_references, RuntimeError,
 };
 use common::json_db::{
     major_aspect_definitions_from_json_db_seed,
     major_aspect_family_expected_count_from_json_db_seed,
     major_aspect_family_max_default_orb_deg_from_json_db_seed,
 };
+
+fn projection_reason_definitions() -> Vec<astral_calculator::domain::ProjectionReasonDefinition> {
+    astral_calculator::catalog::test_catalog().projection_reason_definitions
+}
+
+fn is_current_basic_payload(payload: &BasicPayload) -> bool {
+    runtime_is_current_basic_payload(payload, &projection_reason_definitions())
+}
 
 fn simple_reason(reason_code: &str) -> BasicProjectionReason {
     BasicProjectionReason {
@@ -2108,4 +2116,63 @@ fn angle_reference(
         chart_object_name: full_name.to_string(),
         chart_object_sort_order: chart_object_id,
     }
+}
+
+#[test]
+fn runtime_rejects_projection_reason_code_missing_from_runtime_definitions() {
+    let payload = current_payload();
+    let definitions = projection_reason_definitions()
+        .into_iter()
+        .filter(|definition| definition.reason_code != "placement")
+        .collect::<Vec<_>>();
+
+    assert!(
+        !runtime_is_current_basic_payload(&payload, &definitions),
+        "payload should be rejected when runtime definitions omit an active reason"
+    );
+}
+
+#[test]
+fn runtime_rejects_projection_reason_missing_required_dignity_type_from_runtime_definition() {
+    let mut payload = current_payload();
+    payload.chart_emphasis.dominant_objects[0].reason_details = vec![BasicProjectionReason {
+        reason_code: "essential_dignity".to_string(),
+        object_code: Some("sun".to_string()),
+        ..BasicProjectionReason::default()
+    }];
+
+    assert!(
+        !runtime_is_current_basic_payload(&payload, &projection_reason_definitions()),
+        "payload should be rejected when essential_dignity misses dignity_type"
+    );
+}
+
+#[test]
+fn runtime_rejects_projection_reason_missing_required_object_from_runtime_definition() {
+    let mut payload = current_payload();
+    payload.chart_emphasis.dominant_houses[0].reason_details = vec![BasicProjectionReason {
+        reason_code: "object_in_house".to_string(),
+        house_number: Some(payload.chart_emphasis.dominant_houses[0].house_number),
+        theme_code: Some(payload.chart_emphasis.dominant_houses[0].theme_code.clone()),
+        ..BasicProjectionReason::default()
+    }];
+
+    assert!(
+        !runtime_is_current_basic_payload(&payload, &projection_reason_definitions()),
+        "payload should be rejected when object_in_house misses object_code"
+    );
+}
+
+#[test]
+fn runtime_rejects_projection_reason_missing_required_theme_from_runtime_definition() {
+    let mut payload = current_payload();
+    payload.house_axis_emphasis[0].reason_details = vec![BasicProjectionReason {
+        reason_code: "theme_emphasis".to_string(),
+        ..BasicProjectionReason::default()
+    }];
+
+    assert!(
+        !runtime_is_current_basic_payload(&payload, &projection_reason_definitions()),
+        "payload should be rejected when theme_emphasis misses theme_code"
+    );
 }

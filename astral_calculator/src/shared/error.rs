@@ -20,6 +20,8 @@ pub enum RuntimeError {
     },
     #[error("invalid engine request: {0}")]
     InvalidEngineRequest(String),
+    #[error("invalid projection reason definition: {0}")]
+    InvalidProjectionReasonDefinition(String),
 }
 
 impl RuntimeError {
@@ -32,6 +34,7 @@ impl RuntimeError {
             Self::InvalidRuntimeTable(_) => "invalid_runtime_table",
             Self::RunningCalculationInProgress { .. } => "running_calculation_in_progress",
             Self::InvalidEngineRequest(_) => "invalid_engine_request",
+            Self::InvalidProjectionReasonDefinition(_) => "invalid_projection_reason_definition",
         }
     }
 }

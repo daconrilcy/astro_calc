@@ -127,7 +127,8 @@ fn build_engine_envelope(level: &str) -> Option<Value> {
 fn build_level(level: &str) -> Option<Value> {
     let payload = load_v14_golden();
     let profile = load_profile_from_db(level)?;
-    let projection = build_llm_projection_natal_v1(&payload, &profile, &projection_context());
+    let projection =
+        build_llm_projection_natal_v1(&payload, &profile, &projection_context()).ok()?;
     Some(serde_json::to_value(projection).expect("projection json"))
 }
 
@@ -456,7 +457,8 @@ fn engine_response_envelope_shape_from_v14_golden() {
     let Some(profile) = load_profile_from_db("rich") else {
         return;
     };
-    let llm = build_llm_projection_natal_v1(&payload, &profile, &projection_context());
+    let llm =
+        build_llm_projection_natal_v1(&payload, &profile, &projection_context()).expect("llm");
     let llm_value = serde_json::to_value(&llm).expect("llm json");
 
     assert_eq!(RESPONSE_CONTRACT_VERSION, "astro_engine_response_v1");
@@ -590,6 +592,43 @@ fn llm_projection_humanizes_dominant_theme_reasons() {
         .join(" ");
     assert!(!joined.contains("strong_aspect_participant"));
     assert!(!joined.contains("accidental_context"));
+}
+
+#[test]
+fn llm_projection_fails_when_reason_definition_is_missing() {
+    let payload = load_v14_golden();
+    let Some(profile) = load_profile_from_db("rich") else {
+        return;
+    };
+    let mut definitions = astral_calculator::catalog::test_catalog().projection_reason_definitions;
+    definitions.retain(|definition| definition.reason_code != "essential_dignity");
+
+    let result = build_llm_projection_natal_v1(
+        &payload,
+        &profile,
+        &LlmProjectionBuildContext {
+            birth_location_label: "Paris, France",
+            zodiac_label: "Tropical",
+            coordinate_label: "Geocentric",
+            house_system_label: "Placidus",
+            house_axes: &[],
+            projection_reason_definitions: &definitions,
+        },
+    );
+
+    let error = result.expect_err("projection should fail without runtime definition");
+    assert_eq!(error.code(), "invalid_projection_reason_definition");
+}
+
+#[test]
+fn llm_projection_never_contains_reason_fallback_marker() {
+    let Some(rich) = build_level("rich") else {
+        return;
+    };
+    assert!(
+        !rich.to_string().contains("reason:"),
+        "projection must not contain technical reason fallback markers"
+    );
 }
 
 #[test]

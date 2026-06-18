@@ -5,11 +5,19 @@ use jsonschema::JSONSchema;
 use serde_json::Value;
 
 use astral_calculator::domain::BasicPayload;
-use astral_calculator::runtime::is_current_basic_payload;
+use astral_calculator::runtime::is_current_basic_payload as runtime_is_current_basic_payload;
 
 const GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v14_paris_1990.json";
 const SCHEMA_PATH: &str = "../contracts/calculator/natal_structured_v14.schema.json";
 const PAYLOAD_UNDER_TEST_ENV: &str = "NATAL_V14_SCHEMA_PAYLOAD_PATH";
+
+fn projection_reason_definitions() -> Vec<astral_calculator::domain::ProjectionReasonDefinition> {
+    astral_calculator::catalog::test_catalog().projection_reason_definitions
+}
+
+fn is_current_basic_payload(payload: &BasicPayload) -> bool {
+    runtime_is_current_basic_payload(payload, &projection_reason_definitions())
+}
 
 fn load_golden_payload() -> Value {
     let raw = fs::read_to_string(GOLDEN_PAYLOAD_PATH).expect("golden payload should exist");
