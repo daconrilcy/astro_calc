@@ -3,14 +3,7 @@ use std::sync::Arc;
 use astral_contracts::{
     NatalProductCode, NatalVariant, ProductTier, QualityMetadataCommon, ResponseMetadataCommon,
 };
-use astral_llm_application::{
-    build_reading_request, build_reading_request_from_engine, validate_engine_response,
-    validate_simplified_calculation_request, SIMPLIFIED_PROFILE,
-};
-use astral_llm_domain::{
-    generation_request::AudienceLevel, GenerateReadingRequest, GenerateReadingResponse,
-};
-use serde_json::Value;
+use serde_json::{json, Value};
 
 use crate::contracts::NatalInspectionResponseV2;
 use crate::{
@@ -30,11 +23,11 @@ impl NatalGatewayPolicy {
         NatalProductCode::from_parts(self.variant, self.tier)
     }
 
-    pub fn default_audience_level(&self) -> AudienceLevel {
+    pub fn default_audience_level(&self) -> &'static str {
         match self.tier {
-            ProductTier::Free => AudienceLevel::Beginner,
-            ProductTier::Basic => AudienceLevel::Intermediate,
-            ProductTier::Premium => AudienceLevel::Expert,
+            ProductTier::Free => "beginner",
+            ProductTier::Basic => "intermediate",
+            ProductTier::Premium => "expert",
         }
     }
 
@@ -48,7 +41,7 @@ impl NatalGatewayPolicy {
 
     pub fn interpretation_profile_code(&self) -> &'static str {
         match self.variant {
-            NatalVariant::Simplified => SIMPLIFIED_PROFILE,
+            NatalVariant::Simplified => "natal_simplified",
             NatalVariant::Full => match self.tier {
                 ProductTier::Free => "natal_light",
                 ProductTier::Basic => "natal_basic",
@@ -76,8 +69,7 @@ impl GenerateNatalReadingUseCase {
         let calculation = match policy.variant {
             NatalVariant::Simplified => {
                 let calculation_request = simplified_calculation_request(&request)?;
-                validate_simplified_calculation_request(&calculation_request)
-                    .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+                validate_simplified_calculation_request(&calculation_request)?;
                 self.calculator
                     .calculate_simplified_natal(&calculation_request)
                     .await?
@@ -120,8 +112,7 @@ impl GenerateNatalReadingUseCase {
         let calculation = match policy.variant {
             NatalVariant::Simplified => {
                 let calculation_request = simplified_calculation_request(&request)?;
-                validate_simplified_calculation_request(&calculation_request)
-                    .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
+                validate_simplified_calculation_request(&calculation_request)?;
                 self.calculator
                     .calculate_simplified_natal(&calculation_request)
                     .await?
@@ -231,29 +222,320 @@ fn full_calculation_request(
     }))
 }
 
+fn validate_simplified_calculation_request(value: &Value) -> Result<(), GatewayError> {
+    let version = value
+        .get("request_contract_version")
+        .and_then(Value::as_str)
+        .ok_or_else(|| GatewayError::bad_request("request_contract_version is required"))?;
+    if version != "astro_simplified_natal_request_v1" {
+        return Err(GatewayError::bad_request(format!(
+            "unsupported request_contract_version: {version}"
+        )));
+    }
+    let date = value
+        .pointer("/birth/date")
+        .and_then(Value::as_str)
+        .ok_or_else(|| GatewayError::bad_request("birth.date is required"))?;
+    if !date.chars().all(|c| c.is_ascii_digit() || c == '-') || date.len() != 10 {
+        return Err(GatewayError::bad_request("birth.date must be YYYY-MM-DD"));
+    }
+    if let Some(location) = value.get("birth").and_then(|birth| birth.get("location")) {
+        if location.get("latitude").and_then(Value::as_f64).is_none()
+            || location.get("longitude").and_then(Value::as_f64).is_none()
+        {
+            return Err(GatewayError::bad_request(
+                "birth.location requires latitude and longitude",
+            ));
+        }
+    }
+    if value
+        .pointer("/birth/time")
+        .and_then(Value::as_str)
+        .is_some()
+        && value
+            .pointer("/birth/timezone")
+            .and_then(Value::as_str)
+            .is_none()
+    {
+        return Err(GatewayError::bad_request(
+            "birth.time requires birth.timezone",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_engine_response(engine: &Value) -> Result<(), GatewayError> {
+    for key in [
+        "response_contract_version",
+        "calculation_result",
+        "audit_payload",
+    ] {
+        if engine.get(key).is_none() {
+            return Err(GatewayError::bad_request(format!(
+                "engine response missing {key}"
+            )));
+        }
+    }
+    let version = engine
+        .get("response_contract_version")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    if version != "astro_engine_response_v1" {
+        return Err(GatewayError::bad_request(format!(
+            "unsupported response_contract_version: {version}"
+        )));
+    }
+    let status = engine
+        .pointer("/calculation_result/status")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    if status != "completed" {
+        return Err(GatewayError::bad_request(format!(
+            "engine calculation not completed: {status}"
+        )));
+    }
+    if engine
+        .pointer("/audit_payload/contract_version")
+        .and_then(Value::as_str)
+        .is_none()
+    {
+        return Err(GatewayError::bad_request(
+            "audit_payload.contract_version is required",
+        ));
+    }
+    if engine.pointer("/audit_payload/payload").is_none() {
+        return Err(GatewayError::bad_request(
+            "audit_payload.payload is required",
+        ));
+    }
+    Ok(())
+}
+
+fn build_simplified_llm_request(
+    calculation: &Value,
+    user_language: &str,
+    audience_level: &str,
+) -> Result<Value, GatewayError> {
+    let payload = calculation
+        .pointer("/simplified_payload/payload")
+        .ok_or_else(|| {
+            GatewayError::bad_request("calculator response missing simplified_payload.payload")
+        })?
+        .clone();
+
+    let mut data = payload;
+    let mut forbidden_wording = Vec::new();
+    let mut custom_instructions = None;
+    let mut chapter_code = "identity";
+    if let Some(controls) = calculation.get("llm_payload") {
+        if let Some(obj) = data.as_object_mut() {
+            obj.insert("llm_controls".into(), controls.clone());
+            scrub_simplified_payload_for_llm(obj, controls);
+        }
+        forbidden_wording = blocked_interpretation_fact_codes(controls);
+        if sun_sign_blocked(controls) {
+            chapter_code = "ambiguous_core_identity";
+            custom_instructions = Some(
+                "Le Soleil est ambigu (sun.sign bloqué). N'affirmez aucun signe solaire. \
+                 Expliquez la zone de changement possible entre signes, puis seulement les \
+                 placements stables secondaires (Mercure, Vénus, Mars…) avec prudence."
+                    .to_string(),
+            );
+        }
+    }
+
+    let chapter_title = if chapter_code == "ambiguous_core_identity" {
+        "Identité — Soleil ambigu"
+    } else {
+        "Identité"
+    };
+
+    Ok(json!({
+        "request_id": calculation.get("request_id").and_then(Value::as_str),
+        "idempotency_key": null,
+        "product_context": {
+            "product_code": "natal_prompter",
+            "interpretation_profile_code": "natal_simplified",
+            "user_language": user_language,
+            "audience_level": audience_level
+        },
+        "astro_result": {
+            "contract_version": "natal_simplified_structured_v1",
+            "chart_type": "natal",
+            "data": data
+        },
+        "astrologer_profile": {
+            "profile_id": null,
+            "name": null,
+            "tone": "warm",
+            "jargon_level": "beginner",
+            "wording_style": "clear",
+            "preferred_domains": [],
+            "forbidden_wording": forbidden_wording,
+            "custom_instructions": custom_instructions
+        },
+        "engine": {
+            "domain_count": 1,
+            "allow_fallback": true
+        },
+        "response_contract": {
+            "output_schema_version": "natal_reading_v1",
+            "generation_mode": "single_pass",
+            "format": "structured_json",
+            "chapters": [{
+                "code": chapter_code,
+                "title": chapter_title,
+                "min_words": null,
+                "max_words": null,
+                "target_tokens": null,
+                "required_fields": []
+            }],
+            "global_max_tokens": null,
+            "include_astro_sources": false,
+            "include_legal_disclaimer": true
+        },
+        "safety_policy": null
+    }))
+}
+
+fn build_engine_llm_request(
+    engine: &Value,
+    profile_code: &str,
+    user_language: &str,
+    audience_level: &str,
+) -> Result<Value, GatewayError> {
+    validate_engine_response(engine)?;
+    let contract_version = engine
+        .pointer("/audit_payload/contract_version")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let payload = engine
+        .pointer("/audit_payload/payload")
+        .cloned()
+        .unwrap_or(Value::Null);
+    Ok(json!({
+        "request_id": engine.get("request_id").and_then(Value::as_str),
+        "idempotency_key": null,
+        "product_context": {
+            "product_code": "natal_prompter",
+            "interpretation_profile_code": profile_code,
+            "user_language": user_language,
+            "audience_level": audience_level
+        },
+        "astro_result": {
+            "contract_version": contract_version,
+            "chart_type": "natal",
+            "data": payload
+        },
+        "astrologer_profile": {
+            "profile_id": null,
+            "name": null,
+            "tone": "warm",
+            "jargon_level": "beginner",
+            "wording_style": "clear",
+            "preferred_domains": [
+                "identity",
+                "emotional_life",
+                "relationships",
+                "career",
+                "growth_path"
+            ],
+            "forbidden_wording": [],
+            "custom_instructions": null
+        },
+        "engine": {
+            "allow_fallback": true
+        },
+        "response_contract": {
+            "output_schema_version": "natal_reading_v1",
+            "generation_mode": "chapter_orchestrated",
+            "format": "structured_json",
+            "chapters": [],
+            "global_max_tokens": null,
+            "include_astro_sources": true,
+            "include_legal_disclaimer": true
+        },
+        "safety_policy": null
+    }))
+}
+
+fn blocked_interpretation_fact_codes(controls: &Value) -> Vec<String> {
+    controls
+        .get("blocked_interpretation_fact_codes")
+        .and_then(Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn sun_sign_blocked(controls: &Value) -> bool {
+    controls
+        .get("blocked_interpretation_fact_codes")
+        .and_then(Value::as_array)
+        .is_some_and(|items| items.iter().any(|v| v.as_str() == Some("sun.sign")))
+}
+
+fn blocked_object_codes(controls: &Value) -> Vec<String> {
+    blocked_interpretation_fact_codes(controls)
+        .into_iter()
+        .filter_map(|code| code.strip_suffix(".sign").map(str::to_string))
+        .collect()
+}
+
+fn scrub_simplified_payload_for_llm(
+    payload: &mut serde_json::Map<String, Value>,
+    controls: &Value,
+) {
+    payload.remove("position_count");
+    payload.remove("house_cusp_count");
+    payload.remove("aspect_count");
+
+    let blocked = blocked_object_codes(controls);
+    if blocked.is_empty() {
+        return;
+    }
+    if let Some(objects) = payload.get_mut("objects").and_then(Value::as_array_mut) {
+        for object in objects {
+            let object_code = object
+                .get("object_code")
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            if blocked.iter().any(|code| code == object_code) {
+                if let Some(map) = object.as_object_mut() {
+                    map.remove("sign_code");
+                    map.remove("sign_name");
+                    map.remove("longitude_deg");
+                }
+            }
+        }
+    }
+}
+
 fn build_llm_request(
     request: &NatalReadingRequestV2,
     calculation: &Value,
     policy: &NatalGatewayPolicy,
-) -> Result<GenerateReadingRequest, GatewayError> {
+) -> Result<Value, GatewayError> {
     let audience = resolve_audience_level(request, policy)?;
     match policy.variant {
-        NatalVariant::Simplified => {
-            build_reading_request(calculation, &request.context.target_language_code, audience)
-                .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))
-        }
+        NatalVariant::Simplified => build_simplified_llm_request(
+            calculation,
+            &request.context.target_language_code,
+            audience,
+        ),
         NatalVariant::Full => {
-            validate_engine_response(calculation)
-                .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))?;
-            build_reading_request_from_engine(
+            validate_engine_response(calculation)?;
+            build_engine_llm_request(
                 calculation,
                 policy.interpretation_profile_code(),
                 &request.context.target_language_code,
                 audience,
-                None,
-                None,
             )
-            .map_err(|err| GatewayError::bad_request(err.detail().message.clone()))
         }
     }
 }
@@ -261,7 +543,7 @@ fn build_llm_request(
 fn resolve_audience_level(
     request: &NatalReadingRequestV2,
     policy: &NatalGatewayPolicy,
-) -> Result<AudienceLevel, GatewayError> {
+) -> Result<&'static str, GatewayError> {
     match request
         .context
         .audience_level
@@ -270,9 +552,9 @@ fn resolve_audience_level(
         .as_str()
     {
         "" | "general" => Ok(policy.default_audience_level()),
-        "beginner" => Ok(AudienceLevel::Beginner),
-        "intermediate" => Ok(AudienceLevel::Intermediate),
-        "expert" => Ok(AudienceLevel::Expert),
+        "beginner" => Ok("beginner"),
+        "intermediate" => Ok("intermediate"),
+        "expert" => Ok("expert"),
         other => Err(GatewayError::bad_request(format!(
             "unsupported audience_level: {other}"
         ))),
@@ -302,12 +584,11 @@ fn reading_completeness_hint(calculation: &Value) -> Option<String> {
 }
 
 fn build_natal_debug_payload(
-    reading_request: &GenerateReadingRequest,
-    reading: &GenerateReadingResponse,
+    reading_request: &Value,
+    reading: &Value,
 ) -> Result<Value, GatewayError> {
     Ok(serde_json::json!({
-        "run_id": reading.run_id(),
-        "llm_request": serde_json::to_value(reading_request)
-            .map_err(|err| GatewayError::Internal(format!("llm request serialization failed: {err}")))?,
+        "run_id": reading.get("run_id").and_then(Value::as_str),
+        "llm_request": reading_request,
     }))
 }

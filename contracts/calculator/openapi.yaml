@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
-  title: astral_calculator_api
+  title: astral_calculator_http
   version: 1.0.0
   description: API HTTP technique du moteur de calcul astral. Les appels inter-services utilisent les routes canoniques `/v1/internal/calculations/*`; les routes `/v1/calculations/*` restent exposees comme aliases legacy compatibles.
 servers:
-  - url: http://astral_calculator_api:8080
+  - url: http://astral_calculator_http:8080
     description: Reseau Docker astral_net
   - url: http://localhost:8080
     description: Hote local

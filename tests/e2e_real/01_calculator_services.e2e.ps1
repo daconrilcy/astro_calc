@@ -12,7 +12,7 @@ Write-Host "=== Real Docker E2E: calculator services ===" -ForegroundColor Cyan
 Wait-E2EReady -BaseUrl $CalculatorUrl -ServiceName "calculator" -TimeoutSec $ReadyTimeoutSec
 
 $contracts = Invoke-RestMethod -Uri "$CalculatorUrl/v1/contracts" -Method Get -Headers $headers
-if ($contracts.service -ne "astral_calculator_api") { throw "Unexpected calculator contracts response" }
+if ($contracts.service -ne "astral_calculator_http") { throw "Unexpected calculator contracts response" }
 
 foreach ($schema in @(
     "astro_engine_request_v1",

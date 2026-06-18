@@ -41,7 +41,7 @@ function Add-ReportLine {
 function Save-DockerLogs {
     param(
         [string]$Reason,
-        [string[]]$Services = @("astral_llm_worker", "astral_llm_api", "astral_calculator_api", "postgres")
+        [string[]]$Services = @("astral_llm_worker", "astral_llm_api", "astral_calculator_http", "postgres")
     )
     foreach ($service in $Services) {
         $path = Join-Path $DiagnosticsDir "$service.log"

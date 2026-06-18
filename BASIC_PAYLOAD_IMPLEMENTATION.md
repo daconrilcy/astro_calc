@@ -1,3 +1,12 @@
+# 2026-06-17 - Calculator HTTP rename and gateway decoupling
+
+- Renamed the internal calculator HTTP adapter to `astral_calculator_http` across Cargo, Docker Compose, scripts, contracts, tests and active documentation. No transitional crate, binary or Docker service alias is kept.
+- Kept the HTTP route contracts unchanged: canonical inter-service calls remain under `/v1/internal/calculations/*`, with existing `/v1/calculations/*` legacy route aliases still exposed by the calculator HTTP adapter.
+- Decoupled `astral_gateway` from internal calculator and LLM crates. The gateway now owns its calculator HTTP client and talks to LLM through JSON internal endpoints; LLM-side horoscope calculation-request builders, writer builders and validators remain inside `astral_llm_api` / `astral_llm_application`.
+- Invariants: `astral_calculator` remains free of HTTP dependencies; `astral_gateway` must not depend on `astral_calculator`, `astral_llm_application`, `astral_llm_domain` or `astral_llm_infra`; `astral_gateway` must not embed canonical reference data from `json_db`; active surfaces must not reintroduce the removed calculator HTTP service name.
+- Verification: `cargo test -p astral_calculator --test refactor_governance_tests`; `cargo test -p astral_gateway`; `cargo test -p astral_calculator_http --test astral_calculator_http_unit_regression_tests`; `cargo test -p astral_llm_api --test contracts_publish_tests`; `docker compose config`.
+- Reviews: `docs/reviews/astral_calculator_refactor/REV-CALCULATOR-HTTP-RENAME-2026-06-17.md`; `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-GATEWAY-DECOUPLING-2026-06-17.md`.
+
 # 2026-06-17 - `astral_calculator` refacto structurelle par contextes metier
 
 - Recompose `astral_calculator/src` autour des contextes explicites `bootstrap/`, `shared/`, `natal/`, `simplified/`, `horoscope/` et `engine/`.
@@ -28,7 +37,7 @@
 - Grouped functional modules under `features/` while keeping the previous public module paths intact.
 - Introduced `BasicPayloadBuilderInput` and `build_basic_payload_from` as the internal canonical payload builder entry point, with existing builder functions kept as wrappers.
 - Moved the simplified catalog DB loader under `infra/db/simplified_catalog_repository` with the existing simplified facade preserved.
-- Verification: `cargo test -p astral_calculator`; `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`; `cargo test -p astral_calculator_api --test astral_calculator_api_tests`; `cargo test -p astral_llm_application simplified_reading_guard`; `cargo test -p astral_llm_application simplified_reading_postprocess`.
+- Verification: `cargo test -p astral_calculator`; `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`; `cargo test -p astral_calculator_http --test astral_calculator_http_tests`; `cargo test -p astral_llm_application simplified_reading_guard`; `cargo test -p astral_llm_application simplified_reading_postprocess`.
 
 # 2026-06-16 - `payload_rules` refactor for shared natal payload rules
 
@@ -59,9 +68,9 @@
 - Moved UTC/RFC3339 conversion helpers out of the `horoscope` domain into a crate-level internal `astral_calculator::time` module so the domain no longer owns transversal date/time utilities.
 - Added explicit public regression tests for `calculate_horoscope_daily_natal` covering both the basic daily shape and the premium local slot path with `reference_datetime_utc`, local chart payload, and expected warnings.
 
-# 2026-06-16 - Test regression hardening for astral_calculator_api
+# 2026-06-16 - Test regression hardening for astral_calculator_http
 
-- Reduced duplication in [tests/astral_calculator_api_tests.rs](tests/astral_calculator_api_tests.rs) by reusing the shared period request fixture and transit snapshot helpers.
+- Reduced duplication in [tests/astral_calculator_http_tests.rs](tests/astral_calculator_http_tests.rs) by reusing the shared period request fixture and transit snapshot helpers.
 - Hardened the horoscope period regression checks so they locate the relevant Venus fact by content instead of relying on a fixed snapshot index.
 - Kept the test coverage focused on public behavior: source provenance, context fallback, UTC normalization, and HTTP contract smoke checks.
 
@@ -151,7 +160,7 @@ provider/model catalog for LLM runtime pricing and observability.
 # Horoscope period timeout stabilization - 2026-06-14
 
 - Aligned the default/documented request timeouts for `astral_gateway`,
-  `astral_calculator_api`, and `astral_llm_api` to `900000 ms` so
+  `astral_calculator_http`, and `astral_llm_api` to `900000 ms` so
   `horoscope period` no longer hits a shorter outer timeout while the inner LLM
   path is still allowed to run.
 - Updated the gateway inbound timeout layer to use the configured timeout plus a
@@ -920,7 +929,7 @@ Refactored the deterministic generation model for `horoscope_premium_next_7_days
 
 ## Stabilisation des builds Docker Rust
 
-- Verrouillage des caches BuildKit Cargo dans `docker/astral_calculator_api/Dockerfile`, `docker/astral_llm_api/Dockerfile` et `docker/astral_llm_worker/Dockerfile`.
+- Verrouillage des caches BuildKit Cargo dans `docker/astral_calculator_http/Dockerfile`, `docker/astral_llm_api/Dockerfile` et `docker/astral_llm_worker/Dockerfile`.
 - Ajout de `sharing=locked` et de `id=` explicites sur les mounts `registry`, `git` et `target` pour eviter les corruptions de cache concurrentes du type `.cargo-ok already exists`.
 ## 2026-06-13/14 - Gateway V2 consolidation
 
@@ -969,7 +978,7 @@ Couverture ajoutee ou consolidee :
 - `tests/horoscope_builders_tests.rs` couvre les builders factorises du calculateur pour daily/period, les validations d'entree et le scan plan
 - `tests/gateway_route_surface_tests.rs` couvre la surface publique `astral_gateway` V2 et verifie l'absence des anciennes routes sync runtime
 - `tests/integration_job_executor_tests.rs` couvre la matrice de support des services factorises cote `IntegrationJobExecutor`
-- `tests/astral_calculator_api_unit_regression_tests.rs` et `tests/astral_llm_api_unit_regression_tests.rs` reprennent les regressions unitaires minimales anciennement inline
+- `tests/astral_calculator_http_unit_regression_tests.rs` et `tests/astral_llm_api_unit_regression_tests.rs` reprennent les regressions unitaires minimales anciennement inline
 - `tests/chapter_quality_repair_tests.rs` et `tests/interpretive_evidence_tests.rs` preservent les comportements publics encore utiles apres extraction
 - `tests/reading_quality_validator_tests.rs` restaure les gates qualite premium/premium_plus et la normalisation defensive des codes de chapitre renvoyes par les providers
 - `tests/openai_provider_adapter_tests.rs` verrouille l'extraction `output_text` de l'adapter OpenAI, l'erreur actionable sur reponse reasoning-only et la downgrade `reasoning_effort none -> minimal`
@@ -981,11 +990,11 @@ Validation de cloture executee pour cette refonte :
 - `cargo test -p astral_gateway --test gateway_route_surface_tests`
 - `cargo test -p astral_llm_application --test integration_job_executor_tests --test chapter_quality_repair_tests`
 - `cargo test -p astral_llm_domain --test interpretive_evidence_tests`
-- `cargo test -p astral_calculator_api --test astral_calculator_api_unit_regression_tests`
+- `cargo test -p astral_calculator_http --test astral_calculator_http_unit_regression_tests`
 - `cargo test -p astral_llm_api --test astral_llm_api_unit_regression_tests`
 - `cargo test -p astral_gateway`
 - `cargo test -p astral_calculator`
-- `cargo test -p astral_calculator_api --test astral_calculator_api_tests`
+- `cargo test -p astral_calculator_http --test astral_calculator_http_tests`
 - `cargo test -p astral_llm_api --test astral_llm_tests`
 - `cargo test -p astral_llm_api --test integration_services_tests`
 - `cargo test -p astral_llm_api --test integration_jobs_tests`
@@ -1022,7 +1031,7 @@ Parcours automatiques retenus :
   - `cargo test -p astral_llm_api --test contracts_publish_tests`
   - `cargo test -p astral_llm_api --test integration_services_tests`
   - `cargo test -p astral_llm_api --test integration_jobs_tests`
-  - `cargo test -p astral_calculator_api --test astral_calculator_api_tests`
+  - `cargo test -p astral_calculator_http --test astral_calculator_http_tests`
 - smokes HTTP publics :
   - `POST /v2/natal/simplified/free`
   - `POST /v2/natal/full/basic`
@@ -1060,7 +1069,7 @@ Exclus du parcours automatique car moteur LLM reel :
 # 2026-06-15 - Correction build Docker multi-services avec target-dir Cargo
 
 - Cause: le workspace force `tmp_target` dans `.cargo/config.toml`, alors que les Dockerfiles copiaient encore les binaires depuis `/app/target/release`.
-- Correction: alignement des mounts cache Docker BuildKit et des chemins `cp` sur `/app/tmp_target/release` pour `astral_calculator_api`, `astral_gateway`, `astral_llm_api` et `astral_llm_worker`.
+- Correction: alignement des mounts cache Docker BuildKit et des chemins `cp` sur `/app/tmp_target/release` pour `astral_calculator_http`, `astral_gateway`, `astral_llm_api` et `astral_llm_worker`.
 ## 2026-06-17 - Refacto feature boundaries W0-W2
 
 Resume court:
@@ -1101,6 +1110,6 @@ Commandes de verification:
 - `cargo test -p astral_calculator --test refactor_governance_tests`
 - `cargo test -p astral_calculator`
 - `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`
-- `cargo test -p astral_calculator_api --test astral_calculator_api_tests`
+- `cargo test -p astral_calculator_http --test astral_calculator_http_tests`
 - `cargo test -p astral_llm_api --test contracts_publish_tests`
 - `git show --check HEAD`

@@ -3,7 +3,7 @@ resolver = "2"
 members = [
     "astral_contracts",
     "astral_calculator",
-    "astral_calculator_api",
+    "astral_calculator_http",
     "astral_gateway",
     "astral_time_window",
     "astral_llm/crates/astral_llm_domain",

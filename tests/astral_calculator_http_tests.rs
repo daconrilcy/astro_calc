@@ -14,7 +14,7 @@ use astral_calculator::features::horoscope::{
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
 };
 use astral_calculator::runtime::build_runtime_service;
-use astral_calculator_api::{
+use astral_calculator_http::{
     build_app, config::AppConfig, reference_status::check_reference_status,
     schema_registry::SchemaRegistry, state::AppState,
 };

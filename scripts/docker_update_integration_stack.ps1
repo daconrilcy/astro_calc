@@ -288,7 +288,7 @@ try {
     Invoke-Step "Running services check" {
         Assert-RunningServices -Services @(
             "postgres",
-            "astral_calculator_api",
+            "astral_calculator_http",
             "astral_llm_api",
             "astral_llm_worker",
             "astral_gateway",
@@ -356,7 +356,7 @@ try {
         Invoke-RustTest -Name "Rust tests: published contracts" -CargoArgs @("test", "-p", "astral_llm_api", "--test", "contracts_publish_tests")
         Invoke-RustTest -Name "Rust tests: integration services" -CargoArgs @("test", "-p", "astral_llm_api", "--test", "integration_services_tests")
         Invoke-RustTest -Name "Rust tests: integration jobs" -CargoArgs @("test", "-p", "astral_llm_api", "--test", "integration_jobs_tests")
-        Invoke-RustTest -Name "Rust tests: calculator api" -CargoArgs @("test", "-p", "astral_calculator_api", "--test", "astral_calculator_api_tests")
+        Invoke-RustTest -Name "Rust tests: calculator api" -CargoArgs @("test", "-p", "astral_calculator_http", "--test", "astral_calculator_http_tests")
     }
 
     if (-not $SkipSmoke) {
@@ -460,7 +460,7 @@ try {
     Write-Host "`nUpdate failed: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host "`nDocker diagnostics:" -ForegroundColor Yellow
     Invoke-DockerCompose -ComposeArgs @("ps")
-    Invoke-DockerCompose -ComposeArgs @("logs", "--tail", "80", "astral_gateway", "astral_llm_api", "astral_llm_worker", "astral_calculator_api", "postgres")
+    Invoke-DockerCompose -ComposeArgs @("logs", "--tail", "80", "astral_gateway", "astral_llm_api", "astral_llm_worker", "astral_calculator_http", "postgres")
     throw
 } finally {
     if (-not $scriptSucceeded) {

@@ -1,10 +1,10 @@
 use std::{fs, path::PathBuf};
 
-use astral_calculator_api::config::validate_path_within;
-use astral_calculator_api::AppConfig;
+use astral_calculator_http::config::validate_path_within;
+use astral_calculator_http::AppConfig;
 
 fn temp_dir() -> PathBuf {
-    let dir = std::env::temp_dir().join("astral_calculator_api_unit_regression_tests");
+    let dir = std::env::temp_dir().join("astral_calculator_http_unit_regression_tests");
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).expect("create temp dir");
     dir

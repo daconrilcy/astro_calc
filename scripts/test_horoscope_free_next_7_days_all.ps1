@@ -47,8 +47,8 @@ try {
             if ($LASTEXITCODE -ne 0) { throw "contracts_publish_tests failed" }
         }
         Invoke-Step "horoscope_free_next_7_days_natal: calculator API period tests" {
-            cargo test -p astral_calculator_api --test astral_calculator_api_tests horoscope_period
-            if ($LASTEXITCODE -ne 0) { throw "astral_calculator_api_tests horoscope_period failed" }
+            cargo test -p astral_calculator_http --test astral_calculator_http_tests horoscope_period
+            if ($LASTEXITCODE -ne 0) { throw "astral_calculator_http_tests horoscope_period failed" }
         }
     }
 

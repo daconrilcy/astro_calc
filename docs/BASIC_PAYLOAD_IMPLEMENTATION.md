@@ -26,7 +26,7 @@ Commandes de verification:
 - `cargo test -p astral_calculator --test refactor_governance_tests`
 - `cargo test -p astral_calculator`
 - `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`
-- `cargo test -p astral_calculator_api --test astral_calculator_api_tests`
+- `cargo test -p astral_calculator_http --test astral_calculator_http_tests`
 
 Review:
 - `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-IMPLEMENTATION-004-adversarial.md`
@@ -57,7 +57,7 @@ Commandes de verification:
 - `cargo test -p astral_calculator --test refactor_governance_tests`
 - `cargo test -p astral_calculator`
 - `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`
-- `cargo test -p astral_calculator_api --test astral_calculator_api_tests`
+- `cargo test -p astral_calculator_http --test astral_calculator_http_tests`
 
 Reviews:
 - `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-W00-plan.md`
@@ -3310,15 +3310,15 @@ Documentation detaillee : `Astral_llm_implementation.md`.
 
 ## API HTTP calculateur + Docker Compose (2026-06-05)
 
-### Crate `astral_calculator_api`
+### Crate `astral_calculator_http`
 
-- Binaire : `cargo run -p astral_calculator_api` (port **8080** par defaut).
+- Binaire : `cargo run -p astral_calculator_http` (port **8080** par defaut).
 - Endpoints : `/health/live`, `/health/ready` (503 + `error_response_v1` si non pret),
   `/v1/contracts`, `/v1/schemas/{version}`, `/v1/reference/status`,
   `/v1/calculations/validate`, `/v1/calculations/natal`, `/openapi.yaml`.
 - Contrats publics : repertoire [`contracts/`](contracts/) (schemas + OpenAPI + exemples).
 - Test coherence schemas : `cargo test -p astral_llm_api --test contracts_publish_tests`.
-- Test API : `cargo test -p astral_calculator_api --test astral_calculator_api_tests`.
+- Test API : `cargo test -p astral_calculator_http --test astral_calculator_http_tests`.
 
 ### Docker Compose local
 
@@ -3328,7 +3328,7 @@ docker compose up -d --build
 .\scripts\docker_compose_smoke.ps1
 ```
 
-- Reseau : `astral_net` — `http://astral_calculator_api:8080`, `http://astral_llm_api:8081`.
+- Reseau : `astral_net` — `http://astral_calculator_http:8080`, `http://astral_llm_api:8081`.
 - PostgreSQL interne (`expose: 5432`) ; port hote optionnel via `docker-compose.dev-db-port.yml`.
 - Ephemerides : volume `./ephe:/app/ephe:ro` (non bakees dans l'image).
 - Profils Compose : `calculator`, `llm`, `full` ; `postgres` sans profil.
@@ -3412,7 +3412,7 @@ Note : ~~constante Rust `PROFILE_INTERPRETATION_EXCLUDED`~~ **F-07 closed** — 
 | Commande | Périmètre |
 |----------|-----------|
 | `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests` | Moteur calculateur |
-| `cargo test -p astral_calculator_api --test astral_calculator_api_tests` | Route HTTP calculateur |
+| `cargo test -p astral_calculator_http --test astral_calculator_http_tests` | Route HTTP calculateur |
 | `cargo test -p astral_llm_api --test astral_llm_simplified_reading_tests` | Prompt, routing, golden |
 | `cargo test -p astral_llm_application reading_script_guard` | Sanitisation + détection script |
 | `cargo test -p astral_llm_application french_typography` | Élisions FR |
@@ -3676,7 +3676,7 @@ targets `[[test]]`.
 
 ## Refacto surfaces API calculateur internes (2026-06-17)
 
-Vague progressive sans breaking change : `astral_calculator_api` conserve les
+Vague progressive sans breaking change : `astral_calculator_http` conserve les
 aliases legacy `/v1/calculations/*`, mais publie les routes canoniques
 inter-services `/v1/internal/calculations/*`. Le client calculateur utilise
 desormais ces routes internes. `astral_gateway` reste la facade publique
@@ -3685,15 +3685,15 @@ recommandee pour `/v2/natal/*` et `/v2/horoscope/*`.
 Invariants de couche :
 
 - `astral_calculator` reste le moteur et ne prend pas de dependance HTTP/Axum.
-- `astral_calculator_api` reste un adapter HTTP technique du calculateur.
+- `astral_calculator_http` reste un adapter HTTP technique du calculateur.
 - Aucun renommage de crate, service Docker ou conteneur dans cette vague.
 - Les contrats JSON publics existants et les routes legacy restent compatibles.
 
 Verification :
 
 ```powershell
-cargo test -p astral_calculator_api --test astral_calculator_api_tests
-cargo test -p astral_calculator_api --test astral_calculator_api_unit_regression_tests
+cargo test -p astral_calculator_http --test astral_calculator_http_tests
+cargo test -p astral_calculator_http --test astral_calculator_http_unit_regression_tests
 cargo test -p astral_gateway
 cargo test -p astral_llm_api --test integration_jobs_tests
 cargo test -p astral_llm_api --test astral_llm_tests
@@ -3727,8 +3727,8 @@ Invariants de couche :
 Verification :
 
 ```powershell
-cargo test -p astral_calculator_api --test astral_calculator_api_tests
-cargo test -p astral_calculator_api --test astral_calculator_api_unit_regression_tests
+cargo test -p astral_calculator_http --test astral_calculator_http_tests
+cargo test -p astral_calculator_http --test astral_calculator_http_unit_regression_tests
 cargo test -p astral_calculator --test refactor_governance_tests
 cargo test -p astral_gateway
 cargo test -p astral_llm_api --test integration_jobs_tests

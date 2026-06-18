@@ -32,10 +32,10 @@ flowchart TD
 
     M1 --> N["CalculatorClient::calculate_horoscope_period_natal()\nastral_llm/crates/astral_llm_infra/src/calculator_client.rs"]
 
-    N --> O["POST /v1/internal/calculations/horoscope/period/natal\ncalculate_horoscope_period_natal()\nastral_calculator_api/src/routes.rs"]
+    N --> O["POST /v1/internal/calculations/horoscope/period/natal\ncalculate_horoscope_period_natal()\nastral_calculator_http/src/routes.rs"]
 
-    O --> P["schema_registry.validate('horoscope_period_calculation_request')\nastral_calculator_api/src/routes.rs"]
-    P --> Q["ensure_horoscope_natal_chart_ready()\nastral_calculator_api/src/routes.rs"]
+    O --> P["schema_registry.validate('horoscope_period_calculation_request')\nastral_calculator_http/src/routes.rs"]
+    P --> Q["ensure_horoscope_natal_chart_ready()\nastral_calculator_http/src/routes.rs"]
     Q --> R["RuntimeService::calculate_horoscope_period_natal()\nastral_calculator/src/runtime/service.rs"]
 
     R --> S["normalize_horoscope_period_request_utc()\nastral_calculator/src/horoscope/mod.rs"]
@@ -52,7 +52,7 @@ flowchart TD
 
     Y1 --> Z["HoroscopePeriodCalculationResponse\ncontract_version = horoscope_period_calculation_response\nastral_calculator/src/horoscope/mod.rs"]
 
-    Z --> AA["Calculator API validates response schema\nschema_registry.validate('horoscope_period_calculation_response')\nastral_calculator_api/src/routes.rs"]
+    Z --> AA["Calculator API validates response schema\nschema_registry.validate('horoscope_period_calculation_response')\nastral_calculator_http/src/routes.rs"]
 
     AA --> AB["Back to HoroscopePeriodNatalOrchestrator::execute()\nastral_llm/crates/astral_llm_application/src/horoscope/mod.rs"]
 

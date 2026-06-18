@@ -37,11 +37,7 @@ name = "gateway_llm_client_timeout_tests"
 path = "../tests/gateway_llm_client_timeout_tests.rs"
 
 [dependencies]
-astral_calculator.workspace = true
 astral_contracts.workspace = true
-astral_llm_application.workspace = true
-astral_llm_domain.workspace = true
-astral_llm_infra.workspace = true
 async-trait.workspace = true
 axum.workspace = true
 dotenvy.workspace = true

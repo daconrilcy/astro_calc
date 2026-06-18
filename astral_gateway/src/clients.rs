@@ -3,44 +3,89 @@ use reqwest::{Client, StatusCode};
 use serde::Serialize;
 use serde_json::Value;
 
-use astral_llm_domain::{GenerateReadingRequest, GenerateReadingResponse};
-use astral_llm_infra::CalculatorClient;
-
 use crate::{
     error::GatewayError,
     ports::{CalculatorPort, LlmPort},
 };
 
-#[async_trait]
-impl CalculatorPort for CalculatorClient {
-    async fn calculate_simplified_natal(&self, request: &Value) -> Result<Value, GatewayError> {
-        CalculatorClient::calculate_simplified_natal(self, request)
+#[derive(Clone)]
+pub struct HttpCalculatorClient {
+    base_url: String,
+    api_key: Option<String>,
+    client: Client,
+}
+
+impl HttpCalculatorClient {
+    const SIMPLIFIED_NATAL_PATH: &'static str = "/v1/internal/calculations/natal/simplified";
+    const FULL_NATAL_PATH: &'static str = "/v1/internal/calculations/natal";
+    const HOROSCOPE_DAILY_NATAL_PATH: &'static str =
+        "/v1/internal/calculations/horoscope/daily-natal";
+    const HOROSCOPE_PERIOD_NATAL_PATH: &'static str =
+        "/v1/internal/calculations/horoscope/period/natal";
+
+    pub fn new(base_url: String, api_key: Option<String>, timeout_ms: u64) -> Result<Self, String> {
+        let client = Client::builder()
+            .timeout(std::time::Duration::from_millis(timeout_ms.max(1_000)))
+            .build()
+            .map_err(|err| format!("calculator HTTP client: {err}"))?;
+        Ok(Self {
+            base_url: base_url.trim_end_matches('/').to_string(),
+            api_key,
+            client,
+        })
+    }
+
+    async fn post_json(&self, path: &str, request: &Value) -> Result<Value, GatewayError> {
+        let url = format!("{}{}", self.base_url, path);
+        let mut builder = self.client.post(url).json(request);
+        if let Some(key) = &self.api_key {
+            builder = builder
+                .header("X-API-Key", key)
+                .header("Authorization", format!("Bearer {key}"));
+        }
+        let response = builder
+            .send()
             .await
-            .map_err(|err| GatewayError::upstream(err.detail().message.clone()))
+            .map_err(|err| GatewayError::upstream(format!("calculator request failed: {err}")))?;
+        let status = response.status();
+        let body = response.json::<Value>().await.map_err(|err| {
+            GatewayError::upstream(format!("calculator response parse failed: {err}"))
+        })?;
+        if !status.is_success() {
+            return Err(GatewayError::bad_request(format!(
+                "calculator rejected request: status={} body={}",
+                status,
+                truncate_for_error(&body.to_string())
+            )));
+        }
+        Ok(body)
+    }
+}
+
+#[async_trait]
+impl CalculatorPort for HttpCalculatorClient {
+    async fn calculate_simplified_natal(&self, request: &Value) -> Result<Value, GatewayError> {
+        self.post_json(Self::SIMPLIFIED_NATAL_PATH, request).await
     }
 
     async fn calculate_full_natal(&self, request: &Value) -> Result<Value, GatewayError> {
-        CalculatorClient::calculate_natal(self, request)
-            .await
-            .map_err(|err| GatewayError::upstream(err.detail().message.clone()))
+        self.post_json(Self::FULL_NATAL_PATH, request).await
     }
 
     async fn calculate_horoscope_daily_natal(
         &self,
         request: &Value,
     ) -> Result<Value, GatewayError> {
-        CalculatorClient::calculate_horoscope_daily_natal(self, request)
+        self.post_json(Self::HOROSCOPE_DAILY_NATAL_PATH, request)
             .await
-            .map_err(|err| GatewayError::upstream(err.detail().message.clone()))
     }
 
     async fn calculate_horoscope_period_natal(
         &self,
         request: &Value,
     ) -> Result<Value, GatewayError> {
-        CalculatorClient::calculate_horoscope_period_natal(self, request)
+        self.post_json(Self::HOROSCOPE_PERIOD_NATAL_PATH, request)
             .await
-            .map_err(|err| GatewayError::upstream(err.detail().message.clone()))
     }
 }
 
@@ -226,17 +271,33 @@ enum LlmHttpError {
 
 #[async_trait]
 impl LlmPort for HttpLlmClient {
-    async fn generate_reading(
-        &self,
-        request: &GenerateReadingRequest,
-    ) -> Result<GenerateReadingResponse, GatewayError> {
+    async fn generate_reading(&self, request: &Value) -> Result<Value, GatewayError> {
         let url = format!("{}/v1/internal/readings/render", self.base_url);
         let response = self.send_llm_json_with_timeout_retry(&url, request).await?;
         let body = response
-            .json::<GenerateReadingResponse>()
+            .json::<Value>()
             .await
             .map_err(|err| GatewayError::upstream(format!("llm response parse failed: {err}")))?;
         Ok(body)
+    }
+
+    async fn build_horoscope_daily_calculation_request(
+        &self,
+        request: &Value,
+    ) -> Result<Value, GatewayError> {
+        self.post_internal_json("/v1/internal/horoscope/daily/calculation-request", request)
+            .await
+    }
+
+    async fn build_horoscope_period_calculation_request(
+        &self,
+        request: &Value,
+    ) -> Result<Value, GatewayError> {
+        self.post_internal_json_without_retry(
+            "/v1/internal/horoscope/period/calculation-request",
+            request,
+        )
+        .await
     }
 
     async fn render_horoscope_daily(&self, request: &Value) -> Result<Value, GatewayError> {
@@ -247,6 +308,22 @@ impl LlmPort for HttpLlmClient {
     async fn render_horoscope_period(&self, request: &Value) -> Result<Value, GatewayError> {
         self.post_internal_json_without_retry("/v1/internal/horoscope/period/render", request)
             .await
+    }
+
+    async fn render_horoscope_daily_gateway(&self, request: &Value) -> Result<Value, GatewayError> {
+        self.post_internal_json("/v1/internal/horoscope/daily/render-gateway", request)
+            .await
+    }
+
+    async fn render_horoscope_period_gateway(
+        &self,
+        request: &Value,
+    ) -> Result<Value, GatewayError> {
+        self.post_internal_json_without_retry(
+            "/v1/internal/horoscope/period/render-gateway",
+            request,
+        )
+        .await
     }
 
     async fn get_run_audit(&self, run_id: &str) -> Result<Value, GatewayError> {

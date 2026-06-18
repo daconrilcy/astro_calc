@@ -4,7 +4,7 @@ Guide pratique pour connecter une application externe à `astral_llm_api`. Contr
 
 Pour une orchestration publique metier, preferer `astral_gateway` et ses
 endpoints `/v2/*`. `astral_llm_api` reste la surface d'integration async par
-jobs. `astral_calculator_api` est une surface technique interne : les nouveaux
+jobs. `astral_calculator_http` est une surface technique interne : les nouveaux
 appels inter-services utilisent `/v1/internal/calculations/*`; les anciens
 `/v1/calculations/*` restent des aliases compatibles.
 

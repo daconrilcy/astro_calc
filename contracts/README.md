@@ -9,7 +9,7 @@ Surface consommable par les applications tierces. **Ce repertoire n est pas une 
 Applications sur le reseau `astral_net` :
 
 ```txt
-http://astral_calculator_api:8080
+http://astral_calculator_http:8080
 http://astral_llm_api:8081
 http://astral_gateway:8082
 ```
@@ -29,7 +29,7 @@ La gateway V2 porte la facade publique d'orchestration. Elle appelle `astral_cal
 
 ### Surface calculateur interne — V1
 
-`astral_calculator_api` est une API HTTP technique du calculateur. Les appels
+`astral_calculator_http` est une API HTTP technique du calculateur. Les appels
 inter-services doivent utiliser les routes canoniques
 `/v1/internal/calculations/*`. Les anciennes routes `/v1/calculations/*`
 restent disponibles comme aliases legacy compatibles pour l'outillage local et

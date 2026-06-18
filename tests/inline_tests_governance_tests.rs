@@ -27,7 +27,7 @@ fn workspace_core_contains_no_inline_unit_tests() {
     let root = repo_root();
     let src_roots = [
         root.join("astral_calculator/src"),
-        root.join("astral_calculator_api/src"),
+        root.join("astral_calculator_http/src"),
         root.join("astral_contracts/src"),
         root.join("astral_gateway/src"),
         root.join("astral_time_window/src"),

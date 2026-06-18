@@ -117,7 +117,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "astral_calculator_api"
+name = "astral_calculator_http"
 version = "0.1.0"
 dependencies = [
  "astral_calculator",
@@ -151,11 +151,7 @@ dependencies = [
 name = "astral_gateway"
 version = "0.1.0"
 dependencies = [
- "astral_calculator",
  "astral_contracts",
- "astral_llm_application",
- "astral_llm_domain",
- "astral_llm_infra",
  "async-trait",
  "axum",
  "dotenvy",

@@ -51,8 +51,8 @@ try {
             if ($LASTEXITCODE -ne 0) { throw "contracts_publish_tests failed" }
         }
         Invoke-Step "Horoscope Premium Period: calculator API tests" {
-            cargo test -p astral_calculator_api --test astral_calculator_api_tests
-            if ($LASTEXITCODE -ne 0) { throw "astral_calculator_api_tests failed" }
+            cargo test -p astral_calculator_http --test astral_calculator_http_tests
+            if ($LASTEXITCODE -ne 0) { throw "astral_calculator_http_tests failed" }
         }
     }
 

@@ -8,36 +8,8 @@ use astral_gateway::{
     horoscope::{GenerateHoroscopeDailyReadingUseCase, GenerateHoroscopePeriodReadingUseCase},
     ports::{CalculatorPort, LlmPort},
 };
-use astral_llm_application::{HoroscopePeriodPublicRequest, HoroscopePublicRequest};
-use astral_llm_domain::{GenerateReadingRequest, GenerateReadingResponse};
 use async_trait::async_trait;
-use serde_json::Value;
-
-fn db_available() -> bool {
-    if let Ok(handle) = tokio::runtime::Handle::try_current() {
-        match handle.runtime_flavor() {
-            tokio::runtime::RuntimeFlavor::MultiThread => tokio::task::block_in_place(|| {
-                handle.block_on(async { astral_calculator::db::connect_from_env().await.is_ok() })
-            }),
-            tokio::runtime::RuntimeFlavor::CurrentThread => std::thread::spawn(|| {
-                let runtime = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("tokio runtime");
-                runtime.block_on(async { astral_calculator::db::connect_from_env().await.is_ok() })
-            })
-            .join()
-            .expect("db availability thread"),
-            _ => false,
-        }
-    } else {
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("tokio runtime");
-        runtime.block_on(async { astral_calculator::db::connect_from_env().await.is_ok() })
-    }
-}
+use serde_json::{json, Value};
 
 struct FixtureCalculator {
     daily: Value,
@@ -86,12 +58,41 @@ struct FixtureLlm {
 impl LlmPort for FixtureLlm {
     async fn generate_reading(
         &self,
-        _request: &GenerateReadingRequest,
-    ) -> Result<GenerateReadingResponse, astral_gateway::error::GatewayError> {
+        _request: &Value,
+    ) -> Result<Value, astral_gateway::error::GatewayError> {
         unreachable!()
     }
 
-    async fn render_horoscope_daily(
+    async fn build_horoscope_daily_calculation_request(
+        &self,
+        request: &Value,
+    ) -> Result<Value, astral_gateway::error::GatewayError> {
+        Ok(serde_json::json!({
+            "contract_version": "horoscope_calculation_request",
+            "service_code": request.get("service_code").cloned().unwrap_or(Value::Null),
+            "period": {
+                "date": request.pointer("/public_request/date").cloned().unwrap_or(Value::Null),
+                "timezone": request.pointer("/public_request/timezone").cloned().unwrap_or(Value::Null)
+            },
+            "chart_calculation_id": request.pointer("/public_request/chart_calculation_id").cloned().unwrap_or(Value::Null),
+            "slots": []
+        }))
+    }
+
+    async fn build_horoscope_period_calculation_request(
+        &self,
+        request: &Value,
+    ) -> Result<Value, astral_gateway::error::GatewayError> {
+        Ok(serde_json::json!({
+            "contract_version": "horoscope_period_calculation_request",
+            "service_code": request.get("service_code").cloned().unwrap_or(Value::Null),
+            "chart_calculation_id": request.pointer("/public_request/chart_calculation_id").cloned().unwrap_or(Value::Null),
+            "period_resolution": {},
+            "scan_plan": { "snapshots": [] }
+        }))
+    }
+
+    async fn render_horoscope_daily_gateway(
         &self,
         request: &Value,
     ) -> Result<Value, astral_gateway::error::GatewayError> {
@@ -99,10 +100,13 @@ impl LlmPort for FixtureLlm {
             .captured_daily_request
             .lock()
             .expect("daily request lock") = Some(request.clone());
-        Ok(self.daily.clone())
+        Ok(json!({
+            "llm_request": request,
+            "reading": self.daily
+        }))
     }
 
-    async fn render_horoscope_period(
+    async fn render_horoscope_period_gateway(
         &self,
         request: &Value,
     ) -> Result<Value, astral_gateway::error::GatewayError> {
@@ -110,7 +114,13 @@ impl LlmPort for FixtureLlm {
             .captured_period_request
             .lock()
             .expect("period request lock") = Some(request.clone());
-        Ok(self.period.clone())
+        Ok(json!({
+            "llm_request": request,
+            "reading": self.period,
+            "period_editorial_audit": {
+                "warnings": []
+            }
+        }))
     }
 
     async fn get_run_audit(
@@ -154,9 +164,6 @@ impl LlmPort for FixtureLlm {
 
 #[tokio::test]
 async fn gateway_daily_basic_uses_calculator_then_llm() {
-    if !db_available() {
-        return;
-    }
     let calculator = Arc::new(FixtureCalculator {
         daily: read_golden("horoscope_calculation_response_basic_daily_paris_1990.json"),
         period: Value::Null,
@@ -172,15 +179,13 @@ async fn gateway_daily_basic_uses_calculator_then_llm() {
     let response = use_case
         .execute(
             astral_contracts::HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE,
-            HoroscopePublicRequest {
-                date: "1990-06-15".into(),
-                timezone: "Europe/Paris".into(),
-                target_language: "fr".into(),
-                chart_calculation_id: "123".into(),
-                location: None,
-                audience_level: "general".into(),
-                detail_level: None,
-            },
+            json!({
+                "date": "1990-06-15",
+                "timezone": "Europe/Paris",
+                "target_language": "fr",
+                "chart_calculation_id": "123",
+                "audience_level": "general"
+            }),
         )
         .await
         .expect("daily response");
@@ -221,9 +226,6 @@ async fn gateway_daily_basic_uses_calculator_then_llm() {
 
 #[tokio::test]
 async fn gateway_period_free_uses_calculator_then_llm() {
-    if !db_available() {
-        return;
-    }
     let calculator = Arc::new(FixtureCalculator {
         daily: Value::Null,
         period: read_golden(
@@ -241,16 +243,13 @@ async fn gateway_period_free_uses_calculator_then_llm() {
     let response = use_case
         .execute(
             astral_contracts::HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
-            HoroscopePeriodPublicRequest {
-                anchor_date: "1990-06-15".into(),
-                timezone: "Europe/Paris".into(),
-                target_language: "fr".into(),
-                target_language_code: None,
-                chart_calculation_id: "123".into(),
-                audience_level: "general".into(),
-                astrologer_persona: None,
-                language_compat_warning: None,
-            },
+            json!({
+                "anchor_date": "1990-06-15",
+                "timezone": "Europe/Paris",
+                "target_language": "fr",
+                "chart_calculation_id": "123",
+                "audience_level": "general"
+            }),
         )
         .await
         .expect("period response");

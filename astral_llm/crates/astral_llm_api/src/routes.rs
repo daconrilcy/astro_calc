@@ -1,4 +1,10 @@
-use astral_llm_application::{daily_writer_response, period_writer_response_with_quality_loop};
+use astral_llm_application::{
+    build_calculation_request_for_service, build_interpretation_request,
+    build_period_calculation_request_for_service, build_period_writer_request,
+    daily_writer_response, period_editorial_audit, period_writer_response_with_quality_loop,
+    score_calculation, validate_horoscope_response_schema, validate_period_public_request,
+    validate_period_response_contract, validate_public_request, validate_response_evidence,
+};
 use astral_llm_domain::GenerateReadingRequest;
 use astral_llm_domain::GenerationRunContractVersions;
 use axum::{
@@ -35,8 +41,24 @@ pub fn router(state: AppState) -> Router {
             post(render_horoscope_daily_internal),
         )
         .route(
+            "/v1/internal/horoscope/daily/calculation-request",
+            post(build_horoscope_daily_calculation_request_internal),
+        )
+        .route(
+            "/v1/internal/horoscope/daily/render-gateway",
+            post(render_horoscope_daily_gateway_internal),
+        )
+        .route(
             "/v1/internal/horoscope/period/render",
             post(render_horoscope_period_internal),
+        )
+        .route(
+            "/v1/internal/horoscope/period/calculation-request",
+            post(build_horoscope_period_calculation_request_internal),
+        )
+        .route(
+            "/v1/internal/horoscope/period/render-gateway",
+            post(render_horoscope_period_gateway_internal),
         )
         .route("/v1/runs/{run_id}", get(get_run_audit))
         .route("/v1/providers", get(list_providers))
@@ -98,6 +120,86 @@ async fn render_horoscope_daily_internal(
     }
 }
 
+async fn build_horoscope_daily_calculation_request_internal(
+    Json(request): Json<serde_json::Value>,
+) -> Response {
+    let Some(service_code) = request
+        .get("service_code")
+        .and_then(serde_json::Value::as_str)
+    else {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "INVALID_INPUT",
+            "service_code is required",
+            None,
+        );
+    };
+    let public = match validate_public_request(
+        request
+            .get("public_request")
+            .unwrap_or(&serde_json::Value::Null),
+    ) {
+        Ok(public) => public,
+        Err(err) => return from_generation_error(err),
+    };
+    match build_calculation_request_for_service(service_code, &public) {
+        Ok(calculation_request) => Json(calculation_request).into_response(),
+        Err(err) => from_generation_error(err),
+    }
+}
+
+async fn render_horoscope_daily_gateway_internal(
+    State(state): State<AppState>,
+    Json(request): Json<serde_json::Value>,
+) -> Response {
+    let public = match validate_public_request(
+        request
+            .get("public_request")
+            .unwrap_or(&serde_json::Value::Null),
+    ) {
+        Ok(public) => public,
+        Err(err) => return from_generation_error(err),
+    };
+    let Some(calculation) = request.get("calculation") else {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "INVALID_INPUT",
+            "calculation is required",
+            None,
+        );
+    };
+    let signals = match score_calculation(calculation) {
+        Ok(signals) => signals,
+        Err(err) => return from_generation_error(err),
+    };
+    let mut interpretation = match build_interpretation_request(&public, calculation, &signals) {
+        Ok(interpretation) => interpretation,
+        Err(err) => return from_generation_error(err),
+    };
+    if let Some(run_id) = request
+        .get("debug_run_id")
+        .and_then(serde_json::Value::as_str)
+    {
+        interpretation["debug_run_id"] = json!(run_id);
+    }
+    match daily_writer_response(&state.use_case, &interpretation, None).await {
+        Ok(reading) => {
+            if let Err(err) = validate_horoscope_response_schema(&reading) {
+                return from_generation_error(err);
+            }
+            if let Err(err) = validate_response_evidence(&interpretation, &reading) {
+                return from_generation_error(err);
+            }
+            Json(json!({
+                "llm_request": interpretation,
+                "reading": reading
+            }))
+            .into_response()
+        }
+        Err(err) => from_generation_error(err),
+    }
+}
+
 async fn render_reading_internal(
     State(state): State<AppState>,
     Json(request): Json<GenerateReadingRequest>,
@@ -111,6 +213,84 @@ async fn render_horoscope_period_internal(
 ) -> Response {
     match period_writer_response_with_quality_loop(&state.use_case, &request, None).await {
         Ok(response) => Json(response).into_response(),
+        Err(err) => from_generation_error(err),
+    }
+}
+
+async fn build_horoscope_period_calculation_request_internal(
+    Json(request): Json<serde_json::Value>,
+) -> Response {
+    let Some(service_code) = request
+        .get("service_code")
+        .and_then(serde_json::Value::as_str)
+    else {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "INVALID_INPUT",
+            "service_code is required",
+            None,
+        );
+    };
+    let public = match validate_period_public_request(
+        request
+            .get("public_request")
+            .unwrap_or(&serde_json::Value::Null),
+    ) {
+        Ok(public) => public,
+        Err(err) => return from_generation_error(err),
+    };
+    match build_period_calculation_request_for_service(service_code, &public) {
+        Ok(calculation_request) => Json(calculation_request).into_response(),
+        Err(err) => from_generation_error(err),
+    }
+}
+
+async fn render_horoscope_period_gateway_internal(
+    State(state): State<AppState>,
+    Json(request): Json<serde_json::Value>,
+) -> Response {
+    let public = match validate_period_public_request(
+        request
+            .get("public_request")
+            .unwrap_or(&serde_json::Value::Null),
+    ) {
+        Ok(public) => public,
+        Err(err) => return from_generation_error(err),
+    };
+    let Some(calculation) = request.get("calculation") else {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "INVALID_INPUT",
+            "calculation is required",
+            None,
+        );
+    };
+    let mut writer_request = match build_period_writer_request(&public, calculation) {
+        Ok(writer_request) => writer_request,
+        Err(err) => return from_generation_error(err),
+    };
+    if let Some(run_id) = request
+        .get("debug_run_id")
+        .and_then(serde_json::Value::as_str)
+    {
+        writer_request["debug_run_id"] = json!(run_id);
+    }
+    match period_writer_response_with_quality_loop(&state.use_case, &writer_request, None).await {
+        Ok(reading) => {
+            if let Err(err) = validate_period_response_contract(&writer_request, &reading) {
+                return from_generation_error(err);
+            }
+            let editorial_audit = period_editorial_audit(&writer_request, &reading);
+            let mut response = json!({
+                "llm_request": writer_request,
+                "reading": reading,
+                "period_editorial_audit": editorial_audit
+            });
+            if let Some(warning) = public.language_compat_warning {
+                response["language_compatibility"] = warning;
+            }
+            Json(response).into_response()
+        }
         Err(err) => from_generation_error(err),
     }
 }

@@ -1,9 +1,9 @@
 # Workspace Rules
 
 - **Git** : ne pas creer de branches. Tous les commits doivent rester directement sur `main`.
-- **Rust** : workspace Cargo a la racine (`astral_calculator`, `astral_calculator_api`, `astral_llm`). Commandes :
+- **Rust** : workspace Cargo a la racine (`astral_calculator`, `astral_calculator_http`, `astral_llm`). Commandes :
   `cargo test -p astral_calculator`, `cargo run -p astral_calculator`,
-  `cargo run -p astral_calculator_api`, `cargo test -p astral_calculator_api --test astral_calculator_api_tests`,
+  `cargo run -p astral_calculator_http`, `cargo test -p astral_calculator_http --test astral_calculator_http_tests`,
   `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`,
   `cargo run -p astral_llm_api`, `cargo run -p astral_llm_worker`, `cargo test -p astral_llm_api --test astral_llm_tests`,
  `cargo test -p astral_llm_api --test integration_services_tests`, `cargo test -p astral_llm_api --test integration_jobs_tests`,

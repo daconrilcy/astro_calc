@@ -1,6 +1,6 @@
 # Guide débutant — Docker, APIs et contrats Astral
 
-Ce guide explique comment **installer**, **démarrer** et **utiliser** la stack locale Astral avec Docker Compose : calculateur astral (`astral_calculator_api`), API LLM (`astral_llm_api`), gateway publique (`astral_gateway`) et PostgreSQL.
+Ce guide explique comment **installer**, **démarrer** et **utiliser** la stack locale Astral avec Docker Compose : calculateur astral (`astral_calculator_http`), API LLM (`astral_llm_api`), gateway publique (`astral_gateway`) et PostgreSQL.
 
 Public visé : développeur ou intégrateur qui découvre le projet et veut un parcours pas à pas, sans supposer une connaissance préalable du dépôt.
 
@@ -35,7 +35,7 @@ Le projet expose **trois services HTTP** complémentaires :
 
 | Service | Port (hôte) | Rôle |
 |---------|---------------|------|
-| **astral_calculator_api** | `8080` | API technique interne de calcul (`/v1/internal/calculations/*`, aliases legacy `/v1/calculations/*`) |
+| **astral_calculator_http** | `8080` | API technique interne de calcul (`/v1/internal/calculations/*`, aliases legacy `/v1/calculations/*`) |
 | **astral_llm_api** | `8081` | API LLM, intégration async par jobs (`/v1/jobs`) et rendu interne |
 | **astral_gateway** | `8082` | Façade publique recommandée (`/v2/natal/*`, `/v2/horoscope/*`) |
 | **PostgreSQL** | interne (`5432`) | Référentiels astrologiques, profils LLM, persistance des runs |
@@ -73,7 +73,7 @@ Espace disque : prévoir **plusieurs Go** pour les images Docker et le build Rus
 │  Réseau Docker : astral_net                                 │
 │                                                             │
 │  ┌──────────────┐    ┌─────────────────────┐               │
-│  │  postgres    │◄───│ astral_calculator_api│ :8080         │
+│  │  postgres    │◄───│ astral_calculator_http│ :8080         │
 │  │  :5432       │    └─────────────────────┘               │
 │  └──────┬───────┘                                           │
 │         │            ┌─────────────────────┐               │
@@ -107,7 +107,7 @@ Pour ne démarrer qu'un sous-ensemble (ex. import DB seul) :
 
 ```powershell
 docker compose up -d postgres
-docker compose up -d postgres astral_calculator_api
+docker compose up -d postgres astral_calculator_http
 ```
 
 ### Accès réseau
@@ -115,7 +115,7 @@ docker compose up -d postgres astral_calculator_api
 | Depuis | URL calculateur technique | URL LLM | URL gateway publique |
 |--------|---------------------------|---------|---------------------|
 | Votre machine (navigateur, curl, Postman) | `http://localhost:8080` | `http://localhost:8081` | `http://localhost:8082` |
-| Un autre conteneur sur `astral_net` | `http://astral_calculator_api:8080` | `http://astral_llm_api:8081` | `http://astral_gateway:8082` |
+| Un autre conteneur sur `astral_net` | `http://astral_calculator_http:8080` | `http://astral_llm_api:8081` | `http://astral_gateway:8082` |
 
 ---
 
@@ -314,7 +314,7 @@ ephe/
 3. Redémarrez le calculateur :
 
 ```powershell
-docker compose restart astral_calculator_api
+docker compose restart astral_calculator_http
 ```
 
 ### Vérification
@@ -373,7 +373,7 @@ docker compose up -d --build
 
 ```powershell
 docker compose ps
-docker compose logs -f astral_calculator_api
+docker compose logs -f astral_calculator_http
 docker compose logs -f astral_llm_api
 ```
 
@@ -483,7 +483,7 @@ Invoke-RestMethod http://localhost:8080/health/ready
 Invoke-RestMethod http://localhost:8081/health/ready
 ```
 
-> **Docker vs `.env` hôte** : `docker-compose.yml` configure `ASTRAL_CALCULATOR_HOST=astral_calculator_api` **dans le conteneur** LLM. Les scripts E2E détectent l'orchestration Docker (`http://127.0.0.1:8081`) et n'exigent pas ces variables dans votre `.env` local. En développement **hors Docker** (`cargo run`), définissez `ASTRAL_CALCULATOR_HOST=127.0.0.1` et `ASTRAL_CALCULATOR_PORT=8080` dans `.env`.
+> **Docker vs `.env` hôte** : `docker-compose.yml` configure `ASTRAL_CALCULATOR_HOST=astral_calculator_http` **dans le conteneur** LLM. Les scripts E2E détectent l'orchestration Docker (`http://127.0.0.1:8081`) et n'exigent pas ces variables dans votre `.env` local. En développement **hors Docker** (`cargo run`), définissez `ASTRAL_CALCULATOR_HOST=127.0.0.1` et `ASTRAL_CALCULATOR_PORT=8080` dans `.env`.
 
 > **Provider** : Compose force `ASTRAL_LLM_DEFAULT_PROVIDER=fake` dans le conteneur. La valeur `openai` dans le `.env` hôte n'affecte pas Docker ; les scripts vérifient le runtime via `GET /v1/providers`.
 
@@ -623,7 +623,7 @@ Route retiree du runtime courant.
      │
      │  POST /v2/natal/simplified/free
      ▼
-  [astral_gateway] ──HTTP interne──► [astral_calculator_api]
+  [astral_gateway] ──HTTP interne──► [astral_calculator_http]
         │                         POST /v1/internal/calculations/*
         └────────HTTP interne──► [astral_llm_api]
      │
@@ -819,15 +819,15 @@ cargo test -p astral_llm_api --test astral_llm_simplified_reading_tests
 docker compose logs -f astral_llm_api
 
 # Rebuild un seul service
-docker compose up -d --build astral_calculator_api
+docker compose up -d --build astral_calculator_http
 
 # Tests Rust (hors Docker)
-cargo test -p astral_calculator_api --test astral_calculator_api_tests
+cargo test -p astral_calculator_http --test astral_calculator_http_tests
 cargo test -p astral_llm_api --test contracts_publish_tests
 cargo test -p astral_llm_api --test astral_llm_tests
 
 # Développement local sans Docker (APIs sur l'hôte)
-cargo run -p astral_calculator_api   # :8080
+cargo run -p astral_calculator_http   # :8080
 cargo run -p astral_llm_api          # :8081
 ```
 
@@ -851,7 +851,7 @@ python scripts/import_json_db_to_postgres.py
 
 **Cause** : dossier `ephe/se-2026a/` absent ou sans fichiers `.se1`.
 
-**Action** : installer Swiss Ephemeris (section 6), puis `docker compose restart astral_calculator_api`.
+**Action** : installer Swiss Ephemeris (section 6), puis `docker compose restart astral_calculator_http`.
 
 ### `astral_llm_api /health/ready` indisponible
 
@@ -884,7 +884,7 @@ ASTRAL_GATEWAY_REQUEST_TIMEOUT_MS=900000
 ASTRAL_CALCULATOR_REQUEST_TIMEOUT_MS=900000
 ```
 
-Redémarrez : `docker compose restart astral_gateway astral_calculator_api astral_llm_api`.
+Redémarrez : `docker compose restart astral_gateway astral_calculator_http astral_llm_api`.
 
 ### Natal simplifié — HTTP 500 / `REFERENCE_DATA_MISSING`
 
@@ -894,7 +894,7 @@ Redémarrez : `docker compose restart astral_gateway astral_calculator_api astra
 
 ```powershell
 python scripts/import_json_db_to_postgres.py
-docker compose restart astral_calculator_api astral_llm_api
+docker compose restart astral_calculator_http astral_llm_api
 .\scripts\test_natal_simplified_calculator.ps1 -Case date_only
 ```
 

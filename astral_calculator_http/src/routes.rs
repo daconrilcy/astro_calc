@@ -78,7 +78,7 @@ pub fn router(state: AppState) -> Router {
 async fn health_live() -> impl IntoResponse {
     Json(json!({
         "status": "ok",
-        "service": "astral_calculator_api"
+        "service": "astral_calculator_http"
     }))
 }
 
@@ -96,14 +96,14 @@ async fn health_ready(State(state): State<AppState>) -> Response {
 
     Json(json!({
         "status": "ready",
-        "service": "astral_calculator_api"
+        "service": "astral_calculator_http"
     }))
     .into_response()
 }
 
 async fn list_contracts(State(state): State<AppState>) -> impl IntoResponse {
     Json(json!({
-        "service": "astral_calculator_api",
+        "service": "astral_calculator_http",
         "surface": "internal_calculator_http",
         "canonical_calculation_base_path": "/v1/internal/calculations",
         "legacy_calculation_base_path": "/v1/calculations",
@@ -490,7 +490,7 @@ pub async fn serve(config: AppConfig) -> Result<(), Box<dyn std::error::Error>> 
 
     let app = build_app(state);
     let listener = TcpListener::bind(config.bind_addr).await?;
-    tracing::info!(addr = %config.bind_addr, "astral_calculator_api listening");
+    tracing::info!(addr = %config.bind_addr, "astral_calculator_http listening");
     axum::serve(listener, app).await?;
     Ok(())
 }

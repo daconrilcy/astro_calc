@@ -76,7 +76,7 @@ if (-not (Wait-HttpOk "$LlmUrl/health/live")) {
     throw "astral_llm_api inaccessible sur $LlmUrl"
 }
 if (-not (Wait-HttpOk "$CalculatorUrl/health/live")) {
-    throw "astral_calculator_api inaccessible sur $CalculatorUrl"
+    throw "astral_calculator_http inaccessible sur $CalculatorUrl"
 }
 Write-Host "  OK" -ForegroundColor Green
 

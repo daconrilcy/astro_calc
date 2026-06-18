@@ -7,12 +7,6 @@ use astral_gateway::{
     state::AppState,
     NatalReadingRequestV2,
 };
-use astral_llm_application::{HoroscopePeriodPublicRequest, HoroscopePublicRequest};
-use astral_llm_domain::{
-    generation_response::{ConfidenceLevel, GenerateReadingResponse},
-    output_contract::GenerationMode,
-    GenerateReadingRequest, NatalReadingResponse, ReadingChapter, ReadingSummary,
-};
 use async_trait::async_trait;
 use axum::{
     body::{to_bytes, Body},
@@ -20,32 +14,6 @@ use axum::{
 };
 use serde_json::{json, Value};
 use tower::ServiceExt;
-
-fn db_available() -> bool {
-    if let Ok(handle) = tokio::runtime::Handle::try_current() {
-        match handle.runtime_flavor() {
-            tokio::runtime::RuntimeFlavor::MultiThread => tokio::task::block_in_place(|| {
-                handle.block_on(async { astral_calculator::db::connect_from_env().await.is_ok() })
-            }),
-            tokio::runtime::RuntimeFlavor::CurrentThread => std::thread::spawn(|| {
-                let runtime = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("tokio runtime");
-                runtime.block_on(async { astral_calculator::db::connect_from_env().await.is_ok() })
-            })
-            .join()
-            .expect("db availability thread"),
-            _ => false,
-        }
-    } else {
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("tokio runtime");
-        runtime.block_on(async { astral_calculator::db::connect_from_env().await.is_ok() })
-    }
-}
 
 struct FakeCalculator {
     daily: Value,
@@ -111,55 +79,84 @@ struct FakeLlm {
 impl LlmPort for FakeLlm {
     async fn generate_reading(
         &self,
-        request: &GenerateReadingRequest,
-    ) -> Result<GenerateReadingResponse, astral_gateway::error::GatewayError> {
-        Ok(GenerateReadingResponse::Success {
-            run_id: "run-test".into(),
-            reading: NatalReadingResponse {
-                schema_version: "natal_reading_v1".into(),
-                language: request.product_context.user_language.clone(),
-                reading_type: request.product_context.product_code.clone(),
-                summary: ReadingSummary {
-                    title: "Test".into(),
-                    short_text: "Test".into(),
-                },
-                chapters: vec![ReadingChapter {
-                    code: "identity".into(),
-                    title: "Identity".into(),
-                    body: "Body".into(),
-                    astro_basis: vec![],
-                    confidence: ConfidenceLevel::Medium,
-                    safety_flags: vec![],
+        request: &Value,
+    ) -> Result<Value, astral_gateway::error::GatewayError> {
+        Ok(json!({
+            "status": "success",
+            "run_id": "run-test",
+            "reading": {
+                "schema_version": "natal_reading_v1",
+                "language": request.pointer("/product_context/user_language").and_then(Value::as_str).unwrap_or("fr"),
+                "reading_type": request.pointer("/product_context/product_code").and_then(Value::as_str).unwrap_or("natal_prompter"),
+                "summary": { "title": "Test", "short_text": "Test" },
+                "chapters": [{
+                    "code": "identity",
+                    "title": "Identity",
+                    "body": "Body",
+                    "astro_basis": [],
+                    "confidence": "medium",
+                    "safety_flags": []
                 }],
-                legal: astral_llm_domain::LegalBlock {
-                    disclaimer: "Disclaimer".into(),
-                },
-                quality: astral_llm_domain::QualityMetadata {
-                    used_provider: "fake".into(),
-                    used_model: "fake".into(),
-                    generation_mode: GenerationMode::SinglePass,
-                    prompt_family: "test".into(),
-                    prompt_version: "v1".into(),
-                    astro_contract_version: request.astro_result.contract_version.clone(),
-                    fallback_used: false,
-                },
+                "legal": { "disclaimer": "Disclaimer" },
+                "quality": {
+                    "used_provider": "fake",
+                    "used_model": "fake",
+                    "generation_mode": "single_pass",
+                    "prompt_family": "test",
+                    "prompt_version": "v1",
+                    "astro_contract_version": request.pointer("/astro_result/contract_version").and_then(Value::as_str).unwrap_or("test"),
+                    "fallback_used": false
+                }
             },
-            token_usage: None,
-        })
+            "token_usage": null
+        }))
     }
 
-    async fn render_horoscope_daily(
+    async fn build_horoscope_daily_calculation_request(
         &self,
-        _request: &Value,
+        request: &Value,
     ) -> Result<Value, astral_gateway::error::GatewayError> {
-        Ok(self.daily.clone())
+        Ok(json!({
+            "contract_version": "horoscope_calculation_request",
+            "service_code": request.get("service_code").cloned().unwrap_or(Value::Null),
+            "period": {
+                "date": request.pointer("/public_request/date").cloned().unwrap_or(Value::Null),
+                "timezone": request.pointer("/public_request/timezone").cloned().unwrap_or(Value::Null)
+            },
+            "chart_calculation_id": request.pointer("/public_request/chart_calculation_id").cloned().unwrap_or(Value::Null),
+            "slots": []
+        }))
     }
 
-    async fn render_horoscope_period(
+    async fn build_horoscope_period_calculation_request(
         &self,
-        _request: &Value,
+        request: &Value,
     ) -> Result<Value, astral_gateway::error::GatewayError> {
-        Ok(self.period.clone())
+        Ok(json!({
+            "contract_version": "horoscope_period_calculation_request",
+            "service_code": request.get("service_code").cloned().unwrap_or(Value::Null),
+            "chart_calculation_id": request.pointer("/public_request/chart_calculation_id").cloned().unwrap_or(Value::Null),
+            "period_resolution": {},
+            "scan_plan": { "snapshots": [] }
+        }))
+    }
+
+    async fn render_horoscope_daily_gateway(
+        &self,
+        request: &Value,
+    ) -> Result<Value, astral_gateway::error::GatewayError> {
+        Ok(json!({ "llm_request": request, "reading": self.daily }))
+    }
+
+    async fn render_horoscope_period_gateway(
+        &self,
+        request: &Value,
+    ) -> Result<Value, astral_gateway::error::GatewayError> {
+        Ok(json!({
+            "llm_request": request,
+            "reading": self.period,
+            "period_editorial_audit": { "warnings": [] }
+        }))
     }
 }
 
@@ -266,23 +263,18 @@ async fn v2_natal_inspect_route_returns_pre_llm_payload() {
 
 #[tokio::test]
 async fn v2_horoscope_route_is_available() {
-    if !db_available() {
-        return;
-    }
     let response = app()
         .oneshot(
             Request::post("/v2/horoscope/daily/free")
                 .header("content-type", "application/json")
                 .body(Body::from(
-                    serde_json::to_vec(&HoroscopePublicRequest {
-                        date: "2026-06-14".into(),
-                        timezone: "Europe/Paris".into(),
-                        target_language: "fr".into(),
-                        chart_calculation_id: "chart-1".into(),
-                        location: None,
-                        audience_level: "general".into(),
-                        detail_level: None,
-                    })
+                    serde_json::to_vec(&json!({
+                        "date": "2026-06-14",
+                        "timezone": "Europe/Paris",
+                        "target_language": "fr",
+                        "chart_calculation_id": "chart-1",
+                        "audience_level": "general"
+                    }))
                     .expect("request json"),
                 ))
                 .expect("request"),
@@ -328,24 +320,18 @@ async fn full_natal_route_rejects_missing_birth_time() {
 
 #[tokio::test]
 async fn period_horoscope_route_is_available() {
-    if !db_available() {
-        return;
-    }
     let response = app()
         .oneshot(
             Request::post("/v2/horoscope/period/free")
                 .header("content-type", "application/json")
                 .body(Body::from(
-                    serde_json::to_vec(&HoroscopePeriodPublicRequest {
-                        anchor_date: "2026-06-14".into(),
-                        timezone: "Europe/Paris".into(),
-                        target_language: "fr".into(),
-                        target_language_code: None,
-                        chart_calculation_id: "chart-1".into(),
-                        audience_level: "general".into(),
-                        astrologer_persona: None,
-                        language_compat_warning: None,
-                    })
+                    serde_json::to_vec(&json!({
+                        "anchor_date": "2026-06-14",
+                        "timezone": "Europe/Paris",
+                        "target_language": "fr",
+                        "chart_calculation_id": "chart-1",
+                        "audience_level": "general"
+                    }))
                     .expect("request json"),
                 ))
                 .expect("request"),

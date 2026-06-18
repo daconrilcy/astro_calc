@@ -12,14 +12,13 @@ use tokio::net::TcpListener;
 use tower_http::{timeout::TimeoutLayer, trace::TraceLayer};
 
 use crate::{
-    clients::HttpLlmClient,
+    clients::{HttpCalculatorClient, HttpLlmClient},
     config::AppConfig,
     contracts::NatalReadingRequestV2,
     horoscope::{GenerateHoroscopeDailyReadingUseCase, GenerateHoroscopePeriodReadingUseCase},
     natal::NatalGatewayPolicy,
     state::AppState,
 };
-use astral_llm_application::{HoroscopePeriodPublicRequest, HoroscopePublicRequest};
 
 pub fn router(state: AppState) -> Router {
     router_with_timeout(state, request_timeout_with_margin(900_000))
@@ -188,7 +187,7 @@ async fn natal_full_premium_inspect(
 
 async fn horoscope_daily_free(
     State(state): State<AppState>,
-    Json(request): Json<HoroscopePublicRequest>,
+    Json(request): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, crate::error::GatewayError> {
     horoscope_daily_handler(
         state,
@@ -200,7 +199,7 @@ async fn horoscope_daily_free(
 
 async fn horoscope_daily_basic(
     State(state): State<AppState>,
-    Json(request): Json<HoroscopePublicRequest>,
+    Json(request): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, crate::error::GatewayError> {
     horoscope_daily_handler(
         state,
@@ -212,7 +211,7 @@ async fn horoscope_daily_basic(
 
 async fn horoscope_daily_premium(
     State(state): State<AppState>,
-    Json(request): Json<HoroscopePublicRequest>,
+    Json(request): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, crate::error::GatewayError> {
     horoscope_daily_handler(
         state,
@@ -224,7 +223,7 @@ async fn horoscope_daily_premium(
 
 async fn horoscope_period_free(
     State(state): State<AppState>,
-    Json(request): Json<HoroscopePeriodPublicRequest>,
+    Json(request): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, crate::error::GatewayError> {
     horoscope_period_handler(
         state,
@@ -236,7 +235,7 @@ async fn horoscope_period_free(
 
 async fn horoscope_period_basic(
     State(state): State<AppState>,
-    Json(request): Json<HoroscopePeriodPublicRequest>,
+    Json(request): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, crate::error::GatewayError> {
     horoscope_period_handler(
         state,
@@ -248,7 +247,7 @@ async fn horoscope_period_basic(
 
 async fn horoscope_period_premium(
     State(state): State<AppState>,
-    Json(request): Json<HoroscopePeriodPublicRequest>,
+    Json(request): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, crate::error::GatewayError> {
     horoscope_period_handler(
         state,
@@ -293,7 +292,7 @@ async fn natal_inspect_handler(
 async fn horoscope_daily_handler(
     state: AppState,
     service_code: &str,
-    request: HoroscopePublicRequest,
+    request: serde_json::Value,
 ) -> Result<Json<serde_json::Value>, crate::error::GatewayError> {
     let response =
         GenerateHoroscopeDailyReadingUseCase::new(state.calculator.clone(), state.llm.clone())
@@ -308,7 +307,7 @@ async fn horoscope_daily_handler(
 async fn horoscope_period_handler(
     state: AppState,
     service_code: &str,
-    request: HoroscopePeriodPublicRequest,
+    request: serde_json::Value,
 ) -> Result<Json<serde_json::Value>, crate::error::GatewayError> {
     let response =
         GenerateHoroscopePeriodReadingUseCase::new(state.calculator.clone(), state.llm.clone())
@@ -321,7 +320,7 @@ async fn horoscope_period_handler(
 }
 
 pub async fn serve(config: AppConfig) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let calculator = astral_llm_infra::CalculatorClient::new(
+    let calculator = HttpCalculatorClient::new(
         config.calculator_base_url,
         config.calculator_api_key,
         config.request_timeout_ms,

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://astral-calculation.local/contracts/common/error_response_v1.schema.json",
   "title": "Error Response v1",
-  "description": "Contrat d erreur commun aux APIs astral_calculator_api et astral_llm_api.",
+  "description": "Contrat d erreur commun aux APIs astral_calculator_http et astral_llm_api.",
   "type": "object",
   "additionalProperties": false,
   "required": ["status", "error"],

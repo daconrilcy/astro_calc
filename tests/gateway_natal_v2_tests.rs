@@ -7,12 +7,6 @@ use astral_contracts::{NatalVariant, ProductTier};
 use astral_gateway::{
     contracts::NatalReadingRequestV2, natal::NatalGatewayPolicy, GenerateNatalReadingUseCase,
 };
-use astral_llm_domain::{
-    generation_request::AudienceLevel,
-    generation_response::{ConfidenceLevel, GenerateReadingResponse},
-    output_contract::GenerationMode,
-    GenerateReadingRequest, NatalReadingResponse, ReadingChapter, ReadingSummary,
-};
 use async_trait::async_trait;
 use serde_json::{json, Value};
 
@@ -70,41 +64,9 @@ struct CountingLlm {
 impl astral_gateway::ports::LlmPort for FakeLlm {
     async fn generate_reading(
         &self,
-        request: &GenerateReadingRequest,
-    ) -> Result<GenerateReadingResponse, astral_gateway::error::GatewayError> {
-        Ok(GenerateReadingResponse::Success {
-            run_id: "run-test".into(),
-            reading: NatalReadingResponse {
-                schema_version: "natal_reading_v1".into(),
-                language: request.product_context.user_language.clone(),
-                reading_type: request.product_context.product_code.clone(),
-                summary: ReadingSummary {
-                    title: "Test".into(),
-                    short_text: "Test".into(),
-                },
-                chapters: vec![ReadingChapter {
-                    code: "identity".into(),
-                    title: "Identity".into(),
-                    body: "Body".into(),
-                    astro_basis: vec![],
-                    confidence: ConfidenceLevel::Medium,
-                    safety_flags: vec![],
-                }],
-                legal: astral_llm_domain::LegalBlock {
-                    disclaimer: "Disclaimer".into(),
-                },
-                quality: astral_llm_domain::QualityMetadata {
-                    used_provider: "fake".into(),
-                    used_model: "fake".into(),
-                    generation_mode: GenerationMode::SinglePass,
-                    prompt_family: "test".into(),
-                    prompt_version: "v1".into(),
-                    astro_contract_version: request.astro_result.contract_version.clone(),
-                    fallback_used: false,
-                },
-            },
-            token_usage: None,
-        })
+        request: &Value,
+    ) -> Result<Value, astral_gateway::error::GatewayError> {
+        Ok(fake_reading_response(request))
     }
 }
 
@@ -112,8 +74,8 @@ impl astral_gateway::ports::LlmPort for FakeLlm {
 impl astral_gateway::ports::LlmPort for PanicLlm {
     async fn generate_reading(
         &self,
-        _request: &GenerateReadingRequest,
-    ) -> Result<GenerateReadingResponse, astral_gateway::error::GatewayError> {
+        _request: &Value,
+    ) -> Result<Value, astral_gateway::error::GatewayError> {
         panic!("inspect path must not call the LLM port")
     }
 }
@@ -122,11 +84,48 @@ impl astral_gateway::ports::LlmPort for PanicLlm {
 impl astral_gateway::ports::LlmPort for CountingLlm {
     async fn generate_reading(
         &self,
-        request: &GenerateReadingRequest,
-    ) -> Result<GenerateReadingResponse, astral_gateway::error::GatewayError> {
+        request: &Value,
+    ) -> Result<Value, astral_gateway::error::GatewayError> {
         self.calls.fetch_add(1, Ordering::SeqCst);
         FakeLlm.generate_reading(request).await
     }
+}
+
+fn fake_reading_response(request: &Value) -> Value {
+    json!({
+        "status": "success",
+        "run_id": "run-test",
+        "reading": {
+            "schema_version": "natal_reading_v1",
+            "language": request.pointer("/product_context/user_language").and_then(Value::as_str).unwrap_or("fr"),
+            "reading_type": request.pointer("/product_context/product_code").and_then(Value::as_str).unwrap_or("natal_prompter"),
+            "summary": {
+                "title": "Test",
+                "short_text": "Test"
+            },
+            "chapters": [{
+                "code": "identity",
+                "title": "Identity",
+                "body": "Body",
+                "astro_basis": [],
+                "confidence": "medium",
+                "safety_flags": []
+            }],
+            "legal": {
+                "disclaimer": "Disclaimer"
+            },
+            "quality": {
+                "used_provider": "fake",
+                "used_model": "fake",
+                "generation_mode": "single_pass",
+                "prompt_family": "test",
+                "prompt_version": "v1",
+                "astro_contract_version": request.pointer("/astro_result/contract_version").and_then(Value::as_str).unwrap_or("test"),
+                "fallback_used": false
+            }
+        },
+        "token_usage": null
+    })
 }
 
 fn request(time: Option<&str>) -> NatalReadingRequestV2 {
@@ -216,10 +215,7 @@ fn natal_policy_maps_expected_profiles_and_projection_levels() {
 
     assert_eq!(free.projection_level(), "compact");
     assert_eq!(premium.projection_level(), "rich");
-    assert!(matches!(
-        free.default_audience_level(),
-        AudienceLevel::Beginner
-    ));
+    assert_eq!(free.default_audience_level(), "beginner");
     assert_eq!(premium.interpretation_profile_code(), "natal_premium");
 }
 
@@ -240,12 +236,13 @@ async fn natal_gateway_respects_explicit_audience_level() {
         .await
         .expect("response");
 
-    match response.reading {
-        GenerateReadingResponse::Success { reading, .. } => {
-            assert_eq!(reading.language, "fr");
-        }
-        other => panic!("unexpected reading response: {other:?}"),
-    }
+    assert_eq!(
+        response
+            .reading
+            .pointer("/reading/language")
+            .and_then(Value::as_str),
+        Some("fr")
+    );
 }
 
 #[tokio::test]
@@ -295,8 +292,8 @@ async fn natal_gateway_execute_calls_llm_for_standard_flow() {
         .expect("reading response");
 
     assert_eq!(calls.load(Ordering::SeqCst), 1);
-    assert!(matches!(
-        response.reading,
-        GenerateReadingResponse::Success { .. }
-    ));
+    assert_eq!(
+        response.reading.get("status").and_then(Value::as_str),
+        Some("success")
+    );
 }

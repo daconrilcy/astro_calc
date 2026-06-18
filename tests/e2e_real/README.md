@@ -53,6 +53,6 @@ Le runner cree aussi un dossier `output/e2e_real_reports/diagnostics_<timestamp>
 
 - `powershell_transcript.log` contient toute la sortie console de la suite.
 - En cas d'echec, les derniers logs Docker sont sauvegardes pour
-  `astral_llm_worker`, `astral_llm_api`, `astral_calculator_api` et `postgres`.
+  `astral_llm_worker`, `astral_llm_api`, `astral_calculator_http` et `postgres`.
 - Les timeouts de job incluent le `run_id` et le dernier payload retourne par
   `GET /v1/jobs/{run_id}`.

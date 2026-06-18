@@ -205,7 +205,7 @@ function Assert-SimplifiedCalculatorResponse {
     }
 
     if ($null -eq $Response.llm_payload.forbidden_interpretation_topics) {
-        $failures.Add("llm_payload.forbidden_interpretation_topics absent (rebuild astral_calculator_api)")
+        $failures.Add("llm_payload.forbidden_interpretation_topics absent (rebuild astral_calculator_http)")
     }
     if ($null -eq $Response.llm_payload.forbidden_topics) {
         $failures.Add("llm_payload.forbidden_topics mirror absent")

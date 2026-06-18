@@ -51,7 +51,10 @@ fn collect_governance_text_files_recursive(dir: &Path, files: &mut Vec<PathBuf>)
             continue;
         };
 
-        if matches!(extension, "rs" | "ps1" | "js" | "md" | "yaml" | "yml") {
+        if matches!(
+            extension,
+            "rs" | "ps1" | "js" | "md" | "yaml" | "yml" | "toml"
+        ) {
             files.push(path);
         }
     }
@@ -61,14 +64,14 @@ fn allows_legacy_calculator_route_reference(relative_path: &Path) -> bool {
     let path = relative_path.to_string_lossy().replace('\\', "/");
     matches!(
         path.as_str(),
-        "astral_calculator_api/src/routes.rs"
+        "astral_calculator_http/src/routes.rs"
             | "contracts/README.md"
             | "contracts/calculator/openapi.yaml"
             | "docs/BASIC_PAYLOAD_IMPLEMENTATION.md"
             | "docs/GUIDE_DEBUTANT_DOCKER.md"
             | "docs/integration_api_contract.md"
             | "docs/integration_api_guide.md"
-            | "tests/astral_calculator_api_tests.rs"
+            | "tests/astral_calculator_http_tests.rs"
             | "tests/refactor_governance_tests.rs"
     ) || path.starts_with("docs/reviews/")
 }
@@ -328,7 +331,7 @@ fn general_refactor_review_for_physical_features_is_closed() {
 fn internal_calculator_consumers_use_canonical_calculation_routes() {
     let root = workspace_root();
     let scan_roots = [
-        "astral_calculator_api",
+        "astral_calculator_http",
         "astral_gateway",
         "astral_llm",
         "contracts",
@@ -359,6 +362,110 @@ fn calculator_internal_consumer_refactor_reviews_are_closed() {
     for review_path in [
         "docs/reviews/astral_calculator_refactor/REV-CALCULATOR-INTERNAL-CONSUMERS-2026-06-17.md",
         "docs/reviews/astral_calculator_refactor_feature_boundaries/REV-CALCULATOR-INTERNAL-CONSUMERS-2026-06-17.md",
+    ] {
+        let path = root.join(review_path);
+        assert!(path.exists(), "missing review artifact {}", path.display());
+        let content = read(&path);
+        assert!(
+            content.contains("Statut: closed") || content.contains("Status: `closed`"),
+            "{} is not marked closed",
+            path.display()
+        );
+        assert!(
+            content.contains("Aucun finding ouvert"),
+            "{} does not record a zero-open-finding state",
+            path.display()
+        );
+    }
+}
+
+#[test]
+fn calculator_http_rename_has_no_active_legacy_service_name() {
+    let root = workspace_root();
+    let removed_name = ["astral", "calculator", "api"].join("_");
+    let scan_roots = [
+        "astral_calculator_http",
+        "astral_gateway",
+        "astral_llm",
+        "contracts",
+        "docker",
+        "docs",
+        "scripts",
+        "tests",
+    ];
+
+    for scan_root in scan_roots {
+        for file in collect_governance_text_files(&root.join(scan_root)) {
+            let relative = file.strip_prefix(&root).expect("relative workspace path");
+            let path = relative.to_string_lossy().replace('\\', "/");
+            if path.starts_with("docs/reviews/") {
+                continue;
+            }
+            let content = read(&file);
+            assert!(
+                !content.contains(&removed_name),
+                "{} still references removed service/crate name {}",
+                relative.display(),
+                removed_name
+            );
+        }
+    }
+
+    for relative in [
+        "Cargo.toml",
+        "docker-compose.yml",
+        ".env.example",
+        "AGENTS.md",
+    ] {
+        let path = root.join(relative);
+        if path.exists() {
+            let content = read(&path);
+            assert!(
+                !content.contains(&removed_name),
+                "{relative} still references removed service/crate name {removed_name}"
+            );
+        }
+    }
+}
+
+#[test]
+fn gateway_does_not_depend_on_internal_calculator_or_llm_crates() {
+    let manifest = read(&workspace_root().join("astral_gateway/Cargo.toml"));
+    for forbidden in [
+        "astral_calculator",
+        "astral_llm_application",
+        "astral_llm_domain",
+        "astral_llm_infra",
+    ] {
+        assert!(
+            !manifest.contains(forbidden),
+            "astral_gateway/Cargo.toml still depends on forbidden crate {forbidden}"
+        );
+    }
+}
+
+#[test]
+fn gateway_does_not_embed_canonical_reference_data() {
+    let root = workspace_root().join("astral_gateway");
+    for file in collect_governance_text_files(&root) {
+        let relative = file.strip_prefix(&root).expect("relative gateway path");
+        let content = read(&file);
+        for forbidden in ["json_db", "include_str!"] {
+            assert!(
+                !content.contains(forbidden),
+                "astral_gateway/{} embeds canonical reference data via {forbidden}",
+                relative.display()
+            );
+        }
+    }
+}
+
+#[test]
+fn calculator_http_rename_and_gateway_decoupling_reviews_are_closed() {
+    let root = workspace_root();
+    for review_path in [
+        "docs/reviews/astral_calculator_refactor/REV-CALCULATOR-HTTP-RENAME-2026-06-17.md",
+        "docs/reviews/astral_calculator_refactor_feature_boundaries/REV-GATEWAY-DECOUPLING-2026-06-17.md",
     ] {
         let path = root.join(review_path);
         assert!(path.exists(), "missing review artifact {}", path.display());

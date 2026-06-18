@@ -1,25 +1,25 @@
 [package]
-name = "astral_calculator_api"
+name = "astral_calculator_http"
 version.workspace = true
 edition.workspace = true
-default-run = "astral_calculator_api"
+default-run = "astral_calculator_http"
 
 [lib]
-name = "astral_calculator_api"
+name = "astral_calculator_http"
 path = "src/lib.rs"
 
 [[bin]]
-name = "astral_calculator_api"
+name = "astral_calculator_http"
 path = "src/main.rs"
 
 [[test]]
-name = "astral_calculator_api_tests"
-path = "../tests/astral_calculator_api_tests.rs"
+name = "astral_calculator_http_tests"
+path = "../tests/astral_calculator_http_tests.rs"
 harness = true
 
 [[test]]
-name = "astral_calculator_api_unit_regression_tests"
-path = "../tests/astral_calculator_api_unit_regression_tests.rs"
+name = "astral_calculator_http_unit_regression_tests"
+path = "../tests/astral_calculator_http_unit_regression_tests.rs"
 harness = true
 
 [dependencies]
