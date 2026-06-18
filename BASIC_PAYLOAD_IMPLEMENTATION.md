@@ -1,3 +1,13 @@
+# 2026-06-18 - `astral_calculator` refactor maintenance waves
+
+- Removed horoscope daily runtime fake provenance from `astral_calculator`: public pure daily calculations now emit `derived_daily_calculator_v1`, while runtime service calls compute slot transits through Swiss Ephemeris and emit `swisseph_daily_calculator_v1`.
+- Added `astrology::transits` as the reusable transit/aspect primitive for horoscope period and daily assembly, so product code no longer owns its own nearest-major-aspect implementation.
+- Moved house cusp geometry out of `shared::astro_math` into `astrology::house_geometry`; `shared::astro_math` is kept to numeric/zodiac primitives without domain-type imports.
+- Preserved public JSON contract shapes and legacy function names; `calculate_horoscope_daily_natal` and period `*_natal` wrappers still delegate to canonical functions.
+- Added governance checks preventing fake horoscope calculator sources in runtime source, preventing `shared::astro_math` from importing domain types, and requiring the new adversarial reviews to remain closed.
+- Verification: `cargo check -p astral_calculator`; targeted tests documented in the reviews below.
+- Reviews: `docs/reviews/astral_calculator_refactor/REV-HOROSCOPE-REAL-DAILY-adversarial.md`; `docs/reviews/astral_calculator_refactor/REV-HOROSCOPE-REAL-DAILY-followup-1.md`; `docs/reviews/astral_calculator_refactor/REV-ASTROLOGY-TRANSITS-adversarial.md`; `docs/reviews/astral_calculator_refactor/REV-ASTROLOGY-TRANSITS-followup-1.md`; `docs/reviews/astral_calculator_refactor/REV-APPLICATION-PORTS-adversarial.md`; `docs/reviews/astral_calculator_refactor/REV-SHARED-ASTRO-MATH-adversarial.md`; `docs/reviews/astral_calculator_refactor/REV-RUNTIME-REPOSITORY-SPLIT-adversarial.md`.
+
 # 2026-06-17 - Calculator HTTP rename and gateway decoupling
 
 - Renamed the internal calculator HTTP adapter to `astral_calculator_http` across Cargo, Docker Compose, scripts, contracts, tests and active documentation. No transitional crate, binary or Docker service alias is kept.

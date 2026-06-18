@@ -2,12 +2,14 @@ use std::sync::Arc;
 
 use astral_calculator::config::{ephemeris_path_from_env, runtime_options_from_env};
 use astral_calculator::db::connect_from_env;
-use astral_calculator::domain::ObjectPositionFact;
+use astral_calculator::domain::{AspectDefinition, ObjectPositionFact};
 use astral_calculator::ephemeris::SwissEphemerisEngine;
 use astral_calculator::features::horoscope::{
-    calculate_horoscope_daily, calculate_horoscope_daily_natal, calculate_horoscope_period,
+    calculate_horoscope_daily, calculate_horoscope_daily_from_transits,
+    calculate_horoscope_daily_natal, calculate_horoscope_period,
     calculate_horoscope_period_from_positions, calculate_horoscope_period_from_transits,
-    calculate_horoscope_period_natal, calculate_horoscope_period_natal_from_positions,
+    calculate_horoscope_period_from_transits_with_aspects, calculate_horoscope_period_natal,
+    calculate_horoscope_period_natal_from_positions,
     calculate_horoscope_period_natal_from_transits, normalize_horoscope_period_request_utc,
     HoroscopeCalculationRequest, HoroscopeCalculationSlotRequest, HoroscopePeriod,
     HoroscopePeriodCalculationRequest, HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE,
@@ -91,6 +93,62 @@ fn horoscope_period_calculator_rejects_wide_major_aspect_orbs() {
         .find(|fact| fact.transiting_object == "venus")
         .expect("venus transit fact");
     assert_ne!(venus_fact.fact_type, "transit_to_natal");
+    assert!(venus_fact.aspect.is_none());
+    assert!(venus_fact.orb_deg.is_none());
+}
+
+#[test]
+fn horoscope_period_calculator_respects_reference_aspect_orbs_when_supplied() {
+    let request = period_calculator_request();
+    let positions = sample_natal_positions();
+    let mut transit_positions = positions.clone();
+    transit_positions.push(ObjectPositionFact {
+        chart_object_id: 3,
+        object_code: "venus".to_string(),
+        object_name: "Venus".to_string(),
+        zodiacal_reference_system_id: 1,
+        coordinate_reference_system_id: 1,
+        sign_id: 6,
+        sign_code: "virgo".to_string(),
+        sign_name: "Virgo".to_string(),
+        house_id: Some(6),
+        house_number: Some(6),
+        house_name: Some("House 6".to_string()),
+        motion_state_id: None,
+        horizon_position_id: None,
+        longitude_deg: 173.0,
+        latitude_deg: None,
+        apparent_speed_deg_per_day: Some(1.0),
+        altitude_deg: None,
+        is_visible: None,
+        facts_json: None,
+    });
+    let transit_snapshots = transit_snapshots_for_request(&request, transit_positions);
+    let aspect_definitions = vec![AspectDefinition {
+        id: 4,
+        code: "trine".to_string(),
+        name: "Trine".to_string(),
+        angle: 120.0,
+        family: "major".to_string(),
+        default_orb_deg: Some(2.0),
+        max_default_orb_deg: 8.0,
+    }];
+
+    let response = calculate_horoscope_period_from_transits_with_aspects(
+        request,
+        &positions,
+        &transit_snapshots,
+        8.0,
+        &aspect_definitions,
+    );
+
+    let venus_fact = response
+        .snapshots
+        .iter()
+        .flat_map(|snapshot| snapshot.transits_to_natal.iter())
+        .find(|fact| fact.transiting_object == "venus")
+        .expect("venus transit fact");
+    assert_eq!(venus_fact.fact_type, "transit_context");
     assert!(venus_fact.aspect.is_none());
     assert!(venus_fact.orb_deg.is_none());
 }
@@ -365,14 +423,75 @@ fn horoscope_daily_premium_calculator_emits_local_chart_and_reference_utc() {
         Some("2026-06-14T20:00:00+00:00")
     );
     assert!(slot.local_chart.is_some());
-    assert_eq!(
-        slot.calculation_warnings,
-        vec!["FAKE_PREMIUM_LOCAL_DATA_STABLE_FOR_TESTS".to_string()]
-    );
+    assert!(slot.calculation_warnings.is_empty());
     assert!(response
         .evidence_keys
         .iter()
         .any(|key| key.contains("slot:slot_22_00")));
+}
+
+#[test]
+fn horoscope_daily_with_transits_uses_available_real_position_when_preferred_object_is_missing() {
+    let request = HoroscopeCalculationRequest {
+        contract_version: "horoscope_calculation_request".to_string(),
+        service_code: HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE.to_string(),
+        period: HoroscopePeriod {
+            date: "2026-06-14".to_string(),
+            timezone: "Europe/Paris".to_string(),
+        },
+        chart_calculation_id: "123".to_string(),
+        location: None,
+        slot_profile_code: None,
+        house_system_code: None,
+        calculation_features: Vec::new(),
+        slots: vec![HoroscopeCalculationSlotRequest {
+            slot_code: "morning".to_string(),
+            start_local_time: "06:00".to_string(),
+            end_local_time: "12:00".to_string(),
+            reference_local_time: "09:00".to_string(),
+        }],
+    };
+    let transit_slots = vec![(
+        "morning".to_string(),
+        vec![ObjectPositionFact {
+            chart_object_id: 4,
+            object_code: "venus".to_string(),
+            object_name: "Venus".to_string(),
+            zodiacal_reference_system_id: 1,
+            coordinate_reference_system_id: 1,
+            sign_id: 6,
+            sign_code: "virgo".to_string(),
+            sign_name: "Virgo".to_string(),
+            house_id: Some(6),
+            house_number: Some(6),
+            house_name: Some("House 6".to_string()),
+            motion_state_id: None,
+            horizon_position_id: None,
+            longitude_deg: 72.0,
+            latitude_deg: None,
+            apparent_speed_deg_per_day: Some(1.0),
+            altitude_deg: None,
+            is_visible: None,
+            facts_json: None,
+        }],
+    )];
+
+    let response = calculate_horoscope_daily_from_transits(
+        request,
+        &sample_natal_positions(),
+        &transit_slots,
+        8.0,
+        &[],
+    );
+
+    let fact = &response.slots[0].transits_to_natal[0];
+    assert_eq!(fact.source, "swisseph_daily_calculator_v1");
+    assert_eq!(fact.transiting_object, "venus");
+    assert!(response.slots[0]
+        .sky_snapshot
+        .get("visible_objects")
+        .and_then(|value| value.as_array())
+        .is_some_and(|objects| objects.iter().any(|value| value == "venus")));
 }
 
 fn period_calculator_request() -> HoroscopePeriodCalculationRequest {

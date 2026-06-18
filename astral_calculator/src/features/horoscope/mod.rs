@@ -30,10 +30,14 @@ pub use contracts::{
     HoroscopePeriodCalculationRequest, HoroscopePeriodCalculationResponse, HoroscopePeriodSnapshot,
     HoroscopeScanPlan, HoroscopeSnapshotRequest, HoroscopeTransitFact,
 };
-pub use daily::{calculate_horoscope_daily, calculate_horoscope_daily_natal};
+pub use daily::{
+    calculate_horoscope_daily, calculate_horoscope_daily_from_transits,
+    calculate_horoscope_daily_natal,
+};
 pub use period::{
     calculate_horoscope_period, calculate_horoscope_period_from_positions,
-    calculate_horoscope_period_from_transits, calculate_horoscope_period_natal,
+    calculate_horoscope_period_from_transits,
+    calculate_horoscope_period_from_transits_with_aspects, calculate_horoscope_period_natal,
     calculate_horoscope_period_natal_from_positions,
     calculate_horoscope_period_natal_from_transits, normalize_horoscope_period_request_utc,
 };

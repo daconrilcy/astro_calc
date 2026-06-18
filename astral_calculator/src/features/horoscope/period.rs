@@ -2,8 +2,13 @@
 
 use std::collections::HashSet;
 
+use crate::astrology::transits::{
+    is_standard_transit_object, nearest_major_aspect_name_and_orb, nearest_major_transit_match,
+    preferred_transit_position,
+};
+use crate::domain::AspectDefinition;
 use crate::domain::ObjectPositionFact;
-use crate::shared::astro_math::{normalize_degrees, shortest_angular_distance};
+use crate::shared::astro_math::normalize_degrees;
 use crate::shared::time::{normalize_rfc3339_utc, parse_rfc3339};
 
 use super::{
@@ -52,6 +57,23 @@ pub fn calculate_horoscope_period_from_transits(
     transit_snapshots: &[(String, Vec<ObjectPositionFact>)],
     max_major_aspect_orb_deg: f64,
 ) -> HoroscopePeriodCalculationResponse {
+    calculate_horoscope_period_from_transits_with_aspects(
+        request,
+        natal_positions,
+        transit_snapshots,
+        max_major_aspect_orb_deg,
+        &[],
+    )
+}
+
+/// Fonction calculate_horoscope_period_from_transits_with_aspects.
+pub fn calculate_horoscope_period_from_transits_with_aspects(
+    request: HoroscopePeriodCalculationRequest,
+    natal_positions: &[ObjectPositionFact],
+    transit_snapshots: &[(String, Vec<ObjectPositionFact>)],
+    max_major_aspect_orb_deg: f64,
+    aspect_definitions: &[AspectDefinition],
+) -> HoroscopePeriodCalculationResponse {
     let request = normalize_horoscope_period_request_utc(request).unwrap_or_else(|request| {
         panic!("invalid horoscope period calculation request: {request}")
     });
@@ -80,6 +102,7 @@ pub fn calculate_horoscope_period_from_transits(
                 &usable_positions,
                 transit_positions,
                 max_major_aspect_orb_deg,
+                aspect_definitions,
             )
         })
         .collect::<Vec<_>>();
@@ -190,13 +213,14 @@ fn real_period_snapshot(
     natal_positions: &[&ObjectPositionFact],
     transit_positions: Option<&[ObjectPositionFact]>,
     max_major_aspect_orb_deg: f64,
+    aspect_definitions: &[AspectDefinition],
 ) -> HoroscopePeriodSnapshot {
     let transit_objects = ["moon", "venus", "mars", "sun", "mercury", "moon", "jupiter"];
     let object = transit_objects[index % transit_objects.len()];
-    let transit = transit_positions
-        .into_iter()
-        .flatten()
-        .find(|position| position.object_code == object);
+    let transit = preferred_transit_position(transit_positions, object);
+    let object = transit
+        .map(|position| position.object_code.as_str())
+        .unwrap_or(object);
     let source = if transit_positions.is_some() {
         "swisseph_period_calculator_v1"
     } else {
@@ -205,18 +229,32 @@ fn real_period_snapshot(
     let natal = natal_positions
         .get(index % natal_positions.len().max(1))
         .copied();
-    let natal_target = natal
+    let fallback_natal_target = natal
         .map(|position| format!("natal_{}", position.object_code))
         .unwrap_or_else(|| "natal_sun".to_string());
     let natal_longitude = natal.map(|position| position.longitude_deg).unwrap_or(0.0);
     let transit_longitude = transit
         .map(|position| position.longitude_deg)
         .unwrap_or_else(|| normalize_degrees(natal_longitude + 12.5 + (index as f64 * 27.0)));
-    let nearest_aspect = nearest_major_aspect(transit_longitude, natal_longitude);
-    let valid_aspect = nearest_aspect.filter(|(_, orb)| *orb <= max_major_aspect_orb_deg);
-    let (aspect, orb) =
-        valid_aspect.unwrap_or(("context", nearest_aspect.map(|(_, orb)| orb).unwrap_or(0.0)));
-    let is_context_signal = object == "moon" || valid_aspect.is_none();
+    let transit_match = transit.and_then(|position| {
+        nearest_major_transit_match(
+            position,
+            natal_positions,
+            max_major_aspect_orb_deg,
+            aspect_definitions,
+        )
+    });
+    let nearest_aspect =
+        nearest_major_aspect_name_and_orb(transit_longitude, natal_longitude, aspect_definitions);
+    let (aspect, orb) = transit_match
+        .as_ref()
+        .map(|matched| (matched.aspect_code.as_str(), matched.orb_deg))
+        .unwrap_or(("context", nearest_aspect.map(|(_, orb)| orb).unwrap_or(0.0)));
+    let is_context_signal = object == "moon" || transit_match.is_none();
+    let natal_target = transit_match
+        .as_ref()
+        .map(|matched| matched.natal_target.clone())
+        .unwrap_or(fallback_natal_target);
     let natal_house = if object == "moon" {
         transit
             .and_then(|position| position.house_number)
@@ -243,7 +281,7 @@ fn real_period_snapshot(
             snapshot.snapshot_key,
             natal_house.unwrap_or(1)
         )
-    } else if valid_aspect.is_none() {
+    } else if transit_match.is_none() {
         format!(
             "period:{}:{}:{}:context:{}",
             snapshot.date, snapshot.snapshot_key, object, natal_target
@@ -277,7 +315,7 @@ fn real_period_snapshot(
             evidence_key,
             fact_type: if object == "moon" {
                 "moon_house_by_day".into()
-            } else if valid_aspect.is_none() {
+            } else if transit_match.is_none() {
                 "transit_context".into()
             } else {
                 "transit_to_natal".into()
@@ -322,12 +360,7 @@ fn visible_objects(transit_positions: Option<&[ObjectPositionFact]>) -> Vec<Stri
     let objects = transit_positions
         .into_iter()
         .flatten()
-        .filter(|position| {
-            matches!(
-                position.object_code.as_str(),
-                "sun" | "moon" | "mercury" | "venus" | "mars" | "jupiter" | "saturn"
-            )
-        })
+        .filter(|position| is_standard_transit_object(position.object_code.as_str()))
         .map(|position| position.object_code.clone())
         .collect::<Vec<_>>();
     if objects.is_empty() {
@@ -339,24 +372,6 @@ fn visible_objects(transit_positions: Option<&[ObjectPositionFact]>) -> Vec<Stri
         .collect();
     }
     objects
-}
-
-/// Fonction nearest_major_aspect.
-fn nearest_major_aspect(left: f64, right: f64) -> Option<(&'static str, f64)> {
-    let separation = shortest_angular_distance(left, right);
-    let mut best = ("conjunction", separation.abs());
-    for (name, angle) in [
-        ("sextile", 60.0),
-        ("square", 90.0),
-        ("trine", 120.0),
-        ("opposition", 180.0),
-    ] {
-        let orb = (separation - angle).abs();
-        if orb < best.1 {
-            best = (name, orb);
-        }
-    }
-    Some(best)
 }
 
 /// Fonction sign_for_longitude.

@@ -552,3 +552,65 @@ fn calculator_http_rename_and_gateway_decoupling_reviews_are_closed() {
         );
     }
 }
+
+#[test]
+fn calculator_runtime_source_does_not_use_horoscope_fake_calculators() {
+    let root = workspace_root().join("astral_calculator/src");
+    for file in collect_rs_files(&root) {
+        let content = read(&file);
+        assert!(
+            !content.contains("fake_calculator_"),
+            "{} still references a fake horoscope calculator source",
+            file.display()
+        );
+        assert!(
+            !content.contains("FAKE_PREMIUM_LOCAL_DATA_STABLE_FOR_TESTS"),
+            "{} still exposes fake premium horoscope data in runtime",
+            file.display()
+        );
+    }
+}
+
+#[test]
+fn shared_astro_math_stays_free_of_domain_types() {
+    let path = workspace_root().join("astral_calculator/src/shared/astro_math.rs");
+    let content = read(&path);
+    assert!(
+        !content.contains("crate::domain"),
+        "{} imports domain types; move métier-specific geometry under astrology/",
+        path.display()
+    );
+    assert!(
+        !content.contains("HouseCuspFact"),
+        "{} owns house cusp métier logic; use astrology::house_geometry",
+        path.display()
+    );
+}
+
+#[test]
+fn calculator_refactor_plan_reviews_are_closed() {
+    let root = workspace_root();
+    for review_path in [
+        "docs/reviews/astral_calculator_refactor/REV-HOROSCOPE-REAL-DAILY-adversarial.md",
+        "docs/reviews/astral_calculator_refactor/REV-HOROSCOPE-REAL-DAILY-followup-1.md",
+        "docs/reviews/astral_calculator_refactor/REV-ASTROLOGY-TRANSITS-adversarial.md",
+        "docs/reviews/astral_calculator_refactor/REV-ASTROLOGY-TRANSITS-followup-1.md",
+        "docs/reviews/astral_calculator_refactor/REV-APPLICATION-PORTS-adversarial.md",
+        "docs/reviews/astral_calculator_refactor/REV-SHARED-ASTRO-MATH-adversarial.md",
+        "docs/reviews/astral_calculator_refactor/REV-RUNTIME-REPOSITORY-SPLIT-adversarial.md",
+    ] {
+        let path = root.join(review_path);
+        assert!(path.exists(), "missing review artifact {}", path.display());
+        let content = read(&path);
+        assert!(
+            content.contains("Statut: closed") || content.contains("Status: `closed`"),
+            "{} is not marked closed",
+            path.display()
+        );
+        assert!(
+            content.contains("Aucun finding ouvert"),
+            "{} does not record a zero-open-finding state",
+            path.display()
+        );
+    }
+}

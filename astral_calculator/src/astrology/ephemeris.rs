@@ -77,10 +77,10 @@ impl EphemerisEngine for SwissEphemerisEngine {
         references: &CalculationReferenceData,
     ) -> Result<CalculatedChartFacts, RuntimeError> {
         use crate::astrology::aspects::detect_aspects;
+        use crate::astrology::house_geometry::house_number_from_cusps;
         use crate::domain::{HouseCuspFact, ObjectPositionFact};
         use crate::shared::astro_math::{
-            house_number_from_cusps, motion_state_id, normalize_degrees, whole_sign_house_number,
-            zodiac_slot_for_longitude,
+            motion_state_id, normalize_degrees, whole_sign_house_number, zodiac_slot_for_longitude,
         };
         use serde_json::json;
         use swiss_eph::safe::{
