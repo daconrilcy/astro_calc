@@ -140,6 +140,22 @@ pub struct HoroscopeOrbWeightBandRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure HoroscopeSignalThemeMappingRow.
+pub struct HoroscopeSignalThemeMappingRow {
+    pub match_object: String,
+    pub match_aspect: Option<String>,
+    pub match_natal_target: Option<String>,
+    pub theme_code: String,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure HoroscopeSupportedObjectRow.
+pub struct HoroscopeSupportedObjectRow {
+    pub object_code: String,
+    pub weight: f64,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
 /// Structure SignReference.
 pub struct SignReference {
     pub id: i32,

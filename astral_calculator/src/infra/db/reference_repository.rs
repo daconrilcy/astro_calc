@@ -2,6 +2,8 @@
 
 use sqlx::PgPool;
 
+use async_trait::async_trait;
+
 use super::models::{
     AnglePointReference as AnglePointReferenceRow, AspectDefinition as AspectDefinitionRow,
     ChartObject as ChartObjectRow, DomicileRulerReference as DomicileRulerReferenceRow,
@@ -9,7 +11,10 @@ use super::models::{
     HouseSystem as HouseSystemRow, MajorAspectFamilyReference,
     MotionStateReference as MotionStateReferenceRow, SignReference as SignReferenceRow,
 };
-use super::runtime_repository::RuntimeRepository;
+use super::runtime_queries::RuntimeQueries;
+use crate::application::ports::{
+    MajorAspectFamilyReference as AppMajorAspectFamilyReference, ReferenceCatalog,
+};
 use crate::domain::{
     AnglePointReference, AspectDefinition, ChartObject, DomicileRulerReference,
     HorizonPositionReference, HouseReference, HouseSystem, MotionStateReference, SignReference,
@@ -19,14 +24,130 @@ use crate::shared::error::RuntimeError;
 #[derive(Clone)]
 /// Structure ReferenceRepository.
 pub struct ReferenceRepository {
-    inner: RuntimeRepository,
+    inner: RuntimeQueries,
+}
+
+#[async_trait]
+impl ReferenceCatalog for ReferenceRepository {
+    async fn default_reference_version_id(&self) -> Result<i32, RuntimeError> {
+        ReferenceRepository::default_reference_version_id(self).await
+    }
+
+    async fn zodiacal_reference_system_id_by_key(&self, key: &str) -> Result<i32, RuntimeError> {
+        ReferenceRepository::zodiacal_reference_system_id_by_key(self, key).await
+    }
+
+    async fn coordinate_reference_system_id_by_key(&self, key: &str) -> Result<i32, RuntimeError> {
+        ReferenceRepository::coordinate_reference_system_id_by_key(self, key).await
+    }
+
+    async fn house_system_id_by_code(&self, code: &str) -> Result<i32, RuntimeError> {
+        ReferenceRepository::house_system_id_by_code(self, code).await
+    }
+
+    async fn zodiacal_reference_system_display_name(
+        &self,
+        id: i32,
+    ) -> Result<String, RuntimeError> {
+        ReferenceRepository::zodiacal_reference_system_display_name(self, id).await
+    }
+
+    async fn coordinate_reference_system_display_name(
+        &self,
+        id: i32,
+    ) -> Result<String, RuntimeError> {
+        ReferenceRepository::coordinate_reference_system_display_name(self, id).await
+    }
+
+    async fn house_system(&self, id: i32) -> Result<HouseSystem, RuntimeError> {
+        ReferenceRepository::house_system(self, id).await
+    }
+
+    async fn active_chart_objects(
+        &self,
+        reference_version_id: i32,
+    ) -> Result<Vec<ChartObject>, RuntimeError> {
+        ReferenceRepository::active_chart_objects(self, reference_version_id).await
+    }
+
+    async fn aspect_definitions(&self) -> Result<Vec<AspectDefinition>, RuntimeError> {
+        ReferenceRepository::aspect_definitions(self).await
+    }
+
+    async fn major_aspect_family_reference(
+        &self,
+    ) -> Result<AppMajorAspectFamilyReference, RuntimeError> {
+        ReferenceRepository::major_aspect_family_reference(self)
+            .await
+            .map(|row| AppMajorAspectFamilyReference {
+                expected_aspect_count: row.expected_aspect_count,
+                max_default_orb_deg: row.max_default_orb_deg,
+            })
+    }
+
+    async fn sign_references(&self) -> Result<Vec<SignReference>, RuntimeError> {
+        ReferenceRepository::sign_references(self).await
+    }
+
+    async fn house_references(&self) -> Result<Vec<HouseReference>, RuntimeError> {
+        ReferenceRepository::house_references(self).await
+    }
+
+    async fn motion_state_references(&self) -> Result<Vec<MotionStateReference>, RuntimeError> {
+        ReferenceRepository::motion_state_references(self).await
+    }
+
+    async fn horizon_position_references(
+        &self,
+    ) -> Result<Vec<HorizonPositionReference>, RuntimeError> {
+        ReferenceRepository::horizon_position_references(self).await
+    }
+
+    async fn angle_point_references(&self) -> Result<Vec<AnglePointReference>, RuntimeError> {
+        ReferenceRepository::angle_point_references(self).await
+    }
+
+    async fn domicile_ruler_references(
+        &self,
+        reference_version_id: i32,
+    ) -> Result<Vec<DomicileRulerReference>, RuntimeError> {
+        ReferenceRepository::domicile_ruler_references(self, reference_version_id).await
+    }
+
+    async fn house_axis_references(
+        &self,
+    ) -> Result<Vec<crate::domain::HouseAxisReference>, RuntimeError> {
+        ReferenceRepository::house_axis_references(self).await
+    }
+
+    async fn lunar_phase_references(
+        &self,
+    ) -> Result<Vec<crate::domain::LunarPhaseReference>, RuntimeError> {
+        ReferenceRepository::lunar_phase_references(self).await
+    }
+
+    async fn accidental_dignity_condition_references(
+        &self,
+    ) -> Result<Vec<crate::domain::AccidentalDignityConditionReference>, RuntimeError> {
+        ReferenceRepository::accidental_dignity_condition_references(self).await
+    }
+
+    async fn object_sect_affinity_references(
+        &self,
+    ) -> Result<Vec<crate::domain::ObjectSectAffinityReference>, RuntimeError> {
+        ReferenceRepository::object_sect_affinity_references(self).await
+    }
+
+    async fn language_id_for_code(&self, code: &str) -> Result<i32, RuntimeError> {
+        ReferenceRepository::language_id_for_code(self, code).await
+    }
 }
 
 impl ReferenceRepository {
     /// Fonction new.
     pub fn new(pool: PgPool) -> Self {
         Self {
-            inner: RuntimeRepository::new(pool),
+            inner: RuntimeQueries::new(pool),
         }
     }
 

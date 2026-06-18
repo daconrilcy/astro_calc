@@ -6,5 +6,7 @@ pub mod aspects;
 pub mod ephemeris;
 /// Géométrie des maisons à partir des cuspides calculées.
 pub mod house_geometry;
+/// États de mouvement apparent résolus depuis les références runtime.
+pub mod motion;
 /// Calculs réutilisables de transits et d'aspects transit-vers-natal.
 pub mod transits;

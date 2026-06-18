@@ -91,6 +91,22 @@ pub struct HoroscopeTransitFact {
     pub natal_house: Option<i32>,
 }
 
+#[derive(Debug, Clone)]
+/// Mapping DB d'un signal horoscope vers un theme.
+pub struct HoroscopeSignalThemeMapping {
+    pub match_object: String,
+    pub match_aspect: Option<String>,
+    pub match_natal_target: Option<String>,
+    pub theme_code: String,
+}
+
+#[derive(Debug, Clone)]
+/// Objet transitant supporte par le produit horoscope.
+pub struct HoroscopeSupportedObject {
+    pub object_code: String,
+    pub weight: f64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 /// Structure HoroscopePeriodCalculationRequest.
 pub struct HoroscopePeriodCalculationRequest {

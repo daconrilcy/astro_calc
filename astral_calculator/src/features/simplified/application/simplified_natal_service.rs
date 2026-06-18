@@ -3,27 +3,31 @@
 use std::path::Path;
 use std::sync::Arc;
 
+use crate::application::ports::{ReferenceCatalog, SimplifiedCatalogStore};
 use crate::astrology::ephemeris::EphemerisEngine;
 use crate::features::simplified::{
     calculate_simplified_natal, AstroSimplifiedNatalRequest, AstroSimplifiedNatalResponse,
 };
-use crate::infra::db::reference_repository::ReferenceRepository;
 use crate::shared::error::RuntimeError;
 
 /// Structure SimplifiedNatalService.
-pub struct SimplifiedNatalService<E> {
-    repository: ReferenceRepository,
+pub struct SimplifiedNatalService<R, S, E> {
+    references: R,
+    catalogs: S,
     ephemeris: Arc<E>,
 }
 
-impl<E> SimplifiedNatalService<E>
+impl<R, S, E> SimplifiedNatalService<R, S, E>
 where
+    R: ReferenceCatalog,
+    S: SimplifiedCatalogStore,
     E: EphemerisEngine,
 {
     /// Fonction new.
-    pub fn new(repository: ReferenceRepository, ephemeris: Arc<E>) -> Self {
+    pub fn new(references: R, catalogs: S, ephemeris: Arc<E>) -> Self {
         Self {
-            repository,
+            references,
+            catalogs,
             ephemeris,
         }
     }
@@ -35,7 +39,8 @@ where
         ephemeris_path: &Path,
     ) -> Result<AstroSimplifiedNatalResponse, RuntimeError> {
         calculate_simplified_natal(
-            &self.repository,
+            &self.references,
+            &self.catalogs,
             self.ephemeris.as_ref(),
             ephemeris_path,
             request,

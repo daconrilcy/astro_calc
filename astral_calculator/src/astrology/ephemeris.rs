@@ -78,9 +78,10 @@ impl EphemerisEngine for SwissEphemerisEngine {
     ) -> Result<CalculatedChartFacts, RuntimeError> {
         use crate::astrology::aspects::detect_aspects;
         use crate::astrology::house_geometry::house_number_from_cusps;
+        use crate::astrology::motion::motion_state_for_speed;
         use crate::domain::{HouseCuspFact, ObjectPositionFact};
         use crate::shared::astro_math::{
-            motion_state_id, normalize_degrees, whole_sign_house_number, zodiac_slot_for_longitude,
+            normalize_degrees, whole_sign_house_number, zodiac_slot_for_longitude,
         };
         use serde_json::json;
         use swiss_eph::safe::{
@@ -167,9 +168,8 @@ impl EphemerisEngine for SwissEphemerisEngine {
             let house = house_number
                 .map(|number| house_reference_for_number(&references.houses, number))
                 .transpose()?;
-            let motion_state_id = motion_state_id(Some(speed));
-            let motion_state = motion_state_id
-                .and_then(|id| references.motion_states.iter().find(|state| state.id == id));
+            let motion_state = motion_state_for_speed(Some(speed), &references.motion_states);
+            let motion_state_id = motion_state.map(|state| state.id);
             let equatorial_position = calc_ut(
                 jd_ut,
                 object.swe_id.unwrap(),

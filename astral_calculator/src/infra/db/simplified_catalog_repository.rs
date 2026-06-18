@@ -2,11 +2,41 @@
 
 use sqlx::PgPool;
 
+use async_trait::async_trait;
+
+use crate::application::ports::SimplifiedCatalogStore;
 use crate::features::simplified::catalog::{
     CalculationScope, InputPrecisionLevel, LimitationCode, ReliabilityLevel, SimplifiedCatalog,
     SimplifiedPolicy,
 };
 use crate::shared::error::RuntimeError;
+
+#[derive(Clone)]
+/// Repository SQL du catalogue natal simplifié.
+pub struct SimplifiedCatalogRepository {
+    pool: PgPool,
+}
+
+impl SimplifiedCatalogRepository {
+    /// Fonction new.
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+}
+
+#[async_trait]
+impl SimplifiedCatalogStore for SimplifiedCatalogRepository {
+    async fn simplified_catalog(&self) -> Result<SimplifiedCatalog, RuntimeError> {
+        load_simplified_catalog(&self.pool).await
+    }
+
+    async fn profile_feature_exclusions(
+        &self,
+    ) -> Result<Vec<crate::features::simplified::catalog::ProfileFeatureExclusion>, RuntimeError>
+    {
+        load_profile_feature_exclusions(&self.pool).await
+    }
+}
 
 /// Fonction map_catalog_db_error.
 fn map_catalog_db_error(err: sqlx::Error) -> RuntimeError {

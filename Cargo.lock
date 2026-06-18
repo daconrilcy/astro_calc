@@ -102,6 +102,7 @@ version = "0.1.0"
 dependencies = [
  "astral_contracts",
  "astral_time_window",
+ "async-trait",
  "chrono",
  "chrono-tz",
  "dotenvy",

@@ -21,18 +21,6 @@ pub fn zodiac_slot_for_longitude(longitude_deg: f64) -> i32 {
     (normalize_degrees(longitude_deg) / 30.0).floor() as i32 + 1
 }
 
-/// Convertit une vitesse apparente en identifiant de mouvement canonique.
-pub fn motion_state_id(speed_deg_per_day: Option<f64>) -> Option<i32> {
-    let speed = speed_deg_per_day?;
-    if speed.abs() <= 0.0001 {
-        Some(3)
-    } else if speed < 0.0 {
-        Some(2)
-    } else {
-        Some(1)
-    }
-}
-
 /// Déduit la maison whole-sign d'un objet à partir du signe de l'ascendant.
 pub fn whole_sign_house_number(ascendant_longitude_deg: f64, body_longitude_deg: f64) -> i32 {
     let asc_sign = zodiac_slot_for_longitude(ascendant_longitude_deg);

@@ -3,6 +3,9 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use crate::application::ports::{
+    CalculationAttempt, NatalCalculationStore, PayloadCatalogStore, ReferenceCatalog,
+};
 use crate::astrology::ephemeris::EphemerisEngine;
 use crate::domain::{
     BasicPayload, CalculatedChartFacts, CalculationReferenceData, NatalChartInput, RuntimeOptions,
@@ -12,10 +15,6 @@ use crate::features::natal::payload::validate::{
     has_current_rulership_references, is_current_basic_payload,
 };
 use crate::features::natal::signals::aggregate_basic_signals;
-use crate::infra::db::{
-    calculation_repository::CalculationRepository, catalog_repository::CatalogRepository,
-    models::ChartCalculationRow, reference_repository::ReferenceRepository,
-};
 use crate::runtime::{
     validate_accidental_condition_triggers, validate_accidental_dignity_condition_references,
     validate_accidental_polarity_bands, validate_accidental_scoring_params,
@@ -28,23 +27,26 @@ use crate::shared::idempotency::{advisory_lock_key, idempotency_key, input_hash}
 use chrono::Utc;
 
 /// Structure NatalCalculationService.
-pub struct NatalCalculationService<E> {
-    calculations: CalculationRepository,
-    catalogs: CatalogRepository,
-    references: ReferenceRepository,
+pub struct NatalCalculationService<C, P, R, E> {
+    calculations: C,
+    catalogs: P,
+    references: R,
     ephemeris: Arc<E>,
     options: RuntimeOptions,
 }
 
-impl<E> NatalCalculationService<E>
+impl<C, P, R, E> NatalCalculationService<C, P, R, E>
 where
+    C: NatalCalculationStore,
+    P: PayloadCatalogStore,
+    R: ReferenceCatalog,
     E: EphemerisEngine,
 {
     /// Fonction new.
     pub fn new(
-        calculations: CalculationRepository,
-        catalogs: CatalogRepository,
-        references: ReferenceRepository,
+        calculations: C,
+        catalogs: P,
+        references: R,
         ephemeris: Arc<E>,
         options: RuntimeOptions,
     ) -> Self {
@@ -125,7 +127,7 @@ where
         let sect_affinities = self.references.object_sect_affinity_references().await?;
         validate_object_sect_affinity_references(&sect_affinities)?;
 
-        let mut tx = self.calculations.pool().begin().await?;
+        let mut tx = self.calculations.begin().await?;
         self.calculations
             .lock_idempotency(&mut tx, lock_key)
             .await?;
@@ -144,7 +146,7 @@ where
                 if is_current_basic_payload(&payload)
                     && has_current_rulership_references(&payload, &domicile_rulers)
                 {
-                    tx.commit().await?;
+                    self.calculations.commit(tx).await?;
                     return Ok(payload);
                 }
             }
@@ -162,8 +164,8 @@ where
                     },
                     &catalog,
                 );
-                tx.commit().await?;
-                let mut payload_tx = self.calculations.pool().begin().await?;
+                self.calculations.commit(tx).await?;
+                let mut payload_tx = self.calculations.begin().await?;
                 let signals = self
                     .calculations
                     .persist_signals(
@@ -193,7 +195,7 @@ where
                         &payload,
                     )
                     .await?;
-                payload_tx.commit().await?;
+                self.calculations.commit(payload_tx).await?;
                 return Ok(payload);
             }
         } else if let Some(running) = existing.iter().find(|row| row.status == "running") {
@@ -203,7 +205,7 @@ where
                     .await?;
             } else {
                 let chart_calculation_id = running.id;
-                tx.commit().await?;
+                self.calculations.commit(tx).await?;
                 return Err(RuntimeError::RunningCalculationInProgress {
                     idempotency_key,
                     chart_calculation_id,
@@ -242,7 +244,7 @@ where
                 self.calculations
                     .mark_failed(&mut tx, chart_calculation_id, &error)
                     .await?;
-                tx.commit().await?;
+                self.calculations.commit(tx).await?;
                 return Err(error);
             }
         };
@@ -294,7 +296,7 @@ where
         self.calculations
             .mark_completed(&mut tx, chart_calculation_id)
             .await?;
-        tx.commit().await?;
+        self.calculations.commit(tx).await?;
 
         Ok(payload)
     }
@@ -348,7 +350,7 @@ fn is_angle_position(position: &crate::domain::ObjectPositionFact) -> bool {
 }
 
 /// Fonction is_stale.
-fn is_stale(row: &ChartCalculationRow, default_stale_after_seconds: i32) -> bool {
+fn is_stale(row: &CalculationAttempt, default_stale_after_seconds: i32) -> bool {
     let Some(heartbeat_at) = row.heartbeat_at else {
         return true;
     };

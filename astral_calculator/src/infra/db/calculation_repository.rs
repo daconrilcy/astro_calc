@@ -2,8 +2,11 @@
 
 use sqlx::{postgres::PgPool, Postgres, Transaction};
 
+use async_trait::async_trait;
+
 use super::models::ChartCalculationRow;
-use super::runtime_repository::RuntimeRepository;
+use super::runtime_queries::RuntimeQueries;
+use crate::application::ports::{CalculationAttempt, NatalCalculationStore};
 use crate::domain::{
     AspectFact, BasicPayload, CalculatedChartFacts, InterpretationSignalRow, NatalChartInput,
     ObjectPositionFact, RuntimeOptions,
@@ -13,14 +16,193 @@ use crate::shared::error::RuntimeError;
 #[derive(Clone)]
 /// Structure CalculationRepository.
 pub struct CalculationRepository {
-    inner: RuntimeRepository,
+    inner: RuntimeQueries,
+}
+
+#[async_trait]
+impl NatalCalculationStore for CalculationRepository {
+    type Tx = Transaction<'static, Postgres>;
+
+    async fn begin(&self) -> Result<Self::Tx, RuntimeError> {
+        Ok(self.pool().begin().await?)
+    }
+
+    async fn commit(&self, tx: Self::Tx) -> Result<(), RuntimeError> {
+        Ok(tx.commit().await?)
+    }
+
+    async fn existing_basic_payload(
+        &self,
+        chart_calculation_id: i32,
+        product_code: &str,
+        language_id: Option<i32>,
+    ) -> Result<Option<BasicPayload>, RuntimeError> {
+        CalculationRepository::existing_basic_payload(
+            self,
+            chart_calculation_id,
+            product_code,
+            language_id,
+        )
+        .await
+    }
+
+    async fn positions_for_payload(
+        &self,
+        chart_calculation_id: i32,
+    ) -> Result<Vec<ObjectPositionFact>, RuntimeError> {
+        CalculationRepository::positions_for_payload(self, chart_calculation_id).await
+    }
+
+    async fn aspects_for_payload(
+        &self,
+        chart_calculation_id: i32,
+    ) -> Result<Vec<AspectFact>, RuntimeError> {
+        CalculationRepository::aspects_for_payload(self, chart_calculation_id).await
+    }
+
+    async fn natal_input_for_calculation(
+        &self,
+        chart_calculation_id: i32,
+    ) -> Result<NatalChartInput, RuntimeError> {
+        CalculationRepository::natal_input_for_calculation(self, chart_calculation_id).await
+    }
+
+    async fn lock_idempotency(&self, tx: &mut Self::Tx, lock_key: i64) -> Result<(), RuntimeError> {
+        CalculationRepository::lock_idempotency(self, tx, lock_key).await
+    }
+
+    async fn calculations_for_key(
+        &self,
+        tx: &mut Self::Tx,
+        idempotency_key: &str,
+    ) -> Result<Vec<CalculationAttempt>, RuntimeError> {
+        Ok(
+            CalculationRepository::calculations_for_key(self, tx, idempotency_key)
+                .await?
+                .into_iter()
+                .map(Into::into)
+                .collect(),
+        )
+    }
+
+    async fn persist_signals(
+        &self,
+        tx: &mut Self::Tx,
+        chart_calculation_id: i32,
+        reference_version_id: i32,
+        signals: &[crate::domain::InterpretationSignalDraft],
+    ) -> Result<Vec<InterpretationSignalRow>, RuntimeError> {
+        CalculationRepository::persist_signals(
+            self,
+            tx,
+            chart_calculation_id,
+            reference_version_id,
+            signals,
+        )
+        .await
+    }
+
+    async fn persist_basic_payload(
+        &self,
+        tx: &mut Self::Tx,
+        input: &NatalChartInput,
+        payload_language_id: Option<i32>,
+        payload: &BasicPayload,
+    ) -> Result<(), RuntimeError> {
+        CalculationRepository::persist_basic_payload(self, tx, input, payload_language_id, payload)
+            .await
+    }
+
+    async fn mark_stale_failed(
+        &self,
+        tx: &mut Self::Tx,
+        chart_calculation_id: i32,
+    ) -> Result<(), RuntimeError> {
+        CalculationRepository::mark_stale_failed(self, tx, chart_calculation_id).await
+    }
+
+    async fn insert_running_calculation(
+        &self,
+        tx: &mut Self::Tx,
+        input: &NatalChartInput,
+        options: &RuntimeOptions,
+        input_hash: &str,
+        idempotency_key: &str,
+        next_attempt: i32,
+    ) -> Result<i32, RuntimeError> {
+        CalculationRepository::insert_running_calculation(
+            self,
+            tx,
+            input,
+            options,
+            input_hash,
+            idempotency_key,
+            next_attempt,
+        )
+        .await
+    }
+
+    async fn heartbeat(
+        &self,
+        tx: &mut Self::Tx,
+        chart_calculation_id: i32,
+        progress_state: &str,
+    ) -> Result<(), RuntimeError> {
+        CalculationRepository::heartbeat(self, tx, chart_calculation_id, progress_state).await
+    }
+
+    async fn mark_failed(
+        &self,
+        tx: &mut Self::Tx,
+        chart_calculation_id: i32,
+        error: &RuntimeError,
+    ) -> Result<(), RuntimeError> {
+        CalculationRepository::mark_failed(self, tx, chart_calculation_id, error).await
+    }
+
+    async fn persist_facts(
+        &self,
+        tx: &mut Self::Tx,
+        chart_calculation_id: i32,
+        facts: &CalculatedChartFacts,
+    ) -> Result<(), RuntimeError> {
+        CalculationRepository::persist_facts(self, tx, chart_calculation_id, facts).await
+    }
+
+    async fn aspects_for_payload_in_tx(
+        &self,
+        tx: &mut Self::Tx,
+        chart_calculation_id: i32,
+    ) -> Result<Vec<AspectFact>, RuntimeError> {
+        CalculationRepository::aspects_for_payload_in_tx(self, tx, chart_calculation_id).await
+    }
+
+    async fn mark_completed(
+        &self,
+        tx: &mut Self::Tx,
+        chart_calculation_id: i32,
+    ) -> Result<(), RuntimeError> {
+        CalculationRepository::mark_completed(self, tx, chart_calculation_id).await
+    }
+}
+
+impl From<ChartCalculationRow> for CalculationAttempt {
+    fn from(row: ChartCalculationRow) -> Self {
+        Self {
+            id: row.id,
+            status: row.status,
+            execution_attempt: row.execution_attempt,
+            heartbeat_at: row.heartbeat_at,
+            stale_after_seconds: row.stale_after_seconds,
+        }
+    }
 }
 
 impl CalculationRepository {
     /// Fonction new.
     pub fn new(pool: PgPool) -> Self {
         Self {
-            inner: RuntimeRepository::new(pool),
+            inner: RuntimeQueries::new(pool),
         }
     }
 
@@ -73,7 +255,7 @@ impl CalculationRepository {
         tx: &mut Transaction<'_, Postgres>,
         lock_key: i64,
     ) -> Result<(), RuntimeError> {
-        RuntimeRepository::lock_idempotency(tx, lock_key).await
+        RuntimeQueries::lock_idempotency(tx, lock_key).await
     }
 
     /// Fonction calculations_for_key.
@@ -82,7 +264,7 @@ impl CalculationRepository {
         tx: &mut Transaction<'_, Postgres>,
         idempotency_key: &str,
     ) -> Result<Vec<ChartCalculationRow>, RuntimeError> {
-        RuntimeRepository::calculations_for_key(tx, idempotency_key).await
+        RuntimeQueries::calculations_for_key(tx, idempotency_key).await
     }
 
     /// Fonction persist_signals.
@@ -93,25 +275,27 @@ impl CalculationRepository {
         reference_version_id: i32,
         signals: &[crate::domain::InterpretationSignalDraft],
     ) -> Result<Vec<InterpretationSignalRow>, RuntimeError> {
-        Ok(RuntimeRepository::persist_signals(
-            tx,
-            chart_calculation_id,
-            reference_version_id,
-            signals,
+        Ok(
+            RuntimeQueries::persist_signals(
+                tx,
+                chart_calculation_id,
+                reference_version_id,
+                signals,
+            )
+            .await?
+            .into_iter()
+            .map(|row| InterpretationSignalRow {
+                id: row.id,
+                signal_key: row.signal_key,
+                theme_code: row.theme_code,
+                title: row.title,
+                summary: row.summary,
+                priority_score: row.priority_score,
+                confidence_score: row.confidence_score,
+                payload_json: row.payload_json,
+            })
+            .collect(),
         )
-        .await?
-        .into_iter()
-        .map(|row| InterpretationSignalRow {
-            id: row.id,
-            signal_key: row.signal_key,
-            theme_code: row.theme_code,
-            title: row.title,
-            summary: row.summary,
-            priority_score: row.priority_score,
-            confidence_score: row.confidence_score,
-            payload_json: row.payload_json,
-        })
-        .collect())
     }
 
     /// Fonction persist_basic_payload.
@@ -122,7 +306,7 @@ impl CalculationRepository {
         payload_language_id: Option<i32>,
         payload: &BasicPayload,
     ) -> Result<(), RuntimeError> {
-        RuntimeRepository::persist_basic_payload(tx, input, payload_language_id, payload).await
+        RuntimeQueries::persist_basic_payload(tx, input, payload_language_id, payload).await
     }
 
     /// Fonction mark_stale_failed.
@@ -131,7 +315,7 @@ impl CalculationRepository {
         tx: &mut Transaction<'_, Postgres>,
         chart_calculation_id: i32,
     ) -> Result<(), RuntimeError> {
-        RuntimeRepository::mark_stale_failed(tx, chart_calculation_id).await
+        RuntimeQueries::mark_stale_failed(tx, chart_calculation_id).await
     }
 
     /// Fonction insert_running_calculation.
@@ -144,7 +328,7 @@ impl CalculationRepository {
         idempotency_key: &str,
         next_attempt: i32,
     ) -> Result<i32, RuntimeError> {
-        RuntimeRepository::insert_running_calculation(
+        RuntimeQueries::insert_running_calculation(
             tx,
             input,
             options,
@@ -162,7 +346,7 @@ impl CalculationRepository {
         chart_calculation_id: i32,
         progress_state: &str,
     ) -> Result<(), RuntimeError> {
-        RuntimeRepository::heartbeat(tx, chart_calculation_id, progress_state).await
+        RuntimeQueries::heartbeat(tx, chart_calculation_id, progress_state).await
     }
 
     /// Fonction mark_failed.
@@ -172,7 +356,7 @@ impl CalculationRepository {
         chart_calculation_id: i32,
         error: &RuntimeError,
     ) -> Result<(), RuntimeError> {
-        RuntimeRepository::mark_failed(tx, chart_calculation_id, error).await
+        RuntimeQueries::mark_failed(tx, chart_calculation_id, error).await
     }
 
     /// Fonction persist_facts.
@@ -182,7 +366,7 @@ impl CalculationRepository {
         chart_calculation_id: i32,
         facts: &CalculatedChartFacts,
     ) -> Result<(), RuntimeError> {
-        RuntimeRepository::persist_facts(tx, chart_calculation_id, facts).await
+        RuntimeQueries::persist_facts(tx, chart_calculation_id, facts).await
     }
 
     /// Fonction aspects_for_payload_in_tx.
@@ -191,7 +375,7 @@ impl CalculationRepository {
         tx: &mut Transaction<'_, Postgres>,
         chart_calculation_id: i32,
     ) -> Result<Vec<AspectFact>, RuntimeError> {
-        RuntimeRepository::aspects_for_payload_in_tx(tx, chart_calculation_id).await
+        RuntimeQueries::aspects_for_payload_in_tx(tx, chart_calculation_id).await
     }
 
     /// Fonction mark_completed.
@@ -200,6 +384,6 @@ impl CalculationRepository {
         tx: &mut Transaction<'_, Postgres>,
         chart_calculation_id: i32,
     ) -> Result<(), RuntimeError> {
-        RuntimeRepository::mark_completed(tx, chart_calculation_id).await
+        RuntimeQueries::mark_completed(tx, chart_calculation_id).await
     }
 }

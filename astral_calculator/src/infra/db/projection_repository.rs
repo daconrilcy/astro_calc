@@ -2,21 +2,35 @@
 
 use sqlx::PgPool;
 
-use super::runtime_repository::RuntimeRepository;
+use async_trait::async_trait;
+
+use super::runtime_queries::RuntimeQueries;
+use crate::application::ports::ProjectionCatalog;
 use crate::engine::projection::LlmProjectionProfile;
 use crate::shared::error::RuntimeError;
 
 #[derive(Clone)]
 /// Structure ProjectionRepository.
 pub struct ProjectionRepository {
-    inner: RuntimeRepository,
+    inner: RuntimeQueries,
+}
+
+#[async_trait]
+impl ProjectionCatalog for ProjectionRepository {
+    async fn llm_projection_profile(
+        &self,
+        contract_version: &str,
+        level: &str,
+    ) -> Result<LlmProjectionProfile, RuntimeError> {
+        ProjectionRepository::llm_projection_profile(self, contract_version, level).await
+    }
 }
 
 impl ProjectionRepository {
     /// Fonction new.
     pub fn new(pool: PgPool) -> Self {
         Self {
-            inner: RuntimeRepository::new(pool),
+            inner: RuntimeQueries::new(pool),
         }
     }
 

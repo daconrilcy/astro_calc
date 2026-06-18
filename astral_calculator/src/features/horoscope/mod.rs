@@ -28,7 +28,8 @@ pub use contracts::{
     HoroscopeCalculationRequest, HoroscopeCalculationResponse, HoroscopeCalculationSlot,
     HoroscopeCalculationSlotRequest, HoroscopeLocation, HoroscopePeriod,
     HoroscopePeriodCalculationRequest, HoroscopePeriodCalculationResponse, HoroscopePeriodSnapshot,
-    HoroscopeScanPlan, HoroscopeSnapshotRequest, HoroscopeTransitFact,
+    HoroscopeScanPlan, HoroscopeSignalThemeMapping, HoroscopeSnapshotRequest,
+    HoroscopeSupportedObject, HoroscopeTransitFact,
 };
 pub use daily::{
     calculate_horoscope_daily, calculate_horoscope_daily_from_transits,

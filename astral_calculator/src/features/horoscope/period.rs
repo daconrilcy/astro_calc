@@ -13,7 +13,7 @@ use crate::shared::time::{normalize_rfc3339_utc, parse_rfc3339};
 
 use super::{
     HoroscopePeriodCalculationRequest, HoroscopePeriodCalculationResponse, HoroscopePeriodSnapshot,
-    HoroscopeSnapshotRequest, HoroscopeTransitFact,
+    HoroscopeSignalThemeMapping, HoroscopeSnapshotRequest, HoroscopeTransitFact,
 };
 
 /// Fonction normalize_horoscope_period_request_utc.
@@ -63,6 +63,7 @@ pub fn calculate_horoscope_period_from_transits(
         transit_snapshots,
         max_major_aspect_orb_deg,
         &[],
+        &[],
     )
 }
 
@@ -73,18 +74,14 @@ pub fn calculate_horoscope_period_from_transits_with_aspects(
     transit_snapshots: &[(String, Vec<ObjectPositionFact>)],
     max_major_aspect_orb_deg: f64,
     aspect_definitions: &[AspectDefinition],
+    theme_mappings: &[HoroscopeSignalThemeMapping],
 ) -> HoroscopePeriodCalculationResponse {
     let request = normalize_horoscope_period_request_utc(request).unwrap_or_else(|request| {
         panic!("invalid horoscope period calculation request: {request}")
     });
     let usable_positions = natal_positions
         .iter()
-        .filter(|position| {
-            matches!(
-                position.object_code.as_str(),
-                "sun" | "moon" | "mercury" | "venus" | "mars" | "jupiter" | "saturn"
-            )
-        })
+        .filter(|position| is_standard_transit_object(position.object_code.as_str()))
         .collect::<Vec<_>>();
     let snapshots = request
         .scan_plan
@@ -103,6 +100,7 @@ pub fn calculate_horoscope_period_from_transits_with_aspects(
                 transit_positions,
                 max_major_aspect_orb_deg,
                 aspect_definitions,
+                theme_mappings,
             )
         })
         .collect::<Vec<_>>();
@@ -214,18 +212,39 @@ fn real_period_snapshot(
     transit_positions: Option<&[ObjectPositionFact]>,
     max_major_aspect_orb_deg: f64,
     aspect_definitions: &[AspectDefinition],
+    theme_mappings: &[HoroscopeSignalThemeMapping],
 ) -> HoroscopePeriodSnapshot {
-    let transit_objects = ["moon", "venus", "mars", "sun", "mercury", "moon", "jupiter"];
-    let object = transit_objects[index % transit_objects.len()];
-    let transit = preferred_transit_position(transit_positions, object);
+    let Some(transit_positions) = transit_positions else {
+        return HoroscopePeriodSnapshot {
+            snapshot_key: snapshot.snapshot_key.clone(),
+            date: snapshot.date.clone(),
+            reference_datetime_utc: snapshot.reference_datetime_utc.clone(),
+            sky_snapshot: serde_json::json!({
+                "reference_datetime_utc": snapshot.reference_datetime_utc,
+                "visible_objects": [],
+                "zodiacal_reference_system": "tropical",
+                "source": "missing_transit_data"
+            }),
+            moon_context: serde_json::json!({
+                "source": "missing_transit_data"
+            }),
+            transits_to_natal: Vec::new(),
+            current_sky_aspects: Vec::new(),
+            natal_house_activations: Vec::new(),
+            calculation_warnings: vec![
+                "horoscope period requires real transit positions".to_string()
+            ],
+        };
+    };
+    let object = transit_positions
+        .last()
+        .map(|position| position.object_code.as_str())
+        .unwrap_or("transit");
+    let transit = preferred_transit_position(Some(transit_positions), object);
     let object = transit
         .map(|position| position.object_code.as_str())
         .unwrap_or(object);
-    let source = if transit_positions.is_some() {
-        "swisseph_period_calculator_v1"
-    } else {
-        "derived_period_calculator_v1"
-    };
+    let source = "swisseph_period_calculator_v1";
     let natal = natal_positions
         .get(index % natal_positions.len().max(1))
         .copied();
@@ -246,10 +265,14 @@ fn real_period_snapshot(
     });
     let nearest_aspect =
         nearest_major_aspect_name_and_orb(transit_longitude, natal_longitude, aspect_definitions);
-    let (aspect, orb) = transit_match
+    let (aspect_code, orb) = transit_match
         .as_ref()
-        .map(|matched| (matched.aspect_code.as_str(), matched.orb_deg))
-        .unwrap_or(("context", nearest_aspect.map(|(_, orb)| orb).unwrap_or(0.0)));
+        .map(|matched| (matched.aspect_code.clone(), matched.orb_deg))
+        .unwrap_or((
+            "context".to_string(),
+            nearest_aspect.map(|(_, orb)| orb).unwrap_or(0.0),
+        ));
+    let aspect = aspect_code.as_str();
     let is_context_signal = object == "moon" || transit_match.is_none();
     let natal_target = transit_match
         .as_ref()
@@ -272,8 +295,18 @@ fn real_period_snapshot(
     } else {
         natal.and_then(|position| position.house_number)
     };
-    let theme = period_theme_for(object, aspect, natal_house);
-    let tone = period_tone_for(aspect);
+    let theme = theme_for(
+        object,
+        if is_context_signal {
+            None
+        } else {
+            Some(aspect)
+        },
+        Some(natal_target.as_str()),
+        natal_house,
+        theme_mappings,
+    );
+    let tone = "focused";
     let evidence_key = if object == "moon" {
         format!(
             "period:{}:{}:moon:natal_house:{}",
@@ -299,12 +332,12 @@ fn real_period_snapshot(
         reference_datetime_utc: snapshot.reference_datetime_utc.clone(),
         sky_snapshot: serde_json::json!({
             "reference_datetime_utc": snapshot.reference_datetime_utc,
-            "visible_objects": visible_objects(transit_positions),
+            "visible_objects": visible_objects(Some(transit_positions)),
             "zodiacal_reference_system": "tropical",
             "source": source
         }),
         moon_context: serde_json::json!({
-            "moon_sign": sign_for_longitude(transit_longitude),
+            "moon_sign": transit.map(|position| position.sign_code.as_str()).unwrap_or("unknown"),
             "natal_house": natal_house,
             "priority": "period_basic",
             "theme_code": theme,
@@ -357,68 +390,45 @@ fn real_period_snapshot(
 
 /// Fonction visible_objects.
 fn visible_objects(transit_positions: Option<&[ObjectPositionFact]>) -> Vec<String> {
-    let objects = transit_positions
+    transit_positions
         .into_iter()
         .flatten()
         .filter(|position| is_standard_transit_object(position.object_code.as_str()))
         .map(|position| position.object_code.clone())
-        .collect::<Vec<_>>();
-    if objects.is_empty() {
-        return [
-            "sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn",
-        ]
-        .iter()
-        .map(|code| (*code).to_string())
-        .collect();
-    }
-    objects
-}
-
-/// Fonction sign_for_longitude.
-fn sign_for_longitude(longitude: f64) -> &'static str {
-    match (normalize_degrees(longitude) / 30.0).floor() as i32 {
-        0 => "aries",
-        1 => "taurus",
-        2 => "gemini",
-        3 => "cancer",
-        4 => "leo",
-        5 => "virgo",
-        6 => "libra",
-        7 => "scorpio",
-        8 => "sagittarius",
-        9 => "capricorn",
-        10 => "aquarius",
-        _ => "pisces",
-    }
+        .collect::<Vec<_>>()
 }
 
 /// Fonction period_theme_for.
-fn period_theme_for(object: &str, aspect: &str, natal_house: Option<i32>) -> &'static str {
-    if object == "moon" {
-        return match natal_house.unwrap_or(1) {
-            2 | 6 => "organization",
-            3 | 7 => "relationship",
-            _ => "routine",
-        };
-    }
-    match (object, aspect) {
-        ("venus", _) => "relationship",
-        ("mars", "square") | ("mars", "opposition") => "energy",
-        ("mercury", _) => "communication",
-        ("jupiter", _) => "integration",
-        ("sun", _) => "clarity",
-        _ => "organization",
-    }
+fn theme_for<'a>(
+    object: &str,
+    aspect: Option<&str>,
+    natal_target: Option<&str>,
+    natal_house: Option<i32>,
+    theme_mappings: &'a [HoroscopeSignalThemeMapping],
+) -> &'a str {
+    let house_target = natal_house.map(|house| format!("natal_house_{house}"));
+    theme_mappings
+        .iter()
+        .find(|mapping| {
+            mapping.match_object == object
+                && optional_match(mapping.match_aspect.as_deref(), aspect)
+                && (optional_match(mapping.match_natal_target.as_deref(), natal_target)
+                    || optional_match(
+                        mapping.match_natal_target.as_deref(),
+                        house_target.as_deref(),
+                    ))
+        })
+        .or_else(|| {
+            theme_mappings
+                .iter()
+                .find(|mapping| mapping.match_object == object && mapping.match_aspect.is_none())
+        })
+        .map(|mapping| mapping.theme_code.as_str())
+        .unwrap_or("transit_context")
 }
 
-/// Fonction period_tone_for.
-fn period_tone_for(aspect: &str) -> &'static str {
-    match aspect {
-        "square" | "opposition" => "careful",
-        "trine" | "sextile" => "supportive",
-        "conjunction" => "active",
-        _ => "focused",
-    }
+fn optional_match(expected: Option<&str>, actual: Option<&str>) -> bool {
+    expected.is_none() || expected == actual
 }
 
 /// Fonction round1.

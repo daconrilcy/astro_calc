@@ -1,6 +1,6 @@
 //! Module astral_calculator\src\runtime\mod.rs du moteur astral_calculator.
 
-pub use crate::engine::application::EngineFacadeService as ChartCalculationRuntimeService;
+pub use crate::engine::application::EngineFacadeService;
 pub use crate::engine::{AstroEngineRequest, AstroEngineResponse};
 pub use crate::features::natal::payload::validate::{
     has_current_rulership_references, is_current_basic_payload,
@@ -28,7 +28,19 @@ use crate::infra::db::{
     calculation_repository::CalculationRepository, catalog_repository::CatalogRepository,
     horoscope_repository::HoroscopeRepository, projection_repository::ProjectionRepository,
     reference_repository::ReferenceRepository,
+    simplified_catalog_repository::SimplifiedCatalogRepository,
 };
+
+/// Service runtime concret câblé sur PostgreSQL.
+pub type ChartCalculationRuntimeService<E> = EngineFacadeService<
+    CalculationRepository,
+    CatalogRepository,
+    ReferenceRepository,
+    HoroscopeRepository,
+    SimplifiedCatalogRepository,
+    ProjectionRepository,
+    E,
+>;
 
 /// Fonction build_runtime_service.
 pub fn build_runtime_service<E>(
@@ -47,8 +59,11 @@ where
         ephemeris.clone(),
         options,
     );
-    let simplified =
-        SimplifiedNatalService::new(ReferenceRepository::new(pool.clone()), ephemeris.clone());
+    let simplified = SimplifiedNatalService::new(
+        ReferenceRepository::new(pool.clone()),
+        SimplifiedCatalogRepository::new(pool.clone()),
+        ephemeris.clone(),
+    );
     let horoscope = HoroscopeService::new(
         CalculationRepository::new(pool.clone()),
         HoroscopeRepository::new(pool.clone()),

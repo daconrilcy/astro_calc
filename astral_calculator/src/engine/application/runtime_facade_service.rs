@@ -1,5 +1,9 @@
 //! Module astral_calculator\src\engine\application\runtime_facade_service.rs du moteur astral_calculator.
 
+use crate::application::ports::{
+    HoroscopeCatalog, NatalCalculationStore, ProjectionCatalog, ReferenceCatalog,
+    SimplifiedCatalogStore,
+};
 use crate::astrology::ephemeris::EphemerisEngine;
 use crate::domain::{BasicPayload, NatalChartInput};
 use crate::engine::{
@@ -12,34 +16,37 @@ use crate::features::horoscope::{
 };
 use crate::features::natal::application::NatalCalculationService;
 use crate::features::simplified::application::SimplifiedNatalService;
-use crate::infra::db::{
-    projection_repository::ProjectionRepository, reference_repository::ReferenceRepository,
-};
 use crate::shared::error::RuntimeError;
 
 use crate::features::horoscope::application::HoroscopeService;
 use crate::features::simplified::{AstroSimplifiedNatalRequest, AstroSimplifiedNatalResponse};
 
 /// Structure EngineFacadeService.
-pub struct EngineFacadeService<E> {
-    natal: NatalCalculationService<E>,
-    simplified: SimplifiedNatalService<E>,
-    horoscope: HoroscopeService<E>,
-    projections: ProjectionRepository,
-    references: ReferenceRepository,
+pub struct EngineFacadeService<C, P, R, H, S, L, E> {
+    natal: NatalCalculationService<C, P, R, E>,
+    simplified: SimplifiedNatalService<R, S, E>,
+    horoscope: HoroscopeService<C, H, R, E>,
+    projections: L,
+    references: R,
 }
 
-impl<E> EngineFacadeService<E>
+impl<C, P, R, H, S, L, E> EngineFacadeService<C, P, R, H, S, L, E>
 where
+    C: NatalCalculationStore + Clone,
+    P: crate::application::ports::PayloadCatalogStore,
+    R: ReferenceCatalog + Clone,
+    H: HoroscopeCatalog,
+    S: SimplifiedCatalogStore,
+    L: ProjectionCatalog,
     E: EphemerisEngine,
 {
     /// Fonction new.
     pub fn new(
-        natal: NatalCalculationService<E>,
-        simplified: SimplifiedNatalService<E>,
-        horoscope: HoroscopeService<E>,
-        projections: ProjectionRepository,
-        references: ReferenceRepository,
+        natal: NatalCalculationService<C, P, R, E>,
+        simplified: SimplifiedNatalService<R, S, E>,
+        horoscope: HoroscopeService<C, H, R, E>,
+        projections: L,
+        references: R,
     ) -> Self {
         Self {
             natal,

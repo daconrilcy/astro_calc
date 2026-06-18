@@ -3813,3 +3813,69 @@ Fixtures de migration: `tests/fixtures/text_reprocessing_migration/`.
 Verification residuelle corrigee: `cargo test -p astral_llm_api --test
 astral_llm_editorial_fixtures` est passant. Les fixtures sources ne sont pas
 modifiees; le retraitement est applique sur une copie de validation.
+
+## Correction findings refacto astral_calculator (2026-06-18)
+
+Vague de fermeture des findings restants apres audit du refactor
+`astral_calculator` : ports applicatifs, repository runtime residuel,
+`shared::astro_math` purifie et suppression des fallbacks horoscope
+synthetiques `derived_*`.
+
+Invariants de couche :
+
+- Les services applicatifs importent les ports `application::ports`, pas
+  `infra/db`.
+- Le wiring PostgreSQL reste dans `runtime::build_runtime_service`.
+- `runtime_repository.rs` reste un helper residuel court ; les repositories ne
+  wrappent plus `RuntimeRepository`.
+- Les etats de mouvement sont resolus depuis les references DB chargees au
+  runtime.
+- Un horoscope sans transits reels ne fabrique plus de faits astrologiques
+  synthetiques ; il expose un warning `missing_transit_data`.
+- Les contrats JSON publics et les routes existantes sont conserves.
+
+Verification :
+
+```powershell
+cargo test -p astral_calculator
+cargo test -p astral_calculator --test refactor_governance_tests
+cargo test -p astral_calculator_http --test astral_calculator_http_tests
+```
+
+Reviews :
+
+- `docs/reviews/astral_calculator_refactor/REV-APPLICATION-PORTS-followup-1.md`
+- `docs/reviews/astral_calculator_refactor/REV-RUNTIME-REPOSITORY-SPLIT-followup-1.md`
+- `docs/reviews/astral_calculator_refactor/REV-SHARED-ASTRO-MATH-followup-1.md`
+- `docs/reviews/astral_calculator_refactor/REV-HOROSCOPE-CANONICAL-CATALOG-followup-1.md`
+- `docs/reviews/astral_calculator_refactor/REV-HOROSCOPE-DERIVED-FALLBACKS-followup-1.md`
+- `docs/reviews/astral_calculator_refactor/REV-GLOBAL-FINDINGS-CORRECTION-2026-06-18.md`
+
+## Boucle adversariale findings refacto calculateur (2026-06-18)
+
+Re-review apres la premiere correction globale: le split de
+`runtime_repository.rs` est durci par une facade `runtime_queries.rs` courte et
+des modules SQL internes par domaine, et le dernier catalogue horoscope code en
+dur dans `period.rs` est retire.
+
+Invariants:
+
+- `runtime_repository.rs` reste un helper residuel de compatibilite.
+- `runtime_queries.rs` reste une facade courte; les requetes SQL vivent dans
+  `infra/db/runtime_queries/*`.
+- Les corps supportes et mappings theme horoscope viennent du catalogue DB.
+- Les calculateurs horoscope ne contiennent plus les anciennes sources
+  `derived_*` ni la liste de corps transitants historique.
+
+Verification:
+
+```powershell
+cargo check -p astral_calculator
+cargo test -p astral_calculator --test refactor_governance_tests
+cargo test -p astral_calculator
+cargo test -p astral_calculator_http --test astral_calculator_http_tests
+```
+
+Review:
+
+- `docs/reviews/astral_calculator_refactor/REV-GLOBAL-FINDINGS-CORRECTION-LOOP-001-2026-06-18.md`

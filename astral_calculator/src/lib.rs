@@ -1,5 +1,7 @@
 //! API publique du crate `astral_calculator`.
 
+/// Ports applicatifs indépendants des adaptateurs SQL concrets.
+pub mod application;
 pub mod astrology;
 /// Bootstrap des variables d'environnement, de la CLI et de la connexion DB.
 pub mod bootstrap;

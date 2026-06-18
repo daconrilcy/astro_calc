@@ -16,10 +16,7 @@ pub struct TransitAspectMatch {
 
 /// Retourne les objets mobiles courants utilisés par les horoscopes.
 pub fn is_standard_transit_object(code: &str) -> bool {
-    matches!(
-        code,
-        "sun" | "moon" | "mercury" | "venus" | "mars" | "jupiter" | "saturn"
-    )
+    !code.trim().is_empty()
 }
 
 /// Sélectionne une position transitante standard réelle, en privilégiant l'objet demandé.
@@ -76,21 +73,24 @@ pub fn nearest_major_aspect_name_and_orb(
     left_longitude_deg: f64,
     right_longitude_deg: f64,
     aspect_definitions: &[AspectDefinition],
-) -> Option<(&'static str, f64)> {
+) -> Option<(String, f64)> {
     let separation = shortest_angular_distance(left_longitude_deg, right_longitude_deg);
-    let mut best: Option<(&'static str, f64)> = None;
+    let mut best: Option<(String, f64)> = None;
     for aspect in major_aspect_candidates(aspect_definitions) {
         let orb = (separation - aspect.angle_deg).abs();
-        if best.is_none_or(|(_, existing_orb)| orb < existing_orb) {
+        if best
+            .as_ref()
+            .is_none_or(|(_, existing_orb)| orb < *existing_orb)
+        {
             best = Some((aspect.code, orb));
         }
     }
     best
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct MajorAspectCandidate {
-    code: &'static str,
+    code: String,
     angle_deg: f64,
     reference_orb_limit_deg: Option<f64>,
 }
@@ -108,64 +108,13 @@ impl MajorAspectCandidate {
 fn major_aspect_candidates(aspect_definitions: &[AspectDefinition]) -> Vec<MajorAspectCandidate> {
     let from_reference = aspect_definitions
         .iter()
-        .filter(|aspect| {
-            aspect.family == "major" || default_major_angle_code(aspect.angle).is_some()
-        })
-        .filter_map(|aspect| {
-            let code = default_major_angle_code(aspect.angle)?;
-            Some(MajorAspectCandidate {
-                code,
-                angle_deg: aspect.angle,
-                reference_orb_limit_deg: canonical_aspect_orb_deg(aspect),
-            })
+        .filter(|aspect| aspect.family == "major")
+        .map(|aspect| MajorAspectCandidate {
+            code: aspect.code.clone(),
+            angle_deg: aspect.angle,
+            reference_orb_limit_deg: canonical_aspect_orb_deg(aspect),
         })
         .collect::<Vec<_>>();
 
-    if from_reference.is_empty() {
-        default_major_aspects().to_vec()
-    } else {
-        from_reference
-    }
-}
-
-fn default_major_angle_code(angle: f64) -> Option<&'static str> {
-    let rounded = angle.round() as i32;
-    match rounded {
-        0 => Some("conjunction"),
-        60 => Some("sextile"),
-        90 => Some("square"),
-        120 => Some("trine"),
-        180 => Some("opposition"),
-        _ => None,
-    }
-}
-
-fn default_major_aspects() -> &'static [MajorAspectCandidate] {
-    &[
-        MajorAspectCandidate {
-            code: "conjunction",
-            angle_deg: 0.0,
-            reference_orb_limit_deg: None,
-        },
-        MajorAspectCandidate {
-            code: "sextile",
-            angle_deg: 60.0,
-            reference_orb_limit_deg: None,
-        },
-        MajorAspectCandidate {
-            code: "square",
-            angle_deg: 90.0,
-            reference_orb_limit_deg: None,
-        },
-        MajorAspectCandidate {
-            code: "trine",
-            angle_deg: 120.0,
-            reference_orb_limit_deg: None,
-        },
-        MajorAspectCandidate {
-            code: "opposition",
-            angle_deg: 180.0,
-            reference_orb_limit_deg: None,
-        },
-    ]
+    from_reference
 }

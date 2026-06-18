@@ -45,10 +45,9 @@ fn horoscope_period_calculator_from_positions_never_uses_fake_source() {
     let response = calculate_horoscope_period_from_positions(request, &positions, 8.0);
     assert_eq!(response.snapshots.len(), 7);
     for snapshot in response.snapshots {
-        for fact in snapshot.transits_to_natal {
-            assert!(!fact.source.starts_with("fake"));
-            assert_eq!(fact.source, "derived_period_calculator_v1");
-        }
+        assert!(snapshot.transits_to_natal.is_empty());
+        assert_eq!(snapshot.sky_snapshot["source"], "missing_transit_data");
+        assert!(!snapshot.calculation_warnings.is_empty());
     }
 }
 
@@ -56,10 +55,9 @@ fn horoscope_period_calculator_from_positions_never_uses_fake_source() {
 fn horoscope_period_calculator_public_function_never_uses_fake_source() {
     let response = calculate_horoscope_period(period_calculator_request());
     for snapshot in response.snapshots {
-        for fact in snapshot.transits_to_natal {
-            assert!(!fact.source.starts_with("fake"));
-            assert_eq!(fact.source, "derived_period_calculator_v1");
-        }
+        assert!(snapshot.transits_to_natal.is_empty());
+        assert_eq!(snapshot.sky_snapshot["source"], "missing_transit_data");
+        assert!(!snapshot.calculation_warnings.is_empty());
     }
 }
 
@@ -140,6 +138,7 @@ fn horoscope_period_calculator_respects_reference_aspect_orbs_when_supplied() {
         &transit_snapshots,
         8.0,
         &aspect_definitions,
+        &sample_theme_mappings(),
     );
 
     let venus_fact = response
@@ -313,7 +312,7 @@ fn horoscope_daily_calculator_preserves_public_daily_contract_shape() {
         HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE
     );
     assert_eq!(response.slots.len(), 2);
-    assert_eq!(response.evidence_keys.len(), 2);
+    assert!(response.evidence_keys.is_empty());
     assert!(response
         .slots
         .iter()
@@ -322,6 +321,10 @@ fn horoscope_daily_calculator_preserves_public_daily_contract_shape() {
         .slots
         .iter()
         .all(|slot| slot.local_chart.is_none() && slot.angle_activations.is_empty()));
+    assert!(response
+        .slots
+        .iter()
+        .all(|slot| slot.sky_snapshot["source"] == "missing_transit_data"));
 }
 
 #[test]
@@ -418,16 +421,10 @@ fn horoscope_daily_premium_calculator_emits_local_chart_and_reference_utc() {
 
     assert_eq!(response.slots.len(), 1);
     let slot = &response.slots[0];
-    assert_eq!(
-        slot.reference_datetime_utc.as_deref(),
-        Some("2026-06-14T20:00:00+00:00")
-    );
-    assert!(slot.local_chart.is_some());
-    assert!(slot.calculation_warnings.is_empty());
-    assert!(response
-        .evidence_keys
-        .iter()
-        .any(|key| key.contains("slot:slot_22_00")));
+    assert!(slot.reference_datetime_utc.is_none());
+    assert!(slot.local_chart.is_none());
+    assert!(!slot.calculation_warnings.is_empty());
+    assert!(response.evidence_keys.is_empty());
 }
 
 #[test]
@@ -482,6 +479,7 @@ fn horoscope_daily_with_transits_uses_available_real_position_when_preferred_obj
         &transit_slots,
         8.0,
         &[],
+        &sample_theme_mappings(),
     );
 
     let fact = &response.slots[0].transits_to_natal[0];
@@ -616,6 +614,24 @@ fn transit_snapshots_with_venus_context(
         facts_json: None,
     });
     transit_snapshots_for_request(request, transit_positions)
+}
+
+fn sample_theme_mappings(
+) -> Vec<astral_calculator::features::horoscope::HoroscopeSignalThemeMapping> {
+    vec![
+        astral_calculator::features::horoscope::HoroscopeSignalThemeMapping {
+            match_object: "venus".to_string(),
+            match_aspect: None,
+            match_natal_target: None,
+            theme_code: "supportive_dialogue".to_string(),
+        },
+        astral_calculator::features::horoscope::HoroscopeSignalThemeMapping {
+            match_object: "moon".to_string(),
+            match_aspect: None,
+            match_natal_target: Some("natal_house_6".to_string()),
+            theme_code: "daily_care".to_string(),
+        },
+    ]
 }
 
 async fn spawn_test_server(state: AppState) -> String {

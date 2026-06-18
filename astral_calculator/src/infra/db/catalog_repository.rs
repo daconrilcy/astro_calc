@@ -2,7 +2,10 @@
 
 use sqlx::PgPool;
 
-use super::runtime_repository::RuntimeRepository;
+use async_trait::async_trait;
+
+use super::runtime_queries::RuntimeQueries;
+use crate::application::ports::PayloadCatalogStore;
 use crate::domain::{BasicProductScoringProfile, EssentialDignityRuleReference};
 use crate::features::natal::catalog::BasicPayloadCatalog;
 use crate::shared::error::RuntimeError;
@@ -10,14 +13,58 @@ use crate::shared::error::RuntimeError;
 #[derive(Clone)]
 /// Structure CatalogRepository.
 pub struct CatalogRepository {
-    inner: RuntimeRepository,
+    inner: RuntimeQueries,
+}
+
+#[async_trait]
+impl PayloadCatalogStore for CatalogRepository {
+    async fn basic_payload_catalog(
+        &self,
+        product_code: &str,
+        payload_contract_version: &str,
+        reference_version_id: i32,
+    ) -> Result<BasicPayloadCatalog, RuntimeError> {
+        CatalogRepository::basic_payload_catalog(
+            self,
+            product_code,
+            payload_contract_version,
+            reference_version_id,
+        )
+        .await
+    }
+
+    async fn basic_product_scoring_profile(
+        &self,
+        product_code: &str,
+        payload_contract_version: &str,
+    ) -> Result<BasicProductScoringProfile, RuntimeError> {
+        CatalogRepository::basic_product_scoring_profile(
+            self,
+            product_code,
+            payload_contract_version,
+        )
+        .await
+    }
+
+    async fn essential_dignity_rule_references(
+        &self,
+        reference_version_id: i32,
+        score_profile_id: i32,
+    ) -> Result<Vec<EssentialDignityRuleReference>, RuntimeError> {
+        CatalogRepository::essential_dignity_rule_references(
+            self,
+            reference_version_id,
+            score_profile_id,
+        )
+        .await
+    }
 }
 
 impl CatalogRepository {
     /// Fonction new.
     pub fn new(pool: PgPool) -> Self {
         Self {
-            inner: RuntimeRepository::new(pool),
+            inner: RuntimeQueries::new(pool),
         }
     }
 

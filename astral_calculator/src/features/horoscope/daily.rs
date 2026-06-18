@@ -10,7 +10,7 @@ use crate::shared::time::reference_datetime_utc;
 
 use super::{
     HoroscopeCalculationRequest, HoroscopeCalculationResponse, HoroscopeCalculationSlot,
-    HoroscopeCalculationSlotRequest, HoroscopeTransitFact,
+    HoroscopeCalculationSlotRequest, HoroscopeSignalThemeMapping, HoroscopeTransitFact,
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
 };
 
@@ -18,7 +18,7 @@ use super::{
 pub fn calculate_horoscope_daily(
     request: HoroscopeCalculationRequest,
 ) -> HoroscopeCalculationResponse {
-    calculate_horoscope_daily_from_transits(request, &[], &[], 8.0, &[])
+    calculate_horoscope_daily_from_transits(request, &[], &[], 8.0, &[], &[])
 }
 
 /// Fonction calculate_horoscope_daily_natal.
@@ -35,6 +35,7 @@ pub fn calculate_horoscope_daily_from_transits(
     transit_slots: &[(String, Vec<ObjectPositionFact>)],
     max_major_aspect_orb_deg: f64,
     aspect_definitions: &[AspectDefinition],
+    theme_mappings: &[HoroscopeSignalThemeMapping],
 ) -> HoroscopeCalculationResponse {
     let service_code = request.service_code.clone();
     let slots = request
@@ -54,6 +55,7 @@ pub fn calculate_horoscope_daily_from_transits(
                 transit_positions,
                 max_major_aspect_orb_deg,
                 aspect_definitions,
+                theme_mappings,
             )
         })
         .collect::<Vec<_>>();
@@ -83,28 +85,49 @@ fn derived_slot(
     transit_positions: Option<&[ObjectPositionFact]>,
     max_major_aspect_orb_deg: f64,
     aspect_definitions: &[AspectDefinition],
+    theme_mappings: &[HoroscopeSignalThemeMapping],
 ) -> HoroscopeCalculationSlot {
-    let source = if transit_positions.is_some() {
-        "swisseph_daily_calculator_v1"
-    } else {
-        "derived_daily_calculator_v1"
+    let Some(transit_positions) = transit_positions else {
+        return HoroscopeCalculationSlot {
+            slot_code: slot.slot_code.clone(),
+            reference_local_time: slot.reference_local_time.clone(),
+            reference_datetime_utc: None,
+            sky_snapshot: serde_json::json!({
+                "reference_local_time": slot.reference_local_time,
+                "visible_objects": [],
+                "zodiacal_reference_system": "tropical",
+                "source": "missing_transit_data"
+            }),
+            moon_context: serde_json::json!({
+                "source": "missing_transit_data"
+            }),
+            transits_to_natal: Vec::new(),
+            current_sky_aspects: Vec::new(),
+            natal_house_activations: Vec::new(),
+            local_chart: None,
+            local_house_placements: Vec::new(),
+            angle_activations: Vec::new(),
+            calculation_warnings: vec![
+                "horoscope daily requires real transit positions".to_string()
+            ],
+        };
     };
+    let source = "swisseph_daily_calculator_v1";
     let premium_local = request.service_code == HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE;
-    let reference_datetime_utc = if premium_local || transit_positions.is_some() {
-        reference_datetime_utc(
-            &request.period.date,
-            &request.period.timezone,
-            &slot.reference_local_time,
-        )
-    } else {
-        None
-    };
+    let reference_datetime_utc = reference_datetime_utc(
+        &request.period.date,
+        &request.period.timezone,
+        &slot.reference_local_time,
+    );
     let usable_natal = natal_positions
         .iter()
         .filter(|position| is_standard_transit_object(position.object_code.as_str()))
         .collect::<Vec<_>>();
-    let fallback_transit_object = transit_object_for_slot(index);
-    let transit = preferred_transit_position(transit_positions, fallback_transit_object);
+    let fallback_transit_object = transit_positions
+        .first()
+        .map(|position| position.object_code.as_str())
+        .unwrap_or("transit");
+    let transit = preferred_transit_position(Some(transit_positions), fallback_transit_object);
     let transit_object = transit
         .map(|position| position.object_code.as_str())
         .unwrap_or(fallback_transit_object);
@@ -128,10 +151,11 @@ fn derived_slot(
     });
     let nearest_aspect =
         nearest_major_aspect_name_and_orb(transit_longitude, natal_longitude, aspect_definitions);
-    let (aspect, orb) = transit_match
+    let (aspect_code, orb) = transit_match
         .as_ref()
-        .map(|matched| (matched.aspect_code.as_str(), matched.orb_deg))
-        .unwrap_or_else(|| nearest_aspect.unwrap_or(("context", 0.0)));
+        .map(|matched| (matched.aspect_code.clone(), matched.orb_deg))
+        .unwrap_or_else(|| nearest_aspect.unwrap_or(("context".to_string(), 0.0)));
+    let aspect = aspect_code.as_str();
     let is_context_signal = transit_object == "moon" || transit_match.is_none();
     let natal_house = if transit_object == "moon" {
         transit
@@ -147,7 +171,17 @@ fn derived_slot(
         .as_ref()
         .map(|matched| matched.natal_target.clone())
         .unwrap_or(fallback_natal_target);
-    let theme = daily_theme_for(transit_object, aspect, natal_house);
+    let theme = theme_for(
+        transit_object,
+        if is_context_signal {
+            None
+        } else {
+            Some(aspect)
+        },
+        Some(natal_target.as_str()),
+        natal_house,
+        theme_mappings,
+    );
     let evidence_key = if transit_object == "moon" {
         format!(
             "slot:{}:moon:natal_house:{}",
@@ -167,19 +201,14 @@ fn derived_slot(
     };
     let sign = transit
         .map(|position| position.sign_code.as_str())
-        .unwrap_or_else(|| sign_for_longitude(transit_longitude));
-    let house_system_code = request
-        .house_system_code
-        .as_deref()
-        .unwrap_or("unspecified_house_system");
-
+        .unwrap_or("unknown");
     HoroscopeCalculationSlot {
         slot_code: slot.slot_code.clone(),
         reference_local_time: slot.reference_local_time.clone(),
         reference_datetime_utc,
         sky_snapshot: serde_json::json!({
             "reference_local_time": slot.reference_local_time,
-            "visible_objects": visible_objects(transit_positions),
+            "visible_objects": visible_objects(Some(transit_positions)),
             "zodiacal_reference_system": "tropical",
             "source": source
         }),
@@ -231,26 +260,7 @@ fn derived_slot(
             "activation": theme,
             "source": source
         })],
-        local_chart: if premium_local {
-            Some(serde_json::json!({
-                "house_system_code": house_system_code,
-                "ascendant": {
-                    "sign": sign,
-                    "longitude_deg": round1(normalize_degrees(transit_longitude + 90.0))
-                },
-                "midheaven": {
-                    "sign": sign_for_longitude(transit_longitude + 180.0),
-                    "longitude_deg": round1(normalize_degrees(transit_longitude + 180.0))
-                },
-                "houses": (1..=12).map(|house| serde_json::json!({
-                    "house": house,
-                    "longitude_deg": round1(((house * 30) as f64 + index as f64) % 360.0)
-                })).collect::<Vec<_>>(),
-                "source": source
-            }))
-        } else {
-            None
-        },
+        local_chart: None,
         local_house_placements: if premium_local {
             vec![serde_json::json!({
                 "object": transit_object,
@@ -260,78 +270,50 @@ fn derived_slot(
         } else {
             Vec::new()
         },
-        angle_activations: if premium_local {
-            vec![serde_json::json!({
-                "angle": "ascendant",
-                "object": transit_object,
-                "orb_deg": 1.2,
-                "source": source
-            })]
-        } else {
-            Vec::new()
-        },
+        angle_activations: Vec::new(),
         calculation_warnings: Vec::new(),
     }
 }
 
-fn transit_object_for_slot(index: usize) -> &'static str {
-    let preferred = [
-        "moon", "venus", "mars", "sun", "mercury", "jupiter", "saturn",
-    ];
-    preferred[index % preferred.len()]
-}
-
 fn visible_objects(transit_positions: Option<&[ObjectPositionFact]>) -> Vec<String> {
-    let objects = transit_positions
+    transit_positions
         .into_iter()
         .flatten()
         .filter(|position| is_standard_transit_object(position.object_code.as_str()))
         .map(|position| position.object_code.clone())
-        .collect::<Vec<_>>();
-    if objects.is_empty() {
-        return [
-            "sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn",
-        ]
+        .collect::<Vec<_>>()
+}
+
+fn theme_for<'a>(
+    object: &str,
+    aspect: Option<&str>,
+    natal_target: Option<&str>,
+    natal_house: Option<i32>,
+    theme_mappings: &'a [HoroscopeSignalThemeMapping],
+) -> &'a str {
+    let house_target = natal_house.map(|house| format!("natal_house_{house}"));
+    theme_mappings
         .iter()
-        .map(|code| (*code).to_string())
-        .collect();
-    }
-    objects
+        .find(|mapping| {
+            mapping.match_object == object
+                && optional_match(mapping.match_aspect.as_deref(), aspect)
+                && (optional_match(mapping.match_natal_target.as_deref(), natal_target)
+                    || optional_match(
+                        mapping.match_natal_target.as_deref(),
+                        house_target.as_deref(),
+                    ))
+        })
+        .or_else(|| {
+            theme_mappings
+                .iter()
+                .find(|mapping| mapping.match_object == object && mapping.match_aspect.is_none())
+        })
+        .map(|mapping| mapping.theme_code.as_str())
+        .unwrap_or("transit_context")
 }
 
-fn daily_theme_for(object: &str, aspect: &str, natal_house: Option<i32>) -> &'static str {
-    if object == "moon" {
-        return match natal_house.unwrap_or(1) {
-            2 | 6 => "organization",
-            3 | 7 => "relationship",
-            _ => "routine",
-        };
-    }
-    match (object, aspect) {
-        ("venus", _) => "relationship",
-        ("mars", "square") | ("mars", "opposition") => "energy",
-        ("mercury", _) => "communication",
-        ("jupiter", _) => "integration",
-        ("sun", _) => "clarity",
-        _ => "organization",
-    }
-}
-
-fn sign_for_longitude(longitude: f64) -> &'static str {
-    match (normalize_degrees(longitude) / 30.0).floor() as i32 {
-        0 => "aries",
-        1 => "taurus",
-        2 => "gemini",
-        3 => "cancer",
-        4 => "leo",
-        5 => "virgo",
-        6 => "libra",
-        7 => "scorpio",
-        8 => "sagittarius",
-        9 => "capricorn",
-        10 => "aquarius",
-        _ => "pisces",
-    }
+fn optional_match(expected: Option<&str>, actual: Option<&str>) -> bool {
+    expected.is_none() || expected == actual
 }
 
 fn round1(value: f64) -> f64 {

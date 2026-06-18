@@ -7,6 +7,7 @@ default-run = "astral_calculator"
 [dependencies]
 astral_contracts.workspace = true
 astral_time_window.workspace = true
+async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = "0.10"
 dotenvy = "0.15"

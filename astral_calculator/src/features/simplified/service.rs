@@ -5,33 +5,38 @@ use std::path::Path;
 use super::catalog::SimplifiedCatalog;
 use super::facts::{collect_declared_sign_facts, collect_window_sign_facts, CollectedSignFacts};
 use super::payload::build_response;
-use super::repository::{load_profile_feature_exclusions, load_simplified_catalog};
 use super::request::AstroSimplifiedNatalRequest;
 use super::resolve::{build_uncertainty_window, declared_datetime_utc, validate_and_resolve};
 use super::response::{AstroSimplifiedNatalResponse, RECOMMENDED_SIMPLIFIED_PROFILE_CODE};
+use crate::application::ports::{ReferenceCatalog, SimplifiedCatalogStore};
 use crate::astrology::aspects::detect_aspects;
 use crate::astrology::ephemeris::EphemerisEngine;
 use crate::domain::{AspectDefinition, ChartObject};
 use crate::domain::{CalculatedChartFacts, NatalChartInput, ObjectPositionFact};
-use crate::infra::db::reference_repository::ReferenceRepository;
 use crate::runtime::validate_calculation_references;
 use crate::shared::error::RuntimeError;
 
 /// Fonction calculate_simplified_natal.
-pub async fn calculate_simplified_natal<E: EphemerisEngine>(
-    repository: &ReferenceRepository,
+pub async fn calculate_simplified_natal<R, S, E>(
+    repository: &R,
+    simplified_catalogs: &S,
     ephemeris: &E,
     ephemeris_path: &Path,
     request: AstroSimplifiedNatalRequest,
-) -> Result<AstroSimplifiedNatalResponse, RuntimeError> {
+) -> Result<AstroSimplifiedNatalResponse, RuntimeError>
+where
+    R: ReferenceCatalog,
+    S: SimplifiedCatalogStore,
+    E: EphemerisEngine,
+{
     if request.birth.time.is_some() && request.birth.timezone.is_none() {
         return Err(RuntimeError::InvalidEngineRequest(
             "birth.time requires birth.timezone".into(),
         ));
     }
 
-    let catalog = load_simplified_catalog(repository.pool()).await?;
-    let profile_feature_exclusions = load_profile_feature_exclusions(repository.pool()).await?;
+    let catalog = simplified_catalogs.simplified_catalog().await?;
+    let profile_feature_exclusions = simplified_catalogs.profile_feature_exclusions().await?;
     let resolved = validate_and_resolve(&request, &catalog)?;
     if SimplifiedCatalog::profile_feature_exclusions_for(
         &profile_feature_exclusions,

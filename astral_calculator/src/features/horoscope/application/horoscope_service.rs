@@ -1,41 +1,37 @@
 //! Module astral_calculator\src\features\horoscope\application\horoscope_service.rs du moteur astral_calculator.
 
 use chrono::{DateTime, Utc};
+use std::collections::HashSet;
 use std::sync::Arc;
 
+use crate::application::ports::{HoroscopeCatalog, NatalCalculationStore, ReferenceCatalog};
 use crate::astrology::ephemeris::EphemerisEngine;
 use crate::domain::CalculationReferenceData;
 use crate::features::horoscope::{
     calculate_horoscope_daily_from_transits, calculate_horoscope_period_from_transits_with_aspects,
     normalize_horoscope_period_request_utc, HoroscopeCalculationRequest,
     HoroscopeCalculationResponse, HoroscopePeriodCalculationRequest,
-    HoroscopePeriodCalculationResponse,
-};
-use crate::infra::db::{
-    calculation_repository::CalculationRepository, horoscope_repository::HoroscopeRepository,
-    reference_repository::ReferenceRepository,
+    HoroscopePeriodCalculationResponse, HoroscopeSupportedObject,
 };
 use crate::shared::error::RuntimeError;
 
 /// Structure HoroscopeService.
-pub struct HoroscopeService<E> {
-    calculations: CalculationRepository,
-    horoscope: HoroscopeRepository,
-    references: ReferenceRepository,
+pub struct HoroscopeService<C, H, R, E> {
+    calculations: C,
+    horoscope: H,
+    references: R,
     ephemeris: Arc<E>,
 }
 
-impl<E> HoroscopeService<E>
+impl<C, H, R, E> HoroscopeService<C, H, R, E>
 where
+    C: NatalCalculationStore,
+    H: HoroscopeCatalog,
+    R: ReferenceCatalog,
     E: EphemerisEngine,
 {
     /// Fonction new.
-    pub fn new(
-        calculations: CalculationRepository,
-        horoscope: HoroscopeRepository,
-        references: ReferenceRepository,
-        ephemeris: Arc<E>,
-    ) -> Self {
+    pub fn new(calculations: C, horoscope: H, references: R, ephemeris: Arc<E>) -> Self {
         Self {
             calculations,
             horoscope,
@@ -83,6 +79,18 @@ where
             horizon_positions: self.references.horizon_position_references().await?,
             angle_points: self.references.angle_point_references().await?,
         };
+        let supported_objects = self.horoscope.horoscope_supported_objects().await?;
+        if supported_objects.is_empty() {
+            return Err(RuntimeError::InvalidRuntimeTable(
+                "missing active horoscope_supported_objects".to_string(),
+            ));
+        }
+        let theme_mappings = self.horoscope.horoscope_signal_theme_mappings().await?;
+        if theme_mappings.is_empty() {
+            return Err(RuntimeError::InvalidRuntimeTable(
+                "missing horoscope_signal_theme_mappings".to_string(),
+            ));
+        }
         let mut transit_slots = Vec::new();
         for slot in &request.slots {
             let reference_datetime_utc = crate::shared::time::reference_datetime_utc(
@@ -113,7 +121,10 @@ where
                 &house_system,
                 &references,
             )?;
-            transit_slots.push((slot.slot_code.clone(), facts.positions));
+            transit_slots.push((
+                slot.slot_code.clone(),
+                filter_supported_transit_positions(facts.positions, &supported_objects),
+            ));
         }
         let max_major_aspect_orb_deg = self
             .horoscope
@@ -128,6 +139,7 @@ where
             &transit_slots,
             max_major_aspect_orb_deg,
             &aspect_definitions,
+            &theme_mappings,
         ))
     }
 
@@ -175,6 +187,18 @@ where
             horizon_positions: self.references.horizon_position_references().await?,
             angle_points: self.references.angle_point_references().await?,
         };
+        let supported_objects = self.horoscope.horoscope_supported_objects().await?;
+        if supported_objects.is_empty() {
+            return Err(RuntimeError::InvalidRuntimeTable(
+                "missing active horoscope_supported_objects".to_string(),
+            ));
+        }
+        let theme_mappings = self.horoscope.horoscope_signal_theme_mappings().await?;
+        if theme_mappings.is_empty() {
+            return Err(RuntimeError::InvalidRuntimeTable(
+                "missing horoscope_signal_theme_mappings".to_string(),
+            ));
+        }
         let mut transit_snapshots = Vec::new();
         for snapshot in &request.scan_plan.snapshots {
             let reference_datetime_utc =
@@ -195,7 +219,10 @@ where
                 &house_system,
                 &references,
             )?;
-            transit_snapshots.push((snapshot.snapshot_key.clone(), facts.positions));
+            transit_snapshots.push((
+                snapshot.snapshot_key.clone(),
+                filter_supported_transit_positions(facts.positions, &supported_objects),
+            ));
         }
         let period_max_major_aspect_orb_deg = self
             .horoscope
@@ -210,6 +237,35 @@ where
             &transit_snapshots,
             period_max_major_aspect_orb_deg,
             &aspect_definitions,
+            &theme_mappings,
         ))
     }
+}
+
+fn filter_supported_transit_positions(
+    positions: Vec<crate::domain::ObjectPositionFact>,
+    supported_objects: &[HoroscopeSupportedObject],
+) -> Vec<crate::domain::ObjectPositionFact> {
+    let supported_codes = supported_objects
+        .iter()
+        .map(|object| object.object_code.as_str())
+        .collect::<HashSet<_>>();
+    let mut filtered = positions
+        .into_iter()
+        .filter(|position| supported_codes.contains(position.object_code.as_str()))
+        .collect::<Vec<_>>();
+    filtered.sort_by(|left, right| {
+        supported_weight(right.object_code.as_str(), supported_objects).total_cmp(
+            &supported_weight(left.object_code.as_str(), supported_objects),
+        )
+    });
+    filtered
+}
+
+fn supported_weight(code: &str, supported_objects: &[HoroscopeSupportedObject]) -> f64 {
+    supported_objects
+        .iter()
+        .find(|object| object.object_code == code)
+        .map(|object| object.weight)
+        .unwrap_or(0.0)
 }

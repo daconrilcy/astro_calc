@@ -214,6 +214,9 @@ fn root_lib_does_not_export_removed_feature_modules() {
 fn canonical_public_feature_paths_compile() {
     let _ = std::any::type_name::<
         astral_calculator::features::natal::application::NatalCalculationService<
+            astral_calculator::infra::db::calculation_repository::CalculationRepository,
+            astral_calculator::infra::db::catalog_repository::CatalogRepository,
+            astral_calculator::infra::db::reference_repository::ReferenceRepository,
             astral_calculator::ephemeris::SwissEphemerisEngine,
         >,
     >();
@@ -585,6 +588,125 @@ fn shared_astro_math_stays_free_of_domain_types() {
         "{} owns house cusp métier logic; use astrology::house_geometry",
         path.display()
     );
+    assert!(
+        !content.contains("motion_state_id"),
+        "{} resolves canonical motion state ids; use astrology::motion with DB references",
+        path.display()
+    );
+    for forbidden in ["Some(1)", "Some(2)", "Some(3)"] {
+        assert!(
+            !content.contains(forbidden),
+            "{} contains hard-coded canonical motion state id {forbidden}",
+            path.display()
+        );
+    }
+}
+
+#[test]
+fn application_services_do_not_import_infra_db() {
+    let root = workspace_root().join("astral_calculator/src");
+    for restricted_root in [
+        root.join("engine/application"),
+        root.join("features/natal/application"),
+        root.join("features/horoscope/application"),
+        root.join("features/simplified/application"),
+    ] {
+        for file in collect_rs_files(&restricted_root) {
+            let content = read(&file);
+            assert!(
+                !content.contains("crate::infra::db") && !content.contains("infra::db"),
+                "{} imports infra::db instead of application ports",
+                file.display()
+            );
+        }
+    }
+}
+
+#[test]
+fn runtime_repository_is_residual_and_not_wrapped_by_repositories() {
+    let root = workspace_root().join("astral_calculator/src/infra/db");
+    let runtime_repository = root.join("runtime_repository.rs");
+    let line_count = read(&runtime_repository).lines().count();
+    assert!(
+        line_count <= 80,
+        "{} has {line_count} lines; keep runtime_repository.rs as residual helper only",
+        runtime_repository.display()
+    );
+
+    for file in collect_rs_files(&root) {
+        let name = file
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("");
+        if !name.ends_with("_repository.rs") {
+            continue;
+        }
+        let content = read(&file);
+        assert!(
+            !content.contains("RuntimeRepository"),
+            "{} wraps RuntimeRepository; SQL must live in specialized repositories or internal query modules",
+            file.display()
+        );
+    }
+
+    let runtime_queries = root.join("runtime_queries.rs");
+    let runtime_queries_line_count = read(&runtime_queries).lines().count();
+    assert!(
+        runtime_queries_line_count <= 260,
+        "{} has {runtime_queries_line_count} lines; keep it as a thin query-module facade",
+        runtime_queries.display()
+    );
+
+    for module in [
+        "runtime_queries/reference.rs",
+        "runtime_queries/catalog.rs",
+        "runtime_queries/horoscope.rs",
+        "runtime_queries/projection.rs",
+        "runtime_queries/calculation.rs",
+    ] {
+        assert!(
+            root.join(module).exists(),
+            "missing split runtime query module {}",
+            module
+        );
+    }
+}
+
+#[test]
+fn horoscope_runtime_has_no_derived_calculator_sources() {
+    let root = workspace_root().join("astral_calculator/src");
+    for file in collect_rs_files(&root) {
+        let content = read(&file);
+        for forbidden in [
+            "derived_daily_calculator_v1",
+            "derived_period_calculator_v1",
+        ] {
+            assert!(
+                !content.contains(forbidden),
+                "{} contains forbidden synthetic horoscope source {forbidden}",
+                file.display()
+            );
+        }
+    }
+}
+
+#[test]
+fn horoscope_runtime_does_not_embed_supported_object_catalog() {
+    let root = workspace_root().join("astral_calculator/src/features/horoscope");
+    for file in collect_rs_files(&root) {
+        let content = read(&file);
+        for forbidden in [
+            r#""sun" | "moon" | "mercury" | "venus" | "mars" | "jupiter" | "saturn""#,
+            "transit_object_for_slot",
+            "period_tone_for",
+        ] {
+            assert!(
+                !content.contains(forbidden),
+                "{} embeds horoscope catalog logic forbidden by DB-backed runtime catalog: {forbidden}",
+                file.display()
+            );
+        }
+    }
 }
 
 #[test]
@@ -596,8 +718,15 @@ fn calculator_refactor_plan_reviews_are_closed() {
         "docs/reviews/astral_calculator_refactor/REV-ASTROLOGY-TRANSITS-adversarial.md",
         "docs/reviews/astral_calculator_refactor/REV-ASTROLOGY-TRANSITS-followup-1.md",
         "docs/reviews/astral_calculator_refactor/REV-APPLICATION-PORTS-adversarial.md",
+        "docs/reviews/astral_calculator_refactor/REV-APPLICATION-PORTS-followup-1.md",
         "docs/reviews/astral_calculator_refactor/REV-SHARED-ASTRO-MATH-adversarial.md",
+        "docs/reviews/astral_calculator_refactor/REV-SHARED-ASTRO-MATH-followup-1.md",
         "docs/reviews/astral_calculator_refactor/REV-RUNTIME-REPOSITORY-SPLIT-adversarial.md",
+        "docs/reviews/astral_calculator_refactor/REV-RUNTIME-REPOSITORY-SPLIT-followup-1.md",
+        "docs/reviews/astral_calculator_refactor/REV-HOROSCOPE-CANONICAL-CATALOG-followup-1.md",
+        "docs/reviews/astral_calculator_refactor/REV-HOROSCOPE-DERIVED-FALLBACKS-followup-1.md",
+        "docs/reviews/astral_calculator_refactor/REV-GLOBAL-FINDINGS-CORRECTION-2026-06-18.md",
+        "docs/reviews/astral_calculator_refactor/REV-GLOBAL-FINDINGS-CORRECTION-LOOP-001-2026-06-18.md",
     ] {
         let path = root.join(review_path);
         assert!(path.exists(), "missing review artifact {}", path.display());
