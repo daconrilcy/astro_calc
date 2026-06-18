@@ -9,18 +9,12 @@ pub mod domain;
 pub mod engine;
 /// Module features.
 pub mod features;
-/// Module horoscope.
-pub mod horoscope;
 /// Module infra.
 pub mod infra;
-/// Module natal.
-pub mod natal;
 /// Module runtime.
 pub mod runtime;
 /// Module shared.
 pub mod shared;
-/// Module simplified.
-pub mod simplified;
 
 pub use engine::engine_request_from_env;
 

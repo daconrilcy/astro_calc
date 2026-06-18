@@ -1,13 +1,45 @@
+# 2026-06-18 - `astral_calculator` suppression des wrappers racine legacy
+
+Resume court:
+- suppression immediate des anciens modules racine `natal`, `simplified` et
+  `horoscope`;
+- suppression des wrappers internes `features/natal/aspects` et
+  `features/natal/ephemeris`;
+- rupture assumee de l'API Rust publique
+  `astral_calculator::{natal,simplified,horoscope}`;
+- chemins canoniques obligatoires: produits sous
+  `astral_calculator::features::{natal,simplified,horoscope}` et calculs
+  reutilisables sous `astral_calculator::astrology::{aspects,ephemeris}`;
+- conservation des re-exports top-level existants
+  `astral_calculator::{aspects,ephemeris,catalog,dignities}`.
+
+Invariants de couche:
+- aucun nouveau dossier racine `src/{natal,simplified,horoscope}`;
+- aucun nouveau wrapper `features/natal/{aspects,ephemeris}`;
+- les contrats JSON publics et routes HTTP restent inchanges;
+- les features produit restent des orchestrateurs, sans accueillir de calculs
+  astrologiques reutilisables.
+
+Commandes de verification:
+- `cargo fmt`
+- `cargo test -p astral_calculator --test refactor_governance_tests`
+- `cargo test -p astral_calculator`
+- `cargo test -p astral_calculator_http --test astral_calculator_http_tests`
+- `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`
+
+Review:
+- `docs/reviews/astral_calculator_refactor/REV-ROOT-FEATURE-WRAPPERS-REMOVAL-2026-06-18.md`
+
 # 2026-06-17 - `astral_calculator` refacto physical features namespace
 
 Resume court:
 - deplacement physique des orchestrateurs produit sous `astral_calculator/src/features/`:
   `natal`, `simplified`, `horoscope`;
-- conservation des anciens modules racine `natal`, `simplified` et `horoscope`
-  comme wrappers de compatibilite;
+- wrappers racine historiques `natal`, `simplified` et `horoscope` supprimes
+  le 2026-06-18;
 - maintien des contrats publics `astral_calculator::features::*`,
-  `astral_calculator::natal::*`, `astral_calculator::simplified::*` et
-  `astral_calculator::horoscope::*`;
+  les anciens chemins `astral_calculator::{natal,simplified,horoscope}` etant
+  retires de l'API Rust publique;
 - durcissement du test de gouvernance pour verifier la presence de
   `src/features/{natal,simplified,horoscope}`, l'absence d'appels internes au
   wrapper legacy `calculate_natal` et l'absence d'import de details `natal`
@@ -19,7 +51,7 @@ Invariants de couche:
 - les calculs astrologiques reutilisables restent sous `astrology/`;
 - `domain` conserve les types metier stables et ne depend pas d'`infra`;
 - `infra/db` reste le seul emplacement des details SQLx;
-- les wrappers legacy ne doivent pas redevenir des lieux d'implementation.
+- les wrappers legacy supprimes ne doivent pas etre recrees.
 
 Commandes de verification:
 - `cargo fmt`
@@ -39,7 +71,9 @@ Review:
 
 Resume court:
 - creation du module canonique `astral_calculator/src/astrology/` pour les calculs communs `aspects` et `ephemeris`;
-- conservation des anciens chemins publics `natal::aspects` et `natal::ephemeris` via wrappers de compatibilite;
+- suppression le 2026-06-18 des anciens chemins publics `natal::aspects` et
+  `natal::ephemeris`, remplaces par `astrology::aspects` et
+  `astrology::ephemeris`;
 - migration des appels internes vers `crate::astrology::*` et `EphemerisEngine::calculate_chart`;
 - ajout des noms canoniques neutres horoscope `calculate_horoscope_daily`, `calculate_horoscope_period`, `calculate_horoscope_period_from_positions` et `calculate_horoscope_period_from_transits`;
 - conservation des anciens noms publics horoscope `*_natal` comme wrappers de compatibilite.
@@ -49,7 +83,8 @@ Invariants de couche:
 - les calculs astrologiques reutilisables vivent sous `astrology/`, pas sous une feature produit;
 - aucune dependance `domain -> infra`;
 - aucun `PgPool`, `connect_from_env`, `block_on` ou `run_blocking` dans les couches metier verrouillees par test;
-- aucun import `crate::natal::aspects` ou `crate::natal::ephemeris` depuis `simplified` ou `horoscope`;
+- aucun import des anciens chemins racine natal pour les calculs communs depuis
+  `simplified` ou `horoscope`;
 - les champs contractuels publics contenant `natal` dans horoscope restent inchanges.
 
 Commandes de verification:

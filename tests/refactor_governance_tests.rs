@@ -160,37 +160,75 @@ fn product_features_are_physically_grouped_under_features() {
 }
 
 #[test]
-fn legacy_root_feature_modules_are_compatibility_wrappers_only() {
+fn removed_root_feature_modules_do_not_reappear() {
     let root = workspace_root().join("astral_calculator/src");
     for feature in ["natal", "simplified", "horoscope"] {
         let legacy_dir = root.join(feature);
-        let files = collect_rs_files(&legacy_dir);
-        assert_eq!(
-            files.len(),
-            1,
-            "legacy feature directory {} must only contain mod.rs",
+        let legacy_file = root.join(format!("{feature}.rs"));
+        assert!(
+            !legacy_dir.exists(),
+            "removed root feature module {} must not reappear; use astral_calculator::features::{feature}",
             legacy_dir.display()
         );
-
-        let mod_path = legacy_dir.join("mod.rs");
-        assert_eq!(
-            read(&mod_path).trim(),
-            format!("pub use crate::features::{feature}::*;"),
-            "legacy feature wrapper {} must stay a pure compatibility re-export",
-            mod_path.display()
+        assert!(
+            !legacy_file.exists(),
+            "removed root feature module file {} must not reappear; use astral_calculator::features::{feature}",
+            legacy_file.display()
         );
     }
 }
 
 #[test]
-fn legacy_public_feature_paths_still_compile() {
+fn removed_natal_astrology_wrappers_do_not_reappear() {
+    let root = workspace_root().join("astral_calculator/src/features/natal");
+    for module in ["aspects", "ephemeris"] {
+        let wrapper_file = root.join(format!("{module}.rs"));
+        let wrapper_dir = root.join(module);
+        assert!(
+            !wrapper_file.exists(),
+            "removed natal astrology wrapper {} must not reappear; use astral_calculator::astrology",
+            wrapper_file.display()
+        );
+        assert!(
+            !wrapper_dir.exists(),
+            "removed natal astrology wrapper directory {} must not reappear; use astral_calculator::astrology",
+            wrapper_dir.display()
+        );
+    }
+}
+
+#[test]
+fn root_lib_does_not_export_removed_feature_modules() {
+    let root = workspace_root().join("astral_calculator/src");
+    let lib = read(&root.join("lib.rs"));
+    for feature in ["natal", "simplified", "horoscope"] {
+        let root_module_export = format!("pub mod {feature};");
+        assert!(
+            !lib.contains(&root_module_export),
+            "astral_calculator/src/lib.rs must not export removed root module {feature}; use features::{feature}"
+        );
+    }
+}
+
+#[test]
+fn canonical_public_feature_paths_compile() {
     let _ = std::any::type_name::<
-        astral_calculator::natal::application::NatalCalculationService<
+        astral_calculator::features::natal::application::NatalCalculationService<
             astral_calculator::ephemeris::SwissEphemerisEngine,
         >,
     >();
-    let _ = std::any::type_name::<astral_calculator::simplified::AstroSimplifiedNatalRequest>();
-    let _ = std::any::type_name::<astral_calculator::horoscope::HoroscopeCalculationRequest>();
+    let _ = std::any::type_name::<
+        astral_calculator::features::simplified::AstroSimplifiedNatalRequest,
+    >();
+    let _ = std::any::type_name::<
+        astral_calculator::features::horoscope::HoroscopeCalculationRequest,
+    >();
+    let _ = std::any::type_name::<astral_calculator::astrology::ephemeris::SwissEphemerisEngine>();
+    let _detect_aspects: fn(
+        &[astral_calculator::domain::ObjectPositionFact],
+        &[astral_calculator::domain::AspectDefinition],
+    ) -> Vec<astral_calculator::domain::AspectFact> =
+        astral_calculator::astrology::aspects::detect_aspects;
 }
 
 #[test]
@@ -202,20 +240,26 @@ fn simplified_and_horoscope_do_not_import_natal_internals() {
     ] {
         for file in collect_rs_files(&restricted_root) {
             let content = read(&file);
+            let legacy_natal_aspects = ["crate::", "natal::", "aspects"].join("");
+            let legacy_natal_ephemeris = ["crate::", "natal::", "ephemeris"].join("");
+            let natal_feature_internals = ["crate::", "features::", "natal::"].join("");
             assert!(
-                !content.contains("crate::natal::aspects"),
-                "{} imports crate::natal::aspects",
-                file.display()
+                !content.contains(&legacy_natal_aspects),
+                "{} imports {}",
+                file.display(),
+                legacy_natal_aspects
             );
             assert!(
-                !content.contains("crate::natal::ephemeris"),
-                "{} imports crate::natal::ephemeris",
-                file.display()
+                !content.contains(&legacy_natal_ephemeris),
+                "{} imports {}",
+                file.display(),
+                legacy_natal_ephemeris
             );
             assert!(
-                !content.contains("crate::features::natal::"),
-                "{} imports crate::features::natal internals",
-                file.display()
+                !content.contains(&natal_feature_internals),
+                "{} imports {} internals",
+                file.display(),
+                natal_feature_internals
             );
         }
     }
@@ -325,6 +369,32 @@ fn general_refactor_review_for_physical_features_is_closed() {
         "{} does not record a zero-open-finding state",
         path.display()
     );
+}
+
+#[test]
+fn root_feature_wrapper_removal_reviews_are_closed() {
+    let root = workspace_root();
+    for review_path in [
+        "docs/reviews/astral_calculator_refactor/REV-ROOT-FEATURE-WRAPPERS-REMOVAL-2026-06-18.md",
+        "docs/reviews/astral_calculator_refactor/REV-ROOT-FEATURE-WRAPPERS-REMOVAL-LOOP-001-2026-06-18.md",
+        "docs/reviews/astral_calculator_refactor/REV-ROOT-FEATURE-WRAPPERS-REMOVAL-LOOP-002-2026-06-18.md",
+    ] {
+        let path = root.join(review_path);
+        assert!(path.exists(), "missing review artifact {}", path.display());
+
+        let content = read(&path);
+        assert!(
+            content.contains("Status: `closed`") || content.contains("Statut: closed"),
+            "{} is not marked closed",
+            path.display()
+        );
+        assert!(
+            content.contains("Aucun finding ouvert")
+                || content.contains("Findings restants: Aucun"),
+            "{} does not record a zero-open-finding state",
+            path.display()
+        );
+    }
 }
 
 #[test]
