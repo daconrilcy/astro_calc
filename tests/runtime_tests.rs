@@ -33,7 +33,7 @@ use common::json_db::{
 };
 
 fn projection_reason_definitions() -> Vec<astral_calculator::domain::ProjectionReasonDefinition> {
-    astral_calculator::catalog::test_catalog().projection_reason_definitions
+    astral_calculator::features::natal::catalog::test_catalog().projection_reason_definitions
 }
 
 fn canonical_house_axis_references() -> Vec<HouseAxisReference> {
@@ -93,18 +93,20 @@ fn current_payload() -> BasicPayload {
                 ),
             },
             accidental_scoring: Some({
-                let accidental = &astral_calculator::catalog::test_catalog().accidental_scoring;
+                let accidental =
+                    &astral_calculator::features::natal::catalog::test_catalog().accidental_scoring;
                 astral_calculator::domain::BasicAccidentalScoringSnapshot {
                     overall_score_baseline: accidental.overall_score_baseline,
                     overall_score_min: accidental.overall_score_min,
                     overall_score_max: accidental.overall_score_max,
                     angle_proximity_max_orb_deg: accidental.angle_proximity_max_orb_deg,
-                    polarity_bands: astral_calculator::catalog::test_catalog()
+                    polarity_bands: astral_calculator::features::natal::catalog::test_catalog()
                         .accidental_polarity_bands,
                 }
             }),
             product_scoring: {
-                let scoring = &astral_calculator::catalog::test_catalog().product_scoring;
+                let scoring =
+                    &astral_calculator::features::natal::catalog::test_catalog().product_scoring;
                 Some(astral_calculator::domain::BasicProductScoringSnapshot {
                     sign_house_emphasis_min_score: scoring.sign_house_emphasis_min_score,
                     object_emphasis_min_score: scoring.object_emphasis_min_score,
@@ -1587,7 +1589,7 @@ fn lunar_phase_reference_validation_accepts_canonical_phases() {
 fn accidental_dignity_reference_validation_accepts_canonical_conditions() {
     let conditions = accidental_dignity_condition_references();
 
-    let catalog = astral_calculator::catalog::test_catalog();
+    let catalog = astral_calculator::features::natal::catalog::test_catalog();
     assert!(validate_accidental_dignity_condition_references(
         &conditions,
         &catalog.accidental_triggers

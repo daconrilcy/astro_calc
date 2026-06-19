@@ -37,6 +37,10 @@ name = "dignities_tests"
 path = "../tests/dignities_tests.rs"
 
 [[test]]
+name = "deprecated_root_alias_compat_tests"
+path = "../tests/deprecated_root_alias_compat_tests.rs"
+
+[[test]]
 name = "facts_tests"
 path = "../tests/facts_tests.rs"
 

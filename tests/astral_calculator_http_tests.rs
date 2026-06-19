@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use astral_calculator::config::{ephemeris_path_from_env, runtime_options_from_env};
-use astral_calculator::db::connect_from_env;
+use astral_calculator::bootstrap::db::connect_from_env;
+use astral_calculator::bootstrap::env::{ephemeris_path_from_env, runtime_options_from_env};
 use astral_calculator::domain::{AspectDefinition, ObjectPositionFact};
-use astral_calculator::ephemeris::SwissEphemerisEngine;
+use astral_calculator::astrology::ephemeris::SwissEphemerisEngine;
 use astral_calculator::features::horoscope::{
     calculate_horoscope_daily, calculate_horoscope_daily_from_transits,
     calculate_horoscope_daily_natal, calculate_horoscope_period,

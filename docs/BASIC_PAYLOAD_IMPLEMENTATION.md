@@ -1,3 +1,33 @@
+# 2026-06-19 - nettoyage repo-wide des tests sur aliases racine deprécies
+
+Resume court:
+- remplacement des derniers usages internes de
+  `astral_calculator::{catalog,db,config,cli,dignities,ephemeris,facts,idempotency,aspects}`
+  dans `tests/` par les chemins canoniques;
+- extension du garde-fou `internal_sources_do_not_use_historical_root_aliases`
+  a la suite `tests/`;
+- conservation explicite de la compatibilite publique via un test dedie
+  `tests/deprecated_root_alias_compat_tests.rs`.
+
+Invariants de couche:
+- aucun code interne de `astral_calculator/src` ni test interne ordinaire ne
+  doit utiliser les aliases racine deprécies;
+- les aliases publics deprécies restent exposes pour compatibilite externe
+  progressive;
+- la compatibilite legacy doit etre isolee dans des tests dedies et non dans
+  les suites fonctionnelles courantes;
+- aucun contrat JSON public ni comportement runtime n'est modifie.
+
+Commandes de verification:
+- `cargo test -p astral_calculator --test deprecated_root_alias_compat_tests`
+- `cargo test -p astral_calculator --test refactor_governance_tests`
+- `cargo test -p astral_calculator`
+- `cargo test -p astral_calculator_http --test astral_calculator_http_tests`
+
+Reviews:
+- `docs/reviews/astral_calculator_refactor/REV-DEPRECATED-ROOT-ALIASES-TEST-CLEANUP-2026-06-19.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-DEPRECATED-ROOT-ALIASES-TEST-CLEANUP-2026-06-19.md`
+
 # 2026-06-19 - ports/builders/fail-fast: fermeture des findings restants
 
 Resume court:

@@ -222,7 +222,7 @@ fn canonical_public_feature_paths_compile() {
             astral_calculator::infra::db::calculation_repository::CalculationRepository,
             astral_calculator::infra::db::catalog_repository::CatalogRepository,
             astral_calculator::infra::db::reference_repository::ReferenceRepository,
-            astral_calculator::ephemeris::SwissEphemerisEngine,
+            astral_calculator::astrology::ephemeris::SwissEphemerisEngine,
         >,
     >();
     let _ = std::any::type_name::<
@@ -264,6 +264,30 @@ fn internal_sources_do_not_use_historical_root_aliases() {
     ];
 
     for file in collect_rs_files(&root) {
+        let content = read(&file);
+        for alias in forbidden {
+            assert!(
+                !content.contains(alias),
+                "{} uses deprecated alias {alias}",
+                file.display()
+            );
+        }
+    }
+
+    let tests_root = workspace_root().join("tests");
+    for file in collect_rs_files(&tests_root) {
+        let relative = file
+            .strip_prefix(workspace_root())
+            .expect("relative test path")
+            .to_string_lossy()
+            .replace('\\', "/");
+        if matches!(
+            relative.as_str(),
+            "tests/refactor_governance_tests.rs" | "tests/deprecated_root_alias_compat_tests.rs"
+        ) {
+            continue;
+        }
+
         let content = read(&file);
         for alias in forbidden {
             assert!(

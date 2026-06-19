@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+use astral_calculator::features::natal::catalog::test_catalog;
 use astral_calculator::domain::ProjectionLabelDefinition;
 use serde_json::Value;
 
@@ -52,7 +53,7 @@ fn projection_label_seed_unique_by_family_and_code() {
 #[test]
 fn test_catalog_projection_labels_match_seed_strictly() {
     let mut seed = projection_label_seed_rows();
-    let mut catalog = astral_calculator::catalog::test_catalog().projection_label_definitions;
+    let mut catalog = test_catalog().projection_label_definitions;
     seed.sort_by(|a, b| {
         a.label_family
             .cmp(&b.label_family)

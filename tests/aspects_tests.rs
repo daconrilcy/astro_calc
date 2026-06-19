@@ -1,6 +1,6 @@
 mod common;
 
-use astral_calculator::aspects::{canonical_aspect_orb_deg, detect_aspects};
+use astral_calculator::astrology::aspects::{canonical_aspect_orb_deg, detect_aspects};
 use astral_calculator::domain::AspectDefinition;
 use astral_calculator::domain::ObjectPositionFact;
 use astral_calculator::runtime::compat::validate_aspect_definitions;

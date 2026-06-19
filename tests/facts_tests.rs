@@ -1,4 +1,4 @@
-use astral_calculator::facts::{
+use astral_calculator::shared::astro_math::{
     arc_contains, shortest_angular_distance, zodiac_slot_for_longitude,
 };
 

@@ -12,7 +12,7 @@ const SCHEMA_PATH: &str = "../contracts/calculator/natal_structured_v14.schema.j
 const PAYLOAD_UNDER_TEST_ENV: &str = "NATAL_V14_SCHEMA_PAYLOAD_PATH";
 
 fn projection_reason_definitions() -> Vec<astral_calculator::domain::ProjectionReasonDefinition> {
-    astral_calculator::catalog::test_catalog().projection_reason_definitions
+    astral_calculator::features::natal::catalog::test_catalog().projection_reason_definitions
 }
 
 fn canonical_house_axis_references() -> Vec<astral_calculator::domain::HouseAxisReference> {

@@ -1,7 +1,7 @@
 use chrono::TimeZone;
 
 use astral_calculator::domain::{NatalChartInput, RuntimeOptions};
-use astral_calculator::idempotency::{advisory_lock_key, idempotency_key, input_hash};
+use astral_calculator::shared::idempotency::{advisory_lock_key, idempotency_key, input_hash};
 
 fn input() -> NatalChartInput {
     NatalChartInput {
@@ -27,12 +27,12 @@ fn client_idempotency_key_changes_hash() {
     let mut without_key = input();
     without_key.client_idempotency_key = None;
 
-    let key_a = astral_calculator::idempotency::idempotency_key(
+    let key_a = astral_calculator::shared::idempotency::idempotency_key(
         &with_key,
         &astral_calculator::domain::RuntimeOptions::default(),
     )
     .expect("key");
-    let key_b = astral_calculator::idempotency::idempotency_key(
+    let key_b = astral_calculator::shared::idempotency::idempotency_key(
         &without_key,
         &astral_calculator::domain::RuntimeOptions::default(),
     )
