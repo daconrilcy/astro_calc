@@ -7,7 +7,9 @@ use std::sync::Arc;
 use async_trait::async_trait;
 
 use crate::application::calculation_references::load_calculation_reference_data;
-use crate::application::ports::{HoroscopeCatalog, NatalCalculationStore, ReferenceCatalog};
+use crate::application::ports::{
+    HoroscopeCatalog, NatalCalculationStore, NatalReferenceStore, ReferenceSystemResolver,
+};
 use crate::astrology::ephemeris::EphemerisEngine;
 use crate::features::horoscope::application::HoroscopeCapability;
 use crate::features::horoscope::{
@@ -30,7 +32,7 @@ impl<C, H, R, E> HoroscopeService<C, H, R, E>
 where
     C: NatalCalculationStore,
     H: HoroscopeCatalog,
-    R: ReferenceCatalog,
+    R: ReferenceSystemResolver + NatalReferenceStore,
     E: EphemerisEngine,
 {
     /// Fonction new.
@@ -238,7 +240,7 @@ impl<C, H, R, E> HoroscopeCapability for HoroscopeService<C, H, R, E>
 where
     C: NatalCalculationStore + Send + Sync,
     H: HoroscopeCatalog + Send + Sync,
-    R: ReferenceCatalog + Send + Sync,
+    R: ReferenceSystemResolver + NatalReferenceStore + Send + Sync,
     E: EphemerisEngine + Send + Sync,
 {
     async fn calculate_daily(

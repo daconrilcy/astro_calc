@@ -1,6 +1,6 @@
 //! Module astral_calculator\src\engine\application\runtime_facade_service.rs du moteur astral_calculator.
 
-use crate::application::ports::{ProjectionCatalog, ReferenceCatalog};
+use crate::application::ports::{NatalReferenceStore, ProjectionCatalog, ReferenceSystemResolver};
 use crate::domain::{BasicPayload, NatalChartInput};
 use crate::engine::{
     build_engine_response, validate_and_resolve_request, validate_request_early,
@@ -32,7 +32,7 @@ where
     S: SimplifiedNatalCapability,
     H: HoroscopeCapability,
     L: ProjectionCatalog,
-    R: ReferenceCatalog + Clone,
+    R: ReferenceSystemResolver + NatalReferenceStore + Clone,
 {
     /// Fonction new.
     pub fn new(natal: N, simplified: S, horoscope: H, projections: L, references: R) -> Self {

@@ -287,6 +287,36 @@ fn application_layer_does_not_import_feature_modules() {
 }
 
 #[test]
+fn services_do_not_depend_on_reference_catalog_composite_trait() {
+    let root = workspace_root().join("astral_calculator/src");
+    for restricted_root in [
+        root.join("engine/application"),
+        root.join("features/horoscope/application"),
+        root.join("features/simplified/application"),
+        root.join("features/simplified/service.rs"),
+    ] {
+        if restricted_root.is_dir() {
+            for file in collect_rs_files(&restricted_root) {
+                let content = read(&file);
+                assert!(
+                    !content.contains("ReferenceCatalog"),
+                    "{} still depends on broad ReferenceCatalog; use narrow ports instead",
+                    file.display()
+                );
+            }
+            continue;
+        }
+
+        let content = read(&restricted_root);
+        assert!(
+            !content.contains("ReferenceCatalog"),
+            "{} still depends on broad ReferenceCatalog; use narrow ports instead",
+            restricted_root.display()
+        );
+    }
+}
+
+#[test]
 fn simplified_service_does_not_hard_code_reference_system_ids() {
     let path = workspace_root().join("astral_calculator/src/features/simplified/service.rs");
     let content = read(&path);
@@ -580,9 +610,13 @@ fn calculator_http_rename_and_gateway_decoupling_reviews_are_closed() {
         "docs/reviews/astral_calculator_refactor/REV-PROJECTION-PORTS-SIMPLIFIED-2026-06-19.md",
         "docs/reviews/astral_calculator_refactor/REV-PROJECTION-PORTS-SIMPLIFIED-2026-06-19-followup-1.md",
         "docs/reviews/astral_calculator_refactor/REV-PROJECTION-PORTS-SIMPLIFIED-2026-06-19-followup-2.md",
+        "docs/reviews/astral_calculator_refactor/REV-REFERENCE-PORT-TIGHTENING-2026-06-19.md",
+        "docs/reviews/astral_calculator_refactor/REV-REFERENCE-PORT-TIGHTENING-2026-06-19-followup-1.md",
         "docs/reviews/astral_calculator_refactor_feature_boundaries/REV-PROJECTION-PORTS-SIMPLIFIED-2026-06-19.md",
         "docs/reviews/astral_calculator_refactor_feature_boundaries/REV-PROJECTION-PORTS-SIMPLIFIED-2026-06-19-followup-1.md",
         "docs/reviews/astral_calculator_refactor_feature_boundaries/REV-PROJECTION-PORTS-SIMPLIFIED-2026-06-19-followup-2.md",
+        "docs/reviews/astral_calculator_refactor_feature_boundaries/REV-REFERENCE-PORT-TIGHTENING-2026-06-19.md",
+        "docs/reviews/astral_calculator_refactor_feature_boundaries/REV-REFERENCE-PORT-TIGHTENING-2026-06-19-followup-1.md",
     ] {
         let path = root.join(review_path);
         assert!(path.exists(), "missing review artifact {}", path.display());

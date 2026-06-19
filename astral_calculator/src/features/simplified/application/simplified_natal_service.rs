@@ -5,7 +5,9 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use crate::application::ports::{ReferenceCatalog, SimplifiedCatalogStore};
+use crate::application::ports::{
+    NatalReferenceStore, ReferenceSystemResolver, SimplifiedCatalogStore,
+};
 use crate::astrology::ephemeris::EphemerisEngine;
 use crate::features::simplified::application::SimplifiedNatalCapability;
 use crate::features::simplified::{
@@ -22,7 +24,7 @@ pub struct SimplifiedNatalService<R, S, E> {
 
 impl<R, S, E> SimplifiedNatalService<R, S, E>
 where
-    R: ReferenceCatalog,
+    R: ReferenceSystemResolver + NatalReferenceStore,
     S: SimplifiedCatalogStore,
     E: EphemerisEngine,
 {
@@ -55,7 +57,7 @@ where
 #[async_trait]
 impl<R, S, E> SimplifiedNatalCapability for SimplifiedNatalService<R, S, E>
 where
-    R: ReferenceCatalog + Send + Sync,
+    R: ReferenceSystemResolver + NatalReferenceStore + Send + Sync,
     S: SimplifiedCatalogStore + Send + Sync,
     E: EphemerisEngine + Send + Sync,
 {

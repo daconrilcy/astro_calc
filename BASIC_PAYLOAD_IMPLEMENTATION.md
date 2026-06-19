@@ -4,9 +4,10 @@
 - Added the canonical application loader `application::calculation_references::load_calculation_reference_data(...)` and migrated `natal`, `horoscope`, and `simplified` to reuse one `CalculationReferenceData` assembly path instead of rebuilding it locally.
 - Hardened horoscope period calculation with `try_calculate_horoscope_period_from_transits_with_aspects(...) -> Result<..., RuntimeError>`; `HoroscopeService::calculate_period` now returns a controlled runtime error instead of relying on a `panic!` path.
 - Reduced risky canonical-id assumptions by storing DB-resolved tropical/geocentric ids inside `CalculationReferenceData`, so Swiss Ephemeris validation no longer assumes `id=1`.
+- Completed the pending service-by-service port tightening for this wave: `engine/application`, `features/horoscope/application`, and `features/simplified` no longer depend on the broad `ReferenceCatalog` composite trait and now bind directly to the smaller reference ports they actually use.
 - Invariants: no JSON public-contract change; no new `domain -> infra` dependency; one shared Swiss Ephemeris lock only; horoscope runtime path must not `panic!`; calculation reference data stays DB-backed and assembled in `application/`.
-- Verification: `cargo test -p astral_calculator --no-run`; `cargo test -p astral_calculator`; `cargo test -p astral_calculator_http --test astral_calculator_http_tests`; static scans `rg -n "panic!" astral_calculator/src/features/horoscope` and `rg -n "swiss_ephemeris_lock|OnceLock<Mutex"` on calculator sources.
-- Limits not addressed: broader migration of all existing fake/test ports to the new small traits remains intentionally transitional; the historical pure wrapper `calculate_horoscope_period_from_transits_with_aspects(...)` is still kept for compatibility and still expects validated callers.
+- Verification: `cargo test -p astral_calculator --no-run`; `cargo test -p astral_calculator`; `cargo test -p astral_calculator_http --test astral_calculator_http_tests`; `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`; static scans `rg -n "panic!" astral_calculator/src/features/horoscope` and `rg -n "swiss_ephemeris_lock|OnceLock<Mutex"` on calculator sources.
+- Limits not addressed: the historical pure wrapper `calculate_horoscope_period_from_transits_with_aspects(...)` is still kept for compatibility and still expects validated callers.
 
 # 2026-06-19 - `astral_calculator` maintainability and feature-boundary refactor wave
 

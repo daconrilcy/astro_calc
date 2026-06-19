@@ -12,7 +12,9 @@ use super::resolve::{
 };
 use super::response::{AstroSimplifiedNatalResponse, RECOMMENDED_SIMPLIFIED_PROFILE_CODE};
 use crate::application::calculation_references::load_default_calculation_reference_data;
-use crate::application::ports::{ReferenceCatalog, SimplifiedCatalogStore};
+use crate::application::ports::{
+    NatalReferenceStore, ReferenceSystemResolver, SimplifiedCatalogStore,
+};
 use crate::astrology::aspects::detect_aspects;
 use crate::astrology::ephemeris::EphemerisEngine;
 use crate::astrology::validation::validate_calculation_references;
@@ -29,7 +31,7 @@ pub async fn calculate_simplified_natal<R, S, E>(
     request: AstroSimplifiedNatalRequest,
 ) -> Result<AstroSimplifiedNatalResponse, RuntimeError>
 where
-    R: ReferenceCatalog,
+    R: ReferenceSystemResolver + NatalReferenceStore,
     S: SimplifiedCatalogStore,
     E: EphemerisEngine,
 {
