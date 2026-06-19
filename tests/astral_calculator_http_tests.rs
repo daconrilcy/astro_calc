@@ -11,6 +11,7 @@ use astral_calculator::features::horoscope::{
     calculate_horoscope_period_from_transits_with_aspects, calculate_horoscope_period_natal,
     calculate_horoscope_period_natal_from_positions,
     calculate_horoscope_period_natal_from_transits, normalize_horoscope_period_request_utc,
+    try_calculate_horoscope_period_from_transits_with_aspects,
     HoroscopeCalculationRequest, HoroscopeCalculationSlotRequest, HoroscopePeriod,
     HoroscopePeriodCalculationRequest, HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE,
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
@@ -277,6 +278,27 @@ fn horoscope_period_calculator_request_rejects_snapshot_outside_period() {
 
     let err = normalize_horoscope_period_request_utc(request).unwrap_err();
     assert!(err.contains("snapshot outside period"));
+}
+
+#[test]
+fn horoscope_period_try_calculator_returns_error_for_invalid_request() {
+    let mut request = period_calculator_request();
+    request.period_resolution["end_datetime_utc"] =
+        serde_json::json!("2026-06-06T22:00:00+00:00");
+
+    let err = try_calculate_horoscope_period_from_transits_with_aspects(
+        request,
+        &sample_natal_positions(),
+        &[],
+        8.0,
+        &[],
+        &[],
+    )
+    .expect_err("invalid request should return an error");
+
+    assert!(err
+        .to_string()
+        .contains("invalid horoscope period calculation request"));
 }
 
 #[test]

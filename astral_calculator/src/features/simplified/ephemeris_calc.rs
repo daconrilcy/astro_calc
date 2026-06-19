@@ -2,8 +2,6 @@
 
 #[cfg(feature = "swisseph-engine")]
 use std::path::Path;
-#[cfg(feature = "swisseph-engine")]
-use std::sync::{Mutex, OnceLock};
 
 use chrono::{DateTime, Utc};
 
@@ -41,33 +39,25 @@ pub fn sign_code_at_jd(
     use crate::astrology::zodiac::zodiac_slot_for_longitude;
     use swiss_eph::safe::{calc_ut, set_ephe_path, CalcFlags};
 
-    let _guard = swiss_ephemeris_lock()
-        .lock()
-        .map_err(|_| RuntimeError::Ephemeris("Swiss Ephemeris lock poisoned".into()))?;
-    set_ephe_path(
-        ephemeris_path
-            .to_str()
-            .ok_or_else(|| RuntimeError::Ephemeris("invalid ephemeris path".into()))?,
-    );
+    crate::astrology::swisseph_runtime::with_swiss_ephemeris_lock(|| {
+        set_ephe_path(
+            ephemeris_path
+                .to_str()
+                .ok_or_else(|| RuntimeError::Ephemeris("invalid ephemeris path".into()))?,
+        );
 
-    let position = calc_ut(jd_ut, swe_id, CalcFlags::new().with_swiss_ephemeris().raw())
-        .map_err(|error| RuntimeError::Ephemeris(error.to_string()))?;
+        let position = calc_ut(jd_ut, swe_id, CalcFlags::new().with_swiss_ephemeris().raw())
+            .map_err(|error| RuntimeError::Ephemeris(error.to_string()))?;
 
-    let longitude = normalize_degrees(position.longitude);
-    let slot = zodiac_slot_for_longitude(longitude);
-    let sign = signs
-        .iter()
-        .find(|sign| sign.id == slot)
-        .ok_or_else(|| RuntimeError::Ephemeris(format!("missing sign for slot {slot}")))?;
+        let longitude = normalize_degrees(position.longitude);
+        let slot = zodiac_slot_for_longitude(longitude);
+        let sign = signs
+            .iter()
+            .find(|sign| sign.id == slot)
+            .ok_or_else(|| RuntimeError::Ephemeris(format!("missing sign for slot {slot}")))?;
 
-    Ok((sign.code.clone(), longitude))
-}
-
-#[cfg(feature = "swisseph-engine")]
-/// Fonction swiss_ephemeris_lock.
-fn swiss_ephemeris_lock() -> &'static Mutex<()> {
-    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-    LOCK.get_or_init(|| Mutex::new(()))
+        Ok((sign.code.clone(), longitude))
+    })
 }
 
 #[cfg(not(feature = "swisseph-engine"))]

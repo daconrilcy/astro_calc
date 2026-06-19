@@ -2014,6 +2014,8 @@ fn sect_affinity(
 
 fn reference_data() -> CalculationReferenceData {
     CalculationReferenceData {
+        tropical_zodiacal_reference_system_id: 1,
+        geocentric_coordinate_reference_system_id: 1,
         signs: (1..=12)
             .map(|id| SignReference {
                 id,

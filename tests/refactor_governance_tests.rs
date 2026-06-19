@@ -942,6 +942,44 @@ fn horoscope_runtime_does_not_embed_supported_object_catalog() {
 }
 
 #[test]
+fn swiss_ephemeris_lock_is_centralized() {
+    let root = workspace_root().join("astral_calculator/src");
+    let canonical_runtime = root.join("astrology/swisseph_runtime.rs");
+    let canonical_runtime_text = read(&canonical_runtime);
+    assert!(
+        canonical_runtime_text.contains("OnceLock<Mutex"),
+        "{} must own the canonical Swiss Ephemeris lock",
+        canonical_runtime.display()
+    );
+
+    for file in collect_rs_files(&root) {
+        if file == canonical_runtime {
+            continue;
+        }
+        let content = read(&file);
+        assert!(
+            !content.contains("fn swiss_ephemeris_lock")
+                && !content.contains("OnceLock<Mutex"),
+            "{} reintroduces a local Swiss Ephemeris lock; use astrology::swisseph_runtime",
+            file.display()
+        );
+    }
+}
+
+#[test]
+fn horoscope_runtime_has_no_panic_paths() {
+    let root = workspace_root().join("astral_calculator/src/features/horoscope");
+    for file in collect_rs_files(&root) {
+        let content = read(&file);
+        assert!(
+            !content.contains("panic!"),
+            "{} contains panic! in horoscope runtime path",
+            file.display()
+        );
+    }
+}
+
+#[test]
 fn calculator_refactor_plan_reviews_are_closed() {
     let root = workspace_root();
     for review_path in [

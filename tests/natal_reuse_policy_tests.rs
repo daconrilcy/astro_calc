@@ -8,8 +8,9 @@ use serde_json::json;
 
 use astral_calculator::application::ports::{
     CalculationAttempt, CalculationAttemptStore, CalculationFactStore,
-    CalculationTransactionManager, LocalizationCatalog, MajorAspectFamilyReference,
-    NatalReferenceStore, PayloadCatalogStore, PayloadStore, ReferenceSystemResolver, SignalStore,
+    CalculationReferenceLoader, CalculationTransactionManager, LocalizationCatalog,
+    MajorAspectFamilyReference, NatalReferenceStore, PayloadCatalogStore, PayloadStore,
+    ReferenceSystemLookup, ReferenceSystemResolver, ReferenceVersionProvider, SignalStore,
 };
 use astral_calculator::astrology::ephemeris::EphemerisEngine;
 use astral_calculator::domain::{
@@ -261,7 +262,7 @@ struct FakeReferenceStore {
 }
 
 #[async_trait]
-impl ReferenceSystemResolver for FakeReferenceStore {
+impl ReferenceSystemLookup for FakeReferenceStore {
     async fn zodiacal_reference_system_id_by_key(&self, _key: &str) -> Result<i32, RuntimeError> {
         Ok(1)
     }
@@ -273,7 +274,10 @@ impl ReferenceSystemResolver for FakeReferenceStore {
     async fn house_system_id_by_code(&self, _code: &str) -> Result<i32, RuntimeError> {
         Ok(1)
     }
+}
 
+#[async_trait]
+impl ReferenceSystemResolver for FakeReferenceStore {
     async fn zodiacal_reference_system_display_name(
         &self,
         _id: i32,
@@ -299,37 +303,14 @@ impl ReferenceSystemResolver for FakeReferenceStore {
 }
 
 #[async_trait]
-impl NatalReferenceStore for FakeReferenceStore {
+impl ReferenceVersionProvider for FakeReferenceStore {
     async fn default_reference_version_id(&self) -> Result<i32, RuntimeError> {
         Ok(1)
     }
+}
 
-    async fn active_chart_objects(
-        &self,
-        _reference_version_id: i32,
-    ) -> Result<Vec<ChartObject>, RuntimeError> {
-        Ok(vec![
-            chart_object(11, "ascendant", Some("angle"), true),
-            chart_object(12, "descendant", Some("angle"), true),
-            chart_object(13, "midheaven", Some("angle"), true),
-            chart_object(14, "imum_coeli", Some("angle"), true),
-            chart_object(5, "mars", Some("planet"), false),
-        ])
-    }
-
-    async fn aspect_definitions(&self) -> Result<Vec<AspectDefinition>, RuntimeError> {
-        Ok(major_aspect_definitions_from_json_db_seed())
-    }
-
-    async fn major_aspect_family_reference(
-        &self,
-    ) -> Result<MajorAspectFamilyReference, RuntimeError> {
-        Ok(MajorAspectFamilyReference {
-            expected_aspect_count: major_aspect_family_expected_count_from_json_db_seed() as i32,
-            max_default_orb_deg: major_aspect_family_max_default_orb_deg_from_json_db_seed(),
-        })
-    }
-
+#[async_trait]
+impl CalculationReferenceLoader for FakeReferenceStore {
     async fn sign_references(&self) -> Result<Vec<SignReference>, RuntimeError> {
         Ok((1..=12)
             .map(|id| SignReference {
@@ -394,6 +375,35 @@ impl NatalReferenceStore for FakeReferenceStore {
             angle_reference(3, "mc", Some("ic"), 10, 13),
             angle_reference(4, "ic", Some("mc"), 4, 14),
         ])
+    }
+}
+
+#[async_trait]
+impl NatalReferenceStore for FakeReferenceStore {
+    async fn active_chart_objects(
+        &self,
+        _reference_version_id: i32,
+    ) -> Result<Vec<ChartObject>, RuntimeError> {
+        Ok(vec![
+            chart_object(11, "ascendant", Some("angle"), true),
+            chart_object(12, "descendant", Some("angle"), true),
+            chart_object(13, "midheaven", Some("angle"), true),
+            chart_object(14, "imum_coeli", Some("angle"), true),
+            chart_object(5, "mars", Some("planet"), false),
+        ])
+    }
+
+    async fn aspect_definitions(&self) -> Result<Vec<AspectDefinition>, RuntimeError> {
+        Ok(major_aspect_definitions_from_json_db_seed())
+    }
+
+    async fn major_aspect_family_reference(
+        &self,
+    ) -> Result<MajorAspectFamilyReference, RuntimeError> {
+        Ok(MajorAspectFamilyReference {
+            expected_aspect_count: major_aspect_family_expected_count_from_json_db_seed() as i32,
+            max_default_orb_deg: major_aspect_family_max_default_orb_deg_from_json_db_seed(),
+        })
     }
 
     async fn domicile_ruler_references(

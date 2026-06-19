@@ -87,10 +87,14 @@ pub struct CalculationAttempt {
 }
 
 #[async_trait]
-pub trait ReferenceSystemResolver: Send + Sync {
+pub trait ReferenceSystemLookup: Send + Sync {
     async fn zodiacal_reference_system_id_by_key(&self, key: &str) -> Result<i32, RuntimeError>;
     async fn coordinate_reference_system_id_by_key(&self, key: &str) -> Result<i32, RuntimeError>;
     async fn house_system_id_by_code(&self, code: &str) -> Result<i32, RuntimeError>;
+}
+
+#[async_trait]
+pub trait ReferenceSystemResolver: ReferenceSystemLookup + Send + Sync {
     async fn zodiacal_reference_system_display_name(&self, id: i32)
         -> Result<String, RuntimeError>;
     async fn coordinate_reference_system_display_name(
@@ -101,16 +105,12 @@ pub trait ReferenceSystemResolver: Send + Sync {
 }
 
 #[async_trait]
-pub trait NatalReferenceStore: Send + Sync {
+pub trait ReferenceVersionProvider: Send + Sync {
     async fn default_reference_version_id(&self) -> Result<i32, RuntimeError>;
-    async fn active_chart_objects(
-        &self,
-        reference_version_id: i32,
-    ) -> Result<Vec<ChartObject>, RuntimeError>;
-    async fn aspect_definitions(&self) -> Result<Vec<AspectDefinition>, RuntimeError>;
-    async fn major_aspect_family_reference(
-        &self,
-    ) -> Result<MajorAspectFamilyReference, RuntimeError>;
+}
+
+#[async_trait]
+pub trait CalculationReferenceLoader: Send + Sync {
     async fn sign_references(&self) -> Result<Vec<crate::domain::SignReference>, RuntimeError>;
     async fn house_references(&self) -> Result<Vec<crate::domain::HouseReference>, RuntimeError>;
     async fn motion_state_references(
@@ -122,6 +122,20 @@ pub trait NatalReferenceStore: Send + Sync {
     async fn angle_point_references(
         &self,
     ) -> Result<Vec<crate::domain::AnglePointReference>, RuntimeError>;
+}
+
+#[async_trait]
+pub trait NatalReferenceStore:
+    ReferenceVersionProvider + CalculationReferenceLoader + Send + Sync
+{
+    async fn active_chart_objects(
+        &self,
+        reference_version_id: i32,
+    ) -> Result<Vec<ChartObject>, RuntimeError>;
+    async fn aspect_definitions(&self) -> Result<Vec<AspectDefinition>, RuntimeError>;
+    async fn major_aspect_family_reference(
+        &self,
+    ) -> Result<MajorAspectFamilyReference, RuntimeError>;
     async fn domicile_ruler_references(
         &self,
         reference_version_id: i32,

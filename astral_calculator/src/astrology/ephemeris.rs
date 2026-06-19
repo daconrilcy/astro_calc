@@ -2,8 +2,6 @@
 //! bruts.
 
 use std::path::{Path, PathBuf};
-#[cfg(feature = "swisseph-engine")]
-use std::sync::{Mutex, OnceLock};
 
 #[cfg(feature = "swisseph-engine")]
 use crate::domain::{AnglePointReference, HouseReference, MotionStateReference, SignReference};
@@ -88,150 +86,146 @@ impl EphemerisEngine for SwissEphemerisEngine {
         };
         use swiss_eph::SE_EQU2HOR;
 
-        validate_supported_reference_systems(input)?;
-        let _guard = swiss_ephemeris_lock()
-            .lock()
-            .map_err(|_| RuntimeError::Ephemeris("Swiss Ephemeris lock poisoned".to_string()))?;
-        set_ephe_path(
-            self.ephemeris_path
-                .to_str()
-                .ok_or_else(|| RuntimeError::Ephemeris("invalid ephemeris path".to_string()))?,
-        );
-        let observer_altitude_m = input.altitude_m.unwrap_or(0.0);
-        set_topo(input.longitude_deg, input.latitude_deg, observer_altitude_m);
+        validate_supported_reference_systems(input, references)?;
+        crate::astrology::swisseph_runtime::with_swiss_ephemeris_lock(|| {
+            set_ephe_path(
+                self.ephemeris_path
+                    .to_str()
+                    .ok_or_else(|| RuntimeError::Ephemeris("invalid ephemeris path".to_string()))?,
+            );
+            let observer_altitude_m = input.altitude_m.unwrap_or(0.0);
+            set_topo(input.longitude_deg, input.latitude_deg, observer_altitude_m);
 
-        let jd_ut = julian_day_ut(input)?;
-        let geopos = GeoPos {
-            longitude: input.longitude_deg,
-            latitude: input.latitude_deg,
-            altitude: observer_altitude_m,
-        };
-        let house_code = house_system_code(&house_system.calculation_engine_code)?;
-        let cusps_raw = houses(jd_ut, input.latitude_deg, input.longitude_deg, house_code)
-            .map_err(|error| RuntimeError::Ephemeris(error.to_string()))?;
-
-        let mut house_cusps = Vec::with_capacity(12);
-        for house_number in 1..=12 {
-            let longitude = normalize_degrees(cusps_raw.cusps[(house_number - 1) as usize]);
-            let house = house_reference_for_number(&references.houses, house_number)?;
-            let sign = sign_reference_for_zodiac_slot(
-                &references.signs,
-                zodiac_slot_for_longitude(longitude),
-            )?;
-            house_cusps.push(HouseCuspFact {
-                house_id: house.id,
-                house_number,
-                sign_id: sign.id,
-                longitude_deg: round4(longitude),
-            });
-        }
-
-        let ascendant_longitude = house_cusps
-            .first()
-            .map(|cusp| cusp.longitude_deg)
-            .unwrap_or(0.0);
-        let mut positions = Vec::new();
-
-        add_angle_positions(
-            input,
-            chart_objects,
-            references,
-            &house_cusps,
-            &mut positions,
-            cusps_raw.ascendant,
-            cusps_raw.mc,
-        )?;
-
-        for object in chart_objects
-            .iter()
-            .filter(|object| object.swe_id.is_some())
-        {
-            let position = calc_ut(
-                jd_ut,
-                object.swe_id.unwrap(),
-                CalcFlags::new().with_swiss_ephemeris().with_speed().raw(),
-            )
-            .map_err(|error| RuntimeError::Ephemeris(error.to_string()))?;
-            let longitude = round4(normalize_degrees(position.longitude));
-            let latitude = round4(position.latitude);
-            let speed = round4(position.longitude_speed);
-            let house_number = if house_system.calculation_engine_code == "whole_sign" {
-                Some(whole_sign_house_number(ascendant_longitude, longitude))
-            } else {
-                house_number_from_cusps(longitude, &house_cusps)
+            let jd_ut = julian_day_ut(input)?;
+            let geopos = GeoPos {
+                longitude: input.longitude_deg,
+                latitude: input.latitude_deg,
+                altitude: observer_altitude_m,
             };
-            let sign = sign_reference_for_zodiac_slot(
-                &references.signs,
-                zodiac_slot_for_longitude(longitude),
+            let house_code = house_system_code(&house_system.calculation_engine_code)?;
+            let cusps_raw = houses(jd_ut, input.latitude_deg, input.longitude_deg, house_code)
+                .map_err(|error| RuntimeError::Ephemeris(error.to_string()))?;
+
+            let mut house_cusps = Vec::with_capacity(12);
+            for house_number in 1..=12 {
+                let longitude = normalize_degrees(cusps_raw.cusps[(house_number - 1) as usize]);
+                let house = house_reference_for_number(&references.houses, house_number)?;
+                let sign = sign_reference_for_zodiac_slot(
+                    &references.signs,
+                    zodiac_slot_for_longitude(longitude),
+                )?;
+                house_cusps.push(HouseCuspFact {
+                    house_id: house.id,
+                    house_number,
+                    sign_id: sign.id,
+                    longitude_deg: round4(longitude),
+                });
+            }
+
+            let ascendant_longitude = house_cusps
+                .first()
+                .map(|cusp| cusp.longitude_deg)
+                .unwrap_or(0.0);
+            let mut positions = Vec::new();
+
+            add_angle_positions(
+                input,
+                chart_objects,
+                references,
+                &house_cusps,
+                &mut positions,
+                cusps_raw.ascendant,
+                cusps_raw.mc,
             )?;
-            let house = house_number
-                .map(|number| house_reference_for_number(&references.houses, number))
-                .transpose()?;
-            let motion_state = motion_state_for_speed(Some(speed), &references.motion_states);
-            let motion_state_id = motion_state.map(|state| state.id);
-            let equatorial_position = calc_ut(
-                jd_ut,
-                object.swe_id.unwrap(),
-                CalcFlags::new()
-                    .with_swiss_ephemeris()
-                    .with_speed()
-                    .with_equatorial()
-                    .with_topocentric()
-                    .raw(),
-            )
-            .map_err(|error| RuntimeError::Ephemeris(error.to_string()))?;
-            let (_azimuth_deg, altitude_deg) =
-                azimuth_altitude(jd_ut, SE_EQU2HOR, geopos, equatorial_position)
-                    .map_err(|error| RuntimeError::Ephemeris(error.to_string()))?;
-            let altitude_deg = round4(altitude_deg);
-            let horizon_position_code = horizon_position_code_for_altitude(altitude_deg);
-            let horizon_position_id = horizon_position_id(references, horizon_position_code)?;
 
-            positions.push(ObjectPositionFact {
-                chart_object_id: object.id,
-                object_code: object.code.clone(),
-                object_name: object.name.clone(),
-                zodiacal_reference_system_id: input.zodiacal_reference_system_id,
-                coordinate_reference_system_id: input.coordinate_reference_system_id,
-                sign_id: sign.id,
-                sign_code: sign.code.clone(),
-                sign_name: sign.name.clone(),
-                house_id: house.map(|house| house.id),
-                house_number,
-                house_name: house.map(|house| house.name.clone()),
-                motion_state_id,
-                horizon_position_id: Some(horizon_position_id),
-                longitude_deg: longitude,
-                latitude_deg: Some(latitude),
-                apparent_speed_deg_per_day: Some(speed),
-                altitude_deg: Some(altitude_deg),
-                is_visible: Some(matches!(
-                    horizon_position_code,
-                    "above_horizon" | "on_horizon"
-                )),
-                facts_json: Some(json!({
-                    "distance": position.distance,
-                    "speed_in_latitude": position.latitude_speed,
-                    "speed_in_distance": position.distance_speed,
-                    "visibility_context": {
-                        "horizon_position": horizon_position_code,
-                        "source": "calculated_altitude"
-                    },
-                    "sign_context": sign_context(sign),
-                    "house_modality": house.and_then(house_modality),
-                    "house_context": house.map(house_context),
-                    "object_context": object_context(object),
-                    "motion_context": motion_state.map(motion_context)
-                })),
-            });
-        }
+            for object in chart_objects.iter().filter(|object| object.swe_id.is_some()) {
+                let position = calc_ut(
+                    jd_ut,
+                    object.swe_id.unwrap(),
+                    CalcFlags::new().with_swiss_ephemeris().with_speed().raw(),
+                )
+                .map_err(|error| RuntimeError::Ephemeris(error.to_string()))?;
+                let longitude = round4(normalize_degrees(position.longitude));
+                let latitude = round4(position.latitude);
+                let speed = round4(position.longitude_speed);
+                let house_number = if house_system.calculation_engine_code == "whole_sign" {
+                    Some(whole_sign_house_number(ascendant_longitude, longitude))
+                } else {
+                    house_number_from_cusps(longitude, &house_cusps)
+                };
+                let sign = sign_reference_for_zodiac_slot(
+                    &references.signs,
+                    zodiac_slot_for_longitude(longitude),
+                )?;
+                let house = house_number
+                    .map(|number| house_reference_for_number(&references.houses, number))
+                    .transpose()?;
+                let motion_state = motion_state_for_speed(Some(speed), &references.motion_states);
+                let motion_state_id = motion_state.map(|state| state.id);
+                let equatorial_position = calc_ut(
+                    jd_ut,
+                    object.swe_id.unwrap(),
+                    CalcFlags::new()
+                        .with_swiss_ephemeris()
+                        .with_speed()
+                        .with_equatorial()
+                        .with_topocentric()
+                        .raw(),
+                )
+                .map_err(|error| RuntimeError::Ephemeris(error.to_string()))?;
+                let (_azimuth_deg, altitude_deg) =
+                    azimuth_altitude(jd_ut, SE_EQU2HOR, geopos, equatorial_position)
+                        .map_err(|error| RuntimeError::Ephemeris(error.to_string()))?;
+                let altitude_deg = round4(altitude_deg);
+                let horizon_position_code = horizon_position_code_for_altitude(altitude_deg);
+                let horizon_position_id = horizon_position_id(references, horizon_position_code)?;
 
-        let aspects = detect_aspects(&positions, aspects);
+                positions.push(ObjectPositionFact {
+                    chart_object_id: object.id,
+                    object_code: object.code.clone(),
+                    object_name: object.name.clone(),
+                    zodiacal_reference_system_id: input.zodiacal_reference_system_id,
+                    coordinate_reference_system_id: input.coordinate_reference_system_id,
+                    sign_id: sign.id,
+                    sign_code: sign.code.clone(),
+                    sign_name: sign.name.clone(),
+                    house_id: house.map(|house| house.id),
+                    house_number,
+                    house_name: house.map(|house| house.name.clone()),
+                    motion_state_id,
+                    horizon_position_id: Some(horizon_position_id),
+                    longitude_deg: longitude,
+                    latitude_deg: Some(latitude),
+                    apparent_speed_deg_per_day: Some(speed),
+                    altitude_deg: Some(altitude_deg),
+                    is_visible: Some(matches!(
+                        horizon_position_code,
+                        "above_horizon" | "on_horizon"
+                    )),
+                    facts_json: Some(json!({
+                        "distance": position.distance,
+                        "speed_in_latitude": position.latitude_speed,
+                        "speed_in_distance": position.distance_speed,
+                        "visibility_context": {
+                            "horizon_position": horizon_position_code,
+                            "source": "calculated_altitude"
+                        },
+                        "sign_context": sign_context(sign),
+                        "house_modality": house.and_then(house_modality),
+                        "house_context": house.map(house_context),
+                        "object_context": object_context(object),
+                        "motion_context": motion_state.map(motion_context)
+                    })),
+                });
+            }
 
-        Ok(CalculatedChartFacts {
-            positions,
-            house_cusps,
-            aspects,
+            let aspects = detect_aspects(&positions, aspects);
+
+            Ok(CalculatedChartFacts {
+                positions,
+                house_cusps,
+                aspects,
+            })
         })
     }
 
@@ -506,27 +500,22 @@ fn house_reference_for_number(
 }
 
 #[cfg(feature = "swisseph-engine")]
-/// Protège l'accès au moteur Swiss Ephemeris, dont l'état global n'est pas sûr
-/// pour des appels concurrents non coordonnés.
-fn swiss_ephemeris_lock() -> &'static Mutex<()> {
-    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-    LOCK.get_or_init(|| Mutex::new(()))
-}
-
-#[cfg(feature = "swisseph-engine")]
 /// Refuse les référentiels non encore pris en charge par l'implémentation
 /// courante.
-fn validate_supported_reference_systems(input: &NatalChartInput) -> Result<(), RuntimeError> {
-    if input.zodiacal_reference_system_id != 1 {
+fn validate_supported_reference_systems(
+    input: &NatalChartInput,
+    references: &CalculationReferenceData,
+) -> Result<(), RuntimeError> {
+    if input.zodiacal_reference_system_id != references.tropical_zodiacal_reference_system_id {
         return Err(RuntimeError::Ephemeris(format!(
-            "unsupported zodiacal_reference_system_id {}; only tropical (id=1) is implemented",
-            input.zodiacal_reference_system_id
+            "unsupported zodiacal_reference_system_id {}; only tropical is implemented",
+            input.zodiacal_reference_system_id,
         )));
     }
-    if input.coordinate_reference_system_id != 1 {
+    if input.coordinate_reference_system_id != references.geocentric_coordinate_reference_system_id {
         return Err(RuntimeError::Ephemeris(format!(
-            "unsupported coordinate_reference_system_id {}; only geocentric (id=1) is implemented",
-            input.coordinate_reference_system_id
+            "unsupported coordinate_reference_system_id {}; only geocentric is implemented",
+            input.coordinate_reference_system_id,
         )));
     }
     Ok(())

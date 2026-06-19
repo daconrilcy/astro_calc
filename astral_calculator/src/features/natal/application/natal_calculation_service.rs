@@ -3,6 +3,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use crate::application::calculation_references::load_calculation_reference_data;
 use crate::application::ports::{
     CalculationAttempt, CalculationAttemptStore, CalculationFactStore,
     CalculationTransactionManager, LocalizationCatalog, NatalReferenceStore, PayloadCatalogStore,
@@ -224,13 +225,7 @@ where
             major_aspect_family.max_default_orb_deg,
         )?;
         let house_system = self.references.house_system(input.house_system_id).await?;
-        let references = CalculationReferenceData {
-            signs: self.references.sign_references().await?,
-            houses: self.references.house_references().await?,
-            motion_states: self.references.motion_state_references().await?,
-            horizon_positions: self.references.horizon_position_references().await?,
-            angle_points: self.references.angle_point_references().await?,
-        };
+        let references = load_calculation_reference_data(self.references).await?;
         validate_calculation_references(&references)?;
         let domicile_rulers = self
             .references

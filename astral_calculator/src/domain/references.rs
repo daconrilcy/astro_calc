@@ -138,6 +138,8 @@ pub struct InterpretationSignalRow {
 
 /// Structure CalculationReferenceData.
 pub struct CalculationReferenceData {
+    pub tropical_zodiacal_reference_system_id: i32,
+    pub geocentric_coordinate_reference_system_id: i32,
     pub signs: Vec<SignReference>,
     pub houses: Vec<HouseReference>,
     pub motion_states: Vec<MotionStateReference>,

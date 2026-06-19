@@ -13,9 +13,10 @@ use super::models::{
 };
 use super::runtime_queries::RuntimeQueries;
 use crate::application::ports::{
-    HouseSystemRecord, LocalizationCatalog,
+    CalculationReferenceLoader, HouseSystemRecord, LocalizationCatalog,
     MajorAspectFamilyReference as AppMajorAspectFamilyReference, NatalReferenceStore,
-    ReferenceKeyRecord, ReferenceSystemCatalog, ReferenceSystemResolver,
+    ReferenceKeyRecord, ReferenceSystemCatalog, ReferenceSystemLookup, ReferenceSystemResolver,
+    ReferenceVersionProvider,
 };
 use crate::domain::{
     AnglePointReference, AspectDefinition, ChartObject, DomicileRulerReference,
@@ -30,7 +31,7 @@ pub struct ReferenceRepository {
 }
 
 #[async_trait]
-impl ReferenceSystemResolver for ReferenceRepository {
+impl ReferenceSystemLookup for ReferenceRepository {
     async fn zodiacal_reference_system_id_by_key(&self, key: &str) -> Result<i32, RuntimeError> {
         ReferenceRepository::zodiacal_reference_system_id_by_key(self, key).await
     }
@@ -42,7 +43,10 @@ impl ReferenceSystemResolver for ReferenceRepository {
     async fn house_system_id_by_code(&self, code: &str) -> Result<i32, RuntimeError> {
         ReferenceRepository::house_system_id_by_code(self, code).await
     }
+}
 
+#[async_trait]
+impl ReferenceSystemResolver for ReferenceRepository {
     async fn zodiacal_reference_system_display_name(
         &self,
         id: i32,
@@ -63,33 +67,14 @@ impl ReferenceSystemResolver for ReferenceRepository {
 }
 
 #[async_trait]
-impl NatalReferenceStore for ReferenceRepository {
+impl ReferenceVersionProvider for ReferenceRepository {
     async fn default_reference_version_id(&self) -> Result<i32, RuntimeError> {
         ReferenceRepository::default_reference_version_id(self).await
     }
+}
 
-    async fn active_chart_objects(
-        &self,
-        reference_version_id: i32,
-    ) -> Result<Vec<ChartObject>, RuntimeError> {
-        ReferenceRepository::active_chart_objects(self, reference_version_id).await
-    }
-
-    async fn aspect_definitions(&self) -> Result<Vec<AspectDefinition>, RuntimeError> {
-        ReferenceRepository::aspect_definitions(self).await
-    }
-
-    async fn major_aspect_family_reference(
-        &self,
-    ) -> Result<AppMajorAspectFamilyReference, RuntimeError> {
-        ReferenceRepository::major_aspect_family_reference(self)
-            .await
-            .map(|row| AppMajorAspectFamilyReference {
-                expected_aspect_count: row.expected_aspect_count,
-                max_default_orb_deg: row.max_default_orb_deg,
-            })
-    }
-
+#[async_trait]
+impl CalculationReferenceLoader for ReferenceRepository {
     async fn sign_references(&self) -> Result<Vec<SignReference>, RuntimeError> {
         ReferenceRepository::sign_references(self).await
     }
@@ -110,6 +95,31 @@ impl NatalReferenceStore for ReferenceRepository {
 
     async fn angle_point_references(&self) -> Result<Vec<AnglePointReference>, RuntimeError> {
         ReferenceRepository::angle_point_references(self).await
+    }
+}
+
+#[async_trait]
+impl NatalReferenceStore for ReferenceRepository {
+    async fn active_chart_objects(
+        &self,
+        reference_version_id: i32,
+    ) -> Result<Vec<ChartObject>, RuntimeError> {
+        ReferenceRepository::active_chart_objects(self, reference_version_id).await
+    }
+
+    async fn aspect_definitions(&self) -> Result<Vec<AspectDefinition>, RuntimeError> {
+        ReferenceRepository::aspect_definitions(self).await
+    }
+
+    async fn major_aspect_family_reference(
+        &self,
+    ) -> Result<AppMajorAspectFamilyReference, RuntimeError> {
+        ReferenceRepository::major_aspect_family_reference(self)
+            .await
+            .map(|row| AppMajorAspectFamilyReference {
+                expected_aspect_count: row.expected_aspect_count,
+                max_default_orb_deg: row.max_default_orb_deg,
+            })
     }
 
     async fn domicile_ruler_references(

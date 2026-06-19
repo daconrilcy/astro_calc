@@ -11,6 +11,7 @@ use super::resolve::{
     PLANETARY_SCOPE,
 };
 use super::response::{AstroSimplifiedNatalResponse, RECOMMENDED_SIMPLIFIED_PROFILE_CODE};
+use crate::application::calculation_references::load_default_calculation_reference_data;
 use crate::application::ports::{ReferenceCatalog, SimplifiedCatalogStore};
 use crate::astrology::aspects::detect_aspects;
 use crate::astrology::ephemeris::EphemerisEngine;
@@ -54,7 +55,8 @@ where
         ));
     }
 
-    let reference_version_id = repository.default_reference_version_id().await?;
+    let (reference_version_id, references) =
+        load_default_calculation_reference_data(repository).await?;
     let zodiacal_id = repository
         .zodiacal_reference_system_id_by_key(&resolved.zodiac_key)
         .await?;
@@ -68,18 +70,7 @@ where
     let chart_objects = repository
         .active_chart_objects(reference_version_id)
         .await?;
-    let signs = repository.sign_references().await?;
-    let houses = repository.house_references().await?;
-    let motion_states = repository.motion_state_references().await?;
-    let horizon_positions = repository.horizon_position_references().await?;
-    let angle_points = repository.angle_point_references().await?;
-    validate_calculation_references(&crate::domain::CalculationReferenceData {
-        signs: signs.clone(),
-        houses: houses.clone(),
-        motion_states: motion_states.clone(),
-        horizon_positions: horizon_positions.clone(),
-        angle_points: angle_points.clone(),
-    })?;
+    validate_calculation_references(&references)?;
 
     let aspect_definitions = repository.aspect_definitions().await?;
 
@@ -88,7 +79,13 @@ where
             let instant = declared_datetime_utc(&resolved)?.ok_or_else(|| {
                 RuntimeError::InvalidEngineRequest("missing declared datetime".into())
             })?;
-            collect_declared_sign_facts(ephemeris_path, instant, &chart_objects, &signs, &catalog)?
+            collect_declared_sign_facts(
+                ephemeris_path,
+                instant,
+                &chart_objects,
+                &references.signs,
+                &catalog,
+            )?
         }
         _ => {
             let (start, end) = build_uncertainty_window(&resolved, &catalog)?;
@@ -97,7 +94,7 @@ where
                 &resolved,
                 &catalog,
                 &chart_objects,
-                &signs,
+                &references.signs,
                 start,
                 end,
             )?
@@ -122,13 +119,6 @@ where
                 client_idempotency_key: None,
             };
             let house_system = repository.house_system(house_system_id).await?;
-            let references = crate::domain::CalculationReferenceData {
-                signs,
-                houses,
-                motion_states,
-                horizon_positions,
-                angle_points,
-            };
             Some(ephemeris.calculate_chart(
                 &input,
                 &chart_objects,

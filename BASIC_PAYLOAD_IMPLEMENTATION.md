@@ -1,3 +1,13 @@
+# 2026-06-19 - `astral_calculator` refactor Swiss Ephemeris, horoscope period, references
+
+- Centralized Swiss Ephemeris coordination under `astrology::swisseph_runtime`; `astrology::ephemeris` and `features::simplified::ephemeris_calc` now share the same global lock for `set_ephe_path`, `set_topo`, `houses`, `calc_ut`, and `azimuth_altitude`.
+- Added the canonical application loader `application::calculation_references::load_calculation_reference_data(...)` and migrated `natal`, `horoscope`, and `simplified` to reuse one `CalculationReferenceData` assembly path instead of rebuilding it locally.
+- Hardened horoscope period calculation with `try_calculate_horoscope_period_from_transits_with_aspects(...) -> Result<..., RuntimeError>`; `HoroscopeService::calculate_period` now returns a controlled runtime error instead of relying on a `panic!` path.
+- Reduced risky canonical-id assumptions by storing DB-resolved tropical/geocentric ids inside `CalculationReferenceData`, so Swiss Ephemeris validation no longer assumes `id=1`.
+- Invariants: no JSON public-contract change; no new `domain -> infra` dependency; one shared Swiss Ephemeris lock only; horoscope runtime path must not `panic!`; calculation reference data stays DB-backed and assembled in `application/`.
+- Verification: `cargo test -p astral_calculator --no-run`; `cargo test -p astral_calculator`; `cargo test -p astral_calculator_http --test astral_calculator_http_tests`; static scans `rg -n "panic!" astral_calculator/src/features/horoscope` and `rg -n "swiss_ephemeris_lock|OnceLock<Mutex"` on calculator sources.
+- Limits not addressed: broader migration of all existing fake/test ports to the new small traits remains intentionally transitional; the historical pure wrapper `calculate_horoscope_period_from_transits_with_aspects(...)` is still kept for compatibility and still expects validated callers.
+
 # 2026-06-19 - `astral_calculator` maintainability and feature-boundary refactor wave
 
 - Neutralized application ports so `application::ports` no longer imports `features::{natal,simplified,horoscope}` catalog types; the shared catalog records now live in `domain`, with compatibility re-exports preserved at historical feature paths.

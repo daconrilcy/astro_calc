@@ -101,3 +101,7 @@ path = "../tests/position_fact_context_tests.rs"
 [[test]]
 name = "natal_reuse_policy_tests"
 path = "../tests/natal_reuse_policy_tests.rs"
+
+[[test]]
+name = "calculation_reference_loader_tests"
+path = "../tests/calculation_reference_loader_tests.rs"

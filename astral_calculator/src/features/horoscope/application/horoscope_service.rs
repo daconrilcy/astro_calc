@@ -6,13 +6,13 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
+use crate::application::calculation_references::load_calculation_reference_data;
 use crate::application::ports::{HoroscopeCatalog, NatalCalculationStore, ReferenceCatalog};
 use crate::astrology::ephemeris::EphemerisEngine;
-use crate::domain::CalculationReferenceData;
 use crate::features::horoscope::application::HoroscopeCapability;
 use crate::features::horoscope::{
-    calculate_horoscope_daily_from_transits, calculate_horoscope_period_from_transits_with_aspects,
-    normalize_horoscope_period_request_utc, HoroscopeCalculationRequest,
+    calculate_horoscope_daily_from_transits, normalize_horoscope_period_request_utc,
+    try_calculate_horoscope_period_from_transits_with_aspects, HoroscopeCalculationRequest,
     HoroscopeCalculationResponse, HoroscopePeriodCalculationRequest,
     HoroscopePeriodCalculationResponse, HoroscopeSupportedObject,
 };
@@ -75,13 +75,7 @@ where
             .references
             .house_system(natal_input.house_system_id)
             .await?;
-        let references = CalculationReferenceData {
-            signs: self.references.sign_references().await?,
-            houses: self.references.house_references().await?,
-            motion_states: self.references.motion_state_references().await?,
-            horizon_positions: self.references.horizon_position_references().await?,
-            angle_points: self.references.angle_point_references().await?,
-        };
+        let references = load_calculation_reference_data(&self.references).await?;
         let supported_objects = self.horoscope.horoscope_supported_objects().await?;
         if supported_objects.is_empty() {
             return Err(RuntimeError::InvalidRuntimeTable(
@@ -183,13 +177,7 @@ where
             .references
             .house_system(natal_input.house_system_id)
             .await?;
-        let references = CalculationReferenceData {
-            signs: self.references.sign_references().await?,
-            houses: self.references.house_references().await?,
-            motion_states: self.references.motion_state_references().await?,
-            horizon_positions: self.references.horizon_position_references().await?,
-            angle_points: self.references.angle_point_references().await?,
-        };
+        let references = load_calculation_reference_data(&self.references).await?;
         let supported_objects = self.horoscope.horoscope_supported_objects().await?;
         if supported_objects.is_empty() {
             return Err(RuntimeError::InvalidRuntimeTable(
@@ -234,14 +222,14 @@ where
             .into_iter()
             .map(|band| band.max_orb_deg)
             .fold(0.0, f64::max);
-        Ok(calculate_horoscope_period_from_transits_with_aspects(
+        try_calculate_horoscope_period_from_transits_with_aspects(
             request,
             &natal_positions,
             &transit_snapshots,
             period_max_major_aspect_orb_deg,
             &aspect_definitions,
             &theme_mappings,
-        ))
+        )
     }
 }
 

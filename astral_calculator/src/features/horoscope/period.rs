@@ -9,6 +9,7 @@ use crate::astrology::transits::{
 };
 use crate::domain::AspectDefinition;
 use crate::domain::ObjectPositionFact;
+use crate::shared::error::RuntimeError;
 use crate::shared::time::{normalize_rfc3339_utc, parse_rfc3339};
 
 use super::{
@@ -76,9 +77,31 @@ pub fn calculate_horoscope_period_from_transits_with_aspects(
     aspect_definitions: &[AspectDefinition],
     theme_mappings: &[HoroscopeSignalThemeMapping],
 ) -> HoroscopePeriodCalculationResponse {
-    let request = normalize_horoscope_period_request_utc(request).unwrap_or_else(|request| {
-        panic!("invalid horoscope period calculation request: {request}")
-    });
+    try_calculate_horoscope_period_from_transits_with_aspects(
+        request,
+        natal_positions,
+        transit_snapshots,
+        max_major_aspect_orb_deg,
+        aspect_definitions,
+        theme_mappings,
+    )
+    .expect("historical wrapper called with invalid horoscope period calculation request")
+}
+
+/// Fonction try_calculate_horoscope_period_from_transits_with_aspects.
+pub fn try_calculate_horoscope_period_from_transits_with_aspects(
+    request: HoroscopePeriodCalculationRequest,
+    natal_positions: &[ObjectPositionFact],
+    transit_snapshots: &[(String, Vec<ObjectPositionFact>)],
+    max_major_aspect_orb_deg: f64,
+    aspect_definitions: &[AspectDefinition],
+    theme_mappings: &[HoroscopeSignalThemeMapping],
+) -> Result<HoroscopePeriodCalculationResponse, RuntimeError> {
+    let request = normalize_horoscope_period_request_utc(request).map_err(|err| {
+        RuntimeError::InvalidEngineRequest(format!(
+            "invalid horoscope period calculation request: {err}"
+        ))
+    })?;
     let usable_positions = natal_positions
         .iter()
         .filter(|position| is_standard_transit_object(position.object_code.as_str()))
@@ -110,7 +133,7 @@ pub fn calculate_horoscope_period_from_transits_with_aspects(
         .map(|fact| fact.evidence_key.clone())
         .collect::<Vec<_>>();
 
-    HoroscopePeriodCalculationResponse {
+    Ok(HoroscopePeriodCalculationResponse {
         contract_version: "horoscope_period_calculation_response".into(),
         service_code: request.service_code,
         period_resolution: request.period_resolution,
@@ -118,7 +141,7 @@ pub fn calculate_horoscope_period_from_transits_with_aspects(
         snapshots,
         calculation_warnings: Vec::new(),
         evidence_keys,
-    }
+    })
 }
 
 /// Fonction calculate_horoscope_period_natal.

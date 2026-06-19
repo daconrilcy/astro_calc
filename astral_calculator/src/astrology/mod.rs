@@ -15,6 +15,7 @@ pub mod math {
 }
 /// États de mouvement apparent résolus depuis les références runtime.
 pub mod motion;
+pub(crate) mod swisseph_runtime;
 /// Calculs réutilisables de transits et d'aspects transit-vers-natal.
 pub mod transits;
 /// Validation canonique des références de calcul.
