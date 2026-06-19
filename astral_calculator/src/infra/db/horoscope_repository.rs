@@ -10,7 +10,10 @@ use super::models::{
     HoroscopeTimeSlotProfileRow,
 };
 use super::runtime_queries::RuntimeQueries;
-use crate::application::ports::{HoroscopeCatalog, HoroscopeOrbWeightBand};
+use crate::application::ports::{
+    HoroscopeBuilderCatalog, HoroscopeCatalog, HoroscopeOrbWeightBand, HoroscopePeriodProfile,
+    HoroscopeScanProfileDefinition, HoroscopeServiceProfile, HoroscopeTimeSlotProfile,
+};
 use crate::features::horoscope::{HoroscopeSignalThemeMapping, HoroscopeSupportedObject};
 use crate::shared::error::RuntimeError;
 
@@ -51,6 +54,75 @@ impl HoroscopeCatalog for HoroscopeRepository {
             .await?
             .into_iter()
             .map(Into::into)
+            .collect())
+    }
+}
+
+#[async_trait]
+impl HoroscopeBuilderCatalog for HoroscopeRepository {
+    async fn horoscope_service_profiles(
+        &self,
+    ) -> Result<Vec<HoroscopeServiceProfile>, RuntimeError> {
+        Ok(HoroscopeRepository::horoscope_services(self)
+            .await?
+            .into_iter()
+            .map(|row| HoroscopeServiceProfile {
+                service_code: row.service_code,
+                house_system_code: row.house_system_code,
+                period_profile_code: row.period_profile_code,
+                scan_profile_code: row.scan_profile_code,
+            })
+            .collect())
+    }
+
+    async fn horoscope_time_slot_profiles(
+        &self,
+    ) -> Result<Vec<HoroscopeTimeSlotProfile>, RuntimeError> {
+        Ok(HoroscopeRepository::horoscope_time_slot_profiles(self)
+            .await?
+            .into_iter()
+            .map(|row| HoroscopeTimeSlotProfile {
+                service_code: row.service_code,
+                slot_code: row.slot_code,
+                start_local_time: row.start_local_time,
+                end_local_time: row.end_local_time,
+                reference_local_time: row.reference_local_time,
+                sort_order: row.sort_order,
+            })
+            .collect())
+    }
+
+    async fn astral_time_period_profiles(
+        &self,
+    ) -> Result<Vec<HoroscopePeriodProfile>, RuntimeError> {
+        Ok(HoroscopeRepository::astral_time_period_profiles(self)
+            .await?
+            .into_iter()
+            .map(|row| HoroscopePeriodProfile {
+                period_profile_code: row.period_profile_code,
+                resolution_strategy: row.resolution_strategy,
+                duration_days: row.duration_days,
+                week_offset: row.week_offset,
+                included_days: row.included_days,
+                is_enabled: row.is_enabled,
+                sort_order: row.sort_order,
+            })
+            .collect())
+    }
+
+    async fn horoscope_scan_profiles(
+        &self,
+    ) -> Result<Vec<HoroscopeScanProfileDefinition>, RuntimeError> {
+        Ok(HoroscopeRepository::horoscope_scan_profiles(self)
+            .await?
+            .into_iter()
+            .map(|row| HoroscopeScanProfileDefinition {
+                scan_profile_code: row.scan_profile_code,
+                granularity: row.granularity,
+                reference_time_local: row.reference_time_local,
+                expected_snapshots_per_day: row.expected_snapshots_per_day,
+                is_enabled: row.is_enabled,
+            })
             .collect())
     }
 }

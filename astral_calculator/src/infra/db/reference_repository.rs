@@ -13,7 +13,8 @@ use super::models::{
 };
 use super::runtime_queries::RuntimeQueries;
 use crate::application::ports::{
-    MajorAspectFamilyReference as AppMajorAspectFamilyReference, ReferenceCatalog,
+    HouseSystemRecord, MajorAspectFamilyReference as AppMajorAspectFamilyReference,
+    ReferenceCatalog, ReferenceKeyRecord, ReferenceSystemCatalog,
 };
 use crate::domain::{
     AnglePointReference, AspectDefinition, ChartObject, DomicileRulerReference,
@@ -140,6 +141,42 @@ impl ReferenceCatalog for ReferenceRepository {
 
     async fn language_id_for_code(&self, code: &str) -> Result<i32, RuntimeError> {
         ReferenceRepository::language_id_for_code(self, code).await
+    }
+}
+
+#[async_trait]
+impl ReferenceSystemCatalog for ReferenceRepository {
+    async fn zodiacal_reference_systems(&self) -> Result<Vec<ReferenceKeyRecord>, RuntimeError> {
+        Ok(ReferenceRepository::zodiacal_reference_systems(self)
+            .await?
+            .into_iter()
+            .map(|row| ReferenceKeyRecord {
+                id: row.id,
+                key: row.key,
+            })
+            .collect())
+    }
+
+    async fn coordinate_reference_systems(&self) -> Result<Vec<ReferenceKeyRecord>, RuntimeError> {
+        Ok(ReferenceRepository::coordinate_reference_systems(self)
+            .await?
+            .into_iter()
+            .map(|row| ReferenceKeyRecord {
+                id: row.id,
+                key: row.key,
+            })
+            .collect())
+    }
+
+    async fn house_systems(&self) -> Result<Vec<HouseSystemRecord>, RuntimeError> {
+        Ok(ReferenceRepository::house_systems(self)
+            .await?
+            .into_iter()
+            .map(|row| HouseSystemRecord {
+                id: row.id,
+                code: row.code,
+            })
+            .collect())
     }
 }
 

@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use crate::infra::db::horoscope_repository::HoroscopeRepository;
+use crate::application::ports::{HoroscopeBuilderCatalog, HoroscopePeriodProfile};
 use crate::shared::time::{local_to_utc, require_canonical_utc_offset};
 use chrono::{NaiveDate, NaiveTime};
 use chrono_tz::Tz;
@@ -63,11 +63,14 @@ struct ScanProfile {
 }
 
 /// Fonction build_horoscope_daily_calculation_request_from_public.
-pub async fn build_horoscope_daily_calculation_request_from_public(
-    repository: &HoroscopeRepository,
+pub async fn build_horoscope_daily_calculation_request_from_public<R>(
+    repository: &R,
     service_code: &str,
     payload: &Value,
-) -> Result<HoroscopeCalculationRequest, String> {
+) -> Result<HoroscopeCalculationRequest, String>
+where
+    R: HoroscopeBuilderCatalog,
+{
     validate_daily_service_code(service_code)?;
     let request: DailyPublicRequest =
         serde_json::from_value(payload.clone()).map_err(|err| err.to_string())?;
@@ -123,11 +126,14 @@ pub async fn build_horoscope_daily_calculation_request_from_public(
 }
 
 /// Fonction build_horoscope_period_calculation_request_from_public.
-pub async fn build_horoscope_period_calculation_request_from_public(
-    repository: &HoroscopeRepository,
+pub async fn build_horoscope_period_calculation_request_from_public<R>(
+    repository: &R,
     service_code: &str,
     payload: &Value,
-) -> Result<HoroscopePeriodCalculationRequest, String> {
+) -> Result<HoroscopePeriodCalculationRequest, String>
+where
+    R: HoroscopeBuilderCatalog,
+{
     validate_period_service_code(service_code)?;
     let request: PeriodPublicRequest =
         serde_json::from_value(payload.clone()).map_err(|err| err.to_string())?;
@@ -225,12 +231,12 @@ fn validate_daily_public_request(
 }
 
 /// Fonction service_profile.
-async fn service_profile(
-    repository: &HoroscopeRepository,
-    service_code: &str,
-) -> Result<ServiceProfile, String> {
+async fn service_profile<R>(repository: &R, service_code: &str) -> Result<ServiceProfile, String>
+where
+    R: HoroscopeBuilderCatalog,
+{
     let row = repository
-        .horoscope_services()
+        .horoscope_service_profiles()
         .await
         .map_err(|err| err.to_string())?
         .into_iter()
@@ -244,10 +250,13 @@ async fn service_profile(
 }
 
 /// Fonction period_service_profile.
-async fn period_service_profile(
-    repository: &HoroscopeRepository,
+async fn period_service_profile<R>(
+    repository: &R,
     service_code: &str,
-) -> Result<ServiceProfile, String> {
+) -> Result<ServiceProfile, String>
+where
+    R: HoroscopeBuilderCatalog,
+{
     let profile = service_profile(repository, service_code).await?;
     if profile.period_profile_code.is_none() || profile.scan_profile_code.is_none() {
         return Err("HOROSCOPE_PERIOD_PROFILE_UNSUPPORTED".to_string());
@@ -256,10 +265,10 @@ async fn period_service_profile(
 }
 
 /// Fonction slot_profiles.
-async fn slot_profiles(
-    repository: &HoroscopeRepository,
-    service_code: &str,
-) -> Result<Vec<SlotProfileRow>, String> {
+async fn slot_profiles<R>(repository: &R, service_code: &str) -> Result<Vec<SlotProfileRow>, String>
+where
+    R: HoroscopeBuilderCatalog,
+{
     let mut slots = repository
         .horoscope_time_slot_profiles()
         .await
@@ -279,20 +288,23 @@ async fn slot_profiles(
 }
 
 /// Fonction resolve_period_window.
-async fn resolve_period_window(
-    repository: &HoroscopeRepository,
+async fn resolve_period_window<R>(
+    repository: &R,
     period_profile_code: &str,
     anchor_date: &str,
     timezone: &str,
-) -> Result<Value, String> {
+) -> Result<Value, String>
+where
+    R: HoroscopeBuilderCatalog,
+{
     let profiles = repository
         .astral_time_period_profiles()
         .await
         .map_err(|err| err.to_string())?;
-    let profile_defs = serde_json::from_value::<Vec<astral_time_window::PeriodProfileDefinition>>(
-        serde_json::to_value(profiles).map_err(|err| err.to_string())?,
-    )
-    .map_err(|err| format!("HOROSCOPE_PERIOD_PROFILE_UNSUPPORTED: {err}"))?;
+    let profile_defs = profiles
+        .into_iter()
+        .map(map_period_profile_definition)
+        .collect::<Result<Vec<_>, _>>()?;
     let resolver = astral_time_window::PeriodWindowResolver::new(profile_defs);
     let request = astral_time_window::PeriodWindowRequest {
         period_profile_code: period_profile_code.to_string(),
@@ -345,11 +357,14 @@ fn map_period_window_error(err: astral_time_window::PeriodWindowError) -> String
 }
 
 /// Fonction build_scan_plan.
-async fn build_scan_plan(
-    repository: &HoroscopeRepository,
+async fn build_scan_plan<R>(
+    repository: &R,
     period_resolution: &Value,
     scan_profile_code: &str,
-) -> Result<Value, String> {
+) -> Result<Value, String>
+where
+    R: HoroscopeBuilderCatalog,
+{
     let scan_profile = scan_profile(repository, scan_profile_code).await?;
     let tz = period_resolution["timezone"]
         .as_str()
@@ -401,11 +416,14 @@ async fn build_scan_plan(
 }
 
 /// Fonction validate_scan_plan_value.
-async fn validate_scan_plan_value(
-    repository: &HoroscopeRepository,
+async fn validate_scan_plan_value<R>(
+    repository: &R,
     period_resolution: &Value,
     scan_plan: &Value,
-) -> Result<(), String> {
+) -> Result<(), String>
+where
+    R: HoroscopeBuilderCatalog,
+{
     let start = period_resolution["start_datetime_utc"]
         .as_str()
         .ok_or_else(|| "HOROSCOPE_PERIOD_DATE_RANGE_MISMATCH".to_string())?;
@@ -474,10 +492,10 @@ async fn validate_scan_plan_value(
 }
 
 /// Fonction scan_profile.
-async fn scan_profile(
-    repository: &HoroscopeRepository,
-    scan_profile_code: &str,
-) -> Result<ScanProfile, String> {
+async fn scan_profile<R>(repository: &R, scan_profile_code: &str) -> Result<ScanProfile, String>
+where
+    R: HoroscopeBuilderCatalog,
+{
     let row = repository
         .horoscope_scan_profiles()
         .await
@@ -489,6 +507,25 @@ async fn scan_profile(
         granularity: row.granularity,
         reference_time_local: row.reference_time_local,
         expected_snapshots_per_day: row.expected_snapshots_per_day as usize,
+    })
+}
+
+fn map_period_profile_definition(
+    row: HoroscopePeriodProfile,
+) -> Result<astral_time_window::PeriodProfileDefinition, String> {
+    let included_days = row
+        .included_days
+        .map(serde_json::from_value::<Vec<String>>)
+        .transpose()
+        .map_err(|err| format!("HOROSCOPE_PERIOD_PROFILE_UNSUPPORTED: {err}"))?
+        .unwrap_or_default();
+    Ok(astral_time_window::PeriodProfileDefinition {
+        period_profile_code: row.period_profile_code,
+        resolution_strategy: row.resolution_strategy,
+        duration_days: row.duration_days.map(i64::from),
+        week_offset: row.week_offset.map(i64::from),
+        included_days,
+        is_enabled: row.is_enabled,
     })
 }
 

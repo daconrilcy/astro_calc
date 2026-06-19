@@ -1,14 +1,14 @@
 //! Module astral_calculator\src\engine\calculation_refs.rs du moteur astral_calculator.
 
 use std::collections::HashMap;
-use std::sync::OnceLock;
 
-use crate::infra::db::reference_repository::ReferenceRepository;
+use crate::application::ports::ReferenceSystemCatalog;
 
 /// Fonction zodiacal_reference_system_key_from_env.
-pub async fn zodiacal_reference_system_key_from_env(
-    repository: &ReferenceRepository,
-) -> Result<String, String> {
+pub async fn zodiacal_reference_system_key_from_env<R>(repository: &R) -> Result<String, String>
+where
+    R: ReferenceSystemCatalog,
+{
     reference_key_from_env(
         "ASTRAL_ZODIACAL_REFERENCE_SYSTEM",
         "ASTRAL_ZODIACAL_REFERENCE_SYSTEM_ID",
@@ -18,9 +18,10 @@ pub async fn zodiacal_reference_system_key_from_env(
 }
 
 /// Fonction coordinate_reference_system_key_from_env.
-pub async fn coordinate_reference_system_key_from_env(
-    repository: &ReferenceRepository,
-) -> Result<String, String> {
+pub async fn coordinate_reference_system_key_from_env<R>(repository: &R) -> Result<String, String>
+where
+    R: ReferenceSystemCatalog,
+{
     reference_key_from_env(
         "ASTRAL_COORDINATE_REFERENCE_SYSTEM",
         "ASTRAL_COORDINATE_REFERENCE_SYSTEM_ID",
@@ -30,9 +31,10 @@ pub async fn coordinate_reference_system_key_from_env(
 }
 
 /// Fonction house_system_code_from_env.
-pub async fn house_system_code_from_env(
-    repository: &ReferenceRepository,
-) -> Result<String, String> {
+pub async fn house_system_code_from_env<R>(repository: &R) -> Result<String, String>
+where
+    R: ReferenceSystemCatalog,
+{
     reference_key_from_env(
         "ASTRAL_HOUSE_SYSTEM",
         "ASTRAL_HOUSE_SYSTEM_ID",
@@ -77,9 +79,10 @@ fn invert_map(id_to_key: &HashMap<i32, String>) -> HashMap<String, i32> {
 }
 
 /// Fonction zodiacal_reference_system_id_from_env.
-pub async fn zodiacal_reference_system_id_from_env(
-    repository: &ReferenceRepository,
-) -> Result<i32, String> {
+pub async fn zodiacal_reference_system_id_from_env<R>(repository: &R) -> Result<i32, String>
+where
+    R: ReferenceSystemCatalog,
+{
     reference_id_from_env(
         "ASTRAL_ZODIACAL_REFERENCE_SYSTEM",
         "ASTRAL_ZODIACAL_REFERENCE_SYSTEM_ID",
@@ -89,9 +92,10 @@ pub async fn zodiacal_reference_system_id_from_env(
 }
 
 /// Fonction coordinate_reference_system_id_from_env.
-pub async fn coordinate_reference_system_id_from_env(
-    repository: &ReferenceRepository,
-) -> Result<i32, String> {
+pub async fn coordinate_reference_system_id_from_env<R>(repository: &R) -> Result<i32, String>
+where
+    R: ReferenceSystemCatalog,
+{
     reference_id_from_env(
         "ASTRAL_COORDINATE_REFERENCE_SYSTEM",
         "ASTRAL_COORDINATE_REFERENCE_SYSTEM_ID",
@@ -101,7 +105,10 @@ pub async fn coordinate_reference_system_id_from_env(
 }
 
 /// Fonction house_system_id_from_env.
-pub async fn house_system_id_from_env(repository: &ReferenceRepository) -> Result<i32, String> {
+pub async fn house_system_id_from_env<R>(repository: &R) -> Result<i32, String>
+where
+    R: ReferenceSystemCatalog,
+{
     reference_id_from_env(
         "ASTRAL_HOUSE_SYSTEM",
         "ASTRAL_HOUSE_SYSTEM_ID",
@@ -138,55 +145,37 @@ fn reference_id_from_env(
 }
 
 /// Fonction zodiac_key_by_id.
-async fn zodiac_key_by_id(
-    repository: &ReferenceRepository,
-) -> Result<HashMap<i32, String>, String> {
-    static MAP: OnceLock<HashMap<i32, String>> = OnceLock::new();
-    if let Some(map) = MAP.get() {
-        return Ok(map.clone());
-    }
-
+async fn zodiac_key_by_id<R>(repository: &R) -> Result<HashMap<i32, String>, String>
+where
+    R: ReferenceSystemCatalog,
+{
     let rows = repository
         .zodiacal_reference_systems()
         .await
         .map_err(|err| err.to_string())?;
-    let map: HashMap<i32, String> = rows.into_iter().map(|row| (row.id, row.key)).collect();
-    let _ = MAP.set(map.clone());
-    Ok(map)
+    Ok(rows.into_iter().map(|row| (row.id, row.key)).collect())
 }
 
 /// Fonction coordinate_key_by_id.
-async fn coordinate_key_by_id(
-    repository: &ReferenceRepository,
-) -> Result<HashMap<i32, String>, String> {
-    static MAP: OnceLock<HashMap<i32, String>> = OnceLock::new();
-    if let Some(map) = MAP.get() {
-        return Ok(map.clone());
-    }
-
+async fn coordinate_key_by_id<R>(repository: &R) -> Result<HashMap<i32, String>, String>
+where
+    R: ReferenceSystemCatalog,
+{
     let rows = repository
         .coordinate_reference_systems()
         .await
         .map_err(|err| err.to_string())?;
-    let map: HashMap<i32, String> = rows.into_iter().map(|row| (row.id, row.key)).collect();
-    let _ = MAP.set(map.clone());
-    Ok(map)
+    Ok(rows.into_iter().map(|row| (row.id, row.key)).collect())
 }
 
 /// Fonction house_code_by_id.
-async fn house_code_by_id(
-    repository: &ReferenceRepository,
-) -> Result<HashMap<i32, String>, String> {
-    static MAP: OnceLock<HashMap<i32, String>> = OnceLock::new();
-    if let Some(map) = MAP.get() {
-        return Ok(map.clone());
-    }
-
+async fn house_code_by_id<R>(repository: &R) -> Result<HashMap<i32, String>, String>
+where
+    R: ReferenceSystemCatalog,
+{
     let rows = repository
         .house_systems()
         .await
         .map_err(|err| err.to_string())?;
-    let map: HashMap<i32, String> = rows.into_iter().map(|row| (row.id, row.code)).collect();
-    let _ = MAP.set(map.clone());
-    Ok(map)
+    Ok(rows.into_iter().map(|row| (row.id, row.code)).collect())
 }

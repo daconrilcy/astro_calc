@@ -1,24 +1,124 @@
+use astral_calculator::application::ports::{
+    HoroscopeBuilderCatalog, HoroscopePeriodProfile, HoroscopeScanProfileDefinition,
+    HoroscopeServiceProfile, HoroscopeTimeSlotProfile,
+};
 use astral_calculator::features::horoscope::{
     build_horoscope_daily_calculation_request_from_public,
     build_horoscope_period_calculation_request_from_public,
     HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE, HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
 };
-use astral_calculator::infra::db::horoscope_repository::HoroscopeRepository;
+use astral_calculator::shared::error::RuntimeError;
+use async_trait::async_trait;
 use serde_json::json;
 
-async fn repository() -> Option<HoroscopeRepository> {
-    astral_calculator::db::connect_from_env()
-        .await
-        .ok()
-        .map(HoroscopeRepository::new)
+#[derive(Clone)]
+struct FakeHoroscopeBuilderCatalog {
+    services: Vec<HoroscopeServiceProfile>,
+    slots: Vec<HoroscopeTimeSlotProfile>,
+    period_profiles: Vec<HoroscopePeriodProfile>,
+    scan_profiles: Vec<HoroscopeScanProfileDefinition>,
+}
+
+impl FakeHoroscopeBuilderCatalog {
+    fn seeded() -> Self {
+        Self {
+            services: vec![
+                HoroscopeServiceProfile {
+                    service_code: HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE.to_string(),
+                    house_system_code: None,
+                    period_profile_code: None,
+                    scan_profile_code: None,
+                },
+                HoroscopeServiceProfile {
+                    service_code: HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE.to_string(),
+                    house_system_code: Some("placidus".to_string()),
+                    period_profile_code: None,
+                    scan_profile_code: None,
+                },
+                HoroscopeServiceProfile {
+                    service_code: HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE.to_string(),
+                    house_system_code: None,
+                    period_profile_code: Some("next_7_days".to_string()),
+                    scan_profile_code: Some("daily_noon_7_days".to_string()),
+                },
+            ],
+            slots: vec![
+                HoroscopeTimeSlotProfile {
+                    service_code: HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE.to_string(),
+                    slot_code: "all_day".to_string(),
+                    start_local_time: "00:00".to_string(),
+                    end_local_time: "23:59".to_string(),
+                    reference_local_time: "12:00".to_string(),
+                    sort_order: 1,
+                },
+                HoroscopeTimeSlotProfile {
+                    service_code: HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE.to_string(),
+                    slot_code: "morning".to_string(),
+                    start_local_time: "08:00".to_string(),
+                    end_local_time: "10:00".to_string(),
+                    reference_local_time: "09:00".to_string(),
+                    sort_order: 2,
+                },
+                HoroscopeTimeSlotProfile {
+                    service_code: HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE.to_string(),
+                    slot_code: "early".to_string(),
+                    start_local_time: "06:00".to_string(),
+                    end_local_time: "08:00".to_string(),
+                    reference_local_time: "07:00".to_string(),
+                    sort_order: 1,
+                },
+            ],
+            period_profiles: vec![HoroscopePeriodProfile {
+                period_profile_code: "next_7_days".to_string(),
+                resolution_strategy: "anchor_forward_days".to_string(),
+                duration_days: Some(7),
+                week_offset: None,
+                included_days: Some(json!([])),
+                is_enabled: true,
+                sort_order: 1,
+            }],
+            scan_profiles: vec![HoroscopeScanProfileDefinition {
+                scan_profile_code: "daily_noon_7_days".to_string(),
+                granularity: "daily".to_string(),
+                reference_time_local: "12:00".to_string(),
+                expected_snapshots_per_day: 1,
+                is_enabled: true,
+            }],
+        }
+    }
+}
+
+#[async_trait]
+impl HoroscopeBuilderCatalog for FakeHoroscopeBuilderCatalog {
+    async fn horoscope_service_profiles(
+        &self,
+    ) -> Result<Vec<HoroscopeServiceProfile>, RuntimeError> {
+        Ok(self.services.clone())
+    }
+
+    async fn horoscope_time_slot_profiles(
+        &self,
+    ) -> Result<Vec<HoroscopeTimeSlotProfile>, RuntimeError> {
+        Ok(self.slots.clone())
+    }
+
+    async fn astral_time_period_profiles(
+        &self,
+    ) -> Result<Vec<HoroscopePeriodProfile>, RuntimeError> {
+        Ok(self.period_profiles.clone())
+    }
+
+    async fn horoscope_scan_profiles(
+        &self,
+    ) -> Result<Vec<HoroscopeScanProfileDefinition>, RuntimeError> {
+        Ok(self.scan_profiles.clone())
+    }
 }
 
 #[tokio::test]
 async fn free_daily_builder_keeps_public_surface_minimal() {
-    let Some(repository) = repository().await else {
-        return;
-    };
+    let repository = FakeHoroscopeBuilderCatalog::seeded();
     let request = build_horoscope_daily_calculation_request_from_public(
         &repository,
         HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE,
@@ -45,14 +145,12 @@ async fn free_daily_builder_keeps_public_surface_minimal() {
     assert!(request.house_system_code.is_none());
     assert!(request.slot_profile_code.is_none());
     assert!(request.calculation_features.is_empty());
-    assert!(!request.slots.is_empty());
+    assert_eq!(request.slots.len(), 1);
 }
 
 #[tokio::test]
 async fn premium_daily_builder_requires_location_and_enables_local_features() {
-    let Some(repository) = repository().await else {
-        return;
-    };
+    let repository = FakeHoroscopeBuilderCatalog::seeded();
     let err = build_horoscope_daily_calculation_request_from_public(
         &repository,
         HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
@@ -86,6 +184,8 @@ async fn premium_daily_builder_requires_location_and_enables_local_features() {
     assert_eq!(request.slot_profile_code.as_deref(), Some("daily_2h_slots"));
     assert!(request.location.is_some());
     assert_eq!(request.house_system_code.as_deref(), Some("placidus"));
+    assert_eq!(request.slots[0].slot_code, "early");
+    assert_eq!(request.slots[1].slot_code, "morning");
     assert!(request
         .calculation_features
         .iter()
@@ -94,9 +194,7 @@ async fn premium_daily_builder_requires_location_and_enables_local_features() {
 
 #[tokio::test]
 async fn daily_builder_rejects_invalid_timezone_and_service_code() {
-    let Some(repository) = repository().await else {
-        return;
-    };
+    let repository = FakeHoroscopeBuilderCatalog::seeded();
     let invalid_timezone = build_horoscope_daily_calculation_request_from_public(
         &repository,
         HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE,
@@ -126,9 +224,7 @@ async fn daily_builder_rejects_invalid_timezone_and_service_code() {
 
 #[tokio::test]
 async fn period_builder_creates_canonical_scan_plan_for_v2_service() {
-    let Some(repository) = repository().await else {
-        return;
-    };
+    let repository = FakeHoroscopeBuilderCatalog::seeded();
     let request = build_horoscope_period_calculation_request_from_public(
         &repository,
         HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
@@ -163,9 +259,7 @@ async fn period_builder_creates_canonical_scan_plan_for_v2_service() {
 
 #[tokio::test]
 async fn period_builder_rejects_invalid_anchor_date() {
-    let Some(repository) = repository().await else {
-        return;
-    };
+    let repository = FakeHoroscopeBuilderCatalog::seeded();
     let err = build_horoscope_period_calculation_request_from_public(
         &repository,
         HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,

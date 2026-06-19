@@ -121,14 +121,16 @@ fn load_profile_from_db(
         .enable_all()
         .build()
         .expect("tokio runtime");
-    runtime.block_on(async {
-        let pool = astral_calculator::db::connect_from_env().await.ok()?;
+    Some(runtime.block_on(async {
+        let pool = astral_calculator::db::connect_from_env()
+            .await
+            .expect("DATABASE_URL and PostgreSQL are required for engine_contract_tests");
         let repository = ProjectionRepository::new(pool);
         repository
             .llm_projection_profile("llm_projection_natal_v1", level)
             .await
-            .ok()
-    })
+            .expect("llm projection profile must exist for engine_contract_tests")
+    }))
 }
 
 fn build_engine_envelope(level: &str) -> Option<Value> {

@@ -1,25 +1,31 @@
 //! Module astral_calculator\src\engine\projection\profiles.rs du moteur astral_calculator.
 
 use super::types::{LlmEffectiveLimits, LlmProjectionLimitsEnvelope, LlmProjectionProfile};
-use crate::infra::db::projection_repository::ProjectionRepository;
+use crate::application::ports::ProjectionCatalog;
 use crate::shared::error::RuntimeError;
 
 /// Fonction profile_from_level.
-pub async fn profile_from_level(
-    repository: &ProjectionRepository,
+pub async fn profile_from_level<R>(
+    repository: &R,
     level: &str,
-) -> Result<LlmProjectionProfile, RuntimeError> {
+) -> Result<LlmProjectionProfile, RuntimeError>
+where
+    R: ProjectionCatalog,
+{
     repository
         .llm_projection_profile("llm_projection_natal_v1", level)
         .await
 }
 
 /// Fonction resolve_projection_profile.
-pub async fn resolve_projection_profile(
-    repository: &ProjectionRepository,
+pub async fn resolve_projection_profile<R>(
+    repository: &R,
     contract_version: &str,
     level: &str,
-) -> Result<LlmProjectionProfile, RuntimeError> {
+) -> Result<LlmProjectionProfile, RuntimeError>
+where
+    R: ProjectionCatalog,
+{
     match repository
         .llm_projection_profile(contract_version, level)
         .await

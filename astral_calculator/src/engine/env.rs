@@ -2,11 +2,11 @@
 
 use chrono::{DateTime, Utc};
 
+use crate::application::ports::ReferenceSystemCatalog;
 use crate::engine::{
     AstroEngineRequest, EngineBirthLocation, EngineBirthRequest, EngineCalculationRequest,
     EngineProjectionRequest, REQUEST_CONTRACT_VERSION,
 };
-use crate::infra::db::reference_repository::ReferenceRepository;
 
 pub use crate::engine::calculation_refs::{
     coordinate_reference_system_id_from_env, coordinate_reference_system_key_from_env,
@@ -40,9 +40,12 @@ pub fn birth_datetime_utc_from_env() -> Result<DateTime<Utc>, Box<dyn std::error
 const PROJECTION_LEVELS: &[&str] = &["compact", "standard", "rich", "expert"];
 
 /// Fonction engine_request_from_env.
-pub async fn engine_request_from_env(
-    repository: &ReferenceRepository,
-) -> Result<AstroEngineRequest, Box<dyn std::error::Error>> {
+pub async fn engine_request_from_env<R>(
+    repository: &R,
+) -> Result<AstroEngineRequest, Box<dyn std::error::Error>>
+where
+    R: ReferenceSystemCatalog,
+{
     let (date, time, timezone) = birth_fields_from_env()?;
     let projection_level = projection_level_from_env()?;
 

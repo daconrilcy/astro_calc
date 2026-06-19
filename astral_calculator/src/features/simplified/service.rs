@@ -13,7 +13,7 @@ use crate::astrology::aspects::detect_aspects;
 use crate::astrology::ephemeris::EphemerisEngine;
 use crate::domain::{AspectDefinition, ChartObject};
 use crate::domain::{CalculatedChartFacts, NatalChartInput, ObjectPositionFact};
-use crate::runtime::validate_calculation_references;
+use crate::features::natal::validate::validate_calculation_references;
 use crate::shared::error::RuntimeError;
 
 /// Fonction calculate_simplified_natal.

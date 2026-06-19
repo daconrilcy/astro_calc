@@ -246,6 +246,8 @@ fn simplified_and_horoscope_do_not_import_natal_internals() {
             let legacy_natal_aspects = ["crate::", "natal::", "aspects"].join("");
             let legacy_natal_ephemeris = ["crate::", "natal::", "ephemeris"].join("");
             let natal_feature_internals = ["crate::", "features::", "natal::"].join("");
+            let allowed_natal_validate = "crate::features::natal::validate";
+            let stripped = content.replace(allowed_natal_validate, "");
             assert!(
                 !content.contains(&legacy_natal_aspects),
                 "{} imports {}",
@@ -259,7 +261,7 @@ fn simplified_and_horoscope_do_not_import_natal_internals() {
                 legacy_natal_ephemeris
             );
             assert!(
-                !content.contains(&natal_feature_internals),
+                !stripped.contains(&natal_feature_internals),
                 "{} imports {} internals",
                 file.display(),
                 natal_feature_internals
@@ -619,6 +621,35 @@ fn application_services_do_not_import_infra_db() {
                 file.display()
             );
         }
+    }
+}
+
+#[test]
+fn engine_and_horoscope_builders_use_ports_instead_of_infra_db() {
+    let root = workspace_root().join("astral_calculator/src");
+    for relative in [
+        Path::new("engine"),
+        Path::new("features/horoscope/builders.rs"),
+    ] {
+        let path = root.join(relative);
+        if path.is_dir() {
+            for file in collect_rs_files(&path) {
+                let content = read(&file);
+                assert!(
+                    !content.contains("crate::infra::db") && !content.contains("infra::db"),
+                    "{} imports infra::db instead of application ports",
+                    file.display()
+                );
+            }
+            continue;
+        }
+
+        let content = read(&path);
+        assert!(
+            !content.contains("crate::infra::db") && !content.contains("infra::db"),
+            "{} imports infra::db instead of application ports",
+            path.display()
+        );
     }
 }
 

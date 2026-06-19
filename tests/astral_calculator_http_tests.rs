@@ -21,20 +21,23 @@ use astral_calculator_http::{
     schema_registry::SchemaRegistry, state::AppState,
 };
 
-async fn build_test_state() -> Option<AppState> {
+async fn build_test_state() -> AppState {
     dotenvy::dotenv().ok();
-    let pool = connect_from_env().await.ok()?;
+    let pool = connect_from_env()
+        .await
+        .expect("DATABASE_URL and PostgreSQL are required for astral_calculator_http_tests");
     let config = AppConfig::from_env();
     let ephemeris = SwissEphemerisEngine::new(ephemeris_path_from_env());
     let service = build_runtime_service(pool.clone(), ephemeris, runtime_options_from_env());
-    let schema_registry = SchemaRegistry::from_dir(&config.schemas_dir).ok()?;
+    let schema_registry = SchemaRegistry::from_dir(&config.schemas_dir)
+        .expect("schema registry must load for astral_calculator_http_tests");
 
-    Some(AppState {
+    AppState {
         config,
         pool,
         service: Arc::new(service),
         schema_registry: Arc::new(schema_registry),
-    })
+    }
 }
 
 #[test]
@@ -646,10 +649,7 @@ async fn spawn_test_server(state: AppState) -> String {
 
 #[tokio::test]
 async fn health_live_ok_without_readiness_checks() {
-    let Some(state) = build_test_state().await else {
-        eprintln!("SKIP health_live_ok_without_readiness_checks: database unavailable");
-        return;
-    };
+    let state = build_test_state().await;
     let base = spawn_test_server(state).await;
     let client = reqwest::Client::new();
     let response = client
@@ -662,10 +662,7 @@ async fn health_live_ok_without_readiness_checks() {
 
 #[tokio::test]
 async fn validate_rejects_invalid_natal_request() {
-    let Some(state) = build_test_state().await else {
-        eprintln!("SKIP validate_rejects_invalid_natal_request: database unavailable");
-        return;
-    };
+    let state = build_test_state().await;
     let base = spawn_test_server(state).await;
     let client = reqwest::Client::new();
     let response = client
@@ -685,12 +682,7 @@ async fn validate_rejects_invalid_natal_request() {
 
 #[tokio::test]
 async fn internal_calculation_validate_route_matches_legacy_route() {
-    let Some(mut state) = build_test_state().await else {
-        eprintln!(
-            "SKIP internal_calculation_validate_route_matches_legacy_route: database unavailable"
-        );
-        return;
-    };
+    let mut state = build_test_state().await;
     state.config.api_key = None;
 
     let base = spawn_test_server(state).await;
@@ -721,12 +713,7 @@ async fn internal_calculation_validate_route_matches_legacy_route() {
 
 #[tokio::test]
 async fn internal_calculation_routes_match_legacy_route_statuses() {
-    let Some(mut state) = build_test_state().await else {
-        eprintln!(
-            "SKIP internal_calculation_routes_match_legacy_route_statuses: database unavailable"
-        );
-        return;
-    };
+    let mut state = build_test_state().await;
     state.config.api_key = None;
 
     let base = spawn_test_server(state).await;
@@ -792,10 +779,7 @@ async fn internal_calculation_routes_match_legacy_route_statuses() {
 
 #[tokio::test]
 async fn contracts_and_schema_discovery() {
-    let Some(state) = build_test_state().await else {
-        eprintln!("SKIP contracts_and_schema_discovery: database unavailable");
-        return;
-    };
+    let state = build_test_state().await;
     let base = spawn_test_server(state).await;
     let client = reqwest::Client::new();
     let contracts = client
@@ -833,10 +817,7 @@ async fn contracts_and_schema_discovery() {
 
 #[tokio::test]
 async fn calculate_natal_paris_1990_when_ready() {
-    let Some(state) = build_test_state().await else {
-        eprintln!("SKIP calculate_natal_paris_1990_when_ready: database unavailable");
-        return;
-    };
+    let state = build_test_state().await;
 
     let status = check_reference_status(&state.pool).await;
     if status.status != "ready" {
@@ -872,10 +853,7 @@ async fn calculate_natal_paris_1990_when_ready() {
 
 #[tokio::test]
 async fn validate_rejects_invalid_simplified_request() {
-    let Some(state) = build_test_state().await else {
-        eprintln!("SKIP validate_rejects_invalid_simplified_request: database unavailable");
-        return;
-    };
+    let state = build_test_state().await;
     let base = spawn_test_server(state).await;
     let client = reqwest::Client::new();
     let response = client
@@ -892,10 +870,7 @@ async fn validate_rejects_invalid_simplified_request() {
 
 #[tokio::test]
 async fn calculate_simplified_date_only_when_ready() {
-    let Some(state) = build_test_state().await else {
-        eprintln!("SKIP calculate_simplified_date_only_when_ready: database unavailable");
-        return;
-    };
+    let state = build_test_state().await;
     let status = check_reference_status(&state.pool).await;
     if status.status != "ready" {
         eprintln!("SKIP calculate_simplified_date_only_when_ready: reference not ready");
@@ -928,10 +903,7 @@ async fn calculate_simplified_date_only_when_ready() {
 
 #[tokio::test]
 async fn health_ready_returns_503_when_reference_missing() {
-    let Some(state) = build_test_state().await else {
-        eprintln!("SKIP health_ready_returns_503_when_reference_missing: database unavailable");
-        return;
-    };
+    let state = build_test_state().await;
 
     let status = check_reference_status(&state.pool).await;
     if status.status == "ready" {
@@ -957,10 +929,7 @@ async fn health_ready_returns_503_when_reference_missing() {
 #[tokio::test]
 async fn auth_rejects_protected_route_when_api_key_required() {
     dotenvy::dotenv().ok();
-    let Some(mut state) = build_test_state().await else {
-        eprintln!("SKIP auth_rejects_protected_route_when_api_key_required");
-        return;
-    };
+    let mut state = build_test_state().await;
     state.config.api_key = Some("test-secret-key".into());
 
     let base = spawn_test_server(state).await;

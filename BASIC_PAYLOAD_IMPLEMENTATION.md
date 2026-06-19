@@ -1,3 +1,14 @@
+# 2026-06-19 - `astral_calculator` ports builders and DB fail-fast hardening
+
+- Replaced the last direct `infra::db` couplings in `engine::calculation_refs`, `engine::projection::profiles`, and `features::horoscope::builders` with narrow application ports implemented by the SQL repositories.
+- Removed the process-wide `OnceLock` caches from `engine::calculation_refs`; CLI/env reference-system resolution now reloads canonical DB-backed mappings through the port on each call.
+- Split horoscope public-request building around a dedicated `HoroscopeBuilderCatalog` port and kept the public APIs `build_horoscope_daily_calculation_request_from_public` and `build_horoscope_period_calculation_request_from_public` unchanged apart from generic trait bounds.
+- Replaced the simplified service dependency on `runtime::validate_calculation_references` with the canonical `features::natal::validate` module, keeping `runtime` as a composition facade only.
+- Hardened DB-bound test helpers to fail fast with explicit PostgreSQL expectations, while moving `horoscope_builders_tests` to an in-memory fake catalog so builder logic is covered without DB.
+- Invariants: no new public JSON contract change; `engine/*` and `features/horoscope/builders.rs` must not import `infra::db`; no process-global cache for canonical reference mappings; DB-dependent tests must error explicitly when PostgreSQL is unavailable.
+- Verification: `cargo fmt`; `cargo test -p astral_calculator --test refactor_governance_tests`; `cargo test -p astral_calculator --test horoscope_builders_tests`; `cargo test -p astral_calculator`; `cargo test -p astral_calculator_http --test astral_calculator_http_tests`.
+- Reviews: `docs/reviews/astral_calculator_refactor/REV-PORTS-BUILDERS-FAILFAST-2026-06-19.md`; `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-PORTS-BUILDERS-FAILFAST-2026-06-19.md`.
+
 # 2026-06-18 - `astral_calculator` refactor maintenance waves
 
 - Removed horoscope daily runtime fake provenance from `astral_calculator`: public pure daily calculations now emit `derived_daily_calculator_v1`, while runtime service calls compute slot transits through Swiss Ephemeris and emit `swisseph_daily_calculator_v1`.
