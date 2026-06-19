@@ -6,14 +6,17 @@ use super::catalog::SimplifiedCatalog;
 use super::facts::{collect_declared_sign_facts, collect_window_sign_facts, CollectedSignFacts};
 use super::payload::build_response;
 use super::request::AstroSimplifiedNatalRequest;
-use super::resolve::{build_uncertainty_window, declared_datetime_utc, validate_and_resolve};
+use super::resolve::{
+    build_uncertainty_window, declared_datetime_utc, validate_and_resolve, ANGULAR_SCOPE,
+    PLANETARY_SCOPE,
+};
 use super::response::{AstroSimplifiedNatalResponse, RECOMMENDED_SIMPLIFIED_PROFILE_CODE};
 use crate::application::ports::{ReferenceCatalog, SimplifiedCatalogStore};
 use crate::astrology::aspects::detect_aspects;
 use crate::astrology::ephemeris::EphemerisEngine;
+use crate::astrology::validation::validate_calculation_references;
 use crate::domain::{AspectDefinition, ChartObject};
 use crate::domain::{CalculatedChartFacts, NatalChartInput, ObjectPositionFact};
-use crate::features::natal::validate::validate_calculation_references;
 use crate::shared::error::RuntimeError;
 
 /// Fonction calculate_simplified_natal.
@@ -81,7 +84,7 @@ where
     let aspect_definitions = repository.aspect_definitions().await?;
 
     let collected = match resolved.computed_scope.as_str() {
-        "planetary_positions" | "angular_chart" => {
+        PLANETARY_SCOPE | ANGULAR_SCOPE => {
             let instant = declared_datetime_utc(&resolved)?.ok_or_else(|| {
                 RuntimeError::InvalidEngineRequest("missing declared datetime".into())
             })?;
@@ -102,13 +105,13 @@ where
     };
 
     let angular_facts = match resolved.computed_scope.as_str() {
-        "angular_chart" => {
-            let instant = declared_datetime_utc(&resolved)?.unwrap();
+        ANGULAR_SCOPE => {
+            let instant = required_declared_datetime(&resolved)?;
             let input = NatalChartInput {
                 subject_label: None,
                 birth_datetime_utc: instant,
-                latitude_deg: resolved.latitude.unwrap(),
-                longitude_deg: resolved.longitude.unwrap(),
+                latitude_deg: required_latitude(&resolved)?,
+                longitude_deg: required_longitude(&resolved)?,
                 altitude_m: Some(0.0),
                 reference_version_id,
                 calculation_profile_id: None,
@@ -134,10 +137,12 @@ where
                 &references,
             )?)
         }
-        "planetary_positions" => Some(build_planetary_only_facts(
+        PLANETARY_SCOPE => Some(build_planetary_only_facts(
             &collected,
             &chart_objects,
             &aspect_definitions,
+            zodiacal_id,
+            coordinate_id,
         )),
         _ => None,
     };
@@ -156,6 +161,8 @@ fn build_planetary_only_facts(
     collected: &CollectedSignFacts,
     chart_objects: &[ChartObject],
     aspect_definitions: &[AspectDefinition],
+    zodiacal_reference_system_id: i32,
+    coordinate_reference_system_id: i32,
 ) -> CalculatedChartFacts {
     let positions: Vec<ObjectPositionFact> = collected
         .facts
@@ -167,8 +174,8 @@ fn build_planetary_only_facts(
                 chart_object_id: object.id,
                 object_code: fact.object_code.clone(),
                 object_name: object.name.clone(),
-                zodiacal_reference_system_id: 1,
-                coordinate_reference_system_id: 1,
+                zodiacal_reference_system_id,
+                coordinate_reference_system_id,
                 sign_id: 0,
                 sign_code: fact.sign_code.clone(),
                 sign_name: fact.sign_code.clone(),
@@ -192,4 +199,27 @@ fn build_planetary_only_facts(
         positions,
         house_cusps: Vec::new(),
     }
+}
+
+fn required_declared_datetime(
+    resolved: &super::resolve::ResolvedSimplifiedInput,
+) -> Result<chrono::DateTime<chrono::Utc>, RuntimeError> {
+    declared_datetime_utc(resolved)?
+        .ok_or_else(|| RuntimeError::InvalidEngineRequest("missing declared datetime".into()))
+}
+
+fn required_latitude(
+    resolved: &super::resolve::ResolvedSimplifiedInput,
+) -> Result<f64, RuntimeError> {
+    resolved
+        .latitude
+        .ok_or_else(|| RuntimeError::InvalidEngineRequest("missing latitude".into()))
+}
+
+fn required_longitude(
+    resolved: &super::resolve::ResolvedSimplifiedInput,
+) -> Result<f64, RuntimeError> {
+    resolved
+        .longitude
+        .ok_or_else(|| RuntimeError::InvalidEngineRequest("missing longitude".into()))
 }

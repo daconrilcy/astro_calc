@@ -2,6 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
+pub use crate::domain::{HoroscopeSignalThemeMapping, HoroscopeSupportedObject};
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 /// Structure HoroscopeCalculationRequest.
 pub struct HoroscopeCalculationRequest {
@@ -89,22 +91,6 @@ pub struct HoroscopeTransitFact {
     pub aspect: Option<String>,
     pub orb_deg: Option<f64>,
     pub natal_house: Option<i32>,
-}
-
-#[derive(Debug, Clone)]
-/// Mapping DB d'un signal horoscope vers un theme.
-pub struct HoroscopeSignalThemeMapping {
-    pub match_object: String,
-    pub match_aspect: Option<String>,
-    pub match_natal_target: Option<String>,
-    pub theme_code: String,
-}
-
-#[derive(Debug, Clone)]
-/// Objet transitant supporte par le produit horoscope.
-pub struct HoroscopeSupportedObject {
-    pub object_code: String,
-    pub weight: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

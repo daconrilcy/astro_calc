@@ -246,8 +246,6 @@ fn simplified_and_horoscope_do_not_import_natal_internals() {
             let legacy_natal_aspects = ["crate::", "natal::", "aspects"].join("");
             let legacy_natal_ephemeris = ["crate::", "natal::", "ephemeris"].join("");
             let natal_feature_internals = ["crate::", "features::", "natal::"].join("");
-            let allowed_natal_validate = "crate::features::natal::validate";
-            let stripped = content.replace(allowed_natal_validate, "");
             assert!(
                 !content.contains(&legacy_natal_aspects),
                 "{} imports {}",
@@ -261,12 +259,42 @@ fn simplified_and_horoscope_do_not_import_natal_internals() {
                 legacy_natal_ephemeris
             );
             assert!(
-                !stripped.contains(&natal_feature_internals),
+                !content.contains(&natal_feature_internals),
                 "{} imports {} internals",
                 file.display(),
                 natal_feature_internals
             );
         }
+    }
+}
+
+#[test]
+fn application_layer_does_not_import_feature_modules() {
+    let root = workspace_root().join("astral_calculator/src/application");
+    for file in collect_rs_files(&root) {
+        let content = read(&file);
+        assert!(
+            !content.contains("crate::features::"),
+            "{} imports crate::features::*; application must depend on neutral domain/application records only",
+            file.display()
+        );
+    }
+}
+
+#[test]
+fn simplified_service_does_not_hard_code_reference_system_ids() {
+    let path = workspace_root().join("astral_calculator/src/features/simplified/service.rs");
+    let content = read(&path);
+    for forbidden in [
+        "zodiacal_reference_system_id: 1",
+        "coordinate_reference_system_id: 1",
+    ] {
+        assert!(
+            !content.contains(forbidden),
+            "{} still contains hard-coded canonical id {}",
+            path.display(),
+            forbidden
+        );
     }
 }
 
@@ -721,6 +749,44 @@ fn runtime_repository_is_residual_and_not_wrapped_by_repositories() {
         assert!(
             root.join(module).exists(),
             "missing split runtime query module {}",
+            module
+        );
+    }
+}
+
+#[test]
+fn projection_builder_stays_split_across_named_submodules() {
+    let root = workspace_root().join("astral_calculator/src/engine/projection");
+    let builder_root = root.join("builder");
+    let builder_entry = root.join("builder.rs");
+    assert!(builder_root.is_dir(), "missing {}", builder_root.display());
+    assert!(
+        builder_entry.exists(),
+        "missing {}",
+        builder_entry.display()
+    );
+
+    let builder_line_count = read(&builder_entry).lines().count();
+    assert!(
+        builder_line_count <= 280,
+        "{} has {builder_line_count} lines; keep orchestration/helpers thin and logic in builder/* submodules",
+        builder_entry.display()
+    );
+
+    for module in [
+        "chart.rs",
+        "reading_order.rs",
+        "identity.rs",
+        "themes.rs",
+        "placements.rs",
+        "strengths.rs",
+        "relationships.rs",
+        "house_axes.rs",
+        "keywords.rs",
+    ] {
+        assert!(
+            builder_root.join(module).exists(),
+            "missing split projection builder module {}",
             module
         );
     }

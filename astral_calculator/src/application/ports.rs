@@ -5,15 +5,14 @@ use chrono::{DateTime, Utc};
 
 use crate::domain::{
     AccidentalDignityConditionReference, AspectDefinition, AspectFact, BasicPayload,
-    CalculatedChartFacts, ChartObject, DomicileRulerReference, EssentialDignityRuleReference,
+    BasicPayloadCatalog, CalculatedChartFacts, ChartObject, DomicileRulerReference,
+    EssentialDignityRuleReference, HoroscopeSignalThemeMapping, HoroscopeSupportedObject,
     HouseAxisReference, HouseSystem, InterpretationSignalDraft, InterpretationSignalRow,
     LunarPhaseReference, NatalChartInput, ObjectPositionFact, ObjectSectAffinityReference,
-    ProjectionLabelDefinition, ProjectionReasonDefinition, RuntimeOptions,
+    ProfileFeatureExclusion, ProjectionLabelDefinition, ProjectionReasonDefinition, RuntimeOptions,
+    SimplifiedCatalog,
 };
 use crate::engine::projection::LlmProjectionProfile;
-use crate::features::horoscope::{HoroscopeSignalThemeMapping, HoroscopeSupportedObject};
-use crate::features::natal::catalog::BasicPayloadCatalog;
-use crate::features::simplified::catalog::{ProfileFeatureExclusion, SimplifiedCatalog};
 use crate::shared::error::RuntimeError;
 
 #[derive(Debug, Clone)]

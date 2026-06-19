@@ -5,9 +5,9 @@ use sqlx::PgPool;
 use async_trait::async_trait;
 
 use crate::application::ports::SimplifiedCatalogStore;
-use crate::features::simplified::catalog::{
-    CalculationScope, InputPrecisionLevel, LimitationCode, ReliabilityLevel, SimplifiedCatalog,
-    SimplifiedPolicy,
+use crate::domain::{
+    CalculationScope, InputPrecisionLevel, LimitationCode, ProfileFeatureExclusion,
+    ReliabilityLevel, SimplifiedCatalog, SimplifiedPolicy,
 };
 use crate::shared::error::RuntimeError;
 
@@ -32,8 +32,7 @@ impl SimplifiedCatalogStore for SimplifiedCatalogRepository {
 
     async fn profile_feature_exclusions(
         &self,
-    ) -> Result<Vec<crate::features::simplified::catalog::ProfileFeatureExclusion>, RuntimeError>
-    {
+    ) -> Result<Vec<ProfileFeatureExclusion>, RuntimeError> {
         load_profile_feature_exclusions(&self.pool).await
     }
 }
@@ -131,8 +130,8 @@ pub async fn load_simplified_catalog(pool: &PgPool) -> Result<SimplifiedCatalog,
 /// Fonction load_profile_feature_exclusions.
 pub async fn load_profile_feature_exclusions(
     pool: &PgPool,
-) -> Result<Vec<crate::features::simplified::catalog::ProfileFeatureExclusion>, RuntimeError> {
-    sqlx::query_as::<_, crate::features::simplified::catalog::ProfileFeatureExclusion>(
+) -> Result<Vec<ProfileFeatureExclusion>, RuntimeError> {
+    sqlx::query_as::<_, ProfileFeatureExclusion>(
         r#"
         SELECT profile_code, computed_scope_code, feature_code, exclusion_kind, sort_order
         FROM astral_simplified_profile_feature_exclusions

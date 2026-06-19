@@ -14,7 +14,7 @@ use crate::application::ports::{
     HoroscopeBuilderCatalog, HoroscopeCatalog, HoroscopeOrbWeightBand, HoroscopePeriodProfile,
     HoroscopeScanProfileDefinition, HoroscopeServiceProfile, HoroscopeTimeSlotProfile,
 };
-use crate::features::horoscope::{HoroscopeSignalThemeMapping, HoroscopeSupportedObject};
+use crate::domain::{HoroscopeSignalThemeMapping, HoroscopeSupportedObject};
 use crate::shared::error::RuntimeError;
 
 #[derive(Clone)]

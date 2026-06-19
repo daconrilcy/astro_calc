@@ -10,3 +10,5 @@ pub mod house_geometry;
 pub mod motion;
 /// Calculs réutilisables de transits et d'aspects transit-vers-natal.
 pub mod transits;
+/// Validation canonique des références de calcul.
+pub mod validation;

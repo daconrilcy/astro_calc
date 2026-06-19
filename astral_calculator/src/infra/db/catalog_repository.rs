@@ -7,10 +7,9 @@ use async_trait::async_trait;
 use super::runtime_queries::RuntimeQueries;
 use crate::application::ports::PayloadCatalogStore;
 use crate::domain::{
-    BasicProductScoringProfile, EssentialDignityRuleReference, ProjectionLabelDefinition,
-    ProjectionReasonDefinition,
+    BasicPayloadCatalog, BasicProductScoringProfile, EssentialDignityRuleReference,
+    ProjectionLabelDefinition, ProjectionReasonDefinition,
 };
-use crate::features::natal::catalog::BasicPayloadCatalog;
 use crate::shared::error::RuntimeError;
 
 #[derive(Clone)]

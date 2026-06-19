@@ -1,3 +1,12 @@
+# 2026-06-19 - `astral_calculator` maintainability and feature-boundary refactor wave
+
+- Neutralized application ports so `application::ports` no longer imports `features::{natal,simplified,horoscope}` catalog types; the shared catalog records now live in `domain`, with compatibility re-exports preserved at historical feature paths.
+- Removed the last `simplified -> natal` implementation dependency by moving `validate_calculation_references` to `astrology::validation`, exposing simplified scope codes from `features::simplified::resolve`, replacing `unwrap()` fail points with explicit `RuntimeError::InvalidEngineRequest`, and removing hard-coded reference-system ids from the planetary-only payload path.
+- Completed the projection-builder split: `engine/projection/builder.rs` is now limited to orchestration/shared helpers, with the section builders moved under `engine/projection/builder/`.
+- Invariants: no JSON public-contract change; `application` must stay free of `crate::features::*`; `features/simplified` and `features/horoscope` must not import `features::natal::*`; simplified runtime must consume resolved reference-system ids instead of canonical numeric literals.
+- Verification: `cargo check -p astral_calculator`; `cargo test -p astral_calculator --test refactor_governance_tests`; `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`; `cargo test -p astral_calculator`; `cargo test -p astral_calculator_http --test astral_calculator_http_tests`.
+- Reviews: `docs/reviews/astral_calculator_refactor/REV-PROJECTION-PORTS-SIMPLIFIED-2026-06-19.md`; `docs/reviews/astral_calculator_refactor/REV-PROJECTION-PORTS-SIMPLIFIED-2026-06-19-followup-1.md`; `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-PROJECTION-PORTS-SIMPLIFIED-2026-06-19.md`; `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-PROJECTION-PORTS-SIMPLIFIED-2026-06-19-followup-1.md`.
+
 # 2026-06-19 - `astral_calculator` ports builders and DB fail-fast hardening
 
 - Replaced the last direct `infra::db` couplings in `engine::calculation_refs`, `engine::projection::profiles`, and `features::horoscope::builders` with narrow application ports implemented by the SQL repositories.

@@ -23,9 +23,9 @@ pub struct ResolvedSimplifiedInput {
     pub zodiac_key: String,
 }
 
-const STABLE_SCOPE: &str = "stable_birth_date_profile";
-const PLANETARY_SCOPE: &str = "planetary_positions";
-const ANGULAR_SCOPE: &str = "angular_chart";
+pub const STABLE_SCOPE: &str = "stable_birth_date_profile";
+pub const PLANETARY_SCOPE: &str = "planetary_positions";
+pub const ANGULAR_SCOPE: &str = "angular_chart";
 
 const EXCLUDED_WITHOUT_ANGULAR: &[&str] = &["ascendant", "houses", "sect", "house_placements"];
 
