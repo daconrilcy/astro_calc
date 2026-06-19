@@ -1,6 +1,11 @@
 //! Requetes SQL runtime specialisees.
 
 use super::*;
+use crate::application::ports::CalculationProgressState;
+
+const STATUS_RUNNING: &str = "running";
+const STATUS_COMPLETED: &str = "completed";
+const STATUS_FAILED: &str = "failed";
 
 impl RuntimeQueries {
     pub async fn existing_basic_payload(
@@ -152,10 +157,11 @@ impl RuntimeQueries {
             FROM astral_chart_calculations
             WHERE id = $1
               AND chart_type = 'natal'
-              AND status = 'completed'
+              AND status = $2
             "#,
         )
         .bind(chart_calculation_id)
+        .bind(STATUS_COMPLETED)
         .fetch_optional(&self.pool)
         .await?;
         let Some(value) = row else {
@@ -423,7 +429,7 @@ impl RuntimeQueries {
         sqlx::query(
             r#"
             UPDATE astral_chart_calculations
-            SET status = 'failed',
+            SET status = $2,
                 finished_at = now(),
                 error_code = 'stale_running_timeout',
                 error_message = 'Running calculation heartbeat exceeded stale threshold.'
@@ -431,6 +437,7 @@ impl RuntimeQueries {
             "#,
         )
         .bind(chart_calculation_id)
+        .bind(STATUS_FAILED)
         .execute(&mut **tx)
         .await?;
         Ok(())
@@ -457,7 +464,7 @@ impl RuntimeQueries {
                 heartbeat_at, progress_state, stale_after_seconds
             )
             VALUES (
-                $1, $2, $3, 'natal', 'running',
+                $1, $2, $3, 'natal', $12,
                 $4, $5, $6, $7,
                 $8, $9, $10, now(),
                 now(), 'started', $11
@@ -475,6 +482,7 @@ impl RuntimeQueries {
         .bind(&options.engine_version)
         .bind(&options.ephemeris_version)
         .bind(options.stale_after_seconds)
+        .bind(STATUS_RUNNING)
         .execute(&mut **tx)
         .await?;
 
@@ -485,7 +493,7 @@ impl RuntimeQueries {
     pub async fn heartbeat(
         tx: &mut Transaction<'_, Postgres>,
         chart_calculation_id: i32,
-        progress_state: &str,
+        progress_state: CalculationProgressState,
     ) -> Result<(), RuntimeError> {
         sqlx::query(
             r#"
@@ -495,7 +503,7 @@ impl RuntimeQueries {
             "#,
         )
         .bind(chart_calculation_id)
-        .bind(progress_state)
+        .bind(progress_state.as_str())
         .execute(&mut **tx)
         .await?;
         Ok(())
@@ -630,14 +638,16 @@ impl RuntimeQueries {
         sqlx::query(
             r#"
             UPDATE astral_chart_calculations
-            SET status = 'completed',
+            SET status = $2,
                 heartbeat_at = now(),
-                progress_state = 'completed',
+                progress_state = $3,
                 finished_at = now()
             WHERE id = $1
             "#,
         )
         .bind(chart_calculation_id)
+        .bind(STATUS_COMPLETED)
+        .bind(CalculationProgressState::Completed.as_str())
         .execute(&mut **tx)
         .await?;
         Ok(())
@@ -652,16 +662,18 @@ impl RuntimeQueries {
         sqlx::query(
             r#"
             UPDATE astral_chart_calculations
-            SET status = 'failed',
+            SET status = $2,
                 heartbeat_at = now(),
-                progress_state = 'failed',
+                progress_state = $3,
                 finished_at = now(),
-                error_code = $2,
-                error_message = $3
+                error_code = $4,
+                error_message = $5
             WHERE id = $1
             "#,
         )
         .bind(chart_calculation_id)
+        .bind(STATUS_FAILED)
+        .bind(CalculationProgressState::Failed.as_str())
         .bind(error.code())
         .bind(error.to_string())
         .execute(&mut **tx)

@@ -15,6 +15,68 @@ use crate::domain::{
 use crate::engine::projection::LlmProjectionProfile;
 use crate::shared::error::RuntimeError;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CalculationStatus {
+    Running,
+    Completed,
+    Failed,
+    Unknown(String),
+}
+
+impl CalculationStatus {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Running => "running",
+            Self::Completed => "completed",
+            Self::Failed => "failed",
+            Self::Unknown(value) => value.as_str(),
+        }
+    }
+
+    pub fn from_db_str(value: &str) -> Self {
+        match value {
+            "running" => Self::Running,
+            "completed" => Self::Completed,
+            "failed" => Self::Failed,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CalculationProgressState {
+    CalculatingFacts,
+    AggregatingSignals,
+    BuildingPayload,
+    Completed,
+    Failed,
+    Unknown(String),
+}
+
+impl CalculationProgressState {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::CalculatingFacts => "calculating_facts",
+            Self::AggregatingSignals => "aggregating_signals",
+            Self::BuildingPayload => "building_payload",
+            Self::Completed => "completed",
+            Self::Failed => "failed",
+            Self::Unknown(value) => value.as_str(),
+        }
+    }
+
+    pub fn from_db_str(value: &str) -> Self {
+        match value {
+            "calculating_facts" => Self::CalculatingFacts,
+            "aggregating_signals" => Self::AggregatingSignals,
+            "building_payload" => Self::BuildingPayload,
+            "completed" => Self::Completed,
+            "failed" => Self::Failed,
+            other => Self::Unknown(other.to_string()),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct MajorAspectFamilyReference {
     pub expected_aspect_count: i32,
@@ -80,7 +142,7 @@ pub struct HoroscopeScanProfileDefinition {
 #[derive(Debug, Clone)]
 pub struct CalculationAttempt {
     pub id: i32,
-    pub status: String,
+    pub status: CalculationStatus,
     pub execution_attempt: i32,
     pub heartbeat_at: Option<DateTime<Utc>>,
     pub stale_after_seconds: Option<i32>,
@@ -277,7 +339,7 @@ pub trait CalculationAttemptStore: CalculationTransactionManager {
         &self,
         tx: &mut Self::Tx,
         chart_calculation_id: i32,
-        progress_state: &str,
+        progress_state: CalculationProgressState,
     ) -> Result<(), RuntimeError>;
     async fn mark_failed(
         &self,

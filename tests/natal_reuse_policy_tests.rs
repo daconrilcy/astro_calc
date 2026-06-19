@@ -8,9 +8,10 @@ use serde_json::json;
 
 use astral_calculator::application::ports::{
     CalculationAttempt, CalculationAttemptStore, CalculationFactStore,
-    CalculationReferenceLoader, CalculationTransactionManager, LocalizationCatalog,
-    MajorAspectFamilyReference, NatalReferenceStore, PayloadCatalogStore, PayloadStore,
-    ReferenceSystemLookup, ReferenceSystemResolver, ReferenceVersionProvider, SignalStore,
+    CalculationProgressState, CalculationReferenceLoader, CalculationStatus,
+    CalculationTransactionManager, LocalizationCatalog, MajorAspectFamilyReference,
+    NatalReferenceStore, PayloadCatalogStore, PayloadStore, ReferenceSystemLookup,
+    ReferenceSystemResolver, ReferenceVersionProvider, SignalStore,
 };
 use astral_calculator::astrology::ephemeris::EphemerisEngine;
 use astral_calculator::domain::{
@@ -107,7 +108,7 @@ impl CalculationAttemptStore for FakeCalculationStore {
         &self,
         _tx: &mut Self::Tx,
         _chart_calculation_id: i32,
-        _progress_state: &str,
+        _progress_state: CalculationProgressState,
     ) -> Result<(), RuntimeError> {
         Ok(())
     }
@@ -330,19 +331,20 @@ impl CalculationReferenceLoader for FakeReferenceStore {
     }
 
     async fn house_references(&self) -> Result<Vec<HouseReference>, RuntimeError> {
-        Ok((1..=12)
-            .map(|number| HouseReference {
-                id: number + 100,
-                number,
-                name: format!("House {number}"),
-                theme_code: format!("house_{number}_theme"),
-                modality_code: Some("angular".to_string()),
-                modality_label: Some("Angular".to_string()),
-                accidental_strength: Some("strong".to_string()),
-                modality_priority_delta: Some(2.0),
-                interpretation_weight: Some("high".to_string()),
-            })
-            .collect())
+        Ok(vec![
+            house_reference(1, "identity"),
+            house_reference(2, "resources"),
+            house_reference(3, "communication"),
+            house_reference(4, "roots"),
+            house_reference(5, "creativity"),
+            house_reference(6, "work_health"),
+            house_reference(7, "relationships"),
+            house_reference(8, "shared_resources"),
+            house_reference(9, "beliefs"),
+            house_reference(10, "career"),
+            house_reference(11, "community"),
+            house_reference(12, "inner_world"),
+        ])
     }
 
     async fn motion_state_references(
@@ -414,17 +416,56 @@ impl NatalReferenceStore for FakeReferenceStore {
     }
 
     async fn house_axis_references(&self) -> Result<Vec<HouseAxisReference>, RuntimeError> {
-        Ok((1..=6)
-            .map(|house_a| HouseAxisReference {
-                axis_code: format!("axis_{house_a}_{}", house_a + 6),
-                house_a_number: house_a,
-                house_b_number: house_a + 6,
-                theme_a_code: format!("house_{house_a}_theme"),
-                theme_b_code: format!("house_{}_theme", house_a + 6),
-                label: format!("Axis {house_a}/{}", house_a + 6),
-                description: "Axis description".to_string(),
-            })
-            .collect())
+        Ok(vec![
+            house_axis_reference(
+                "self_relationship",
+                1,
+                7,
+                "identity",
+                "relationships",
+                "Self and Relationship",
+            ),
+            house_axis_reference(
+                "resources_sharing",
+                2,
+                8,
+                "resources",
+                "shared_resources",
+                "Resources and Sharing",
+            ),
+            house_axis_reference(
+                "local_distant",
+                3,
+                9,
+                "communication",
+                "beliefs",
+                "Local and Distant",
+            ),
+            house_axis_reference(
+                "private_public",
+                4,
+                10,
+                "roots",
+                "career",
+                "Private and Public",
+            ),
+            house_axis_reference(
+                "creation_collective",
+                5,
+                11,
+                "creativity",
+                "community",
+                "Creation and Collective",
+            ),
+            house_axis_reference(
+                "control_surrender",
+                6,
+                12,
+                "work_health",
+                "inner_world",
+                "Control and Surrender",
+            ),
+        ])
     }
 
     async fn lunar_phase_references(&self) -> Result<Vec<LunarPhaseReference>, RuntimeError> {
@@ -649,6 +690,39 @@ fn accidental_condition(
     }
 }
 
+fn house_reference(number: i32, theme_code: &str) -> HouseReference {
+    HouseReference {
+        id: number + 100,
+        number,
+        name: format!("House {number}"),
+        theme_code: theme_code.to_string(),
+        modality_code: Some("angular".to_string()),
+        modality_label: Some("Angular".to_string()),
+        accidental_strength: Some("strong".to_string()),
+        modality_priority_delta: Some(2.0),
+        interpretation_weight: Some("high".to_string()),
+    }
+}
+
+fn house_axis_reference(
+    axis_code: &str,
+    house_a_number: i32,
+    house_b_number: i32,
+    theme_a_code: &str,
+    theme_b_code: &str,
+    label: &str,
+) -> HouseAxisReference {
+    HouseAxisReference {
+        axis_code: axis_code.to_string(),
+        house_a_number,
+        house_b_number,
+        theme_a_code: theme_a_code.to_string(),
+        theme_b_code: theme_b_code.to_string(),
+        label: label.to_string(),
+        description: format!("{label} description"),
+    }
+}
+
 fn angle_position(
     chart_object_id: i32,
     object_code: &str,
@@ -837,7 +911,7 @@ async fn natal_reuse_policy_reuses_current_payload() {
         state: Arc::new(Mutex::new(FakeCalculationState {
             existing: vec![CalculationAttempt {
                 id: 42,
-                status: "completed".to_string(),
+                status: CalculationStatus::Completed,
                 execution_attempt: 1,
                 heartbeat_at: Some(Utc::now()),
                 stale_after_seconds: Some(900),
@@ -851,7 +925,11 @@ async fn natal_reuse_policy_reuses_current_payload() {
     };
     assert!(is_current_basic_payload(
         &payload,
-        &astral_calculator::catalog::test_catalog().projection_reason_definitions
+        &astral_calculator::catalog::test_catalog().projection_reason_definitions,
+        &reference_store
+            .house_axis_references()
+            .await
+            .expect("house axis references"),
     ));
     assert!(has_current_rulership_references(
         &payload,
@@ -873,7 +951,7 @@ async fn natal_reuse_policy_rebuilds_from_reusable_positions_when_payload_is_sta
         state: Arc::new(Mutex::new(FakeCalculationState {
             existing: vec![CalculationAttempt {
                 id: 42,
-                status: "completed".to_string(),
+                status: CalculationStatus::Completed,
                 execution_attempt: 1,
                 heartbeat_at: Some(Utc::now()),
                 stale_after_seconds: Some(900),
@@ -919,7 +997,7 @@ async fn natal_reuse_policy_rejects_non_stale_running_calculation() {
         state: Arc::new(Mutex::new(FakeCalculationState {
             existing: vec![CalculationAttempt {
                 id: 77,
-                status: "running".to_string(),
+                status: CalculationStatus::Running,
                 execution_attempt: 2,
                 heartbeat_at: Some(Utc::now() - Duration::seconds(10)),
                 stale_after_seconds: Some(900),
@@ -968,7 +1046,7 @@ async fn natal_reuse_policy_marks_stale_running_calculation_failed() {
         state: Arc::new(Mutex::new(FakeCalculationState {
             existing: vec![CalculationAttempt {
                 id: 88,
-                status: "running".to_string(),
+                status: CalculationStatus::Running,
                 execution_attempt: 2,
                 heartbeat_at: Some(Utc::now() - Duration::seconds(120)),
                 stale_after_seconds: Some(30),

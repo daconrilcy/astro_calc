@@ -3,9 +3,10 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::domain::{
-    BasicHouseAxisEmphasis, BasicPayload, BasicSignal, ProjectionReasonDefinition,
+    BasicHouseAxisEmphasis, BasicPayload, BasicSignal, HouseAxisReference,
+    ProjectionReasonDefinition,
 };
-use crate::features::natal::payload::rules::house_axes::{axis_label, canonical_axis};
+use crate::features::natal::payload::rules::house_axes::{axis_label, canonical_axis_reference};
 use crate::features::natal::payload::shared::text::{
     has_text, has_unique_non_empty_strings, is_normalized_score, push_unique,
 };
@@ -15,6 +16,7 @@ use super::emphasis::{product_scoring_snapshot, valid_projection_reasons};
 pub(super) fn has_current_house_axis_emphasis(
     payload: &BasicPayload,
     projection_reason_definitions: &[ProjectionReasonDefinition],
+    house_axis_references: &[HouseAxisReference],
 ) -> bool {
     let Some(scoring) = product_scoring_snapshot(payload) else {
         return false;
@@ -59,6 +61,7 @@ pub(super) fn has_current_house_axis_emphasis(
                 &signals_by_key,
                 &position_house_by_object,
                 projection_reason_definitions,
+                house_axis_references,
             )
             || axis
                 .source_signal_keys
@@ -78,21 +81,18 @@ fn has_current_axis(
     signals_by_key: &HashMap<&str, &BasicSignal>,
     position_house_by_object: &HashMap<&str, i32>,
     projection_reason_definitions: &[ProjectionReasonDefinition],
+    house_axis_references: &[HouseAxisReference],
 ) -> bool {
-    let Some(reference) = canonical_axis(axis.axis_code.as_str()) else {
+    let Some(reference) = canonical_axis_reference(axis.axis_code.as_str(), house_axis_references)
+    else {
         return false;
     };
 
     if axis.houses.len() != 2
         || axis.theme_codes.len() != 2
         || axis.house_scores.len() != 2
-        || axis.houses != reference.houses.to_vec()
-        || axis.theme_codes
-            != reference
-                .theme_codes
-                .into_iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>()
+        || axis.houses != vec![reference.house_a_number, reference.house_b_number]
+        || axis.theme_codes != vec![reference.theme_a_code.clone(), reference.theme_b_code.clone()]
     {
         return false;
     }
@@ -128,7 +128,7 @@ fn has_current_axis(
             .iter()
             .chain(axis.source_context_keys.iter())
             .all(|key| has_text(key))
-        && axis.interpretive_hint == expected_interpretive_hint(axis)
+        && axis.interpretive_hint == expected_interpretive_hint(axis, house_axis_references)
         && has_current_cross_axis_aspect_context(axis, signals_by_key, position_house_by_object)
         && axis.house_scores.iter().enumerate().all(|(index, score)| {
             score.house_number == axis.houses[index]
@@ -238,11 +238,14 @@ fn round4(value: f64) -> f64 {
 }
 
 /// Fonction expected_interpretive_hint.
-fn expected_interpretive_hint(axis: &BasicHouseAxisEmphasis) -> String {
+fn expected_interpretive_hint(
+    axis: &BasicHouseAxisEmphasis,
+    house_axis_references: &[HouseAxisReference],
+) -> String {
     match axis.polarity_balance.as_str() {
         "primary_house_dominant" => format!(
             "{} is activated mainly through house {} ({}), with house {} ({}) present as a secondary counterpoint.",
-            axis_label(axis.axis_code.as_str()),
+            axis_label(axis.axis_code.as_str(), house_axis_references),
             axis.houses[0],
             axis.theme_codes[0],
             axis.houses[1],
@@ -250,7 +253,7 @@ fn expected_interpretive_hint(axis: &BasicHouseAxisEmphasis) -> String {
         ),
         "secondary_house_dominant" => format!(
             "{} is activated mainly through house {} ({}), with house {} ({}) present as a secondary counterpoint.",
-            axis_label(axis.axis_code.as_str()),
+            axis_label(axis.axis_code.as_str(), house_axis_references),
             axis.houses[1],
             axis.theme_codes[1],
             axis.houses[0],
@@ -258,7 +261,7 @@ fn expected_interpretive_hint(axis: &BasicHouseAxisEmphasis) -> String {
         ),
         "balanced_axis" => format!(
             "{} is activated with both house {} ({}) and house {} ({}) strongly active.",
-            axis_label(axis.axis_code.as_str()),
+            axis_label(axis.axis_code.as_str(), house_axis_references),
             axis.houses[0],
             axis.theme_codes[0],
             axis.houses[1],

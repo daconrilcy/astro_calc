@@ -21,9 +21,19 @@ pub struct AngleContext {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PositionVisibilityContext {
+    pub horizon_position_id: Option<i32>,
+    pub horizon_position: Option<String>,
+    pub altitude_deg: Option<f64>,
+    pub is_visible: Option<bool>,
+    pub source: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PositionFactContext {
     pub object_context: Option<ObjectContext>,
     pub angle_context: Option<AngleContext>,
+    pub visibility_context: Option<PositionVisibilityContext>,
 }
 
 #[derive(Debug, Clone)]
@@ -54,6 +64,10 @@ impl ObjectPositionFact {
     pub fn context(&self) -> Option<PositionFactContext> {
         PositionFactContext::from_facts_json(self.facts_json.as_ref())
     }
+
+    pub fn visibility_context(&self) -> Option<PositionVisibilityContext> {
+        self.context().and_then(|context| context.visibility_context)
+    }
 }
 
 impl PositionFactContext {
@@ -67,13 +81,18 @@ impl PositionFactContext {
             .get("angle_context")
             .cloned()
             .and_then(|value| serde_json::from_value(value).ok());
+        let visibility_context = facts
+            .get("visibility_context")
+            .cloned()
+            .and_then(|value| serde_json::from_value(value).ok());
 
-        if object_context.is_none() && angle_context.is_none() {
+        if object_context.is_none() && angle_context.is_none() && visibility_context.is_none() {
             None
         } else {
             Some(Self {
                 object_context,
                 angle_context,
+                visibility_context,
             })
         }
     }

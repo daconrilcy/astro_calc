@@ -240,6 +240,83 @@ fn canonical_public_feature_paths_compile() {
 }
 
 #[test]
+fn internal_sources_do_not_use_historical_root_aliases() {
+    let root = workspace_root().join("astral_calculator/src");
+    let forbidden = [
+        "crate::catalog",
+        "crate::db",
+        "crate::facts",
+        "crate::aspects",
+        "crate::cli",
+        "crate::config",
+        "crate::dignities",
+        "crate::ephemeris",
+        "crate::idempotency",
+        "astral_calculator::catalog",
+        "astral_calculator::db",
+        "astral_calculator::facts",
+        "astral_calculator::aspects",
+        "astral_calculator::cli",
+        "astral_calculator::config",
+        "astral_calculator::dignities",
+        "astral_calculator::ephemeris",
+        "astral_calculator::idempotency",
+    ];
+
+    for file in collect_rs_files(&root) {
+        let content = read(&file);
+        for alias in forbidden {
+            assert!(
+                !content.contains(alias),
+                "{} uses deprecated alias {alias}",
+                file.display()
+            );
+        }
+    }
+}
+
+#[test]
+fn natal_calculation_service_is_split_into_private_submodules() {
+    let app_dir = workspace_root().join("astral_calculator/src/features/natal/application");
+    for file in [
+        "natal_calculation_service.rs",
+        "snapshot_loader.rs",
+        "reuse_policy.rs",
+        "workflow.rs",
+        "persisted_position_reuse.rs",
+    ] {
+        assert!(app_dir.join(file).is_file(), "missing {}", app_dir.join(file).display());
+    }
+
+    let service_file = app_dir.join("natal_calculation_service.rs");
+    let content = read(&service_file);
+    let line_count = content.lines().count();
+    assert!(
+        line_count <= 180,
+        "{} should stay small after the split, got {line_count} lines",
+        service_file.display()
+    );
+}
+
+#[test]
+fn natal_workflow_uses_typed_lifecycle_progress() {
+    let workflow = workspace_root()
+        .join("astral_calculator/src/features/natal/application/workflow.rs");
+    let content = read(&workflow);
+    for legacy in ["\"calculating_facts\"", "\"aggregating_signals\"", "\"building_payload\""] {
+        assert!(
+            !content.contains(legacy),
+            "{} still uses legacy string lifecycle state {}",
+            workflow.display(),
+            legacy
+        );
+    }
+    assert!(content.contains("CalculationProgressState::CalculatingFacts"));
+    assert!(content.contains("CalculationProgressState::AggregatingSignals"));
+    assert!(content.contains("CalculationProgressState::BuildingPayload"));
+}
+
+#[test]
 fn simplified_and_horoscope_do_not_import_natal_internals() {
     let root = workspace_root().join("astral_calculator/src");
     for restricted_root in [

@@ -74,7 +74,14 @@ fn unknown_json_is_preserved_even_if_typed_context_is_absent() {
 #[test]
 fn context_can_be_built_directly_from_json() {
     let context = PositionFactContext::from_facts_json(Some(&json!({
-        "object_context": { "role": "planet" }
+        "object_context": { "role": "planet" },
+        "visibility_context": {
+            "horizon_position_id": 1,
+            "horizon_position": "above_horizon",
+            "altitude_deg": 5.0,
+            "is_visible": true,
+            "source": "calculated_altitude"
+        }
     })))
     .expect("typed context");
 
@@ -85,4 +92,29 @@ fn context_can_be_built_directly_from_json() {
             .as_deref(),
         Some("planet")
     );
+    assert_eq!(
+        context
+            .visibility_context
+            .and_then(|visibility| visibility.horizon_position),
+        Some("above_horizon".to_string())
+    );
+}
+
+#[test]
+fn object_position_exposes_typed_visibility_context() {
+    let position = sample_position(Some(json!({
+        "visibility_context": {
+            "horizon_position_id": 2,
+            "horizon_position": "below_horizon",
+            "altitude_deg": -4.5,
+            "is_visible": false,
+            "source": "legacy_payload"
+        }
+    })));
+
+    let visibility = position.visibility_context().expect("visibility context");
+    assert_eq!(visibility.horizon_position_id, Some(2));
+    assert_eq!(visibility.horizon_position.as_deref(), Some("below_horizon"));
+    assert_eq!(visibility.is_visible, Some(false));
+    assert_eq!(visibility.source.as_deref(), Some("legacy_payload"));
 }

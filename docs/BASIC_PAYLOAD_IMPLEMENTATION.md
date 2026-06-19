@@ -4057,3 +4057,42 @@ cargo test -p astral_calculator
 Review:
 
 - `docs/reviews/astral_calculator_refactor/REV-ENGINE-CONTRACT-GOLDENS-2026-06-19.md`
+
+## Maintenabilite P2/P3 (2026-06-19)
+
+Cette vague type le lifecycle de calcul (`CalculationStatus`,
+`CalculationProgressState`) sans changer les valeurs persistées en base, découpe
+`natal_calculation_service.rs` en sous-modules applicatifs privés, ajoute un
+parsing typé de `visibility_context` dans `chart_facts`, et déprécie les aliases
+historiques de `lib.rs` sans casser la compatibilité publique.
+
+Invariants:
+
+- Les colonnes SQL `status` et `progress_state` restent inchangées en base et
+  sont seulement mappées côté Rust.
+- `features/natal/application` n’expose pas de nouvelle API publique ; le split
+  reste en `pub(super)`.
+- `facts_json`, `calculation_notes_json` et `payload_json` restent des blobs de
+  compatibilité ; seule la lecture de `visibility_context` est typée dans cette
+  vague.
+- Les aliases racine du crate restent disponibles pour les consommateurs
+  externes, mais le code interne ne doit plus les utiliser.
+
+Verification:
+
+```powershell
+cargo test -p astral_calculator --test refactor_governance_tests
+cargo test -p astral_calculator --test natal_reuse_policy_tests
+cargo test -p astral_calculator --test position_fact_context_tests
+cargo test -p astral_calculator
+cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests
+```
+
+Reviews:
+
+- `docs/reviews/astral_calculator_refactor/REV-MAINTAINABILITY-P2P3-2026-06-19.md`
+- `docs/reviews/astral_calculator_refactor/REV-MAINTAINABILITY-P2P3-2026-06-19-adversarial-loop-1.md`
+- `docs/reviews/astral_calculator_refactor/REV-MAINTAINABILITY-P2P3-2026-06-19-followup-1.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-MAINTAINABILITY-P2P3-2026-06-19.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-MAINTAINABILITY-P2P3-2026-06-19-adversarial-loop-1.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-MAINTAINABILITY-P2P3-2026-06-19-followup-1.md`

@@ -8,7 +8,8 @@ use super::models::ChartCalculationRow;
 use super::runtime_queries::RuntimeQueries;
 use crate::application::ports::{
     CalculationAttempt, CalculationAttemptStore, CalculationFactStore,
-    CalculationTransactionManager, PayloadStore, SignalStore,
+    CalculationProgressState, CalculationStatus, CalculationTransactionManager, PayloadStore,
+    SignalStore,
 };
 use crate::domain::{
     AspectFact, BasicPayload, CalculatedChartFacts, InterpretationSignalRow, NatalChartInput,
@@ -178,7 +179,7 @@ impl CalculationAttemptStore for CalculationRepository {
         &self,
         tx: &mut Self::Tx,
         chart_calculation_id: i32,
-        progress_state: &str,
+        progress_state: CalculationProgressState,
     ) -> Result<(), RuntimeError> {
         CalculationRepository::heartbeat(self, tx, chart_calculation_id, progress_state).await
     }
@@ -205,7 +206,7 @@ impl From<ChartCalculationRow> for CalculationAttempt {
     fn from(row: ChartCalculationRow) -> Self {
         Self {
             id: row.id,
-            status: row.status,
+            status: CalculationStatus::from_db_str(&row.status),
             execution_attempt: row.execution_attempt,
             heartbeat_at: row.heartbeat_at,
             stale_after_seconds: row.stale_after_seconds,
@@ -359,7 +360,7 @@ impl CalculationRepository {
         &self,
         tx: &mut Transaction<'_, Postgres>,
         chart_calculation_id: i32,
-        progress_state: &str,
+        progress_state: CalculationProgressState,
     ) -> Result<(), RuntimeError> {
         RuntimeQueries::heartbeat(tx, chart_calculation_id, progress_state).await
     }

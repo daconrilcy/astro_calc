@@ -36,8 +36,16 @@ fn projection_reason_definitions() -> Vec<astral_calculator::domain::ProjectionR
     astral_calculator::catalog::test_catalog().projection_reason_definitions
 }
 
+fn canonical_house_axis_references() -> Vec<HouseAxisReference> {
+    house_axis_references()
+}
+
 fn is_current_basic_payload(payload: &BasicPayload) -> bool {
-    runtime_is_current_basic_payload(payload, &projection_reason_definitions())
+    runtime_is_current_basic_payload(
+        payload,
+        &projection_reason_definitions(),
+        &canonical_house_axis_references(),
+    )
 }
 
 fn simple_reason(reason_code: &str) -> BasicProjectionReason {
@@ -2130,7 +2138,7 @@ fn runtime_rejects_projection_reason_code_missing_from_runtime_definitions() {
         .collect::<Vec<_>>();
 
     assert!(
-        !runtime_is_current_basic_payload(&payload, &definitions),
+        !runtime_is_current_basic_payload(&payload, &definitions, &canonical_house_axis_references()),
         "payload should be rejected when runtime definitions omit an active reason"
     );
 }
@@ -2145,7 +2153,11 @@ fn runtime_rejects_projection_reason_missing_required_dignity_type_from_runtime_
     }];
 
     assert!(
-        !runtime_is_current_basic_payload(&payload, &projection_reason_definitions()),
+        !runtime_is_current_basic_payload(
+            &payload,
+            &projection_reason_definitions(),
+            &canonical_house_axis_references(),
+        ),
         "payload should be rejected when essential_dignity misses dignity_type"
     );
 }
@@ -2161,7 +2173,11 @@ fn runtime_rejects_projection_reason_missing_required_object_from_runtime_defini
     }];
 
     assert!(
-        !runtime_is_current_basic_payload(&payload, &projection_reason_definitions()),
+        !runtime_is_current_basic_payload(
+            &payload,
+            &projection_reason_definitions(),
+            &canonical_house_axis_references(),
+        ),
         "payload should be rejected when object_in_house misses object_code"
     );
 }
@@ -2175,7 +2191,11 @@ fn runtime_rejects_projection_reason_missing_required_theme_from_runtime_definit
     }];
 
     assert!(
-        !runtime_is_current_basic_payload(&payload, &projection_reason_definitions()),
+        !runtime_is_current_basic_payload(
+            &payload,
+            &projection_reason_definitions(),
+            &canonical_house_axis_references(),
+        ),
         "payload should be rejected when theme_emphasis misses theme_code"
     );
 }
@@ -2191,7 +2211,11 @@ fn runtime_rejects_duplicate_projection_reasons_in_chart_emphasis() {
         vec![duplicate_reason.clone(), duplicate_reason];
 
     assert!(
-        !runtime_is_current_basic_payload(&payload, &projection_reason_definitions()),
+        !runtime_is_current_basic_payload(
+            &payload,
+            &projection_reason_definitions(),
+            &canonical_house_axis_references(),
+        ),
         "payload should be rejected when chart emphasis reason_details contain structural duplicates"
     );
 }
@@ -2208,7 +2232,11 @@ fn runtime_rejects_duplicate_projection_reasons_in_house_axis_emphasis() {
         vec![duplicate_reason.clone(), duplicate_reason];
 
     assert!(
-        !runtime_is_current_basic_payload(&payload, &projection_reason_definitions()),
+        !runtime_is_current_basic_payload(
+            &payload,
+            &projection_reason_definitions(),
+            &canonical_house_axis_references(),
+        ),
         "payload should be rejected when house axis reason_details contain structural duplicates"
     );
 }

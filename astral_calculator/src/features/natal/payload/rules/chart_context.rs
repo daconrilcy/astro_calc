@@ -160,13 +160,11 @@ pub(crate) fn horizon_position_code_for_fact(position: &ObjectPositionFact) -> O
     }
 
     if let Some(code) = position
-        .facts_json
-        .as_ref()
-        .and_then(|facts| facts.get("visibility_context"))
-        .and_then(|context| context.get("horizon_position"))
-        .and_then(|value| value.as_str())
+        .visibility_context()
+        .and_then(|context| context.horizon_position)
+        .filter(|value| !value.trim().is_empty())
     {
-        return Some(code.to_string());
+        return Some(code);
     }
 
     if let Some(code) = angle_horizon_position(position) {
@@ -194,14 +192,11 @@ pub(crate) fn visibility_source_for_fact(position: &ObjectPositionFact) -> Strin
     }
 
     if let Some(source) = position
-        .facts_json
-        .as_ref()
-        .and_then(|facts| facts.get("visibility_context"))
-        .and_then(|context| context.get("source"))
-        .and_then(|value| value.as_str())
+        .visibility_context()
+        .and_then(|context| context.source)
         .filter(|source| !source.trim().is_empty())
     {
-        return source.to_string();
+        return source;
     }
 
     if position.is_visible.is_some() {

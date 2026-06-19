@@ -15,8 +15,84 @@ fn projection_reason_definitions() -> Vec<astral_calculator::domain::ProjectionR
     astral_calculator::catalog::test_catalog().projection_reason_definitions
 }
 
+fn canonical_house_axis_references() -> Vec<astral_calculator::domain::HouseAxisReference> {
+    vec![
+        house_axis_reference(
+            "self_relationship",
+            1,
+            7,
+            "identity",
+            "relationships",
+            "Self and Relationship",
+        ),
+        house_axis_reference(
+            "resources_sharing",
+            2,
+            8,
+            "resources",
+            "shared_resources",
+            "Resources and Sharing",
+        ),
+        house_axis_reference(
+            "local_distant",
+            3,
+            9,
+            "communication",
+            "beliefs",
+            "Local and Distant",
+        ),
+        house_axis_reference(
+            "private_public",
+            4,
+            10,
+            "roots",
+            "career",
+            "Private and Public",
+        ),
+        house_axis_reference(
+            "creation_collective",
+            5,
+            11,
+            "creativity",
+            "community",
+            "Creation and Collective",
+        ),
+        house_axis_reference(
+            "control_surrender",
+            6,
+            12,
+            "work_health",
+            "inner_world",
+            "Control and Surrender",
+        ),
+    ]
+}
+
 fn is_current_basic_payload(payload: &BasicPayload) -> bool {
-    runtime_is_current_basic_payload(payload, &projection_reason_definitions())
+    runtime_is_current_basic_payload(
+        payload,
+        &projection_reason_definitions(),
+        &canonical_house_axis_references(),
+    )
+}
+
+fn house_axis_reference(
+    axis_code: &str,
+    house_a_number: i32,
+    house_b_number: i32,
+    theme_a_code: &str,
+    theme_b_code: &str,
+    label: &str,
+) -> astral_calculator::domain::HouseAxisReference {
+    astral_calculator::domain::HouseAxisReference {
+        axis_code: axis_code.to_string(),
+        house_a_number,
+        house_b_number,
+        theme_a_code: theme_a_code.to_string(),
+        theme_b_code: theme_b_code.to_string(),
+        label: label.to_string(),
+        description: format!("{label} description"),
+    }
 }
 
 fn load_golden_payload() -> Value {
