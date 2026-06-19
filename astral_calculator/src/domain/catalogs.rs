@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use serde::Deserialize;
-use sqlx::FromRow;
 
 use crate::domain::{
     AccidentalConditionTrigger, AccidentalDignityConditionReference, AccidentalPolarityBand,
@@ -218,7 +217,7 @@ pub struct SimplifiedCatalog {
     pub input_precision_levels: Vec<InputPrecisionLevel>,
 }
 
-#[derive(Debug, Clone, Deserialize, FromRow)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct SimplifiedPolicy {
     pub code: String,
     pub reference_time_utc: String,
@@ -229,20 +228,20 @@ pub struct SimplifiedPolicy {
     pub stable_fact_strategy: String,
 }
 
-#[derive(Debug, Clone, Deserialize, FromRow)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct LimitationCode {
     pub code: String,
     pub severity: String,
     pub affected_features_json: serde_json::Value,
 }
 
-#[derive(Debug, Clone, Deserialize, FromRow)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct ReliabilityLevel {
     pub code: String,
     pub allows_interpretive_affirmation: bool,
 }
 
-#[derive(Debug, Clone, Deserialize, FromRow)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct CalculationScope {
     pub code: String,
     pub min_input_precision_code: String,
@@ -253,12 +252,12 @@ pub struct CalculationScope {
     pub supports_ambiguous_facts: bool,
 }
 
-#[derive(Debug, Clone, Deserialize, FromRow)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct InputPrecisionLevel {
     pub code: String,
 }
 
-#[derive(Debug, Clone, Deserialize, FromRow)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct ProfileFeatureExclusion {
     pub profile_code: String,
     pub computed_scope_code: Option<String>,

@@ -9,6 +9,10 @@ use crate::domain::{
     CalculationScope, InputPrecisionLevel, LimitationCode, ProfileFeatureExclusion,
     ReliabilityLevel, SimplifiedCatalog, SimplifiedPolicy,
 };
+use crate::infra::db::models::{
+    CalculationScopeRow, InputPrecisionLevelRow, LimitationCodeRow, ProfileFeatureExclusionRow,
+    ReliabilityLevelRow, SimplifiedPolicyRow,
+};
 use crate::shared::error::RuntimeError;
 
 #[derive(Clone)]
@@ -51,7 +55,7 @@ fn map_catalog_db_error(err: sqlx::Error) -> RuntimeError {
 
 /// Fonction load_simplified_catalog.
 pub async fn load_simplified_catalog(pool: &PgPool) -> Result<SimplifiedCatalog, RuntimeError> {
-    let policy = sqlx::query_as::<_, SimplifiedPolicy>(
+    let policy = sqlx::query_as::<_, SimplifiedPolicyRow>(
         r#"
         SELECT code, reference_time_utc, date_only_uncertainty_mode,
                uncertainty_sampling_minutes, default_timezone_strategy,
@@ -67,9 +71,10 @@ pub async fn load_simplified_catalog(pool: &PgPool) -> Result<SimplifiedCatalog,
     .map_err(map_catalog_db_error)?
     .ok_or_else(|| {
         RuntimeError::Ephemeris("missing active astral_simplified_calculation_policies".into())
-    })?;
+    })
+    .map(map_simplified_policy_row)?;
 
-    let limitation_codes = sqlx::query_as::<_, LimitationCode>(
+    let limitation_codes = sqlx::query_as::<_, LimitationCodeRow>(
         r#"
         SELECT code, severity, affected_features_json
         FROM astral_simplified_limitation_codes
@@ -79,9 +84,12 @@ pub async fn load_simplified_catalog(pool: &PgPool) -> Result<SimplifiedCatalog,
     )
     .fetch_all(pool)
     .await
-    .map_err(map_catalog_db_error)?;
+    .map_err(map_catalog_db_error)?
+    .into_iter()
+    .map(map_limitation_code_row)
+    .collect();
 
-    let reliability_levels = sqlx::query_as::<_, ReliabilityLevel>(
+    let reliability_levels = sqlx::query_as::<_, ReliabilityLevelRow>(
         r#"
         SELECT code, allows_interpretive_affirmation
         FROM astral_fact_reliability_levels
@@ -91,9 +99,12 @@ pub async fn load_simplified_catalog(pool: &PgPool) -> Result<SimplifiedCatalog,
     )
     .fetch_all(pool)
     .await
-    .map_err(map_catalog_db_error)?;
+    .map_err(map_catalog_db_error)?
+    .into_iter()
+    .map(map_reliability_level_row)
+    .collect();
 
-    let calculation_scopes = sqlx::query_as::<_, CalculationScope>(
+    let calculation_scopes = sqlx::query_as::<_, CalculationScopeRow>(
         r#"
         SELECT code, min_input_precision_code, supports_angles, supports_houses,
                supports_aspects, supports_object_sign_facts, supports_ambiguous_facts
@@ -104,9 +115,12 @@ pub async fn load_simplified_catalog(pool: &PgPool) -> Result<SimplifiedCatalog,
     )
     .fetch_all(pool)
     .await
-    .map_err(map_catalog_db_error)?;
+    .map_err(map_catalog_db_error)?
+    .into_iter()
+    .map(map_calculation_scope_row)
+    .collect();
 
-    let input_precision_levels = sqlx::query_as::<_, InputPrecisionLevel>(
+    let input_precision_levels = sqlx::query_as::<_, InputPrecisionLevelRow>(
         r#"
         SELECT code
         FROM astral_birth_input_precision_levels
@@ -116,7 +130,10 @@ pub async fn load_simplified_catalog(pool: &PgPool) -> Result<SimplifiedCatalog,
     )
     .fetch_all(pool)
     .await
-    .map_err(map_catalog_db_error)?;
+    .map_err(map_catalog_db_error)?
+    .into_iter()
+    .map(map_input_precision_level_row)
+    .collect();
 
     Ok(SimplifiedCatalog {
         policy,
@@ -131,7 +148,7 @@ pub async fn load_simplified_catalog(pool: &PgPool) -> Result<SimplifiedCatalog,
 pub async fn load_profile_feature_exclusions(
     pool: &PgPool,
 ) -> Result<Vec<ProfileFeatureExclusion>, RuntimeError> {
-    sqlx::query_as::<_, ProfileFeatureExclusion>(
+    Ok(sqlx::query_as::<_, ProfileFeatureExclusionRow>(
         r#"
         SELECT profile_code, computed_scope_code, feature_code, exclusion_kind, sort_order
         FROM astral_simplified_profile_feature_exclusions
@@ -141,5 +158,61 @@ pub async fn load_profile_feature_exclusions(
     )
     .fetch_all(pool)
     .await
-    .map_err(map_catalog_db_error)
+    .map_err(map_catalog_db_error)?
+    .into_iter()
+    .map(map_profile_feature_exclusion_row)
+    .collect())
+}
+
+fn map_simplified_policy_row(row: SimplifiedPolicyRow) -> SimplifiedPolicy {
+    SimplifiedPolicy {
+        code: row.code,
+        reference_time_utc: row.reference_time_utc,
+        date_only_uncertainty_mode: row.date_only_uncertainty_mode,
+        uncertainty_sampling_minutes: row.uncertainty_sampling_minutes,
+        default_timezone_strategy: row.default_timezone_strategy,
+        cusp_warning_orb_deg: row.cusp_warning_orb_deg,
+        stable_fact_strategy: row.stable_fact_strategy,
+    }
+}
+
+fn map_limitation_code_row(row: LimitationCodeRow) -> LimitationCode {
+    LimitationCode {
+        code: row.code,
+        severity: row.severity,
+        affected_features_json: row.affected_features_json,
+    }
+}
+
+fn map_reliability_level_row(row: ReliabilityLevelRow) -> ReliabilityLevel {
+    ReliabilityLevel {
+        code: row.code,
+        allows_interpretive_affirmation: row.allows_interpretive_affirmation,
+    }
+}
+
+fn map_calculation_scope_row(row: CalculationScopeRow) -> CalculationScope {
+    CalculationScope {
+        code: row.code,
+        min_input_precision_code: row.min_input_precision_code,
+        supports_angles: row.supports_angles,
+        supports_houses: row.supports_houses,
+        supports_aspects: row.supports_aspects,
+        supports_object_sign_facts: row.supports_object_sign_facts,
+        supports_ambiguous_facts: row.supports_ambiguous_facts,
+    }
+}
+
+fn map_input_precision_level_row(row: InputPrecisionLevelRow) -> InputPrecisionLevel {
+    InputPrecisionLevel { code: row.code }
+}
+
+fn map_profile_feature_exclusion_row(row: ProfileFeatureExclusionRow) -> ProfileFeatureExclusion {
+    ProfileFeatureExclusion {
+        profile_code: row.profile_code,
+        computed_scope_code: row.computed_scope_code,
+        feature_code: row.feature_code,
+        exclusion_kind: row.exclusion_kind,
+        sort_order: row.sort_order,
+    }
 }

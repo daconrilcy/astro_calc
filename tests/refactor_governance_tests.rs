@@ -96,6 +96,11 @@ fn domain_does_not_import_infra_db_models() {
             "domain file {} imports infra",
             file.display()
         );
+        assert!(
+            !content.contains("sqlx::") && !content.contains("FromRow"),
+            "domain file {} imports sqlx or derives SQL row bindings; keep DB mapping under infra/db",
+            file.display()
+        );
     }
 }
 
@@ -572,6 +577,12 @@ fn calculator_http_rename_and_gateway_decoupling_reviews_are_closed() {
         "docs/reviews/astral_calculator_refactor_feature_boundaries/REV-PORTS-BUILDERS-FAILFAST-2026-06-19.md",
         "docs/reviews/astral_calculator_refactor_feature_boundaries/REV-PORTS-BUILDERS-FAILFAST-2026-06-19-followup-1.md",
         "docs/reviews/astral_calculator_refactor_feature_boundaries/REV-PORTS-BUILDERS-FAILFAST-2026-06-19-followup-2.md",
+        "docs/reviews/astral_calculator_refactor/REV-PROJECTION-PORTS-SIMPLIFIED-2026-06-19.md",
+        "docs/reviews/astral_calculator_refactor/REV-PROJECTION-PORTS-SIMPLIFIED-2026-06-19-followup-1.md",
+        "docs/reviews/astral_calculator_refactor/REV-PROJECTION-PORTS-SIMPLIFIED-2026-06-19-followup-2.md",
+        "docs/reviews/astral_calculator_refactor_feature_boundaries/REV-PROJECTION-PORTS-SIMPLIFIED-2026-06-19.md",
+        "docs/reviews/astral_calculator_refactor_feature_boundaries/REV-PROJECTION-PORTS-SIMPLIFIED-2026-06-19-followup-1.md",
+        "docs/reviews/astral_calculator_refactor_feature_boundaries/REV-PROJECTION-PORTS-SIMPLIFIED-2026-06-19-followup-2.md",
     ] {
         let path = root.join(review_path);
         assert!(path.exists(), "missing review artifact {}", path.display());
@@ -700,6 +711,19 @@ fn engine_and_horoscope_builders_use_ports_instead_of_infra_db() {
             !content.contains("crate::infra::db") && !content.contains("infra::db"),
             "{} imports infra::db instead of application ports",
             path.display()
+        );
+    }
+}
+
+#[test]
+fn infra_db_uses_canonical_domain_catalog_paths() {
+    let root = workspace_root().join("astral_calculator/src/infra/db");
+    for file in collect_rs_files(&root) {
+        let content = read(&file);
+        assert!(
+            !content.contains("crate::features::natal::catalog::BasicPayloadCatalog"),
+            "{} still imports compatibility path crate::features::natal::catalog::BasicPayloadCatalog instead of crate::domain::BasicPayloadCatalog",
+            file.display()
         );
     }
 }

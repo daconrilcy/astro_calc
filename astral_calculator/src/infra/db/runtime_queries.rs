@@ -5,14 +5,13 @@ use sqlx::{PgPool, Postgres, Transaction};
 
 use crate::domain::{
     AccidentalConditionTrigger, AccidentalPolarityBand, AccidentalScoringParams,
-    BasicProductScoringProfile, EssentialDignityRuleReference, ProjectionLabelDefinition,
-    ProjectionReasonDefinition,
+    BasicPayloadCatalog, BasicProductScoringProfile, EssentialDignityRuleReference,
+    ProjectionLabelDefinition, ProjectionReasonDefinition,
 };
 use crate::domain::{
     AspectFact, BasicPayload, CalculatedChartFacts, HouseCuspFact, InterpretationSignalDraft,
     NatalChartInput, ObjectPositionFact, RuntimeOptions,
 };
-use crate::features::natal::catalog::BasicPayloadCatalog;
 use crate::infra::db::models::{
     AccidentalConditionTriggerRow, AccidentalDignityConditionReferenceRow,
     AccidentalPolarityBandRow, AccidentalScoringParamsRow, AnglePointReference, AspectDefinition,

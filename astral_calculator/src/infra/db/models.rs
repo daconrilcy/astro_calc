@@ -156,6 +156,61 @@ pub struct HoroscopeSupportedObjectRow {
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure SimplifiedPolicyRow.
+pub struct SimplifiedPolicyRow {
+    pub code: String,
+    pub reference_time_utc: String,
+    pub date_only_uncertainty_mode: String,
+    pub uncertainty_sampling_minutes: i32,
+    pub default_timezone_strategy: String,
+    pub cusp_warning_orb_deg: f64,
+    pub stable_fact_strategy: String,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure LimitationCodeRow.
+pub struct LimitationCodeRow {
+    pub code: String,
+    pub severity: String,
+    pub affected_features_json: Value,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure ReliabilityLevelRow.
+pub struct ReliabilityLevelRow {
+    pub code: String,
+    pub allows_interpretive_affirmation: bool,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure CalculationScopeRow.
+pub struct CalculationScopeRow {
+    pub code: String,
+    pub min_input_precision_code: String,
+    pub supports_angles: bool,
+    pub supports_houses: bool,
+    pub supports_aspects: bool,
+    pub supports_object_sign_facts: bool,
+    pub supports_ambiguous_facts: bool,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure InputPrecisionLevelRow.
+pub struct InputPrecisionLevelRow {
+    pub code: String,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+/// Structure ProfileFeatureExclusionRow.
+pub struct ProfileFeatureExclusionRow {
+    pub profile_code: String,
+    pub computed_scope_code: Option<String>,
+    pub feature_code: String,
+    pub exclusion_kind: String,
+    pub sort_order: i32,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
 /// Structure SignReference.
 pub struct SignReference {
     pub id: i32,
