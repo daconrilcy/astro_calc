@@ -4026,3 +4026,34 @@ cargo test -p astral_calculator_http --test astral_calculator_http_tests
 Review:
 
 - `docs/reviews/astral_calculator_refactor/REV-GLOBAL-FINDINGS-CORRECTION-LOOP-001-2026-06-18.md`
+
+## Boucle adversariale goldens engine contract (2026-06-19)
+
+Correction ciblee des tests de contrat moteur apres regeneration des goldens:
+les axes de maisons utilises par `engine_contract_tests` sont reconstruits
+depuis les seeds avec la meme contrainte canonique que la query runtime
+(`house_a.number < house_b.number`, tri par maison source). Le writer du golden
+engine utilise maintenant la reponse typee pour limiter le bruit de
+regeneration, tandis que les assertions restent en comparaison JSON.
+
+Invariants:
+
+- Les labels d'axes de maisons du test viennent des seeds referentiels, pas de
+  fallbacks calcules en dur.
+- Le test contractuel ne depend plus de l'ordre physique des membres d'axes dans
+  `astral_house_axis_members.json`.
+- La comparaison fonctionnelle des goldens reste independante de l'ordre des
+  proprietes JSON.
+
+Verification:
+
+```powershell
+cargo fmt --check
+cargo test -p astral_calculator --test engine_contract_tests -- --test-threads=1
+cargo test -p astral_calculator --test refactor_governance_tests
+cargo test -p astral_calculator
+```
+
+Review:
+
+- `docs/reviews/astral_calculator_refactor/REV-ENGINE-CONTRACT-GOLDENS-2026-06-19.md`

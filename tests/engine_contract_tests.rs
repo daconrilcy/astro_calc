@@ -7,15 +7,15 @@ use serde_json::{json, Value};
 
 use astral_calculator::domain::{
     AccidentalDignityConditionReference, AnglePointReference, BasicPayload,
-    EssentialDignityRuleReference, HouseReference, MotionStateReference, ProjectionLabelDefinition,
-    ProjectionReasonDefinition, RuntimeOptions,
+    EssentialDignityRuleReference, HouseAxisReference, HouseReference, MotionStateReference,
+    ProjectionLabelDefinition, ProjectionReasonDefinition, RuntimeOptions,
 };
 use astral_calculator::engine::projection::{
     build_llm_projection_natal_v1, is_active_major_aspect_signal, LlmProjectionBuildContext,
     LlmProjectionProfile,
 };
 use astral_calculator::engine::{
-    build_engine_response, ResolvedEngineRequest, RESPONSE_CONTRACT_VERSION,
+    build_engine_response, AstroEngineResponse, ResolvedEngineRequest, RESPONSE_CONTRACT_VERSION,
 };
 use astral_calculator::infra::db::projection_repository::ProjectionRepository;
 
@@ -32,6 +32,9 @@ const LLM_GOLDEN_STANDARD: &str =
 const LLM_GOLDEN_RICH: &str = "../tests/golden/llm_projection_natal_v1_paris_1990_rich.json";
 const PROJECTION_LABELS_JSON: &str =
     include_str!("../json_db/astral_projection_label_definitions.json");
+const HOUSE_AXIS_DEFINITIONS_JSON: &str =
+    include_str!("../json_db/astral_house_axis_definitions.json");
+const HOUSE_AXIS_MEMBERS_JSON: &str = include_str!("../json_db/astral_house_axis_members.json");
 const HOUSES_JSON: &str = include_str!("../json_db/astral_houses.json");
 const ANGLE_POINTS_JSON: &str = include_str!("../json_db/astral_angle_points.json");
 const MOTION_STATES_JSON: &str = include_str!("../json_db/astral_object_motion_states.json");
@@ -60,6 +63,7 @@ fn projection_context() -> LlmProjectionBuildContext<'static> {
     static REASON_DEFINITIONS: OnceLock<Vec<ProjectionReasonDefinition>> = OnceLock::new();
     static LABEL_DEFINITIONS: OnceLock<Vec<ProjectionLabelDefinition>> = OnceLock::new();
     static HOUSE_REFERENCES: OnceLock<Vec<HouseReference>> = OnceLock::new();
+    static HOUSE_AXES: OnceLock<Vec<HouseAxisReference>> = OnceLock::new();
     static ANGLE_POINTS: OnceLock<Vec<AnglePointReference>> = OnceLock::new();
     static MOTION_STATES: OnceLock<Vec<MotionStateReference>> = OnceLock::new();
     static ACCIDENTAL_CONDITIONS: OnceLock<Vec<AccidentalDignityConditionReference>> =
@@ -70,7 +74,7 @@ fn projection_context() -> LlmProjectionBuildContext<'static> {
         zodiac_label: "Tropical",
         coordinate_label: "Geocentric",
         house_system_label: "Placidus",
-        house_axes: &[],
+        house_axes: HOUSE_AXES.get_or_init(house_axes_from_seed),
         projection_reason_definitions: REASON_DEFINITIONS.get_or_init(|| {
             astral_calculator::catalog::test_catalog().projection_reason_definitions
         }),
@@ -158,11 +162,15 @@ fn load_profile_from_db(
 }
 
 fn build_engine_envelope(level: &str) -> Value {
+    serde_json::to_value(build_engine_response_sample(level)).expect("engine json")
+}
+
+fn build_engine_response_sample(level: &str) -> AstroEngineResponse {
     let payload = load_v14_golden();
     let profile = load_profile_from_db(level);
     let resolved = sample_resolved(level, &payload);
     let catalog = astral_calculator::catalog::test_catalog();
-    let response = build_engine_response(
+    build_engine_response(
         &resolved,
         payload,
         &RuntimeOptions::default(),
@@ -170,7 +178,7 @@ fn build_engine_envelope(level: &str) -> Value {
         "Geocentric",
         "Placidus",
         projection_context().house_references,
-        &[],
+        projection_context().house_axes,
         projection_context().angle_points,
         projection_context().motion_states,
         projection_context().accidental_condition_definitions,
@@ -179,8 +187,7 @@ fn build_engine_envelope(level: &str) -> Value {
         &catalog.projection_label_definitions,
         &profile,
     )
-    .expect("engine response");
-    serde_json::to_value(response).expect("engine json")
+    .expect("engine response")
 }
 
 fn build_level(level: &str) -> Value {
@@ -266,6 +273,79 @@ fn house_references_from_seed() -> Vec<HouseReference> {
             interpretation_weight: None,
         })
         .collect()
+}
+
+fn house_axes_from_seed() -> Vec<HouseAxisReference> {
+    let houses_by_id = seed_rows(HOUSES_JSON)
+        .into_iter()
+        .map(|house| {
+            (
+                house["id"].as_i64().expect("house id") as i32,
+                (
+                    house["number"].as_i64().expect("house number") as i32,
+                    house["theme_code"]
+                        .as_str()
+                        .expect("theme_code")
+                        .to_string(),
+                ),
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+    let members = seed_rows(HOUSE_AXIS_MEMBERS_JSON);
+
+    let mut axes = seed_rows(HOUSE_AXIS_DEFINITIONS_JSON)
+        .into_iter()
+        .map(|axis| {
+            let axis_id = axis["id"].as_i64().expect("axis id") as i32;
+            let member = members
+                .iter()
+                .find(|member| {
+                    if member["axis_id"].as_i64().expect("member axis_id") as i32 != axis_id {
+                        return false;
+                    }
+                    let house_a_id = member["house_id"].as_i64().expect("house_id") as i32;
+                    let house_b_id = member["opposite_house_id"]
+                        .as_i64()
+                        .expect("opposite_house_id") as i32;
+                    let house_a_number = houses_by_id
+                        .get(&house_a_id)
+                        .unwrap_or_else(|| panic!("missing house reference for id {house_a_id}"))
+                        .0;
+                    let house_b_number = houses_by_id
+                        .get(&house_b_id)
+                        .unwrap_or_else(|| panic!("missing house reference for id {house_b_id}"))
+                        .0;
+                    house_a_number < house_b_number
+                })
+                .unwrap_or_else(|| {
+                    panic!("missing canonical house axis member for axis id {axis_id}")
+                });
+            let house_a_id = member["house_id"].as_i64().expect("house_id") as i32;
+            let house_b_id = member["opposite_house_id"]
+                .as_i64()
+                .expect("opposite_house_id") as i32;
+            let (house_a_number, theme_a_code) = houses_by_id
+                .get(&house_a_id)
+                .cloned()
+                .unwrap_or_else(|| panic!("missing house reference for id {house_a_id}"));
+            let (house_b_number, theme_b_code) = houses_by_id
+                .get(&house_b_id)
+                .cloned()
+                .unwrap_or_else(|| panic!("missing house reference for id {house_b_id}"));
+
+            HouseAxisReference {
+                axis_code: axis["key"].as_str().expect("axis key").to_string(),
+                house_a_number,
+                house_b_number,
+                theme_a_code,
+                theme_b_code,
+                label: axis["title"].as_str().expect("axis title").to_string(),
+                description: axis["summary"].as_str().expect("axis summary").to_string(),
+            }
+        })
+        .collect::<Vec<_>>();
+    axes.sort_by_key(|axis| axis.house_a_number);
+    axes
 }
 
 fn angle_points_from_seed() -> Vec<AnglePointReference> {
@@ -630,8 +710,8 @@ fn write_engine_response_golden_when_env_set() {
     {
         return;
     }
-    let envelope = build_engine_envelope("rich");
-    let json = serde_json::to_string_pretty(&envelope).expect("serialize");
+    let response = build_engine_response_sample("rich");
+    let json = serde_json::to_string_pretty(&response).expect("serialize");
     fs::write(ENGINE_RESPONSE_GOLDEN_RICH, format!("{json}\n")).expect("write golden");
 }
 
@@ -1136,7 +1216,13 @@ fn llm_projection_secondary_axis_balance_matches_summary_house() {
 #[test]
 fn llm_projection_humanizes_axis_supporting_factors() {
     let rich = build_level("rich");
-    let factors = rich["house_axes"][1]["supporting_factors"]
+    let axis = rich["house_axes"]
+        .as_array()
+        .expect("house_axes")
+        .iter()
+        .find(|axis| axis["axis"].as_str() == Some("Self and Relationship"))
+        .expect("self relationship axis");
+    let factors = axis["supporting_factors"]
         .as_array()
         .expect("supporting_factors");
     let joined = factors
@@ -1147,7 +1233,7 @@ fn llm_projection_humanizes_axis_supporting_factors() {
     assert!(!joined.contains("ascendant angle in house"));
     assert!(!joined.contains("identity theme"));
     assert!(joined.contains("Ascendant emphasizes this house"));
-    assert!(joined.contains("Identity theme emphasized"));
+    assert!(joined.contains("Self theme emphasized"));
 }
 
 #[test]

@@ -151,7 +151,7 @@
       "conditions": [
         "Succedent house",
         "Below horizon",
-        "Sect mismatch: does not match the chart's day/night sect"
+        "Sect affinity mismatch"
       ],
       "importance": "high",
       "keywords": [
@@ -215,7 +215,7 @@
         "name": "Saturn",
         "supporting_factors": [
           "Strong placement",
-          "In domicile",
+          "Saturn in domicile",
           "Participant in dominant theme",
           "Capricorn emphasis",
           "Reinforced or modified by accidental conditions"
@@ -226,7 +226,7 @@
         "name": "Jupiter",
         "supporting_factors": [
           "Strong placement",
-          "In exaltation",
+          "Jupiter in exaltation",
           "Involved in a strong major aspect",
           "Reinforced or modified by accidental conditions"
         ]
@@ -321,7 +321,7 @@
       "supporting_factors": [
         "Dominant house emphasis",
         "Sun in house",
-        "The Sun highlights this house",
+        "Sun highlights this house",
         "Saturn in house",
         "Uranus in house",
         "Neptune in house",
@@ -356,7 +356,7 @@
         "Pluto in house",
         "Active chart signal",
         "Supported by rulership links",
-        "Identity theme emphasized",
+        "Self theme emphasized",
         "Descendant in house",
         "Descendant emphasizes this house",
         "Partnership theme emphasized"
@@ -381,9 +381,9 @@
         "Imum Coeli in house",
         "The IC emphasizes this house",
         "Moon in house",
-        "The Moon highlights this house",
+        "Moon highlights this house",
         "Active chart signal",
-        "Roots theme emphasized",
+        "Home theme emphasized",
         "Midheaven in house",
         "The Midheaven emphasizes this house",
         "Career theme emphasized"
@@ -506,7 +506,7 @@
         "conditions": [
           "Cadent house",
           "Below horizon",
-          "Variable sect affinity"
+          "Sect affinity variable unresolved"
         ],
         "house": {
           "number": 3,
@@ -596,7 +596,7 @@
         "conditions": [
           "Succedent house",
           "Above horizon",
-          "Sect mismatch: does not match the chart's day/night sect"
+          "Sect affinity mismatch"
         ],
         "house": {
           "number": 8,
@@ -626,7 +626,7 @@
         "conditions": [
           "Succedent house",
           "Below horizon",
-          "Sect mismatch: does not match the chart's day/night sect"
+          "Sect affinity mismatch"
         ],
         "house": {
           "number": 2,
@@ -714,7 +714,7 @@
         "conditions": [
           "Angular house",
           "Above horizon",
-          "Close to the Ascendant"
+          "Near Ascendant"
         ],
         "house": {
           "number": 1,
@@ -850,7 +850,7 @@
           "Succedent house",
           "Retrograde motion",
           "Above horizon",
-          "Sect mismatch: does not match the chart's day/night sect"
+          "Sect affinity mismatch"
         ],
         "object": "Jupiter",
         "overall": "Weakened"
@@ -869,7 +869,7 @@
           "Cadent house",
           "Retrograde motion",
           "Below horizon",
-          "Variable sect affinity"
+          "Sect affinity variable unresolved"
         ],
         "object": "Mercury",
         "overall": "Strongly weakened"
@@ -894,7 +894,7 @@
       {
         "conditions": [
           "Angular house",
-          "Close to the Ascendant",
+          "Near Ascendant",
           "Above horizon"
         ],
         "object": "Pluto",
@@ -904,7 +904,7 @@
         "conditions": [
           "Succedent house",
           "Below horizon",
-          "Sect mismatch: does not match the chart's day/night sect"
+          "Sect affinity mismatch"
         ],
         "object": "Saturn",
         "overall": "Mixed"
@@ -913,7 +913,7 @@
         "conditions": [
           "Succedent house",
           "Below horizon",
-          "Sect mismatch: does not match the chart's day/night sect"
+          "Sect affinity mismatch"
         ],
         "object": "Sun",
         "overall": "Mixed"
