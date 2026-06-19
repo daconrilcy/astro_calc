@@ -14,7 +14,10 @@ fn projection_label_seed_rows() -> Vec<ProjectionLabelDefinition> {
         .expect("projection label data")
         .iter()
         .map(|row| ProjectionLabelDefinition {
-            label_family: row["label_family"].as_str().expect("label_family").to_string(),
+            label_family: row["label_family"]
+                .as_str()
+                .expect("label_family")
+                .to_string(),
             label_code: row["label_code"].as_str().expect("label_code").to_string(),
             label_template_en: row["label_template_en"]
                 .as_str()

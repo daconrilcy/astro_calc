@@ -9,7 +9,7 @@ Resume court:
   `astral_angle_points`, `astral_object_motion_states`,
   `astral_accidental_dignity_condition_definitions` et
   `astral_essential_dignity_rules`; il porte notamment les formes publiques
-  projection `angle_display` et `motion_display`;
+  projection `angle_display`, `axis_balance` et `motion_display`;
 - introduction d'un resolver unique `ProjectionTextCatalog` construit une fois
   par appel de `build_llm_projection_natal_v1`;
 - absence de nouveau contrat public: `natal_structured_v14` et

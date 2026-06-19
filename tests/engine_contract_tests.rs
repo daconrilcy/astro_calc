@@ -12,6 +12,7 @@ use astral_calculator::domain::{
 };
 use astral_calculator::engine::projection::{
     build_llm_projection_natal_v1, is_active_major_aspect_signal, LlmProjectionBuildContext,
+    LlmProjectionProfile,
 };
 use astral_calculator::engine::{
     build_engine_response, ResolvedEngineRequest, RESPONSE_CONTRACT_VERSION,
@@ -162,6 +163,28 @@ fn build_level(level: &str) -> Option<Value> {
     let projection =
         build_llm_projection_natal_v1(&payload, &profile, &projection_context()).ok()?;
     Some(serde_json::to_value(projection).expect("projection json"))
+}
+
+fn local_projection_profile() -> LlmProjectionProfile {
+    LlmProjectionProfile {
+        contract_version: "llm_projection_natal_v1".to_string(),
+        level_code: "rich".to_string(),
+        max_keywords_per_item: 5,
+        max_core_placements: 3,
+        max_supporting_placements: 3,
+        max_dominant_signs: 3,
+        max_dominant_houses: 3,
+        max_dominant_objects: 3,
+        max_house_axes: 3,
+        max_aspects: 3,
+        max_background_placements: 3,
+        max_accidental_conditions_per_object: 3,
+        include_accidental_conditions: true,
+        include_rulership_details: true,
+        include_minor_evidence: true,
+        include_degrees: true,
+        include_scores: true,
+    }
 }
 
 fn assert_no_underscore_strings(values: &[Value], label: &str) {
@@ -1117,6 +1140,34 @@ fn llm_projection_axis_summary_has_no_snake_case_themes() {
     assert!(
         summary.contains("house 8 (Transformation)"),
         "expected human house 8 theme label: {summary}"
+    );
+}
+
+#[test]
+fn llm_projection_secondary_axis_balance_matches_summary_house() {
+    let mut payload = load_v14_golden();
+    let axis = payload
+        .house_axis_emphasis
+        .get_mut(0)
+        .expect("house axis fixture");
+    axis.primary_house = 8;
+    axis.secondary_house = 2;
+    axis.polarity_balance = "secondary_house_dominant".to_string();
+    axis.interpretive_hint =
+        "Resources and Sharing is activated mainly through house 8 (shared_resources), with house 2 (resources) present as a secondary counterpoint."
+            .to_string();
+
+    let projection =
+        build_llm_projection_natal_v1(&payload, &local_projection_profile(), &projection_context())
+            .expect("projection");
+    let rich = serde_json::to_value(projection).expect("projection json");
+    let axis = &rich["house_axes"][0];
+
+    assert_eq!(axis["balance"].as_str(), Some("Mainly house 8"));
+    let summary = axis["summary"].as_str().expect("summary");
+    assert!(
+        summary.contains("mainly through house 8 (Transformation)"),
+        "summary must match the displayed dominant balance: {summary}"
     );
 }
 

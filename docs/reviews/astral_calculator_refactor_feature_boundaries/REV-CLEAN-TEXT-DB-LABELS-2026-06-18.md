@@ -117,3 +117,34 @@ Verification:
 ## Conclusion runtime
 
 Aucun finding ouvert.
+
+## Cycle 5 - projection axis_balance secondaire
+
+### Finding F6
+
+Le nouveau run full natal Free ne fuitait plus le code
+`secondary_house_dominant`, mais le label projete affichait `Mainly house 3`
+alors que le resume humanise indiquait correctement une activation principale
+par la maison 9. Le template DB-backed de `secondary_house_dominant` utilisait
+`{secondary_house}` alors que `BasicHouseAxisEmphasis.primary_house` porte deja
+la maison dominante calculee.
+
+### Correction
+
+- correction du seed `astral_projection_label_definitions.axis_balance` pour
+  rendre `secondary_house_dominant` avec `{primary_house}`;
+- synchronisation du `test_catalog()`;
+- ajout d'une regression projection verifiant que le label `balance` et le
+  resume restent alignes sur le cas secondaire dominant.
+
+### Re-review
+
+Aucun finding supplementaire.
+
+Verification:
+- `cargo test -p astral_calculator --test projection_label_catalog_tests`
+- `cargo test -p astral_calculator --test engine_contract_tests llm_projection_secondary_axis_balance_matches_summary_house`
+
+## Conclusion post-smoke
+
+Aucun finding ouvert.

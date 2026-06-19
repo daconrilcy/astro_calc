@@ -135,3 +135,35 @@ que le referentiel contenait `primary_dominant`, `secondary_dominant` et
 ## Conclusion runtime
 
 Aucun finding ouvert.
+
+## Cycle 5 - projection axis_balance secondaire
+
+### Finding F6
+
+Le smoke suivant a montre une incoherence interne dans
+`llm_projection_natal_v1`: `balance` rendait `Mainly house 3`, tandis que
+`summary` rendait correctement la dominante maison 9. Le contrat restait
+stable, mais le template DB-backed `axis_balance.secondary_house_dominant`
+consommait le mauvais placeholder.
+
+### Correction
+
+- `axis_balance.secondary_house_dominant` rend maintenant
+  `Mainly house {primary_house}`, car `primary_house` designe la maison
+  dominante calculee dans `BasicHouseAxisEmphasis`;
+- `test_catalog()` reste strictement identique au seed JSON;
+- ajout du test
+  `llm_projection_secondary_axis_balance_matches_summary_house`.
+
+### Verification
+
+- `cargo test -p astral_calculator --test projection_label_catalog_tests`
+- `cargo test -p astral_calculator --test engine_contract_tests llm_projection_secondary_axis_balance_matches_summary_house`
+
+### Re-review
+
+Aucun finding supplementaire.
+
+## Conclusion post-smoke
+
+Aucun finding ouvert.

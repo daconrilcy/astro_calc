@@ -668,7 +668,7 @@ fn test_projection_label_definitions() -> Vec<ProjectionLabelDefinition> {
         definition(
             "axis_balance",
             "secondary_house_dominant",
-            "Mainly house {secondary_house}",
+            "Mainly house {primary_house}",
             20,
         ),
         definition(

@@ -696,8 +696,10 @@
       `<div class="service-actions natal-inspector-actions">`,
       `<button type="button" class="run-inspector">Executer</button>`,
       `<button type="button" class="show-calculation secondary">Voir calcul</button>`,
-      `<button type="button" class="show-llm-request secondary">Voir requete LLM</button>`,
-      `<button type="button" class="copy-llm-request secondary">Copier requete LLM</button>`,
+      `<button type="button" class="show-llm-request secondary">Voir requete service LLM</button>`,
+      `<button type="button" class="copy-llm-request secondary">Copier requete service LLM</button>`,
+      `<button type="button" class="show-llm-projection secondary">Voir projection LLM</button>`,
+      `<button type="button" class="copy-llm-projection secondary">Copier projection LLM</button>`,
       `</div>`,
       `</div>`,
       `<div class="service-note" aria-live="polite"></div>`,
@@ -719,19 +721,33 @@
     const showCalculation = card.querySelector(".show-calculation");
     const showLlmRequest = card.querySelector(".show-llm-request");
     const copyLlmRequest = card.querySelector(".copy-llm-request");
+    const showLlmProjection = card.querySelector(".show-llm-projection");
+    const copyLlmProjection = card.querySelector(".copy-llm-projection");
     const calculation = result ? result.calculation : null;
     const llmRequest = result ? result.llmRequest : null;
+    const llmProjection = result ? result.llmProjection : null;
     showCalculation.disabled = !calculation;
     showLlmRequest.disabled = !llmRequest;
     copyLlmRequest.disabled = !llmRequest;
+    showLlmProjection.disabled = !llmProjection;
+    copyLlmProjection.disabled = !llmProjection;
     showCalculation.addEventListener("click", () => openJsonModal(`${title} - calcul`, config.tier, calculation));
-    showLlmRequest.addEventListener("click", () => openJsonModal(`${title} - requete LLM`, config.tier, llmRequest));
+    showLlmRequest.addEventListener("click", () => openJsonModal(`${title} - requete service LLM`, config.tier, llmRequest));
     copyLlmRequest.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(JSON.stringify(llmRequest, null, 2));
         flashButtonLabel(copyLlmRequest, "Copie");
       } catch (err) {
         flashButtonLabel(copyLlmRequest, "Copie impossible");
+      }
+    });
+    showLlmProjection.addEventListener("click", () => openJsonModal(`${title} - projection LLM`, config.tier, llmProjection));
+    copyLlmProjection.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(JSON.stringify(llmProjection, null, 2));
+        flashButtonLabel(copyLlmProjection, "Copie");
+      } catch (err) {
+        flashButtonLabel(copyLlmProjection, "Copie impossible");
       }
     });
 
@@ -752,13 +768,14 @@
       service ? `Endpoint: ${escapeHtml(natalInspectorEndpoint(service).replace("/api/gateway", ""))}` : "",
       result.runId ? `Run: ${escapeHtml(result.runId)}` : "",
       result.calculation ? `Calcul: disponible` : "Calcul: indisponible",
-      result.llmRequest ? `Requete LLM: disponible` : "Requete LLM: indisponible",
+      result.llmRequest ? `Requete service LLM: disponible` : "Requete service LLM: indisponible",
+      result.llmProjection ? `Projection LLM: disponible` : "Projection LLM: indisponible",
       result.promptTraceCount ? `Traces prompt: ${escapeHtml(String(result.promptTraceCount))}` : "",
       `Duree: ${escapeHtml(formatMs(result.elapsedMs || 0))}`,
     ].filter(Boolean);
-    const preview = result.llmRequest
-      ? `<div class="empty-copy">La requete complete est disponible via "Voir requete LLM" ou "Copier requete LLM".</div>`
-      : `<div class="empty-copy">La requete LLM n'est pas exposee par la reponse.</div>`;
+    const preview = result.llmRequest || result.llmProjection
+      ? `<div class="empty-copy">La requete service LLM est l'enveloppe applicative; la projection LLM correspond au payload ${escapeHtml(result.llmProjection && result.llmProjection.contract_version ? result.llmProjection.contract_version : "LLM projete")}.</div>`
+      : `<div class="empty-copy">La requete service LLM et la projection LLM ne sont pas exposees par la reponse.</div>`;
     return `<div>${lines.join("<br>")}</div>${preview}`;
   }
 
@@ -977,6 +994,7 @@
         elapsedMs: 0,
         calculation: null,
         llmRequest: null,
+        llmProjection: null,
         runId: null,
         promptTraceCount: 0,
       };
@@ -991,6 +1009,7 @@
       elapsedMs: 0,
       calculation: null,
       llmRequest: null,
+      llmProjection: null,
       runId: null,
       promptTraceCount: 0,
     };
@@ -1007,6 +1026,7 @@
         elapsedMs: Date.now() - started,
         calculation: response && response.calculation ? response.calculation : null,
         llmRequest: extractNatalLlmRequest(response) || response.llm_request || null,
+        llmProjection: extractNatalLlmProjection(response),
         runId: null,
         promptTraceCount: 0,
       };
@@ -1019,6 +1039,7 @@
         elapsedMs: Date.now() - started,
         calculation: null,
         llmRequest: null,
+        llmProjection: null,
         runId: null,
         promptTraceCount: 0,
       };
@@ -1182,6 +1203,12 @@
     return firstValueAtPaths(payload, [
       ["debug", "llm_request"],
       ["llm_request"],
+    ]);
+  }
+
+  function extractNatalLlmProjection(payload) {
+    return firstValueAtPaths(payload, [
+      ["calculation", "llm_payload"],
     ]);
   }
 
