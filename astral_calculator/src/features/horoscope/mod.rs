@@ -37,8 +37,7 @@ pub use daily::{
 };
 pub use period::{
     calculate_horoscope_period, calculate_horoscope_period_from_positions,
-    calculate_horoscope_period_from_transits,
-    calculate_horoscope_period_from_transits_with_aspects, calculate_horoscope_period_natal,
+    calculate_horoscope_period_from_transits, calculate_horoscope_period_natal,
     calculate_horoscope_period_natal_from_positions,
     calculate_horoscope_period_natal_from_transits, normalize_horoscope_period_request_utc,
     try_calculate_horoscope_period_from_transits_with_aspects,

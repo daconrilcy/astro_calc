@@ -1014,6 +1014,17 @@ fn horoscope_runtime_has_no_panic_paths() {
 }
 
 #[test]
+fn horoscope_public_period_api_has_no_expect_wrappers() {
+    let path = workspace_root().join("astral_calculator/src/features/horoscope/period.rs");
+    let content = read(&path);
+    assert!(
+        !content.contains(".expect("),
+        "{} contains expect(...) in public period API path",
+        path.display()
+    );
+}
+
+#[test]
 fn calculator_refactor_plan_reviews_are_closed() {
     let root = workspace_root();
     for review_path in [

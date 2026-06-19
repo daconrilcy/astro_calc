@@ -62,9 +62,7 @@ where
     let zodiacal_id = repository
         .zodiacal_reference_system_id_by_key(&resolved.zodiac_key)
         .await?;
-    let coordinate_id = repository
-        .coordinate_reference_system_id_by_key("geocentric")
-        .await?;
+    let coordinate_id = references.geocentric_coordinate_reference_system_id;
     let house_system_id = repository
         .house_system_id_by_code(&resolved.house_system_code)
         .await?;

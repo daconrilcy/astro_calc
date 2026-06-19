@@ -8,8 +8,7 @@ use astral_calculator::features::horoscope::{
     calculate_horoscope_daily, calculate_horoscope_daily_from_transits,
     calculate_horoscope_daily_natal, calculate_horoscope_period,
     calculate_horoscope_period_from_positions, calculate_horoscope_period_from_transits,
-    calculate_horoscope_period_from_transits_with_aspects, calculate_horoscope_period_natal,
-    calculate_horoscope_period_natal_from_positions,
+    calculate_horoscope_period_natal, calculate_horoscope_period_natal_from_positions,
     calculate_horoscope_period_natal_from_transits, normalize_horoscope_period_request_utc,
     try_calculate_horoscope_period_from_transits_with_aspects,
     HoroscopeCalculationRequest, HoroscopeCalculationSlotRequest, HoroscopePeriod,
@@ -46,7 +45,7 @@ fn horoscope_period_calculator_from_positions_never_uses_fake_source() {
     let request = period_calculator_request();
     let positions = sample_natal_positions();
 
-    let response = calculate_horoscope_period_from_positions(request, &positions, 8.0);
+    let response = calculate_horoscope_period_from_positions(request, &positions, 8.0).unwrap();
     assert_eq!(response.snapshots.len(), 7);
     for snapshot in response.snapshots {
         assert!(snapshot.transits_to_natal.is_empty());
@@ -57,7 +56,7 @@ fn horoscope_period_calculator_from_positions_never_uses_fake_source() {
 
 #[test]
 fn horoscope_period_calculator_public_function_never_uses_fake_source() {
-    let response = calculate_horoscope_period(period_calculator_request());
+    let response = calculate_horoscope_period(period_calculator_request()).unwrap();
     for snapshot in response.snapshots {
         assert!(snapshot.transits_to_natal.is_empty());
         assert_eq!(snapshot.sky_snapshot["source"], "missing_transit_data");
@@ -72,7 +71,8 @@ fn horoscope_period_calculator_with_transits_uses_swisseph_source() {
     let transit_snapshots = transit_snapshots_for_request(&request, positions.clone());
 
     let response =
-        calculate_horoscope_period_from_transits(request, &positions, &transit_snapshots, 8.0);
+        calculate_horoscope_period_from_transits(request, &positions, &transit_snapshots, 8.0)
+            .unwrap();
     for snapshot in response.snapshots {
         for fact in snapshot.transits_to_natal {
             assert_eq!(fact.source, "swisseph_period_calculator_v1");
@@ -87,7 +87,8 @@ fn horoscope_period_calculator_rejects_wide_major_aspect_orbs() {
     let transit_snapshots = transit_snapshots_with_venus_context(&request, positions.clone());
 
     let response =
-        calculate_horoscope_period_from_transits(request, &positions, &transit_snapshots, 8.0);
+        calculate_horoscope_period_from_transits(request, &positions, &transit_snapshots, 8.0)
+            .unwrap();
     let venus_fact = response
         .snapshots
         .iter()
@@ -136,14 +137,15 @@ fn horoscope_period_calculator_respects_reference_aspect_orbs_when_supplied() {
         max_default_orb_deg: 8.0,
     }];
 
-    let response = calculate_horoscope_period_from_transits_with_aspects(
+    let response = try_calculate_horoscope_period_from_transits_with_aspects(
         request,
         &positions,
         &transit_snapshots,
         8.0,
         &aspect_definitions,
         &sample_theme_mappings(),
-    );
+    )
+    .unwrap();
 
     let venus_fact = response
         .snapshots
@@ -163,7 +165,8 @@ fn horoscope_period_calculator_outputs_context_fact_when_no_valid_aspect() {
     let transit_snapshots = transit_snapshots_with_venus_context(&request, positions.clone());
 
     let response =
-        calculate_horoscope_period_from_transits(request, &positions, &transit_snapshots, 8.0);
+        calculate_horoscope_period_from_transits(request, &positions, &transit_snapshots, 8.0)
+            .unwrap();
     let venus_snapshot = response
         .snapshots
         .iter()
@@ -241,7 +244,7 @@ fn horoscope_period_calculator_response_keeps_canonical_utc_fields() {
     request.period_resolution["end_datetime_utc"] = serde_json::json!("2026-06-14T00:00:00+02:00");
     request.scan_plan.snapshots[0].reference_datetime_utc = "2026-06-07T12:00:00+02:00".to_string();
 
-    let response = calculate_horoscope_period(request);
+    let response = calculate_horoscope_period(request).unwrap();
 
     assert_eq!(
         response.period_resolution["start_datetime_utc"],
@@ -297,6 +300,32 @@ fn horoscope_period_try_calculator_returns_error_for_invalid_request() {
     .expect_err("invalid request should return an error");
 
     assert!(err
+        .to_string()
+        .contains("invalid horoscope period calculation request"));
+}
+
+#[test]
+fn horoscope_period_public_wrappers_return_error_for_invalid_request() {
+    let mut request = period_calculator_request();
+    request.period_resolution["end_datetime_utc"] =
+        serde_json::json!("2026-06-06T22:00:00+00:00");
+
+    let base = calculate_horoscope_period(request.clone())
+        .expect_err("base public wrapper should return an error");
+    assert!(base
+        .to_string()
+        .contains("invalid horoscope period calculation request"));
+
+    let positions = sample_natal_positions();
+    let from_positions = calculate_horoscope_period_from_positions(request.clone(), &positions, 8.0)
+        .expect_err("positions wrapper should return an error");
+    assert!(from_positions
+        .to_string()
+        .contains("invalid horoscope period calculation request"));
+
+    let from_transits = calculate_horoscope_period_from_transits(request, &positions, &[], 8.0)
+        .expect_err("transits wrapper should return an error");
+    assert!(from_transits
         .to_string()
         .contains("invalid horoscope period calculation request"));
 }
@@ -358,17 +387,19 @@ fn horoscope_legacy_natal_function_names_delegate_to_canonical_names() {
     let positions = sample_natal_positions();
     let transit_snapshots = transit_snapshots_for_request(&period_request, positions.clone());
 
-    let canonical_period = calculate_horoscope_period(period_request.clone());
-    let legacy_period = calculate_horoscope_period_natal(period_request.clone());
+    let canonical_period = calculate_horoscope_period(period_request.clone()).unwrap();
+    let legacy_period = calculate_horoscope_period_natal(period_request.clone()).unwrap();
     assert_eq!(
         serde_json::to_value(canonical_period).unwrap(),
         serde_json::to_value(legacy_period).unwrap()
     );
 
     let canonical_positions =
-        calculate_horoscope_period_from_positions(period_request.clone(), &positions, 8.0);
+        calculate_horoscope_period_from_positions(period_request.clone(), &positions, 8.0)
+            .unwrap();
     let legacy_positions =
-        calculate_horoscope_period_natal_from_positions(period_request.clone(), &positions, 8.0);
+        calculate_horoscope_period_natal_from_positions(period_request.clone(), &positions, 8.0)
+            .unwrap();
     assert_eq!(
         serde_json::to_value(canonical_positions).unwrap(),
         serde_json::to_value(legacy_positions).unwrap()
@@ -379,13 +410,15 @@ fn horoscope_legacy_natal_function_names_delegate_to_canonical_names() {
         &positions,
         &transit_snapshots,
         8.0,
-    );
+    )
+    .unwrap();
     let legacy_transits = calculate_horoscope_period_natal_from_transits(
         period_request,
         &positions,
         &transit_snapshots,
         8.0,
-    );
+    )
+    .unwrap();
     assert_eq!(
         serde_json::to_value(canonical_transits).unwrap(),
         serde_json::to_value(legacy_transits).unwrap()

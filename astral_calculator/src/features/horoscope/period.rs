@@ -33,7 +33,7 @@ pub fn normalize_horoscope_period_request_utc(
 /// Fonction calculate_horoscope_period.
 pub fn calculate_horoscope_period(
     request: HoroscopePeriodCalculationRequest,
-) -> HoroscopePeriodCalculationResponse {
+) -> Result<HoroscopePeriodCalculationResponse, RuntimeError> {
     calculate_horoscope_period_from_positions(request, &[], 8.0)
 }
 
@@ -42,7 +42,7 @@ pub fn calculate_horoscope_period_from_positions(
     request: HoroscopePeriodCalculationRequest,
     natal_positions: &[ObjectPositionFact],
     period_max_major_aspect_orb_deg: f64,
-) -> HoroscopePeriodCalculationResponse {
+) -> Result<HoroscopePeriodCalculationResponse, RuntimeError> {
     calculate_horoscope_period_from_transits(
         request,
         natal_positions,
@@ -57,35 +57,15 @@ pub fn calculate_horoscope_period_from_transits(
     natal_positions: &[ObjectPositionFact],
     transit_snapshots: &[(String, Vec<ObjectPositionFact>)],
     max_major_aspect_orb_deg: f64,
-) -> HoroscopePeriodCalculationResponse {
-    calculate_horoscope_period_from_transits_with_aspects(
-        request,
-        natal_positions,
-        transit_snapshots,
-        max_major_aspect_orb_deg,
-        &[],
-        &[],
-    )
-}
-
-/// Fonction calculate_horoscope_period_from_transits_with_aspects.
-pub fn calculate_horoscope_period_from_transits_with_aspects(
-    request: HoroscopePeriodCalculationRequest,
-    natal_positions: &[ObjectPositionFact],
-    transit_snapshots: &[(String, Vec<ObjectPositionFact>)],
-    max_major_aspect_orb_deg: f64,
-    aspect_definitions: &[AspectDefinition],
-    theme_mappings: &[HoroscopeSignalThemeMapping],
-) -> HoroscopePeriodCalculationResponse {
+) -> Result<HoroscopePeriodCalculationResponse, RuntimeError> {
     try_calculate_horoscope_period_from_transits_with_aspects(
         request,
         natal_positions,
         transit_snapshots,
         max_major_aspect_orb_deg,
-        aspect_definitions,
-        theme_mappings,
+        &[],
+        &[],
     )
-    .expect("historical wrapper called with invalid horoscope period calculation request")
 }
 
 /// Fonction try_calculate_horoscope_period_from_transits_with_aspects.
@@ -147,7 +127,7 @@ pub fn try_calculate_horoscope_period_from_transits_with_aspects(
 /// Fonction calculate_horoscope_period_natal.
 pub fn calculate_horoscope_period_natal(
     request: HoroscopePeriodCalculationRequest,
-) -> HoroscopePeriodCalculationResponse {
+) -> Result<HoroscopePeriodCalculationResponse, RuntimeError> {
     calculate_horoscope_period(request)
 }
 
@@ -156,7 +136,7 @@ pub fn calculate_horoscope_period_natal_from_positions(
     request: HoroscopePeriodCalculationRequest,
     natal_positions: &[ObjectPositionFact],
     period_max_major_aspect_orb_deg: f64,
-) -> HoroscopePeriodCalculationResponse {
+) -> Result<HoroscopePeriodCalculationResponse, RuntimeError> {
     calculate_horoscope_period_from_positions(
         request,
         natal_positions,
@@ -170,7 +150,7 @@ pub fn calculate_horoscope_period_natal_from_transits(
     natal_positions: &[ObjectPositionFact],
     transit_snapshots: &[(String, Vec<ObjectPositionFact>)],
     max_major_aspect_orb_deg: f64,
-) -> HoroscopePeriodCalculationResponse {
+) -> Result<HoroscopePeriodCalculationResponse, RuntimeError> {
     calculate_horoscope_period_from_transits(
         request,
         natal_positions,
