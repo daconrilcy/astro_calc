@@ -76,13 +76,12 @@ impl EphemerisEngine for SwissEphemerisEngine {
         house_system: &HouseSystem,
         references: &CalculationReferenceData,
     ) -> Result<CalculatedChartFacts, RuntimeError> {
+        use crate::astrology::angles::normalize_degrees;
         use crate::astrology::aspects::detect_aspects;
         use crate::astrology::house_geometry::house_number_from_cusps;
         use crate::astrology::motion::motion_state_for_speed;
+        use crate::astrology::zodiac::{whole_sign_house_number, zodiac_slot_for_longitude};
         use crate::domain::{HouseCuspFact, ObjectPositionFact};
-        use crate::shared::astro_math::{
-            normalize_degrees, whole_sign_house_number, zodiac_slot_for_longitude,
-        };
         use serde_json::json;
         use swiss_eph::safe::{
             azimuth_altitude, calc_ut, houses, set_ephe_path, set_topo, CalcFlags, GeoPos,
@@ -332,7 +331,7 @@ fn add_angle_positions(
         let longitude = round4(angle_longitude(angle, ascendant_longitude, mc_longitude)?);
         let sign = sign_reference_for_zodiac_slot(
             &references.signs,
-            crate::shared::astro_math::zodiac_slot_for_longitude(longitude),
+            crate::astrology::zodiac::zodiac_slot_for_longitude(longitude),
         )?;
         let house = house_reference_for_number(&references.houses, angle.associated_house)?;
         let horizon_position_code = angle_horizon_position_code(angle.code.as_str())?;
@@ -413,7 +412,7 @@ fn angle_longitude(
             )))
         }
     };
-    Ok(crate::shared::astro_math::normalize_degrees(longitude))
+    Ok(crate::astrology::angles::normalize_degrees(longitude))
 }
 
 #[cfg(feature = "swisseph-engine")]

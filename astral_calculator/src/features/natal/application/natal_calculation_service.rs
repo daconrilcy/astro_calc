@@ -4,7 +4,9 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use crate::application::ports::{
-    CalculationAttempt, NatalCalculationStore, PayloadCatalogStore, ReferenceCatalog,
+    CalculationAttempt, CalculationAttemptStore, CalculationFactStore,
+    CalculationTransactionManager, LocalizationCatalog, NatalReferenceStore, PayloadCatalogStore,
+    PayloadStore, ReferenceSystemResolver, SignalStore,
 };
 use crate::astrology::ephemeris::EphemerisEngine;
 use crate::domain::{
@@ -38,9 +40,13 @@ pub struct NatalCalculationService<C, P, R, E> {
 
 impl<C, P, R, E> NatalCalculationService<C, P, R, E>
 where
-    C: NatalCalculationStore,
+    C: CalculationTransactionManager
+        + CalculationAttemptStore
+        + CalculationFactStore
+        + PayloadStore
+        + SignalStore,
     P: PayloadCatalogStore,
-    R: ReferenceCatalog,
+    R: NatalReferenceStore + LocalizationCatalog + ReferenceSystemResolver,
     E: EphemerisEngine,
 {
     /// Fonction new.
@@ -84,7 +90,86 @@ where
         let input_hash = input_hash(&input)?;
         let idempotency_key = idempotency_key(&input, &self.options)?;
         let lock_key = advisory_lock_key(&idempotency_key);
+        let snapshot = NatalReferenceSnapshotLoader::new(&self.catalogs, &self.references)
+            .load(&input, &product_code)
+            .await?;
 
+        let mut tx = self.calculations.begin().await?;
+        self.calculations
+            .lock_idempotency(&mut tx, lock_key)
+            .await?;
+        let existing = self
+            .calculations
+            .calculations_for_key(&mut tx, &idempotency_key)
+            .await?;
+        let reuse_policy = NatalReusePolicy::new(
+            &self.calculations,
+            &snapshot,
+            &product_code,
+            self.options.stale_after_seconds,
+        );
+        let tx = match reuse_policy
+            .resolve(&input, payload_language_id, &idempotency_key, &existing, tx)
+            .await?
+        {
+            NatalReuseResolution::Return(payload) => return Ok((payload, snapshot.catalog)),
+            NatalReuseResolution::Proceed(tx) => tx,
+        };
+
+        NatalCalculationWorkflow::new(
+            &self.calculations,
+            &self.ephemeris,
+            &self.options,
+            &snapshot,
+        )
+        .execute(
+            tx,
+            input,
+            payload_language_id,
+            input_hash,
+            idempotency_key,
+            existing,
+        )
+        .await
+        .map(|payload| (payload, snapshot.catalog))
+    }
+}
+
+struct NatalReferenceSnapshot {
+    chart_objects: Vec<crate::domain::ChartObject>,
+    aspect_definitions: Vec<crate::domain::AspectDefinition>,
+    house_system: crate::domain::HouseSystem,
+    references: CalculationReferenceData,
+    domicile_rulers: Vec<crate::domain::DomicileRulerReference>,
+    house_axes: Vec<crate::domain::HouseAxisReference>,
+    lunar_phases: Vec<crate::domain::LunarPhaseReference>,
+    accidental_conditions: Vec<crate::domain::AccidentalDignityConditionReference>,
+    sect_affinities: Vec<crate::domain::ObjectSectAffinityReference>,
+    catalog: BasicPayloadCatalog,
+}
+
+struct NatalReferenceSnapshotLoader<'a, P, R> {
+    catalogs: &'a P,
+    references: &'a R,
+}
+
+impl<'a, P, R> NatalReferenceSnapshotLoader<'a, P, R>
+where
+    P: PayloadCatalogStore,
+    R: NatalReferenceStore + ReferenceSystemResolver,
+{
+    fn new(catalogs: &'a P, references: &'a R) -> Self {
+        Self {
+            catalogs,
+            references,
+        }
+    }
+
+    async fn load(
+        &self,
+        input: &NatalChartInput,
+        product_code: &str,
+    ) -> Result<NatalReferenceSnapshot, RuntimeError> {
         let chart_objects = self
             .references
             .active_chart_objects(input.reference_version_id)
@@ -95,7 +180,7 @@ where
         let catalog = self
             .catalogs
             .basic_payload_catalog(
-                &product_code,
+                product_code,
                 "natal_structured_v14",
                 input.reference_version_id,
             )
@@ -137,34 +222,86 @@ where
         let sect_affinities = self.references.object_sect_affinity_references().await?;
         validate_object_sect_affinity_references(&sect_affinities)?;
 
-        let mut tx = self.calculations.begin().await?;
-        self.calculations
-            .lock_idempotency(&mut tx, lock_key)
-            .await?;
+        Ok(NatalReferenceSnapshot {
+            chart_objects,
+            aspect_definitions,
+            house_system,
+            references,
+            domicile_rulers,
+            house_axes,
+            lunar_phases,
+            accidental_conditions,
+            sect_affinities,
+            catalog,
+        })
+    }
+}
 
-        let existing = self
-            .calculations
-            .calculations_for_key(&mut tx, &idempotency_key)
-            .await?;
+struct NatalReusePolicy<'a, C> {
+    calculations: &'a C,
+    snapshot: &'a NatalReferenceSnapshot,
+    product_code: &'a str,
+    stale_after_seconds: i32,
+}
+
+#[derive(Debug)]
+enum NatalReuseResolution<Tx> {
+    Return(BasicPayload),
+    Proceed(Tx),
+}
+
+impl<'a, C> NatalReusePolicy<'a, C>
+where
+    C: CalculationTransactionManager
+        + CalculationAttemptStore
+        + CalculationFactStore
+        + PayloadStore
+        + SignalStore,
+{
+    fn new(
+        calculations: &'a C,
+        snapshot: &'a NatalReferenceSnapshot,
+        product_code: &'a str,
+        stale_after_seconds: i32,
+    ) -> Self {
+        Self {
+            calculations,
+            snapshot,
+            product_code,
+            stale_after_seconds,
+        }
+    }
+
+    async fn resolve(
+        &self,
+        input: &NatalChartInput,
+        payload_language_id: i32,
+        idempotency_key: &str,
+        existing: &[CalculationAttempt],
+        tx: C::Tx,
+    ) -> Result<NatalReuseResolution<C::Tx>, RuntimeError> {
         if let Some(completed) = existing.iter().find(|row| row.status == "completed") {
             let completed_id = completed.id;
             if let Some(payload) = self
                 .calculations
-                .existing_basic_payload(completed_id, &product_code, Some(payload_language_id))
+                .existing_basic_payload(completed_id, self.product_code, Some(payload_language_id))
                 .await?
             {
-                if is_current_basic_payload(&payload, &catalog.projection_reason_definitions)
-                    && has_current_rulership_references(&payload, &domicile_rulers)
+                if is_current_basic_payload(
+                    &payload,
+                    &self.snapshot.catalog.projection_reason_definitions,
+                ) && has_current_rulership_references(&payload, &self.snapshot.domicile_rulers)
                 {
                     self.calculations.commit(tx).await?;
-                    return Ok((payload, catalog));
+                    return Ok(NatalReuseResolution::Return(payload));
                 }
             }
+
             let positions = self
                 .calculations
                 .positions_for_payload(completed_id)
                 .await?;
-            if has_reusable_persisted_positions(&positions, &references) {
+            if has_reusable_persisted_positions(&positions, &self.snapshot.references) {
                 let aspects = self.calculations.aspects_for_payload(completed_id).await?;
                 let signal_drafts = aggregate_basic_signals(
                     &CalculatedChartFacts {
@@ -172,7 +309,7 @@ where
                         house_cusps: Vec::new(),
                         aspects,
                     },
-                    &catalog,
+                    &self.snapshot.catalog,
                 );
                 self.calculations.commit(tx).await?;
                 let mut payload_tx = self.calculations.begin().await?;
@@ -187,42 +324,90 @@ where
                     .await?;
                 let payload = build_basic_payload_with_accidental_references(
                     completed_id,
-                    &input,
+                    input,
                     &positions,
                     &signals,
-                    &domicile_rulers,
-                    &house_axes,
-                    &lunar_phases,
-                    &accidental_conditions,
-                    &sect_affinities,
-                    &catalog,
+                    &self.snapshot.domicile_rulers,
+                    &self.snapshot.house_axes,
+                    &self.snapshot.lunar_phases,
+                    &self.snapshot.accidental_conditions,
+                    &self.snapshot.sect_affinities,
+                    &self.snapshot.catalog,
                 );
                 self.calculations
                     .persist_basic_payload(
                         &mut payload_tx,
-                        &input,
+                        input,
                         Some(payload_language_id),
                         &payload,
                     )
                     .await?;
                 self.calculations.commit(payload_tx).await?;
-                return Ok((payload, catalog));
+                return Ok(NatalReuseResolution::Return(payload));
             }
-        } else if let Some(running) = existing.iter().find(|row| row.status == "running") {
-            if is_stale(running, self.options.stale_after_seconds) {
+
+            return Ok(NatalReuseResolution::Proceed(tx));
+        }
+
+        if let Some(running) = existing.iter().find(|row| row.status == "running") {
+            if is_stale(running, self.stale_after_seconds) {
+                let mut tx = tx;
                 self.calculations
                     .mark_stale_failed(&mut tx, running.id)
                     .await?;
-            } else {
-                let chart_calculation_id = running.id;
-                self.calculations.commit(tx).await?;
-                return Err(RuntimeError::RunningCalculationInProgress {
-                    idempotency_key,
-                    chart_calculation_id,
-                });
+                return Ok(NatalReuseResolution::Proceed(tx));
             }
+
+            self.calculations.commit(tx).await?;
+            return Err(RuntimeError::RunningCalculationInProgress {
+                idempotency_key: idempotency_key.to_string(),
+                chart_calculation_id: running.id,
+            });
         }
 
+        Ok(NatalReuseResolution::Proceed(tx))
+    }
+}
+
+struct NatalCalculationWorkflow<'a, C, E> {
+    calculations: &'a C,
+    ephemeris: &'a Arc<E>,
+    options: &'a RuntimeOptions,
+    snapshot: &'a NatalReferenceSnapshot,
+}
+
+impl<'a, C, E> NatalCalculationWorkflow<'a, C, E>
+where
+    C: CalculationTransactionManager
+        + CalculationAttemptStore
+        + CalculationFactStore
+        + PayloadStore
+        + SignalStore,
+    E: EphemerisEngine,
+{
+    fn new(
+        calculations: &'a C,
+        ephemeris: &'a Arc<E>,
+        options: &'a RuntimeOptions,
+        snapshot: &'a NatalReferenceSnapshot,
+    ) -> Self {
+        Self {
+            calculations,
+            ephemeris,
+            options,
+            snapshot,
+        }
+    }
+
+    async fn execute(
+        &self,
+        mut tx: C::Tx,
+        input: NatalChartInput,
+        payload_language_id: i32,
+        input_hash: String,
+        idempotency_key: String,
+        existing: Vec<CalculationAttempt>,
+    ) -> Result<BasicPayload, RuntimeError> {
         let next_attempt = existing
             .first()
             .map(|row| row.execution_attempt + 1)
@@ -232,7 +417,7 @@ where
             .insert_running_calculation(
                 &mut tx,
                 &input,
-                &self.options,
+                self.options,
                 &input_hash,
                 &idempotency_key,
                 next_attempt,
@@ -244,10 +429,10 @@ where
 
         let facts = match self.ephemeris.calculate_chart(
             &input,
-            &chart_objects,
-            &aspect_definitions,
-            &house_system,
-            &references,
+            &self.snapshot.chart_objects,
+            &self.snapshot.aspect_definitions,
+            &self.snapshot.house_system,
+            &self.snapshot.references,
         ) {
             Ok(value) => value,
             Err(error) => {
@@ -274,7 +459,7 @@ where
             house_cusps: Vec::new(),
             aspects,
         };
-        let signal_drafts = aggregate_basic_signals(&enriched_facts, &catalog);
+        let signal_drafts = aggregate_basic_signals(&enriched_facts, &self.snapshot.catalog);
         let signal_rows = self
             .calculations
             .persist_signals(
@@ -293,12 +478,12 @@ where
             &input,
             &enriched_facts.positions,
             &signal_rows,
-            &domicile_rulers,
-            &house_axes,
-            &lunar_phases,
-            &accidental_conditions,
-            &sect_affinities,
-            &catalog,
+            &self.snapshot.domicile_rulers,
+            &self.snapshot.house_axes,
+            &self.snapshot.lunar_phases,
+            &self.snapshot.accidental_conditions,
+            &self.snapshot.sect_affinities,
+            &self.snapshot.catalog,
         );
         self.calculations
             .persist_basic_payload(&mut tx, &input, Some(payload_language_id), &payload)
@@ -308,7 +493,7 @@ where
             .await?;
         self.calculations.commit(tx).await?;
 
-        Ok((payload, catalog))
+        Ok(payload)
     }
 }
 
@@ -345,18 +530,13 @@ fn has_reusable_horizon_context(position: &crate::domain::ObjectPositionFact) ->
 
 /// Fonction is_angle_position.
 fn is_angle_position(position: &crate::domain::ObjectPositionFact) -> bool {
-    position
-        .facts_json
+    let context = position.context();
+    context
         .as_ref()
-        .and_then(|facts| facts.get("object_context"))
-        .and_then(|context| context.get("role"))
-        .and_then(|value| value.as_str())
+        .and_then(|context| context.object_context.as_ref())
+        .and_then(|object_context| object_context.role.as_deref())
         == Some("angle")
-        || position
-            .facts_json
-            .as_ref()
-            .and_then(|facts| facts.get("angle_context"))
-            .is_some()
+        || context.and_then(|context| context.angle_context).is_some()
 }
 
 /// Fonction is_stale.

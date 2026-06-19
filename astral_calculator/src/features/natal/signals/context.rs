@@ -6,12 +6,21 @@ pub(super) fn placement_context_object(
     position: &ObjectPositionFact,
     key: &str,
 ) -> Option<serde_json::Value> {
-    position
-        .facts_json
-        .as_ref()
-        .and_then(|facts| facts.get(key))
-        .filter(|value| !value.is_null())
-        .cloned()
+    let context = position.context()?;
+    match key {
+        "object_context" => context
+            .object_context
+            .and_then(|value| serde_json::to_value(value).ok()),
+        "angle_context" => context
+            .angle_context
+            .and_then(|value| serde_json::to_value(value).ok()),
+        _ => position
+            .facts_json
+            .as_ref()
+            .and_then(|facts| facts.get(key))
+            .filter(|value| !value.is_null())
+            .cloned(),
+    }
 }
 
 pub(super) fn placement_context_value<'a>(

@@ -6,7 +6,10 @@ use async_trait::async_trait;
 
 use super::models::ChartCalculationRow;
 use super::runtime_queries::RuntimeQueries;
-use crate::application::ports::{CalculationAttempt, NatalCalculationStore};
+use crate::application::ports::{
+    CalculationAttempt, CalculationAttemptStore, CalculationFactStore,
+    CalculationTransactionManager, PayloadStore, SignalStore,
+};
 use crate::domain::{
     AspectFact, BasicPayload, CalculatedChartFacts, InterpretationSignalRow, NatalChartInput,
     ObjectPositionFact, RuntimeOptions,
@@ -20,7 +23,7 @@ pub struct CalculationRepository {
 }
 
 #[async_trait]
-impl NatalCalculationStore for CalculationRepository {
+impl CalculationTransactionManager for CalculationRepository {
     type Tx = Transaction<'static, Postgres>;
 
     async fn begin(&self) -> Result<Self::Tx, RuntimeError> {
@@ -31,6 +34,13 @@ impl NatalCalculationStore for CalculationRepository {
         Ok(tx.commit().await?)
     }
 
+    async fn lock_idempotency(&self, tx: &mut Self::Tx, lock_key: i64) -> Result<(), RuntimeError> {
+        CalculationRepository::lock_idempotency(self, tx, lock_key).await
+    }
+}
+
+#[async_trait]
+impl PayloadStore for CalculationRepository {
     async fn existing_basic_payload(
         &self,
         chart_calculation_id: i32,
@@ -46,6 +56,20 @@ impl NatalCalculationStore for CalculationRepository {
         .await
     }
 
+    async fn persist_basic_payload(
+        &self,
+        tx: &mut Self::Tx,
+        input: &NatalChartInput,
+        payload_language_id: Option<i32>,
+        payload: &BasicPayload,
+    ) -> Result<(), RuntimeError> {
+        CalculationRepository::persist_basic_payload(self, tx, input, payload_language_id, payload)
+            .await
+    }
+}
+
+#[async_trait]
+impl CalculationFactStore for CalculationRepository {
     async fn positions_for_payload(
         &self,
         chart_calculation_id: i32,
@@ -67,24 +91,26 @@ impl NatalCalculationStore for CalculationRepository {
         CalculationRepository::natal_input_for_calculation(self, chart_calculation_id).await
     }
 
-    async fn lock_idempotency(&self, tx: &mut Self::Tx, lock_key: i64) -> Result<(), RuntimeError> {
-        CalculationRepository::lock_idempotency(self, tx, lock_key).await
-    }
-
-    async fn calculations_for_key(
+    async fn persist_facts(
         &self,
         tx: &mut Self::Tx,
-        idempotency_key: &str,
-    ) -> Result<Vec<CalculationAttempt>, RuntimeError> {
-        Ok(
-            CalculationRepository::calculations_for_key(self, tx, idempotency_key)
-                .await?
-                .into_iter()
-                .map(Into::into)
-                .collect(),
-        )
+        chart_calculation_id: i32,
+        facts: &CalculatedChartFacts,
+    ) -> Result<(), RuntimeError> {
+        CalculationRepository::persist_facts(self, tx, chart_calculation_id, facts).await
     }
 
+    async fn aspects_for_payload_in_tx(
+        &self,
+        tx: &mut Self::Tx,
+        chart_calculation_id: i32,
+    ) -> Result<Vec<AspectFact>, RuntimeError> {
+        CalculationRepository::aspects_for_payload_in_tx(self, tx, chart_calculation_id).await
+    }
+}
+
+#[async_trait]
+impl SignalStore for CalculationRepository {
     async fn persist_signals(
         &self,
         tx: &mut Self::Tx,
@@ -101,16 +127,22 @@ impl NatalCalculationStore for CalculationRepository {
         )
         .await
     }
+}
 
-    async fn persist_basic_payload(
+#[async_trait]
+impl CalculationAttemptStore for CalculationRepository {
+    async fn calculations_for_key(
         &self,
         tx: &mut Self::Tx,
-        input: &NatalChartInput,
-        payload_language_id: Option<i32>,
-        payload: &BasicPayload,
-    ) -> Result<(), RuntimeError> {
-        CalculationRepository::persist_basic_payload(self, tx, input, payload_language_id, payload)
-            .await
+        idempotency_key: &str,
+    ) -> Result<Vec<CalculationAttempt>, RuntimeError> {
+        Ok(
+            CalculationRepository::calculations_for_key(self, tx, idempotency_key)
+                .await?
+                .into_iter()
+                .map(Into::into)
+                .collect(),
+        )
     }
 
     async fn mark_stale_failed(
@@ -158,23 +190,6 @@ impl NatalCalculationStore for CalculationRepository {
         error: &RuntimeError,
     ) -> Result<(), RuntimeError> {
         CalculationRepository::mark_failed(self, tx, chart_calculation_id, error).await
-    }
-
-    async fn persist_facts(
-        &self,
-        tx: &mut Self::Tx,
-        chart_calculation_id: i32,
-        facts: &CalculatedChartFacts,
-    ) -> Result<(), RuntimeError> {
-        CalculationRepository::persist_facts(self, tx, chart_calculation_id, facts).await
-    }
-
-    async fn aspects_for_payload_in_tx(
-        &self,
-        tx: &mut Self::Tx,
-        chart_calculation_id: i32,
-    ) -> Result<Vec<AspectFact>, RuntimeError> {
-        CalculationRepository::aspects_for_payload_in_tx(self, tx, chart_calculation_id).await
     }
 
     async fn mark_completed(

@@ -18,13 +18,14 @@ use astral_calculator::domain::{
     AnglePointReference, AspectDefinition, ChartObject, DomicileRulerReference, HouseReference,
     SignReference,
 };
-use astral_calculator::runtime::{
+use astral_calculator::runtime::compat::{
     has_current_rulership_references, is_current_basic_payload as runtime_is_current_basic_payload,
     parse_existing_basic_payload_value, validate_accidental_dignity_condition_references,
     validate_aspect_definitions, validate_calculation_references,
     validate_chart_object_signal_profiles, validate_house_axis_references,
-    validate_lunar_phase_references, validate_object_sect_affinity_references, RuntimeError,
+    validate_lunar_phase_references, validate_object_sect_affinity_references,
 };
+use astral_calculator::runtime::RuntimeError;
 use common::json_db::{
     major_aspect_definitions_from_json_db_seed,
     major_aspect_family_expected_count_from_json_db_seed,

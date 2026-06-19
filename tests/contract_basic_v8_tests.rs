@@ -5,7 +5,7 @@ use jsonschema::JSONSchema;
 use serde_json::Value;
 
 use astral_calculator::domain::BasicPayload;
-use astral_calculator::runtime::is_current_basic_payload as runtime_is_current_basic_payload;
+use astral_calculator::runtime::compat::is_current_basic_payload as runtime_is_current_basic_payload;
 
 const GOLDEN_PAYLOAD_PATH: &str = "../tests/golden/natal_payload_v14_paris_1990.json";
 const SCHEMA_PATH: &str = "../contracts/calculator/natal_structured_v14.schema.json";

@@ -93,3 +93,11 @@ path = "../tests/horoscope_builders_tests.rs"
 [[test]]
 name = "refactor_governance_tests"
 path = "../tests/refactor_governance_tests.rs"
+
+[[test]]
+name = "position_fact_context_tests"
+path = "../tests/position_fact_context_tests.rs"
+
+[[test]]
+name = "natal_reuse_policy_tests"
+path = "../tests/natal_reuse_policy_tests.rs"

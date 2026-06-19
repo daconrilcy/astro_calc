@@ -779,6 +779,40 @@ fn runtime_repository_is_residual_and_not_wrapped_by_repositories() {
 }
 
 #[test]
+fn astrology_and_features_do_not_depend_on_shared_astro_math() {
+    let root = workspace_root().join("astral_calculator/src");
+    for restricted_root in [root.join("astrology"), root.join("features")] {
+        for file in collect_rs_files(&restricted_root) {
+            let content = read(&file);
+            assert!(
+                !content.contains("crate::shared::astro_math"),
+                "{} imports crate::shared::astro_math; use crate::astrology::angles|zodiac",
+                file.display()
+            );
+        }
+    }
+}
+
+#[test]
+fn runtime_module_stays_a_wiring_facade() {
+    let runtime_mod = workspace_root().join("astral_calculator/src/runtime/mod.rs");
+    let content = read(&runtime_mod);
+    for forbidden in [
+        "validate_aspect_definitions",
+        "validate_calculation_references",
+        "is_current_basic_payload",
+        "has_current_rulership_references",
+        "parse_existing_basic_payload_value",
+    ] {
+        assert!(
+            !content.contains(forbidden),
+            "{} re-exports {forbidden}; keep helper compatibility under runtime::compat",
+            runtime_mod.display()
+        );
+    }
+}
+
+#[test]
 fn projection_builder_stays_split_across_named_submodules() {
     let root = workspace_root().join("astral_calculator/src/engine/projection");
     let builder_root = root.join("builder");

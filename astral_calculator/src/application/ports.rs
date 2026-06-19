@@ -87,8 +87,7 @@ pub struct CalculationAttempt {
 }
 
 #[async_trait]
-pub trait ReferenceCatalog: Send + Sync {
-    async fn default_reference_version_id(&self) -> Result<i32, RuntimeError>;
+pub trait ReferenceSystemResolver: Send + Sync {
     async fn zodiacal_reference_system_id_by_key(&self, key: &str) -> Result<i32, RuntimeError>;
     async fn coordinate_reference_system_id_by_key(&self, key: &str) -> Result<i32, RuntimeError>;
     async fn house_system_id_by_code(&self, code: &str) -> Result<i32, RuntimeError>;
@@ -99,6 +98,11 @@ pub trait ReferenceCatalog: Send + Sync {
         id: i32,
     ) -> Result<String, RuntimeError>;
     async fn house_system(&self, id: i32) -> Result<HouseSystem, RuntimeError>;
+}
+
+#[async_trait]
+pub trait NatalReferenceStore: Send + Sync {
+    async fn default_reference_version_id(&self) -> Result<i32, RuntimeError>;
     async fn active_chart_objects(
         &self,
         reference_version_id: i32,
@@ -130,7 +134,21 @@ pub trait ReferenceCatalog: Send + Sync {
     async fn object_sect_affinity_references(
         &self,
     ) -> Result<Vec<ObjectSectAffinityReference>, RuntimeError>;
+}
+
+#[async_trait]
+pub trait LocalizationCatalog: Send + Sync {
     async fn language_id_for_code(&self, code: &str) -> Result<i32, RuntimeError>;
+}
+
+pub trait ReferenceCatalog:
+    ReferenceSystemResolver + NatalReferenceStore + LocalizationCatalog
+{
+}
+
+impl<T> ReferenceCatalog for T where
+    T: ReferenceSystemResolver + NatalReferenceStore + LocalizationCatalog
+{
 }
 
 #[async_trait]
@@ -212,49 +230,21 @@ pub trait SimplifiedCatalogStore: Send + Sync {
 }
 
 #[async_trait]
-pub trait NatalCalculationStore: Send + Sync {
+pub trait CalculationTransactionManager: Send + Sync {
     type Tx: Send;
 
     async fn begin(&self) -> Result<Self::Tx, RuntimeError>;
     async fn commit(&self, tx: Self::Tx) -> Result<(), RuntimeError>;
-    async fn existing_basic_payload(
-        &self,
-        chart_calculation_id: i32,
-        product_code: &str,
-        language_id: Option<i32>,
-    ) -> Result<Option<BasicPayload>, RuntimeError>;
-    async fn positions_for_payload(
-        &self,
-        chart_calculation_id: i32,
-    ) -> Result<Vec<ObjectPositionFact>, RuntimeError>;
-    async fn aspects_for_payload(
-        &self,
-        chart_calculation_id: i32,
-    ) -> Result<Vec<AspectFact>, RuntimeError>;
-    async fn natal_input_for_calculation(
-        &self,
-        chart_calculation_id: i32,
-    ) -> Result<NatalChartInput, RuntimeError>;
     async fn lock_idempotency(&self, tx: &mut Self::Tx, lock_key: i64) -> Result<(), RuntimeError>;
+}
+
+#[async_trait]
+pub trait CalculationAttemptStore: CalculationTransactionManager {
     async fn calculations_for_key(
         &self,
         tx: &mut Self::Tx,
         idempotency_key: &str,
     ) -> Result<Vec<CalculationAttempt>, RuntimeError>;
-    async fn persist_signals(
-        &self,
-        tx: &mut Self::Tx,
-        chart_calculation_id: i32,
-        reference_version_id: i32,
-        signals: &[InterpretationSignalDraft],
-    ) -> Result<Vec<InterpretationSignalRow>, RuntimeError>;
-    async fn persist_basic_payload(
-        &self,
-        tx: &mut Self::Tx,
-        input: &NatalChartInput,
-        payload_language_id: Option<i32>,
-        payload: &BasicPayload,
-    ) -> Result<(), RuntimeError>;
     async fn mark_stale_failed(
         &self,
         tx: &mut Self::Tx,
@@ -281,6 +271,27 @@ pub trait NatalCalculationStore: Send + Sync {
         chart_calculation_id: i32,
         error: &RuntimeError,
     ) -> Result<(), RuntimeError>;
+    async fn mark_completed(
+        &self,
+        tx: &mut Self::Tx,
+        chart_calculation_id: i32,
+    ) -> Result<(), RuntimeError>;
+}
+
+#[async_trait]
+pub trait CalculationFactStore: CalculationTransactionManager {
+    async fn positions_for_payload(
+        &self,
+        chart_calculation_id: i32,
+    ) -> Result<Vec<ObjectPositionFact>, RuntimeError>;
+    async fn aspects_for_payload(
+        &self,
+        chart_calculation_id: i32,
+    ) -> Result<Vec<AspectFact>, RuntimeError>;
+    async fn natal_input_for_calculation(
+        &self,
+        chart_calculation_id: i32,
+    ) -> Result<NatalChartInput, RuntimeError>;
     async fn persist_facts(
         &self,
         tx: &mut Self::Tx,
@@ -292,9 +303,50 @@ pub trait NatalCalculationStore: Send + Sync {
         tx: &mut Self::Tx,
         chart_calculation_id: i32,
     ) -> Result<Vec<AspectFact>, RuntimeError>;
-    async fn mark_completed(
+}
+
+#[async_trait]
+pub trait SignalStore: CalculationTransactionManager {
+    async fn persist_signals(
         &self,
         tx: &mut Self::Tx,
         chart_calculation_id: i32,
+        reference_version_id: i32,
+        signals: &[InterpretationSignalDraft],
+    ) -> Result<Vec<InterpretationSignalRow>, RuntimeError>;
+}
+
+#[async_trait]
+pub trait PayloadStore: CalculationTransactionManager {
+    async fn existing_basic_payload(
+        &self,
+        chart_calculation_id: i32,
+        product_code: &str,
+        language_id: Option<i32>,
+    ) -> Result<Option<BasicPayload>, RuntimeError>;
+    async fn persist_basic_payload(
+        &self,
+        tx: &mut Self::Tx,
+        input: &NatalChartInput,
+        payload_language_id: Option<i32>,
+        payload: &BasicPayload,
     ) -> Result<(), RuntimeError>;
+}
+
+pub trait NatalCalculationStore:
+    CalculationTransactionManager
+    + CalculationAttemptStore
+    + CalculationFactStore
+    + PayloadStore
+    + SignalStore
+{
+}
+
+impl<T> NatalCalculationStore for T where
+    T: CalculationTransactionManager
+        + CalculationAttemptStore
+        + CalculationFactStore
+        + PayloadStore
+        + SignalStore
+{
 }

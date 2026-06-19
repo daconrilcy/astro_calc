@@ -1,7 +1,7 @@
 //! Géométrie des maisons astrologiques calculée à partir de faits métier.
 
+use crate::astrology::angles::{arc_contains, normalize_degrees};
 use crate::domain::HouseCuspFact;
-use crate::shared::astro_math::{arc_contains, normalize_degrees};
 
 /// Localise la maison contenant une longitude à partir d'un jeu complet de
 /// cuspides ordonnées.

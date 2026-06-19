@@ -1,8 +1,8 @@
 //! Primitives de transits réutilisables par les produits horoscope.
 
+use crate::astrology::angles::shortest_angular_distance;
 use crate::astrology::aspects::canonical_aspect_orb_deg;
 use crate::domain::{AspectDefinition, ObjectPositionFact};
-use crate::shared::astro_math::shortest_angular_distance;
 
 #[derive(Debug, Clone)]
 /// Aspect transit-vers-natal retenu pour assemblage produit.

@@ -13,8 +13,9 @@ use super::models::{
 };
 use super::runtime_queries::RuntimeQueries;
 use crate::application::ports::{
-    HouseSystemRecord, MajorAspectFamilyReference as AppMajorAspectFamilyReference,
-    ReferenceCatalog, ReferenceKeyRecord, ReferenceSystemCatalog,
+    HouseSystemRecord, LocalizationCatalog,
+    MajorAspectFamilyReference as AppMajorAspectFamilyReference, NatalReferenceStore,
+    ReferenceKeyRecord, ReferenceSystemCatalog, ReferenceSystemResolver,
 };
 use crate::domain::{
     AnglePointReference, AspectDefinition, ChartObject, DomicileRulerReference,
@@ -29,11 +30,7 @@ pub struct ReferenceRepository {
 }
 
 #[async_trait]
-impl ReferenceCatalog for ReferenceRepository {
-    async fn default_reference_version_id(&self) -> Result<i32, RuntimeError> {
-        ReferenceRepository::default_reference_version_id(self).await
-    }
-
+impl ReferenceSystemResolver for ReferenceRepository {
     async fn zodiacal_reference_system_id_by_key(&self, key: &str) -> Result<i32, RuntimeError> {
         ReferenceRepository::zodiacal_reference_system_id_by_key(self, key).await
     }
@@ -62,6 +59,13 @@ impl ReferenceCatalog for ReferenceRepository {
 
     async fn house_system(&self, id: i32) -> Result<HouseSystem, RuntimeError> {
         ReferenceRepository::house_system(self, id).await
+    }
+}
+
+#[async_trait]
+impl NatalReferenceStore for ReferenceRepository {
+    async fn default_reference_version_id(&self) -> Result<i32, RuntimeError> {
+        ReferenceRepository::default_reference_version_id(self).await
     }
 
     async fn active_chart_objects(
@@ -138,7 +142,10 @@ impl ReferenceCatalog for ReferenceRepository {
     ) -> Result<Vec<crate::domain::ObjectSectAffinityReference>, RuntimeError> {
         ReferenceRepository::object_sect_affinity_references(self).await
     }
+}
 
+#[async_trait]
+impl LocalizationCatalog for ReferenceRepository {
     async fn language_id_for_code(&self, code: &str) -> Result<i32, RuntimeError> {
         ReferenceRepository::language_id_for_code(self, code).await
     }

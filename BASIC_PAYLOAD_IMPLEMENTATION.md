@@ -1143,3 +1143,34 @@ Commandes de verification:
 - `cargo test -p astral_calculator_http --test astral_calculator_http_tests`
 - `cargo test -p astral_llm_api --test contracts_publish_tests`
 - `git show --check HEAD`
+
+## 2026-06-19 - Maintainability refactor: natal orchestration, astrology math, runtime compat, typed position context
+
+Resume court:
+- decomposition de `NatalCalculationService::calculate_basic_with_catalog()` en `NatalReferenceSnapshotLoader`, `NatalReusePolicy` et `NatalCalculationWorkflow` sans changer le contrat JSON public;
+- introduction de ports applicatifs plus fins (`ReferenceSystemResolver`, `NatalReferenceStore`, `LocalizationCatalog`, `CalculationTransactionManager`, `CalculationAttemptStore`, `CalculationFactStore`, `PayloadStore`, `SignalStore`) avec compatibilite via composition de traits et sans modifier les repositories PostgreSQL concrets;
+- migration des primitives `shared::astro_math` vers `astrology::angles` et `astrology::zodiac`, puis bascule des consommateurs internes vers les chemins canoniques;
+- reduction de `runtime` a un facade de wiring PostgreSQL, avec les anciens helpers de validation deplaces sous `runtime::compat`;
+- ajout d'un contexte typé pour `ObjectPositionFact::facts_json` (`ObjectContext`, `AngleContext`, `PositionFactContext`) sans migration SQL, en conservant le JSON brut inconnu.
+
+Invariants de couche:
+- `runtime::build_runtime_service` reste le point unique de composition PostgreSQL concrete;
+- les nouveaux services applicatifs consomment des ports fins et non le trait large historique;
+- `shared::astro_math` reste un wrapper de compatibilite sans logique propre;
+- les calculs astrologiques reutilisables vivent sous `crate::astrology::*`;
+- le contexte typé ne supprime ni ne reformatte `facts_json`, il ajoute seulement une couche de lecture stable cote Rust.
+
+Commandes de verification:
+- `cargo fmt`
+- `cargo test -p astral_calculator --test refactor_governance_tests`
+- `cargo test -p astral_calculator --test position_fact_context_tests`
+- `cargo test -p astral_calculator`
+- `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`
+
+Reviews:
+- `docs/reviews/astral_calculator_refactor/REV-MAINTAINABILITY-IMPLEMENTATION-2026-06-19.md`
+- `docs/reviews/astral_calculator_refactor/REV-MAINTAINABILITY-IMPLEMENTATION-2026-06-19-followup-1.md`
+- `docs/reviews/astral_calculator_refactor/REV-MAINTAINABILITY-IMPLEMENTATION-2026-06-19-followup-2.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-MAINTAINABILITY-IMPLEMENTATION-2026-06-19.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-MAINTAINABILITY-IMPLEMENTATION-2026-06-19-followup-1.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-MAINTAINABILITY-IMPLEMENTATION-2026-06-19-followup-2.md`

@@ -1,5 +1,31 @@
 //! Module astral_calculator\src\domain\chart_facts.rs du moteur astral_calculator.
 
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ObjectContext {
+    pub role: Option<String>,
+    pub role_label: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct AngleContext {
+    pub angle_point_code: Option<String>,
+    pub short_label: Option<String>,
+    pub full_name: Option<String>,
+    pub axis: Option<String>,
+    pub opposite_angle_code: Option<String>,
+    pub associated_house_number: Option<i32>,
+    pub house_theme_code: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PositionFactContext {
+    pub object_context: Option<ObjectContext>,
+    pub angle_context: Option<AngleContext>,
+}
+
 #[derive(Debug, Clone)]
 /// Structure ObjectPositionFact.
 pub struct ObjectPositionFact {
@@ -22,6 +48,35 @@ pub struct ObjectPositionFact {
     pub altitude_deg: Option<f64>,
     pub is_visible: Option<bool>,
     pub facts_json: Option<Value>,
+}
+
+impl ObjectPositionFact {
+    pub fn context(&self) -> Option<PositionFactContext> {
+        PositionFactContext::from_facts_json(self.facts_json.as_ref())
+    }
+}
+
+impl PositionFactContext {
+    pub fn from_facts_json(facts_json: Option<&Value>) -> Option<Self> {
+        let facts = facts_json?;
+        let object_context = facts
+            .get("object_context")
+            .cloned()
+            .and_then(|value| serde_json::from_value(value).ok());
+        let angle_context = facts
+            .get("angle_context")
+            .cloned()
+            .and_then(|value| serde_json::from_value(value).ok());
+
+        if object_context.is_none() && angle_context.is_none() {
+            None
+        } else {
+            Some(Self {
+                object_context,
+                angle_context,
+            })
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -81,5 +136,3 @@ pub struct InterpretationSignalDraft {
     pub suppression_state: String,
     pub payload_json: Option<Value>,
 }
-
-use serde_json::Value;

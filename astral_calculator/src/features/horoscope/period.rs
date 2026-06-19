@@ -2,13 +2,13 @@
 
 use std::collections::HashSet;
 
+use crate::astrology::angles::normalize_degrees;
 use crate::astrology::transits::{
     is_standard_transit_object, nearest_major_aspect_name_and_orb, nearest_major_transit_match,
     preferred_transit_position,
 };
 use crate::domain::AspectDefinition;
 use crate::domain::ObjectPositionFact;
-use crate::shared::astro_math::normalize_degrees;
 use crate::shared::time::{normalize_rfc3339_utc, parse_rfc3339};
 
 use super::{

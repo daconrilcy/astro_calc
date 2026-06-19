@@ -126,24 +126,16 @@ pub(crate) fn is_angle_role(role: Option<&str>, role_label: Option<&str>) -> boo
 }
 
 pub(crate) fn is_angle_position_fact(position: &ObjectPositionFact) -> bool {
-    let role = position
-        .facts_json
+    let context = position.context();
+    let role = context
         .as_ref()
-        .and_then(|facts| facts.get("object_context"))
-        .and_then(|context| context.get("role"))
-        .and_then(|value| value.as_str());
-    let role_label = position
-        .facts_json
+        .and_then(|context| context.object_context.as_ref())
+        .and_then(|context| context.role.as_deref());
+    let role_label = context
         .as_ref()
-        .and_then(|facts| facts.get("object_context"))
-        .and_then(|context| context.get("role_label"))
-        .and_then(|value| value.as_str());
-    is_angle_role(role, role_label)
-        || position
-            .facts_json
-            .as_ref()
-            .and_then(|facts| facts.get("angle_context"))
-            .is_some()
+        .and_then(|context| context.object_context.as_ref())
+        .and_then(|context| context.role_label.as_deref());
+    is_angle_role(role, role_label) || context.and_then(|context| context.angle_context).is_some()
 }
 
 pub(crate) fn is_angle_position(position: &BasicObjectPosition) -> bool {
@@ -277,11 +269,10 @@ fn hemisphere_hint(above_horizon_count: i32, below_horizon_count: i32) -> Option
 /// Fonction angle_horizon_position.
 fn angle_horizon_position(position: &ObjectPositionFact) -> Option<&'static str> {
     match position
-        .facts_json
-        .as_ref()
-        .and_then(|facts| facts.get("angle_context"))
-        .and_then(|context| context.get("angle_point_code"))
-        .and_then(|value| value.as_str())
+        .context()
+        .and_then(|context| context.angle_context)
+        .and_then(|context| context.angle_point_code)
+        .as_deref()
     {
         Some("asc") | Some("dsc") => Some(ON_HORIZON),
         Some("mc") => Some(ABOVE_HORIZON),

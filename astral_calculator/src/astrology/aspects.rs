@@ -2,8 +2,8 @@
 
 use serde_json::json;
 
+use crate::astrology::angles::shortest_angular_distance;
 use crate::domain::{AspectDefinition, AspectFact, ObjectPositionFact};
-use crate::shared::astro_math::shortest_angular_distance;
 
 /// Retourne l'orbe effectivement exploitable pour un aspect en respectant les
 /// bornes définies dans le référentiel.
@@ -119,18 +119,21 @@ fn is_structural_axis_aspect(
 }
 
 /// Utilise le code d'angle enrichi quand il existe, sinon le code objet.
-fn angle_identity_code(position: &ObjectPositionFact) -> &str {
-    angle_context_str(position, "angle_point_code").unwrap_or(position.object_code.as_str())
+fn angle_identity_code(position: &ObjectPositionFact) -> String {
+    angle_context_str(position, "angle_point_code").unwrap_or_else(|| position.object_code.clone())
 }
 
 /// Lit une chaîne du bloc `angle_context` si ce contexte a été injecté.
-fn angle_context_str<'a>(position: &'a ObjectPositionFact, key: &str) -> Option<&'a str> {
-    position
-        .facts_json
-        .as_ref()
-        .and_then(|facts| facts.get("angle_context"))
-        .and_then(|context| context.get(key))
-        .and_then(|value| value.as_str())
+fn angle_context_str(position: &ObjectPositionFact, key: &str) -> Option<String> {
+    let context = position.context()?.angle_context?;
+    match key {
+        "angle_point_code" => context.angle_point_code,
+        "short_label" => context.short_label,
+        "full_name" => context.full_name,
+        "axis" => context.axis,
+        "opposite_angle_code" => context.opposite_angle_code,
+        _ => None,
+    }
 }
 
 /// Estime si l'aspect se resserre au pas suivant à partir des vitesses

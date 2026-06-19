@@ -7,8 +7,8 @@ use std::sync::{Mutex, OnceLock};
 
 use chrono::{DateTime, Utc};
 
+use crate::astrology::angles::normalize_degrees;
 use crate::domain::SignReference;
-use crate::shared::astro_math::normalize_degrees;
 use crate::shared::error::RuntimeError;
 
 #[cfg(feature = "swisseph-engine")]
@@ -38,7 +38,7 @@ pub fn sign_code_at_jd(
     swe_id: i32,
     signs: &[SignReference],
 ) -> Result<(String, f64), RuntimeError> {
-    use crate::shared::astro_math::zodiac_slot_for_longitude;
+    use crate::astrology::zodiac::zodiac_slot_for_longitude;
     use swiss_eph::safe::{calc_ut, set_ephe_path, CalcFlags};
 
     let _guard = swiss_ephemeris_lock()
