@@ -1,3 +1,53 @@
+# 2026-06-19 - ports/builders/fail-fast: fermeture des findings restants
+
+Resume court:
+- suppression de la derniere dependance descendante `application -> runtime`
+  dans `features/natal/application/NatalCalculationService`, qui importe
+  desormais directement `crate::features::natal::validate`;
+- durcissement de la gouvernance pour interdire `crate::runtime` dans les
+  services applicatifs `engine/application`,
+  `features/{natal,horoscope,simplified}/application`;
+- `tests/engine_contract_tests.rs` passe en vrai fail-fast DB: les helpers
+  runtime ne retournent plus `Option`, et l'absence de PostgreSQL ou d'un
+  profil DB valide echoue explicitement, avec une seule tentative de chargement
+  des profils DB par process de test;
+- clarification du workflow host: `docker-compose.yml` reste inchange, le port
+  PostgreSQL est expose uniquement via l'override
+  `docker-compose.dev-db-port.yml`, avec un `DATABASE_URL` atteignable depuis le host.
+
+Invariants de couche:
+- aucun service applicatif ne depend de `crate::runtime`; les validations
+  canoniques sont importees depuis leur module metier source;
+- les suites non DB restent executables sans prerequis externes;
+- les suites DB echouent explicitement si PostgreSQL n'est pas accessible ou si
+  le referentiel DB n'est pas charge;
+- aucun contrat JSON public, route HTTP ou API metier publique n'est modifie;
+- les ports applicatifs introduits (`ReferenceSystemCatalog`,
+  `HoroscopeBuilderCatalog`, `ProjectionCatalog`) restent inchanges;
+- l'exposition du port PostgreSQL reste opt-in via
+  `docker compose -f docker-compose.yml -f docker-compose.dev-db-port.yml up -d postgres`.
+
+Commandes de verification:
+- `cargo fmt --check`
+- `cargo test -p astral_calculator --test refactor_governance_tests`
+- `cargo test -p astral_calculator --test horoscope_builders_tests`
+- `cargo test -p astral_calculator --test engine_contract_tests -- --test-threads=1`
+- `cargo test -p astral_calculator`
+- `cargo test -p astral_calculator_http --test astral_calculator_http_tests`
+
+Preparation DB host:
+- `docker compose -f docker-compose.yml -f docker-compose.dev-db-port.yml up -d postgres`
+- verifier `.env` avec un `DATABASE_URL` atteignable depuis le host, par
+  exemple `postgres://...@localhost:${POSTGRES_PORT:-5432}/...`
+- si necessaire, charger le referentiel via
+  `python scripts/import_json_db_to_postgres.py`
+
+Reviews:
+- `docs/reviews/astral_calculator_refactor/REV-PORTS-BUILDERS-FAILFAST-2026-06-19.md`
+- `docs/reviews/astral_calculator_refactor/REV-PORTS-BUILDERS-FAILFAST-2026-06-19-followup-1.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-PORTS-BUILDERS-FAILFAST-2026-06-19.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-PORTS-BUILDERS-FAILFAST-2026-06-19-followup-1.md`
+
 # 2026-06-18 - `llm_projection_natal_v1` labels projection DB-backed sans rupture de contrat
 
 Resume court:

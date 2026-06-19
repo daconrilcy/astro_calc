@@ -541,6 +541,9 @@ fn calculator_http_rename_and_gateway_decoupling_reviews_are_closed() {
     for review_path in [
         "docs/reviews/astral_calculator_refactor/REV-CALCULATOR-HTTP-RENAME-2026-06-17.md",
         "docs/reviews/astral_calculator_refactor_feature_boundaries/REV-GATEWAY-DECOUPLING-2026-06-17.md",
+        "docs/reviews/astral_calculator_refactor_feature_boundaries/REV-PORTS-BUILDERS-FAILFAST-2026-06-19.md",
+        "docs/reviews/astral_calculator_refactor_feature_boundaries/REV-PORTS-BUILDERS-FAILFAST-2026-06-19-followup-1.md",
+        "docs/reviews/astral_calculator_refactor_feature_boundaries/REV-PORTS-BUILDERS-FAILFAST-2026-06-19-followup-2.md",
     ] {
         let path = root.join(review_path);
         assert!(path.exists(), "missing review artifact {}", path.display());
@@ -618,6 +621,26 @@ fn application_services_do_not_import_infra_db() {
             assert!(
                 !content.contains("crate::infra::db") && !content.contains("infra::db"),
                 "{} imports infra::db instead of application ports",
+                file.display()
+            );
+        }
+    }
+}
+
+#[test]
+fn application_services_do_not_import_runtime_facade() {
+    let root = workspace_root().join("astral_calculator/src");
+    for restricted_root in [
+        root.join("engine/application"),
+        root.join("features/natal/application"),
+        root.join("features/horoscope/application"),
+        root.join("features/simplified/application"),
+    ] {
+        for file in collect_rs_files(&restricted_root) {
+            let content = read(&file);
+            assert!(
+                !content.contains("crate::runtime") && !content.contains("use crate::runtime::"),
+                "{} imports crate::runtime; application services must use canonical feature/application modules",
                 file.display()
             );
         }
@@ -758,6 +781,9 @@ fn calculator_refactor_plan_reviews_are_closed() {
         "docs/reviews/astral_calculator_refactor/REV-HOROSCOPE-DERIVED-FALLBACKS-followup-1.md",
         "docs/reviews/astral_calculator_refactor/REV-GLOBAL-FINDINGS-CORRECTION-2026-06-18.md",
         "docs/reviews/astral_calculator_refactor/REV-GLOBAL-FINDINGS-CORRECTION-LOOP-001-2026-06-18.md",
+        "docs/reviews/astral_calculator_refactor/REV-PORTS-BUILDERS-FAILFAST-2026-06-19.md",
+        "docs/reviews/astral_calculator_refactor/REV-PORTS-BUILDERS-FAILFAST-2026-06-19-followup-1.md",
+        "docs/reviews/astral_calculator_refactor/REV-PORTS-BUILDERS-FAILFAST-2026-06-19-followup-2.md",
     ] {
         let path = root.join(review_path);
         assert!(path.exists(), "missing review artifact {}", path.display());

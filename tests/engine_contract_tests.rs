@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::sync::OnceLock;
 
@@ -116,26 +116,50 @@ fn sample_resolved(level: &str, payload: &BasicPayload) -> ResolvedEngineRequest
 
 fn load_profile_from_db(
     level: &str,
-) -> Option<astral_calculator::engine::projection::LlmProjectionProfile> {
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .expect("tokio runtime");
-    Some(runtime.block_on(async {
-        let pool = astral_calculator::db::connect_from_env()
-            .await
-            .expect("DATABASE_URL and PostgreSQL are required for engine_contract_tests");
-        let repository = ProjectionRepository::new(pool);
-        repository
-            .llm_projection_profile("llm_projection_natal_v1", level)
-            .await
-            .expect("llm projection profile must exist for engine_contract_tests")
-    }))
+) -> astral_calculator::engine::projection::LlmProjectionProfile {
+    static PROFILE_CACHE: OnceLock<Result<BTreeMap<String, LlmProjectionProfile>, String>> =
+        OnceLock::new();
+
+    let profiles = PROFILE_CACHE.get_or_init(|| {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("tokio runtime");
+        runtime.block_on(async {
+            let pool = astral_calculator::db::connect_from_env().await.map_err(|error| {
+                format!(
+                    "DATABASE_URL and PostgreSQL are required for engine_contract_tests: {error}"
+                )
+            })?;
+            let repository = ProjectionRepository::new(pool);
+            let mut profiles = BTreeMap::new();
+            for level in ["compact", "standard", "rich", "expert"] {
+                let profile = repository
+                    .llm_projection_profile("llm_projection_natal_v1", level)
+                    .await
+                    .map_err(|error| {
+                        format!(
+                            "llm projection profile {level} must exist for engine_contract_tests: {error}"
+                        )
+                    })?;
+                profiles.insert(level.to_string(), profile);
+            }
+            Ok(profiles)
+        })
+    });
+
+    match profiles {
+        Ok(profiles) => profiles
+            .get(level)
+            .cloned()
+            .unwrap_or_else(|| panic!("missing cached llm projection profile for level {level}")),
+        Err(message) => panic!("{message}"),
+    }
 }
 
-fn build_engine_envelope(level: &str) -> Option<Value> {
+fn build_engine_envelope(level: &str) -> Value {
     let payload = load_v14_golden();
-    let profile = load_profile_from_db(level)?;
+    let profile = load_profile_from_db(level);
     let resolved = sample_resolved(level, &payload);
     let catalog = astral_calculator::catalog::test_catalog();
     let response = build_engine_response(
@@ -156,15 +180,15 @@ fn build_engine_envelope(level: &str) -> Option<Value> {
         &profile,
     )
     .expect("engine response");
-    Some(serde_json::to_value(response).expect("engine json"))
+    serde_json::to_value(response).expect("engine json")
 }
 
-fn build_level(level: &str) -> Option<Value> {
+fn build_level(level: &str) -> Value {
     let payload = load_v14_golden();
-    let profile = load_profile_from_db(level)?;
-    let projection =
-        build_llm_projection_natal_v1(&payload, &profile, &projection_context()).ok()?;
-    Some(serde_json::to_value(projection).expect("projection json"))
+    let profile = load_profile_from_db(level);
+    let projection = build_llm_projection_natal_v1(&payload, &profile, &projection_context())
+        .expect("llm projection build must succeed for engine_contract_tests");
+    serde_json::to_value(projection).expect("projection json")
 }
 
 fn local_projection_profile() -> LlmProjectionProfile {
@@ -472,15 +496,9 @@ fn sample_engine_request_matches_schema() {
 
 #[test]
 fn llm_projection_levels_share_identical_structure() {
-    let Some(compact) = build_level("compact") else {
-        return;
-    };
-    let Some(standard) = build_level("standard") else {
-        return;
-    };
-    let Some(rich) = build_level("rich") else {
-        return;
-    };
+    let compact = build_level("compact");
+    let standard = build_level("standard");
+    let rich = build_level("rich");
 
     assert_eq!(
         top_level_keys(&compact),
@@ -546,9 +564,7 @@ fn llm_projection_golden_compact_standard_rich() {
     ];
 
     for (level, path) in cases {
-        let Some(generated) = build_level(level) else {
-            return;
-        };
+        let generated = build_level(level);
         assert_no_technical_ids(&generated);
         assert_no_language_or_tone(&generated);
         let golden_raw = fs::read_to_string(path).unwrap_or_else(|_| {
@@ -574,9 +590,7 @@ fn write_llm_projection_goldens_when_env_set() {
         ("standard", LLM_GOLDEN_STANDARD),
         ("rich", LLM_GOLDEN_RICH),
     ] {
-        let Some(value) = build_level(level) else {
-            return;
-        };
+        let value = build_level(level);
         let json = serde_json::to_string_pretty(&value).expect("serialize");
         fs::write(path, format!("{json}\n")).expect("write golden");
     }
@@ -584,9 +598,7 @@ fn write_llm_projection_goldens_when_env_set() {
 
 #[test]
 fn engine_envelope_is_not_flat_v14_payload() {
-    let Some(envelope) = build_engine_envelope("rich") else {
-        return;
-    };
+    let envelope = build_engine_envelope("rich");
     assert_eq!(
         envelope["response_contract_version"],
         "astro_engine_response_v1"
@@ -598,9 +610,7 @@ fn engine_envelope_is_not_flat_v14_payload() {
 
 #[test]
 fn engine_envelope_golden_rich_matches_built_sample() {
-    let Some(generated) = build_engine_envelope("rich") else {
-        return;
-    };
+    let generated = build_engine_envelope("rich");
     let golden_raw =
         fs::read_to_string(ENGINE_RESPONSE_GOLDEN_RICH).unwrap_or_else(|_| {
             panic!(
@@ -620,21 +630,15 @@ fn write_engine_response_golden_when_env_set() {
     {
         return;
     }
-    let Some(envelope) = build_engine_envelope("rich") else {
-        return;
-    };
+    let envelope = build_engine_envelope("rich");
     let json = serde_json::to_string_pretty(&envelope).expect("serialize");
     fs::write(ENGINE_RESPONSE_GOLDEN_RICH, format!("{json}\n")).expect("write golden");
 }
 
 #[test]
 fn audit_payload_identical_across_projection_levels_in_envelope() {
-    let Some(compact) = build_engine_envelope("compact") else {
-        return;
-    };
-    let Some(rich) = build_engine_envelope("rich") else {
-        return;
-    };
+    let compact = build_engine_envelope("compact");
+    let rich = build_engine_envelope("rich");
     assert_eq!(compact["audit_payload"], rich["audit_payload"]);
     assert_ne!(compact["llm_payload"], rich["llm_payload"]);
 }
@@ -642,9 +646,7 @@ fn audit_payload_identical_across_projection_levels_in_envelope() {
 #[test]
 fn engine_response_envelope_shape_from_v14_golden() {
     let payload = load_v14_golden();
-    let Some(profile) = load_profile_from_db("rich") else {
-        return;
-    };
+    let profile = load_profile_from_db("rich");
     let llm =
         build_llm_projection_natal_v1(&payload, &profile, &projection_context()).expect("llm");
     let llm_value = serde_json::to_value(&llm).expect("llm json");
@@ -697,9 +699,7 @@ fn engine_response_envelope_shape_from_v14_golden() {
 
 #[test]
 fn llm_projection_contains_all_top_level_sections() {
-    let Some(rich) = build_level("rich") else {
-        return;
-    };
+    let rich = build_level("rich");
     for key in [
         "chart",
         "reading_order",
@@ -730,9 +730,7 @@ fn llm_projection_includes_active_major_aspect() {
         "golden must contain at least one major aspect signal"
     );
 
-    let Some(rich) = build_level("rich") else {
-        return;
-    };
+    let rich = build_level("rich");
     let aspects = rich["dynamics"]["major_aspects"]
         .as_array()
         .expect("major_aspects array");
@@ -744,9 +742,7 @@ fn llm_projection_includes_active_major_aspect() {
 
 #[test]
 fn llm_projection_maps_jupiter_uranus_opposition() {
-    let Some(rich) = build_level("rich") else {
-        return;
-    };
+    let rich = build_level("rich");
     let aspects = rich["dynamics"]["major_aspects"]
         .as_array()
         .expect("major_aspects");
@@ -767,9 +763,7 @@ fn llm_projection_maps_jupiter_uranus_opposition() {
 
 #[test]
 fn llm_projection_humanizes_dominant_theme_reasons() {
-    let Some(rich) = build_level("rich") else {
-        return;
-    };
+    let rich = build_level("rich");
     let factors = rich["dominant_themes"]["objects"][0]["supporting_factors"]
         .as_array()
         .expect("supporting_factors");
@@ -785,9 +779,7 @@ fn llm_projection_humanizes_dominant_theme_reasons() {
 #[test]
 fn llm_projection_fails_when_reason_definition_is_missing() {
     let payload = load_v14_golden();
-    let Some(profile) = load_profile_from_db("rich") else {
-        return;
-    };
+    let profile = load_profile_from_db("rich");
     let mut definitions = astral_calculator::catalog::test_catalog().projection_reason_definitions;
     definitions.retain(|definition| definition.reason_code != "essential_dignity");
 
@@ -817,9 +809,7 @@ fn llm_projection_fails_when_reason_definition_is_missing() {
 #[test]
 fn llm_projection_fails_when_projection_label_definition_is_missing() {
     let payload = load_v14_golden();
-    let Some(profile) = load_profile_from_db("rich") else {
-        return;
-    };
+    let profile = load_profile_from_db("rich");
     let mut labels = projection_label_definitions_from_seed();
     labels.retain(|definition| {
         !(definition.label_family == "dynamic_quality" && definition.label_code == "tension")
@@ -852,9 +842,7 @@ fn llm_projection_fails_when_projection_label_definition_is_missing() {
 #[test]
 fn llm_projection_fails_when_accidental_condition_reference_is_missing() {
     let payload = load_v14_golden();
-    let Some(profile) = load_profile_from_db("rich") else {
-        return;
-    };
+    let profile = load_profile_from_db("rich");
     let mut conditions = accidental_conditions_from_seed();
     conditions.retain(|definition| definition.condition_code != "angular_house");
     let ctx = projection_context();
@@ -885,9 +873,7 @@ fn llm_projection_fails_when_accidental_condition_reference_is_missing() {
 #[test]
 fn llm_projection_fails_when_house_reference_is_missing() {
     let payload = load_v14_golden();
-    let Some(profile) = load_profile_from_db("rich") else {
-        return;
-    };
+    let profile = load_profile_from_db("rich");
     let mut houses = house_references_from_seed();
     houses.retain(|reference| reference.theme_code != "shared_resources");
     let ctx = projection_context();
@@ -917,9 +903,7 @@ fn llm_projection_fails_when_house_reference_is_missing() {
 
 #[test]
 fn llm_projection_never_contains_reason_fallback_marker() {
-    let Some(rich) = build_level("rich") else {
-        return;
-    };
+    let rich = build_level("rich");
     assert!(
         !rich.to_string().contains("reason:"),
         "projection must not contain technical reason fallback markers"
@@ -928,9 +912,7 @@ fn llm_projection_never_contains_reason_fallback_marker() {
 
 #[test]
 fn llm_projection_keeps_object_name_in_essential_dignity_reasons() {
-    let Some(rich) = build_level("rich") else {
-        return;
-    };
+    let rich = build_level("rich");
     let objects = rich["dominant_themes"]["objects"]
         .as_array()
         .expect("dominant objects");
@@ -958,9 +940,7 @@ fn llm_projection_keeps_object_name_in_essential_dignity_reasons() {
 
 #[test]
 fn llm_projection_humanizes_accidental_conditions() {
-    let Some(standard) = build_level("standard") else {
-        return;
-    };
+    let standard = build_level("standard");
     let conditions = standard["strengths"]["accidental_conditions"]
         .as_array()
         .expect("accidental_conditions");
@@ -972,9 +952,7 @@ fn llm_projection_humanizes_accidental_conditions() {
 
 #[test]
 fn llm_projection_db_backed_labels_do_not_leak_snake_case() {
-    let Some(rich) = build_level("rich") else {
-        return;
-    };
+    let rich = build_level("rich");
 
     for entry in rich["strengths"]["accidental_conditions"]
         .as_array()
@@ -1022,9 +1000,7 @@ fn llm_projection_db_backed_labels_do_not_leak_snake_case() {
 
 #[test]
 fn llm_projection_reading_order_has_no_signal_keys() {
-    let Some(rich) = build_level("rich") else {
-        return;
-    };
+    let rich = build_level("rich");
     let serialized = rich["reading_order"].to_string();
     assert!(!serialized.contains("signal_key"));
     assert!(!serialized.contains("object_position:"));
@@ -1034,9 +1010,7 @@ fn llm_projection_reading_order_has_no_signal_keys() {
 #[test]
 fn non_expert_does_not_include_scores() {
     for level in ["compact", "standard", "rich"] {
-        let Some(projection) = build_level(level) else {
-            return;
-        };
+        let projection = build_level(level);
         assert!(
             !projection.to_string().contains("strength_score"),
             "{level} must not expose scores"
@@ -1050,9 +1024,7 @@ fn non_expert_does_not_include_scores() {
 
 #[test]
 fn expert_may_include_scores() {
-    let Some(expert) = build_level("expert") else {
-        return;
-    };
+    let expert = build_level("expert");
     assert!(
         expert.to_string().contains("strength_score")
             || expert["dominant_themes"]["signs"]
@@ -1066,12 +1038,8 @@ fn expert_may_include_scores() {
 
 #[test]
 fn compact_has_fewer_keywords_than_rich() {
-    let Some(compact) = build_level("compact") else {
-        return;
-    };
-    let Some(rich) = build_level("rich") else {
-        return;
-    };
+    let compact = build_level("compact");
+    let rich = build_level("rich");
     assert!(
         compact["keywords"]["main"].as_array().unwrap().len()
             <= rich["keywords"]["main"].as_array().unwrap().len()
@@ -1080,9 +1048,7 @@ fn compact_has_fewer_keywords_than_rich() {
 
 #[test]
 fn llm_projection_placements_exclude_core_luminaries() {
-    let Some(rich) = build_level("rich") else {
-        return;
-    };
+    let rich = build_level("rich");
     let names = placement_object_names(&rich["placements"]);
     assert!(!names.iter().any(|name| name == "Sun"));
     assert!(!names.iter().any(|name| name == "Moon"));
@@ -1090,9 +1056,7 @@ fn llm_projection_placements_exclude_core_luminaries() {
 
 #[test]
 fn compact_has_zero_background_placements() {
-    let Some(compact) = build_level("compact") else {
-        return;
-    };
+    let compact = build_level("compact");
     assert_eq!(
         compact["placements"]["background"]
             .as_array()
@@ -1104,9 +1068,7 @@ fn compact_has_zero_background_placements() {
 
 #[test]
 fn llm_projection_accidental_conditions_are_deduplicated() {
-    let Some(standard) = build_level("standard") else {
-        return;
-    };
+    let standard = build_level("standard");
     for entry in standard["strengths"]["accidental_conditions"]
         .as_array()
         .unwrap()
@@ -1131,9 +1093,7 @@ fn llm_projection_accidental_conditions_are_deduplicated() {
 
 #[test]
 fn llm_projection_axis_summary_has_no_snake_case_themes() {
-    let Some(rich) = build_level("rich") else {
-        return;
-    };
+    let rich = build_level("rich");
     let summary = rich["house_axes"][0]["summary"].as_str().expect("summary");
     assert!(
         !summary.contains("shared_resources"),
@@ -1175,9 +1135,7 @@ fn llm_projection_secondary_axis_balance_matches_summary_house() {
 
 #[test]
 fn llm_projection_humanizes_axis_supporting_factors() {
-    let Some(rich) = build_level("rich") else {
-        return;
-    };
+    let rich = build_level("rich");
     let factors = rich["house_axes"][1]["supporting_factors"]
         .as_array()
         .expect("supporting_factors");
@@ -1194,9 +1152,7 @@ fn llm_projection_humanizes_axis_supporting_factors() {
 
 #[test]
 fn llm_projection_conditions_exclude_redundant_direct_motion() {
-    let Some(rich) = build_level("rich") else {
-        return;
-    };
+    let rich = build_level("rich");
     for bucket in ["primary", "supporting", "background"] {
         for placement in rich["placements"][bucket].as_array().unwrap() {
             let motion = placement["motion"].as_str();
@@ -1232,12 +1188,8 @@ fn llm_projection_conditions_exclude_redundant_direct_motion() {
 
 #[test]
 fn compact_has_fewer_placements_than_rich() {
-    let Some(compact) = build_level("compact") else {
-        return;
-    };
-    let Some(rich) = build_level("rich") else {
-        return;
-    };
+    let compact = build_level("compact");
+    let rich = build_level("rich");
     let compact_total = compact["placements"]["primary"].as_array().unwrap().len()
         + compact["placements"]["supporting"]
             .as_array()
