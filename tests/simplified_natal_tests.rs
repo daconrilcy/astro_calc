@@ -175,6 +175,38 @@ fn resolve_input_precision_matrix() {
         "date_with_location_and_timezone_without_time"
     );
     assert_eq!(resolved.computed_scope, "stable_birth_date_profile");
+    assert_eq!(
+        resolved.excluded_features,
+        vec!["ascendant", "sect", "houses", "house_placements"]
+    );
+}
+
+#[test]
+fn resolve_derives_excluded_features_from_scope_capabilities() {
+    let catalog = test_catalog();
+
+    let date_only = validate_and_resolve(&base_request(), &catalog).expect("date_only");
+    assert_eq!(
+        date_only.excluded_features,
+        vec!["ascendant", "sect", "houses", "house_placements"]
+    );
+
+    let mut request = base_request();
+    request.birth.time = Some("10:15:00".into());
+    request.birth.timezone = Some("Europe/Paris".into());
+    let planetary = validate_and_resolve(&request, &catalog).expect("planetary");
+    assert_eq!(
+        planetary.excluded_features,
+        vec!["ascendant", "sect", "houses", "house_placements"]
+    );
+
+    request.birth.location = Some(SimplifiedLocationRequest {
+        latitude: 48.8566,
+        longitude: 2.3522,
+        label: None,
+    });
+    let angular = validate_and_resolve(&request, &catalog).expect("angular");
+    assert!(angular.excluded_features.is_empty());
 }
 
 #[test]

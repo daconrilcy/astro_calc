@@ -27,8 +27,6 @@ pub const STABLE_SCOPE: &str = "stable_birth_date_profile";
 pub const PLANETARY_SCOPE: &str = "planetary_positions";
 pub const ANGULAR_SCOPE: &str = "angular_chart";
 
-const EXCLUDED_WITHOUT_ANGULAR: &[&str] = &["ascendant", "houses", "sect", "house_placements"];
-
 /// Fonction validate_and_resolve.
 pub fn validate_and_resolve(
     request: &AstroSimplifiedNatalRequest,
@@ -96,25 +94,17 @@ pub fn validate_and_resolve(
         limitations.push("location_missing_for_ascendant_and_houses".to_string());
     }
 
-    let excluded_features = if computed_scope == ANGULAR_SCOPE {
-        Vec::new()
-    } else {
-        EXCLUDED_WITHOUT_ANGULAR
-            .iter()
-            .map(|s| s.to_string())
-            .collect()
-    };
-
     if catalog.input_precision(&input_precision_level).is_none() {
         return Err(RuntimeError::Ephemeris(format!(
             "unknown input_precision level in catalog: {input_precision_level}"
         )));
     }
-    if catalog.scope(computed_scope).is_none() {
+    let Some(scope) = catalog.scope(computed_scope) else {
         return Err(RuntimeError::Ephemeris(format!(
             "unknown computed_scope in catalog: {computed_scope}"
         )));
-    }
+    };
+    let excluded_features = excluded_features_for_scope(scope);
 
     Ok(ResolvedSimplifiedInput {
         input_precision_level,
@@ -129,6 +119,21 @@ pub fn validate_and_resolve(
         house_system_code: request.calculation.house_system.clone(),
         zodiac_key: request.calculation.zodiacal_reference_system.clone(),
     })
+}
+
+fn excluded_features_for_scope(scope: &crate::domain::CalculationScope) -> Vec<String> {
+    let mut excluded_features = Vec::new();
+
+    if !scope.supports_angles {
+        excluded_features.push("ascendant".to_string());
+        excluded_features.push("sect".to_string());
+    }
+    if !scope.supports_houses {
+        excluded_features.push("houses".to_string());
+        excluded_features.push("house_placements".to_string());
+    }
+
+    excluded_features
 }
 
 /// Fonction classify_input_precision.
