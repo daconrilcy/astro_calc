@@ -12,6 +12,7 @@ use crate::astrology::ephemeris::EphemerisEngine;
 use crate::domain::{
     BasicPayload, CalculatedChartFacts, CalculationReferenceData, NatalChartInput, RuntimeOptions,
 };
+use crate::features::natal::application::NatalCalculationCapability;
 use crate::features::natal::catalog::BasicPayloadCatalog;
 use crate::features::natal::payload::build::build_basic_payload_with_accidental_references;
 use crate::features::natal::payload::validate::{
@@ -27,6 +28,7 @@ use crate::features::natal::validate::{
 };
 use crate::shared::error::RuntimeError;
 use crate::shared::idempotency::{advisory_lock_key, idempotency_key, input_hash};
+use async_trait::async_trait;
 use chrono::Utc;
 
 /// Structure NatalCalculationService.
@@ -132,6 +134,36 @@ where
         )
         .await
         .map(|payload| (payload, snapshot.catalog))
+    }
+}
+
+#[async_trait]
+impl<C, P, R, E> NatalCalculationCapability for NatalCalculationService<C, P, R, E>
+where
+    C: CalculationTransactionManager
+        + CalculationAttemptStore
+        + CalculationFactStore
+        + PayloadStore
+        + SignalStore
+        + Send
+        + Sync,
+    P: PayloadCatalogStore + Send + Sync,
+    R: NatalReferenceStore + LocalizationCatalog + ReferenceSystemResolver + Send + Sync,
+    E: EphemerisEngine + Send + Sync,
+{
+    fn options(&self) -> &RuntimeOptions {
+        &self.options
+    }
+
+    async fn calculate_basic(&self, input: NatalChartInput) -> Result<BasicPayload, RuntimeError> {
+        NatalCalculationService::calculate_basic(self, input).await
+    }
+
+    async fn calculate_basic_with_catalog(
+        &self,
+        input: NatalChartInput,
+    ) -> Result<(BasicPayload, BasicPayloadCatalog), RuntimeError> {
+        NatalCalculationService::calculate_basic_with_catalog(self, input).await
     }
 }
 

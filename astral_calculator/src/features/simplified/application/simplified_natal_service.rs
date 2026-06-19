@@ -3,8 +3,11 @@
 use std::path::Path;
 use std::sync::Arc;
 
+use async_trait::async_trait;
+
 use crate::application::ports::{ReferenceCatalog, SimplifiedCatalogStore};
 use crate::astrology::ephemeris::EphemerisEngine;
+use crate::features::simplified::application::SimplifiedNatalCapability;
 use crate::features::simplified::{
     calculate_simplified_natal, AstroSimplifiedNatalRequest, AstroSimplifiedNatalResponse,
 };
@@ -46,5 +49,21 @@ where
             request,
         )
         .await
+    }
+}
+
+#[async_trait]
+impl<R, S, E> SimplifiedNatalCapability for SimplifiedNatalService<R, S, E>
+where
+    R: ReferenceCatalog + Send + Sync,
+    S: SimplifiedCatalogStore + Send + Sync,
+    E: EphemerisEngine + Send + Sync,
+{
+    async fn calculate_simplified(
+        &self,
+        request: AstroSimplifiedNatalRequest,
+        ephemeris_path: &Path,
+    ) -> Result<AstroSimplifiedNatalResponse, RuntimeError> {
+        SimplifiedNatalService::calculate(self, request, ephemeris_path).await
     }
 }

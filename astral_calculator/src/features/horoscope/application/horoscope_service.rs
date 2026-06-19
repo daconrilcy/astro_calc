@@ -4,9 +4,12 @@ use chrono::{DateTime, Utc};
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use async_trait::async_trait;
+
 use crate::application::ports::{HoroscopeCatalog, NatalCalculationStore, ReferenceCatalog};
 use crate::astrology::ephemeris::EphemerisEngine;
 use crate::domain::CalculationReferenceData;
+use crate::features::horoscope::application::HoroscopeCapability;
 use crate::features::horoscope::{
     calculate_horoscope_daily_from_transits, calculate_horoscope_period_from_transits_with_aspects,
     normalize_horoscope_period_request_utc, HoroscopeCalculationRequest,
@@ -239,6 +242,29 @@ where
             &aspect_definitions,
             &theme_mappings,
         ))
+    }
+}
+
+#[async_trait]
+impl<C, H, R, E> HoroscopeCapability for HoroscopeService<C, H, R, E>
+where
+    C: NatalCalculationStore + Send + Sync,
+    H: HoroscopeCatalog + Send + Sync,
+    R: ReferenceCatalog + Send + Sync,
+    E: EphemerisEngine + Send + Sync,
+{
+    async fn calculate_daily(
+        &self,
+        request: HoroscopeCalculationRequest,
+    ) -> Result<HoroscopeCalculationResponse, RuntimeError> {
+        HoroscopeService::calculate_daily(self, request).await
+    }
+
+    async fn calculate_period(
+        &self,
+        request: HoroscopePeriodCalculationRequest,
+    ) -> Result<HoroscopePeriodCalculationResponse, RuntimeError> {
+        HoroscopeService::calculate_period(self, request).await
     }
 }
 

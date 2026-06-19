@@ -24,13 +24,11 @@ pub mod compat;
 
 /// Service runtime concret câblé sur PostgreSQL.
 pub type ChartCalculationRuntimeService<E> = EngineFacadeService<
-    CalculationRepository,
-    CatalogRepository,
-    ReferenceRepository,
-    HoroscopeRepository,
-    SimplifiedCatalogRepository,
+    NatalCalculationService<CalculationRepository, CatalogRepository, ReferenceRepository, E>,
+    SimplifiedNatalService<ReferenceRepository, SimplifiedCatalogRepository, E>,
+    HoroscopeService<CalculationRepository, HoroscopeRepository, ReferenceRepository, E>,
     ProjectionRepository,
-    E,
+    ReferenceRepository,
 >;
 
 /// Fonction build_runtime_service.
@@ -40,7 +38,7 @@ pub fn build_runtime_service<E>(
     options: RuntimeOptions,
 ) -> ChartCalculationRuntimeService<E>
 where
-    E: EphemerisEngine,
+    E: EphemerisEngine + Send + Sync,
 {
     let ephemeris = Arc::new(ephemeris);
     let natal = NatalCalculationService::new(

@@ -687,6 +687,25 @@ fn application_services_do_not_import_runtime_facade() {
 }
 
 #[test]
+fn feature_application_services_do_not_depend_on_engine_application() {
+    let root = workspace_root().join("astral_calculator/src");
+    for restricted_root in [
+        root.join("features/natal/application"),
+        root.join("features/horoscope/application"),
+        root.join("features/simplified/application"),
+    ] {
+        for file in collect_rs_files(&restricted_root) {
+            let content = read(&file);
+            assert!(
+                !content.contains("crate::engine::application"),
+                "{} imports crate::engine::application; feature application must not depend on engine/application",
+                file.display()
+            );
+        }
+    }
+}
+
+#[test]
 fn engine_and_horoscope_builders_use_ports_instead_of_infra_db() {
     let root = workspace_root().join("astral_calculator/src");
     for relative in [
@@ -808,6 +827,41 @@ fn runtime_module_stays_a_wiring_facade() {
             !content.contains(forbidden),
             "{} re-exports {forbidden}; keep helper compatibility under runtime::compat",
             runtime_mod.display()
+        );
+    }
+}
+
+#[test]
+fn engine_facade_depends_on_capabilities_not_concrete_feature_services() {
+    let path =
+        workspace_root().join("astral_calculator/src/engine/application/runtime_facade_service.rs");
+    let content = read(&path);
+    for forbidden in [
+        "NatalCalculationService<",
+        "SimplifiedNatalService<",
+        "HoroscopeService<",
+        "use crate::features::natal::application::NatalCalculationService;",
+        "use crate::features::simplified::application::SimplifiedNatalService;",
+        "use crate::features::horoscope::application::HoroscopeService;",
+    ] {
+        assert!(
+            !content.contains(forbidden),
+            "{} still depends on concrete feature service {}",
+            path.display(),
+            forbidden
+        );
+    }
+
+    for required in [
+        "NatalCalculationCapability",
+        "SimplifiedNatalCapability",
+        "HoroscopeCapability",
+    ] {
+        assert!(
+            content.contains(required),
+            "{} must depend on capability trait {}",
+            path.display(),
+            required
         );
     }
 }

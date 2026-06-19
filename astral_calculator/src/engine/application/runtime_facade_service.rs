@@ -1,53 +1,41 @@
 //! Module astral_calculator\src\engine\application\runtime_facade_service.rs du moteur astral_calculator.
 
-use crate::application::ports::{
-    HoroscopeCatalog, NatalCalculationStore, ProjectionCatalog, ReferenceCatalog,
-    SimplifiedCatalogStore,
-};
-use crate::astrology::ephemeris::EphemerisEngine;
+use crate::application::ports::{ProjectionCatalog, ReferenceCatalog};
 use crate::domain::{BasicPayload, NatalChartInput};
 use crate::engine::{
     build_engine_response, validate_and_resolve_request, validate_request_early,
     AstroEngineRequest, AstroEngineResponse, LLM_PROJECTION_CONTRACT_VERSION,
 };
+use crate::features::horoscope::application::HoroscopeCapability;
 use crate::features::horoscope::{
     HoroscopeCalculationRequest, HoroscopeCalculationResponse, HoroscopePeriodCalculationRequest,
     HoroscopePeriodCalculationResponse,
 };
-use crate::features::natal::application::NatalCalculationService;
-use crate::features::simplified::application::SimplifiedNatalService;
+use crate::features::natal::application::NatalCalculationCapability;
+use crate::features::simplified::application::SimplifiedNatalCapability;
 use crate::shared::error::RuntimeError;
 
-use crate::features::horoscope::application::HoroscopeService;
 use crate::features::simplified::{AstroSimplifiedNatalRequest, AstroSimplifiedNatalResponse};
 
 /// Structure EngineFacadeService.
-pub struct EngineFacadeService<C, P, R, H, S, L, E> {
-    natal: NatalCalculationService<C, P, R, E>,
-    simplified: SimplifiedNatalService<R, S, E>,
-    horoscope: HoroscopeService<C, H, R, E>,
+pub struct EngineFacadeService<N, S, H, L, R> {
+    natal: N,
+    simplified: S,
+    horoscope: H,
     projections: L,
     references: R,
 }
 
-impl<C, P, R, H, S, L, E> EngineFacadeService<C, P, R, H, S, L, E>
+impl<N, S, H, L, R> EngineFacadeService<N, S, H, L, R>
 where
-    C: NatalCalculationStore + Clone,
-    P: crate::application::ports::PayloadCatalogStore,
-    R: ReferenceCatalog + Clone,
-    H: HoroscopeCatalog,
-    S: SimplifiedCatalogStore,
+    N: NatalCalculationCapability,
+    S: SimplifiedNatalCapability,
+    H: HoroscopeCapability,
     L: ProjectionCatalog,
-    E: EphemerisEngine,
+    R: ReferenceCatalog + Clone,
 {
     /// Fonction new.
-    pub fn new(
-        natal: NatalCalculationService<C, P, R, E>,
-        simplified: SimplifiedNatalService<R, S, E>,
-        horoscope: HoroscopeService<C, H, R, E>,
-        projections: L,
-        references: R,
-    ) -> Self {
+    pub fn new(natal: N, simplified: S, horoscope: H, projections: L, references: R) -> Self {
         Self {
             natal,
             simplified,
@@ -138,7 +126,9 @@ where
         request: AstroSimplifiedNatalRequest,
         ephemeris_path: &std::path::Path,
     ) -> Result<AstroSimplifiedNatalResponse, RuntimeError> {
-        self.simplified.calculate(request, ephemeris_path).await
+        self.simplified
+            .calculate_simplified(request, ephemeris_path)
+            .await
     }
 
     /// Fonction calculate_horoscope_daily_natal.
