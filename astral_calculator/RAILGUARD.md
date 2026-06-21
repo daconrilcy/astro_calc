@@ -24,8 +24,10 @@ It applies to the crate source under `astral_calculator/src`, the crate-level te
 - Product features are orchestrators, not calculation libraries: `natal`, `simplified`, and `horoscope` validate input, load references/repositories, call shared calculations, then assemble output. Evidence: audit `.\.audit\audit-1782055817.md` and the crate layout under `astral_calculator/src/features`.
 - Public JSON contracts and root test registrations are intentionally externalized; do not move behavioral coverage into inline unit tests inside production `src/**/*.rs`. Evidence: the audit found 0 inline `#[cfg(test)]` modules and 0 inline `#[test]` functions in production code, with behavior concentrated under `tests/`.
 - Canonical referential data should come from the database when possible, not from hard-coded production fixtures. Evidence: production payload builders now require an explicit `BasicPayloadCatalog` input in `src/features/natal/payload/build/mod.rs`, while the legacy fixture builder was removed from `src/features/natal/catalog.rs`.
+- Basic payload reference data is DB-backed. Aspect definitions, aspect families, accidental dignity conditions, sect affinities, lunar phases, product scoring profiles, accidental scoring params, polarity bands, and essential dignity weights must be loaded through repositories/runtime catalogs instead of reintroduced as Rust constants. Evidence: `docs/BASIC_PAYLOAD_IMPLEMENTATION.md` and the `json_db/astral_*.json` seeds.
+- If runtime reference loading fails because PostgreSQL is missing a relation or column documented in `json_db`, fix the database sync/import path, not Rust fallbacks. Evidence: `docs/BASIC_PAYLOAD_IMPLEMENTATION.md` names `scripts/import_json_db_to_postgres.py`, `scripts/patch_astral_aspects_default_orb_deg.py`, and `scripts/patch_astral_aspect_families_expected_count.py` as the expected corrections.
 - Natal fixture catalogs used by integration tests belong under root test support, not in `src/features/natal/catalog.rs`. Evidence: `tests/common/natal_catalog.rs`, `tests/payload_tests.rs`, `tests/runtime_tests.rs`, `tests/signals_tests.rs`.
-- The 2026-06-21 Phase 1 slice removing the production `test_catalog()` fallback is not closed until its paired review artifacts exist under both `docs/reviews/astral_calculator_refactor/` and `docs/reviews/astral_calculator_refactor_feature_boundaries/`. Evidence: `.audit/implementation-audit-1782057246.md`, `docs/BASIC_PAYLOAD_IMPLEMENTATION.md`.
+- The 2026-06-21 Phase 1 slice removing the production `test_catalog()` fallback is closed only when `docs/BASIC_PAYLOAD_IMPLEMENTATION.md` links both paired review artifacts and they are marked `Statut: closed` / `Aucun finding ouvert`. Evidence: `.audit/implementation-audit-1782057246.md`, `docs/reviews/astral_calculator_refactor/REV-NATAL-TEST-CATALOG-FALLBACK-2026-06-21.md`, and `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-NATAL-TEST-CATALOG-FALLBACK-2026-06-21.md`.
 - Legacy compatibility exports may remain only as explicit shims; new code must use canonical paths. Evidence: audit highlights `src/lib.rs`, `src/domain/mod.rs`, `src/features/mod.rs`, and `src/features/natal/application/natal_calculation_service.rs` as overly broad compatibility surfaces.
 - `unsafe` should be avoided unless a change has an explicit documented justification and safety contract next to the code. Evidence: no unsafe policy file exists in this crate, so the default must stay conservative.
 
@@ -35,6 +37,8 @@ It applies to the crate source under `astral_calculator/src`, the crate-level te
 - Keep reusable astrology math in `astral_calculator/src/astrology`; do not add new cross-feature math into `features/shared` or into a product feature namespace. Evidence: audit and crate map.
 - Do not reach from `simplified` or `horoscope` into natal internals such as natal-only aspects or ephemeris wrappers. Evidence: audit notes the boundary rule and the existing shared module `astral_calculator/src/astrology`.
 - Do not add new runtime fallback paths that silently substitute test fixtures or hard-coded catalogs for DB-backed inputs. Evidence: `src/features/natal/payload/build/mod.rs` now requires an explicit `BasicPayloadCatalog`, and fixture ownership lives in `tests/common/natal_catalog.rs`.
+- Keep `src/features/natal/catalog.rs` as a runtime catalog/re-export surface only. It must not own fixture builders, test catalogs, or DB fallback defaults. Evidence: `docs/BASIC_PAYLOAD_IMPLEMENTATION.md` documents the current role of this file after the 2026-06-21 wave.
+- Keep aspect geometry intrinsic and reference-driven: major aspect detection uses DB-provided aspect/family references loaded into `BasicPayloadCatalog`; the test-only `default_major_orb_deg: 8.0` in `tests/common/natal_catalog.rs` must not feed production `detect_aspects`. Evidence: `docs/BASIC_PAYLOAD_IMPLEMENTATION.md`.
 - Keep compatibility wrappers isolated. New code should import canonical modules, not the compatibility aliases from `lib.rs` or broad re-exports from `domain/mod.rs` and `features/mod.rs`. Evidence: audit public-surface findings.
 
 ## Rust Rules
@@ -76,12 +80,14 @@ Before editing:
 - inspect `astral_calculator/src/lib.rs`, `astral_calculator/src/domain/mod.rs`, and `astral_calculator/src/features/mod.rs` before changing public paths.
 - inspect the relevant product module and the matching root test under `tests/`.
 - read the current audit note in `.\.audit\audit-1782055817.md` when a refactor touches boundaries, catalogs, or orchestration.
+- read the relevant section of `docs/BASIC_PAYLOAD_IMPLEMENTATION.md` before changing payload catalog loading, aspect references, scoring references, schema/golden behavior, or fixture ownership.
 
 During editing:
 
 - keep changes within the crate scope unless the change is explicitly about shared workspace tests or docs.
 - prefer narrow refactors that preserve JSON contracts and the existing test layout.
 - document each refactor wave in `docs/BASIC_PAYLOAD_IMPLEMENTATION.md` when the work changes structure or ownership.
+- when a refactor wave touches calculator boundaries or fixture/catalog ownership, update or add the paired adversarial review artifacts under both `docs/reviews/astral_calculator_refactor/` and `docs/reviews/astral_calculator_refactor_feature_boundaries/`, then link them from `docs/BASIC_PAYLOAD_IMPLEMENTATION.md`.
 - if a rule here must change, update this railguard in the same work and cite the file or test that invalidated the old rule.
 
 Before handing off:
@@ -93,5 +99,6 @@ Before handing off:
 ## Known Risks And Open Questions
 
 - The fallback from production payload assembly to `test_catalog()` is closed in the current slice: future edits must keep fixture ownership under `tests/common/natal_catalog.rs` and must not reintroduce `test_catalog()` into `src/`.
+- The current Basic payload contract is v13 in `contracts/calculator/natal_structured_v13.schema.json`; historical v8-v12 goldens remain regression artifacts, but their schemas have been removed from the repository. Preserve public JSON shape unless a separate documented decision says otherwise.
 - Some compatibility exports may still be consumed by real callers outside the crate. Confirm usage before narrowing them further.
 - The shared application seam for chart-context loading is still an open refactor target in the audit; future work should avoid duplicating reference-loading logic across product flows.

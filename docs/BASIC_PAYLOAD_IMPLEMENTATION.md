@@ -2808,6 +2808,10 @@ chemin production et n'alimente pas `detect_aspects`.
   `cargo test -p astral_calculator --test runtime_tests`,
   `cargo test -p astral_calculator --test natal_reuse_policy_tests`,
   `cargo test -p astral_calculator --test refactor_governance_tests`.
+- Reviews :
+  `docs/reviews/astral_calculator_refactor/REV-NATAL-TEST-CATALOG-FALLBACK-2026-06-21.md`,
+  `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-NATAL-TEST-CATALOG-FALLBACK-2026-06-21.md`.
+  Cloture review : Aucun finding ouvert.
 
 ### Artefacts
 
