@@ -2,11 +2,12 @@
   "name": "horoscope_supported_objects",
   "structure": {
     "object_code": "string, primary key",
-    "is_enabled_v1": "boolean"
+    "is_enabled": "boolean",
+    "weight": "number"
   },
   "data": [
-    { "object_code": "moon", "is_enabled_v1": true },
-    { "object_code": "venus", "is_enabled_v1": true },
-    { "object_code": "mars", "is_enabled_v1": true }
+    { "object_code": "moon", "is_enabled": true, "weight": 1.0 },
+    { "object_code": "venus", "is_enabled": true, "weight": 1.0 },
+    { "object_code": "mars", "is_enabled": true, "weight": 1.0 }
   ]
 }

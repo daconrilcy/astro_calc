@@ -117,15 +117,11 @@ impl RuntimeQueries {
     ) -> Result<Vec<HoroscopeSupportedObjectRow>, RuntimeError> {
         Ok(sqlx::query_as::<_, HoroscopeSupportedObjectRow>(
             r#"
-            SELECT supported.service_code,
-                   objects.code AS object_code,
-                   supported.min_product_level_code,
-                   supported.is_enabled,
-                   supported.sort_order
+            SELECT supported.object_code,
+                   supported.weight::float8 AS weight
             FROM horoscope_supported_objects supported
-            INNER JOIN astral_chart_objects objects ON objects.id = supported.chart_object_id
             WHERE supported.is_enabled = true
-            ORDER BY supported.service_code, supported.sort_order, objects.code
+            ORDER BY supported.weight DESC, supported.object_code
             "#,
         )
         .fetch_all(&self.pool)
@@ -137,14 +133,12 @@ impl RuntimeQueries {
     ) -> Result<Vec<HoroscopeSignalThemeMappingRow>, RuntimeError> {
         Ok(sqlx::query_as::<_, HoroscopeSignalThemeMappingRow>(
             r#"
-            SELECT service_code,
-                   match_object,
+            SELECT match_object,
                    match_aspect,
                    match_natal_target,
-                   theme_code,
-                   priority
+                   theme_code
             FROM horoscope_signal_theme_mappings
-            ORDER BY service_code, priority DESC, match_object, theme_code
+            ORDER BY mapping_code
             "#,
         )
         .fetch_all(&self.pool)

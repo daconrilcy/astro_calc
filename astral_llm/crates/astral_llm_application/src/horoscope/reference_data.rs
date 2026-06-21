@@ -492,7 +492,12 @@ pub(crate) fn weight_map(raw: &str, key: &str) -> Result<HashMap<String, f64>, G
 pub(crate) fn enabled_codes(raw: &str, key: &str) -> Result<HashSet<String>, GenerationError> {
     Ok(rows(raw)?
         .into_iter()
-        .filter(|row| row.get("is_enabled_v1").and_then(|v| v.as_bool()) == Some(true))
+        .filter(|row| {
+            row.get("is_enabled")
+                .or_else(|| row.get("is_enabled_v1"))
+                .and_then(|v| v.as_bool())
+                == Some(true)
+        })
         .filter_map(|row| row.get(key)?.as_str().map(str::to_string))
         .collect())
 }

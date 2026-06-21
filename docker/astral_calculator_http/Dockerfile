@@ -5,7 +5,7 @@ WORKDIR /app
 COPY . .
 RUN --mount=type=cache,id=astral-cargo-registry,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,id=astral-cargo-git,target=/usr/local/cargo/git,sharing=locked \
-    --mount=type=cache,id=astral-target-calculator-http,target=/app/tmp_target,sharing=locked \
+    --mount=type=cache,id=astral-target-release,target=/app/tmp_target,sharing=locked \
     cargo build --release -p astral_calculator_http && \
     cp /app/tmp_target/release/astral_calculator_http /tmp/astral_calculator_http
 

@@ -10,6 +10,17 @@ $script:SimplifiedE2eProfileCodes = @(
     "natal_premium"
 )
 
+function Get-SimplifiedE2eComposeFileArgs {
+    param([string]$RepoRoot)
+
+    $args = @("-f", (Join-Path $RepoRoot "docker-compose.yml"))
+    $hostDbPortComposeFile = Join-Path $RepoRoot "docker-compose.dev-db-port.yml"
+    if (Test-Path -LiteralPath $hostDbPortComposeFile) {
+        $args += @("-f", $hostDbPortComposeFile)
+    }
+    return $args
+}
+
 function Invoke-SimplifiedE2ePsql {
     param(
         [string]$RepoRoot,
@@ -150,7 +161,8 @@ services:
       ASTRAL_LLM_DEFAULT_PROVIDER: fake
       ASTRAL_LLM_DEFAULT_MODEL: fake-model
 "@ | Set-Content -LiteralPath $script:SimplifiedFakeComposeOverridePath -Encoding utf8
-        docker compose -f (Join-Path $RepoRoot "docker-compose.yml") -f $script:SimplifiedFakeComposeOverridePath up -d --no-build --force-recreate astral_llm_api astral_llm_worker | Out-Null
+        $composeFileArgs = Get-SimplifiedE2eComposeFileArgs -RepoRoot $RepoRoot
+        docker compose @composeFileArgs -f $script:SimplifiedFakeComposeOverridePath up -d --no-build --force-recreate astral_llm_api astral_llm_worker | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "docker compose fake override failed" }
         Start-Sleep -Seconds 3
     }
@@ -181,7 +193,8 @@ WHERE profile_code = '$escapedProfileCode';
     }
 
     if (Get-Command docker -ErrorAction SilentlyContinue) {
-        docker compose -f (Join-Path $RepoRoot "docker-compose.yml") up -d --no-build --force-recreate astral_llm_api astral_llm_worker | Out-Null
+        $composeFileArgs = Get-SimplifiedE2eComposeFileArgs -RepoRoot $RepoRoot
+        docker compose @composeFileArgs up -d --no-build --force-recreate astral_llm_api astral_llm_worker | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "docker compose restore after fake override failed" }
         if (-not [string]::IsNullOrWhiteSpace($script:SimplifiedFakeComposeOverridePath) -and (Test-Path -LiteralPath $script:SimplifiedFakeComposeOverridePath)) {
             Remove-Item -LiteralPath $script:SimplifiedFakeComposeOverridePath -Force

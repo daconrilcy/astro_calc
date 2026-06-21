@@ -3,6 +3,7 @@ mod refactor_governance_support;
 use std::path::Path;
 
 use refactor_governance_support::{collect_rs_files, read, workspace_root};
+use serde_json::Value;
 
 #[test]
 fn domain_does_not_import_infra_db_models() {
@@ -103,6 +104,74 @@ fn removed_root_feature_modules_do_not_reappear() {
             "removed root feature module file {} must not reappear; use astral_calculator::features::{feature}",
             legacy_file.display()
         );
+    }
+}
+
+#[test]
+fn horoscope_supported_objects_seed_matches_runtime_query_contract() {
+    let path = workspace_root().join("json_db/horoscope_supported_objects.json");
+    let value: Value = serde_json::from_str(&read(&path)).expect("valid horoscope seed json");
+    let structure = value["structure"].as_object().expect("structure object");
+
+    for required in ["object_code", "is_enabled", "weight"] {
+        assert!(
+            structure.contains_key(required),
+            "horoscope_supported_objects.json must define {required} for runtime query contract"
+        );
+    }
+    assert!(
+        !structure.contains_key("is_enabled_v1"),
+        "horoscope_supported_objects.json must not keep stale is_enabled_v1 column"
+    );
+
+    for row in value["data"].as_array().expect("data array") {
+        assert!(
+            row["object_code"].is_string(),
+            "object_code must be a string"
+        );
+        assert!(
+            row["is_enabled"].is_boolean(),
+            "is_enabled must be a boolean"
+        );
+        assert!(row["weight"].is_number(), "weight must be a number");
+    }
+}
+
+#[test]
+fn horoscope_signal_theme_mappings_seed_matches_runtime_query_contract() {
+    let path = workspace_root().join("json_db/horoscope_signal_theme_mappings.json");
+    let value: Value = serde_json::from_str(&read(&path)).expect("valid horoscope seed json");
+    let structure = value["structure"].as_object().expect("structure object");
+
+    for required in [
+        "mapping_code",
+        "match_object",
+        "match_aspect",
+        "match_natal_target",
+        "theme_code",
+    ] {
+        assert!(
+            structure.contains_key(required),
+            "horoscope_signal_theme_mappings.json must define {required} for runtime query contract"
+        );
+    }
+    for stale in ["service_code", "priority"] {
+        assert!(
+            !structure.contains_key(stale),
+            "horoscope_signal_theme_mappings.json must not define stale {stale} column"
+        );
+    }
+
+    for row in value["data"].as_array().expect("data array") {
+        assert!(
+            row["mapping_code"].is_string(),
+            "mapping_code must be a string"
+        );
+        assert!(
+            row["match_object"].is_string(),
+            "match_object must be a string"
+        );
+        assert!(row["theme_code"].is_string(), "theme_code must be a string");
     }
 }
 

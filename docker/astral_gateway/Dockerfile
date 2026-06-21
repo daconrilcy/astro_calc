@@ -5,7 +5,7 @@ WORKDIR /app
 COPY . .
 RUN --mount=type=cache,id=astral-cargo-registry,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,id=astral-cargo-git,target=/usr/local/cargo/git,sharing=locked \
-    --mount=type=cache,id=astral-target-gateway,target=/app/tmp_target,sharing=locked \
+    --mount=type=cache,id=astral-target-release,target=/app/tmp_target,sharing=locked \
     cargo build --release -p astral_gateway && \
     cp /app/tmp_target/release/astral_gateway /tmp/astral_gateway
 

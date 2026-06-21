@@ -3,6 +3,17 @@
 $script:OriginalHoroscopeProductPolicy = $null
 $script:HoroscopeFakeComposeOverridePath = $null
 
+function Get-HoroscopeE2eComposeFileArgs {
+    param([string]$RepoRoot)
+
+    $args = @("-f", (Join-Path $RepoRoot "docker-compose.yml"))
+    $hostDbPortComposeFile = Join-Path $RepoRoot "docker-compose.dev-db-port.yml"
+    if (Test-Path -LiteralPath $hostDbPortComposeFile) {
+        $args += @("-f", $hostDbPortComposeFile)
+    }
+    return $args
+}
+
 function Invoke-HoroscopeE2ePsql {
     param(
         [string]$RepoRoot,
@@ -48,7 +59,8 @@ function Restart-HoroscopeE2eLlmServices {
 
     Push-Location $RepoRoot
     try {
-        docker compose restart astral_llm_api astral_llm_worker | Out-Null
+        $composeFileArgs = Get-HoroscopeE2eComposeFileArgs -RepoRoot $RepoRoot
+        docker compose @composeFileArgs restart astral_llm_api astral_llm_worker | Out-Null
         Start-Sleep -Seconds 4
     } finally {
         Pop-Location
@@ -86,7 +98,8 @@ services:
 
     Push-Location $RepoRoot
     try {
-        docker compose -f (Join-Path $RepoRoot "docker-compose.yml") -f $script:HoroscopeFakeComposeOverridePath up -d --no-build --force-recreate astral_llm_api astral_llm_worker | Out-Null
+        $composeFileArgs = Get-HoroscopeE2eComposeFileArgs -RepoRoot $RepoRoot
+        docker compose @composeFileArgs -f $script:HoroscopeFakeComposeOverridePath up -d --no-build --force-recreate astral_llm_api astral_llm_worker | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "docker compose horoscope fake override failed" }
         Start-Sleep -Seconds 4
     } finally {
@@ -103,7 +116,8 @@ function Restore-HoroscopeE2eComposeOverride {
 
     Push-Location $RepoRoot
     try {
-        docker compose -f (Join-Path $RepoRoot "docker-compose.yml") up -d --no-build --force-recreate astral_llm_api astral_llm_worker | Out-Null
+        $composeFileArgs = Get-HoroscopeE2eComposeFileArgs -RepoRoot $RepoRoot
+        docker compose @composeFileArgs up -d --no-build --force-recreate astral_llm_api astral_llm_worker | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "docker compose restore after horoscope fake override failed" }
         if (-not [string]::IsNullOrWhiteSpace($script:HoroscopeFakeComposeOverridePath) -and (Test-Path -LiteralPath $script:HoroscopeFakeComposeOverridePath)) {
             Remove-Item -LiteralPath $script:HoroscopeFakeComposeOverridePath -Force

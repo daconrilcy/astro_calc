@@ -5,7 +5,7 @@ use astral_llm_api::api_contracts::load_published_schema;
 use astral_llm_api::integration_routes::service_has_v1_orchestrator;
 use astral_llm_application::horoscope::{
     build_period_writer_request, fake_period_writer_response, period_writer_messages,
-    postprocess_period_provider_response, validate_period_public_request,
+    postprocess_period_provider_response, score_calculation, validate_period_public_request,
     validate_period_response_contract, validate_period_writer_request_schema,
     HOROSCOPE_BASIC_NEXT_7_DAYS_NATAL_SERVICE_CODE, HOROSCOPE_FREE_DAILY_SERVICE_CODE,
     HOROSCOPE_FREE_NEXT_7_DAYS_NATAL_SERVICE_CODE,
@@ -49,6 +49,20 @@ fn period_writer_request(relative_fixture: &str) -> Value {
     let public = period_public_request();
     let calculation = load_json(relative_fixture);
     build_period_writer_request(&public, &calculation).expect("writer request")
+}
+
+#[test]
+fn daily_scoring_accepts_current_supported_object_seed_contract() {
+    let calculation =
+        load_json("tests/golden/horoscope_calculation_response_free_daily_paris_1990.json");
+    let scored = score_calculation(&calculation).expect("daily scoring");
+
+    assert!(
+        scored
+            .iter()
+            .any(|signal| signal.transiting_object == "moon"),
+        "daily scoring must load active objects from horoscope_supported_objects.json"
+    );
 }
 
 fn sample_service(

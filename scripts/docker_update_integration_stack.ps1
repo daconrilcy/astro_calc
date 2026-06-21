@@ -10,6 +10,9 @@
 
 .EXAMPLE
     .\scripts\docker_update_integration_stack.ps1 -LegacyCutover
+
+.EXAMPLE
+    .\scripts\docker_update_integration_stack.ps1 -SkipHostDbPort
 #>
 param(
     [string]$CalculatorUrl = "http://127.0.0.1:8080",
@@ -22,6 +25,7 @@ param(
     [switch]$SkipCatalogueSubmit,
     [switch]$SkipSmoke,
     [switch]$SkipRustChecks,
+    [switch]$SkipHostDbPort,
     [switch]$LegacyCutover
 )
 
@@ -45,7 +49,13 @@ function Invoke-Step {
     )
 
     Write-Host "`n== $Name ==" -ForegroundColor Cyan
-    & $Action
+    $started = Get-Date
+    try {
+        & $Action
+    } finally {
+        $elapsed = ((Get-Date) - $started).TotalSeconds
+        Write-Host ("Duration: {0}s" -f [math]::Round($elapsed, 1)) -ForegroundColor DarkGray
+    }
     Write-Host "OK: $Name" -ForegroundColor Green
 }
 
@@ -64,6 +74,10 @@ function Invoke-DockerCompose {
     )
 
     $composeFiles = @("-f", "docker-compose.yml")
+    $hostDbPortComposeFile = Join-Path $repoRoot "docker-compose.dev-db-port.yml"
+    if (-not $SkipHostDbPort -and (Test-Path -LiteralPath $hostDbPortComposeFile)) {
+        $composeFiles += @("-f", "docker-compose.dev-db-port.yml")
+    }
     if ($LegacyCutover) {
         $composeFiles += @("-f", "docker-compose.legacy-cutover.yml")
     }
@@ -149,6 +163,40 @@ function Invoke-CommandChecked {
             throw "$Name failed. $FailureHint Error: $($_.Exception.Message)"
         }
         throw
+    }
+}
+
+function Assert-HostDatabaseEndpoint {
+    if ($SkipHostDbPort -or [string]::IsNullOrWhiteSpace($env:DATABASE_URL)) {
+        return
+    }
+
+    $match = [regex]::Match($env:DATABASE_URL, '^[^:]+://[^@/]+@(?<host>[^:/]+)(:(?<port>\d+))?/')
+    if (-not $match.Success) {
+        return
+    }
+
+    $hostName = $match.Groups["host"].Value
+    if ($hostName -notin @("localhost", "127.0.0.1", "::1")) {
+        return
+    }
+
+    $port = 5432
+    if ($match.Groups["port"].Success) {
+        $port = [int]$match.Groups["port"].Value
+    } elseif (-not [string]::IsNullOrWhiteSpace($env:POSTGRES_PORT)) {
+        $port = [int]$env:POSTGRES_PORT
+    }
+
+    $client = [System.Net.Sockets.TcpClient]::new()
+    try {
+        $connect = $client.BeginConnect($hostName, $port, $null, $null)
+        if (-not $connect.AsyncWaitHandle.WaitOne(3000)) {
+            throw "PostgreSQL host endpoint is not reachable at ${hostName}:${port}. docker-compose.dev-db-port.yml must publish this port for host cargo tests."
+        }
+        $client.EndConnect($connect)
+    } finally {
+        $client.Close()
     }
 }
 
@@ -298,6 +346,10 @@ try {
 
     Invoke-Step "PostgreSQL readiness" {
         Invoke-DockerComposeChecked -Description "postgres pg_isready" -ComposeArgs @("exec", "-T", "postgres", "pg_isready", "-U", $env:POSTGRES_USER, "-d", $env:POSTGRES_DB)
+    }
+
+    Invoke-Step "Host PostgreSQL endpoint" {
+        Assert-HostDatabaseEndpoint
     }
 
     if (-not $SkipImport) {
