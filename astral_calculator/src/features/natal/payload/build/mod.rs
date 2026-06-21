@@ -39,7 +39,8 @@ use dignities::{build_payload_dignities, position_dignity_context};
 use emphasis::build_chart_emphasis;
 use json::{
     payload_aspect_context, payload_f64, payload_string, payload_string_array, payload_value,
-    position_context,
+    position_house_context, position_house_modality, position_motion_context,
+    position_object_context, position_sign_context,
 };
 use reading_plan::build_reading_plan;
 use rulership::build_rulership_context;
@@ -305,11 +306,11 @@ pub(crate) fn build_basic_payload_from(
                 house_number: position.house_number,
                 house_name: position.house_name.clone(),
                 motion_state_id: position.motion_state_id,
-                sign_context: position_context(position, "sign_context"),
-                house_context: position_context(position, "house_context"),
-                house_modality: position_context(position, "house_modality"),
-                object_context: position_context(position, "object_context"),
-                motion_context: position_context(position, "motion_context"),
+                sign_context: position_sign_context(position),
+                house_context: position_house_context(position),
+                house_modality: position_house_modality(position),
+                object_context: position_object_context(position),
+                motion_context: position_motion_context(position),
                 dignity_context: position_dignity_context(position, catalog),
                 visibility_context: visibility_context(position),
                 accidental_dignity_context: accidental_build

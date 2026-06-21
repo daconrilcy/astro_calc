@@ -58,10 +58,64 @@ pub(super) fn position_context(
     position: &ObjectPositionFact,
     key: &str,
 ) -> Option<serde_json::Value> {
+    let context = position.context()?;
+    match key {
+        "sign_context" => context
+            .sign_context
+            .and_then(|value| serde_json::to_value(value).ok()),
+        "house_context" => context
+            .house_context
+            .and_then(|value| serde_json::to_value(value).ok()),
+        "house_modality" => context
+            .house_modality
+            .and_then(|value| serde_json::to_value(value).ok()),
+        "object_context" => context
+            .object_context
+            .and_then(|value| serde_json::to_value(value).ok()),
+        "motion_context" => context
+            .motion_context
+            .and_then(|value| serde_json::to_value(value).ok()),
+        "angle_context" => context
+            .angle_context
+            .and_then(|value| serde_json::to_value(value).ok()),
+        "visibility_context" => context
+            .visibility_context
+            .and_then(|value| serde_json::to_value(value).ok()),
+        _ => None,
+    }
+}
+
+pub(super) fn position_sign_context(position: &ObjectPositionFact) -> Option<serde_json::Value> {
     position
-        .facts_json
-        .as_ref()
-        .and_then(|facts| facts.get(key))
-        .filter(|value| !value.is_null())
-        .cloned()
+        .context()
+        .and_then(|context| context.sign_context)
+        .and_then(|context| serde_json::to_value(context).ok())
+}
+
+pub(super) fn position_house_context(position: &ObjectPositionFact) -> Option<serde_json::Value> {
+    position
+        .context()
+        .and_then(|context| context.house_context)
+        .and_then(|context| serde_json::to_value(context).ok())
+}
+
+pub(super) fn position_house_modality(position: &ObjectPositionFact) -> Option<serde_json::Value> {
+    position
+        .context()
+        .and_then(|context| context.house_modality)
+        .and_then(|context| serde_json::to_value(context).ok())
+}
+
+pub(super) fn position_object_context(position: &ObjectPositionFact) -> Option<serde_json::Value> {
+    position
+        .context()
+        .and_then(|context| context.object_context)
+        .and_then(|context| serde_json::to_value(context).ok())
+}
+
+pub(super) fn position_motion_context(position: &ObjectPositionFact) -> Option<serde_json::Value> {
+    position
+        .context()
+        .and_then(|context| context.motion_context)
+        .and_then(|context| serde_json::to_value(context).ok())
 }

@@ -7,6 +7,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 
 use crate::application::chart_context::load_chart_context;
+use crate::application::chart_context::ChartContextData;
 use crate::application::ports::{
     HoroscopeCatalog, NatalCalculationStore, NatalReferenceStore, ReferenceSystemResolver,
 };
@@ -17,7 +18,7 @@ use crate::features::horoscope::{
     calculate_horoscope_daily_from_transits, normalize_horoscope_period_request_utc,
     try_calculate_horoscope_period_from_transits_with_aspects, HoroscopeCalculationRequest,
     HoroscopeCalculationResponse, HoroscopePeriodCalculationRequest,
-    HoroscopePeriodCalculationResponse, HoroscopeSupportedObject,
+    HoroscopePeriodCalculationResponse, HoroscopeSignalThemeMapping, HoroscopeSupportedObject,
 };
 use crate::shared::error::RuntimeError;
 
@@ -51,43 +52,7 @@ where
         &self,
         request: HoroscopeCalculationRequest,
     ) -> Result<HoroscopeCalculationResponse, RuntimeError> {
-        let chart_calculation_id = request.chart_calculation_id.parse::<i32>().map_err(|_| {
-            RuntimeError::InvalidEngineRequest(
-                "horoscope daily chart_calculation_id must be an integer".to_string(),
-            )
-        })?;
-        let natal_positions = self
-            .calculations
-            .positions_for_payload(chart_calculation_id)
-            .await?;
-        if natal_positions.is_empty() {
-            return Err(RuntimeError::InvalidEngineRequest(
-                "horoscope daily requires persisted natal positions".to_string(),
-            ));
-        }
-        let natal_input = self
-            .calculations
-            .natal_input_for_calculation(chart_calculation_id)
-            .await?;
-        let chart_context = load_chart_context(
-            &self.references,
-            natal_input.reference_version_id,
-            natal_input.house_system_id,
-        )
-        .await?;
-        let aspect_definitions = chart_context.aspect_definitions.clone();
-        let supported_objects = self.horoscope.horoscope_supported_objects().await?;
-        if supported_objects.is_empty() {
-            return Err(RuntimeError::InvalidRuntimeTable(
-                "missing active horoscope_supported_objects".to_string(),
-            ));
-        }
-        let theme_mappings = self.horoscope.horoscope_signal_theme_mappings().await?;
-        if theme_mappings.is_empty() {
-            return Err(RuntimeError::InvalidRuntimeTable(
-                "missing horoscope_signal_theme_mappings".to_string(),
-            ));
-        }
+        let runtime = self.load_horoscope_runtime_context(&request.chart_calculation_id).await?;
         let mut transit_slots = Vec::new();
         for slot in &request.slots {
             let reference_datetime_utc = crate::shared::time::reference_datetime_utc(
@@ -110,30 +75,23 @@ where
                 .with_timezone(&Utc);
             let facts = calculate_transient_chart_facts(
                 &*self.ephemeris,
-                &natal_input,
+                &runtime.natal_input,
                 reference_datetime_utc,
                 "horoscope_daily_transit",
-                &chart_context,
+                &runtime.chart_context,
             )?;
             transit_slots.push((
                 slot.slot_code.clone(),
-                filter_supported_transit_positions(facts.positions, &supported_objects),
+                filter_supported_transit_positions(facts.positions, &runtime.supported_objects),
             ));
         }
-        let max_major_aspect_orb_deg = self
-            .horoscope
-            .horoscope_orb_weight_bands()
-            .await?
-            .into_iter()
-            .map(|band| band.max_orb_deg)
-            .fold(0.0, f64::max);
         Ok(calculate_horoscope_daily_from_transits(
             request,
-            &natal_positions,
+            &runtime.natal_positions,
             &transit_slots,
-            max_major_aspect_orb_deg,
-            &aspect_definitions,
-            &theme_mappings,
+            runtime.max_major_aspect_orb_deg,
+            &runtime.aspect_definitions,
+            &runtime.theme_mappings,
         ))
     }
 
@@ -147,43 +105,7 @@ where
                 "invalid horoscope period UTC normalization: {err}"
             ))
         })?;
-        let chart_calculation_id = request.chart_calculation_id.parse::<i32>().map_err(|_| {
-            RuntimeError::InvalidEngineRequest(
-                "horoscope period chart_calculation_id must be an integer".to_string(),
-            )
-        })?;
-        let natal_positions = self
-            .calculations
-            .positions_for_payload(chart_calculation_id)
-            .await?;
-        if natal_positions.is_empty() {
-            return Err(RuntimeError::InvalidEngineRequest(
-                "horoscope period requires persisted natal positions".to_string(),
-            ));
-        }
-        let natal_input = self
-            .calculations
-            .natal_input_for_calculation(chart_calculation_id)
-            .await?;
-        let chart_context = load_chart_context(
-            &self.references,
-            natal_input.reference_version_id,
-            natal_input.house_system_id,
-        )
-        .await?;
-        let aspect_definitions = chart_context.aspect_definitions.clone();
-        let supported_objects = self.horoscope.horoscope_supported_objects().await?;
-        if supported_objects.is_empty() {
-            return Err(RuntimeError::InvalidRuntimeTable(
-                "missing active horoscope_supported_objects".to_string(),
-            ));
-        }
-        let theme_mappings = self.horoscope.horoscope_signal_theme_mappings().await?;
-        if theme_mappings.is_empty() {
-            return Err(RuntimeError::InvalidRuntimeTable(
-                "missing horoscope_signal_theme_mappings".to_string(),
-            ));
-        }
+        let runtime = self.load_horoscope_runtime_context(&request.chart_calculation_id).await?;
         let mut transit_snapshots = Vec::new();
         for snapshot in &request.scan_plan.snapshots {
             let reference_datetime_utc =
@@ -192,34 +114,27 @@ where
                         RuntimeError::InvalidEngineRequest(format!(
                             "invalid horoscope period snapshot UTC: {err}"
                         ))
-                    })?
-                    .with_timezone(&Utc);
+            })?
+            .with_timezone(&Utc);
             let facts = calculate_transient_chart_facts(
                 &*self.ephemeris,
-                &natal_input,
+                &runtime.natal_input,
                 reference_datetime_utc,
                 "horoscope_period_transit",
-                &chart_context,
+                &runtime.chart_context,
             )?;
             transit_snapshots.push((
                 snapshot.snapshot_key.clone(),
-                filter_supported_transit_positions(facts.positions, &supported_objects),
+                filter_supported_transit_positions(facts.positions, &runtime.supported_objects),
             ));
         }
-        let period_max_major_aspect_orb_deg = self
-            .horoscope
-            .horoscope_orb_weight_bands()
-            .await?
-            .into_iter()
-            .map(|band| band.max_orb_deg)
-            .fold(0.0, f64::max);
         try_calculate_horoscope_period_from_transits_with_aspects(
             request,
-            &natal_positions,
+            &runtime.natal_positions,
             &transit_snapshots,
-            period_max_major_aspect_orb_deg,
-            &aspect_definitions,
-            &theme_mappings,
+            runtime.max_major_aspect_orb_deg,
+            &runtime.aspect_definitions,
+            &runtime.theme_mappings,
         )
     }
 }
@@ -273,4 +188,81 @@ fn supported_weight(code: &str, supported_objects: &[HoroscopeSupportedObject]) 
         .find(|object| object.object_code == code)
         .map(|object| object.weight)
         .unwrap_or(0.0)
+}
+
+struct HoroscopeRuntimeContext {
+    natal_positions: Vec<crate::domain::ObjectPositionFact>,
+    natal_input: crate::domain::NatalChartInput,
+    chart_context: ChartContextData,
+    supported_objects: Vec<HoroscopeSupportedObject>,
+    theme_mappings: Vec<HoroscopeSignalThemeMapping>,
+    aspect_definitions: Vec<crate::domain::AspectDefinition>,
+    max_major_aspect_orb_deg: f64,
+}
+
+impl<C, H, R, E> HoroscopeService<C, H, R, E>
+where
+    C: NatalCalculationStore,
+    H: HoroscopeCatalog,
+    R: ReferenceSystemResolver + NatalReferenceStore,
+    E: EphemerisEngine,
+{
+    async fn load_horoscope_runtime_context(
+        &self,
+        chart_calculation_id: &str,
+    ) -> Result<HoroscopeRuntimeContext, RuntimeError> {
+        let chart_calculation_id = chart_calculation_id.parse::<i32>().map_err(|_| {
+            RuntimeError::InvalidEngineRequest(
+                "horoscope chart_calculation_id must be an integer".to_string(),
+            )
+        })?;
+        let natal_positions = self
+            .calculations
+            .positions_for_payload(chart_calculation_id)
+            .await?;
+        if natal_positions.is_empty() {
+            return Err(RuntimeError::InvalidEngineRequest(
+                "horoscope requires persisted natal positions".to_string(),
+            ));
+        }
+        let natal_input = self
+            .calculations
+            .natal_input_for_calculation(chart_calculation_id)
+            .await?;
+        let chart_context = load_chart_context(
+            &self.references,
+            natal_input.reference_version_id,
+            natal_input.house_system_id,
+        )
+        .await?;
+        let supported_objects = self.horoscope.horoscope_supported_objects().await?;
+        if supported_objects.is_empty() {
+            return Err(RuntimeError::InvalidRuntimeTable(
+                "missing active horoscope_supported_objects".to_string(),
+            ));
+        }
+        let theme_mappings = self.horoscope.horoscope_signal_theme_mappings().await?;
+        if theme_mappings.is_empty() {
+            return Err(RuntimeError::InvalidRuntimeTable(
+                "missing horoscope_signal_theme_mappings".to_string(),
+            ));
+        }
+        let aspect_definitions = chart_context.aspect_definitions.clone();
+        let max_major_aspect_orb_deg = self
+            .horoscope
+            .horoscope_orb_weight_bands()
+            .await?
+            .into_iter()
+            .map(|band| band.max_orb_deg)
+            .fold(0.0, f64::max);
+        Ok(HoroscopeRuntimeContext {
+            natal_positions,
+            natal_input,
+            chart_context,
+            supported_objects,
+            theme_mappings,
+            aspect_definitions,
+            max_major_aspect_orb_deg,
+        })
+    }
 }

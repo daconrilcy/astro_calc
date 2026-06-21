@@ -38,10 +38,16 @@ impl Default for RuntimeOptions {
     fn default() -> Self {
         Self {
             engine_version: env!("CARGO_PKG_VERSION").to_string(),
-            ephemeris_version: "se-2026a".to_string(),
+            ephemeris_version: default_ephemeris_version(),
             stale_after_seconds: 900,
         }
     }
+}
+
+fn default_ephemeris_version() -> String {
+    option_env!("ASTRAL_DEFAULT_EPHEMERIS_VERSION")
+        .unwrap_or("se-2026a")
+        .to_string()
 }
 
 use chrono::{DateTime, Utc};

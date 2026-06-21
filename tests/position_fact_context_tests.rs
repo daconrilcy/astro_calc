@@ -63,6 +63,83 @@ fn context_parses_object_role_angle() {
 }
 
 #[test]
+fn context_parses_sign_house_and_motion_blocks() {
+    let context = PositionFactContext::from_facts_json(Some(&json!({
+        "sign_context": {
+            "element": "air",
+            "polarity": "yang"
+        },
+        "house_context": {
+            "theme_code": "identity"
+        },
+        "motion_context": {
+            "motion_state": "direct",
+            "label": "Direct"
+        }
+    })))
+    .expect("typed context");
+
+    assert_eq!(
+        context
+            .sign_context
+            .as_ref()
+            .and_then(|sign| sign.element.as_deref()),
+        Some("air")
+    );
+    assert_eq!(
+        context
+            .house_context
+            .as_ref()
+            .and_then(|house| house.theme_code.as_deref()),
+        Some("identity")
+    );
+    assert_eq!(
+        context
+            .motion_context
+            .as_ref()
+            .and_then(|motion| motion.motion_state.as_deref()),
+        Some("direct")
+    );
+}
+
+#[test]
+fn context_round_trips_back_to_facts_json() {
+    let context = PositionFactContext::from_facts_json(Some(&json!({
+        "sign_context": {
+            "element": "water",
+            "element_label": "Water",
+            "polarity": "yin"
+        },
+        "visibility_context": {
+            "horizon_position": "above_horizon",
+            "source": "calculated_altitude"
+        },
+        "angle_context": {
+            "angle_point_code": "asc",
+            "associated_house_number": 1
+        }
+    })))
+    .expect("typed context");
+
+    let facts = context.to_facts_json();
+    assert_eq!(
+        facts
+            .get("sign_context")
+            .and_then(|value| value.get("element"))
+            .and_then(|value| value.as_str()),
+        Some("water")
+    );
+    assert_eq!(
+        facts
+            .get("visibility_context")
+            .and_then(|value| value.get("source"))
+            .and_then(|value| value.as_str()),
+        Some("calculated_altitude")
+    );
+    assert!(facts.get("angle_context").is_some());
+}
+
+#[test]
 fn unknown_json_is_preserved_even_if_typed_context_is_absent() {
     let facts_json = json!({ "unknown_block": { "x": 1 } });
     let position = sample_position(Some(facts_json.clone()));

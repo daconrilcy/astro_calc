@@ -10,7 +10,6 @@ use crate::domain::{
 use crate::features::natal::catalog::BasicPayloadCatalog;
 use crate::features::natal::payload::rules::chart_context::is_angle_role;
 
-use super::json::position_context;
 use super::projection_reasons::{
     reason_active_signal, reason_angle_in_house, reason_cross_axis_aspect,
     reason_essential_dignity, reason_luminary_in_house, reason_object_in_house,
@@ -421,41 +420,30 @@ fn cluster_house_number(signal: &BasicSignal) -> Option<i32> {
 }
 
 fn object_source_weight(position: &ObjectPositionFact) -> f64 {
-    position_context(position, "object_context")
-        .and_then(|context| {
-            context
-                .get("signal_scoring")
-                .and_then(|scoring| scoring.get("source_weight"))
+    position
+        .object_context()
+        .and_then(|context| context.signal_scoring)
+        .and_then(|scoring| {
+            scoring
+                .get("source_weight")
                 .and_then(|value| value.as_f64())
         })
         .unwrap_or(0.0)
 }
 
 fn is_luminary(position: &ObjectPositionFact) -> bool {
-    position_context(position, "object_context")
-        .and_then(|context| context.get("is_luminary").and_then(|value| value.as_bool()))
+    position
+        .object_context()
+        .and_then(|context| context.is_luminary)
         .unwrap_or(false)
 }
 
 fn is_angle(position: &ObjectPositionFact) -> bool {
-    let role = position_context(position, "object_context").and_then(|context| {
-        context
-            .get("role")
-            .and_then(|value| value.as_str())
-            .map(str::to_string)
-    });
-    let role_label = position_context(position, "object_context").and_then(|context| {
-        context
-            .get("role_label")
-            .and_then(|value| value.as_str())
-            .map(str::to_string)
-    });
-    is_angle_role(role.as_deref(), role_label.as_deref())
-        || position
-            .facts_json
-            .as_ref()
-            .and_then(|facts| facts.get("angle_context"))
-            .is_some()
+    let role = position.object_context().and_then(|context| context.role);
+    let role_label = position
+        .object_context()
+        .and_then(|context| context.role_label);
+    is_angle_role(role.as_deref(), role_label.as_deref()) || position.angle_context().is_some()
 }
 
 fn dignity_weight(dignity_type: &str) -> f64 {

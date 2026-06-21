@@ -1,3 +1,63 @@
+# 2026-06-21 - Phase 5 canonical code cleanup and horoscope helper split
+
+Resume court:
+- remplacement des constantes métier inline restantes dans les couches
+  natal et horoscope par des constantes contractuelles ou des points de
+  configuration centralisés ;
+- extraction d'un helper privé `HoroscopeRuntimeContext` pour mutualiser le
+  chargement des positions, du contexte chart, des objets supportés, des
+  mappings thématiques et de l'orbe maximal entre calcul quotidien et
+  période ;
+- conservation du contrat JSON public et de la structure des façades.
+
+Invariants de couche:
+- les valeurs contractuelles publiques restent explicites au bord d'usage ;
+- les fonctions d'orchestration ne refont plus le même chargement de contexte
+  plusieurs fois ;
+- aucune nouvelle surface publique large n'est ajoutée.
+
+Commandes de verification:
+- `cargo test -p astral_calculator --test position_fact_context_tests`
+- `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`
+- `cargo test -p astral_calculator --test runtime_tests`
+
+Reviews:
+- `docs/reviews/astral_calculator_refactor/REV-TYPED-POSITION-CONTEXT-CLOSURE-2026-06-21.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-TYPED-POSITION-CONTEXT-CLOSURE-2026-06-21.md`
+
+# 2026-06-21 - Phase 1 typed position-context closure
+
+Resume court:
+- fermeture du point de serialisation inline restant dans
+  `astral_calculator/src/astrology/ephemeris.rs` via les constructeurs
+  `PositionFactContext::from_calculated_position` et
+  `PositionFactContext::from_angle_position`;
+- exposition d'accesseurs typés minimaux sur `ObjectPositionFact` pour
+  `object_context` et `angle_context`;
+- migration de `astral_calculator/src/features/natal/payload/build/house_axes.rs`
+  hors des lectures directes `facts_json.get(...)` vers ces acces typés;
+- mise a jour du railguard crate pour figer le gate Phase 1.
+
+Invariants de couche:
+- `astrology::ephemeris` ne recompose plus inline la forme JSON des
+  sous-contextes de position;
+- `domain/chart_facts.rs` reste l'unique bord de conversion
+  `PositionFactContext <-> facts_json` pour cette tranche;
+- les builders payload peuvent encore reserialiser au bord, mais ne doivent
+  plus relire `facts_json` comme source primaire pour les metadonnees d'objet
+  et d'angle;
+- aucun contrat JSON public n'est modifie par cette tranche.
+
+Commandes de verification:
+- `cargo test -p astral_calculator --test position_fact_context_tests`
+- `cargo test -p astral_calculator --test payload_shared_characterization_tests`
+- `cargo test -p astral_calculator --test payload_tests`
+- `cargo test -p astral_calculator --test runtime_tests`
+
+Reviews:
+- `docs/reviews/astral_calculator_refactor/REV-TYPED-POSITION-CONTEXT-CLOSURE-2026-06-21.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-TYPED-POSITION-CONTEXT-CLOSURE-2026-06-21.md`
+
 # 2026-06-21 - Phase 4 split reference-system queries
 
 Resume court:

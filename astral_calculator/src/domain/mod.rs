@@ -18,8 +18,9 @@ pub use catalogs::{
     ProfileFeatureExclusion, ReliabilityLevel, SimplifiedCatalog, SimplifiedPolicy,
 };
 pub use chart_facts::{
-    AngleContext, AspectFact, CalculatedChartFacts, HouseCuspFact, InterpretationSignalDraft,
-    ObjectContext, ObjectPositionFact, PositionFactContext, PositionVisibilityContext,
+    AngleContext, AspectFact, CalculatedChartFacts, HouseContext, HouseCuspFact,
+    HouseModalityContext, InterpretationSignalDraft, MotionContext, ObjectContext,
+    ObjectPositionFact, PositionFactContext, PositionVisibilityContext, SignContext,
 };
 pub use natal_input::{NatalChartInput, RuntimeOptions};
 pub use payload::{

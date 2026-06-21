@@ -14,6 +14,7 @@ use crate::astrology::ephemeris::EphemerisEngine;
 use crate::domain::{BasicPayload, NatalChartInput, RuntimeOptions};
 use crate::features::natal::application::NatalCalculationCapability;
 use crate::features::natal::catalog::BasicPayloadCatalog;
+use crate::features::natal::catalog::NATAL_PROMPTER_LANGUAGE_CODE;
 use crate::shared::error::RuntimeError;
 use crate::shared::idempotency::{advisory_lock_key, idempotency_key, input_hash};
 use async_trait::async_trait;
@@ -71,7 +72,10 @@ where
         input: NatalChartInput,
     ) -> Result<(BasicPayload, BasicPayloadCatalog), RuntimeError> {
         let product_code = input.product_code().to_string();
-        let payload_language_id = self.references.language_id_for_code("en").await?;
+        let payload_language_id = self
+            .references
+            .language_id_for_code(NATAL_PROMPTER_LANGUAGE_CODE)
+            .await?;
         let input_hash = input_hash(&input)?;
         let idempotency_key = idempotency_key(&input, &self.options)?;
         let lock_key = advisory_lock_key(&idempotency_key);

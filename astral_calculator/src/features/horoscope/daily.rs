@@ -14,6 +14,9 @@ use super::{
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
 };
 
+const TROPICAL_ZODIACAL_REFERENCE_SYSTEM_CODE: &str = "tropical";
+const TRANSIT_DATA_SOURCE: &str = "swisseph_daily_calculator_v1";
+
 /// Fonction calculate_horoscope_daily.
 pub fn calculate_horoscope_daily(
     request: HoroscopeCalculationRequest,
@@ -95,7 +98,7 @@ fn derived_slot(
             sky_snapshot: serde_json::json!({
                 "reference_local_time": slot.reference_local_time,
                 "visible_objects": [],
-                "zodiacal_reference_system": "tropical",
+                "zodiacal_reference_system": TROPICAL_ZODIACAL_REFERENCE_SYSTEM_CODE,
                 "source": "missing_transit_data"
             }),
             moon_context: serde_json::json!({
@@ -112,7 +115,7 @@ fn derived_slot(
             ],
         };
     };
-    let source = "swisseph_daily_calculator_v1";
+    let source = TRANSIT_DATA_SOURCE;
     let premium_local = request.service_code == HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE;
     let reference_datetime_utc = reference_datetime_utc(
         &request.period.date,
@@ -209,7 +212,7 @@ fn derived_slot(
         sky_snapshot: serde_json::json!({
             "reference_local_time": slot.reference_local_time,
             "visible_objects": visible_objects(Some(transit_positions)),
-            "zodiacal_reference_system": "tropical",
+            "zodiacal_reference_system": TROPICAL_ZODIACAL_REFERENCE_SYSTEM_CODE,
             "source": source
         }),
         moon_context: serde_json::json!({
