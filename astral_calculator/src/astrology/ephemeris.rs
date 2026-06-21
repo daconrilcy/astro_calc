@@ -13,15 +13,6 @@ use crate::domain::{
 use crate::domain::{HouseCuspFact, ObjectPositionFact};
 use crate::shared::error::RuntimeError;
 
-#[cfg(feature = "swisseph-engine")]
-const SWISSEPH_PLACIDUS_HOUSE_SYSTEM_CODE: &str = "placidus";
-#[cfg(feature = "swisseph-engine")]
-const SWISSEPH_WHOLE_SIGN_HOUSE_SYSTEM_CODE: &str = "whole_sign";
-#[cfg(feature = "swisseph-engine")]
-const SWISSEPH_EQUAL_HOUSE_SYSTEM_CODE: &str = "equal";
-#[cfg(feature = "swisseph-engine")]
-const SWISSEPH_PORPHYRY_HOUSE_SYSTEM_CODE: &str = "porphyry";
-
 /// Abstraction du moteur capable de produire un thème natal calculé.
 pub trait EphemerisEngine {
     /// Calcule l'ensemble des positions, cuspides et aspects d'un thème.
@@ -481,10 +472,10 @@ fn house_system_code(code: &str) -> Result<swiss_eph::safe::HouseSystem, Runtime
     use swiss_eph::safe::HouseSystem;
 
     match code {
-        SWISSEPH_PLACIDUS_HOUSE_SYSTEM_CODE => Ok(HouseSystem::Placidus),
-        SWISSEPH_WHOLE_SIGN_HOUSE_SYSTEM_CODE => Ok(HouseSystem::WholeSign),
-        SWISSEPH_EQUAL_HOUSE_SYSTEM_CODE => Ok(HouseSystem::Equal),
-        SWISSEPH_PORPHYRY_HOUSE_SYSTEM_CODE => Ok(HouseSystem::Porphyrius),
+        "placidus" => Ok(HouseSystem::Placidus),
+        "whole_sign" => Ok(HouseSystem::WholeSign),
+        "equal" => Ok(HouseSystem::Equal),
+        "porphyry" => Ok(HouseSystem::Porphyrius),
         other => Err(RuntimeError::Ephemeris(format!(
             "unsupported house system {other}"
         ))),

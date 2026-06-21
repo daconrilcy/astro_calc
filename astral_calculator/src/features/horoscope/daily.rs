@@ -14,8 +14,8 @@ use super::{
     HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
 };
 
-const TROPICAL_ZODIACAL_REFERENCE_SYSTEM_CODE: &str = "tropical";
 const TRANSIT_DATA_SOURCE: &str = "swisseph_daily_calculator_v1";
+const DEFAULT_ZODIACAL_REFERENCE_SYSTEM_CODE: &str = "tropical";
 
 /// Fonction calculate_horoscope_daily.
 pub fn calculate_horoscope_daily(
@@ -91,29 +91,7 @@ fn derived_slot(
     theme_mappings: &[HoroscopeSignalThemeMapping],
 ) -> HoroscopeCalculationSlot {
     let Some(transit_positions) = transit_positions else {
-        return HoroscopeCalculationSlot {
-            slot_code: slot.slot_code.clone(),
-            reference_local_time: slot.reference_local_time.clone(),
-            reference_datetime_utc: None,
-            sky_snapshot: serde_json::json!({
-                "reference_local_time": slot.reference_local_time,
-                "visible_objects": [],
-                "zodiacal_reference_system": tropical_zodiacal_reference_system_code(),
-                "source": "missing_transit_data"
-            }),
-            moon_context: serde_json::json!({
-                "source": "missing_transit_data"
-            }),
-            transits_to_natal: Vec::new(),
-            current_sky_aspects: Vec::new(),
-            natal_house_activations: Vec::new(),
-            local_chart: None,
-            local_house_placements: Vec::new(),
-            angle_activations: Vec::new(),
-            calculation_warnings: vec![
-                "horoscope daily requires real transit positions".to_string()
-            ],
-        };
+        return missing_transit_slot(slot);
     };
     let source = TRANSIT_DATA_SOURCE;
     let premium_local = request.service_code == HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE;
@@ -212,7 +190,7 @@ fn derived_slot(
         sky_snapshot: serde_json::json!({
             "reference_local_time": slot.reference_local_time,
             "visible_objects": visible_objects(Some(transit_positions)),
-            "zodiacal_reference_system": tropical_zodiacal_reference_system_code(),
+            "zodiacal_reference_system": default_zodiacal_reference_system_code(),
             "source": source
         }),
         moon_context: serde_json::json!({
@@ -287,6 +265,34 @@ fn visible_objects(transit_positions: Option<&[ObjectPositionFact]>) -> Vec<Stri
         .collect::<Vec<_>>()
 }
 
+fn missing_transit_slot(slot: &HoroscopeCalculationSlotRequest) -> HoroscopeCalculationSlot {
+    HoroscopeCalculationSlot {
+        slot_code: slot.slot_code.clone(),
+        reference_local_time: slot.reference_local_time.clone(),
+        reference_datetime_utc: None,
+        sky_snapshot: serde_json::json!({
+            "reference_local_time": slot.reference_local_time,
+            "visible_objects": [],
+            "zodiacal_reference_system": default_zodiacal_reference_system_code(),
+            "source": "missing_transit_data"
+        }),
+        moon_context: serde_json::json!({
+            "source": "missing_transit_data"
+        }),
+        transits_to_natal: Vec::new(),
+        current_sky_aspects: Vec::new(),
+        natal_house_activations: Vec::new(),
+        local_chart: None,
+        local_house_placements: Vec::new(),
+        angle_activations: Vec::new(),
+        calculation_warnings: vec!["horoscope daily requires real transit positions".to_string()],
+    }
+}
+
+fn default_zodiacal_reference_system_code() -> &'static str {
+    DEFAULT_ZODIACAL_REFERENCE_SYSTEM_CODE
+}
+
 fn theme_for<'a>(
     object: &str,
     aspect: Option<&str>,
@@ -321,8 +327,4 @@ fn optional_match(expected: Option<&str>, actual: Option<&str>) -> bool {
 
 fn round1(value: f64) -> f64 {
     (value * 10.0).round() / 10.0
-}
-
-fn tropical_zodiacal_reference_system_code() -> &'static str {
-    TROPICAL_ZODIACAL_REFERENCE_SYSTEM_CODE
 }

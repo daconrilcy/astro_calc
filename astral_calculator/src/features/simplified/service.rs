@@ -103,20 +103,14 @@ where
     let angular_facts = match resolved.computed_scope.as_str() {
         ANGULAR_SCOPE => {
             let instant = required_declared_datetime(&resolved)?;
-            let input = NatalChartInput {
-                subject_label: None,
-                birth_datetime_utc: instant,
-                latitude_deg: required_latitude(&resolved)?,
-                longitude_deg: required_longitude(&resolved)?,
-                altitude_m: Some(0.0),
-                reference_version_id: chart_context.reference_version_id,
-                calculation_profile_id: None,
-                zodiacal_reference_system_id: zodiacal_id,
-                coordinate_reference_system_id: coordinate_id,
+            let input = build_angular_natal_input(
+                &resolved,
+                instant,
+                chart_context.reference_version_id,
+                zodiacal_id,
+                coordinate_id,
                 house_system_id,
-                product_code: Some("simplified".to_string()),
-                client_idempotency_key: None,
-            };
+            )?;
             Some(calculate_transient_chart_facts(
                 ephemeris,
                 &input,
@@ -210,4 +204,28 @@ fn required_longitude(
     resolved
         .longitude
         .ok_or_else(|| RuntimeError::InvalidEngineRequest("missing longitude".into()))
+}
+
+fn build_angular_natal_input(
+    resolved: &super::resolve::ResolvedSimplifiedInput,
+    birth_datetime_utc: chrono::DateTime<chrono::Utc>,
+    reference_version_id: i32,
+    zodiacal_reference_system_id: i32,
+    coordinate_reference_system_id: i32,
+    house_system_id: i32,
+) -> Result<NatalChartInput, RuntimeError> {
+    Ok(NatalChartInput {
+        subject_label: None,
+        birth_datetime_utc,
+        latitude_deg: required_latitude(resolved)?,
+        longitude_deg: required_longitude(resolved)?,
+        altitude_m: Some(0.0),
+        reference_version_id,
+        calculation_profile_id: None,
+        zodiacal_reference_system_id,
+        coordinate_reference_system_id,
+        house_system_id,
+        product_code: Some("simplified".to_string()),
+        client_idempotency_key: None,
+    })
 }
