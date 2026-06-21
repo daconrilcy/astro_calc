@@ -74,7 +74,7 @@ impl FakeHoroscopeBuilderCatalog {
                 resolution_strategy: "anchor_forward_days".to_string(),
                 duration_days: Some(7),
                 week_offset: None,
-                included_days: Some(json!([])),
+                included_days: Some(Vec::new()),
                 is_enabled: true,
                 sort_order: 1,
             }],

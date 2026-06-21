@@ -1,3 +1,64 @@
+# 2026-06-21 - Phase 2 included_days type a la frontiere applicative
+
+Resume court:
+- `HoroscopePeriodProfile.included_days` est maintenant type en
+  `Option<Vec<String>>` dans `astral_calculator/src/application/ports.rs`;
+- `astral_calculator/src/infra/db/horoscope_repository.rs` decode une seule
+  fois le JSON `included_days` au bord adaptateur et remonte une
+  `RuntimeError::InvalidRuntimeTable` contextualisee si la donnee est invalide;
+- `astral_calculator/src/features/horoscope/builders.rs` consomme des jours
+  deja types et ne decode plus `serde_json::Value` pour `included_days`;
+- `tests/refactor_governance_tests.rs` ajoute un garde-fou pour empecher le
+  retour du decode JSON dans le builder horoscope.
+
+Invariants de couche:
+- aucun champ applicatif `included_days` n'expose encore `serde_json::Value`;
+- le decode JSON `included_days` reste limite a `infra/db`;
+- le builder horoscope ne transforme plus lui-meme un blob JSON en
+  `Vec<String>`;
+- aucun contrat JSON public n'est modifie par cette tranche.
+
+Commandes de verification:
+- `cargo test -p astral_calculator --test horoscope_builders_tests`
+- `cargo test -p astral_calculator --test refactor_governance_tests`
+- `cargo test -p astral_calculator`
+
+Reviews:
+- `docs/reviews/astral_calculator_refactor/REV-TYPED-INCLUDED-DAYS-2026-06-21.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-TYPED-INCLUDED-DAYS-2026-06-21.md`
+
+# 2026-06-21 - Phase 1 execution transitoire partagee
+
+Resume court:
+- ajout de `astral_calculator/src/application/transient_chart.rs` comme seam
+  applicatif unique pour muter un `NatalChartInput` de base, fixer la date UTC
+  cible et declencher `calculate_chart` pour les flux transitoires non natals;
+- migration de `src/features/simplified/service.rs` vers ce seam pour le
+  chemin `ANGULAR_SCOPE`;
+- migration des parcours `daily` et `period` de
+  `src/features/horoscope/application/horoscope_service.rs` vers ce seam;
+- conservation du preload partage existant dans
+  `astral_calculator/src/application/chart_context.rs`.
+
+Invariants de couche:
+- les flux `simplified` et `horoscope` ne reclonent plus localement un
+  `NatalChartInput` avant l'appel direct a `calculate_chart`;
+- le seam partage vit sous `astral_calculator/src/application/` et reste
+  neutre, sans import feature ou infrastructure;
+- les filtres/metriques propres a chaque produit restent dans les services de
+  feature;
+- aucun contrat JSON public n'est modifie par cette tranche.
+
+Commandes de verification:
+- `cargo test -p astral_calculator --test runtime_tests`
+- `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`
+- `cargo test -p astral_calculator --test refactor_governance_tests`
+- `cargo test -p astral_calculator`
+
+Reviews:
+- `docs/reviews/astral_calculator_refactor/REV-SHARED-TRANSIENT-CHART-2026-06-21.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-SHARED-TRANSIENT-CHART-2026-06-21.md`
+
 # 2026-06-21 - Phase 1 chart-context partage non natal
 
 Resume court:

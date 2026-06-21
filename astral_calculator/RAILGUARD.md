@@ -16,25 +16,33 @@ It applies to `astral_calculator/src`, the crate-level tests registered in `astr
 - `astral_calculator/src/features/natal`, `astral_calculator/src/features/simplified`, `astral_calculator/src/features/horoscope`: product orchestrators.
 - `astral_calculator/src/infra/db`: SQLx repositories and runtime queries.
 - `tests/`: cross-module and contract tests wired from `astral_calculator/Cargo.toml`.
-- `.audit/audit-1782058187.md`: current refactor audit used as evidence for boundaries and open risks.
+- `.audit/audit-1782061131.md`: current refactor audit used as evidence for boundaries, remaining risks, and next slices.
 - `docs/BASIC_PAYLOAD_IMPLEMENTATION.md`: required slice documentation for refactor waves touching calculator boundaries, payload assembly, or fixture ownership.
 
 ## Non-Negotiable Invariants
 
-- `src/infra/db` is the only home for SQLx and PostgreSQL access code. Do not move DB access into `domain`, `astrology`, or product feature code. Evidence: `astral_calculator/src/infra/db` layout and `.audit/audit-1782058187.md`.
-- Domain and reusable astrology logic must not depend on infrastructure. Evidence: `.audit/audit-1782058187.md` reports no `domain -> infra` or `astrology -> infra` dependency inversion.
-- Product features are orchestrators, not calculation libraries: `natal`, `simplified`, and `horoscope` validate input, load references and repositories, call shared calculations, then assemble output. Evidence: `.audit/audit-1782058187.md` and `astral_calculator/src/features`.
-- Reusable astronomy and astrology calculations belong under `src/astrology`; do not add new cross-feature math to `features/shared` or to product-specific internals. Evidence: `AGENTS.md` and `.audit/audit-1782058187.md`.
-- Public behavior tests stay under root `tests/`; do not move broad behavioral coverage into inline unit tests inside production `src/**/*.rs`. Evidence: `.audit/audit-1782058187.md` found 0 inline `#[cfg(test)]` modules and 0 inline `#[test]` functions in production code, with behavior concentrated under `tests/`.
+- `src/infra/db` is the only home for SQLx and PostgreSQL access code. Do not move DB access into `domain`, `astrology`, or product feature code. Evidence: `astral_calculator/src/infra/db` layout and `.audit/audit-1782061131.md`.
+- Domain and reusable astrology logic must not depend on infrastructure. Evidence: `.audit/audit-1782061131.md` reports no `domain -> infra` or `astrology -> infra` dependency inversion.
+- Product features are orchestrators, not calculation libraries: `natal`, `simplified`, and `horoscope` validate input, load references and repositories, call shared calculations, then assemble output. Evidence: `.audit/audit-1782061131.md` and `astral_calculator/src/features`.
+- Reusable astronomy and astrology calculations belong under `src/astrology`; do not add new cross-feature math to `features/shared` or to product-specific internals. Evidence: `AGENTS.md` and `.audit/audit-1782061131.md`.
+- Public behavior tests stay under root `tests/`; do not move broad behavioral coverage into inline unit tests inside production `src/**/*.rs`. Evidence: `.audit/audit-1782061131.md` found 0 inline `#[cfg(test)]` modules and 0 inline `#[test]` functions in production code, with behavior concentrated under `tests/`.
 - Canonical referential data should come from the database when possible, not from hard-coded production fixtures. Evidence: production payload builders require an explicit `BasicPayloadCatalog` input in `src/features/natal/payload/build/mod.rs`, while the legacy fixture builder was removed from `src/features/natal/catalog.rs`.
 - Canonical feature surface is narrower than before: `src/features/mod.rs` no longer exposes `payload` or `signals` aliases, and `src/features/natal/application/natal_calculation_service.rs` now uses normal `mod` declarations for its private submodules. Evidence: `astral_calculator/src/features/mod.rs`, `astral_calculator/src/features/natal/application/natal_calculation_service.rs`.
 - Root payload and signal regression tests now import canonical paths directly from `astral_calculator::features::natal::payload::build` and `astral_calculator::features::natal::signals`; do not reintroduce `features::payload` or `features::signals` as public aliases. Evidence: `tests/payload_tests.rs`, `tests/payload_shared_characterization_tests.rs`, `tests/signals_tests.rs`.
 - Basic payload reference data is DB-backed. Aspect definitions, aspect families, accidental dignity conditions, sect affinities, lunar phases, product scoring profiles, accidental scoring params, polarity bands, and essential dignity weights must be loaded through repositories or runtime catalogs instead of reintroduced as Rust constants. Evidence: `docs/BASIC_PAYLOAD_IMPLEMENTATION.md` and the `json_db/astral_*.json` seeds.
 - If runtime reference loading fails because PostgreSQL is missing a relation or column documented in `json_db`, fix the database sync/import path, not Rust fallbacks. Evidence: `docs/BASIC_PAYLOAD_IMPLEMENTATION.md` names `scripts/import_json_db_to_postgres.py`, `scripts/patch_astral_aspects_default_orb_deg.py`, and `scripts/patch_astral_aspect_families_expected_count.py`.
 - Natal fixture catalogs used by integration tests belong under root test support, not in `src/features/natal/catalog.rs`. Evidence: `tests/common/natal_catalog.rs`, `tests/payload_tests.rs`, `tests/runtime_tests.rs`, `tests/signals_tests.rs`.
-- The 2026-06-21 Phase 1 slice removing the production `test_catalog()` fallback is closed only when `docs/BASIC_PAYLOAD_IMPLEMENTATION.md` links both paired review artifacts and they are marked `Statut: closed` / `Aucun finding ouvert`. Evidence: `.audit/audit-1782058187.md`, `docs/reviews/astral_calculator_refactor/REV-NATAL-TEST-CATALOG-FALLBACK-2026-06-21.md`, and `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-NATAL-TEST-CATALOG-FALLBACK-2026-06-21.md`.
+- The 2026-06-21 Phase 1 slice removing the production `test_catalog()` fallback is closed only when `docs/BASIC_PAYLOAD_IMPLEMENTATION.md` links both paired review artifacts and they are marked `Statut: closed` / `Aucun finding ouvert`. Evidence: `.audit/audit-1782061131.md`, `docs/reviews/astral_calculator_refactor/REV-NATAL-TEST-CATALOG-FALLBACK-2026-06-21.md`, and `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-NATAL-TEST-CATALOG-FALLBACK-2026-06-21.md`.
 - The 2026-06-21 shared non-natal chart-context slice is closed only when `docs/BASIC_PAYLOAD_IMPLEMENTATION.md` links both paired review artifacts and they are marked `Statut: closed` / `Aucun finding ouvert`. Evidence: `.plan/plan-1782060238.md`, `docs/reviews/astral_calculator_refactor/REV-SHARED-NON-NATAL-CHART-CONTEXT-2026-06-21.md`, and `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-SHARED-NON-NATAL-CHART-CONTEXT-2026-06-21.md`.
+- The 2026-06-21 shared transient non-natal execution slice is closed only when `docs/BASIC_PAYLOAD_IMPLEMENTATION.md` links both paired review artifacts and they are marked `Statut: closed` / `Aucun finding ouvert`. Evidence: `astral_calculator/src/application/transient_chart.rs`, `docs/reviews/astral_calculator_refactor/REV-SHARED-TRANSIENT-CHART-2026-06-21.md`, and `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-SHARED-TRANSIENT-CHART-2026-06-21.md`.
 - Legacy compatibility exports may remain only as explicit shims; new code must use canonical paths. `src/domain/mod.rs` must keep explicit `pub use` exports instead of wildcard re-exports, and workspace consumers such as `astral_calculator_http` must import `bootstrap::{db,env}` and `astrology::ephemeris` directly instead of deprecated crate-root aliases. Evidence: `.audit/implementation-audit-1782059165.md`, `src/domain/mod.rs`, `../astral_calculator_http/src/routes.rs`, `../astral_calculator_http/src/state.rs`, `tests/refactor_governance_tests.rs`.
+- Deprecated crate-root aliases in `astral_calculator/src/lib.rs` are compatibility shims only. New code must not add new root aliases, and refactors should retire unused shims rather than broadening the public surface. Evidence: `astral_calculator/src/lib.rs` and `.audit/audit-1782061131.md`, which still reports aliases for `aspects`, `catalog`, `cli`, `config`, `db`, `dignities`, `ephemeris`, `facts`, and `idempotency`.
+- The shared non-natal chart-context seam lives in `astral_calculator/src/application/chart_context.rs` and is the only approved place to assemble `reference_version_id`, chart objects, aspect definitions, house system, and calculation references for simplified/horoscope flows. Evidence: `astral_calculator/src/application/chart_context.rs`, `astral_calculator/src/features/simplified/service.rs`, `astral_calculator/src/features/horoscope/application/horoscope_service.rs`, and `.audit/audit-1782061131.md`.
+- Simplified and horoscope must not each hand-roll a second transient chart execution loop when the shared chart-context seam fits the case. Evidence: `.audit/audit-1782061131.md` identifies duplicated transit orchestration in `src/features/simplified/service.rs` and `src/features/horoscope/application/horoscope_service.rs`.
+- `astral_calculator/src/application/transient_chart.rs` is the only approved seam for non-natal transient execution that mutates a baseline `NatalChartInput`, swaps the UTC instant, applies the transient `product_code`, and calls `EphemerisEngine::calculate_chart`. Simplified and horoscope must call this seam rather than invoking `.calculate_chart(` directly in their services. Evidence: `astral_calculator/src/application/transient_chart.rs`, `tests/transient_chart_tests.rs`, and `tests/refactor_governance_tests.rs`.
+- `astral_calculator/src/application/ports.rs` is a temporary aggregation point, not a permanent catch-all. New capability families should land in a dedicated `application` submodule or extraction slice instead of extending the omnibus file further. Evidence: `.audit/audit-1782061131.md` identifies `src/application/ports.rs:18-428` as a mixed-responsibility hotspot, and the current file still combines horoscope builder rows, reference lookups, localization, persistence, and transaction traits.
+- `astral_calculator/src/infra/db/runtime_queries/reference.rs` must shrink by capability split rather than absorb more unrelated SQL. Query additions in this area should go to a capability-focused submodule or be coupled to an explicit split slice. Evidence: `.audit/audit-1782061131.md` identifies `src/infra/db/runtime_queries/reference.rs` as a 698-line mixed-responsibility hub spanning reference lookups, scoring profiles, projection labels, accidental dignity configuration, and catalog reads.
+- The Phase 2 `included_days` typing slice must stop at the application boundary: `HoroscopePeriodProfile` may expose only typed day codes, any JSON decode must happen once inside `src/infra/db/horoscope_repository.rs`, and `src/features/horoscope/builders.rs` must not call `serde_json::from_value::<Vec<String>>` directly. Evidence: `.plan/plan-1782061555.md` Phase 2, `.audit/implementation-audit-1782062109.md`, `src/application/ports.rs`, `src/infra/db/horoscope_repository.rs`, `src/features/horoscope/builders.rs`.
 - `unsafe` should be avoided unless a change has an explicit documented justification and safety contract next to the code. Evidence: no unsafe policy file exists in this crate, so the default remains conservative.
 
 ## Architecture Boundaries
@@ -46,13 +54,15 @@ It applies to `astral_calculator/src`, the crate-level tests registered in `astr
 - Do not add new compatibility facades when a canonical module path already exists. The audit shows `src/lib.rs`, `src/domain/mod.rs`, and `src/features/mod.rs` still expose broad alias surfaces; future work should shrink, not expand, those surfaces.
 - The shared non-natal chart-context seam lives in `astral_calculator/src/application/chart_context.rs` and is the only approved place to assemble `reference_version_id`, chart objects, aspect definitions, house system, and calculation references for simplified/horoscope flows. Evidence: `astral_calculator/src/application/chart_context.rs`, `astral_calculator/src/features/simplified/service.rs`, `astral_calculator/src/features/horoscope/application/horoscope_service.rs`.
 - Review or audit work for the shared chart-context seam must check the Phase 1 gate first; later plan phases (`included_days`, `application/ports.rs`, infra query split, shim retirement) are separate slices unless the workspace claims they were implemented in the same pass. Evidence: `.plan/plan-1782060238.md`, `docs/BASIC_PAYLOAD_IMPLEMENTATION.md`.
+- Keep dependency direction explicit while splitting hot files: `application` contracts may depend on `domain` records, `features/*` services may depend on `application` seams, and `infra/db` may implement `application` traits, but `application` must not import `infra/db` or feature internals just to reduce file size. Evidence: `tests/refactor_governance_tests.rs` and `.audit/audit-1782061131.md`.
 
 ## Rust Rules
 
-- Preserve existing focused error boundaries; do not replace them with ad hoc panics or broad dynamic error handling in runtime paths. Evidence: `.audit/audit-1782058187.md` and `tests/refactor_governance_tests.rs`.
+- Preserve existing focused error boundaries; do not replace them with ad hoc panics or broad dynamic error handling in runtime paths. Evidence: `.audit/audit-1782061131.md` and `tests/refactor_governance_tests.rs`.
 - Keep async and blocking boundaries explicit. Do not add `connect_from_env`, `PgPool`, `block_on`, or `run_blocking` into metier modules. Evidence: `AGENTS.md`.
 - Respect the existing Cargo test registration model where root `tests/*.rs` files are wired from crate manifests. Evidence: `astral_calculator/Cargo.toml`.
 - Prefer normal Rust module layout over `#[path]` indirection for in-crate modules; any new `#[path]` usage needs explicit justification. Evidence: `src/features/natal/application/mod.rs`, `src/features/natal/application/natal_calculation_service.rs`, `tests/refactor_governance_tests.rs`.
+- Keep public aliases and compatibility shims additive only when a test or external caller requires them; otherwise prefer canonical modules and remove dead shims in the same slice. Evidence: `astral_calculator/src/lib.rs` and `.audit/audit-1782061131.md`.
 
 ## Testing and Verification
 
@@ -60,6 +70,12 @@ Run the smallest relevant check first:
 
 ```powershell
 cargo test -p astral_calculator --test calculation_reference_loader_tests
+```
+
+Then validate the shared transient seam with:
+
+```powershell
+cargo test -p astral_calculator --test transient_chart_tests
 ```
 
 Then validate boundary regressions with:
@@ -80,6 +96,7 @@ Additional repository-documented checks:
 - `cargo test -p astral_calculator --test runtime_identity_bootstrap_tests`
 - `cargo test -p astral_calculator --test calculation_reference_loader_tests`
 - `cargo test -p astral_calculator --test natal_reuse_policy_tests`
+- `cargo test -p astral_calculator --test horoscope_builders_tests`
 - `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`
 - `cargo test -p astral_calculator_http --test astral_calculator_http_tests`
 - `cargo test -p astral_llm_api --test contracts_publish_tests`
@@ -92,7 +109,7 @@ Before editing:
 - inspect `AGENTS.md`, this file, and `astral_calculator/src/lib.rs` if the target is `astral_calculator`
 - inspect `astral_calculator/Cargo.toml` to confirm test registration and feature flags
 - inspect the root `tests/` files covering the target behavior
-- read `.audit/audit-1782058187.md` when the work touches current calculator boundary findings
+- read `.audit/audit-1782061131.md` when the work touches current calculator boundary findings
 - read `docs/BASIC_PAYLOAD_IMPLEMENTATION.md` when a change affects payload assembly, fixture ownership, reference loading, or review-tracked refactor waves
 
 During editing:

@@ -124,7 +124,7 @@ pub struct HoroscopePeriodProfile {
     pub resolution_strategy: String,
     pub duration_days: Option<i32>,
     pub week_offset: Option<i32>,
-    pub included_days: Option<serde_json::Value>,
+    pub included_days: Option<Vec<String>>,
     pub is_enabled: bool,
     pub sort_order: i32,
 }

@@ -15,6 +15,7 @@ use crate::application::chart_context::load_default_chart_context;
 use crate::application::ports::{
     NatalReferenceStore, ReferenceSystemResolver, ReferenceVersionProvider, SimplifiedCatalogStore,
 };
+use crate::application::transient_chart::calculate_transient_chart_facts;
 use crate::astrology::aspects::detect_aspects;
 use crate::astrology::ephemeris::EphemerisEngine;
 use crate::astrology::validation::validate_calculation_references;
@@ -67,12 +68,10 @@ where
     let coordinate_id = chart_context
         .references
         .geocentric_coordinate_reference_system_id;
-    let reference_version_id = chart_context.reference_version_id;
-    let chart_objects = chart_context.chart_objects;
-    let aspect_definitions = chart_context.aspect_definitions;
-    let house_system = chart_context.house_system;
-    let references = chart_context.references;
-    validate_calculation_references(&references)?;
+    let chart_objects = &chart_context.chart_objects;
+    let aspect_definitions = chart_context.aspect_definitions.clone();
+    let references = &chart_context.references;
+    validate_calculation_references(references)?;
 
     let collected = match resolved.computed_scope.as_str() {
         PLANETARY_SCOPE | ANGULAR_SCOPE => {
@@ -82,7 +81,7 @@ where
             collect_declared_sign_facts(
                 ephemeris_path,
                 instant,
-                &chart_objects,
+                chart_objects,
                 &references.signs,
                 &catalog,
             )?
@@ -93,7 +92,7 @@ where
                 ephemeris_path,
                 &resolved,
                 &catalog,
-                &chart_objects,
+                chart_objects,
                 &references.signs,
                 start,
                 end,
@@ -110,7 +109,7 @@ where
                 latitude_deg: required_latitude(&resolved)?,
                 longitude_deg: required_longitude(&resolved)?,
                 altitude_m: Some(0.0),
-                reference_version_id,
+                reference_version_id: chart_context.reference_version_id,
                 calculation_profile_id: None,
                 zodiacal_reference_system_id: zodiacal_id,
                 coordinate_reference_system_id: coordinate_id,
@@ -118,17 +117,17 @@ where
                 product_code: Some("simplified".to_string()),
                 client_idempotency_key: None,
             };
-            Some(ephemeris.calculate_chart(
+            Some(calculate_transient_chart_facts(
+                ephemeris,
                 &input,
-                &chart_objects,
-                &aspect_definitions,
-                &house_system,
-                &references,
+                instant,
+                "simplified",
+                &chart_context,
             )?)
         }
         PLANETARY_SCOPE => Some(build_planetary_only_facts(
             &collected,
-            &chart_objects,
+            chart_objects,
             &aspect_definitions,
             zodiacal_id,
             coordinate_id,

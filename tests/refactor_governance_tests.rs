@@ -495,6 +495,46 @@ fn simplified_service_does_not_hard_code_reference_system_ids() {
 }
 
 #[test]
+fn non_natal_feature_services_use_shared_transient_chart_seam() {
+    let root = workspace_root().join("astral_calculator/src");
+    let transient_chart = root.join("application/transient_chart.rs");
+    assert!(
+        transient_chart.exists(),
+        "missing shared transient chart seam {}",
+        transient_chart.display()
+    );
+
+    for relative in [
+        Path::new("features/simplified/service.rs"),
+        Path::new("features/horoscope/application/horoscope_service.rs"),
+    ] {
+        let path = root.join(relative);
+        let content = read(&path);
+        assert!(
+            content.contains("calculate_transient_chart_facts"),
+            "{} must use application::transient_chart::calculate_transient_chart_facts",
+            path.display()
+        );
+        assert!(
+            !content.contains(".calculate_chart("),
+            "{} must not call EphemerisEngine::calculate_chart directly; use the shared transient seam",
+            path.display()
+        );
+    }
+}
+
+#[test]
+fn horoscope_builder_period_profiles_do_not_decode_included_days_json_in_builder() {
+    let path = workspace_root().join("astral_calculator/src/features/horoscope/builders.rs");
+    let content = read(&path);
+    assert!(
+        !content.contains("serde_json::from_value::<Vec<String>>"),
+        "{} must consume typed included_days data from the application boundary instead of decoding raw JSON in the builder",
+        path.display()
+    );
+}
+
+#[test]
 fn astrology_module_exists_and_feature_shared_is_not_used_for_astrology() {
     let root = workspace_root().join("astral_calculator/src");
     let astrology_mod = root.join("astrology/mod.rs");

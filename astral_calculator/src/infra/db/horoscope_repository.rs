@@ -98,16 +98,21 @@ impl HoroscopeBuilderCatalog for HoroscopeRepository {
         Ok(HoroscopeRepository::astral_time_period_profiles(self)
             .await?
             .into_iter()
-            .map(|row| HoroscopePeriodProfile {
-                period_profile_code: row.period_profile_code,
-                resolution_strategy: row.resolution_strategy,
-                duration_days: row.duration_days,
-                week_offset: row.week_offset,
-                included_days: row.included_days,
-                is_enabled: row.is_enabled,
-                sort_order: row.sort_order,
+            .map(|row| -> Result<HoroscopePeriodProfile, RuntimeError> {
+                Ok(HoroscopePeriodProfile {
+                    included_days: Self::decode_included_days(
+                        &row.period_profile_code,
+                        row.included_days,
+                    )?,
+                    period_profile_code: row.period_profile_code,
+                    resolution_strategy: row.resolution_strategy,
+                    duration_days: row.duration_days,
+                    week_offset: row.week_offset,
+                    is_enabled: row.is_enabled,
+                    sort_order: row.sort_order,
+                })
             })
-            .collect())
+            .collect::<Result<Vec<_>, RuntimeError>>()?)
     }
 
     async fn horoscope_scan_profiles(
@@ -128,6 +133,20 @@ impl HoroscopeBuilderCatalog for HoroscopeRepository {
 }
 
 impl HoroscopeRepository {
+    fn decode_included_days(
+        period_profile_code: &str,
+        included_days: Option<serde_json::Value>,
+    ) -> Result<Option<Vec<String>>, RuntimeError> {
+        included_days
+            .map(serde_json::from_value::<Vec<String>>)
+            .transpose()
+            .map_err(|err| {
+                RuntimeError::InvalidRuntimeTable(format!(
+                    "astral_time_period_profiles.{period_profile_code}.included_days invalid: {err}"
+                ))
+            })
+    }
+
     /// Fonction new.
     pub fn new(pool: PgPool) -> Self {
         Self {
@@ -199,6 +218,41 @@ impl From<HoroscopeSignalThemeMappingRow> for HoroscopeSignalThemeMapping {
             match_aspect: row.match_aspect,
             match_natal_target: row.match_natal_target,
             theme_code: row.theme_code,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::HoroscopeRepository;
+    use crate::shared::error::RuntimeError;
+    use serde_json::json;
+
+    #[test]
+    fn decode_included_days_accepts_string_arrays() {
+        let decoded = HoroscopeRepository::decode_included_days(
+            "next_7_days",
+            Some(json!(["monday", "wednesday"])),
+        )
+        .expect("decode should accept string arrays");
+
+        assert_eq!(
+            decoded,
+            Some(vec!["monday".to_string(), "wednesday".to_string()])
+        );
+    }
+
+    #[test]
+    fn decode_included_days_rejects_non_string_arrays() {
+        let err = HoroscopeRepository::decode_included_days("next_7_days", Some(json!([1, 2])))
+            .expect_err("decode should reject non-string arrays");
+
+        match err {
+            RuntimeError::InvalidRuntimeTable(message) => {
+                assert!(message.contains("next_7_days"));
+                assert!(message.contains("included_days"));
+            }
+            other => panic!("unexpected error variant: {other:?}"),
         }
     }
 }

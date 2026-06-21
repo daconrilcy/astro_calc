@@ -113,3 +113,7 @@ path = "../tests/natal_reuse_policy_tests.rs"
 [[test]]
 name = "calculation_reference_loader_tests"
 path = "../tests/calculation_reference_loader_tests.rs"
+
+[[test]]
+name = "transient_chart_tests"
+path = "../tests/transient_chart_tests.rs"

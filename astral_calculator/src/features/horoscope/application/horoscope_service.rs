@@ -10,6 +10,7 @@ use crate::application::chart_context::load_chart_context;
 use crate::application::ports::{
     HoroscopeCatalog, NatalCalculationStore, NatalReferenceStore, ReferenceSystemResolver,
 };
+use crate::application::transient_chart::calculate_transient_chart_facts;
 use crate::astrology::ephemeris::EphemerisEngine;
 use crate::features::horoscope::application::HoroscopeCapability;
 use crate::features::horoscope::{
@@ -74,10 +75,7 @@ where
             natal_input.house_system_id,
         )
         .await?;
-        let chart_objects = chart_context.chart_objects;
-        let aspect_definitions = chart_context.aspect_definitions;
-        let house_system = chart_context.house_system;
-        let references = chart_context.references;
+        let aspect_definitions = chart_context.aspect_definitions.clone();
         let supported_objects = self.horoscope.horoscope_supported_objects().await?;
         if supported_objects.is_empty() {
             return Err(RuntimeError::InvalidRuntimeTable(
@@ -110,15 +108,12 @@ where
                     ))
                 })?
                 .with_timezone(&Utc);
-            let mut transit_input = natal_input.clone();
-            transit_input.birth_datetime_utc = reference_datetime_utc;
-            transit_input.product_code = Some("horoscope_daily_transit".to_string());
-            let facts = self.ephemeris.calculate_chart(
-                &transit_input,
-                &chart_objects,
-                &aspect_definitions,
-                &house_system,
-                &references,
+            let facts = calculate_transient_chart_facts(
+                &*self.ephemeris,
+                &natal_input,
+                reference_datetime_utc,
+                "horoscope_daily_transit",
+                &chart_context,
             )?;
             transit_slots.push((
                 slot.slot_code.clone(),
@@ -176,10 +171,7 @@ where
             natal_input.house_system_id,
         )
         .await?;
-        let chart_objects = chart_context.chart_objects;
-        let aspect_definitions = chart_context.aspect_definitions;
-        let house_system = chart_context.house_system;
-        let references = chart_context.references;
+        let aspect_definitions = chart_context.aspect_definitions.clone();
         let supported_objects = self.horoscope.horoscope_supported_objects().await?;
         if supported_objects.is_empty() {
             return Err(RuntimeError::InvalidRuntimeTable(
@@ -202,15 +194,12 @@ where
                         ))
                     })?
                     .with_timezone(&Utc);
-            let mut transit_input = natal_input.clone();
-            transit_input.birth_datetime_utc = reference_datetime_utc;
-            transit_input.product_code = Some("horoscope_period_transit".to_string());
-            let facts = self.ephemeris.calculate_chart(
-                &transit_input,
-                &chart_objects,
-                &aspect_definitions,
-                &house_system,
-                &references,
+            let facts = calculate_transient_chart_facts(
+                &*self.ephemeris,
+                &natal_input,
+                reference_datetime_utc,
+                "horoscope_period_transit",
+                &chart_context,
             )?;
             transit_snapshots.push((
                 snapshot.snapshot_key.clone(),

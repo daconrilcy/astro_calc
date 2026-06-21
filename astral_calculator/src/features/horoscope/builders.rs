@@ -513,18 +513,12 @@ where
 fn map_period_profile_definition(
     row: HoroscopePeriodProfile,
 ) -> Result<astral_time_window::PeriodProfileDefinition, String> {
-    let included_days = row
-        .included_days
-        .map(serde_json::from_value::<Vec<String>>)
-        .transpose()
-        .map_err(|err| format!("HOROSCOPE_PERIOD_PROFILE_UNSUPPORTED: {err}"))?
-        .unwrap_or_default();
     Ok(astral_time_window::PeriodProfileDefinition {
         period_profile_code: row.period_profile_code,
         resolution_strategy: row.resolution_strategy,
         duration_days: row.duration_days.map(i64::from),
         week_offset: row.week_offset.map(i64::from),
-        included_days,
+        included_days: row.included_days.unwrap_or_default(),
         is_enabled: row.is_enabled,
     })
 }
