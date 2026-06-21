@@ -2,7 +2,7 @@
 //! Ces verifications alimentent les routes de readiness et les diagnostics exposes
 //! aux consommateurs internes.
 
-use astral_calculator::config::ephemeris_path_from_env;
+use astral_calculator::bootstrap::env::ephemeris_path_from_env;
 use astral_calculator::infra::db::{
     catalog_repository::CatalogRepository, reference_repository::ReferenceRepository,
 };

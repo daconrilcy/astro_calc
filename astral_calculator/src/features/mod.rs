@@ -7,13 +7,3 @@ pub mod natal;
 pub mod simplified;
 
 pub use crate::engine::projection as llm_projection;
-
-/// Module payload.
-pub mod payload {
-    pub use crate::features::natal::payload::build::*;
-}
-
-/// Module signals.
-pub mod signals {
-    pub use crate::features::natal::signals::*;
-}

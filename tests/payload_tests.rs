@@ -4,7 +4,7 @@ use chrono::{TimeZone, Utc};
 use serde_json::json;
 
 use astral_calculator::domain::*;
-use astral_calculator::features::payload as payload_mod;
+use astral_calculator::features::natal::payload::build as payload_mod;
 use common::natal_catalog::test_catalog;
 
 fn build_basic_payload(

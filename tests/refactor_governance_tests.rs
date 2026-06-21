@@ -216,6 +216,19 @@ fn root_lib_does_not_export_removed_feature_modules() {
 }
 
 #[test]
+fn feature_facade_does_not_export_alias_payload_or_signals_modules() {
+    let features = workspace_root().join("astral_calculator/src/features/mod.rs");
+    let content = read(&features);
+    for forbidden in ["pub mod payload {", "pub mod signals {"] {
+        assert!(
+            !content.contains(forbidden),
+            "{} still exports deprecated feature alias {forbidden}",
+            features.display()
+        );
+    }
+}
+
+#[test]
 fn canonical_public_feature_paths_compile() {
     let _ = std::any::type_name::<
         astral_calculator::features::natal::application::NatalCalculationService<
@@ -237,6 +250,18 @@ fn canonical_public_feature_paths_compile() {
         &[astral_calculator::domain::AspectDefinition],
     ) -> Vec<astral_calculator::domain::AspectFact> =
         astral_calculator::astrology::aspects::detect_aspects;
+}
+
+#[test]
+fn natal_application_service_uses_standard_module_declarations() {
+    let service_file = workspace_root()
+        .join("astral_calculator/src/features/natal/application/natal_calculation_service.rs");
+    let content = read(&service_file);
+    assert!(
+        !content.contains("#[path = "),
+        "{} still uses #[path] module assembly",
+        service_file.display()
+    );
 }
 
 #[test]
@@ -293,6 +318,33 @@ fn internal_sources_do_not_use_historical_root_aliases() {
             assert!(
                 !content.contains(alias),
                 "{} uses deprecated alias {alias}",
+                file.display()
+            );
+        }
+    }
+}
+
+#[test]
+fn calculator_http_uses_canonical_calculator_imports() {
+    let root = workspace_root().join("astral_calculator_http/src");
+    let forbidden = [
+        "astral_calculator::catalog",
+        "astral_calculator::db",
+        "astral_calculator::facts",
+        "astral_calculator::aspects",
+        "astral_calculator::cli",
+        "astral_calculator::config",
+        "astral_calculator::dignities",
+        "astral_calculator::ephemeris",
+        "astral_calculator::idempotency",
+    ];
+
+    for file in collect_rs_files(&root) {
+        let content = read(&file);
+        for alias in forbidden {
+            assert!(
+                !content.contains(alias),
+                "{} uses deprecated calculator alias {alias}",
                 file.display()
             );
         }

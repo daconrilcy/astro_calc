@@ -5,7 +5,7 @@ use astral_calculator::domain::HouseReference;
 use astral_calculator::domain::{
     HouseAxisReference, LunarPhaseReference, NatalChartInput, ObjectPositionFact,
 };
-use astral_calculator::features::payload as payload_mod;
+use astral_calculator::features::natal::payload::build as payload_mod;
 use astral_calculator::runtime::compat::validate_house_axis_references;
 mod common;
 use common::natal_catalog::test_catalog;

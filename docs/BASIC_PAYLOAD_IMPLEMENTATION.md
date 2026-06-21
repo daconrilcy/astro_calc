@@ -1,3 +1,40 @@
+# 2026-06-21 - fermeture Phase 1 de la surface de compatibilite calculator
+
+Resume court:
+- completion de `P1-T3` apres `P1-T1`/`P1-T2` avec remplacement des imports
+  `astral_calculator::{config,db,ephemeris}` restants dans
+  `astral_calculator_http/src` par les chemins canoniques
+  `bootstrap::{env,db}` et `astrology::ephemeris`;
+- remplacement des wildcard re-exports de `astral_calculator/src/domain/mod.rs`
+  par des `pub use` explicites pour garder une facade stable mais auditable;
+- durcissement de la gouvernance pour interdire les aliases racine deprécies
+  dans `astral_calculator_http/src`;
+- mise a jour des railguards et cloture de la trace review pour cette sous-vague
+  de frontieres.
+
+Invariants de couche:
+- les aliases compatibilite du crate root restent reserves a la compatibilite
+  publique et ne doivent plus etre utilises par les crates du workspace;
+- `astral_calculator_http` importe le calculateur via les chemins canoniques
+  `bootstrap::{db,env}` et `astrology::ephemeris`;
+- `astral_calculator/src/domain/mod.rs` reste une facade explicite, sans
+  `pub use ...::*;`;
+- aucun contrat JSON public, endpoint HTTP ou comportement runtime n'est modifie
+  par cette fermeture Phase 1.
+
+Commandes de verification:
+- `cargo fmt --check`
+- `cargo test -p astral_calculator --test refactor_governance_tests`
+- `cargo test -p astral_calculator --test deprecated_root_alias_compat_tests`
+- `cargo test -p astral_calculator --test natal_reuse_policy_tests`
+- `cargo test -p astral_calculator --test runtime_identity_bootstrap_tests`
+- `cargo test -p astral_calculator_http --test astral_calculator_http_tests`
+- `cargo test -p astral_calculator`
+
+Reviews:
+- `docs/reviews/astral_calculator_refactor/REV-PHASE1-COMPAT-SURFACE-CLOSURE-2026-06-21.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-PHASE1-COMPAT-SURFACE-CLOSURE-2026-06-21.md`
+
 # 2026-06-19 - nettoyage repo-wide des tests sur aliases racine deprécies
 
 Resume court:
@@ -2138,8 +2175,8 @@ Voir aussi l'etape **3G** (fin de document) pour les criteres d'acceptation de c
 ## Organisation du module payload
 
 La construction du payload natal est maintenant portee par
-`astral_calculator/src/features/payload/` et exposee publiquement via
-`astral_calculator::features::payload`.
+`astral_calculator/src/features/natal/payload/build/` et exposee via le chemin
+canonique `astral_calculator::features::natal::payload::build`.
 
 - `mod.rs` orchestre la construction du payload moteur route basic.
 - `angles.rs`, `chart_context.rs`, `dignities.rs`, `emphasis.rs`,
@@ -2183,7 +2220,8 @@ servir le cluster, `mc_ruler` la direction publique / carriere, et
 `descendant_ruler` la sphère relationnelle (maison 7). Ces decisions
 appartiennent a la couche LLM (`astral_llm`), pas au payload moteur.
 
-Implementation calculateur : `astral_calculator/src/features/payload/rulership.rs`
+Implementation calculateur :
+`astral_calculator/src/features/natal/payload/build/rulership.rs`
 (`angle_ruler("descendant", "relationship_angle_ruler", …)`). Test :
 `basic_payload_exposes_rulership_context_from_reference_rules` dans
 `tests/payload_tests.rs`.
@@ -2251,8 +2289,8 @@ au module quand elles ne font pas partie de l'API publique.
 ## Organisation du module signals
 
 L'agregation des signaux est maintenant portee par
-`astral_calculator/src/features/signals/` et exposee publiquement via
-`astral_calculator::features::signals`.
+`astral_calculator/src/features/natal/signals/` et exposee via le chemin
+canonique `astral_calculator::features::natal::signals`.
 
 - `mod.rs` conserve l'orchestration de `aggregate_basic_signals`.
 - `constants.rs` centralise les constantes partagees du module.

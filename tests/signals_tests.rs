@@ -1,7 +1,7 @@
 mod common;
 
 use astral_calculator::domain::*;
-use astral_calculator::features::signals::*;
+use astral_calculator::features::natal::signals::*;
 use common::natal_catalog::test_catalog;
 use serde_json::json;
 

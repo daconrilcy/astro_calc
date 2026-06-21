@@ -11,9 +11,34 @@ mod references;
 /// Module scoring.
 mod scoring;
 
-pub use catalogs::*;
-pub use chart_facts::*;
-pub use natal_input::*;
-pub use payload::*;
-pub use references::*;
-pub use scoring::*;
+pub use catalogs::{
+    accidental_polarity_bands_are_valid, overall_polarity_for_score_with_bands,
+    BasicPayloadCatalog, CalculationScope, EssentialDignityScoringWeight,
+    HoroscopeSignalThemeMapping, HoroscopeSupportedObject, InputPrecisionLevel, LimitationCode,
+    ProfileFeatureExclusion, ReliabilityLevel, SimplifiedCatalog, SimplifiedPolicy,
+};
+pub use chart_facts::{
+    AngleContext, AspectFact, CalculatedChartFacts, HouseCuspFact, InterpretationSignalDraft,
+    ObjectContext, ObjectPositionFact, PositionFactContext, PositionVisibilityContext,
+};
+pub use natal_input::{NatalChartInput, RuntimeOptions};
+pub use payload::{
+    BasicAccidentalDignityCondition, BasicAccidentalDignityContextSummary,
+    BasicAccidentalDignityEvaluation, BasicAngleFact, BasicCalculationReliability,
+    BasicChartContext, BasicChartEmphasis, BasicDignity, BasicDispositorLink, BasicDominantHouse,
+    BasicDominantObject, BasicDominantSign, BasicFinalDispositor, BasicHemisphereEmphasis,
+    BasicHouseAxisEmphasis, BasicHouseAxisScore, BasicLunarPhaseContext, BasicMutualReception,
+    BasicObjectPosition, BasicPayload, BasicPayloadContract, BasicProjectionReason,
+    BasicReadingPlanItem, BasicRulerContext, BasicRulerSource, BasicRulershipChain,
+    BasicRulershipContext, BasicSecondarySlotCandidate, BasicSectContext, BasicSignal,
+};
+pub use references::{
+    AccidentalConditionTrigger, AccidentalDignityConditionReference, AccidentalPolarityBand,
+    AccidentalScoringParams, AnglePointReference, AspectDefinition, BasicProductScoringProfile,
+    CalculationReferenceData, ChartObject, DomicileRulerReference, EssentialDignityRuleReference,
+    HorizonPositionReference, HouseAxisReference, HouseReference, HouseSystem,
+    InterpretationSignalRow, LunarPhaseReference, MotionStateReference,
+    ObjectSectAffinityReference, ProjectionLabelDefinition, ProjectionReasonDefinition,
+    SignReference,
+};
+pub use scoring::{BasicAccidentalScoringSnapshot, BasicProductScoringSnapshot};

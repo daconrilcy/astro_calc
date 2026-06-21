@@ -20,6 +20,9 @@ pub mod shared;
 
 pub use engine::engine_request_from_env;
 
+// Deprecated crate-root aliases below are compatibility shims for external callers only.
+// Workspace code must use the canonical module paths directly.
+
 /// Alias historique vers les utilitaires de détection d'aspects.
 #[deprecated(note = "use astral_calculator::astrology::aspects")]
 pub mod aspects {

@@ -2,10 +2,10 @@
 //! Ce module orchestre la validation des entrees, les appels au runtime et la
 //! mise en forme des reponses pour les routes publiques et internes.
 
-use astral_calculator::config::{ephemeris_path_from_env, runtime_options_from_env};
-use astral_calculator::db::connect_from_env;
+use astral_calculator::astrology::ephemeris::SwissEphemerisEngine;
+use astral_calculator::bootstrap::db::connect_from_env;
+use astral_calculator::bootstrap::env::{ephemeris_path_from_env, runtime_options_from_env};
 use astral_calculator::engine::AstroEngineRequest;
-use astral_calculator::ephemeris::SwissEphemerisEngine;
 use astral_calculator::features::horoscope::{
     HoroscopeCalculationRequest, HoroscopePeriodCalculationRequest,
 };

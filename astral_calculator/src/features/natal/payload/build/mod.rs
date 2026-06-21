@@ -25,12 +25,12 @@ mod signal_filters;
 
 use std::collections::{HashMap, HashSet};
 
+use crate::domain::BasicPayloadCatalog;
 use crate::domain::{
     AccidentalDignityConditionReference, BasicObjectPosition, BasicPayload, BasicSignal,
     HouseAxisReference, InterpretationSignalRow, LunarPhaseReference, NatalChartInput,
     ObjectPositionFact, ObjectSectAffinityReference,
 };
-use crate::domain::BasicPayloadCatalog;
 use angles::{
     angle_object_codes_from_positions, build_payload_angles, structural_axis_pairs_from_positions,
 };

@@ -5,7 +5,7 @@
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 
-use astral_calculator::config::load_dotenv;
+use astral_calculator::bootstrap::env::load_dotenv;
 
 /// Regroupe tous les parametres utilises par le service HTTP.
 #[derive(Debug, Clone)]

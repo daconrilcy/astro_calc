@@ -1,16 +1,10 @@
 //! Module astral_calculator\src\features\natal\application\natal_calculation_service.rs du moteur astral_calculator.
 
-#[path = "persisted_position_reuse.rs"]
-mod persisted_position_reuse;
-#[path = "reuse_policy.rs"]
-mod reuse_policy;
-#[path = "snapshot_loader.rs"]
-mod snapshot_loader;
-#[path = "workflow.rs"]
-mod workflow;
-
 use std::sync::Arc;
 
+use super::reuse_policy::{NatalReusePolicy, NatalReuseResolution};
+use super::snapshot_loader::NatalReferenceSnapshotLoader;
+use super::workflow::NatalCalculationWorkflow;
 use crate::application::ports::{
     CalculationAttemptStore, CalculationFactStore, CalculationTransactionManager,
     LocalizationCatalog, NatalReferenceStore, PayloadCatalogStore, PayloadStore,
@@ -23,9 +17,6 @@ use crate::features::natal::catalog::BasicPayloadCatalog;
 use crate::shared::error::RuntimeError;
 use crate::shared::idempotency::{advisory_lock_key, idempotency_key, input_hash};
 use async_trait::async_trait;
-use reuse_policy::{NatalReusePolicy, NatalReuseResolution};
-use snapshot_loader::NatalReferenceSnapshotLoader;
-use workflow::NatalCalculationWorkflow;
 
 /// Structure NatalCalculationService.
 pub struct NatalCalculationService<C, P, R, E> {
