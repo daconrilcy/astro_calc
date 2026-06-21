@@ -17,6 +17,10 @@ Preuves:
 - `astral_calculator/src/features/natal/payload/build/house_axes.rs` lit
   `object_context` et `angle_context` via les helpers typés de
   `ObjectPositionFact`.
+- Le typage plus large de `BasicSignal.evidence` et la structure detaillee des
+  sources sous `signals[].evidence.placement_context.accidental_dignity_context`
+  restent explicitement différes et ne sont pas revendiques par cette fermeture
+  Phase 1.
 
 Verification:
 - `cargo test -p astral_calculator --test position_fact_context_tests`

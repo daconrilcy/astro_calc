@@ -9,6 +9,8 @@ Frontieres revues:
   assembleur payload;
 - `features/natal/payload/build/house_axes.rs` consomme des acces typed-first
   sans elargir la surface publique;
+- le perimetre reste borne au sous-contexte de position; `BasicSignal.evidence`
+  et les sources detaillees des dignites accidentelles restent différes;
 - aucun test de comportement n'est deplace hors de `tests/`.
 
 Verification:

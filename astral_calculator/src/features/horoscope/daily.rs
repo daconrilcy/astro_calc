@@ -15,7 +15,7 @@ use super::{
 };
 
 const TRANSIT_DATA_SOURCE: &str = "swisseph_daily_calculator_v1";
-const DEFAULT_ZODIACAL_REFERENCE_SYSTEM_CODE: &str = "tropical";
+const TROPICAL_ZODIACAL_REFERENCE_SYSTEM_CODE: &str = "tropical";
 
 /// Fonction calculate_horoscope_daily.
 pub fn calculate_horoscope_daily(
@@ -190,7 +190,7 @@ fn derived_slot(
         sky_snapshot: serde_json::json!({
             "reference_local_time": slot.reference_local_time,
             "visible_objects": visible_objects(Some(transit_positions)),
-            "zodiacal_reference_system": default_zodiacal_reference_system_code(),
+            "zodiacal_reference_system": tropical_zodiacal_reference_system_code(),
             "source": source
         }),
         moon_context: serde_json::json!({
@@ -273,7 +273,7 @@ fn missing_transit_slot(slot: &HoroscopeCalculationSlotRequest) -> HoroscopeCalc
         sky_snapshot: serde_json::json!({
             "reference_local_time": slot.reference_local_time,
             "visible_objects": [],
-            "zodiacal_reference_system": default_zodiacal_reference_system_code(),
+            "zodiacal_reference_system": tropical_zodiacal_reference_system_code(),
             "source": "missing_transit_data"
         }),
         moon_context: serde_json::json!({
@@ -289,8 +289,8 @@ fn missing_transit_slot(slot: &HoroscopeCalculationSlotRequest) -> HoroscopeCalc
     }
 }
 
-fn default_zodiacal_reference_system_code() -> &'static str {
-    DEFAULT_ZODIACAL_REFERENCE_SYSTEM_CODE
+fn tropical_zodiacal_reference_system_code() -> &'static str {
+    TROPICAL_ZODIACAL_REFERENCE_SYSTEM_CODE
 }
 
 fn theme_for<'a>(

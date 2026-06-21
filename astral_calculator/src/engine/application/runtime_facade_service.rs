@@ -81,12 +81,9 @@ where
             .projections
             .llm_projection_profile(LLM_PROJECTION_CONTRACT_VERSION, &resolved.projection_level)
             .await?;
-        let labels = self.load_engine_reference_labels(
-            zodiacal_id,
-            coordinate_id,
-            house_system_id,
-        )
-        .await?;
+        let labels = self
+            .load_engine_reference_labels(zodiacal_id, coordinate_id, house_system_id)
+            .await?;
         let (audit, payload_catalog) = self
             .natal
             .calculate_basic_with_catalog(resolved.natal_input.clone())

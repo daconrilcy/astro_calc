@@ -99,6 +99,14 @@ name = "refactor_governance_tests"
 path = "../tests/refactor_governance_tests.rs"
 
 [[test]]
+name = "refactor_governance_runtime_tests"
+path = "../tests/refactor_governance_runtime_tests.rs"
+
+[[test]]
+name = "refactor_governance_review_tests"
+path = "../tests/refactor_governance_review_tests.rs"
+
+[[test]]
 name = "runtime_identity_bootstrap_tests"
 path = "../tests/runtime_identity_bootstrap_tests.rs"
 

@@ -28,35 +28,7 @@ Reviews:
 - `docs/reviews/astral_calculator_refactor/REV-TYPED-POSITION-CONTEXT-CLOSURE-2026-06-21.md`
 - `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-TYPED-POSITION-CONTEXT-CLOSURE-2026-06-21.md`
 
-# 2026-06-21 - Phase 5 canonical code cleanup and horoscope helper split
-
-# 2026-06-21 - Phase 1 horoscope builder ownership split
-
-Resume court:
-- `astral_calculator/src/features/horoscope/builders.rs` est redevenu une facade
-  mince qui re-exporte les points d'entree publics ;
-- la logique quotidienne a ete deplacee dans
-  `astral_calculator/src/features/horoscope/builders/daily_request.rs` ;
-- la logique periode et scan-plan a ete deplacee dans
-  `astral_calculator/src/features/horoscope/builders/period_request.rs` ;
-- les signatures publiques et le contrat JSON restent inchanges.
-
-Invariants de couche:
-- aucune fonction publique de builder ne change de signature ;
-- `builders.rs` ne porte plus la logique quotidienne et la logique periode dans
-  le meme fichier ;
-- les tests de comportement restent sous `tests/` ;
-- aucun contrat JSON public n'est modifie par cette tranche.
-
-Commandes de verification:
-- `cargo fmt --all`
-- `cargo test -p astral_calculator --test horoscope_builders_tests`
-- `cargo test -p astral_calculator --test refactor_governance_tests`
-- `cargo test -p astral_calculator`
-
-Reviews:
-- `docs/reviews/astral_calculator_refactor/REV-HOROSCOPE-BUILDER-OWNERSHIP-SPLIT-2026-06-21.md`
-- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-HOROSCOPE-BUILDER-OWNERSHIP-SPLIT-2026-06-21.md`
+# 2026-06-21 - Phase 5 canonical code cleanup and governance split preparation
 
 Resume court:
 - remplacement des constantes métier inline restantes dans les couches
@@ -78,10 +50,13 @@ Commandes de verification:
 - `cargo test -p astral_calculator --test position_fact_context_tests`
 - `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`
 - `cargo test -p astral_calculator --test runtime_tests`
+- `cargo test -p astral_calculator --test refactor_governance_tests`
+- `cargo test -p astral_calculator --test refactor_governance_runtime_tests`
+- `cargo test -p astral_calculator --test refactor_governance_review_tests`
 
 Reviews:
-- `docs/reviews/astral_calculator_refactor/REV-TYPED-POSITION-CONTEXT-CLOSURE-2026-06-21.md`
-- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-TYPED-POSITION-CONTEXT-CLOSURE-2026-06-21.md`
+- `docs/reviews/astral_calculator_refactor/REV-GOVERNANCE-SPLIT-2026-06-21.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-GOVERNANCE-SPLIT-2026-06-21.md`
 
 # 2026-06-21 - Phase 1 typed position-context closure
 
@@ -95,6 +70,10 @@ Resume court:
 - migration de `astral_calculator/src/features/natal/payload/build/house_axes.rs`
   hors des lectures directes `facts_json.get(...)` vers ces acces typés;
 - mise a jour du railguard crate pour figer le gate Phase 1.
+- les blobs JSON plus larges restent explicitement différes: le typage de
+  `BasicSignal.evidence` et la structure detaillee de
+  `signals[].evidence.placement_context.accidental_dignity_context[*].source`
+  ne font pas partie de cette tranche.
 
 Invariants de couche:
 - `astrology::ephemeris` ne recompose plus inline la forme JSON des
@@ -104,6 +83,9 @@ Invariants de couche:
 - les builders payload peuvent encore reserialiser au bord, mais ne doivent
   plus relire `facts_json` comme source primaire pour les metadonnees d'objet
   et d'angle;
+- les blobs `BasicSignal.evidence` et les sources detaillees de dignite
+  accidentelle restent hors scope et doivent etre traites dans une vague
+  distincte plutot que rouverts implicitement pendant la fermeture Phase 1;
 - aucun contrat JSON public n'est modifie par cette tranche.
 
 Commandes de verification:
@@ -4538,10 +4520,11 @@ Verification:
 ```powershell
 cargo fmt --check
 cargo test -p astral_calculator --test refactor_governance_tests
+cargo test -p astral_calculator --test refactor_governance_runtime_tests
+cargo test -p astral_calculator --test refactor_governance_review_tests
 cargo test -p astral_calculator --test horoscope_builders_tests
 ```
 
 Reviews:
-
-- `docs/reviews/astral_calculator_refactor/REV-HOROSCOPE-BUILDER-OWNERSHIP-SPLIT-2026-06-21.md`
-- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-HOROSCOPE-BUILDER-OWNERSHIP-SPLIT-2026-06-21.md`
+- `docs/reviews/astral_calculator_refactor/REV-GOVERNANCE-SPLIT-2026-06-21.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-GOVERNANCE-SPLIT-2026-06-21.md`

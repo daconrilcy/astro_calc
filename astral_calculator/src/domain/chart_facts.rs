@@ -3,6 +3,11 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+#[cfg(feature = "swisseph-engine")]
+use crate::domain::{
+    AnglePointReference, ChartObject, HouseReference, MotionStateReference, SignReference,
+};
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct SignContext {
     pub element: Option<String>,
@@ -267,6 +272,75 @@ impl PositionFactContext {
         );
         Value::Object(facts)
     }
+
+    #[cfg(feature = "swisseph-engine")]
+    pub(crate) fn facts_json_for_calculated_position(
+        sign: &SignReference,
+        house: Option<&HouseReference>,
+        object: &ChartObject,
+        motion_state: Option<&MotionStateReference>,
+        horizon_position_id: i32,
+        horizon_position_code: &str,
+        altitude_deg: f64,
+    ) -> Option<Value> {
+        Some(
+            Self::from_calculated_position(
+                Some(sign_context(sign)),
+                house.map(house_context),
+                house.and_then(house_modality),
+                Some(object_context(object)),
+                motion_state.map(motion_context),
+                Some(PositionVisibilityContext {
+                    horizon_position_id: Some(horizon_position_id),
+                    horizon_position: Some(horizon_position_code.to_string()),
+                    altitude_deg: Some(altitude_deg),
+                    is_visible: Some(is_visible_horizon_position(horizon_position_code)),
+                    source: Some("calculated_altitude".to_string()),
+                }),
+            )
+            .to_facts_json(),
+        )
+    }
+
+    #[cfg(feature = "swisseph-engine")]
+    pub(crate) fn facts_json_for_angle_position(
+        sign: &SignReference,
+        house: &HouseReference,
+        object: &ChartObject,
+        angle: &AnglePointReference,
+        house_cusp_longitude_deg: Option<f64>,
+        horizon_position_id: i32,
+        horizon_position_code: &str,
+    ) -> Option<Value> {
+        Some(
+            Self::from_angle_position(
+                Some(sign_context(sign)),
+                Some(house_context(house)),
+                house_modality(house),
+                Some(object_context(object)),
+                Some(AngleContext {
+                    angle_point_code: Some(angle.code.clone()),
+                    short_label: Some(angle.short_label.clone()),
+                    full_name: Some(angle.full_name.clone()),
+                    axis: Some(angle.axis.clone()),
+                    opposite_angle_code: angle.opposite_angle_code.clone(),
+                    associated_house_number: Some(angle.associated_house),
+                    house_theme_code: Some(house.theme_code.clone()),
+                    description: Some(angle.description.clone()),
+                    chart_object_sort_order: Some(angle.chart_object_sort_order),
+                    house_cusp_longitude_deg,
+                }),
+                Some(PositionVisibilityContext {
+                    horizon_position_id: Some(horizon_position_id),
+                    horizon_position: Some(horizon_position_code.to_string()),
+                    altitude_deg: None,
+                    is_visible: Some(is_visible_horizon_position(horizon_position_code)),
+                    source: Some("angle_context".to_string()),
+                }),
+            )
+            .to_facts_json(),
+        )
+    }
 }
 
 fn sign_context_json(context: &SignContext) -> Value {
@@ -340,6 +414,77 @@ fn visibility_context_json(context: &PositionVisibilityContext) -> Value {
         "is_visible": context.is_visible,
         "source": context.source,
     })
+}
+
+#[cfg(feature = "swisseph-engine")]
+fn sign_context(sign: &SignReference) -> SignContext {
+    SignContext {
+        element: sign.element_code.clone(),
+        element_label: sign.element_label.clone(),
+        modality: sign.modality_code.clone(),
+        modality_label: sign.modality_name.clone(),
+        polarity: sign.polarity_code.clone(),
+        polarity_label: sign.polarity_name.clone(),
+        keywords: sign.keywords_json.clone(),
+    }
+}
+
+#[cfg(feature = "swisseph-engine")]
+fn house_modality(house: &HouseReference) -> Option<HouseModalityContext> {
+    house
+        .modality_code
+        .as_ref()
+        .map(|code| HouseModalityContext {
+            code: Some(code.clone()),
+            label: house.modality_label.clone(),
+            accidental_strength: house
+                .accidental_strength
+                .as_deref()
+                .and_then(|value| value.parse::<f64>().ok()),
+            priority_delta: house.modality_priority_delta,
+            interpretation_weight: house
+                .interpretation_weight
+                .as_deref()
+                .and_then(|value| value.parse::<f64>().ok()),
+        })
+}
+
+#[cfg(feature = "swisseph-engine")]
+fn house_context(house: &HouseReference) -> HouseContext {
+    HouseContext {
+        theme_code: Some(house.theme_code.clone()),
+    }
+}
+
+#[cfg(feature = "swisseph-engine")]
+fn object_context(object: &ChartObject) -> ObjectContext {
+    ObjectContext {
+        role: object.role_code.clone(),
+        role_label: object.role_label.clone(),
+        nature: object.nature_codes.clone(),
+        is_luminary: object.is_luminary,
+        is_planet_symbolic: object.is_planet_symbolic,
+        is_visible_to_naked_eye: object.is_visible_to_naked_eye,
+        signal_scoring: Some(serde_json::json!({
+            "position_priority_base": object.position_priority_base,
+            "angle_priority_base": object.angle_priority_base,
+            "source_weight": object.source_weight
+        })),
+    }
+}
+
+#[cfg(feature = "swisseph-engine")]
+fn motion_context(motion_state: &MotionStateReference) -> MotionContext {
+    MotionContext {
+        motion_state: Some(motion_state.code.clone()),
+        label: Some(motion_state.label.clone()),
+        motion_family: Some(motion_state.motion_family.clone()),
+    }
+}
+
+#[cfg(feature = "swisseph-engine")]
+fn is_visible_horizon_position(horizon_position_code: &str) -> bool {
+    matches!(horizon_position_code, "above_horizon" | "on_horizon")
 }
 
 #[derive(Debug, Clone)]
