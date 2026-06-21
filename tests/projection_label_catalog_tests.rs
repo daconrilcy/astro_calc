@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use astral_calculator::features::natal::catalog::test_catalog;
 use astral_calculator::domain::ProjectionLabelDefinition;
+use astral_calculator::features::natal::catalog::test_catalog;
 use serde_json::Value;
 
 const PROJECTION_LABELS_JSON: &str =

@@ -5,6 +5,7 @@ use std::sync::OnceLock;
 use jsonschema::JSONSchema;
 use serde_json::{json, Value};
 
+use astral_calculator::bootstrap::db::connect_from_env;
 use astral_calculator::domain::{
     AccidentalDignityConditionReference, AnglePointReference, BasicPayload,
     EssentialDignityRuleReference, HouseAxisReference, HouseReference, MotionStateReference,
@@ -19,7 +20,6 @@ use astral_calculator::engine::{
 };
 use astral_calculator::features::natal::catalog::test_catalog;
 use astral_calculator::infra::db::projection_repository::ProjectionRepository;
-use astral_calculator::bootstrap::db::connect_from_env;
 
 const V14_GOLDEN: &str = "../tests/golden/natal_payload_v14_paris_1990.json";
 const LLM_SCHEMA: &str = "../contracts/calculator/llm_projection_natal_v1.schema.json";
@@ -77,9 +77,8 @@ fn projection_context() -> LlmProjectionBuildContext<'static> {
         coordinate_label: "Geocentric",
         house_system_label: "Placidus",
         house_axes: HOUSE_AXES.get_or_init(house_axes_from_seed),
-        projection_reason_definitions: REASON_DEFINITIONS.get_or_init(|| {
-            test_catalog().projection_reason_definitions
-        }),
+        projection_reason_definitions: REASON_DEFINITIONS
+            .get_or_init(|| test_catalog().projection_reason_definitions),
         projection_label_definitions: LABEL_DEFINITIONS
             .get_or_init(projection_label_definitions_from_seed),
         house_references: HOUSE_REFERENCES.get_or_init(house_references_from_seed),

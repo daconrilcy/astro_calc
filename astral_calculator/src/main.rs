@@ -1,5 +1,6 @@
 //! Module astral_calculator\src\main.rs du moteur astral_calculator.
 
+use astral_calculator::astrology::ephemeris::SwissEphemerisEngine;
 use astral_calculator::bootstrap::cli::{
     cli_options_from_args, output_mode_from_env, root_output_dir, write_timestamped_output_file,
     OutputContract, OutputMode,
@@ -14,7 +15,6 @@ use astral_calculator::engine::{
     zodiacal_reference_system_id_from_env,
 };
 use astral_calculator::engine_request_from_env;
-use astral_calculator::astrology::ephemeris::SwissEphemerisEngine;
 use astral_calculator::infra::db::reference_repository::ReferenceRepository;
 use astral_calculator::runtime::build_runtime_service;
 

@@ -92,7 +92,11 @@ fn has_current_axis(
         || axis.theme_codes.len() != 2
         || axis.house_scores.len() != 2
         || axis.houses != vec![reference.house_a_number, reference.house_b_number]
-        || axis.theme_codes != vec![reference.theme_a_code.clone(), reference.theme_b_code.clone()]
+        || axis.theme_codes
+            != vec![
+                reference.theme_a_code.clone(),
+                reference.theme_b_code.clone(),
+            ]
     {
         return false;
     }

@@ -138,7 +138,10 @@ impl EphemerisEngine for SwissEphemerisEngine {
                 cusps_raw.mc,
             )?;
 
-            for object in chart_objects.iter().filter(|object| object.swe_id.is_some()) {
+            for object in chart_objects
+                .iter()
+                .filter(|object| object.swe_id.is_some())
+            {
                 let position = calc_ut(
                     jd_ut,
                     object.swe_id.unwrap(),
@@ -512,7 +515,8 @@ fn validate_supported_reference_systems(
             input.zodiacal_reference_system_id,
         )));
     }
-    if input.coordinate_reference_system_id != references.geocentric_coordinate_reference_system_id {
+    if input.coordinate_reference_system_id != references.geocentric_coordinate_reference_system_id
+    {
         return Err(RuntimeError::Ephemeris(format!(
             "unsupported coordinate_reference_system_id {}; only geocentric is implemented",
             input.coordinate_reference_system_id,

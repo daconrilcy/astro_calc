@@ -1,5 +1,7 @@
 use chrono::Utc;
 
+use super::persisted_position_reuse::has_reusable_persisted_positions;
+use super::snapshot_loader::NatalReferenceSnapshot;
 use crate::application::ports::{
     CalculationAttempt, CalculationAttemptStore, CalculationFactStore, CalculationStatus,
     CalculationTransactionManager, PayloadStore, SignalStore,
@@ -11,8 +13,6 @@ use crate::features::natal::payload::validate::{
 };
 use crate::features::natal::signals::aggregate_basic_signals;
 use crate::shared::error::RuntimeError;
-use super::persisted_position_reuse::has_reusable_persisted_positions;
-use super::snapshot_loader::NatalReferenceSnapshot;
 
 pub(super) struct NatalReusePolicy<'a, C> {
     calculations: &'a C,
@@ -78,7 +78,10 @@ where
                 }
             }
 
-            let positions = self.calculations.positions_for_payload(completed_id).await?;
+            let positions = self
+                .calculations
+                .positions_for_payload(completed_id)
+                .await?;
             if has_reusable_persisted_positions(&positions, &self.snapshot.references) {
                 let aspects = self.calculations.aspects_for_payload(completed_id).await?;
                 let signal_drafts = aggregate_basic_signals(
@@ -133,7 +136,9 @@ where
         {
             if is_stale(running, self.stale_after_seconds) {
                 let mut tx = tx;
-                self.calculations.mark_stale_failed(&mut tx, running.id).await?;
+                self.calculations
+                    .mark_stale_failed(&mut tx, running.id)
+                    .await?;
                 return Ok(NatalReuseResolution::Proceed(tx));
             }
 

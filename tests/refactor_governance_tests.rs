@@ -309,7 +309,11 @@ fn natal_calculation_service_is_split_into_private_submodules() {
         "workflow.rs",
         "persisted_position_reuse.rs",
     ] {
-        assert!(app_dir.join(file).is_file(), "missing {}", app_dir.join(file).display());
+        assert!(
+            app_dir.join(file).is_file(),
+            "missing {}",
+            app_dir.join(file).display()
+        );
     }
 
     let service_file = app_dir.join("natal_calculation_service.rs");
@@ -324,10 +328,14 @@ fn natal_calculation_service_is_split_into_private_submodules() {
 
 #[test]
 fn natal_workflow_uses_typed_lifecycle_progress() {
-    let workflow = workspace_root()
-        .join("astral_calculator/src/features/natal/application/workflow.rs");
+    let workflow =
+        workspace_root().join("astral_calculator/src/features/natal/application/workflow.rs");
     let content = read(&workflow);
-    for legacy in ["\"calculating_facts\"", "\"aggregating_signals\"", "\"building_payload\""] {
+    for legacy in [
+        "\"calculating_facts\"",
+        "\"aggregating_signals\"",
+        "\"building_payload\"",
+    ] {
         assert!(
             !content.contains(legacy),
             "{} still uses legacy string lifecycle state {}",
@@ -923,6 +931,8 @@ fn runtime_repository_is_residual_and_not_wrapped_by_repositories() {
         "runtime_queries/horoscope.rs",
         "runtime_queries/projection.rs",
         "runtime_queries/calculation.rs",
+        "runtime_queries/calculation/reads.rs",
+        "runtime_queries/calculation/writes.rs",
     ] {
         assert!(
             root.join(module).exists(),
@@ -930,6 +940,14 @@ fn runtime_repository_is_residual_and_not_wrapped_by_repositories() {
             module
         );
     }
+
+    let calculation_facade = root.join("runtime_queries/calculation.rs");
+    let calculation_facade_line_count = read(&calculation_facade).lines().count();
+    assert!(
+        calculation_facade_line_count <= 40,
+        "{} has {calculation_facade_line_count} lines; keep it as a thin calculation query facade",
+        calculation_facade.display()
+    );
 }
 
 #[test]
@@ -1093,8 +1111,7 @@ fn swiss_ephemeris_lock_is_centralized() {
         }
         let content = read(&file);
         assert!(
-            !content.contains("fn swiss_ephemeris_lock")
-                && !content.contains("OnceLock<Mutex"),
+            !content.contains("fn swiss_ephemeris_lock") && !content.contains("OnceLock<Mutex"),
             "{} reintroduces a local Swiss Ephemeris lock; use astrology::swisseph_runtime",
             file.display()
         );

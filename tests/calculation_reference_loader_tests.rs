@@ -25,10 +25,7 @@ impl ReferenceSystemLookup for FakeCalculationReferenceRepository {
         }
     }
 
-    async fn coordinate_reference_system_id_by_key(
-        &self,
-        key: &str,
-    ) -> Result<i32, RuntimeError> {
+    async fn coordinate_reference_system_id_by_key(&self, key: &str) -> Result<i32, RuntimeError> {
         match key {
             "geocentric" => Ok(84),
             other => Err(RuntimeError::InvalidRuntimeTable(format!(

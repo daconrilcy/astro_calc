@@ -7,11 +7,11 @@ use chrono::{Duration, Utc};
 use serde_json::json;
 
 use astral_calculator::application::ports::{
-    CalculationAttempt, CalculationAttemptStore, CalculationFactStore,
-    CalculationProgressState, CalculationReferenceLoader, CalculationStatus,
-    CalculationTransactionManager, LocalizationCatalog, MajorAspectFamilyReference,
-    NatalReferenceStore, PayloadCatalogStore, PayloadStore, ReferenceSystemLookup,
-    ReferenceSystemResolver, ReferenceVersionProvider, SignalStore,
+    CalculationAttempt, CalculationAttemptStore, CalculationFactStore, CalculationProgressState,
+    CalculationReferenceLoader, CalculationStatus, CalculationTransactionManager,
+    LocalizationCatalog, MajorAspectFamilyReference, NatalReferenceStore, PayloadCatalogStore,
+    PayloadStore, ReferenceSystemLookup, ReferenceSystemResolver, ReferenceVersionProvider,
+    SignalStore,
 };
 use astral_calculator::astrology::ephemeris::EphemerisEngine;
 use astral_calculator::domain::{
@@ -247,13 +247,17 @@ impl PayloadCatalogStore for FakeCatalogStore {
     async fn projection_reason_definitions(
         &self,
     ) -> Result<Vec<astral_calculator::domain::ProjectionReasonDefinition>, RuntimeError> {
-        Ok(astral_calculator::features::natal::catalog::test_catalog().projection_reason_definitions)
+        Ok(astral_calculator::features::natal::catalog::test_catalog()
+            .projection_reason_definitions)
     }
 
     async fn projection_label_definitions(
         &self,
     ) -> Result<Vec<astral_calculator::domain::ProjectionLabelDefinition>, RuntimeError> {
-        Ok(astral_calculator::features::natal::catalog::test_catalog().projection_label_definitions)
+        Ok(
+            astral_calculator::features::natal::catalog::test_catalog()
+                .projection_label_definitions,
+        )
     }
 }
 

@@ -2140,7 +2140,11 @@ fn runtime_rejects_projection_reason_code_missing_from_runtime_definitions() {
         .collect::<Vec<_>>();
 
     assert!(
-        !runtime_is_current_basic_payload(&payload, &definitions, &canonical_house_axis_references()),
+        !runtime_is_current_basic_payload(
+            &payload,
+            &definitions,
+            &canonical_house_axis_references()
+        ),
         "payload should be rejected when runtime definitions omit an active reason"
     );
 }

@@ -89,7 +89,9 @@ where
             .await?;
 
         let mut tx = self.calculations.begin().await?;
-        self.calculations.lock_idempotency(&mut tx, lock_key).await?;
+        self.calculations
+            .lock_idempotency(&mut tx, lock_key)
+            .await?;
         let existing = self
             .calculations
             .calculations_for_key(&mut tx, &idempotency_key)

@@ -1,5 +1,7 @@
 use crate::application::calculation_references::load_calculation_reference_data;
-use crate::application::ports::{NatalReferenceStore, PayloadCatalogStore, ReferenceSystemResolver};
+use crate::application::ports::{
+    NatalReferenceStore, PayloadCatalogStore, ReferenceSystemResolver,
+};
 use crate::domain::CalculationReferenceData;
 use crate::features::natal::catalog::BasicPayloadCatalog;
 use crate::features::natal::validate::{

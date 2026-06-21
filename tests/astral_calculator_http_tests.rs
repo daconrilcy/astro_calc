@@ -1,19 +1,18 @@
 use std::sync::Arc;
 
+use astral_calculator::astrology::ephemeris::SwissEphemerisEngine;
 use astral_calculator::bootstrap::db::connect_from_env;
 use astral_calculator::bootstrap::env::{ephemeris_path_from_env, runtime_options_from_env};
 use astral_calculator::domain::{AspectDefinition, ObjectPositionFact};
-use astral_calculator::astrology::ephemeris::SwissEphemerisEngine;
 use astral_calculator::features::horoscope::{
     calculate_horoscope_daily, calculate_horoscope_daily_from_transits,
     calculate_horoscope_daily_natal, calculate_horoscope_period,
     calculate_horoscope_period_from_positions, calculate_horoscope_period_from_transits,
     calculate_horoscope_period_natal, calculate_horoscope_period_natal_from_positions,
     calculate_horoscope_period_natal_from_transits, normalize_horoscope_period_request_utc,
-    try_calculate_horoscope_period_from_transits_with_aspects,
-    HoroscopeCalculationRequest, HoroscopeCalculationSlotRequest, HoroscopePeriod,
-    HoroscopePeriodCalculationRequest, HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE,
-    HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
+    try_calculate_horoscope_period_from_transits_with_aspects, HoroscopeCalculationRequest,
+    HoroscopeCalculationSlotRequest, HoroscopePeriod, HoroscopePeriodCalculationRequest,
+    HOROSCOPE_BASIC_DAILY_NATAL_SERVICE_CODE, HOROSCOPE_PREMIUM_DAILY_LOCAL_2H_SLOTS_SERVICE_CODE,
 };
 use astral_calculator::runtime::build_runtime_service;
 use astral_calculator_http::{
@@ -286,8 +285,7 @@ fn horoscope_period_calculator_request_rejects_snapshot_outside_period() {
 #[test]
 fn horoscope_period_try_calculator_returns_error_for_invalid_request() {
     let mut request = period_calculator_request();
-    request.period_resolution["end_datetime_utc"] =
-        serde_json::json!("2026-06-06T22:00:00+00:00");
+    request.period_resolution["end_datetime_utc"] = serde_json::json!("2026-06-06T22:00:00+00:00");
 
     let err = try_calculate_horoscope_period_from_transits_with_aspects(
         request,
@@ -307,8 +305,7 @@ fn horoscope_period_try_calculator_returns_error_for_invalid_request() {
 #[test]
 fn horoscope_period_public_wrappers_return_error_for_invalid_request() {
     let mut request = period_calculator_request();
-    request.period_resolution["end_datetime_utc"] =
-        serde_json::json!("2026-06-06T22:00:00+00:00");
+    request.period_resolution["end_datetime_utc"] = serde_json::json!("2026-06-06T22:00:00+00:00");
 
     let base = calculate_horoscope_period(request.clone())
         .expect_err("base public wrapper should return an error");
@@ -317,8 +314,9 @@ fn horoscope_period_public_wrappers_return_error_for_invalid_request() {
         .contains("invalid horoscope period calculation request"));
 
     let positions = sample_natal_positions();
-    let from_positions = calculate_horoscope_period_from_positions(request.clone(), &positions, 8.0)
-        .expect_err("positions wrapper should return an error");
+    let from_positions =
+        calculate_horoscope_period_from_positions(request.clone(), &positions, 8.0)
+            .expect_err("positions wrapper should return an error");
     assert!(from_positions
         .to_string()
         .contains("invalid horoscope period calculation request"));
@@ -395,8 +393,7 @@ fn horoscope_legacy_natal_function_names_delegate_to_canonical_names() {
     );
 
     let canonical_positions =
-        calculate_horoscope_period_from_positions(period_request.clone(), &positions, 8.0)
-            .unwrap();
+        calculate_horoscope_period_from_positions(period_request.clone(), &positions, 8.0).unwrap();
     let legacy_positions =
         calculate_horoscope_period_natal_from_positions(period_request.clone(), &positions, 8.0)
             .unwrap();

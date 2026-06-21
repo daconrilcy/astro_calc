@@ -66,7 +66,8 @@ impl ObjectPositionFact {
     }
 
     pub fn visibility_context(&self) -> Option<PositionVisibilityContext> {
-        self.context().and_then(|context| context.visibility_context)
+        self.context()
+            .and_then(|context| context.visibility_context)
     }
 }
 

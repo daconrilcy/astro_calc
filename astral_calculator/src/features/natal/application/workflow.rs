@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use super::snapshot_loader::NatalReferenceSnapshot;
 use crate::application::ports::{
     CalculationAttempt, CalculationAttemptStore, CalculationFactStore, CalculationProgressState,
     CalculationTransactionManager, PayloadStore, SignalStore,
@@ -9,7 +10,6 @@ use crate::domain::{BasicPayload, CalculatedChartFacts, NatalChartInput, Runtime
 use crate::features::natal::payload::build::build_basic_payload_with_accidental_references;
 use crate::features::natal::signals::aggregate_basic_signals;
 use crate::shared::error::RuntimeError;
-use super::snapshot_loader::NatalReferenceSnapshot;
 
 pub(super) struct NatalCalculationWorkflow<'a, C, E> {
     calculations: &'a C,

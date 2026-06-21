@@ -7,9 +7,8 @@ use async_trait::async_trait;
 use super::models::ChartCalculationRow;
 use super::runtime_queries::RuntimeQueries;
 use crate::application::ports::{
-    CalculationAttempt, CalculationAttemptStore, CalculationFactStore,
-    CalculationProgressState, CalculationStatus, CalculationTransactionManager, PayloadStore,
-    SignalStore,
+    CalculationAttempt, CalculationAttemptStore, CalculationFactStore, CalculationProgressState,
+    CalculationStatus, CalculationTransactionManager, PayloadStore, SignalStore,
 };
 use crate::domain::{
     AspectFact, BasicPayload, CalculatedChartFacts, InterpretationSignalRow, NatalChartInput,
