@@ -3,12 +3,16 @@ use async_trait::async_trait;
 use astral_calculator::application::calculation_references::{
     load_calculation_reference_data, load_default_calculation_reference_data,
 };
+use astral_calculator::application::chart_context::{
+    load_chart_context, load_default_chart_context,
+};
 use astral_calculator::application::ports::{
-    CalculationReferenceLoader, ReferenceSystemLookup, ReferenceVersionProvider,
+    CalculationReferenceLoader, NatalReferenceStore, ReferenceSystemLookup,
+    ReferenceSystemResolver, ReferenceVersionProvider,
 };
 use astral_calculator::domain::{
-    AnglePointReference, HorizonPositionReference, HouseReference, MotionStateReference,
-    SignReference,
+    AnglePointReference, AspectDefinition, ChartObject, HorizonPositionReference, HouseReference,
+    HouseSystem, MotionStateReference, SignReference,
 };
 use astral_calculator::runtime::RuntimeError;
 
@@ -35,9 +39,38 @@ impl ReferenceSystemLookup for FakeCalculationReferenceRepository {
     }
 
     async fn house_system_id_by_code(&self, code: &str) -> Result<i32, RuntimeError> {
-        Err(RuntimeError::InvalidRuntimeTable(format!(
-            "unexpected house system lookup {code}"
-        )))
+        match code {
+            "placidus" => Ok(12),
+            other => Err(RuntimeError::InvalidRuntimeTable(format!(
+                "unexpected house system lookup {other}"
+            ))),
+        }
+    }
+}
+
+#[async_trait]
+impl ReferenceSystemResolver for FakeCalculationReferenceRepository {
+    async fn zodiacal_reference_system_display_name(
+        &self,
+        id: i32,
+    ) -> Result<String, RuntimeError> {
+        Ok(format!("zodiacal-{id}"))
+    }
+
+    async fn coordinate_reference_system_display_name(
+        &self,
+        id: i32,
+    ) -> Result<String, RuntimeError> {
+        Ok(format!("coordinate-{id}"))
+    }
+
+    async fn house_system(&self, id: i32) -> Result<HouseSystem, RuntimeError> {
+        Ok(HouseSystem {
+            id,
+            code: format!("house_system_{id}"),
+            name: format!("House System {id}"),
+            calculation_engine_code: "swiss".to_string(),
+        })
     }
 }
 
@@ -117,6 +150,86 @@ impl CalculationReferenceLoader for FakeCalculationReferenceRepository {
     }
 }
 
+#[async_trait]
+impl NatalReferenceStore for FakeCalculationReferenceRepository {
+    async fn active_chart_objects(
+        &self,
+        reference_version_id: i32,
+    ) -> Result<Vec<ChartObject>, RuntimeError> {
+        Ok(vec![ChartObject {
+            id: reference_version_id,
+            code: "sun".to_string(),
+            name: "Sun".to_string(),
+            swe_id: Some(0),
+            role_code: Some("luminary".to_string()),
+            role_label: Some("Luminary".to_string()),
+            is_luminary: Some(true),
+            is_planet_symbolic: Some(false),
+            is_visible_to_naked_eye: Some(true),
+            nature_codes: None,
+            position_priority_base: Some(1.0),
+            angle_priority_base: None,
+            source_weight: Some(1.0),
+        }])
+    }
+
+    async fn aspect_definitions(&self) -> Result<Vec<AspectDefinition>, RuntimeError> {
+        Ok(vec![AspectDefinition {
+            id: 1,
+            code: "conjunction".to_string(),
+            name: "Conjunction".to_string(),
+            angle: 0.0,
+            family: "major".to_string(),
+            default_orb_deg: Some(8.0),
+            max_default_orb_deg: 8.0,
+        }])
+    }
+
+    async fn major_aspect_family_reference(
+        &self,
+    ) -> Result<astral_calculator::application::ports::MajorAspectFamilyReference, RuntimeError>
+    {
+        Ok(
+            astral_calculator::application::ports::MajorAspectFamilyReference {
+                expected_aspect_count: 1,
+                max_default_orb_deg: 8.0,
+            },
+        )
+    }
+
+    async fn domicile_ruler_references(
+        &self,
+        _reference_version_id: i32,
+    ) -> Result<Vec<astral_calculator::domain::DomicileRulerReference>, RuntimeError> {
+        Ok(vec![])
+    }
+
+    async fn house_axis_references(
+        &self,
+    ) -> Result<Vec<astral_calculator::domain::HouseAxisReference>, RuntimeError> {
+        Ok(vec![])
+    }
+
+    async fn lunar_phase_references(
+        &self,
+    ) -> Result<Vec<astral_calculator::domain::LunarPhaseReference>, RuntimeError> {
+        Ok(vec![])
+    }
+
+    async fn accidental_dignity_condition_references(
+        &self,
+    ) -> Result<Vec<astral_calculator::domain::AccidentalDignityConditionReference>, RuntimeError>
+    {
+        Ok(vec![])
+    }
+
+    async fn object_sect_affinity_references(
+        &self,
+    ) -> Result<Vec<astral_calculator::domain::ObjectSectAffinityReference>, RuntimeError> {
+        Ok(vec![])
+    }
+}
+
 #[tokio::test]
 async fn load_calculation_reference_data_uses_canonical_codes_and_preserves_rows() {
     let repository = FakeCalculationReferenceRepository;
@@ -145,4 +258,31 @@ async fn load_default_calculation_reference_data_returns_default_version_and_row
     assert_eq!(reference_version_id, 7);
     assert_eq!(references.tropical_zodiacal_reference_system_id, 42);
     assert_eq!(references.geocentric_coordinate_reference_system_id, 84);
+}
+
+#[tokio::test]
+async fn load_chart_context_loads_chart_objects_aspects_house_and_references() {
+    let repository = FakeCalculationReferenceRepository;
+
+    let context = load_chart_context(&repository, 11, 12)
+        .await
+        .expect("chart context should load");
+
+    assert_eq!(context.reference_version_id, 11);
+    assert_eq!(context.chart_objects[0].code, "sun");
+    assert_eq!(context.aspect_definitions[0].code, "conjunction");
+    assert_eq!(context.house_system.code, "house_system_12");
+    assert_eq!(context.references.tropical_zodiacal_reference_system_id, 42);
+}
+
+#[tokio::test]
+async fn load_default_chart_context_uses_default_reference_version_id() {
+    let repository = FakeCalculationReferenceRepository;
+
+    let context = load_default_chart_context(&repository, 12)
+        .await
+        .expect("default chart context should load");
+
+    assert_eq!(context.reference_version_id, 7);
+    assert_eq!(context.house_system.id, 12);
 }

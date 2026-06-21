@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use crate::application::calculation_references::load_calculation_reference_data;
+use crate::application::chart_context::load_chart_context;
 use crate::application::ports::{
     HoroscopeCatalog, NatalCalculationStore, NatalReferenceStore, ReferenceSystemResolver,
 };
@@ -68,16 +68,16 @@ where
             .calculations
             .natal_input_for_calculation(chart_calculation_id)
             .await?;
-        let chart_objects = self
-            .references
-            .active_chart_objects(natal_input.reference_version_id)
-            .await?;
-        let aspect_definitions = self.references.aspect_definitions().await?;
-        let house_system = self
-            .references
-            .house_system(natal_input.house_system_id)
-            .await?;
-        let references = load_calculation_reference_data(&self.references).await?;
+        let chart_context = load_chart_context(
+            &self.references,
+            natal_input.reference_version_id,
+            natal_input.house_system_id,
+        )
+        .await?;
+        let chart_objects = chart_context.chart_objects;
+        let aspect_definitions = chart_context.aspect_definitions;
+        let house_system = chart_context.house_system;
+        let references = chart_context.references;
         let supported_objects = self.horoscope.horoscope_supported_objects().await?;
         if supported_objects.is_empty() {
             return Err(RuntimeError::InvalidRuntimeTable(
@@ -170,16 +170,16 @@ where
             .calculations
             .natal_input_for_calculation(chart_calculation_id)
             .await?;
-        let chart_objects = self
-            .references
-            .active_chart_objects(natal_input.reference_version_id)
-            .await?;
-        let aspect_definitions = self.references.aspect_definitions().await?;
-        let house_system = self
-            .references
-            .house_system(natal_input.house_system_id)
-            .await?;
-        let references = load_calculation_reference_data(&self.references).await?;
+        let chart_context = load_chart_context(
+            &self.references,
+            natal_input.reference_version_id,
+            natal_input.house_system_id,
+        )
+        .await?;
+        let chart_objects = chart_context.chart_objects;
+        let aspect_definitions = chart_context.aspect_definitions;
+        let house_system = chart_context.house_system;
+        let references = chart_context.references;
         let supported_objects = self.horoscope.horoscope_supported_objects().await?;
         if supported_objects.is_empty() {
             return Err(RuntimeError::InvalidRuntimeTable(

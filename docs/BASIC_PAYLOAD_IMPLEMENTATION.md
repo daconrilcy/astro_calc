@@ -1,3 +1,39 @@
+# 2026-06-21 - Phase 1 chart-context partage non natal
+
+Resume court:
+- ajout de `astral_calculator/src/application/chart_context.rs` comme seam
+  applicatif unique pour charger `reference_version_id`, `chart_objects`,
+  `aspect_definitions`, `house_system` et `calculation references` des flux
+  non natals;
+- migration de `src/features/simplified/service.rs` vers
+  `load_default_chart_context`;
+- migration des parcours `daily` et `period` de
+  `src/features/horoscope/application/horoscope_service.rs` vers
+  `load_chart_context`;
+- ajout des tests de loader associes et cloture de la double trace review pour
+  cette sous-vague.
+
+Invariants de couche:
+- les flux non natals `simplified` et `horoscope` ne reconstituent plus
+  localement la sequence `active_chart_objects` + `aspect_definitions` +
+  `house_system` + `load_calculation_reference_data`;
+- le preload partage vit sous `astral_calculator/src/application/`, jamais
+  sous une feature produit;
+- aucune importation `crate::features::*` n'apparait dans le seam
+  `application/chart_context.rs`;
+- aucun contrat JSON public ni semantique transit runtime n'est modifie par
+  cette vague.
+
+Commandes de verification:
+- `cargo test -p astral_calculator --test calculation_reference_loader_tests`
+- `cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests`
+- `cargo test -p astral_calculator --test runtime_tests`
+- `cargo test -p astral_calculator`
+
+Reviews:
+- `docs/reviews/astral_calculator_refactor/REV-SHARED-NON-NATAL-CHART-CONTEXT-2026-06-21.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-SHARED-NON-NATAL-CHART-CONTEXT-2026-06-21.md`
+
 # 2026-06-21 - fermeture Phase 1 de la surface de compatibilite calculator
 
 Resume court:

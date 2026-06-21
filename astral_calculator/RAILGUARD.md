@@ -12,6 +12,7 @@ It applies to `astral_calculator/src`, the crate-level tests registered in `astr
 - `astral_calculator/src/domain`: domain types and contracts.
 - `astral_calculator/src/astrology`: reusable astrology calculations.
 - `astral_calculator/src/application`: shared application ports and loading seams.
+- `astral_calculator/src/application/chart_context.rs`: shared non-natal chart-context loader for simplified and horoscope flows.
 - `astral_calculator/src/features/natal`, `astral_calculator/src/features/simplified`, `astral_calculator/src/features/horoscope`: product orchestrators.
 - `astral_calculator/src/infra/db`: SQLx repositories and runtime queries.
 - `tests/`: cross-module and contract tests wired from `astral_calculator/Cargo.toml`.
@@ -32,6 +33,7 @@ It applies to `astral_calculator/src`, the crate-level tests registered in `astr
 - If runtime reference loading fails because PostgreSQL is missing a relation or column documented in `json_db`, fix the database sync/import path, not Rust fallbacks. Evidence: `docs/BASIC_PAYLOAD_IMPLEMENTATION.md` names `scripts/import_json_db_to_postgres.py`, `scripts/patch_astral_aspects_default_orb_deg.py`, and `scripts/patch_astral_aspect_families_expected_count.py`.
 - Natal fixture catalogs used by integration tests belong under root test support, not in `src/features/natal/catalog.rs`. Evidence: `tests/common/natal_catalog.rs`, `tests/payload_tests.rs`, `tests/runtime_tests.rs`, `tests/signals_tests.rs`.
 - The 2026-06-21 Phase 1 slice removing the production `test_catalog()` fallback is closed only when `docs/BASIC_PAYLOAD_IMPLEMENTATION.md` links both paired review artifacts and they are marked `Statut: closed` / `Aucun finding ouvert`. Evidence: `.audit/audit-1782058187.md`, `docs/reviews/astral_calculator_refactor/REV-NATAL-TEST-CATALOG-FALLBACK-2026-06-21.md`, and `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-NATAL-TEST-CATALOG-FALLBACK-2026-06-21.md`.
+- The 2026-06-21 shared non-natal chart-context slice is closed only when `docs/BASIC_PAYLOAD_IMPLEMENTATION.md` links both paired review artifacts and they are marked `Statut: closed` / `Aucun finding ouvert`. Evidence: `.plan/plan-1782060238.md`, `docs/reviews/astral_calculator_refactor/REV-SHARED-NON-NATAL-CHART-CONTEXT-2026-06-21.md`, and `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-SHARED-NON-NATAL-CHART-CONTEXT-2026-06-21.md`.
 - Legacy compatibility exports may remain only as explicit shims; new code must use canonical paths. `src/domain/mod.rs` must keep explicit `pub use` exports instead of wildcard re-exports, and workspace consumers such as `astral_calculator_http` must import `bootstrap::{db,env}` and `astrology::ephemeris` directly instead of deprecated crate-root aliases. Evidence: `.audit/implementation-audit-1782059165.md`, `src/domain/mod.rs`, `../astral_calculator_http/src/routes.rs`, `../astral_calculator_http/src/state.rs`, `tests/refactor_governance_tests.rs`.
 - `unsafe` should be avoided unless a change has an explicit documented justification and safety contract next to the code. Evidence: no unsafe policy file exists in this crate, so the default remains conservative.
 
@@ -42,6 +44,8 @@ It applies to `astral_calculator/src`, the crate-level tests registered in `astr
 - `astral_llm/crates/*` are a separate bounded area; calculator refactors should not spill into them unless a direct contract or regression check requires it. Evidence: workspace member split in `Cargo.toml` and the user’s planning scope.
 - Keep workspace-level governance tests and compatibility tests authoritative for boundary rules. If a structural change would invalidate them, update the tests and the relevant railguard or doc artifact in the same slice. Evidence: `tests/refactor_governance_tests.rs`, `tests/deprecated_root_alias_compat_tests.rs`.
 - Do not add new compatibility facades when a canonical module path already exists. The audit shows `src/lib.rs`, `src/domain/mod.rs`, and `src/features/mod.rs` still expose broad alias surfaces; future work should shrink, not expand, those surfaces.
+- The shared non-natal chart-context seam lives in `astral_calculator/src/application/chart_context.rs` and is the only approved place to assemble `reference_version_id`, chart objects, aspect definitions, house system, and calculation references for simplified/horoscope flows. Evidence: `astral_calculator/src/application/chart_context.rs`, `astral_calculator/src/features/simplified/service.rs`, `astral_calculator/src/features/horoscope/application/horoscope_service.rs`.
+- Review or audit work for the shared chart-context seam must check the Phase 1 gate first; later plan phases (`included_days`, `application/ports.rs`, infra query split, shim retirement) are separate slices unless the workspace claims they were implemented in the same pass. Evidence: `.plan/plan-1782060238.md`, `docs/BASIC_PAYLOAD_IMPLEMENTATION.md`.
 
 ## Rust Rules
 
@@ -53,6 +57,12 @@ It applies to `astral_calculator/src`, the crate-level tests registered in `astr
 ## Testing and Verification
 
 Run the smallest relevant check first:
+
+```powershell
+cargo test -p astral_calculator --test calculation_reference_loader_tests
+```
+
+Then validate boundary regressions with:
 
 ```powershell
 cargo test -p astral_calculator --test refactor_governance_tests

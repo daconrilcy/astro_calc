@@ -11,9 +11,9 @@ use super::resolve::{
     PLANETARY_SCOPE,
 };
 use super::response::{AstroSimplifiedNatalResponse, RECOMMENDED_SIMPLIFIED_PROFILE_CODE};
-use crate::application::calculation_references::load_default_calculation_reference_data;
+use crate::application::chart_context::load_default_chart_context;
 use crate::application::ports::{
-    NatalReferenceStore, ReferenceSystemResolver, SimplifiedCatalogStore,
+    NatalReferenceStore, ReferenceSystemResolver, ReferenceVersionProvider, SimplifiedCatalogStore,
 };
 use crate::astrology::aspects::detect_aspects;
 use crate::astrology::ephemeris::EphemerisEngine;
@@ -31,7 +31,7 @@ pub async fn calculate_simplified_natal<R, S, E>(
     request: AstroSimplifiedNatalRequest,
 ) -> Result<AstroSimplifiedNatalResponse, RuntimeError>
 where
-    R: ReferenceSystemResolver + NatalReferenceStore,
+    R: ReferenceSystemResolver + ReferenceVersionProvider + NatalReferenceStore,
     S: SimplifiedCatalogStore,
     E: EphemerisEngine,
 {
@@ -57,22 +57,22 @@ where
         ));
     }
 
-    let (reference_version_id, references) =
-        load_default_calculation_reference_data(repository).await?;
-    let zodiacal_id = repository
-        .zodiacal_reference_system_id_by_key(&resolved.zodiac_key)
-        .await?;
-    let coordinate_id = references.geocentric_coordinate_reference_system_id;
     let house_system_id = repository
         .house_system_id_by_code(&resolved.house_system_code)
         .await?;
-
-    let chart_objects = repository
-        .active_chart_objects(reference_version_id)
+    let chart_context = load_default_chart_context(repository, house_system_id).await?;
+    let zodiacal_id = repository
+        .zodiacal_reference_system_id_by_key(&resolved.zodiac_key)
         .await?;
+    let coordinate_id = chart_context
+        .references
+        .geocentric_coordinate_reference_system_id;
+    let reference_version_id = chart_context.reference_version_id;
+    let chart_objects = chart_context.chart_objects;
+    let aspect_definitions = chart_context.aspect_definitions;
+    let house_system = chart_context.house_system;
+    let references = chart_context.references;
     validate_calculation_references(&references)?;
-
-    let aspect_definitions = repository.aspect_definitions().await?;
 
     let collected = match resolved.computed_scope.as_str() {
         PLANETARY_SCOPE | ANGULAR_SCOPE => {
@@ -118,7 +118,6 @@ where
                 product_code: Some("simplified".to_string()),
                 client_idempotency_key: None,
             };
-            let house_system = repository.house_system(house_system_id).await?;
             Some(ephemeris.calculate_chart(
                 &input,
                 &chart_objects,
