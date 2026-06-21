@@ -657,9 +657,12 @@ lecture en Rust.
 
 ## Fichiers concernes
 
-- `astral_calculator/src/catalog.rs` : `BasicPayloadCatalog` (charge depuis
-  PostgreSQL en production via `repositories::basic_payload_catalog`) ;
-  `test_catalog()` fournit un profil minimal pour les tests unitaires hors DB.
+- `astral_calculator/src/features/natal/catalog.rs` : re-export canonique de
+  `BasicPayloadCatalog` et des validateurs associes ; aucun fixture builder de
+  test n'y vit plus.
+- `tests/common/natal_catalog.rs` : fixture `test_catalog()` reservee aux tests
+  racine ; les builders production recoivent maintenant un
+  `BasicPayloadCatalog` explicite au lieu d'un fallback implicite.
 - `astral_calculator/src/domain.rs` : structures runtime et payload JSON.
 - `astral_calculator/src/facts.rs` : helpers de libelles signe/maison.
 - `astral_calculator/src/ephemeris.rs` : enrichissement des positions calculees.
@@ -2788,9 +2791,23 @@ fixtures et seed).
 - `validate_aspect_definitions_rejects_inconsistent_family_max_orb` ;
 - `validate_aspect_definitions_rejects_invalid_product_fallback`.
 
-**Catalogue de tests** : `catalog::test_catalog()` expose encore
-`default_major_orb_deg: 8.0` pour les builders sans DB ; ce n'est pas le chemin
-production et n'alimente pas `detect_aspects`.
+**Catalogue de tests** : depuis la vague du 2026-06-21, `test_catalog()` vit
+dans `tests/common/natal_catalog.rs` et n'est plus appele par `src/`. Il
+conserve `default_major_orb_deg: 8.0` pour les tests hors DB ; ce n'est pas le
+chemin production et n'alimente pas `detect_aspects`.
+
+**Vague 2026-06-21 - retrait du fallback payload -> test catalog**
+
+- `astral_calculator/src/features/natal/payload/build/mod.rs` exige
+  desormais un `BasicPayloadCatalog` explicite sur tous les builders publics ;
+  aucun fallback vers un catalogue code en dur n'est conserve dans `src/`.
+- Le fixture builder natal a ete deplace vers `tests/common/natal_catalog.rs`,
+  puis tous les tests racine concernes ont ete reconnectes a ce helper.
+- Verification de fermeture du slice :
+  `cargo test -p astral_calculator --test payload_tests`,
+  `cargo test -p astral_calculator --test runtime_tests`,
+  `cargo test -p astral_calculator --test natal_reuse_policy_tests`,
+  `cargo test -p astral_calculator --test refactor_governance_tests`.
 
 ### Artefacts
 

@@ -30,7 +30,7 @@ use crate::domain::{
     HouseAxisReference, InterpretationSignalRow, LunarPhaseReference, NatalChartInput,
     ObjectPositionFact, ObjectSectAffinityReference,
 };
-use crate::features::natal::catalog::BasicPayloadCatalog;
+use crate::domain::BasicPayloadCatalog;
 use angles::{
     angle_object_codes_from_positions, build_payload_angles, structural_axis_pairs_from_positions,
 };
@@ -64,8 +64,16 @@ pub fn build_basic_payload(
     input: &NatalChartInput,
     positions: &[ObjectPositionFact],
     signals: &[InterpretationSignalRow],
+    catalog: &BasicPayloadCatalog,
 ) -> BasicPayload {
-    build_basic_payload_with_rulership(chart_calculation_id, input, positions, signals, &[])
+    build_basic_payload_with_rulership(
+        chart_calculation_id,
+        input,
+        positions,
+        signals,
+        &[],
+        catalog,
+    )
 }
 
 /// Fonction build_basic_payload_with_rulership.
@@ -75,6 +83,7 @@ pub fn build_basic_payload_with_rulership(
     positions: &[ObjectPositionFact],
     signals: &[InterpretationSignalRow],
     domicile_rulers: &[crate::domain::DomicileRulerReference],
+    catalog: &BasicPayloadCatalog,
 ) -> BasicPayload {
     build_basic_payload_with_references(
         chart_calculation_id,
@@ -83,6 +92,7 @@ pub fn build_basic_payload_with_rulership(
         signals,
         domicile_rulers,
         &[],
+        catalog,
     )
 }
 
@@ -94,6 +104,7 @@ pub fn build_basic_payload_with_references(
     signals: &[InterpretationSignalRow],
     domicile_rulers: &[crate::domain::DomicileRulerReference],
     house_axes: &[HouseAxisReference],
+    catalog: &BasicPayloadCatalog,
 ) -> BasicPayload {
     build_basic_payload_with_all_references(
         chart_calculation_id,
@@ -103,6 +114,7 @@ pub fn build_basic_payload_with_references(
         domicile_rulers,
         house_axes,
         &[],
+        catalog,
     )
 }
 
@@ -115,6 +127,7 @@ pub fn build_basic_payload_with_all_references(
     domicile_rulers: &[crate::domain::DomicileRulerReference],
     house_axes: &[HouseAxisReference],
     lunar_phases: &[LunarPhaseReference],
+    catalog: &BasicPayloadCatalog,
 ) -> BasicPayload {
     build_basic_payload_with_accidental_references(
         chart_calculation_id,
@@ -126,7 +139,7 @@ pub fn build_basic_payload_with_all_references(
         lunar_phases,
         &[],
         &[],
-        &crate::features::natal::catalog::test_catalog(),
+        catalog,
     )
 }
 

@@ -5,10 +5,46 @@ use astral_calculator::domain::HouseReference;
 use astral_calculator::domain::{
     HouseAxisReference, LunarPhaseReference, NatalChartInput, ObjectPositionFact,
 };
-use astral_calculator::features::payload::{
-    build_basic_payload, build_basic_payload_with_all_references,
-};
+use astral_calculator::features::payload as payload_mod;
 use astral_calculator::runtime::compat::validate_house_axis_references;
+mod common;
+use common::natal_catalog::test_catalog;
+
+fn build_basic_payload(
+    chart_calculation_id: i32,
+    input: &NatalChartInput,
+    positions: &[ObjectPositionFact],
+    signals: &[astral_calculator::domain::InterpretationSignalRow],
+) -> astral_calculator::domain::BasicPayload {
+    payload_mod::build_basic_payload(
+        chart_calculation_id,
+        input,
+        positions,
+        signals,
+        &test_catalog(),
+    )
+}
+
+fn build_basic_payload_with_all_references(
+    chart_calculation_id: i32,
+    input: &NatalChartInput,
+    positions: &[ObjectPositionFact],
+    signals: &[astral_calculator::domain::InterpretationSignalRow],
+    domicile_rulers: &[astral_calculator::domain::DomicileRulerReference],
+    house_axes: &[HouseAxisReference],
+    lunar_phases: &[LunarPhaseReference],
+) -> astral_calculator::domain::BasicPayload {
+    payload_mod::build_basic_payload_with_all_references(
+        chart_calculation_id,
+        input,
+        positions,
+        signals,
+        domicile_rulers,
+        house_axes,
+        lunar_phases,
+        &test_catalog(),
+    )
+}
 
 fn input() -> NatalChartInput {
     NatalChartInput {

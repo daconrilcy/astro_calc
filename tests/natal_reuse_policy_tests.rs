@@ -31,6 +31,7 @@ use common::json_db::{
     major_aspect_family_expected_count_from_json_db_seed,
     major_aspect_family_max_default_orb_deg_from_json_db_seed,
 };
+use common::natal_catalog::test_catalog;
 
 #[derive(Clone, Default)]
 struct FakeCalculationStore {
@@ -225,7 +226,7 @@ impl PayloadCatalogStore for FakeCatalogStore {
         _payload_contract_version: &str,
         _reference_version_id: i32,
     ) -> Result<astral_calculator::domain::BasicPayloadCatalog, RuntimeError> {
-        Ok(astral_calculator::features::natal::catalog::test_catalog())
+        Ok(test_catalog())
     }
 
     async fn basic_product_scoring_profile(
@@ -233,7 +234,7 @@ impl PayloadCatalogStore for FakeCatalogStore {
         _product_code: &str,
         _payload_contract_version: &str,
     ) -> Result<astral_calculator::domain::BasicProductScoringProfile, RuntimeError> {
-        Ok(astral_calculator::features::natal::catalog::test_catalog().product_scoring)
+        Ok(test_catalog().product_scoring)
     }
 
     async fn essential_dignity_rule_references(
@@ -241,23 +242,19 @@ impl PayloadCatalogStore for FakeCatalogStore {
         _reference_version_id: i32,
         _score_profile_id: i32,
     ) -> Result<Vec<astral_calculator::domain::EssentialDignityRuleReference>, RuntimeError> {
-        Ok(astral_calculator::features::natal::catalog::test_catalog().essential_dignity_rules)
+        Ok(test_catalog().essential_dignity_rules)
     }
 
     async fn projection_reason_definitions(
         &self,
     ) -> Result<Vec<astral_calculator::domain::ProjectionReasonDefinition>, RuntimeError> {
-        Ok(astral_calculator::features::natal::catalog::test_catalog()
-            .projection_reason_definitions)
+        Ok(test_catalog().projection_reason_definitions)
     }
 
     async fn projection_label_definitions(
         &self,
     ) -> Result<Vec<astral_calculator::domain::ProjectionLabelDefinition>, RuntimeError> {
-        Ok(
-            astral_calculator::features::natal::catalog::test_catalog()
-                .projection_label_definitions,
-        )
+        Ok(test_catalog().projection_label_definitions)
     }
 }
 
@@ -929,7 +926,7 @@ async fn natal_reuse_policy_reuses_current_payload() {
     };
     assert!(is_current_basic_payload(
         &payload,
-        &astral_calculator::features::natal::catalog::test_catalog().projection_reason_definitions,
+        &test_catalog().projection_reason_definitions,
         &reference_store
             .house_axis_references()
             .await

@@ -1,8 +1,108 @@
+mod common;
+
 use chrono::{TimeZone, Utc};
 use serde_json::json;
 
 use astral_calculator::domain::*;
-use astral_calculator::features::payload::*;
+use astral_calculator::features::payload as payload_mod;
+use common::natal_catalog::test_catalog;
+
+fn build_basic_payload(
+    chart_calculation_id: i32,
+    input: &NatalChartInput,
+    positions: &[ObjectPositionFact],
+    signals: &[InterpretationSignalRow],
+) -> BasicPayload {
+    payload_mod::build_basic_payload(
+        chart_calculation_id,
+        input,
+        positions,
+        signals,
+        &test_catalog(),
+    )
+}
+
+fn build_basic_payload_with_rulership(
+    chart_calculation_id: i32,
+    input: &NatalChartInput,
+    positions: &[ObjectPositionFact],
+    signals: &[InterpretationSignalRow],
+    domicile_rulers: &[DomicileRulerReference],
+) -> BasicPayload {
+    payload_mod::build_basic_payload_with_rulership(
+        chart_calculation_id,
+        input,
+        positions,
+        signals,
+        domicile_rulers,
+        &test_catalog(),
+    )
+}
+
+fn build_basic_payload_with_references(
+    chart_calculation_id: i32,
+    input: &NatalChartInput,
+    positions: &[ObjectPositionFact],
+    signals: &[InterpretationSignalRow],
+    domicile_rulers: &[DomicileRulerReference],
+    house_axes: &[HouseAxisReference],
+) -> BasicPayload {
+    payload_mod::build_basic_payload_with_references(
+        chart_calculation_id,
+        input,
+        positions,
+        signals,
+        domicile_rulers,
+        house_axes,
+        &test_catalog(),
+    )
+}
+
+fn build_basic_payload_with_all_references(
+    chart_calculation_id: i32,
+    input: &NatalChartInput,
+    positions: &[ObjectPositionFact],
+    signals: &[InterpretationSignalRow],
+    domicile_rulers: &[DomicileRulerReference],
+    house_axes: &[HouseAxisReference],
+    lunar_phases: &[LunarPhaseReference],
+) -> BasicPayload {
+    payload_mod::build_basic_payload_with_all_references(
+        chart_calculation_id,
+        input,
+        positions,
+        signals,
+        domicile_rulers,
+        house_axes,
+        lunar_phases,
+        &test_catalog(),
+    )
+}
+
+fn build_basic_payload_with_accidental_references(
+    chart_calculation_id: i32,
+    input: &NatalChartInput,
+    positions: &[ObjectPositionFact],
+    signals: &[InterpretationSignalRow],
+    domicile_rulers: &[DomicileRulerReference],
+    house_axes: &[HouseAxisReference],
+    lunar_phases: &[LunarPhaseReference],
+    accidental_conditions: &[AccidentalDignityConditionReference],
+    sect_affinities: &[ObjectSectAffinityReference],
+) -> BasicPayload {
+    payload_mod::build_basic_payload_with_accidental_references(
+        chart_calculation_id,
+        input,
+        positions,
+        signals,
+        domicile_rulers,
+        house_axes,
+        lunar_phases,
+        accidental_conditions,
+        sect_affinities,
+        &test_catalog(),
+    )
+}
 
 fn input() -> NatalChartInput {
     NatalChartInput {
@@ -1805,7 +1905,6 @@ fn v13_requires_sect_affinities_to_emit_accidental_block() {
         &canonical_lunar_phases(),
         &canonical_accidental_conditions(),
         &[],
-        &astral_calculator::features::natal::catalog::test_catalog(),
     );
 
     assert_eq!(
@@ -1835,7 +1934,6 @@ fn v13_contains_accidental_dignities_from_reference_definitions() {
         &canonical_lunar_phases(),
         &canonical_accidental_conditions(),
         &canonical_sect_affinities(),
-        &astral_calculator::features::natal::catalog::test_catalog(),
     );
 
     assert!(!payload.accidental_dignities.is_empty());
@@ -1875,7 +1973,6 @@ fn v13_contains_lunar_phase_context_from_reference_phases() {
         &canonical_lunar_phases(),
         &canonical_accidental_conditions(),
         &canonical_sect_affinities(),
-        &astral_calculator::features::natal::catalog::test_catalog(),
     );
     let phase = payload
         .lunar_phase_context

@@ -1,3 +1,5 @@
+mod common;
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::sync::OnceLock;
@@ -18,8 +20,8 @@ use astral_calculator::engine::projection::{
 use astral_calculator::engine::{
     build_engine_response, AstroEngineResponse, ResolvedEngineRequest, RESPONSE_CONTRACT_VERSION,
 };
-use astral_calculator::features::natal::catalog::test_catalog;
 use astral_calculator::infra::db::projection_repository::ProjectionRepository;
+use common::natal_catalog::test_catalog;
 
 const V14_GOLDEN: &str = "../tests/golden/natal_payload_v14_paris_1990.json";
 const LLM_SCHEMA: &str = "../contracts/calculator/llm_projection_natal_v1.schema.json";

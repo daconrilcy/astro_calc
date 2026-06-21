@@ -1,6 +1,8 @@
 use astral_calculator::domain::ObjectPositionFact;
-use astral_calculator::features::natal::catalog::test_catalog;
 use astral_calculator::features::natal::dignities::*;
+mod common;
+
+use common::natal_catalog::test_catalog;
 
 fn position(object_code: &str, sign_code: &str) -> ObjectPositionFact {
     ObjectPositionFact {

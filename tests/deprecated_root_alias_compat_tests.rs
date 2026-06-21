@@ -1,7 +1,6 @@
 #![allow(deprecated)]
 
 use astral_calculator::aspects::canonical_aspect_orb_deg;
-use astral_calculator::catalog::test_catalog;
 use astral_calculator::cli::OutputContract;
 use astral_calculator::config::runtime_options_from_env;
 use astral_calculator::db::connect_from_env;
@@ -13,7 +12,6 @@ use astral_calculator::idempotency::advisory_lock_key;
 #[test]
 fn deprecated_root_aliases_still_compile_for_public_compatibility() {
     let _ = canonical_aspect_orb_deg;
-    let _ = test_catalog();
     let _ = std::mem::discriminant(&OutputContract::Engine);
     let _ = runtime_options_from_env;
     let _ = connect_from_env;
