@@ -1,3 +1,84 @@
+# 2026-06-21 - Phase 4 split reference-system queries
+
+Resume court:
+- extraction des requetes `house_system`, `zodiacal_reference_system` et
+  `coordinate_reference_system` de
+  `astral_calculator/src/infra/db/runtime_queries/reference.rs` vers
+  `astral_calculator/src/infra/db/runtime_queries/reference/systems.rs`;
+- conservation des noms de methodes `RuntimeQueries` et des contrats des
+  repositories existants;
+- reduction du fichier hub `reference.rs` de 698 a 558 lignes sans changement
+  de schema ni de contrat runtime.
+
+Invariants de couche:
+- tout le SQL reste sous `astral_calculator/src/infra/db`;
+- aucune feature produit ni couche application ne recupere de logique SQL;
+- le split est par capacite infra existante et ne cree pas de nouvelle facade
+  publique;
+- aucun contrat JSON public n'est modifie par cette tranche.
+
+Commandes de verification:
+- `cargo test -p astral_calculator --test refactor_governance_tests`
+- `cargo test -p astral_calculator --test horoscope_builders_tests`
+- `cargo test -p astral_calculator`
+
+Reviews:
+- `docs/reviews/astral_calculator_refactor/REV-REFERENCE-SYSTEM-QUERY-SPLIT-2026-06-21.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-REFERENCE-SYSTEM-QUERY-SPLIT-2026-06-21.md`
+
+# 2026-06-21 - Phase 3 extraction ports horoscope-builder
+
+Resume court:
+- extraction des DTOs `HoroscopeServiceProfile`,
+  `HoroscopeTimeSlotProfile`, `HoroscopePeriodProfile`,
+  `HoroscopeScanProfileDefinition` et du trait `HoroscopeBuilderCatalog` vers
+  `astral_calculator/src/application/ports/horoscope_builder.rs`;
+- conservation de `astral_calculator::application::ports::*` comme chemin
+  compatible via re-export depuis le facade `ports.rs`;
+- reduction de `application/ports.rs` de 428 a 380 lignes sans toucher aux
+  autres familles de ports.
+
+Invariants de couche:
+- les contrats de builder horoscope ont une responsabilite applicative
+  dediee;
+- `application` n'importe toujours ni `features::*` ni `infra/db`;
+- les consommateurs existants gardent leur chemin d'import stable;
+- aucun contrat JSON public n'est modifie par cette tranche.
+
+Commandes de verification:
+- `cargo test -p astral_calculator --test horoscope_builders_tests`
+- `cargo test -p astral_calculator --test refactor_governance_tests`
+- `cargo test -p astral_calculator`
+
+Reviews:
+- `docs/reviews/astral_calculator_refactor/REV-HOROSCOPE-BUILDER-PORTS-2026-06-21.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-HOROSCOPE-BUILDER-PORTS-2026-06-21.md`
+
+# 2026-06-21 - Phase 2 follow-up tests inline retires
+
+Resume court:
+- suppression du module `#[cfg(test)]` inline dans
+  `astral_calculator/src/infra/db/horoscope_repository.rs`;
+- ajout d'un garde-fou dans `tests/refactor_governance_tests.rs` qui interdit
+  `#[cfg(test)]` et `#[test]` sous `astral_calculator/src`;
+- ajout d'un garde de gouvernance qui verifie que le decode `included_days`
+  reste au bord repository et conserve une erreur contextualisee.
+
+Invariants de couche:
+- les tests de comportement restent sous le repertoire racine `tests/`;
+- la production `src/**/*.rs` ne contient plus de tests inline;
+- le decode JSON `included_days` reste limite au repository DB;
+- aucun contrat JSON public n'est modifie par cette tranche.
+
+Commandes de verification:
+- `cargo test -p astral_calculator --test horoscope_builders_tests`
+- `cargo test -p astral_calculator --test refactor_governance_tests`
+- `cargo test -p astral_calculator`
+
+Reviews:
+- `docs/reviews/astral_calculator_refactor/REV-TYPED-INCLUDED-DAYS-2026-06-21-followup-1.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-TYPED-INCLUDED-DAYS-2026-06-21-followup-1.md`
+
 # 2026-06-21 - Phase 2 included_days type a la frontiere applicative
 
 Resume court:

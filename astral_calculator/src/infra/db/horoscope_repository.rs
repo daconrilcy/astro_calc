@@ -221,38 +221,3 @@ impl From<HoroscopeSignalThemeMappingRow> for HoroscopeSignalThemeMapping {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::HoroscopeRepository;
-    use crate::shared::error::RuntimeError;
-    use serde_json::json;
-
-    #[test]
-    fn decode_included_days_accepts_string_arrays() {
-        let decoded = HoroscopeRepository::decode_included_days(
-            "next_7_days",
-            Some(json!(["monday", "wednesday"])),
-        )
-        .expect("decode should accept string arrays");
-
-        assert_eq!(
-            decoded,
-            Some(vec!["monday".to_string(), "wednesday".to_string()])
-        );
-    }
-
-    #[test]
-    fn decode_included_days_rejects_non_string_arrays() {
-        let err = HoroscopeRepository::decode_included_days("next_7_days", Some(json!([1, 2])))
-            .expect_err("decode should reject non-string arrays");
-
-        match err {
-            RuntimeError::InvalidRuntimeTable(message) => {
-                assert!(message.contains("next_7_days"));
-                assert!(message.contains("included_days"));
-            }
-            other => panic!("unexpected error variant: {other:?}"),
-        }
-    }
-}

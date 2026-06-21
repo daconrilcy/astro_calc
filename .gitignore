@@ -8,3 +8,8 @@ tmp_target/
 output/
 target-verify/
 target-review/
+.audit/
+.cargo/
+.cargo*/
+.fix-loop/
+.plan/

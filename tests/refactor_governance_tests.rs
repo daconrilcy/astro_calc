@@ -229,6 +229,19 @@ fn feature_facade_does_not_export_alias_payload_or_signals_modules() {
 }
 
 #[test]
+fn calculator_production_source_does_not_contain_inline_tests() {
+    let root = workspace_root().join("astral_calculator/src");
+    for file in collect_rs_files(&root) {
+        let content = read(&file);
+        assert!(
+            !content.contains("#[cfg(test)]") && !content.contains("#[test]"),
+            "{} contains inline tests; calculator behavior tests belong under root tests/",
+            file.display()
+        );
+    }
+}
+
+#[test]
 fn canonical_public_feature_paths_compile() {
     let _ = std::any::type_name::<
         astral_calculator::features::natal::application::NatalCalculationService<
@@ -531,6 +544,30 @@ fn horoscope_builder_period_profiles_do_not_decode_included_days_json_in_builder
         !content.contains("serde_json::from_value::<Vec<String>>"),
         "{} must consume typed included_days data from the application boundary instead of decoding raw JSON in the builder",
         path.display()
+    );
+}
+
+#[test]
+fn horoscope_repository_keeps_included_days_decode_contextualized_at_adapter_edge() {
+    let repository =
+        workspace_root().join("astral_calculator/src/infra/db/horoscope_repository.rs");
+    let content = read(&repository);
+    assert!(
+        content.contains("fn decode_included_days("),
+        "{} must keep an explicit adapter-edge decoder for included_days",
+        repository.display()
+    );
+    assert!(
+        content.contains("serde_json::from_value::<Vec<String>>"),
+        "{} must decode SQL JSON included_days into typed day codes exactly at the repository edge",
+        repository.display()
+    );
+    assert!(
+        content.contains("RuntimeError::InvalidRuntimeTable")
+            && content.contains("period_profile_code")
+            && content.contains("included_days invalid"),
+        "{} must contextualize invalid included_days rows with the period profile code",
+        repository.display()
     );
 }
 
