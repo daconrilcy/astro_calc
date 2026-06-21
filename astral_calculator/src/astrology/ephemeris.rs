@@ -81,6 +81,7 @@ impl EphemerisEngine for SwissEphemerisEngine {
         use crate::astrology::house_geometry::house_number_from_cusps;
         use crate::astrology::motion::motion_state_for_speed;
         use crate::astrology::zodiac::{whole_sign_house_number, zodiac_slot_for_longitude};
+        use swiss_eph::safe::HouseSystem as SwissHouseSystem;
         use swiss_eph::safe::{
             azimuth_altitude, calc_ut, houses, set_ephe_path, set_topo, CalcFlags, GeoPos,
         };
@@ -103,6 +104,7 @@ impl EphemerisEngine for SwissEphemerisEngine {
                 altitude: observer_altitude_m,
             };
             let house_code = house_system_code(&house_system.calculation_engine_code)?;
+            let uses_whole_sign_houses = matches!(&house_code, SwissHouseSystem::WholeSign);
             let cusps_raw = houses(jd_ut, input.latitude_deg, input.longitude_deg, house_code)
                 .map_err(|error| RuntimeError::Ephemeris(error.to_string()))?;
 
@@ -151,9 +153,7 @@ impl EphemerisEngine for SwissEphemerisEngine {
                 let longitude = round4(normalize_degrees(position.longitude));
                 let latitude = round4(position.latitude);
                 let speed = round4(position.longitude_speed);
-                let house_number = if house_system.calculation_engine_code
-                    == SWISSEPH_WHOLE_SIGN_HOUSE_SYSTEM_CODE
-                {
+                let house_number = if uses_whole_sign_houses {
                     Some(whole_sign_house_number(ascendant_longitude, longitude))
                 } else {
                     house_number_from_cusps(longitude, &house_cusps)

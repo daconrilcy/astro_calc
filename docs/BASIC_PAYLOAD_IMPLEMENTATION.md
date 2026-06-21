@@ -58,6 +58,21 @@ Reviews:
 - `docs/reviews/astral_calculator_refactor/REV-GOVERNANCE-SPLIT-2026-06-21.md`
 - `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-GOVERNANCE-SPLIT-2026-06-21.md`
 
+## Correction détection whole-sign Swiss Ephemeris (2026-06-21)
+
+Cette correction évite une constante Rust canonique pour le système de maisons
+`whole_sign`. Le code métier reste fourni par la base, puis l'adaptateur Swiss
+Ephemeris le convertit vers `swiss_eph::safe::HouseSystem`; la branche de calcul
+whole-sign s'appuie ensuite sur cette variante résolue, sans dupliquer le code
+DB dans une constante applicative.
+
+Verification:
+
+```powershell
+cargo fmt --check
+cargo test -p astral_calculator --features "swisseph-engine,test-utils" --test simplified_natal_tests
+```
+
 # 2026-06-21 - Phase 1 typed position-context closure
 
 Resume court:
