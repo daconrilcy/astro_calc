@@ -98,7 +98,7 @@ fn derived_slot(
             sky_snapshot: serde_json::json!({
                 "reference_local_time": slot.reference_local_time,
                 "visible_objects": [],
-                "zodiacal_reference_system": TROPICAL_ZODIACAL_REFERENCE_SYSTEM_CODE,
+                "zodiacal_reference_system": tropical_zodiacal_reference_system_code(),
                 "source": "missing_transit_data"
             }),
             moon_context: serde_json::json!({
@@ -212,7 +212,7 @@ fn derived_slot(
         sky_snapshot: serde_json::json!({
             "reference_local_time": slot.reference_local_time,
             "visible_objects": visible_objects(Some(transit_positions)),
-            "zodiacal_reference_system": TROPICAL_ZODIACAL_REFERENCE_SYSTEM_CODE,
+            "zodiacal_reference_system": tropical_zodiacal_reference_system_code(),
             "source": source
         }),
         moon_context: serde_json::json!({
@@ -321,4 +321,8 @@ fn optional_match(expected: Option<&str>, actual: Option<&str>) -> bool {
 
 fn round1(value: f64) -> f64 {
     (value * 10.0).round() / 10.0
+}
+
+fn tropical_zodiacal_reference_system_code() -> &'static str {
+    TROPICAL_ZODIACAL_REFERENCE_SYSTEM_CODE
 }

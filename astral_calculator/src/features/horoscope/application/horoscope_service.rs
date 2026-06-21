@@ -52,39 +52,10 @@ where
         &self,
         request: HoroscopeCalculationRequest,
     ) -> Result<HoroscopeCalculationResponse, RuntimeError> {
-        let runtime = self.load_horoscope_runtime_context(&request.chart_calculation_id).await?;
-        let mut transit_slots = Vec::new();
-        for slot in &request.slots {
-            let reference_datetime_utc = crate::shared::time::reference_datetime_utc(
-                &request.period.date,
-                &request.period.timezone,
-                &slot.reference_local_time,
-            )
-            .ok_or_else(|| {
-                RuntimeError::InvalidEngineRequest(format!(
-                    "invalid horoscope daily slot reference time {}",
-                    slot.reference_local_time
-                ))
-            })?;
-            let reference_datetime_utc = DateTime::parse_from_rfc3339(&reference_datetime_utc)
-                .map_err(|err| {
-                    RuntimeError::InvalidEngineRequest(format!(
-                        "invalid horoscope daily slot UTC: {err}"
-                    ))
-                })?
-                .with_timezone(&Utc);
-            let facts = calculate_transient_chart_facts(
-                &*self.ephemeris,
-                &runtime.natal_input,
-                reference_datetime_utc,
-                "horoscope_daily_transit",
-                &runtime.chart_context,
-            )?;
-            transit_slots.push((
-                slot.slot_code.clone(),
-                filter_supported_transit_positions(facts.positions, &runtime.supported_objects),
-            ));
-        }
+        let runtime = self
+            .load_horoscope_runtime_context(&request.chart_calculation_id)
+            .await?;
+        let transit_slots = self.build_daily_transit_slots(&request, &runtime).await?;
         Ok(calculate_horoscope_daily_from_transits(
             request,
             &runtime.natal_positions,
@@ -105,29 +76,12 @@ where
                 "invalid horoscope period UTC normalization: {err}"
             ))
         })?;
-        let runtime = self.load_horoscope_runtime_context(&request.chart_calculation_id).await?;
-        let mut transit_snapshots = Vec::new();
-        for snapshot in &request.scan_plan.snapshots {
-            let reference_datetime_utc =
-                DateTime::parse_from_rfc3339(&snapshot.reference_datetime_utc)
-                    .map_err(|err| {
-                        RuntimeError::InvalidEngineRequest(format!(
-                            "invalid horoscope period snapshot UTC: {err}"
-                        ))
-            })?
-            .with_timezone(&Utc);
-            let facts = calculate_transient_chart_facts(
-                &*self.ephemeris,
-                &runtime.natal_input,
-                reference_datetime_utc,
-                "horoscope_period_transit",
-                &runtime.chart_context,
-            )?;
-            transit_snapshots.push((
-                snapshot.snapshot_key.clone(),
-                filter_supported_transit_positions(facts.positions, &runtime.supported_objects),
-            ));
-        }
+        let runtime = self
+            .load_horoscope_runtime_context(&request.chart_calculation_id)
+            .await?;
+        let transit_snapshots = self
+            .build_period_transit_snapshots(&request, &runtime)
+            .await?;
         try_calculate_horoscope_period_from_transits_with_aspects(
             request,
             &runtime.natal_positions,
@@ -264,5 +218,104 @@ where
             aspect_definitions,
             max_major_aspect_orb_deg,
         })
+    }
+
+    async fn build_daily_transit_slots(
+        &self,
+        request: &HoroscopeCalculationRequest,
+        runtime: &HoroscopeRuntimeContext,
+    ) -> Result<Vec<(String, Vec<crate::domain::ObjectPositionFact>)>, RuntimeError> {
+        self.build_transit_runtime(
+            request
+                .slots
+                .iter()
+                .map(|slot| (slot.slot_code.as_str(), slot.reference_local_time.as_str())),
+            &request.period.date,
+            &request.period.timezone,
+            "horoscope_daily_transit",
+            &runtime.natal_input,
+            &runtime.chart_context,
+            &runtime.supported_objects,
+        )
+        .await
+    }
+
+    async fn build_period_transit_snapshots(
+        &self,
+        request: &HoroscopePeriodCalculationRequest,
+        runtime: &HoroscopeRuntimeContext,
+    ) -> Result<Vec<(String, Vec<crate::domain::ObjectPositionFact>)>, RuntimeError> {
+        self.build_transit_runtime(
+            request.scan_plan.snapshots.iter().map(|snapshot| {
+                (
+                    snapshot.snapshot_key.as_str(),
+                    snapshot.reference_datetime_utc.as_str(),
+                )
+            }),
+            "",
+            "",
+            "horoscope_period_transit",
+            &runtime.natal_input,
+            &runtime.chart_context,
+            &runtime.supported_objects,
+        )
+        .await
+    }
+
+    async fn build_transit_runtime<'a, I>(
+        &self,
+        items: I,
+        date: &str,
+        timezone: &str,
+        transit_source: &'static str,
+        natal_input: &crate::domain::NatalChartInput,
+        chart_context: &ChartContextData,
+        supported_objects: &[HoroscopeSupportedObject],
+    ) -> Result<Vec<(String, Vec<crate::domain::ObjectPositionFact>)>, RuntimeError>
+    where
+        I: IntoIterator<Item = (&'a str, &'a str)>,
+    {
+        let mut transit_items = Vec::new();
+        for (key, reference_local_time) in items {
+            let reference_datetime_utc = if transit_source == "horoscope_daily_transit" {
+                let reference_datetime_utc = crate::shared::time::reference_datetime_utc(
+                    date,
+                    timezone,
+                    reference_local_time,
+                )
+                .ok_or_else(|| {
+                    RuntimeError::InvalidEngineRequest(format!(
+                        "invalid horoscope daily slot reference time {reference_local_time}"
+                    ))
+                })?;
+                DateTime::parse_from_rfc3339(&reference_datetime_utc)
+                    .map_err(|err| {
+                        RuntimeError::InvalidEngineRequest(format!(
+                            "invalid horoscope daily slot UTC: {err}"
+                        ))
+                    })?
+                    .with_timezone(&Utc)
+            } else {
+                DateTime::parse_from_rfc3339(reference_local_time)
+                    .map_err(|err| {
+                        RuntimeError::InvalidEngineRequest(format!(
+                            "invalid horoscope period snapshot UTC: {err}"
+                        ))
+                    })?
+                    .with_timezone(&Utc)
+            };
+            let facts = calculate_transient_chart_facts(
+                &*self.ephemeris,
+                natal_input,
+                reference_datetime_utc,
+                transit_source,
+                chart_context,
+            )?;
+            transit_items.push((
+                key.to_string(),
+                filter_supported_transit_positions(facts.positions, supported_objects),
+            ));
+        }
+        Ok(transit_items)
     }
 }

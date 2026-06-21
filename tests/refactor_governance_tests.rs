@@ -538,13 +538,20 @@ fn non_natal_feature_services_use_shared_transient_chart_seam() {
 
 #[test]
 fn horoscope_builder_period_profiles_do_not_decode_included_days_json_in_builder() {
-    let path = workspace_root().join("astral_calculator/src/features/horoscope/builders.rs");
-    let content = read(&path);
-    assert!(
-        !content.contains("serde_json::from_value::<Vec<String>>"),
-        "{} must consume typed included_days data from the application boundary instead of decoding raw JSON in the builder",
-        path.display()
-    );
+    let root = workspace_root().join("astral_calculator/src/features/horoscope");
+    for relative in [
+        Path::new("builders.rs"),
+        Path::new("builders/daily_request.rs"),
+        Path::new("builders/period_request.rs"),
+    ] {
+        let path = root.join(relative);
+        let content = read(&path);
+        assert!(
+            !content.contains("serde_json::from_value::<Vec<String>>"),
+            "{} must consume typed included_days data from the application boundary instead of decoding raw JSON in the builder",
+            path.display()
+        );
+    }
 }
 
 #[test]
@@ -605,6 +612,33 @@ fn internal_code_uses_calculate_chart_instead_of_legacy_calculate_natal() {
             !content.contains(".calculate_natal("),
             "{} calls legacy EphemerisEngine::calculate_natal",
             file.display()
+        );
+    }
+}
+
+#[test]
+fn position_fact_json_shaping_lives_in_domain_chart_facts() {
+    let root = workspace_root().join("astral_calculator/src");
+    let ephemeris = read(&root.join("astrology/ephemeris.rs"));
+    let chart_facts = read(&root.join("domain/chart_facts.rs"));
+
+    for helper in [
+        "calculated_position_facts_json",
+        "angle_position_facts_json",
+    ] {
+        assert!(
+            !ephemeris.contains(&format!("fn {helper}")),
+            "astrology/ephemeris.rs must not own position facts_json shaping helper {helper}"
+        );
+    }
+
+    for helper in [
+        "facts_json_for_calculated_position",
+        "facts_json_for_angle_position",
+    ] {
+        assert!(
+            chart_facts.contains(&format!("fn {helper}")),
+            "domain/chart_facts.rs must own typed position facts_json helper {helper}"
         );
     }
 }
@@ -983,6 +1017,7 @@ fn engine_and_horoscope_builders_use_ports_instead_of_infra_db() {
     for relative in [
         Path::new("engine"),
         Path::new("features/horoscope/builders.rs"),
+        Path::new("features/horoscope/builders"),
     ] {
         let path = root.join(relative);
         if path.is_dir() {
@@ -1269,6 +1304,27 @@ fn horoscope_public_period_api_has_no_expect_wrappers() {
         "{} contains expect(...) in public period API path",
         path.display()
     );
+}
+
+#[test]
+fn horoscope_daily_and_period_use_named_tropical_constant() {
+    for relative in [
+        "astral_calculator/src/features/horoscope/daily.rs",
+        "astral_calculator/src/features/horoscope/period.rs",
+    ] {
+        let path = workspace_root().join(relative);
+        let content = read(&path);
+        assert!(
+            content.contains("TROPICAL_ZODIACAL_REFERENCE_SYSTEM_CODE"),
+            "{} should centralize the tropical zodiacal code in a named constant",
+            path.display()
+        );
+        assert!(
+            !content.contains("\"zodiacal_reference_system\": \"tropical\""),
+            "{} should not inline the tropical zodiacal code in JSON assembly",
+            path.display()
+        );
+    }
 }
 
 #[test]

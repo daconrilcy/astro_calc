@@ -1,4 +1,62 @@
+# 2026-06-21 - Phase 2 typed position-context seam restoration
+
+Resume court:
+- `astral_calculator/src/domain/chart_facts.rs` redevient le point
+  d'ownership des helpers `facts_json_for_calculated_position` et
+  `facts_json_for_angle_position` ;
+- `astral_calculator/src/astrology/ephemeris.rs` consomme ces helpers au lieu
+  de porter localement le shaping `facts_json` ;
+- un garde-fou de gouvernance verifie que les helpers de shaping restent sous
+  `domain/chart_facts.rs`.
+
+Invariants de couche:
+- `astrology::ephemeris` reste focalise sur le calcul et l'assemblage des faits,
+  pas sur le shaping payload-oriented du sous-contexte de position ;
+- `domain/chart_facts.rs` reste l'unique bord `PositionFactContext <->
+  facts_json` pour les positions calculees et les angles ;
+- aucun contrat JSON public n'est modifie par cette tranche.
+
+Commandes de verification:
+- `cargo fmt --all`
+- `cargo test -p astral_calculator --test position_fact_context_tests`
+- `cargo test -p astral_calculator --test payload_shared_characterization_tests`
+- `cargo test -p astral_calculator --test payload_tests`
+- `cargo test -p astral_calculator --test runtime_tests`
+- `cargo test -p astral_calculator --test refactor_governance_tests`
+
+Reviews:
+- `docs/reviews/astral_calculator_refactor/REV-TYPED-POSITION-CONTEXT-CLOSURE-2026-06-21.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-TYPED-POSITION-CONTEXT-CLOSURE-2026-06-21.md`
+
 # 2026-06-21 - Phase 5 canonical code cleanup and horoscope helper split
+
+# 2026-06-21 - Phase 1 horoscope builder ownership split
+
+Resume court:
+- `astral_calculator/src/features/horoscope/builders.rs` est redevenu une facade
+  mince qui re-exporte les points d'entree publics ;
+- la logique quotidienne a ete deplacee dans
+  `astral_calculator/src/features/horoscope/builders/daily_request.rs` ;
+- la logique periode et scan-plan a ete deplacee dans
+  `astral_calculator/src/features/horoscope/builders/period_request.rs` ;
+- les signatures publiques et le contrat JSON restent inchanges.
+
+Invariants de couche:
+- aucune fonction publique de builder ne change de signature ;
+- `builders.rs` ne porte plus la logique quotidienne et la logique periode dans
+  le meme fichier ;
+- les tests de comportement restent sous `tests/` ;
+- aucun contrat JSON public n'est modifie par cette tranche.
+
+Commandes de verification:
+- `cargo fmt --all`
+- `cargo test -p astral_calculator --test horoscope_builders_tests`
+- `cargo test -p astral_calculator --test refactor_governance_tests`
+- `cargo test -p astral_calculator`
+
+Reviews:
+- `docs/reviews/astral_calculator_refactor/REV-HOROSCOPE-BUILDER-OWNERSHIP-SPLIT-2026-06-21.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-HOROSCOPE-BUILDER-OWNERSHIP-SPLIT-2026-06-21.md`
 
 Resume court:
 - remplacement des constantes métier inline restantes dans les couches
@@ -4454,3 +4512,36 @@ Reviews:
 - `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-MAINTAINABILITY-P2P3-2026-06-19.md`
 - `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-MAINTAINABILITY-P2P3-2026-06-19-adversarial-loop-1.md`
 - `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-MAINTAINABILITY-P2P3-2026-06-19-followup-1.md`
+
+## Refactor boundaries et constantes contractuelles (2026-06-21)
+
+Cette vague retire les derniers codes contractuels directement inline dans le
+métier `astral_calculator` pour les recentrer dans des constantes nommées:
+les systèmes de maisons Swiss Ephemeris, le code zodiacal tropical des
+réponses horoscope et le code langue natal restent explicites mais ne sont plus
+éparpillés dans les assemblages JSON ou les branches métier. La duplication
+entre horoscope daily et period est réduite via un helper applicatif privé de
+chargement du contexte transit.
+
+Invariants:
+
+- Les codes `tropical`, `placidus`, `whole_sign`, `equal` et `porphyry`
+  restent inchangés fonctionnellement, mais sont regroupés derrière des
+  constantes dédiées.
+- Les réponses horoscope daily et period continuent d'exporter le même contrat
+  JSON public.
+- `HoroscopeService` garde l'orchestration applicative, sans nouveau trait ni
+  nouvelle architecture.
+
+Verification:
+
+```powershell
+cargo fmt --check
+cargo test -p astral_calculator --test refactor_governance_tests
+cargo test -p astral_calculator --test horoscope_builders_tests
+```
+
+Reviews:
+
+- `docs/reviews/astral_calculator_refactor/REV-HOROSCOPE-BUILDER-OWNERSHIP-SPLIT-2026-06-21.md`
+- `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-HOROSCOPE-BUILDER-OWNERSHIP-SPLIT-2026-06-21.md`

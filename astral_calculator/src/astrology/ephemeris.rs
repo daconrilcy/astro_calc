@@ -4,16 +4,23 @@
 use std::path::{Path, PathBuf};
 
 #[cfg(feature = "swisseph-engine")]
-use crate::domain::{
-    AngleContext, AnglePointReference, HouseContext, HouseModalityContext, MotionContext,
-    HouseReference, MotionStateReference, ObjectContext, PositionFactContext,
-    PositionVisibilityContext, SignContext, SignReference,
-};
+use crate::domain::{AnglePointReference, HouseReference, PositionFactContext, SignReference};
 use crate::domain::{
     AspectDefinition, CalculatedChartFacts, CalculationReferenceData, ChartObject, HouseSystem,
     NatalChartInput,
 };
+#[cfg(feature = "swisseph-engine")]
+use crate::domain::{HouseCuspFact, ObjectPositionFact};
 use crate::shared::error::RuntimeError;
+
+#[cfg(feature = "swisseph-engine")]
+const SWISSEPH_PLACIDUS_HOUSE_SYSTEM_CODE: &str = "placidus";
+#[cfg(feature = "swisseph-engine")]
+const SWISSEPH_WHOLE_SIGN_HOUSE_SYSTEM_CODE: &str = "whole_sign";
+#[cfg(feature = "swisseph-engine")]
+const SWISSEPH_EQUAL_HOUSE_SYSTEM_CODE: &str = "equal";
+#[cfg(feature = "swisseph-engine")]
+const SWISSEPH_PORPHYRY_HOUSE_SYSTEM_CODE: &str = "porphyry";
 
 /// Abstraction du moteur capable de produire un thème natal calculé.
 pub trait EphemerisEngine {
@@ -153,7 +160,9 @@ impl EphemerisEngine for SwissEphemerisEngine {
                 let longitude = round4(normalize_degrees(position.longitude));
                 let latitude = round4(position.latitude);
                 let speed = round4(position.longitude_speed);
-                let house_number = if house_system.calculation_engine_code == "whole_sign" {
+                let house_number = if house_system.calculation_engine_code
+                    == SWISSEPH_WHOLE_SIGN_HOUSE_SYSTEM_CODE
+                {
                     Some(whole_sign_house_number(ascendant_longitude, longitude))
                 } else {
                     house_number_from_cusps(longitude, &house_cusps)
@@ -207,7 +216,7 @@ impl EphemerisEngine for SwissEphemerisEngine {
                         horizon_position_code,
                         "above_horizon" | "on_horizon"
                     )),
-                    facts_json: calculated_position_facts_json(
+                    facts_json: PositionFactContext::facts_json_for_calculated_position(
                         sign,
                         house,
                         object,
@@ -247,99 +256,6 @@ impl EphemerisEngine for SwissEphemerisEngine {
             ),
         ))
     }
-}
-
-#[cfg(feature = "swisseph-engine")]
-/// Sérialise le contexte interprétatif d'un signe pour les faits calculés.
-fn sign_context(sign: &SignReference) -> SignContext {
-    SignContext {
-        element: sign.element_code.clone(),
-        element_label: sign.element_label.clone(),
-        modality: sign.modality_code.clone(),
-        modality_label: sign.modality_name.clone(),
-        polarity: sign.polarity_code.clone(),
-        polarity_label: sign.polarity_name.clone(),
-        keywords: sign.keywords_json.clone(),
-    }
-}
-
-#[cfg(feature = "swisseph-engine")]
-/// Extrait les métadonnées de modalité de maison quand elles existent.
-fn house_modality(house: &HouseReference) -> Option<HouseModalityContext> {
-    house
-        .modality_code
-        .as_ref()
-        .map(|code| HouseModalityContext {
-            code: Some(code.clone()),
-            label: house.modality_label.clone(),
-            accidental_strength: house
-                .accidental_strength
-                .as_deref()
-                .and_then(|value| value.parse::<f64>().ok()),
-            priority_delta: house.modality_priority_delta,
-            interpretation_weight: house
-                .interpretation_weight
-                .as_deref()
-                .and_then(|value| value.parse::<f64>().ok()),
-        })
-}
-
-#[cfg(feature = "swisseph-engine")]
-/// Expose le thème métier associé à une maison.
-fn house_context(house: &HouseReference) -> HouseContext {
-    HouseContext {
-        theme_code: Some(house.theme_code.clone()),
-    }
-}
-
-#[cfg(feature = "swisseph-engine")]
-/// Conserve les métadonnées d'objet utiles au scoring et à l'interprétation.
-fn object_context(object: &ChartObject) -> ObjectContext {
-    ObjectContext {
-        role: object.role_code.clone(),
-        role_label: object.role_label.clone(),
-        nature: object.nature_codes.clone(),
-        is_luminary: object.is_luminary,
-        is_planet_symbolic: object.is_planet_symbolic,
-        is_visible_to_naked_eye: object.is_visible_to_naked_eye,
-        signal_scoring: Some(serde_json::json!({
-            "position_priority_base": object.position_priority_base,
-            "angle_priority_base": object.angle_priority_base,
-            "source_weight": object.source_weight
-        })),
-    }
-}
-
-#[cfg(feature = "swisseph-engine")]
-fn calculated_position_facts_json(
-    sign: &SignReference,
-    house: Option<&HouseReference>,
-    object: &ChartObject,
-    motion_state: Option<&MotionStateReference>,
-    horizon_position_id: i32,
-    horizon_position_code: &str,
-    altitude_deg: f64,
-) -> Option<serde_json::Value> {
-    Some(
-        PositionFactContext::from_calculated_position(
-            Some(sign_context(sign)),
-            house.map(house_context),
-            house.and_then(house_modality),
-            Some(object_context(object)),
-            motion_state.map(motion_context),
-            Some(PositionVisibilityContext {
-                horizon_position_id: Some(horizon_position_id),
-                horizon_position: Some(horizon_position_code.to_string()),
-                altitude_deg: Some(altitude_deg),
-                is_visible: Some(matches!(
-                    horizon_position_code,
-                    "above_horizon" | "on_horizon"
-                )),
-                source: Some("calculated_altitude".to_string()),
-            }),
-        )
-        .to_facts_json(),
-    )
 }
 
 #[cfg(feature = "swisseph-engine")]
@@ -396,12 +312,15 @@ fn add_angle_positions(
                 horizon_position_code,
                 "above_horizon" | "on_horizon"
             )),
-            facts_json: angle_position_facts_json(
+            facts_json: PositionFactContext::facts_json_for_angle_position(
                 sign,
                 house,
                 object,
                 angle,
-                house_cusps,
+                house_cusps
+                    .iter()
+                    .find(|cusp| cusp.house_number == angle.associated_house)
+                    .map(|cusp| cusp.longitude_deg),
                 horizon_position_id,
                 horizon_position_code,
             ),
@@ -409,52 +328,6 @@ fn add_angle_positions(
     }
 
     Ok(())
-}
-
-#[cfg(feature = "swisseph-engine")]
-fn angle_position_facts_json(
-    sign: &SignReference,
-    house: &HouseReference,
-    object: &ChartObject,
-    angle: &AnglePointReference,
-    house_cusps: &[crate::domain::HouseCuspFact],
-    horizon_position_id: i32,
-    horizon_position_code: &str,
-) -> Option<serde_json::Value> {
-    Some(
-        PositionFactContext::from_angle_position(
-            Some(sign_context(sign)),
-            Some(house_context(house)),
-            house_modality(house),
-            Some(object_context(object)),
-            Some(AngleContext {
-                angle_point_code: Some(angle.code.clone()),
-                short_label: Some(angle.short_label.clone()),
-                full_name: Some(angle.full_name.clone()),
-                axis: Some(angle.axis.clone()),
-                opposite_angle_code: angle.opposite_angle_code.clone(),
-                associated_house_number: Some(angle.associated_house),
-                house_theme_code: Some(house.theme_code.clone()),
-                description: Some(angle.description.clone()),
-                chart_object_sort_order: Some(angle.chart_object_sort_order),
-                house_cusp_longitude_deg: house_cusps
-                    .iter()
-                    .find(|cusp| cusp.house_number == angle.associated_house)
-                    .map(|cusp| cusp.longitude_deg),
-            }),
-            Some(PositionVisibilityContext {
-                horizon_position_id: Some(horizon_position_id),
-                horizon_position: Some(horizon_position_code.to_string()),
-                altitude_deg: None,
-                is_visible: Some(matches!(
-                    horizon_position_code,
-                    "above_horizon" | "on_horizon"
-                )),
-                source: Some("angle_context".to_string()),
-            }),
-        )
-        .to_facts_json(),
-    )
 }
 
 #[cfg(feature = "swisseph-engine")]
@@ -515,16 +388,6 @@ fn horizon_position_id(
         .find(|position| position.code == code)
         .map(|position| position.id)
         .ok_or_else(|| RuntimeError::Ephemeris(format!("missing horizon position code {code}")))
-}
-
-#[cfg(feature = "swisseph-engine")]
-/// Sérialise le contexte de mouvement direct/rétrograde/stationnaire.
-fn motion_context(motion_state: &MotionStateReference) -> MotionContext {
-    MotionContext {
-        motion_state: Some(motion_state.code.clone()),
-        label: Some(motion_state.label.clone()),
-        motion_family: Some(motion_state.motion_family.clone()),
-    }
 }
 
 #[cfg(feature = "swisseph-engine")]
@@ -618,10 +481,10 @@ fn house_system_code(code: &str) -> Result<swiss_eph::safe::HouseSystem, Runtime
     use swiss_eph::safe::HouseSystem;
 
     match code {
-        "placidus" => Ok(HouseSystem::Placidus),
-        "whole_sign" => Ok(HouseSystem::WholeSign),
-        "equal" => Ok(HouseSystem::Equal),
-        "porphyry" => Ok(HouseSystem::Porphyrius),
+        SWISSEPH_PLACIDUS_HOUSE_SYSTEM_CODE => Ok(HouseSystem::Placidus),
+        SWISSEPH_WHOLE_SIGN_HOUSE_SYSTEM_CODE => Ok(HouseSystem::WholeSign),
+        SWISSEPH_EQUAL_HOUSE_SYSTEM_CODE => Ok(HouseSystem::Equal),
+        SWISSEPH_PORPHYRY_HOUSE_SYSTEM_CODE => Ok(HouseSystem::Porphyrius),
         other => Err(RuntimeError::Ephemeris(format!(
             "unsupported house system {other}"
         ))),

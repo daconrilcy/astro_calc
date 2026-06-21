@@ -17,6 +17,8 @@ use super::{
     HoroscopeSignalThemeMapping, HoroscopeSnapshotRequest, HoroscopeTransitFact,
 };
 
+const TROPICAL_ZODIACAL_REFERENCE_SYSTEM_CODE: &str = "tropical";
+
 /// Fonction normalize_horoscope_period_request_utc.
 pub fn normalize_horoscope_period_request_utc(
     mut request: HoroscopePeriodCalculationRequest,
@@ -207,6 +209,10 @@ fn validate_horoscope_period_request_scan_plan(
     Ok(())
 }
 
+fn tropical_zodiacal_reference_system_code() -> &'static str {
+    TROPICAL_ZODIACAL_REFERENCE_SYSTEM_CODE
+}
+
 /// Fonction real_period_snapshot.
 fn real_period_snapshot(
     index: usize,
@@ -225,7 +231,7 @@ fn real_period_snapshot(
             sky_snapshot: serde_json::json!({
                 "reference_datetime_utc": snapshot.reference_datetime_utc,
                 "visible_objects": [],
-                "zodiacal_reference_system": "tropical",
+                "zodiacal_reference_system": tropical_zodiacal_reference_system_code(),
                 "source": "missing_transit_data"
             }),
             moon_context: serde_json::json!({
@@ -336,7 +342,7 @@ fn real_period_snapshot(
         sky_snapshot: serde_json::json!({
             "reference_datetime_utc": snapshot.reference_datetime_utc,
             "visible_objects": visible_objects(Some(transit_positions)),
-            "zodiacal_reference_system": "tropical",
+            "zodiacal_reference_system": tropical_zodiacal_reference_system_code(),
             "source": source
         }),
         moon_context: serde_json::json!({
