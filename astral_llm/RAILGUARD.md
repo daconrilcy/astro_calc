@@ -2,10 +2,10 @@
 
 ## Purpose And Scope
 
-- Scope: the Rust workspace rooted at `C:\dev\astral_calculation\astral_llm`, plus the parent repository rules that still govern package commands from `C:\dev\astral_calculation`.
+- Scope: the Rust workspace rooted at `C:\dev\astral_calculation\astral_llm`, plus parent-repository rules that still govern package commands from `C:\dev\astral_calculation`.
 - This document is the operational contract for planning and implementation phases. Keep it as the single railguard for this workspace; do not create a second divergent guardrail file for the same scope.
-- Evidence base: [../AGENTS.md](../AGENTS.md), [Cargo.toml](Cargo.toml), [README.md](README.md), and the current audit [../.audit/audit-1782109598.md](../.audit/audit-1782109598.md).
-- Current refactor prompt: "Refactorer `\\?\C:\dev\astral_calculation\astral_llm` pour ameliorer structure, maintenabilite, evolutivite et robustesse en respectant SOLID, YAGNI, KISS et DRY."
+- Evidence base: [../AGENTS.md](../AGENTS.md), [Cargo.toml](Cargo.toml), [README.md](README.md), and the current audit [../.audit/audit-1782111011.md](../.audit/audit-1782111011.md).
+- Current refactor prompt: `Refactorer \\?\C:\dev\astral_calculation\astral_llm pour ameliorer structure, maintenabilite, evolutivite et robustesse en respectant SOLID, YAGNI, KISS et DRY.`
 
 ## Project Map
 
@@ -15,7 +15,7 @@
   - `crates/astral_llm_providers`
   - `crates/astral_llm_infra`
   - `crates/astral_llm_api`
-- `astral_llm_worker` lives under `astral_llm/crates/` but is not a member of the nested [Cargo.toml](Cargo.toml) workspace. Treat any worker membership change as a separate manifest/documentation slice, not incidental fallout from application refactors. Evidence: [README.md](README.md) and [../.audit/audit-1782109598.md](../.audit/audit-1782109598.md).
+- `astral_llm_worker` lives under `astral_llm/crates/` but is not a member of the nested [Cargo.toml](Cargo.toml) workspace. Treat any worker membership change as a separate manifest/documentation slice, not incidental fallout from application refactors. Evidence: [README.md](README.md), [crates/astral_llm_worker/Cargo.toml](crates/astral_llm_worker/Cargo.toml), and [../.audit/audit-1782111011.md](../.audit/audit-1782111011.md).
 - The parent workspace [../Cargo.toml](../Cargo.toml) still includes the worker package. Use the repository root as the preferred entrypoint when a change touches parent package wiring, Docker, or API+worker integration beyond the `astral_llm/` subtree.
 - Composition roots:
   - [crates/astral_llm_api/src/main.rs](crates/astral_llm_api/src/main.rs)
@@ -30,12 +30,12 @@
 ## Non-Negotiable Invariants
 
 - Keep `astral_llm_domain` free of application, infra, API, and worker dependencies. Evidence: [crates/astral_llm_domain/src/lib.rs](crates/astral_llm_domain/src/lib.rs).
-- Treat `astral_llm_application` as the orchestration layer, not a second infra layer. The current audit still found direct `astral_llm_infra` coupling in application flows such as `generate_reading_use_case.rs`, `integration_job_executor.rs`, `provider_factory.rs`, `provider_router.rs`, `prompt_compiler.rs`, `prompt_trace.rs`, `raw_provider_trace.rs`, and `horoscope/mod.rs`. Evidence: [../.audit/audit-1782109598.md](../.audit/audit-1782109598.md).
-- Keep DB-backed canonical data in the database when the value is configurable product/reference data. Do not add new hard-coded canonical constants in Rust if the value can come from the DB. Evidence: [../AGENTS.md](../AGENTS.md) and the canonical-data finding in [../.audit/audit-1782109598.md](../.audit/audit-1782109598.md).
-- PostgreSQL is the target source of truth for the Premium evidence catalog. `astral_llm_infra/src/evidence_canonical.rs` may remain as a local/test bootstrap or migration seed while the DB rows are incomplete, but new configurable slots, requirements, exclusions, or policies must be inserted into PostgreSQL first and then consumed from repositories/runtime loading.
-- Freeze JSON only when it is public, persisted, externally consumed, contract-fixtured, or needed for replay/debug compatibility. Internal orchestration payloads may change when protected by characterization tests. Evidence: [README.md](README.md), [../contracts/](../contracts/), and [../.audit/audit-1782106629.md](../.audit/audit-1782106629.md).
-- Before splitting large orchestrators, add or identify characterization coverage for every public or persisted JSON shape crossed by the slice: API reading request/response, job/idempotency envelopes, persisted run/payload/step/token rows, `RunAuditView`, prompt trace records, and raw provider trace files. Evidence: [README.md](README.md), [../contracts/](../contracts/), and [../.audit/audit-1782109598.md](../.audit/audit-1782109598.md).
-- Keep fail-fast behavior at binary boundaries only. Internal boot helpers, repositories, config loaders, and application assembly should return typed errors instead of `panic!`, `expect()`, or `unwrap()` for expected failures. Evidence: [crates/astral_llm_api/src/main.rs](crates/astral_llm_api/src/main.rs), [crates/astral_llm_worker/src/main.rs](crates/astral_llm_worker/src/main.rs), and [../.audit/audit-1782109598.md](../.audit/audit-1782109598.md).
+- Treat `astral_llm_application` as the orchestration layer, not a second infra layer. The current audit still found direct `astral_llm_infra` coupling in application flows such as `generate_reading_use_case.rs`, `chapter_orchestrator.rs`, `integration_job_executor.rs`, `provider_factory.rs`, `prompt_compiler.rs`, and `summary_synthesizer.rs`. Evidence: [../.audit/audit-1782111011.md](../.audit/audit-1782111011.md).
+- Keep DB-backed canonical data in the database when the value is configurable product/reference data. Do not add new hard-coded canonical constants in Rust if the value can come from the DB. Evidence: [../AGENTS.md](../AGENTS.md) and the canonical-data finding in [../.audit/audit-1782111011.md](../.audit/audit-1782111011.md).
+- PostgreSQL is the target source of truth for the Premium evidence catalog. `astral_llm_infra/src/evidence_canonical.rs` may remain as a local/test bootstrap or migration seed while the DB rows are incomplete, but new configurable slots, requirements, exclusions, or policies must be inserted into PostgreSQL first and then consumed from repositories/runtime loading. Evidence: [../.audit/audit-1782111011.md](../.audit/audit-1782111011.md).
+- Freeze JSON only when it is public, persisted, externally consumed, contract-fixtured, or needed for replay/debug compatibility. Internal orchestration payloads may change when protected by characterization tests. Evidence: [README.md](README.md), [../contracts/](../contracts/), and [../.audit/audit-1782111011.md](../.audit/audit-1782111011.md).
+- Before splitting large orchestrators, add or identify characterization coverage for every public or persisted JSON shape crossed by the slice: API reading request/response, job/idempotency envelopes, persisted run/payload/step/token rows, `RunAuditView`, prompt trace records, and raw provider trace files. Evidence: [README.md](README.md), [../contracts/](../contracts/), and [../.audit/audit-1782111011.md](../.audit/audit-1782111011.md).
+- Keep fail-fast behavior at binary boundaries only. Internal boot helpers, repositories, config loaders, and application assembly should return typed errors instead of `panic!`, `expect()`, or `unwrap()` for expected failures. Evidence: [crates/astral_llm_api/src/main.rs](crates/astral_llm_api/src/main.rs), [crates/astral_llm_worker/src/main.rs](crates/astral_llm_worker/src/main.rs), and [../.audit/audit-1782111011.md](../.audit/audit-1782111011.md).
 - Runtime-composition refactors should move toward typed bootstrap errors. Local Windows-only runtime may still fail fast in `main.rs`, but reusable config, DB, catalog, provider, trace, and application assembly helpers must return typed `Result` values for diagnostics and API/worker reuse.
 - Keep integration and characterization tests under root `tests/` by default. Evidence: the audit verified there are no inline production `#[cfg(test)]` modules or inline `#[test]` functions in `src/`.
 - Do not introduce branch workflows, PR governance, or remote CI assumptions into local refactor plans. The execution context is solo, Windows-only, and local-first. Evidence: [../AGENTS.md](../AGENTS.md) and the current task context.
@@ -44,12 +44,14 @@
 ## Architecture Boundaries
 
 - `astral_llm_domain` owns domain contracts, policies, limits, request/response types, and enums. It must not depend on application, infra, API, or worker code.
-- `astral_llm_application` owns use cases, planning, validation, prompt assembly, and orchestration. It must not depend on `astral_llm_infra` for business logic. The audit still classifies that dependency direction as problematic. Evidence: [../.audit/audit-1782109598.md](../.audit/audit-1782109598.md).
+- `astral_llm_application` owns use cases, planning, validation, prompt assembly, and orchestration. It must not depend on `astral_llm_infra` for business logic. The audit still classifies that dependency direction as problematic. Evidence: [../.audit/audit-1782111011.md](../.audit/audit-1782111011.md).
 - `astral_llm_infra` owns env/config, PostgreSQL persistence, bootstrap data, and external adapters. Business rules do not belong there.
 - `astral_llm_api` and `astral_llm_worker` are composition roots. They may assemble config, persistence, providers, and use cases, but they should not own domain policy.
+- `CalculatorPort` is application-owned and must stay concrete-adapter-free inside `astral_llm_application`. Concrete calculator bindings belong in runtime or adapter crates such as `crates/astral_llm_worker/src/calculator_port.rs`, not in `crates/astral_llm_application/src/core/calculator.rs`. Evidence: [crates/astral_llm_application/src/core/calculator.rs](crates/astral_llm_application/src/core/calculator.rs), [crates/astral_llm_worker/src/calculator_port.rs](crates/astral_llm_worker/src/calculator_port.rs), and [../.plan/plan-1782111490.md](../.plan/plan-1782111490.md).
 - Shared astrological or text-processing logic must live under explicit reusable modules, not inside a product feature by accident. Evidence: the audit still flags large cross-cutting files such as `chapter_orchestrator.rs`, `generate_reading_use_case.rs`, `horoscope/period/writer.rs`, and `text_reprocessing.rs`.
 - Public crate-root exports are not a stable dumping ground. Keep new code on canonical module paths; do not add broad `pub use` surfaces unless there is a real external consumer.
 - Public crate-root exports in `astral_llm_application` and `astral_llm_domain` have real consumers in `astral_llm_api`, `astral_llm_worker`, `astral_llm_providers`, `astral_llm_infra`, and root tests. Reduce them only in staged compatibility slices: migrate internal imports to explicit module paths, keep runtime-used exports, then remove only re-exports proven unused.
+- Until the dedicated Phase 6 consumer-mapping slice is executed, keep `astral_llm_application/src/lib.rs` as the single crate-root export surface. Do not introduce a separate `public_api.rs` export facade as incidental cleanup. Evidence: `BASIC_PAYLOAD_IMPLEMENTATION.md` 2026-06-22 calculator-port slice and audit `../.audit/implementation-audit-1782111998.md`.
 - Parent-workspace commands are required for `astral_llm_worker` and for any slice that touches packages outside `astral_llm/` or depends on parent-level runtime wiring.
 - If workspace membership changes again, update [Cargo.toml](Cargo.toml), [README.md](README.md), this railguard, and run metadata checks from both roots before any behavioral edits.
 - In `astral_llm_application`, `core/`, `domain/`, `infra/`, and `service/` are transitional facades, not a canonical ownership map. `domain/` currently re-exports `astral_llm_domain`, `infra/` re-exports existing application modules, and `service/` re-exports orchestrators. Do not build new architecture on those folders as if they were settled layers without a dedicated refactor decision.
@@ -58,7 +60,7 @@
 - Runtime consumers define the first tier of crate-root compatibility: `astral_llm_api`, `astral_llm_worker`, `astral_llm_providers`, and `astral_llm_infra`. Root tests and local-only callers may be migrated more aggressively to canonical module paths.
 - Use the existing Rust module convention: root files such as `lib.rs`, `horoscope/mod.rs`, and `horoscope/period/mod.rs` should remain thin facades with `mod` declarations, narrow `pub use` exports, and boundary glue only. Do not add meaningful orchestration, parsing, persistence, or provider logic to facade files during refactor slices. Evidence: broad facade surfaces in [crates/astral_llm_application/src/lib.rs](crates/astral_llm_application/src/lib.rs) and [crates/astral_llm_application/src/horoscope/period/mod.rs](crates/astral_llm_application/src/horoscope/period/mod.rs).
 - Do not introduce ordinary in-crate `#[path = "..."]` module wiring. Prefer idiomatic `foo.rs` plus `foo/*.rs` or `foo/mod.rs` plus sibling submodules matching the local directory. If `#[path]` is ever required, record why normal Rust module lookup is insufficient.
-- For structural refactors, close one measurable invariant per slice before moving to another axis. Record before/target metrics with local `rg` or Cargo commands, and stop if a slice would require unrelated public API widening. Evidence: [../.audit/audit-1782106629.md](../.audit/audit-1782106629.md) identifies separate axes for workspace shape, application-to-infra coupling, canonical data, hotspots, startup composition, and public exports.
+- For structural refactors, close one measurable invariant per slice before moving to another axis. Record before/target metrics with local `rg` or Cargo commands, and stop if a slice would require unrelated public API widening. Evidence: [../.audit/audit-1782111011.md](../.audit/audit-1782111011.md) identifies separate axes for workspace shape, application-to-infra coupling, canonical data, hotspots, startup composition, and public exports.
 - Do not change the public JSON contracts, persisted trace shapes, or compatibility fixtures in the same slice as a large module split unless the change is explicitly characterized and documented. Evidence: the audit highlights frozen API, job, persistence, prompt-trace, and raw-provider boundaries.
 
 ## Frozen JSON And Trace Boundaries
@@ -90,7 +92,6 @@
   - `cargo metadata --format-version 1 --no-deps` from `astral_llm/`
   - `cargo metadata --format-version 1 --no-deps` from the repository root when parent manifests, Docker, or API+worker integration are in scope
   - `cargo test -p astral_llm_worker --no-run` from the repository root after worker or parent-workspace wiring changes
-  - `cargo test -p astral_calculator --test refactor_governance_tests astral_llm_worker_workspace_boundary_stays_explicit` to keep the parent-vs-nested worker scope documented and guarded
 - Core compile/test commands from [README.md](README.md):
   - `cargo test -p astral_llm_application`
   - `cargo test -p astral_llm_domain`
@@ -100,12 +101,10 @@
   - `cargo test -p astral_llm_api --test prompt_golden_tests`
   - `cargo test -p astral_llm_api --test astral_llm_editorial_fixtures`
   - `cargo test -p astral_llm_api --test astral_llm_load_tests`
-  - `cargo test -p astral_llm_application`
-  - `cargo test -p astral_llm_domain`
-  - `cargo test -p astral_llm_infra`
   - `cargo test -p astral_llm_providers --test provider_real_smoke -- --ignored`
 - Parent-workspace commands from [../AGENTS.md](../AGENTS.md) still apply when the touched slice includes parent-level package wiring or integration outside `astral_llm/`.
 - For boundary work, start with focused `rg` checks against the touched modules before broad test runs. The current audit used this pattern to confirm the remaining `application -> infra` coupling.
+- Calculator-boundary slices should verify both trait ownership and runtime adapter placement with `rg -n "CalculatorPort|CalculatorClient|impl CalculatorPort" astral_llm/crates tests`, then run `cargo test -p astral_llm_application --test integration_job_executor_tests`, `cargo test -p astral_llm_worker --no-run`, and `cargo test -p astral_llm_api --test integration_jobs_tests`.
 - Before taking a roadmap slice, validate the current baseline with commands relevant to the touched path. At minimum:
   - manifest/workspace: `cargo metadata --format-version 1 --no-deps` from the repository root and from `astral_llm/`
   - API routes/contracts: `cargo test -p astral_llm_api --test astral_llm_tests`, `cargo test -p astral_llm_api --test contracts_publish_tests`
@@ -121,7 +120,7 @@
   - [../Cargo.toml](../Cargo.toml)
   - [Cargo.toml](Cargo.toml)
   - [README.md](README.md)
-  - [../.audit/audit-1782109598.md](../.audit/audit-1782109598.md)
+  - [../.audit/audit-1782111011.md](../.audit/audit-1782111011.md)
   - [crates/astral_llm_domain/src/lib.rs](crates/astral_llm_domain/src/lib.rs)
   - [crates/astral_llm_application/src/lib.rs](crates/astral_llm_application/src/lib.rs)
 - Refactor order for structural changes:
@@ -136,11 +135,7 @@
 ## Known Risks And Open Questions
 
 - The worker crate sits inside the `astral_llm/` directory tree but outside the nested workspace manifest. The remaining risk is accidental scope drift when a boundary refactor also edits nested-workspace manifests or docs without an explicit manifest slice.
-- Audit `implementation-audit-1782109040.md` treated nested worker membership changes as out-of-scope for the Phase 1 calculator boundary. Keep that separation in future loops unless a plan explicitly budgets the manifest/doc change.
-- Documentation drift is easy on manifest-only waves. Treat missing `BASIC_PAYLOAD_IMPLEMENTATION.md` entries as a process defect to close in the same loop as the manifest/doc change.
-- The hard-coded evidence catalog in `astral_llm_infra/src/evidence_canonical.rs` is a temporary bootstrap bridge, not the long-term source of truth. The remaining risk is incomplete PostgreSQL coverage for slots and requirements.
-- The `core/domain/infra/service` folders in `astral_llm_application` are transitional. The next architecture slice should either promote a smaller explicit ownership map or retire the misleading facades.
-- The latest planning audit (`audit-1782109598.md`) still shows oversized orchestration files, broad crate-root exports, and direct `application -> infra` imports. Until those are reduced, avoid adding new cross-cutting behavior to the same modules.
+- Audit `audit-1782111011.md` still shows oversized orchestration files, broad crate-root exports, direct `application -> infra` imports, hard-coded canonical evidence data, and duplicated startup composition. Until those are reduced, avoid adding new cross-cutting behavior to the same modules.
 - `astral_llm_application/src/lib.rs` still exposes a broad public surface; any export cleanup should be staged after the consumer graph is mapped, not as a mechanical first step.
 - Startup logic is duplicated between API and worker entrypoints. When touching boot code, extract typed shared bootstrap helpers and keep `main.rs` thin; fail fast only after typed boot errors reach the binary boundary.
 - Heavy functional suites were not run while updating this document. Before structural refactors, validate the touched slice against the root integration tests closest to it using the baseline command matrix above, and report skipped suites with the missing prerequisite or reason.

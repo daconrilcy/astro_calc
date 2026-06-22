@@ -5,8 +5,8 @@ mod calculator_port;
 
 use crate::calculator_port::WorkerCalculatorPort;
 use astral_llm_application::{
-    core::calculator::CalculatorPort,
     build_capability_registry_with_db, build_fallback_policy, build_providers,
+    core::calculator::CalculatorPort,
     job_error_from_reading, job_status_from_reading,
     prompt_trace::{configure_prompt_trace, PromptTraceSettings},
     raw_provider_trace::{configure_raw_provider_trace, RawProviderTraceSettings},
@@ -158,8 +158,7 @@ async fn process_worker_tick<C>(
     validator: &IntegrationJobValidator,
     orchestrator: &IntegrationJobExecutor<'_, C>,
     mercure: &MercurePublisher,
-)
-where
+) where
     C: CalculatorPort + ?Sized,
 {
     match jobs.purge_expired_terminal_jobs().await {

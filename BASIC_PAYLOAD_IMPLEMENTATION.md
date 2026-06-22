@@ -1,9 +1,10 @@
-# 2026-06-22 - `astral_llm_application` public API export split
+# 2026-06-22 - `astral_llm` calculator port boundary slice
 
-- Extracted the crate-level re-export surface from `crates/astral_llm_application/src/lib.rs` into `crates/astral_llm_application/src/public_api.rs`.
-- Kept the public API unchanged; `lib.rs` still owns the module declarations and now re-exports through a single dedicated module, which makes the entrypoint easier to scan and maintain.
-- Invariants: no behavior change; no public symbol rename; no new dependency edges between feature modules; only the location of export wiring changed.
-- Verification: pending `cargo test -p astral_llm_api --test astral_llm_tests` or a narrower `cargo check -p astral_llm_application` once the refactor is staged.
+- Closed the first planned `astral_llm` application-to-infra slice by removing the concrete `impl CalculatorPort for astral_llm_infra::CalculatorClient` from `crates/astral_llm_application/src/core/calculator.rs`.
+- Kept `CalculatorPort` application-owned and preserved runtime binding through the existing worker-side adapter `crates/astral_llm_worker/src/calculator_port.rs`.
+- Reverted the unplanned `crates/astral_llm_application/src/public_api.rs` split so crate-root export wiring stays in `src/lib.rs` until the dedicated consumer-mapping phase.
+- Invariants: no JSON/public contract change; no new crate-root exports; `astral_llm_application` no longer names the concrete calculator adapter in its port module; worker verification remains parent-workspace only.
+- Verification: `cargo test -p astral_llm_application --test integration_job_executor_tests`; `cargo test -p astral_llm_worker --no-run`; `cargo test -p astral_llm_api --test integration_jobs_tests`; focused scan `rg -n "CalculatorPort|CalculatorClient|impl CalculatorPort" astral_llm/crates tests`; compatibility check `cargo test -p astral_llm_api --test astral_llm_tests`.
 
 # 2026-06-21 - Docker integration stack build-time hardening
 
