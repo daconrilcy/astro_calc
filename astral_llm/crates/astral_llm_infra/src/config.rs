@@ -5,6 +5,7 @@ use astral_llm_domain::{
 use chrono::{NaiveDate, Utc};
 
 use crate::canonical::service_limits_from_env;
+use crate::config_validator::ConfigValidationError;
 use crate::url_validator::{
     validate_anthropic_base_url, validate_mistral_base_url, validate_openai_base_url,
 };
@@ -42,7 +43,11 @@ pub struct AppConfig {
 }
 
 impl AppConfig {
-    pub fn from_env() -> Self {
+    pub fn from_env() -> Result<Self, ConfigValidationError> {
+        Self::try_from_env()
+    }
+
+    pub fn try_from_env() -> Result<Self, ConfigValidationError> {
         load_dotenv();
 
         let runtime_env = env_var("ASTRAL_LLM_ENV")
@@ -79,9 +84,15 @@ impl AppConfig {
         let mistral_base_url =
             env_var("MISTRAL_BASE_URL").unwrap_or_else(|| "https://api.mistral.ai".into());
 
-        validate_openai_base_url(&openai_base_url).expect("invalid OPENAI_BASE_URL");
-        validate_anthropic_base_url(&anthropic_base_url).expect("invalid ANTHROPIC_BASE_URL");
-        validate_mistral_base_url(&mistral_base_url).expect("invalid MISTRAL_BASE_URL");
+        validate_openai_base_url(&openai_base_url).map_err(|err| {
+            ConfigValidationError::Message(format!("invalid OPENAI_BASE_URL: {err}"))
+        })?;
+        validate_anthropic_base_url(&anthropic_base_url).map_err(|err| {
+            ConfigValidationError::Message(format!("invalid ANTHROPIC_BASE_URL: {err}"))
+        })?;
+        validate_mistral_base_url(&mistral_base_url).map_err(|err| {
+            ConfigValidationError::Message(format!("invalid MISTRAL_BASE_URL: {err}"))
+        })?;
 
         let allow_public_bind = env_bool("ASTRAL_LLM_ALLOW_PUBLIC_BIND", false);
         let production_exposure = env_var("ASTRAL_LLM_PRODUCTION_MODE")
@@ -104,12 +115,14 @@ impl AppConfig {
         let legacy_product_code_shim_cutoff_date =
             env_date("ASTRAL_LLM_LEGACY_PRODUCT_CODE_SHIM_CUTOFF_DATE");
 
-        Self {
+        let bind_addr = format!("{host}:{port}").parse().map_err(|err| {
+            ConfigValidationError::Message(format!("invalid ASTRAL_LLM bind address: {err}"))
+        })?;
+
+        Ok(Self {
             runtime_env,
             production_exposure,
-            bind_addr: format!("{host}:{port}")
-                .parse()
-                .expect("valid ASTRAL_LLM bind address"),
+            bind_addr,
             allow_public_bind,
             database_url: env_var("DATABASE_URL"),
             prompts_dir,
@@ -149,7 +162,7 @@ impl AppConfig {
                 .unwrap_or(60),
             enable_legacy_product_code_shim,
             legacy_product_code_shim_cutoff_date,
-        }
+        })
     }
 
     /// Production exposee (public ou bind 0.0.0.0 autorise) : audit PostgreSQL obligatoire.

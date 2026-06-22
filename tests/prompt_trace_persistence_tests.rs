@@ -311,7 +311,7 @@ async fn run_audit_route_returns_prompt_traces() {
     let state = AppState {
         use_case: Arc::new(use_case),
         schema_registry: Arc::new(SchemaRegistry::new()),
-        config: astral_llm_infra::AppConfig::from_env(),
+        config: astral_llm_infra::AppConfig::try_from_env().expect("config from env"),
         persistence: Some(persistence),
         job_persistence: None,
         integration_job_validator: Some(Arc::new(IntegrationJobValidator::new())),

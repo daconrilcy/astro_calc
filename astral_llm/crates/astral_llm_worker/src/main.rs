@@ -35,7 +35,9 @@ async fn main() {
 async fn run_worker() {
     init_tracing();
     astral_llm_infra::load_dotenv();
-    let config = AppConfig::from_env();
+    let config = AppConfig::try_from_env().unwrap_or_else(|err| {
+        panic!("invalid astral_llm_worker configuration: {err}");
+    });
     let secrets = ProviderSecrets::from_env();
     if let Err(err) = ConfigValidator::validate(&config, &secrets) {
         panic!("invalid astral_llm_worker configuration: {err}");

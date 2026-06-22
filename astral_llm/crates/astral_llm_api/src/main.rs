@@ -32,7 +32,9 @@ use tower_http::{limit::RequestBodyLimitLayer, timeout::TimeoutLayer, trace::Tra
 #[tokio::main]
 async fn main() {
     init_tracing();
-    let config = AppConfig::from_env();
+    let config = AppConfig::try_from_env().unwrap_or_else(|err| {
+        panic!("invalid astral_llm configuration: {err}");
+    });
     let bind_addr = config.bind_addr;
     let secrets = ProviderSecrets::from_env();
 

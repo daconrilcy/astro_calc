@@ -1268,3 +1268,4 @@ Commandes de verification:
 - `cargo test -p astral_llm_worker --no-run`
 - `cargo test -p astral_calculator --test refactor_governance_tests astral_llm_worker_workspace_boundary_stays_explicit`
 - `rg -n "astral_llm_worker" Cargo.toml astral_llm/Cargo.toml astral_llm/README.md astral_llm/RAILGUARD.md`
+- 2026-06-22: closed a bootstrap config slice for `astral_llm_infra::AppConfig`. `from_env()` and `try_from_env()` now both surface typed config-loading errors for invalid provider base URLs and invalid bind addresses, while `astral_llm_api` and `astral_llm_worker` remain the binary edges that convert startup config failures into process-fatal errors. Verification: `cargo test -p astral_llm_infra --test app_config_env_tests`; `cargo test -p astral_llm_api --test astral_llm_tests`; `cargo test -p astral_llm_worker --no-run`.
