@@ -1,7 +1,11 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+mod calculator_port;
+
+use crate::calculator_port::WorkerCalculatorPort;
 use astral_llm_application::{
+    core::calculator::CalculatorPort,
     build_capability_registry_with_db, build_fallback_policy, build_providers,
     job_error_from_reading, job_status_from_reading,
     prompt_trace::{configure_prompt_trace, PromptTraceSettings},
@@ -25,6 +29,10 @@ use uuid::Uuid;
 
 #[tokio::main]
 async fn main() {
+    run_worker().await;
+}
+
+async fn run_worker() {
     init_tracing();
     astral_llm_infra::load_dotenv();
     let config = AppConfig::from_env();
@@ -108,12 +116,14 @@ async fn main() {
         Some(run_persistence.clone()),
     );
 
-    let calculator = CalculatorClient::new(
-        calculator_base_url_from_env(),
-        calculator_api_key_from_env(),
-        config.limits.default_request_timeout_ms,
-    )
-    .expect("calculator client");
+    let calculator = WorkerCalculatorPort::new(
+        CalculatorClient::new(
+            calculator_base_url_from_env(),
+            calculator_api_key_from_env(),
+            config.limits.default_request_timeout_ms,
+        )
+        .expect("calculator client"),
+    );
 
     let orchestrator = IntegrationJobExecutor::new(&calculator, &use_case);
     let validator = IntegrationJobValidator::new();
@@ -125,212 +135,237 @@ async fn main() {
     tracing::info!(worker_id = %worker_id, poll_ms, stale_secs, "astral_llm_worker started");
 
     loop {
-        match jobs.purge_expired_terminal_jobs().await {
-            Ok(count) if count > 0 => {
-                tracing::info!(purged = count, "expired terminal integration jobs purged");
-            }
-            Ok(_) => {}
-            Err(err) => tracing::warn!(error = %err, "expired job purge failed"),
+        process_worker_tick(
+            &jobs,
+            &worker_id,
+            stale_secs,
+            poll_ms,
+            &use_case,
+            &validator,
+            &orchestrator,
+            &mercure,
+        )
+        .await;
+    }
+}
+
+async fn process_worker_tick<C>(
+    jobs: &astral_llm_infra::JobPersistence,
+    worker_id: &str,
+    stale_secs: i64,
+    poll_ms: u64,
+    use_case: &GenerateReadingUseCase,
+    validator: &IntegrationJobValidator,
+    orchestrator: &IntegrationJobExecutor<'_, C>,
+    mercure: &MercurePublisher,
+)
+where
+    C: CalculatorPort + ?Sized,
+{
+    match jobs.purge_expired_terminal_jobs().await {
+        Ok(count) if count > 0 => {
+            tracing::info!(purged = count, "expired terminal integration jobs purged");
         }
+        Ok(_) => {}
+        Err(err) => tracing::warn!(error = %err, "expired job purge failed"),
+    }
 
-        if let Err(err) = jobs.recover_stale_running_jobs().await {
-            tracing::warn!(error = %err, "stale job recovery failed");
+    if let Err(err) = jobs.recover_stale_running_jobs().await {
+        tracing::warn!(error = %err, "stale job recovery failed");
+    }
+
+    let job = match jobs.claim_next_queued_job(worker_id, stale_secs).await {
+        Ok(Some(j)) => j,
+        Ok(None) => {
+            tokio::time::sleep(Duration::from_millis(poll_ms)).await;
+            return;
         }
+        Err(err) => {
+            tracing::error!(error = %err, "claim job failed");
+            tokio::time::sleep(Duration::from_millis(poll_ms)).await;
+            return;
+        }
+    };
 
-        let job = match jobs.claim_next_queued_job(&worker_id, stale_secs).await {
-            Ok(Some(j)) => j,
-            Ok(None) => {
-                tokio::time::sleep(Duration::from_millis(poll_ms)).await;
-                continue;
-            }
-            Err(err) => {
-                tracing::error!(error = %err, "claim job failed");
-                tokio::time::sleep(Duration::from_millis(poll_ms)).await;
-                continue;
-            }
-        };
+    let service = match use_case.catalog().integration_service(&job.service_code) {
+        Some(s) => s.clone(),
+        None => {
+            let _ = jobs
+                .mark_failed(
+                    job.job_id,
+                    &serde_json::json!({
+                        "code": "SERVICE_NOT_FOUND",
+                        "message": format!("unknown service: {}", job.service_code),
+                    }),
+                    false,
+                )
+                .await;
+            return;
+        }
+    };
 
-        let service = match use_case.catalog().integration_service(&job.service_code) {
-            Some(s) => s.clone(),
-            None => {
-                let _ = jobs
-                    .mark_failed(
-                        job.job_id,
-                        &serde_json::json!({
-                            "code": "SERVICE_NOT_FOUND",
-                            "message": format!("unknown service: {}", job.service_code),
-                        }),
-                        false,
-                    )
-                    .await;
-                continue;
-            }
-        };
+    let validated = match validator.validate_job(&job.request_json, &service) {
+        Ok(v) => v,
+        Err(err) => {
+            let detail = err.detail();
+            let _ = jobs
+                .mark_failed(
+                    job.job_id,
+                    &serde_json::json!({
+                        "code": detail.code.as_str(),
+                        "message": detail.message,
+                    }),
+                    false,
+                )
+                .await;
+            return;
+        }
+    };
 
-        let validated = match validator.validate_job(&job.request_json, &service) {
-            Ok(v) => v,
-            Err(err) => {
-                let detail = err.detail();
-                let _ = jobs
-                    .mark_failed(
-                        job.job_id,
-                        &serde_json::json!({
-                            "code": detail.code.as_str(),
-                            "message": detail.message,
-                        }),
-                        false,
-                    )
-                    .await;
-                continue;
-            }
-        };
+    let _ = jobs.touch_heartbeat(job.job_id, stale_secs).await;
+    let public_run_id = job.run_id.to_string();
+    let outcome = orchestrator
+        .execute(&service, &validated, Some(&public_run_id))
+        .await;
+    match outcome {
+        Ok(result) => handle_job_result(jobs, mercure, job, service, result).await,
+        Err(err) => handle_job_error(jobs, mercure, job, service, err).await,
+    }
+}
 
-        let _ = jobs.touch_heartbeat(job.job_id, stale_secs).await;
-        let public_run_id = job.run_id.to_string();
-        let outcome = orchestrator
-            .execute(&service, &validated, Some(&public_run_id))
+async fn handle_job_result(
+    jobs: &astral_llm_infra::JobPersistence,
+    mercure: &MercurePublisher,
+    job: astral_llm_infra::JobRecord,
+    service: astral_llm_domain::integration::IntegrationService,
+    result: astral_llm_application::UnifiedReadingResult,
+) {
+    let gen_run_id = Uuid::parse_str(&result.run_id).ok();
+    let (calculation, reading, reading_completeness) = match result.outcome {
+        UnifiedReadingOutcome::Reading {
+            calculation,
+            reading,
+            reading_completeness,
+        } => (calculation, reading, reading_completeness),
+        UnifiedReadingOutcome::Json(envelope) => {
+            if let Err(err) = jobs.mark_completed(job.job_id, gen_run_id, &envelope).await {
+                tracing::error!(
+                    run_id = %job.run_id,
+                    service = %job.service_code,
+                    error = %err,
+                    "job completion persistence failed"
+                );
+                return;
+            }
+            publish_mercure_if_enabled(mercure, &service, &job.tenant_id, &job.run_id, "completed")
+                .await;
+            tracing::info!(
+                run_id = %job.run_id,
+                service = %job.service_code,
+                status = "completed",
+                "job finished"
+            );
+            return;
+        }
+    };
+    let envelope = unified_result_envelope(calculation, &reading, reading_completeness);
+    let status = job_status_from_reading(&reading);
+    match &reading {
+        GenerateReadingResponse::Success { .. } => {
+            if let Err(err) = jobs.mark_completed(job.job_id, gen_run_id, &envelope).await {
+                tracing::error!(
+                    run_id = %job.run_id,
+                    service = %job.service_code,
+                    error = %err,
+                    "job completion persistence failed"
+                );
+                return;
+            }
+            publish_mercure_if_enabled(
+                mercure,
+                &service,
+                &job.tenant_id,
+                &job.run_id,
+                status.as_str(),
+            )
             .await;
-        match outcome {
-            Ok(result) => {
-                let gen_run_id = Uuid::parse_str(&result.run_id).ok();
-                let (calculation, reading, reading_completeness) = match result.outcome {
-                    UnifiedReadingOutcome::Reading {
-                        calculation,
-                        reading,
-                        reading_completeness,
-                    } => (calculation, reading, reading_completeness),
-                    UnifiedReadingOutcome::Json(envelope) => {
-                        if let Err(err) =
-                            jobs.mark_completed(job.job_id, gen_run_id, &envelope).await
-                        {
-                            tracing::error!(
-                                run_id = %job.run_id,
-                                service = %job.service_code,
-                                error = %err,
-                                "job completion persistence failed"
-                            );
-                            continue;
-                        }
-                        publish_mercure_if_enabled(
-                            &mercure,
-                            &service,
-                            &job.tenant_id,
-                            &job.run_id,
-                            "completed",
-                        )
-                        .await;
-                        tracing::info!(
-                            run_id = %job.run_id,
-                            service = %job.service_code,
-                            status = "completed",
-                            "job finished"
-                        );
-                        continue;
-                    }
-                };
-                let envelope = unified_result_envelope(calculation, &reading, reading_completeness);
-                let status = job_status_from_reading(&reading);
-                match &reading {
-                    GenerateReadingResponse::Success { .. } => {
-                        if let Err(err) =
-                            jobs.mark_completed(job.job_id, gen_run_id, &envelope).await
-                        {
-                            tracing::error!(
-                                run_id = %job.run_id,
-                                service = %job.service_code,
-                                error = %err,
-                                "job completion persistence failed"
-                            );
-                            continue;
-                        }
-                        publish_mercure_if_enabled(
-                            &mercure,
-                            &service,
-                            &job.tenant_id,
-                            &job.run_id,
-                            status.as_str(),
-                        )
-                        .await;
-                    }
-                    GenerateReadingResponse::SafetyRejected { .. } => {
-                        let err = job_error_from_reading(&reading);
-                        if let Err(persist_err) = jobs
-                            .mark_safety_rejected(job.job_id, gen_run_id, &envelope, &err)
-                            .await
-                        {
-                            tracing::error!(
-                                run_id = %job.run_id,
-                                service = %job.service_code,
-                                error = %persist_err,
-                                "job safety rejection persistence failed"
-                            );
-                            continue;
-                        }
-                        publish_mercure_if_enabled(
-                            &mercure,
-                            &service,
-                            &job.tenant_id,
-                            &job.run_id,
-                            status.as_str(),
-                        )
-                        .await;
-                    }
-                    GenerateReadingResponse::Failed { .. } => {
-                        let err = job_error_from_reading(&reading);
-                        let retry = job.attempt_count < job.max_attempts;
-                        let _ = jobs.mark_failed(job.job_id, &err, retry).await;
-                        if !retry {
-                            publish_mercure_if_enabled(
-                                &mercure,
-                                &service,
-                                &job.tenant_id,
-                                &job.run_id,
-                                "failed",
-                            )
-                            .await;
-                        }
-                    }
-                }
-                tracing::info!(
+        }
+        GenerateReadingResponse::SafetyRejected { .. } => {
+            let err = job_error_from_reading(&reading);
+            if let Err(persist_err) = jobs
+                .mark_safety_rejected(job.job_id, gen_run_id, &envelope, &err)
+                .await
+            {
+                tracing::error!(
                     run_id = %job.run_id,
                     service = %job.service_code,
-                    status = %status.as_str(),
-                    "job finished"
+                    error = %persist_err,
+                    "job safety rejection persistence failed"
                 );
+                return;
             }
-            Err(err) => {
-                let detail = err.detail();
-                let retry = job.attempt_count < job.max_attempts;
-                let _ = jobs
-                    .mark_failed(
-                        job.job_id,
-                        &serde_json::json!({
-                            "code": detail.code.as_str(),
-                            "message": detail.message,
-                        }),
-                        retry,
-                    )
-                    .await;
-                if !retry {
-                    publish_mercure_if_enabled(
-                        &mercure,
-                        &service,
-                        &job.tenant_id,
-                        &job.run_id,
-                        "failed",
-                    )
-                    .await;
-                }
-                tracing::warn!(
-                    run_id = %job.run_id,
-                    service = %job.service_code,
-                    error = %detail.message,
-                    details = ?detail.details,
-                    "job orchestration failed"
-                );
+            publish_mercure_if_enabled(
+                mercure,
+                &service,
+                &job.tenant_id,
+                &job.run_id,
+                status.as_str(),
+            )
+            .await;
+        }
+        GenerateReadingResponse::Failed { .. } => {
+            let err = job_error_from_reading(&reading);
+            let retry = job.attempt_count < job.max_attempts;
+            let _ = jobs.mark_failed(job.job_id, &err, retry).await;
+            if !retry {
+                publish_mercure_if_enabled(
+                    mercure,
+                    &service,
+                    &job.tenant_id,
+                    &job.run_id,
+                    "failed",
+                )
+                .await;
             }
         }
     }
+    tracing::info!(
+        run_id = %job.run_id,
+        service = %job.service_code,
+        status = %status.as_str(),
+        "job finished"
+    );
+}
+
+async fn handle_job_error(
+    jobs: &astral_llm_infra::JobPersistence,
+    mercure: &MercurePublisher,
+    job: astral_llm_infra::JobRecord,
+    service: astral_llm_domain::integration::IntegrationService,
+    err: astral_llm_domain::GenerationError,
+) {
+    let detail = err.detail();
+    let retry = job.attempt_count < job.max_attempts;
+    let _ = jobs
+        .mark_failed(
+            job.job_id,
+            &serde_json::json!({
+                "code": detail.code.as_str(),
+                "message": detail.message,
+            }),
+            retry,
+        )
+        .await;
+    if !retry {
+        publish_mercure_if_enabled(mercure, &service, &job.tenant_id, &job.run_id, "failed").await;
+    }
+    tracing::warn!(
+        run_id = %job.run_id,
+        service = %job.service_code,
+        error = %detail.message,
+        details = ?detail.details,
+        "job orchestration failed"
+    );
 }
 
 fn worker_poll_ms() -> u64 {
