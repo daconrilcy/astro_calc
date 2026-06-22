@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use astral_llm_domain::{FallbackPolicy, ProviderKind};
-use astral_llm_infra::{AppConfig, ProviderSecrets};
+use secrecy::{ExposeSecret, SecretString};
 
 use crate::model_capability_registry::ModelCapabilityRegistry;
 use crate::provider_router::{build_http_client, build_provider_map};
@@ -12,7 +12,39 @@ use astral_llm_providers::{
     SharedLlmProvider,
 };
 
-pub fn build_fallback_policy(config: &AppConfig) -> FallbackPolicy {
+#[derive(Debug, Clone)]
+pub struct ProviderBootstrapConfig {
+    pub default_provider: ProviderKind,
+    pub fallback_policy: FallbackPolicy,
+    pub enable_fake_provider: bool,
+    pub default_request_timeout_ms: u64,
+    pub openai_base_url: String,
+    pub anthropic_base_url: String,
+    pub mistral_base_url: String,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ProviderBootstrapSecrets {
+    pub openai_api_key: Option<SecretString>,
+    pub anthropic_api_key: Option<SecretString>,
+    pub mistral_api_key: Option<SecretString>,
+}
+
+impl ProviderBootstrapSecrets {
+    pub fn has_openai(&self) -> bool {
+        secret_is_set(self.openai_api_key.as_ref())
+    }
+
+    pub fn has_anthropic(&self) -> bool {
+        secret_is_set(self.anthropic_api_key.as_ref())
+    }
+
+    pub fn has_mistral(&self) -> bool {
+        secret_is_set(self.mistral_api_key.as_ref())
+    }
+}
+
+pub fn build_fallback_policy(config: &ProviderBootstrapConfig) -> FallbackPolicy {
     config.fallback_policy.clone()
 }
 
@@ -31,10 +63,10 @@ pub fn build_capability_registry_with_db(
 }
 
 pub fn build_providers(
-    config: &AppConfig,
-    secrets: &ProviderSecrets,
+    config: &ProviderBootstrapConfig,
+    secrets: &ProviderBootstrapSecrets,
 ) -> Result<HashMap<ProviderKind, SharedLlmProvider>, String> {
-    let http_timeout = Duration::from_millis(config.limits.default_request_timeout_ms);
+    let http_timeout = Duration::from_millis(config.default_request_timeout_ms);
     let client = build_http_client(http_timeout);
 
     let mut providers: Vec<Arc<dyn LlmProvider>> = Vec::new();
@@ -90,4 +122,10 @@ pub fn build_providers(
     }
 
     Ok(build_provider_map(providers))
+}
+
+fn secret_is_set(secret: Option<&SecretString>) -> bool {
+    secret
+        .map(|value| !value.expose_secret().trim().is_empty())
+        .unwrap_or(false)
 }

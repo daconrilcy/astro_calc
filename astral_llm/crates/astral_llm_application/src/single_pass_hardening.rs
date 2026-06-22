@@ -244,7 +244,7 @@ impl GenerateReadingUseCase {
             reading,
             safety_policy,
             &request.astrologer_profile.forbidden_wording,
-            &self.catalog,
+            self.catalog.as_shared(),
         )
         .map_err(|mut violations| {
             if is_simplified {

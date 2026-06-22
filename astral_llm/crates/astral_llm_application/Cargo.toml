@@ -13,6 +13,7 @@ jsonschema.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+secrecy.workspace = true
 thiserror.workspace = true
 sha2.workspace = true
 hex.workspace = true
@@ -56,3 +57,7 @@ path = "../../../tests/trace_runtime_settings_tests.rs"
 [[test]]
 name = "reading_persistence_tests"
 path = "../../../tests/reading_persistence_tests.rs"
+
+[[test]]
+name = "astral_llm_catalog_view_tests"
+path = "../../../tests/astral_llm_catalog_view_tests.rs"

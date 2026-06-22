@@ -8,8 +8,11 @@ use astral_llm_api::{
 };
 
 use astral_llm_application::{
-    build_capability_registry_with_db, build_fallback_policy, build_providers,
+    build_capability_registry_with_db,
     prompt_trace::{configure_prompt_trace, PromptTraceSettings},
+    provider_factory::{
+        build_fallback_policy, build_providers, ProviderBootstrapConfig, ProviderBootstrapSecrets,
+    },
     raw_provider_trace::{configure_raw_provider_trace, RawProviderTraceSettings},
     shared_reading_persistence, GenerateReadingUseCase, IntegrationJobValidator, PromptCompiler,
     ProviderCircuitBreaker, ProviderRouter, ResponseValidator, SchemaRegistry,
@@ -54,8 +57,23 @@ async fn main() {
     let engine_defaults = config.engine_defaults();
     let limits = config.limits.clone();
     let privacy_policy = config.privacy_policy.clone();
+    let provider_bootstrap = ProviderBootstrapConfig {
+        default_provider: config.default_provider.clone(),
+        fallback_policy: config.fallback_policy.clone(),
+        enable_fake_provider: config.enable_fake_provider,
+        default_request_timeout_ms: config.limits.default_request_timeout_ms,
+        openai_base_url: config.openai_base_url.clone(),
+        anthropic_base_url: config.anthropic_base_url.clone(),
+        mistral_base_url: config.mistral_base_url.clone(),
+    };
+    let provider_secrets = ProviderBootstrapSecrets {
+        openai_api_key: secrets.openai_api_key.clone(),
+        anthropic_api_key: secrets.anthropic_api_key.clone(),
+        mistral_api_key: secrets.mistral_api_key.clone(),
+    };
 
-    let provider_map = build_providers(&config, &secrets).expect("LLM provider bootstrap failed");
+    let provider_map = build_providers(&provider_bootstrap, &provider_secrets)
+        .expect("LLM provider bootstrap failed");
 
     let mut bootstrap_catalog = CanonicalCatalog {
         astrological_domains: bootstrap_domains(),
@@ -114,7 +132,7 @@ async fn main() {
 
     let router = ProviderRouter::new(
         provider_map,
-        build_fallback_policy(&config),
+        build_fallback_policy(&provider_bootstrap),
         capability_registry,
         privacy_policy,
         circuit_breaker,

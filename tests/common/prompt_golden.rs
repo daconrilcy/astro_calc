@@ -1,5 +1,9 @@
-//! Verification que le prompt compile ne contient pas de PII ni d'injection.
+/// Verification que le prompt compile ne contient pas de PII ni d'injection.
 
+use astral_llm_application::astro_payload_normalizer::AstroPayloadNormalizer;
+use astral_llm_application::chapter_writing_guidance::ChapterWritingGuidance;
+use astral_llm_application::interpretation_profile_resolver::ResolvedInterpretationContext;
+use astral_llm_application::prompt_compiler::{PromptCompilationInput, PromptCompiler};
 use astral_llm_domain::{
     astrologer_profile::{JargonLevel, ToneProfile, WordingStyle},
     engine_params::EngineParams,
@@ -8,15 +12,9 @@ use astral_llm_domain::{
     provider::ProviderKind,
     AstroCalculationPayload, AstrologerProfile, PrivacyPolicy, SafetyPolicy,
 };
-
 use astral_llm_infra::{
     bootstrap_astro_object_labels, bootstrap_zodiac_sign_labels, CanonicalCatalog,
 };
-
-use crate::astro_payload_normalizer::AstroPayloadNormalizer;
-use crate::chapter_writing_guidance::ChapterWritingGuidance;
-use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
-use crate::prompt_compiler::{PromptCompilationInput, PromptCompiler};
 
 const FORBIDDEN_SUBSTRINGS: &[&str] = &[
     "1990-01-01",
@@ -280,6 +278,7 @@ pub fn assert_premium_plus_prompt_structure(prompts_root: &std::path::Path) -> R
     }
     Ok(())
 }
+
 pub fn assert_premium_compact_prompt_structure(
     prompts_root: &std::path::Path,
 ) -> Result<(), String> {

@@ -8,8 +8,6 @@ use astral_llm_domain::{
     EngineDefaults, GenerateReadingRequest, GenerationError, GenerationErrorCode, PrivacyPolicy,
     ProviderKind, PublicTokenUsage, SafetyMode, ServiceLimits, TokenUsage,
 };
-use astral_llm_infra::SharedCanonicalCatalog;
-
 use astral_llm_providers::{GenerationMetadata, ProviderGenerationRequest};
 use chrono::Utc;
 
@@ -27,6 +25,7 @@ use crate::prompt_compiler::{PromptCompilationInput, PromptCompiler};
 use crate::prompt_trace;
 use crate::provider_router::ProviderRouter;
 use crate::provider_schema_compiler::ProviderSchemaCompiler;
+use crate::reading_catalog::ReadingCatalog;
 use crate::reading_persistence::{
     hash_json_value, priced_usage_records, PersistedGenerationRunRecord, PersistedRunStatus,
     PersistedSafetyStatus, SharedReadingPersistence,
@@ -51,7 +50,7 @@ pub struct GenerateReadingUseCase {
     validator: ResponseValidator,
     engine_defaults: EngineDefaults,
     limits: ServiceLimits,
-    pub(super) catalog: SharedCanonicalCatalog,
+    pub(super) catalog: ReadingCatalog,
     privacy_policy: PrivacyPolicy,
     legacy_product_code_shim_available: bool,
     persistence: Option<SharedReadingPersistence>,
@@ -92,7 +91,7 @@ impl GenerateReadingUseCase {
         validator: ResponseValidator,
         engine_defaults: EngineDefaults,
         limits: ServiceLimits,
-        catalog: SharedCanonicalCatalog,
+        catalog: impl Into<ReadingCatalog>,
         privacy_policy: PrivacyPolicy,
         legacy_product_code_shim_available: bool,
         persistence: Option<SharedReadingPersistence>,
@@ -103,7 +102,7 @@ impl GenerateReadingUseCase {
             validator,
             engine_defaults,
             limits,
-            catalog,
+            catalog: catalog.into(),
             privacy_policy,
             legacy_product_code_shim_available,
             persistence,
@@ -111,7 +110,7 @@ impl GenerateReadingUseCase {
     }
 
     /// Normalise la requete (shim legacy + `generation_mode` depuis le profil) avant idempotence / rate limit.
-    pub fn catalog(&self) -> &SharedCanonicalCatalog {
+    pub fn catalog(&self) -> &ReadingCatalog {
         &self.catalog
     }
 
@@ -129,13 +128,16 @@ impl GenerateReadingUseCase {
     ) -> Result<(), GenerationError> {
         InterpretationProfileResolver::normalize_request(
             request,
-            &self.catalog,
+            self.catalog.as_shared(),
             self.legacy_product_code_shim_available,
         )
     }
 
     pub fn requires_premium_rate_limit(&self, request: &GenerateReadingRequest) -> bool {
-        InterpretationProfileResolver::requires_premium_rate_limit(request, &self.catalog)
+        InterpretationProfileResolver::requires_premium_rate_limit(
+            request,
+            self.catalog.as_shared(),
+        )
     }
 
     pub async fn execute(&self, request: GenerateReadingRequest) -> GenerateReadingResponse {
@@ -243,13 +245,16 @@ impl GenerateReadingUseCase {
         // Idempotent : l'API peut deja avoir appele prepare_request().
         InterpretationProfileResolver::normalize_request(
             &mut request,
-            &self.catalog,
+            self.catalog.as_shared(),
             self.legacy_product_code_shim_available,
         )?;
-        RequestValidator::validate(&request, &self.limits, &self.catalog)?;
+        RequestValidator::validate(&request, &self.limits, self.catalog.as_shared())?;
 
-        let service_defaults =
-            resolve_service_engine_defaults(&self.engine_defaults, &self.catalog, &request);
+        let service_defaults = resolve_service_engine_defaults(
+            &self.engine_defaults,
+            self.catalog.as_shared(),
+            &request,
+        );
         let mut engine = resolve_engine_params(
             &request.engine,
             &service_defaults,
@@ -269,7 +274,7 @@ impl GenerateReadingUseCase {
 
         let validated = InterpretationProfileResolver::validate_product(
             &request,
-            &self.catalog,
+            self.catalog.as_shared(),
             &engine.provider,
             &engine.model,
         )?;
@@ -313,7 +318,7 @@ impl GenerateReadingUseCase {
         let astro_facts = AstroPayloadNormalizer::normalize(
             &request.astro_result,
             &self.privacy_policy,
-            &self.catalog,
+            self.catalog.as_shared(),
             &request.product_context.user_language,
         )?;
 
@@ -324,7 +329,7 @@ impl GenerateReadingUseCase {
         let safety_policy =
             SafetyResolver::resolve(&product_default, request.safety_policy.as_ref());
 
-        SafetyGuard::validate_request(&request, &safety_policy, &self.catalog).map_err(
+        SafetyGuard::validate_request(&request, &safety_policy, self.catalog.as_shared()).map_err(
             |violations| {
                 GenerationError::with_details(
                     GenerationErrorCode::SafetyRejected,
@@ -376,7 +381,7 @@ impl GenerateReadingUseCase {
             GenerationMode::SinglePass => {
                 let domains = DomainResolver::resolve(
                     &request,
-                    &self.catalog,
+                    self.catalog.as_shared(),
                     &self.limits,
                     product_policy,
                     interpretation,
@@ -404,7 +409,7 @@ impl GenerateReadingUseCase {
             AstroBasisValidator::validate_chapters(
                 &reading.chapters,
                 &astro_facts,
-                &self.catalog,
+                self.catalog.as_shared(),
                 product_policy,
             )?;
         }
@@ -430,7 +435,7 @@ impl GenerateReadingUseCase {
                 &reading,
                 &safety_policy,
                 &request.astrologer_profile.forbidden_wording,
-                &self.catalog,
+                self.catalog.as_shared(),
             )
             .map_err(|violations| {
                 GenerationError::with_details(
@@ -497,7 +502,7 @@ impl GenerateReadingUseCase {
         let mut violations = blocked_sign_affirmation_violations(
             reading,
             &blocked,
-            &self.catalog,
+            self.catalog.as_shared(),
             &request.product_context.user_language,
         );
         violations.extend(profile_excluded_affirmation_violations(
@@ -550,7 +555,7 @@ impl GenerateReadingUseCase {
                 selected_domains: domains,
                 chapter_code,
                 chapter_evidence_pack: None,
-                catalog: &self.catalog,
+                catalog: self.catalog.as_shared(),
                 interpretation,
                 repair_instruction,
             })
