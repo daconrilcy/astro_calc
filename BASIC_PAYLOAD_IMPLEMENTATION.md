@@ -1206,26 +1206,6 @@ Reviews:
 - `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-MAINTAINABILITY-IMPLEMENTATION-2026-06-19-followup-1.md`
 - `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-MAINTAINABILITY-IMPLEMENTATION-2026-06-19-followup-2.md`
 
-## 2026-06-22 - astral_llm Phase 1: calculator port boundary
-
-Resume court:
-- introduction du port applicatif `CalculatorPort` dans `astral_llm/crates/astral_llm_application/src/core/calculator.rs`;
-- bascule de `IntegrationJobExecutor` et des orchestrateurs horoscope sur ce port au lieu d'un couplage direct a `astral_llm_infra::CalculatorClient`;
-- conservation d'une implementation locale du port pour `astral_llm_infra::CalculatorClient` afin de fermer la slice sans creer de cycle de crates;
-- maintien du miroir minimal des `workspace.dependencies` dans `astral_llm/Cargo.toml` pour garder le workspace imbrique compilable comme le parent, sans reintroduire de nouveau membre runtime dans cette vague.
-
-Invariants de couche:
-- `astral_llm_application` possede le contrat de port; `astral_llm_infra` reste proprietaire du client HTTP concret;
-- `integration_job_executor.rs` et `horoscope/orchestrators.rs` ne doivent plus importer `CalculatorClient` ni `astral_llm_infra`;
-- aucun changement de contrat JSON public, de payload persiste, ni de composition runtime API/worker dans cette vague;
-- la vague depasse le budget initial de 3 fichiers de production d'un fichier technique minimal (`src/core/mod.rs`) pour exposer le nouveau module de port.
-
-Commandes de verification:
-- `cargo metadata --manifest-path astral_llm/Cargo.toml --format-version 1 --no-deps`
-- `cargo test -p astral_llm_application --test integration_job_executor_tests`
-- `cargo test -p astral_llm_application --test horoscope_application_builders_tests`
-- `rg -n "CalculatorClient|astral_llm_infra" astral_llm/crates/astral_llm_application/src/integration_job_executor.rs astral_llm/crates/astral_llm_application/src/horoscope/orchestrators.rs`
-
 ## 2026-06-22 - astral_llm Phase 1: trace runtime settings boundary
 
 Resume court:
@@ -1271,19 +1251,19 @@ Commandes de verification:
 - `cargo test -p astral_llm_api --test astral_llm_editorial_fixtures --no-run`
 - `cargo test -p astral_llm_application --no-run`
 
-## 2026-06-22 - astral_llm workspace alignment: nested worker membership
+# 2026-06-22 - `astral_llm` Phase 1: worker workspace boundary governance
 
-Resume court:
-- ajout de `crates/astral_llm_worker` dans le workspace imbrique `astral_llm/Cargo.toml` pour aligner le perimetre local avec les crates Rust presentes dans `astral_llm/crates/`;
-- regeneration du lockfile imbrique pour inclure le package `astral_llm_worker`;
-- mise a jour de `astral_llm/README.md` et `astral_llm/RAILGUARD.md` pour documenter l'usage du workspace imbrique, le role du workspace parent et les commandes de verification associees.
+- Locked the current workspace-scope decision with a root governance test: `astral_llm_worker` stays a member of the parent workspace `Cargo.toml`, remains absent from the nested `astral_llm/Cargo.toml`, and this split must stay documented in `astral_llm/README.md` and `astral_llm/RAILGUARD.md`.
+- Kept the runtime untouched; this wave only guards manifest/documentation invariants so later refactors do not accidentally assume `cd astral_llm` covers worker verification.
 
 Invariants de couche:
-- aucun changement de comportement runtime, de contrat JSON public, de payload persiste, ni de wiring fonctionnel API/worker dans cette vague;
-- le workspace parent reste le point d'entree recommande pour les changements qui debordent `astral_llm/`, Docker ou l'integration API+worker;
-- toute vague `astral_llm` qui modifie manifestes, railguard ou documentation de workspace doit etre journalisee ici, meme sans changement de logique Rust.
+- `astral_llm_worker` verification continues from the repository root unless a dedicated manifest slice changes membership intentionally;
+- worker workspace-shape changes require synchronized updates to the nested manifest narrative, README, railguard, and governance checks;
+- no JSON contract, boot path, or application/infra dependency direction changes in this wave.
 
 Commandes de verification:
-- `cargo metadata --format-version 1 --no-deps` depuis `astral_llm/`
-- `cargo test -p astral_llm_worker --no-run` depuis `astral_llm/`
-- `cargo test -p astral_llm_worker --no-run` depuis la racine du depot
+- `cargo metadata --format-version 1 --no-deps`
+- `cd astral_llm; cargo metadata --format-version 1 --no-deps`
+- `cargo test -p astral_llm_worker --no-run`
+- `cargo test -p astral_calculator --test refactor_governance_tests astral_llm_worker_workspace_boundary_stays_explicit`
+- `rg -n "astral_llm_worker" Cargo.toml astral_llm/Cargo.toml astral_llm/README.md astral_llm/RAILGUARD.md`

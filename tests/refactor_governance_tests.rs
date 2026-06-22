@@ -597,6 +597,43 @@ fn internal_code_uses_calculate_chart_instead_of_legacy_calculate_natal() {
 }
 
 #[test]
+fn astral_llm_worker_workspace_boundary_stays_explicit() {
+    let root_manifest = workspace_root().join("Cargo.toml");
+    let nested_manifest = workspace_root().join("astral_llm/Cargo.toml");
+    let readme = workspace_root().join("astral_llm/README.md");
+    let railguard = workspace_root().join("astral_llm/RAILGUARD.md");
+
+    let root_manifest_content = read(&root_manifest);
+    let nested_manifest_content = read(&nested_manifest);
+    let readme_content = read(&readme);
+    let railguard_content = read(&railguard);
+
+    assert!(
+        root_manifest_content.contains("\"astral_llm/crates/astral_llm_worker\""),
+        "{} must keep astral_llm_worker in the parent workspace member list",
+        root_manifest.display()
+    );
+    assert!(
+        !nested_manifest_content.contains("\"crates/astral_llm_worker\""),
+        "{} must not silently re-add astral_llm_worker without an explicit manifest/documentation slice",
+        nested_manifest.display()
+    );
+    assert!(
+        readme_content.contains("ne reference pas `astral_llm_worker`")
+            && readme_content.contains("verifier depuis la racine du depot"),
+        "{} must document that the nested workspace excludes astral_llm_worker and that verification happens from the repository root",
+        readme.display()
+    );
+    assert!(
+        railguard_content.contains("not a member of the nested")
+            && railguard_content
+                .contains("Parent-workspace commands are required for `astral_llm_worker`"),
+        "{} must keep the worker boundary and parent-workspace verification rule explicit",
+        railguard.display()
+    );
+}
+
+#[test]
 fn position_fact_json_shaping_lives_in_domain_chart_facts() {
     let root = workspace_root().join("astral_calculator/src");
     let ephemeris = read(&root.join("astrology/ephemeris.rs"));
