@@ -1406,3 +1406,47 @@ Commandes de verification:
 - `rg -n "prompt_golden|assert_compiled_prompt_is_safe|assert_premium_plus_prompt_structure|assert_premium_compact_prompt_structure" astral_llm/crates/astral_llm_application/src`
 - `cargo test -p astral_llm_api --test prompt_golden_tests`
 - `cargo test -p astral_llm_application --test trace_runtime_settings_tests`
+
+## 2026-06-22 - astral_llm Phase 1: provider bootstrap boundary
+
+Resume court:
+- suppression des types infra `AppConfig` et `ProviderSecrets` de `astral_llm_application::provider_factory`;
+- introduction de DTOs applicatifs minimaux `ProviderBootstrapConfig` et `ProviderBootstrapSecrets` limites au bootstrap provider (fallback policy, provider par defaut, fake provider, timeout HTTP, base URLs, API keys);
+- adaptation de `astral_llm_api/src/main.rs` et `astral_llm_worker/src/main.rs` pour traduire explicitement les types infra vers ces DTOs a la composition root;
+- aucun changement sur la selection provider, la logique de fallback, les catalogs, la persistence, les contrats JSON publics, ni le wiring manifest workspace.
+
+Invariants de couche:
+- `astral_llm_application/src/provider_factory.rs` ne doit plus importer ni nommer `astral_llm_infra::AppConfig` ou `ProviderSecrets`;
+- la traduction `AppConfig`/`ProviderSecrets` -> DTOs applicatifs reste bornee a `astral_llm_api` et `astral_llm_worker`;
+- le bootstrap provider conserve le meme comportement: meme timeout HTTP, memes base URLs, memes cles provider, meme regle fake-provider et meme `FallbackPolicy`;
+- aucun nouveau test inline n'est ajoute sous `src/`; la verification reste dans les commandes racine ciblees.
+
+Commandes de verification:
+- `cargo fmt --package astral_llm_application --package astral_llm_api --package astral_llm_worker`
+- `rg -n "AppConfig|ProviderSecrets|astral_llm_infra" astral_llm/crates/astral_llm_application/src/provider_factory.rs`
+- `rg -n "build_providers|build_fallback_policy" astral_llm/crates/astral_llm_application/src/provider_factory.rs astral_llm/crates/astral_llm_api/src/main.rs astral_llm/crates/astral_llm_worker/src/main.rs`
+- `cargo test -p astral_llm_application`
+- `cargo test -p astral_llm_api --test astral_llm_tests`
+- `cargo test -p astral_llm_worker --no-run`
+## 2026-06-22 - astral_llm Phase 1b: application hash helper boundary
+
+Resume court:
+- ajout d'un helper applicatif `reading_persistence::hash_json_value(&serde_json::Value) -> String` pour sortir le hash JSON de la dependance directe a `astral_llm_infra` dans les modules de feature/runtime;
+- remplacement des usages dans `generate_reading_use_case.rs` et `horoscope/mod.rs` par le helper applicatif;
+- conservation de l'algo canonique existant: `serde_json::to_vec(value).unwrap_or_default()`, SHA-256, encodage hex;
+- aucun changement des contrats JSON publics, traces de prompt, traces provider brutes, tables de persistence ou enveloppes de job.
+
+Invariants de couche:
+- `astral_llm_application` expose le helper de hash localement via `reading_persistence` et ne depend plus de `astral_llm_infra::hash_json` pour ces chemins;
+- `reading_persistence/infra_adapter.rs` reste le glue temporaire application -> infra pour la persistence runtime;
+- aucune logique de `RunPersistence`, `SharedCanonicalCatalog`, `provider_factory`, composition API/worker, exports racine, ni des gros fichiers `chapter_orchestrator.rs` / `writer.rs` n'est modifiee par cette vague;
+- aucun nouveau test inline dans `src/`; la couverture se trouve dans les tests racine.
+
+Commandes de verification:
+- `cargo fmt --package astral_llm_application`
+- `cargo test -p astral_llm_application`
+- `cargo test -p astral_llm_application --test reading_persistence_tests`
+- `cargo test -p astral_llm_api --test astral_llm_tests`
+- `cargo test -p astral_llm_api --test integration_jobs_tests`
+- `cargo test -p astral_llm_worker --no-run`
+- `Select-String -Path astral_llm\\crates\\astral_llm_application\\src\\generate_reading_use_case.rs,astral_llm\\crates\\astral_llm_application\\src\\horoscope\\mod.rs -Pattern 'astral_llm_infra::hash_json|hash_json'`
