@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use astral_llm_application::reading_persistence::{
-    hash_json_value, PersistedGenerationRunRecord, PersistedPromptTraceRecord,
+    stable_json_digest, PersistedGenerationRunRecord, PersistedPromptTraceRecord,
     PersistedTokenUsageRecord, ReadingPersistence, ReadingPersistenceError,
 };
 use astral_llm_application::{
@@ -387,7 +387,7 @@ async fn provider_router_persists_retry_prompt_traces_without_database() {
 }
 
 #[test]
-fn hash_json_value_matches_persisted_hash_algorithm() {
+fn stable_json_digest_matches_persisted_hash_algorithm() {
     let value = json!({
         "product_code": "natal_prompter",
         "input": { "user_language": "fr", "domains": ["identity", "career"] },
@@ -395,10 +395,10 @@ fn hash_json_value_matches_persisted_hash_algorithm() {
     });
 
     assert_eq!(
-        hash_json_value(&value),
+        stable_json_digest(&value),
         "8beed392f8aa383b2898614e0b5903a80e9eceaae4c13cc5a1f657062433bd95"
     );
-    assert_eq!(hash_json_value(&value), hash_json_value(&value));
+    assert_eq!(stable_json_digest(&value), stable_json_digest(&value));
 }
 
 #[tokio::test]

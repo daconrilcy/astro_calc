@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use astral_llm_application::reading_catalog::ReadingCatalog;
 use astral_llm_domain::integration::{CalculationMode, IntegrationService, ServiceAvailability};
-use astral_llm_infra::CanonicalCatalog;
+use astral_llm_infra::{bootstrap_evidence_catalog, CanonicalCatalog};
 
 #[test]
-fn reading_catalog_keeps_shared_catalog_access_for_reading_paths() {
+fn reading_catalog_exposes_application_owned_reading_views() {
     let mut base = CanonicalCatalog::default();
     base.integration_services.insert(
         "natal".into(),
@@ -47,8 +47,29 @@ fn reading_catalog_keeps_shared_catalog_access_for_reading_paths() {
     assert_eq!(
         catalog
             .integration_service("natal")
-            .expect("shared catalog access preserved")
+            .expect("reading catalog keeps integration service lookup")
             .service_code,
         "natal"
+    );
+}
+
+#[test]
+fn reading_catalog_views_expose_role_and_evidence_access_without_direct_infra_types() {
+    let mut base = CanonicalCatalog::default();
+    base.astro_basis_roles.insert("core".into());
+    base.astro_basis_roles.insert("supporting".into());
+    base.evidence = bootstrap_evidence_catalog();
+
+    let catalog = ReadingCatalog::new(Arc::new(base));
+    let roles = catalog.astro_basis_roles_view().allowed_roles();
+    let identity_slots = catalog
+        .evidence_catalog_view()
+        .slots_for_chapter("identity");
+
+    assert!(roles.contains("core"));
+    assert!(roles.contains("supporting"));
+    assert!(
+        !identity_slots.is_empty(),
+        "identity chapter should expose evidence slots through the application view"
     );
 }

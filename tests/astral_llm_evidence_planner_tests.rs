@@ -1,10 +1,11 @@
 //! Tests couche evidence Premium : pool, packs, rejet payload minimal.
 
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use astral_llm_application::{
-    pool_richness_check, AstroPayloadNormalizer, ChapterEvidencePlanner,
-    InterpretiveEvidenceBuilder, ReadingPlanBuilder,
+    pool_richness_check, reading_catalog::ReadingCatalog, AstroPayloadNormalizer,
+    ChapterEvidencePlanner, InterpretiveEvidenceBuilder, ReadingPlanBuilder,
 };
 use astral_llm_domain::{
     astro_fact::NormalizedAstroFacts,
@@ -26,6 +27,10 @@ fn catalog_with_evidence() -> CanonicalCatalog {
     c.astro_object_labels = bootstrap_astro_object_labels();
     c.zodiac_sign_labels = bootstrap_zodiac_sign_labels();
     c
+}
+
+fn reading_catalog(catalog: &CanonicalCatalog) -> ReadingCatalog {
+    ReadingCatalog::new(Arc::new(catalog.clone()))
 }
 
 fn minimal_payload() -> AstroCalculationPayload {
@@ -185,8 +190,13 @@ fn premium_rich_pool_plans_distinct_chapters() {
         "growth_path".into(),
     ];
     let plan = ReadingPlanBuilder::build(&request, &domains, None);
-    let packs =
-        ChapterEvidencePlanner::plan_all(&pool, &plan, &catalog.evidence, &policy).expect("plan");
+    let packs = ChapterEvidencePlanner::plan_all(
+        &pool,
+        &plan,
+        reading_catalog(&catalog).evidence_catalog_view(),
+        &policy,
+    )
+    .expect("plan");
     assert_eq!(packs.len(), 5);
     let core_sets: Vec<HashSet<_>> = packs
         .iter()
@@ -219,8 +229,13 @@ fn later_chapters_exclude_prior_chapter_fact_ids_from_pack() {
         ],
         None,
     );
-    let packs =
-        ChapterEvidencePlanner::plan_all(&pool, &plan, &catalog.evidence, &policy).expect("plan");
+    let packs = ChapterEvidencePlanner::plan_all(
+        &pool,
+        &plan,
+        reading_catalog(&catalog).evidence_catalog_view(),
+        &policy,
+    )
+    .expect("plan");
 
     let emotional = packs
         .iter()
@@ -275,7 +290,7 @@ fn relationships_pack_prefers_descendant_ruler_not_mc() {
     let packs = ChapterEvidencePlanner::plan_all(
         &pool,
         &plan,
-        &catalog.evidence,
+        reading_catalog(&catalog).evidence_catalog_view(),
         &catalog.evidence.premium_policy,
     )
     .expect("plan");
@@ -321,7 +336,7 @@ fn career_pack_prefers_mc_ruler_when_in_pool() {
     let packs = ChapterEvidencePlanner::plan_all(
         &pool,
         &plan,
-        &catalog.evidence,
+        reading_catalog(&catalog).evidence_catalog_view(),
         &catalog.evidence.premium_policy,
     )
     .expect("plan");
@@ -356,7 +371,7 @@ fn identity_pack_excludes_sun() {
     let packs = ChapterEvidencePlanner::plan_all(
         &pool,
         &plan,
-        &catalog.evidence,
+        reading_catalog(&catalog).evidence_catalog_view(),
         &catalog.evidence.premium_policy,
     )
     .unwrap();
@@ -388,7 +403,7 @@ fn emotional_excludes_aspect_already_in_identity_pack() {
     let packs = ChapterEvidencePlanner::plan_all(
         &pool,
         &plan,
-        &catalog.evidence,
+        reading_catalog(&catalog).evidence_catalog_view(),
         &catalog.evidence.premium_policy,
     )
     .unwrap();
@@ -436,7 +451,7 @@ fn signal_sun_and_placement_sun_not_both_in_same_chapter_pack() {
     let packs = ChapterEvidencePlanner::plan_all(
         &pool,
         &plan,
-        &catalog.evidence,
+        reading_catalog(&catalog).evidence_catalog_view(),
         &catalog.evidence.premium_policy,
     )
     .unwrap();
@@ -464,7 +479,7 @@ fn prompt_pack_labels_localized_for_fr() {
     let packs = ChapterEvidencePlanner::plan_all(
         &pool,
         &plan,
-        &catalog.evidence,
+        reading_catalog(&catalog).evidence_catalog_view(),
         &catalog.evidence.premium_policy,
     )
     .unwrap();
@@ -492,7 +507,7 @@ fn prompt_pack_humanizes_ruler_labels_in_french() {
     let packs = ChapterEvidencePlanner::plan_all(
         &pool,
         &plan,
-        &catalog.evidence,
+        reading_catalog(&catalog).evidence_catalog_view(),
         &catalog.evidence.premium_policy,
     )
     .unwrap();
@@ -543,8 +558,13 @@ fn sun_supporting_semantic_key_capped_at_three_chapters() {
         ],
         None,
     );
-    let packs =
-        ChapterEvidencePlanner::plan_all(&pool, &plan, &catalog.evidence, &policy).expect("plan");
+    let packs = ChapterEvidencePlanner::plan_all(
+        &pool,
+        &plan,
+        reading_catalog(&catalog).evidence_catalog_view(),
+        &policy,
+    )
+    .expect("plan");
 
     let mut supporting_chapters_by_key: std::collections::HashMap<String, u8> =
         std::collections::HashMap::new();
@@ -582,7 +602,7 @@ fn prompt_pack_smaller_than_global_facts_block() {
     let packs = ChapterEvidencePlanner::plan_all(
         &pool,
         &plan,
-        &catalog.evidence,
+        reading_catalog(&catalog).evidence_catalog_view(),
         &catalog.evidence.premium_policy,
     )
     .unwrap();
@@ -615,8 +635,13 @@ fn premium_plus_rich_pool_plans_synthesis_with_global_dominants() {
     let domains = ctx.profile.astrological_chapter_types();
     let plan = ReadingPlanBuilder::build(&request, &domains, Some(&ctx));
     assert_eq!(plan.chapters.len(), 9);
-    let packs = ChapterEvidencePlanner::plan_all(&pool, &plan, &catalog.evidence, &policy)
-        .expect("plan all chapters");
+    let packs = ChapterEvidencePlanner::plan_all(
+        &pool,
+        &plan,
+        reading_catalog(&catalog).evidence_catalog_view(),
+        &policy,
+    )
+    .expect("plan all chapters");
     let synthesis = packs
         .iter()
         .find(|p| p.chapter_code == "synthesis")

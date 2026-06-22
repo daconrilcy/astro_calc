@@ -1,5 +1,10 @@
 use std::collections::HashSet;
 
+use crate::evidence_fact_parse::{
+    aspect_involves_object, fact_involves_house, fact_involves_object,
+};
+use crate::prior_chapter_usage::PriorChapterUsage;
+use crate::reading_catalog::EvidenceCatalogView;
 use astral_llm_domain::{
     chapter_orchestration::ReadingPlan,
     interpretation_profile::SYNTHESIS_CHAPTER_CODE,
@@ -9,12 +14,6 @@ use astral_llm_domain::{
     },
     GenerationError, GenerationErrorCode,
 };
-use astral_llm_infra::EvidenceCanonicalCatalog;
-
-use crate::evidence_fact_parse::{
-    aspect_involves_object, fact_involves_house, fact_involves_object,
-};
-use crate::prior_chapter_usage::PriorChapterUsage;
 
 pub struct ChapterEvidencePlanner;
 
@@ -22,7 +21,7 @@ impl ChapterEvidencePlanner {
     pub fn plan_all(
         pool: &InterpretiveEvidencePool,
         plan: &ReadingPlan,
-        catalog: &EvidenceCanonicalCatalog,
+        catalog: EvidenceCatalogView<'_>,
         policy: &PremiumEvidencePolicy,
     ) -> Result<Vec<ChapterEvidencePack>, GenerationError> {
         let mut packs = Vec::new();
@@ -41,7 +40,7 @@ impl ChapterEvidencePlanner {
     fn plan_chapter(
         pool: &InterpretiveEvidencePool,
         chapter_code: &str,
-        catalog: &EvidenceCanonicalCatalog,
+        catalog: EvidenceCatalogView<'_>,
         policy: &PremiumEvidencePolicy,
         prior_usage: &PriorChapterUsage,
     ) -> Result<ChapterEvidencePack, GenerationError> {
@@ -286,7 +285,7 @@ fn supporting_semantic_cap_blocks(
     ev: &InterpretiveEvidence,
     chapter_code: &str,
     policy: &PremiumEvidencePolicy,
-    catalog: &EvidenceCanonicalCatalog,
+    catalog: EvidenceCatalogView<'_>,
     pool: &InterpretiveEvidencePool,
 ) -> bool {
     if supporting_cap_exempt_for_chapter(ev, chapter_code, catalog, pool) {
@@ -301,7 +300,7 @@ fn supporting_semantic_cap_blocks(
 fn supporting_cap_exempt_for_chapter(
     ev: &InterpretiveEvidence,
     chapter_code: &str,
-    catalog: &EvidenceCanonicalCatalog,
+    catalog: EvidenceCatalogView<'_>,
     pool: &InterpretiveEvidencePool,
 ) -> bool {
     if ev.kind_code != "house_ruler" {
@@ -328,7 +327,7 @@ fn pick_for_slot<'a>(
     prior_avoid: &HashSet<&str>,
     prior_usage: &PriorChapterUsage,
     policy: &PremiumEvidencePolicy,
-    catalog: &EvidenceCanonicalCatalog,
+    catalog: EvidenceCatalogView<'_>,
     pool: &InterpretiveEvidencePool,
 ) -> Vec<InterpretiveEvidence> {
     let cap_supporting = slot.slot_role == EvidenceSlotRole::Supporting;
@@ -420,14 +419,14 @@ struct PackPushContext<'a> {
     prior_usage: &'a PriorChapterUsage,
     chapter_code: &'a str,
     policy: &'a PremiumEvidencePolicy,
-    catalog: &'a EvidenceCanonicalCatalog,
+    catalog: EvidenceCatalogView<'a>,
     pool: &'a InterpretiveEvidencePool,
 }
 
 fn inject_blocking_requirements(
     pool: &InterpretiveEvidencePool,
     chapter_code: &str,
-    catalog: &EvidenceCanonicalCatalog,
+    catalog: EvidenceCatalogView<'_>,
     _candidates: &[&InterpretiveEvidence],
     policy: &PremiumEvidencePolicy,
     prior_usage: &PriorChapterUsage,
@@ -511,7 +510,7 @@ fn collect_families(
 fn eligible_candidates<'a>(
     candidates: &[&'a InterpretiveEvidence],
     chapter: &str,
-    catalog: &EvidenceCanonicalCatalog,
+    catalog: EvidenceCatalogView<'_>,
     assigned: &HashSet<String>,
     assigned_semantic: &HashSet<String>,
     prior_avoid: &HashSet<&str>,
@@ -639,7 +638,7 @@ fn fill_minimums(
     candidates: &[&InterpretiveEvidence],
     chapter: &str,
     policy: &PremiumEvidencePolicy,
-    catalog: &EvidenceCanonicalCatalog,
+    catalog: EvidenceCatalogView<'_>,
     pool: &InterpretiveEvidencePool,
     prior_usage: &PriorChapterUsage,
     core: &mut Vec<InterpretiveEvidence>,

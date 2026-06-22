@@ -19,7 +19,8 @@ use crate::astro_basis_validator::AstroBasisValidator;
 use crate::astro_label_humanizer::AstroLabelHumanizer;
 use crate::chapter_evidence_basis_enricher::ChapterEvidenceBasisEnricher;
 use crate::chapter_evidence_coherence::ChapterEvidenceCoherence;
-use crate::chapter_evidence_planner::{pack_for_chapter, ChapterEvidencePlanner};
+use crate::chapter_evidence_planner::pack_for_chapter;
+use crate::chapter_evidence_planner::ChapterEvidencePlanner;
 use crate::chapter_quality_repair::{
     append_repair_instructions, is_min_words_violation, length_repair_from_error,
     maybe_repair_repetition, retry_chapter_on_min_words, ChapterRepairKind,
@@ -101,7 +102,7 @@ impl<'a> ChapterOrchestrator<'a> {
     ) -> Result<OrchestratedResult, GenerationError> {
         let domains = DomainResolver::resolve(
             request,
-            self.catalog.as_shared(),
+            self.catalog.shared_catalog(),
             self.limits,
             product_policy,
             interpretation,
@@ -117,26 +118,34 @@ impl<'a> ChapterOrchestrator<'a> {
         let writing_locale =
             AstroLabelHumanizer::locale_key(&request.product_context.user_language);
 
-        let pool =
-            InterpretiveEvidenceBuilder::build(astro_facts, &self.catalog.as_shared().evidence)?;
+        let pool = InterpretiveEvidenceBuilder::build(
+            astro_facts,
+            &self.catalog.shared_catalog().evidence,
+        )?;
         let evidence_enabled = evidence_enabled_for_request(interpretation);
         let evidence_policy = interpretation
             .and_then(|ctx| ctx.profile.to_premium_evidence_policy())
-            .unwrap_or_else(|| self.catalog.as_shared().evidence.premium_policy.clone());
+            .unwrap_or_else(|| {
+                self.catalog
+                    .shared_catalog()
+                    .evidence
+                    .premium_policy
+                    .clone()
+            });
 
         let mut requirement_audit = Vec::new();
         let chapter_packs = if evidence_enabled {
             let packs = ChapterEvidencePlanner::plan_all(
                 &pool,
                 &plan,
-                &self.catalog.as_shared().evidence,
+                self.catalog.evidence_catalog_view(),
                 &evidence_policy,
             )?;
             requirement_audit = EvidenceDiversityValidator::validate_packs_planned(
                 evidence_enabled,
                 &pool,
                 &packs,
-                &self.catalog.as_shared().evidence,
+                &self.catalog.shared_catalog().evidence,
                 &evidence_policy,
             )?;
             packs
@@ -430,7 +439,7 @@ impl<'a> ChapterOrchestrator<'a> {
         drop_unsupported_reasoning(&mut summary_engine, registry);
         drop_unsupported_temperature(&mut summary_engine, registry);
         let synthesizer =
-            SummarySynthesizer::new(self.router, self.validator, self.catalog.as_shared());
+            SummarySynthesizer::new(self.router, self.validator, self.catalog.shared_catalog());
         const MAX_SUMMARY_ATTEMPTS: usize = 2;
         const SUMMARY_STYLE_REPAIR: &str = "Rewrite title and short_text without banned poetic \
             clichés (e.g. liane de constance), divinatory wording, or mechanical formulas. \
@@ -477,7 +486,7 @@ impl<'a> ChapterOrchestrator<'a> {
                         &fallback_corpus,
                         safety_policy,
                         &request.astrologer_profile.forbidden_wording,
-                        self.catalog.as_shared(),
+                        self.catalog.shared_catalog(),
                     )
                     .map_err(|violations| {
                         GenerationError::with_details(
@@ -534,7 +543,7 @@ impl<'a> ChapterOrchestrator<'a> {
                 let final_synthesizer = FinalSynthesisSynthesizer::new(
                     self.router,
                     self.validator,
-                    self.catalog.as_shared(),
+                    self.catalog.shared_catalog(),
                 );
                 const MAX_SYNTHESIS_ATTEMPTS: usize = 2;
                 let mut synthesis_repair: Option<crate::chapter_quality_repair::ChapterRepairKind> =
@@ -734,7 +743,7 @@ impl<'a> ChapterOrchestrator<'a> {
             )
             .await?;
 
-            let planet_names = AstroLabelHumanizer::new(self.catalog.as_shared())
+            let planet_names = AstroLabelHumanizer::new(self.catalog.canonical_catalog())
                 .natal_planet_display_names(writing_locale);
             let mut raw_placement_warnings =
                 ReadingOpeningDiversityValidator::detect_raw_placement_warnings(
@@ -1111,16 +1120,17 @@ impl<'a> ChapterOrchestrator<'a> {
             &engine.model,
         )?;
 
+        let selected_domains = [chapter.code.clone()];
         let mut bundle = self
             .compiler
             .compile(PromptCompilationInput {
                 request,
                 safety_policy,
                 astro_facts,
-                selected_domains: &[chapter.code.clone()],
+                selected_domains: &selected_domains,
                 chapter_code: Some(&chapter.code),
                 chapter_evidence_pack: chapter_pack,
-                catalog: self.catalog.as_shared(),
+                catalog: self.catalog.shared_catalog(),
                 interpretation,
                 repair_instruction: None,
             })
@@ -1333,7 +1343,7 @@ impl<'a> ChapterOrchestrator<'a> {
             );
         }
 
-        AstroLabelHumanizer::new(self.catalog.as_shared()).enrich_chapter_astro_basis(
+        AstroLabelHumanizer::new(self.catalog.canonical_catalog()).enrich_chapter_astro_basis(
             &mut reading_chapter.astro_basis,
             astro_facts,
             &request.product_context.user_language,
@@ -1347,14 +1357,14 @@ impl<'a> ChapterOrchestrator<'a> {
         reading_chapter.body = crate::safety_guard::ensure_symbolic_framing_text(
             &reading_chapter.body,
             &request.product_context.user_language,
-            self.catalog.as_shared(),
+            self.catalog.shared_catalog(),
         );
 
         AstroBasisValidator::validate_chapter_with_pack(
             &reading_chapter,
             astro_facts,
             chapter_pack,
-            self.catalog.as_shared(),
+            self.catalog.astro_basis_roles_view(),
             product_policy,
         )?;
 
@@ -1362,7 +1372,7 @@ impl<'a> ChapterOrchestrator<'a> {
             ChapterEvidenceCoherence::validate_premium(
                 &reading_chapter,
                 pack,
-                self.catalog.as_shared().as_ref(),
+                self.catalog.canonical_catalog(),
                 &request.product_context.user_language,
             )?;
         }
@@ -1371,7 +1381,7 @@ impl<'a> ChapterOrchestrator<'a> {
             &reading_chapter.body,
             safety_policy,
             &request.astrologer_profile.forbidden_wording,
-            self.catalog.as_shared(),
+            self.catalog.shared_catalog(),
         )
         .map_err(|violations| {
             GenerationError::with_details(

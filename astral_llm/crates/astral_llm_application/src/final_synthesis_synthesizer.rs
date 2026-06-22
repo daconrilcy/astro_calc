@@ -29,6 +29,7 @@ use crate::prompt_trace;
 use crate::provider_router::ProviderRouter;
 use crate::provider_schema_compiler::pin_chapter_code;
 use crate::provider_schema_compiler::ProviderSchemaCompiler;
+use crate::reading_catalog::AstroBasisRoleCatalogView;
 use crate::reasoning_generation::{effective_temperature, resolve_reasoning_effort};
 use crate::response_validator::ResponseValidator;
 use crate::safety_guard::SafetyGuard;
@@ -237,7 +238,7 @@ impl<'a> FinalSynthesisSynthesizer<'a> {
             &reading_chapter,
             astro_facts,
             chapter_pack,
-            self.catalog,
+            AstroBasisRoleCatalogView::new(self.catalog),
             product_policy,
         )?;
 

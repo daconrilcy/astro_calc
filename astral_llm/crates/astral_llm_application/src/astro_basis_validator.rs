@@ -6,7 +6,8 @@ use astral_llm_domain::{
     interpretive_evidence::ChapterEvidencePack,
     GenerationError, GenerationErrorCode, ProductGenerationPolicy,
 };
-use astral_llm_infra::SharedCanonicalCatalog;
+
+use crate::reading_catalog::AstroBasisRoleCatalogView;
 
 pub struct AstroBasisValidator;
 
@@ -14,7 +15,7 @@ impl AstroBasisValidator {
     pub fn validate_chapters(
         chapters: &[ReadingChapter],
         facts: &NormalizedAstroFacts,
-        catalog: &SharedCanonicalCatalog,
+        catalog: AstroBasisRoleCatalogView<'_>,
         policy: &ProductGenerationPolicy,
     ) -> Result<(), GenerationError> {
         for chapter in chapters {
@@ -26,7 +27,7 @@ impl AstroBasisValidator {
     pub fn validate_chapter(
         chapter: &ReadingChapter,
         facts: &NormalizedAstroFacts,
-        catalog: &SharedCanonicalCatalog,
+        catalog: AstroBasisRoleCatalogView<'_>,
         policy: &ProductGenerationPolicy,
     ) -> Result<(), GenerationError> {
         Self::validate_chapter_with_pack(chapter, facts, None, catalog, policy)
@@ -36,7 +37,7 @@ impl AstroBasisValidator {
         chapter: &ReadingChapter,
         facts: &NormalizedAstroFacts,
         pack: Option<&ChapterEvidencePack>,
-        catalog: &SharedCanonicalCatalog,
+        catalog: AstroBasisRoleCatalogView<'_>,
         policy: &ProductGenerationPolicy,
     ) -> Result<(), GenerationError> {
         Self::validate_chapter_with_min_refs(
@@ -53,7 +54,7 @@ impl AstroBasisValidator {
         chapter: &ReadingChapter,
         facts: &NormalizedAstroFacts,
         pack: Option<&ChapterEvidencePack>,
-        catalog: &SharedCanonicalCatalog,
+        catalog: AstroBasisRoleCatalogView<'_>,
         min_refs: u8,
         min_interpretive_refs: u8,
     ) -> Result<(), GenerationError> {
@@ -140,8 +141,8 @@ impl AstroBasisValidator {
         Ok(())
     }
 
-    fn allowed_basis_roles(catalog: &SharedCanonicalCatalog) -> HashSet<String> {
-        catalog.astro_basis_roles.clone()
+    fn allowed_basis_roles(catalog: AstroBasisRoleCatalogView<'_>) -> HashSet<String> {
+        catalog.allowed_roles()
     }
 
     fn validate_fact_ids(

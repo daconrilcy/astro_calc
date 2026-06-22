@@ -130,6 +130,7 @@ pub async fn period_writer_response_with_quality_loop(
         .or_else(|| request.get("debug_run_id").and_then(Value::as_str))
         .map(str::to_string)
         .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+    let run_created_at = chrono::Utc::now();
     let defaults = horoscope_writer_engine_defaults(use_case);
     if defaults.provider == ProviderKind::Fake {
         return fake_period_writer_response(request);
@@ -145,6 +146,7 @@ pub async fn period_writer_response_with_quality_loop(
         "v1",
         &defaults.provider,
         &defaults.model,
+        run_created_at,
         request,
     )
     .await;
@@ -212,6 +214,7 @@ pub async fn period_writer_response_with_quality_loop(
         "v1",
         &defaults.provider,
         &defaults.model,
+        run_created_at,
         request,
         result.as_ref().map(|(response, _)| response),
         started_at,

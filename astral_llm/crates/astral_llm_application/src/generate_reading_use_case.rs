@@ -11,13 +11,17 @@ use astral_llm_domain::{
 use astral_llm_providers::{GenerationMetadata, ProviderGenerationRequest};
 use chrono::{DateTime, Utc};
 
+use crate::astro_basis_validator::AstroBasisValidator;
+use crate::astro_payload_normalizer::AstroPayloadNormalizer;
 use crate::chapter_orchestrator::{new_run_id, ChapterOrchestrator};
+use crate::domain_resolver::DomainResolver;
 use crate::engine_defaults::{
     drop_unsupported_reasoning, drop_unsupported_temperature, resolve_engine_params,
-    resolve_subtask_engine, ResolvedEngineParams,
+    resolve_service_engine_defaults, resolve_subtask_engine, ResolvedEngineParams,
 };
 use crate::execution_audit::ExecutionAudit;
-use crate::prompt_compiler::PromptCompiler;
+use crate::interpretation_profile_resolver::InterpretationProfileResolver;
+use crate::prompt_compiler::{PromptCompilationInput, PromptCompiler};
 use crate::prompt_trace;
 use crate::provider_router::ProviderRouter;
 use crate::provider_schema_compiler::ProviderSchemaCompiler;
@@ -30,12 +34,14 @@ use crate::reading_quality_validator::ReadingQualityValidator;
 use crate::reasoning_generation::{
     apply_reasoning_output_reserve, effective_temperature, resolve_reasoning_effort,
 };
+use crate::request_validator::RequestValidator;
 use crate::response_validator::ResponseValidator;
+use crate::safety_guard::SafetyGuard;
 use crate::safety_resolver::SafetyResolver;
 use crate::simplified_reading::{sun_sign_blocked, SIMPLIFIED_PROFILE};
 use crate::simplified_reading_guard::{
-    ambiguous_core_identity_violations, profile_excluded_affirmation_violations,
-    validate_allowed_astro_basis_ids,
+    ambiguous_core_identity_violations, blocked_sign_affirmation_violations,
+    profile_excluded_affirmation_violations, validate_allowed_astro_basis_ids,
 };
 
 pub struct GenerateReadingUseCase {
@@ -121,12 +127,18 @@ impl GenerateReadingUseCase {
         &self,
         request: &mut GenerateReadingRequest,
     ) -> Result<(), GenerationError> {
-        self.catalog
-            .normalize_request(request, self.legacy_product_code_shim_available)
+        InterpretationProfileResolver::normalize_request(
+            request,
+            self.catalog.shared_catalog(),
+            self.legacy_product_code_shim_available,
+        )
     }
 
     pub fn requires_premium_rate_limit(&self, request: &GenerateReadingRequest) -> bool {
-        self.catalog.requires_premium_rate_limit(request)
+        InterpretationProfileResolver::requires_premium_rate_limit(
+            request,
+            self.catalog.shared_catalog(),
+        )
     }
 
     pub async fn execute(&self, request: GenerateReadingRequest) -> GenerateReadingResponse {
@@ -233,13 +245,18 @@ impl GenerateReadingUseCase {
         audit: &mut ExecutionAudit,
     ) -> Result<astral_llm_domain::NatalReadingResponse, GenerationError> {
         // Idempotent : l'API peut deja avoir appele prepare_request().
-        self.catalog
-            .normalize_request(&mut request, self.legacy_product_code_shim_available)?;
-        self.catalog.validate_request(&request, &self.limits)?;
+        InterpretationProfileResolver::normalize_request(
+            &mut request,
+            self.catalog.shared_catalog(),
+            self.legacy_product_code_shim_available,
+        )?;
+        RequestValidator::validate(&request, &self.limits, self.catalog.shared_catalog())?;
 
-        let service_defaults = self
-            .catalog
-            .resolve_service_engine_defaults(&self.engine_defaults, &request);
+        let service_defaults = resolve_service_engine_defaults(
+            &self.engine_defaults,
+            self.catalog.canonical_catalog(),
+            &request,
+        );
         let mut engine = resolve_engine_params(
             &request.engine,
             &service_defaults,
@@ -257,9 +274,12 @@ impl GenerateReadingUseCase {
                 engine.allow_oracle_benchmark,
             )?;
 
-        let validated = self
-            .catalog
-            .validate_product(&request, &engine.provider, &engine.model)?;
+        let validated = InterpretationProfileResolver::validate_product(
+            &request,
+            self.catalog.shared_catalog(),
+            &engine.provider,
+            &engine.model,
+        )?;
         let product_policy = &validated.policy;
         let interpretation = validated.interpretation.as_ref();
 
@@ -297,9 +317,10 @@ impl GenerateReadingUseCase {
             ));
         }
 
-        let astro_facts = self.catalog.normalize_astro_payload(
+        let astro_facts = AstroPayloadNormalizer::normalize(
             &request.astro_result,
             &self.privacy_policy,
+            self.catalog.shared_catalog(),
             &request.product_context.user_language,
         )?;
 
@@ -310,8 +331,7 @@ impl GenerateReadingUseCase {
         let safety_policy =
             SafetyResolver::resolve(&product_default, request.safety_policy.as_ref());
 
-        self.catalog
-            .validate_request_safety(&request, &safety_policy)
+        SafetyGuard::validate_request(&request, &safety_policy, self.catalog.shared_catalog())
             .map_err(|violations| {
                 GenerationError::with_details(
                     GenerationErrorCode::SafetyRejected,
@@ -360,8 +380,9 @@ impl GenerateReadingUseCase {
                 result.reading
             }
             GenerationMode::SinglePass => {
-                let domains = self.catalog.resolve_domains(
+                let domains = DomainResolver::resolve(
                     &request,
+                    self.catalog.shared_catalog(),
                     &self.limits,
                     product_policy,
                     interpretation,
@@ -386,8 +407,12 @@ impl GenerateReadingUseCase {
             request.response_contract.generation_mode,
             GenerationMode::ChapterOrchestrated
         ) {
-            self.catalog
-                .validate_chapters(&reading.chapters, &astro_facts, product_policy)?;
+            AstroBasisValidator::validate_chapters(
+                &reading.chapters,
+                &astro_facts,
+                self.catalog.astro_basis_roles_view(),
+                product_policy,
+            )?;
         }
 
         if request
@@ -407,19 +432,19 @@ impl GenerateReadingUseCase {
             request.response_contract.generation_mode,
             GenerationMode::SinglePass
         ) {
-            self.catalog
-                .validate_response_safety(
-                    &reading,
-                    &safety_policy,
-                    &request.astrologer_profile.forbidden_wording,
+            SafetyGuard::validate_response(
+                &reading,
+                &safety_policy,
+                &request.astrologer_profile.forbidden_wording,
+                self.catalog.shared_catalog(),
+            )
+            .map_err(|violations| {
+                GenerationError::with_details(
+                    GenerationErrorCode::PostSafetyValidationFailed,
+                    "generated content failed safety validation",
+                    serde_json::json!({ "violations": violations }),
                 )
-                .map_err(|violations| {
-                    GenerationError::with_details(
-                        GenerationErrorCode::PostSafetyValidationFailed,
-                        "generated content failed safety validation",
-                        serde_json::json!({ "violations": violations }),
-                    )
-                })?;
+            })?;
         }
 
         ReadingQualityValidator::validate_for_product(&request, &reading, interpretation)?;
@@ -475,9 +500,10 @@ impl GenerateReadingUseCase {
             })
             .unwrap_or_default();
 
-        let mut violations = self.catalog.blocked_sign_affirmation_violations(
+        let mut violations = blocked_sign_affirmation_violations(
             reading,
             &blocked,
+            self.catalog.shared_catalog(),
             &request.product_context.user_language,
         );
         violations.extend(profile_excluded_affirmation_violations(
@@ -522,18 +548,18 @@ impl GenerateReadingUseCase {
             .map(|c| c.code.as_str());
 
         let bundle = self
-            .catalog
-            .compile_prompt_bundle(
-                &self.compiler,
+            .compiler
+            .compile(PromptCompilationInput {
                 request,
                 safety_policy,
                 astro_facts,
-                domains,
+                selected_domains: domains,
                 chapter_code,
-                None,
+                chapter_evidence_pack: None,
+                catalog: self.catalog.shared_catalog(),
                 interpretation,
                 repair_instruction,
-            )
+            })
             .map_err(|e| GenerationError::new(GenerationErrorCode::InvalidInput, e))?;
 
         prompt_trace::log_prompt_bundle(run_id, None, &bundle, &self.compiler, Some("primary"));
