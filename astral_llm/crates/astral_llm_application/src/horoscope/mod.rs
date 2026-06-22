@@ -1,6 +1,7 @@
 use crate::generate_reading_use_case::GenerateReadingUseCase;
 use crate::reading_persistence::{
-    priced_usage_records, PersistedGenerationRunRecord, PersistedRunStatus, PersistedSafetyStatus,
+    hash_json_value, priced_usage_records, PersistedGenerationRunRecord, PersistedRunStatus,
+    PersistedSafetyStatus,
 };
 use crate::text_reprocessing_service_adapter::{
     reprocess_horoscope_daily, reprocess_horoscope_period,
@@ -11,7 +12,6 @@ use astral_llm_domain::{
     EngineDefaults, GenerationError, GenerationErrorCode, ProviderKind, ReasoningEffort,
     SafetyMode, TokenUsage, TokenUsageType,
 };
-use astral_llm_infra::hash_json;
 use astral_llm_providers::{
     GenerationMetadata, PromptMessage, PromptRole, ProviderGenerationRequest,
 };
@@ -127,7 +127,7 @@ pub(crate) async fn persist_horoscope_run_started(
         selected_domains: None,
         status: PersistedRunStatus::Pending,
         safety_status: PersistedSafetyStatus::NotChecked,
-        input_hash: hash_json(request),
+        input_hash: hash_json_value(request),
         output_hash: None,
         token_input: None,
         token_output: None,
@@ -178,7 +178,7 @@ pub(crate) async fn persist_horoscope_run_finished(
                     .pointer("/quality/fallback_used")
                     .and_then(Value::as_bool)
                     .unwrap_or(false),
-                Some(hash_json(response)),
+                Some(hash_json_value(response)),
                 None,
             ),
             Err(err) => (
@@ -220,7 +220,7 @@ pub(crate) async fn persist_horoscope_run_finished(
         selected_domains: None,
         status,
         safety_status,
-        input_hash: hash_json(request),
+        input_hash: hash_json_value(request),
         output_hash,
         token_input: aggregate_usage
             .as_ref()

@@ -16,6 +16,34 @@ Commandes de verification:
 - `cargo test -p astral_llm_api --test astral_llm_i18n_tests`
 - `cargo test -p astral_llm_api --test astral_llm_astro_basis_tests premium_rejects_domain_score_only_chapter_basis premium_accepts_domain_score_plus_placement`
 
+## 2026-06-22 - astral_llm Phase 1c: application hash boundary
+
+Resume court:
+- ajout d'un helper applicatif `reading_persistence::hash_json_value(&serde_json::Value) -> String`;
+- remplacement des usages runtime directs de `astral_llm_infra::hash_json` dans `generate_reading_use_case.rs` et `horoscope/mod.rs`;
+- ajout d'une regression racine `reading_persistence_tests` qui verrouille un digest stable avec l'algorithme infra actuel;
+- documentation explicite du scope workspace: `astral_llm_worker` reste verifie depuis la racine du depot et ne devient pas membre du workspace imbrique dans cette vague;
+- retention documentee du fixture racine `astro_basis_roles` dans `tests/astral_llm_tests.rs` comme prerequis de compatibilite du slice role/locale deja actif, et non comme extension fonctionnelle du slice hash.
+
+Invariants de couche:
+- `astral_llm_application` ne doit plus importer `astral_llm_infra::hash_json` dans `generate_reading_use_case.rs` ni `horoscope/mod.rs`;
+- l'algorithme de hash persiste reste identique a `astral_llm_infra/src/persistence.rs::hash_json`: `serde_json::to_vec(...).unwrap_or_default()`, SHA-256, encodage hex;
+- aucun contrat JSON public, prompt trace, raw provider trace, table de persistence ou enveloppe job ne change dans cette vague;
+- aucun changement de membership workspace n'est autorise dans ce slice; `astral_llm_worker` reste hors `astral_llm/Cargo.toml` et les commandes worker restent lancees depuis `C:\dev\astral_calculation`;
+- le seed `astro_basis_roles` dans `tests/astral_llm_tests.rs` est conserve comme fixture de compatibilite pour les validations catalogue deja actives; il ne modifie ni l'algorithme de hash ni les contrats publics de cette vague;
+- aucun nouveau test inline n'est ajoute sous `src/`; la regression reste sous `tests/reading_persistence_tests.rs`.
+
+Commandes de verification:
+- `cargo metadata --format-version 1 --no-deps`
+- `cd astral_llm; cargo metadata --format-version 1 --no-deps`
+- `cargo fmt --package astral_llm_application`
+- `cargo test -p astral_llm_application`
+- `cargo test -p astral_llm_application --test reading_persistence_tests`
+- `cargo test -p astral_llm_api --test astral_llm_tests`
+- `cargo test -p astral_llm_api --test integration_jobs_tests`
+- `cargo test -p astral_llm_worker --no-run`
+- `Select-String -Path astral_llm\crates\astral_llm_application\src\generate_reading_use_case.rs,astral_llm\crates\astral_llm_application\src\horoscope\mod.rs -Pattern 'astral_llm_infra::hash_json|hash_json'`
+
 # 2026-06-22 - `astral_llm` calculator port boundary slice
 
 - Closed the first planned `astral_llm` application-to-infra slice by removing the concrete `impl CalculatorPort for astral_llm_infra::CalculatorClient` from `crates/astral_llm_application/src/core/calculator.rs`.

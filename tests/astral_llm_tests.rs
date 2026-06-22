@@ -18,14 +18,15 @@ use astral_llm_domain::{
     ServiceLimits, TokenUsageType,
 };
 use astral_llm_infra::{
-    bootstrap_domains, bootstrap_interpretation_profiles, bootstrap_product_policies,
-    CanonicalCatalog, SafetyPattern,
+    bootstrap_astro_basis_roles, bootstrap_domains, bootstrap_interpretation_profiles,
+    bootstrap_product_policies, CanonicalCatalog, SafetyPattern,
 };
 use astral_llm_providers::FakeProvider;
 
 fn test_catalog() -> Arc<CanonicalCatalog> {
     Arc::new(CanonicalCatalog {
         astrological_domains: bootstrap_domains(),
+        astro_basis_roles: bootstrap_astro_basis_roles(),
         product_generation_policies: bootstrap_product_policies(),
         interpretation_profiles: bootstrap_interpretation_profiles(),
         safety_patterns: vec![

@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
+use sha2::{Digest, Sha256};
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -146,6 +147,12 @@ pub fn priced_usage_records(usage: &TokenUsage) -> Vec<PersistedTokenUsageRecord
             provider_metric_name: item.provider_metric_name.clone(),
         })
         .collect()
+}
+
+pub fn hash_json_value(value: &serde_json::Value) -> String {
+    let bytes = serde_json::to_vec(value).unwrap_or_default();
+    let digest = Sha256::digest(bytes);
+    hex::encode(digest)
 }
 
 pub fn persisted_prompt_trace_record(

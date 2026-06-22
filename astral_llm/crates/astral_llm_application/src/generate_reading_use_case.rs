@@ -8,7 +8,7 @@ use astral_llm_domain::{
     EngineDefaults, GenerateReadingRequest, GenerationError, GenerationErrorCode, PrivacyPolicy,
     ProviderKind, PublicTokenUsage, SafetyMode, ServiceLimits, TokenUsage,
 };
-use astral_llm_infra::{hash_json, SharedCanonicalCatalog};
+use astral_llm_infra::SharedCanonicalCatalog;
 
 use astral_llm_providers::{GenerationMetadata, ProviderGenerationRequest};
 use chrono::Utc;
@@ -28,8 +28,8 @@ use crate::prompt_trace;
 use crate::provider_router::ProviderRouter;
 use crate::provider_schema_compiler::ProviderSchemaCompiler;
 use crate::reading_persistence::{
-    priced_usage_records, PersistedGenerationRunRecord, PersistedRunStatus, PersistedSafetyStatus,
-    SharedReadingPersistence,
+    hash_json_value, priced_usage_records, PersistedGenerationRunRecord, PersistedRunStatus,
+    PersistedSafetyStatus, SharedReadingPersistence,
 };
 use crate::reading_quality_validator::ReadingQualityValidator;
 use crate::reasoning_generation::{
@@ -177,7 +177,7 @@ impl GenerateReadingUseCase {
                 .as_str()
                 .to_string(),
             safety_policy_version: "product_default".into(),
-            input_hash: hash_json(&serde_json::to_value(&request).unwrap_or_default()),
+            input_hash: hash_json_value(&serde_json::to_value(&request).unwrap_or_default()),
         };
 
         self.persist_run_started(&run_context, &run_id, &audit)
@@ -749,7 +749,9 @@ impl GenerateReadingUseCase {
                 PersistedSafetyStatus::Passed,
                 Some(reading.quality.used_provider.clone()),
                 Some(reading.quality.used_model.clone()),
-                serde_json::to_value(response).ok().map(|v| hash_json(&v)),
+                serde_json::to_value(response)
+                    .ok()
+                    .map(|v| hash_json_value(&v)),
                 None,
             ),
             GenerateReadingResponse::SafetyRejected { error, .. } => (
@@ -757,7 +759,9 @@ impl GenerateReadingUseCase {
                 PersistedSafetyStatus::Rejected,
                 None,
                 None,
-                serde_json::to_value(response).ok().map(|v| hash_json(&v)),
+                serde_json::to_value(response)
+                    .ok()
+                    .map(|v| hash_json_value(&v)),
                 Some(error.code.clone()),
             ),
             GenerateReadingResponse::Failed { error, .. } => (
@@ -765,7 +769,9 @@ impl GenerateReadingUseCase {
                 PersistedSafetyStatus::NotChecked,
                 None,
                 None,
-                serde_json::to_value(response).ok().map(|v| hash_json(&v)),
+                serde_json::to_value(response)
+                    .ok()
+                    .map(|v| hash_json_value(&v)),
                 Some(error.code.as_str().to_string()),
             ),
         };
