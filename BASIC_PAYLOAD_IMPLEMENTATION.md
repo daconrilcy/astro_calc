@@ -1450,3 +1450,42 @@ Commandes de verification:
 - `cargo test -p astral_llm_api --test integration_jobs_tests`
 - `cargo test -p astral_llm_worker --no-run`
 - `Select-String -Path astral_llm\\crates\\astral_llm_application\\src\\generate_reading_use_case.rs,astral_llm\\crates\\astral_llm_application\\src\\horoscope\\mod.rs -Pattern 'astral_llm_infra::hash_json|hash_json'`
+
+## 2026-06-22 - astral_llm persistence: preserve run `created_at` across final upsert
+
+Resume court:
+- correction de la persistence des runs LLM pour conserver le `created_at` initial entre l'upsert `pending` et l'upsert final;
+- alignement de ce comportement sur les deux chemins runtime qui persistents des runs: `GenerateReadingUseCase` et `horoscope/*`;
+- ajout de regressions racine non-DB dans `tests/reading_persistence_tests.rs` pour verifier la stabilite de `created_at` sur un run natal et un run horoscope journalier.
+
+Invariants de couche:
+- `llm_generation_runs.created_at` represente le debut du run, pas l'heure de finalisation;
+- les modules applicatifs `generate_reading_use_case.rs` et `horoscope/mod.rs` doivent transmettre un horodatage de creation unique a toute la sequence d'upsert d'un meme run;
+- aucun contrat JSON public, hash persiste, prompt trace, schema SQL ou wiring API/worker n'est modifie par cette vague.
+
+Commandes de verification:
+- `cargo fmt --package astral_llm_application`
+- `cargo test -p astral_llm_application --test reading_persistence_tests`
+- `cargo test -p astral_llm_application`
+- `cargo test -p astral_llm_api --test astral_llm_tests`
+- `cargo test -p astral_llm_worker --no-run`
+
+## 2026-06-22 - astral_llm catalog boundary: close `ReadingCatalog::as_shared()` leakage in reading orchestrators
+
+Resume court:
+- fermeture de la fuite `ReadingCatalog::as_shared()` dans `GenerateReadingUseCase` et `ChapterOrchestrator`;
+- extension de `reading_catalog.rs` avec des vues applicatives ciblees pour encapsuler les dependances catalogue des deux orchestrateurs sans redecoupage transversal des helpers existants;
+- ajustement du test racine `astral_llm_catalog_view_tests.rs` pour verifier la facade applicative plutot que la preservation d'un acces partage explicite.
+
+Invariants de couche:
+- `generate_reading_use_case.rs` et `chapter_orchestrator.rs` ne doivent plus appeler `ReadingCatalog::as_shared()` directement;
+- `reading_catalog.rs` reste l'unique wrapper applicatif autorise autour de `SharedCanonicalCatalog` pour cette slice;
+- aucun contrat JSON public, schema persiste, wiring API/worker ou runtime horoscope n'est modifie par cette vague.
+
+Commandes de verification:
+- `rg -n "as_shared\\(" astral_llm/crates/astral_llm_application/src/generate_reading_use_case.rs astral_llm/crates/astral_llm_application/src/chapter_orchestrator.rs`
+- `cargo fmt --package astral_llm_application`
+- `cargo test -p astral_llm_application --test astral_llm_catalog_view_tests`
+- `cargo test -p astral_llm_application`
+- `cargo test -p astral_llm_api --test astral_llm_tests`
+- `cargo test -p astral_llm_api --test astral_llm_evidence_planner_tests`

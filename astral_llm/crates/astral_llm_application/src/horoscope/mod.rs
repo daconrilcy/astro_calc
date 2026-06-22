@@ -15,7 +15,7 @@ use astral_llm_domain::{
 use astral_llm_providers::{
     GenerationMetadata, PromptMessage, PromptRole, ProviderGenerationRequest,
 };
-use chrono::{Datelike, NaiveDate};
+use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use chrono_tz::Tz;
 use jsonschema::JSONSchema;
 use regex::Regex;
@@ -90,6 +90,7 @@ pub(crate) async fn persist_horoscope_run_started(
     prompt_version: &str,
     provider_requested: &ProviderKind,
     model_requested: &str,
+    created_at: DateTime<Utc>,
     request: &Value,
 ) {
     let Some(persistence) = use_case.persistence() else {
@@ -133,7 +134,7 @@ pub(crate) async fn persist_horoscope_run_started(
         token_output: None,
         latency_ms: None,
         error_code: None,
-        created_at: chrono::Utc::now(),
+        created_at,
     };
     if let Err(err) = persistence.upsert_run(&record).await {
         tracing::warn!(run_id, error = %err, "failed to persist pending horoscope run");
@@ -149,6 +150,7 @@ pub(crate) async fn persist_horoscope_run_finished(
     prompt_version: &str,
     provider_requested: &ProviderKind,
     model_requested: &str,
+    created_at: DateTime<Utc>,
     request: &Value,
     result: Result<&Value, &GenerationError>,
     started_at: std::time::Instant,
@@ -232,7 +234,7 @@ pub(crate) async fn persist_horoscope_run_finished(
             .map(|value| i32::try_from(value).unwrap_or(i32::MAX)),
         latency_ms: Some(i32::try_from(started_at.elapsed().as_millis()).unwrap_or(i32::MAX)),
         error_code,
-        created_at: chrono::Utc::now(),
+        created_at,
     };
     if let Err(err) = persistence.upsert_run(&record).await {
         tracing::warn!(run_id, error = %err, "failed to persist final horoscope run");

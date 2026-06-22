@@ -9,19 +9,15 @@ use astral_llm_domain::{
     ProviderKind, PublicTokenUsage, SafetyMode, ServiceLimits, TokenUsage,
 };
 use astral_llm_providers::{GenerationMetadata, ProviderGenerationRequest};
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 
-use crate::astro_basis_validator::AstroBasisValidator;
-use crate::astro_payload_normalizer::AstroPayloadNormalizer;
 use crate::chapter_orchestrator::{new_run_id, ChapterOrchestrator};
-use crate::domain_resolver::DomainResolver;
 use crate::engine_defaults::{
     drop_unsupported_reasoning, drop_unsupported_temperature, resolve_engine_params,
-    resolve_service_engine_defaults, resolve_subtask_engine, ResolvedEngineParams,
+    resolve_subtask_engine, ResolvedEngineParams,
 };
 use crate::execution_audit::ExecutionAudit;
-use crate::interpretation_profile_resolver::InterpretationProfileResolver;
-use crate::prompt_compiler::{PromptCompilationInput, PromptCompiler};
+use crate::prompt_compiler::PromptCompiler;
 use crate::prompt_trace;
 use crate::provider_router::ProviderRouter;
 use crate::provider_schema_compiler::ProviderSchemaCompiler;
@@ -34,14 +30,12 @@ use crate::reading_quality_validator::ReadingQualityValidator;
 use crate::reasoning_generation::{
     apply_reasoning_output_reserve, effective_temperature, resolve_reasoning_effort,
 };
-use crate::request_validator::RequestValidator;
 use crate::response_validator::ResponseValidator;
-use crate::safety_guard::SafetyGuard;
 use crate::safety_resolver::SafetyResolver;
 use crate::simplified_reading::{sun_sign_blocked, SIMPLIFIED_PROFILE};
 use crate::simplified_reading_guard::{
-    ambiguous_core_identity_violations, blocked_sign_affirmation_violations,
-    profile_excluded_affirmation_violations, validate_allowed_astro_basis_ids,
+    ambiguous_core_identity_violations, profile_excluded_affirmation_violations,
+    validate_allowed_astro_basis_ids,
 };
 
 pub struct GenerateReadingUseCase {
@@ -82,6 +76,7 @@ struct RunAuditContext {
     generation_mode: String,
     safety_policy_version: String,
     input_hash: String,
+    created_at: DateTime<Utc>,
 }
 
 impl GenerateReadingUseCase {
@@ -126,18 +121,12 @@ impl GenerateReadingUseCase {
         &self,
         request: &mut GenerateReadingRequest,
     ) -> Result<(), GenerationError> {
-        InterpretationProfileResolver::normalize_request(
-            request,
-            self.catalog.as_shared(),
-            self.legacy_product_code_shim_available,
-        )
+        self.catalog
+            .normalize_request(request, self.legacy_product_code_shim_available)
     }
 
     pub fn requires_premium_rate_limit(&self, request: &GenerateReadingRequest) -> bool {
-        InterpretationProfileResolver::requires_premium_rate_limit(
-            request,
-            self.catalog.as_shared(),
-        )
+        self.catalog.requires_premium_rate_limit(request)
     }
 
     pub async fn execute(&self, request: GenerateReadingRequest) -> GenerateReadingResponse {
@@ -180,6 +169,7 @@ impl GenerateReadingUseCase {
                 .to_string(),
             safety_policy_version: "product_default".into(),
             input_hash: hash_json_value(&serde_json::to_value(&request).unwrap_or_default()),
+            created_at: Utc::now(),
         };
 
         self.persist_run_started(&run_context, &run_id, &audit)
@@ -243,18 +233,13 @@ impl GenerateReadingUseCase {
         audit: &mut ExecutionAudit,
     ) -> Result<astral_llm_domain::NatalReadingResponse, GenerationError> {
         // Idempotent : l'API peut deja avoir appele prepare_request().
-        InterpretationProfileResolver::normalize_request(
-            &mut request,
-            self.catalog.as_shared(),
-            self.legacy_product_code_shim_available,
-        )?;
-        RequestValidator::validate(&request, &self.limits, self.catalog.as_shared())?;
+        self.catalog
+            .normalize_request(&mut request, self.legacy_product_code_shim_available)?;
+        self.catalog.validate_request(&request, &self.limits)?;
 
-        let service_defaults = resolve_service_engine_defaults(
-            &self.engine_defaults,
-            self.catalog.as_shared(),
-            &request,
-        );
+        let service_defaults = self
+            .catalog
+            .resolve_service_engine_defaults(&self.engine_defaults, &request);
         let mut engine = resolve_engine_params(
             &request.engine,
             &service_defaults,
@@ -272,12 +257,9 @@ impl GenerateReadingUseCase {
                 engine.allow_oracle_benchmark,
             )?;
 
-        let validated = InterpretationProfileResolver::validate_product(
-            &request,
-            self.catalog.as_shared(),
-            &engine.provider,
-            &engine.model,
-        )?;
+        let validated = self
+            .catalog
+            .validate_product(&request, &engine.provider, &engine.model)?;
         let product_policy = &validated.policy;
         let interpretation = validated.interpretation.as_ref();
 
@@ -315,10 +297,9 @@ impl GenerateReadingUseCase {
             ));
         }
 
-        let astro_facts = AstroPayloadNormalizer::normalize(
+        let astro_facts = self.catalog.normalize_astro_payload(
             &request.astro_result,
             &self.privacy_policy,
-            self.catalog.as_shared(),
             &request.product_context.user_language,
         )?;
 
@@ -329,15 +310,15 @@ impl GenerateReadingUseCase {
         let safety_policy =
             SafetyResolver::resolve(&product_default, request.safety_policy.as_ref());
 
-        SafetyGuard::validate_request(&request, &safety_policy, self.catalog.as_shared()).map_err(
-            |violations| {
+        self.catalog
+            .validate_request_safety(&request, &safety_policy)
+            .map_err(|violations| {
                 GenerationError::with_details(
                     GenerationErrorCode::SafetyRejected,
                     "request failed safety validation",
                     serde_json::json!({ "violations": violations, "category": "request_safety" }),
                 )
-            },
-        )?;
+            })?;
 
         if self
             .validator
@@ -379,9 +360,8 @@ impl GenerateReadingUseCase {
                 result.reading
             }
             GenerationMode::SinglePass => {
-                let domains = DomainResolver::resolve(
+                let domains = self.catalog.resolve_domains(
                     &request,
-                    self.catalog.as_shared(),
                     &self.limits,
                     product_policy,
                     interpretation,
@@ -406,12 +386,8 @@ impl GenerateReadingUseCase {
             request.response_contract.generation_mode,
             GenerationMode::ChapterOrchestrated
         ) {
-            AstroBasisValidator::validate_chapters(
-                &reading.chapters,
-                &astro_facts,
-                self.catalog.as_shared(),
-                product_policy,
-            )?;
+            self.catalog
+                .validate_chapters(&reading.chapters, &astro_facts, product_policy)?;
         }
 
         if request
@@ -431,19 +407,19 @@ impl GenerateReadingUseCase {
             request.response_contract.generation_mode,
             GenerationMode::SinglePass
         ) {
-            SafetyGuard::validate_response(
-                &reading,
-                &safety_policy,
-                &request.astrologer_profile.forbidden_wording,
-                self.catalog.as_shared(),
-            )
-            .map_err(|violations| {
-                GenerationError::with_details(
-                    GenerationErrorCode::PostSafetyValidationFailed,
-                    "generated content failed safety validation",
-                    serde_json::json!({ "violations": violations }),
+            self.catalog
+                .validate_response_safety(
+                    &reading,
+                    &safety_policy,
+                    &request.astrologer_profile.forbidden_wording,
                 )
-            })?;
+                .map_err(|violations| {
+                    GenerationError::with_details(
+                        GenerationErrorCode::PostSafetyValidationFailed,
+                        "generated content failed safety validation",
+                        serde_json::json!({ "violations": violations }),
+                    )
+                })?;
         }
 
         ReadingQualityValidator::validate_for_product(&request, &reading, interpretation)?;
@@ -499,10 +475,9 @@ impl GenerateReadingUseCase {
             })
             .unwrap_or_default();
 
-        let mut violations = blocked_sign_affirmation_violations(
+        let mut violations = self.catalog.blocked_sign_affirmation_violations(
             reading,
             &blocked,
-            self.catalog.as_shared(),
             &request.product_context.user_language,
         );
         violations.extend(profile_excluded_affirmation_violations(
@@ -547,18 +522,18 @@ impl GenerateReadingUseCase {
             .map(|c| c.code.as_str());
 
         let bundle = self
-            .compiler
-            .compile(PromptCompilationInput {
+            .catalog
+            .compile_prompt_bundle(
+                &self.compiler,
                 request,
                 safety_policy,
                 astro_facts,
-                selected_domains: domains,
+                domains,
                 chapter_code,
-                chapter_evidence_pack: None,
-                catalog: self.catalog.as_shared(),
+                None,
                 interpretation,
                 repair_instruction,
-            })
+            )
             .map_err(|e| GenerationError::new(GenerationErrorCode::InvalidInput, e))?;
 
         prompt_trace::log_prompt_bundle(run_id, None, &bundle, &self.compiler, Some("primary"));
@@ -726,7 +701,7 @@ impl GenerateReadingUseCase {
             token_output: None,
             latency_ms: None,
             error_code: None,
-            created_at: Utc::now(),
+            created_at: context.created_at,
         };
         if let Err(err) = persistence.upsert_run(&record).await {
             tracing::warn!(run_id, error = %err, "failed to persist pending generation run");
@@ -820,7 +795,7 @@ impl GenerateReadingUseCase {
             token_output,
             latency_ms: Some(i32::try_from(latency.as_millis()).unwrap_or(i32::MAX)),
             error_code: error,
-            created_at: Utc::now(),
+            created_at: context.created_at,
         };
         if let Err(err) = persistence.upsert_run(&final_record).await {
             tracing::warn!(run_id = %audit.run_id, error = %err, "failed to persist final generation run");
