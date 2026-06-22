@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use astral_llm_application::{EditorialFixtureSpec, EditorialValidator};
+use astral_llm_application::editorial_validation::{EditorialFixtureSpec, EditorialValidator};
 use astral_llm_domain::{
     generation_request::{AudienceLevel, GenerateReadingRequest, ProductContext},
     generation_response::NatalReadingResponse,

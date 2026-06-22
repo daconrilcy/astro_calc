@@ -45,3 +45,7 @@ path = "../../../tests/reading_quality_validator_tests.rs"
 [[test]]
 name = "horoscope_application_builders_tests"
 path = "../../../tests/horoscope_application_builders_tests.rs"
+
+[[test]]
+name = "trace_runtime_settings_tests"
+path = "../../../tests/trace_runtime_settings_tests.rs"

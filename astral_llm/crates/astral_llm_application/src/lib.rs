@@ -80,7 +80,6 @@ pub use chapter_evidence_coherence::ChapterEvidenceCoherence;
 pub use chapter_evidence_planner::{pack_for_chapter, ChapterEvidencePlanner};
 pub use chapter_orchestrator::{new_run_id, ChapterOrchestrator};
 pub use domain_resolver::DomainResolver;
-pub use editorial_validation::{EditorialFixtureSpec, EditorialValidator};
 pub use engine_defaults::{
     resolve_engine_params, resolve_service_engine_defaults, resolve_subtask_engine,
     ResolvedEngineParams,

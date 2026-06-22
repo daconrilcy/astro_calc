@@ -9,6 +9,8 @@ use astral_llm_api::{
 
 use astral_llm_application::{
     build_capability_registry_with_db, build_fallback_policy, build_providers,
+    prompt_trace::{configure_prompt_trace, PromptTraceSettings},
+    raw_provider_trace::{configure_raw_provider_trace, RawProviderTraceSettings},
     GenerateReadingUseCase, IntegrationJobValidator, PromptCompiler, ProviderCircuitBreaker,
     ProviderRouter, ResponseValidator, SchemaRegistry,
 };
@@ -16,8 +18,9 @@ use astral_llm_infra::{
     bootstrap_domains, bootstrap_product_policies, bootstrap_safety_patterns,
     calculator_api_key_from_env, calculator_base_url_from_env, enrich_catalog_from_bootstrap,
     init_tracing, load_active_provider_codes, load_canonical_catalog, load_model_capabilities,
-    AppConfig, CalculatorClient, CanonicalCatalog, ConfigValidator, ProviderSecrets,
-    RunPersistence, SharedCanonicalCatalog,
+    prompt_trace_dir_from_env, prompt_trace_enabled_from_env, raw_provider_trace_dir_from_env,
+    raw_provider_trace_enabled_from_env, AppConfig, CalculatorClient, CanonicalCatalog,
+    ConfigValidator, ProviderSecrets, RunPersistence, SharedCanonicalCatalog,
 };
 use axum::http::StatusCode;
 use axum::middleware;
@@ -36,6 +39,15 @@ async fn main() {
     if let Err(err) = ConfigValidator::validate(&config, &secrets) {
         panic!("invalid astral_llm configuration: {err}");
     }
+    configure_prompt_trace(PromptTraceSettings::from_runtime(
+        prompt_trace_enabled_from_env(),
+        prompt_trace_dir_from_env().map(Into::into),
+    ));
+    configure_raw_provider_trace(RawProviderTraceSettings::from_runtime(
+        config.runtime_env,
+        raw_provider_trace_enabled_from_env(config.runtime_env),
+        raw_provider_trace_dir_from_env().map(Into::into),
+    ));
 
     let engine_defaults = config.engine_defaults();
     let limits = config.limits.clone();

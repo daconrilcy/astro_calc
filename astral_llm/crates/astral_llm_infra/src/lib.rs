@@ -34,7 +34,11 @@ pub use canonical::{
     CanonicalCatalog, ProductPromptFamily, SafetyPattern, SharedCanonicalCatalog,
 };
 pub use canonical_json_hash::{canonical_json_hash, job_logical_payload};
-pub use config::{env_bool, env_var, load_dotenv, parse_provider_kind, AppConfig};
+pub use config::{
+    env_bool, env_var, load_dotenv, parse_provider_kind, prompt_trace_dir_from_env,
+    prompt_trace_enabled_from_env, raw_provider_trace_dir_from_env,
+    raw_provider_trace_enabled_from_env, AppConfig,
+};
 pub use config_validator::{ConfigValidationError, ConfigValidator};
 pub use evidence_canonical::{bootstrap_evidence_catalog, EvidenceCanonicalCatalog};
 pub use i18n_canonical::{

@@ -2,9 +2,9 @@
 
 use std::fs::{create_dir_all, write};
 use std::path::PathBuf;
+use std::sync::{OnceLock, RwLock};
 
 use astral_llm_domain::chapter_orchestration::READING_SUMMARY_STEP_CODE;
-use astral_llm_infra::config::{env_bool, env_var};
 use astral_llm_providers::{PromptMessage, PromptRole, ProviderGenerationRequest};
 use serde_json::{json, Value};
 
@@ -13,6 +13,35 @@ use crate::text_reprocessing_service_adapter::reprocess_prompt_trace;
 
 pub const TARGET: &str = "astral_llm.prompt";
 const DEFAULT_PROMPT_LOG_DIR: &str = "output/logs/prompts";
+static PROMPT_TRACE_SETTINGS: OnceLock<RwLock<PromptTraceSettings>> = OnceLock::new();
+
+#[derive(Debug, Clone)]
+pub struct PromptTraceSettings {
+    pub enabled: bool,
+    pub log_dir: PathBuf,
+}
+
+impl Default for PromptTraceSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            log_dir: PathBuf::from(DEFAULT_PROMPT_LOG_DIR),
+        }
+    }
+}
+
+impl PromptTraceSettings {
+    pub fn from_runtime(enabled: bool, log_dir: Option<PathBuf>) -> Self {
+        let mut settings = Self {
+            enabled,
+            ..Self::default()
+        };
+        if let Some(log_dir) = log_dir {
+            settings.log_dir = log_dir;
+        }
+        settings
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct PromptTraceRecord {
@@ -24,6 +53,12 @@ pub struct PromptTraceRecord {
     pub message_count: i32,
     pub compiled_prompt: String,
     pub messages_json: Value,
+}
+
+pub fn configure_prompt_trace(settings: PromptTraceSettings) {
+    *prompt_trace_settings_cell()
+        .write()
+        .expect("prompt trace settings lock poisoned") = settings;
 }
 
 pub fn log_prompt_bundle(
@@ -52,7 +87,8 @@ pub fn log_provider_messages(
     attempt: Option<&str>,
     messages: &[PromptMessage],
 ) {
-    if !env_bool("ASTRAL_LLM_LOG_COMPILED_PROMPTS", true) {
+    let settings = current_prompt_trace_settings();
+    if !settings.enabled {
         return;
     }
 
@@ -160,11 +196,22 @@ fn write_prompt_file(
 }
 
 pub fn prompt_log_base_dir() -> Option<PathBuf> {
-    if !env_bool("ASTRAL_LLM_LOG_COMPILED_PROMPTS", true) {
+    let settings = current_prompt_trace_settings();
+    if !settings.enabled {
         return None;
     }
-    let raw = env_var("ASTRAL_LLM_PROMPT_LOG_DIR").unwrap_or_else(|| DEFAULT_PROMPT_LOG_DIR.into());
-    Some(PathBuf::from(raw))
+    Some(settings.log_dir)
+}
+
+fn prompt_trace_settings_cell() -> &'static RwLock<PromptTraceSettings> {
+    PROMPT_TRACE_SETTINGS.get_or_init(|| RwLock::new(PromptTraceSettings::default()))
+}
+
+fn current_prompt_trace_settings() -> PromptTraceSettings {
+    prompt_trace_settings_cell()
+        .read()
+        .expect("prompt trace settings lock poisoned")
+        .clone()
 }
 
 fn prompt_log_chapter_segment(chapter_code: Option<&str>) -> String {

@@ -261,6 +261,25 @@ pub fn env_bool(key: &str, default: bool) -> bool {
         .unwrap_or(default)
 }
 
+pub fn prompt_trace_enabled_from_env() -> bool {
+    env_bool("ASTRAL_LLM_LOG_COMPILED_PROMPTS", true)
+}
+
+pub fn prompt_trace_dir_from_env() -> Option<String> {
+    env_var("ASTRAL_LLM_PROMPT_LOG_DIR")
+}
+
+pub fn raw_provider_trace_enabled_from_env(runtime_env: AstralLlmEnv) -> bool {
+    env_bool(
+        "ASTRAL_LLM_STORE_RAW_PROVIDER_OUTPUTS",
+        !runtime_env.is_production(),
+    )
+}
+
+pub fn raw_provider_trace_dir_from_env() -> Option<String> {
+    env_var("ASTRAL_LLM_RAW_PROVIDER_OUTPUT_DIR")
+}
+
 pub fn env_date(key: &str) -> Option<NaiveDate> {
     env_var(key).and_then(|v| NaiveDate::parse_from_str(&v, "%Y-%m-%d").ok())
 }

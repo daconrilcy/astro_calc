@@ -2,18 +2,58 @@
 
 use std::fs::{create_dir_all, write};
 use std::path::PathBuf;
+use std::sync::{OnceLock, RwLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use astral_llm_domain::{AstralLlmEnv, ProviderKind};
-use astral_llm_infra::config::{env_bool, env_var};
 use astral_llm_providers::{ProviderGenerationRequest, ProviderGenerationResponse};
 use serde_json::json;
 
 const DEFAULT_RAW_OUTPUT_DIR: &str = "output/logs/raw_llm_outputs";
 const MAX_FILENAME_SEGMENT_LEN: usize = 96;
+static RAW_PROVIDER_TRACE_SETTINGS: OnceLock<RwLock<RawProviderTraceSettings>> = OnceLock::new();
 
-pub const RAW_PROVIDER_TRACE_ENV: &str = "ASTRAL_LLM_STORE_RAW_PROVIDER_OUTPUTS";
-pub const RAW_PROVIDER_TRACE_DIR_ENV: &str = "ASTRAL_LLM_RAW_PROVIDER_OUTPUT_DIR";
+#[derive(Debug, Clone)]
+pub struct RawProviderTraceSettings {
+    pub enabled: bool,
+    pub output_dir: PathBuf,
+}
+
+impl RawProviderTraceSettings {
+    pub fn for_runtime_env(runtime_env: AstralLlmEnv) -> Self {
+        Self {
+            enabled: !runtime_env.is_production(),
+            output_dir: PathBuf::from(DEFAULT_RAW_OUTPUT_DIR),
+        }
+    }
+
+    pub fn from_runtime(
+        runtime_env: AstralLlmEnv,
+        enabled: bool,
+        output_dir: Option<PathBuf>,
+    ) -> Self {
+        let mut settings = Self {
+            enabled,
+            ..Self::for_runtime_env(runtime_env)
+        };
+        if let Some(output_dir) = output_dir {
+            settings.output_dir = output_dir;
+        }
+        settings
+    }
+}
+
+impl Default for RawProviderTraceSettings {
+    fn default() -> Self {
+        Self::for_runtime_env(AstralLlmEnv::Local)
+    }
+}
+
+pub fn configure_raw_provider_trace(settings: RawProviderTraceSettings) {
+    *raw_provider_trace_settings_cell()
+        .write()
+        .expect("raw provider trace settings lock poisoned") = settings;
+}
 
 pub fn log_raw_provider_response(
     request: &ProviderGenerationRequest,
@@ -100,18 +140,11 @@ fn write_raw_provider_response(
 }
 
 pub fn raw_provider_trace_base_dir() -> Option<PathBuf> {
-    if !raw_provider_trace_enabled() {
+    let settings = current_raw_provider_trace_settings();
+    if !settings.enabled {
         return None;
     }
-    let raw = env_var(RAW_PROVIDER_TRACE_DIR_ENV).unwrap_or_else(|| DEFAULT_RAW_OUTPUT_DIR.into());
-    Some(PathBuf::from(raw))
-}
-
-fn raw_provider_trace_enabled() -> bool {
-    let runtime_env = env_var("ASTRAL_LLM_ENV")
-        .map(|value| AstralLlmEnv::parse(&value))
-        .unwrap_or(AstralLlmEnv::Local);
-    env_bool(RAW_PROVIDER_TRACE_ENV, !runtime_env.is_production())
+    Some(settings.output_dir)
 }
 
 fn sanitize_filename_segment(value: &str) -> String {
@@ -131,4 +164,15 @@ fn sanitize_filename_segment(value: &str) -> String {
         .collect();
     sanitized.truncate(MAX_FILENAME_SEGMENT_LEN);
     sanitized
+}
+
+fn raw_provider_trace_settings_cell() -> &'static RwLock<RawProviderTraceSettings> {
+    RAW_PROVIDER_TRACE_SETTINGS.get_or_init(|| RwLock::new(RawProviderTraceSettings::default()))
+}
+
+fn current_raw_provider_trace_settings() -> RawProviderTraceSettings {
+    raw_provider_trace_settings_cell()
+        .read()
+        .expect("raw provider trace settings lock poisoned")
+        .clone()
 }

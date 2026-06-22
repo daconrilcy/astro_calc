@@ -1198,3 +1198,68 @@ Reviews:
 - `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-MAINTAINABILITY-IMPLEMENTATION-2026-06-19.md`
 - `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-MAINTAINABILITY-IMPLEMENTATION-2026-06-19-followup-1.md`
 - `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-MAINTAINABILITY-IMPLEMENTATION-2026-06-19-followup-2.md`
+
+## 2026-06-22 - astral_llm Phase 1: calculator port boundary
+
+Resume court:
+- introduction du port applicatif `CalculatorPort` dans `astral_llm/crates/astral_llm_application/src/core/calculator.rs`;
+- bascule de `IntegrationJobExecutor` et des orchestrateurs horoscope sur ce port au lieu d'un couplage direct a `astral_llm_infra::CalculatorClient`;
+- conservation d'une implementation locale du port pour `astral_llm_infra::CalculatorClient` afin de fermer la slice sans creer de cycle de crates;
+- maintien du miroir minimal des `workspace.dependencies` dans `astral_llm/Cargo.toml` pour garder le workspace imbrique compilable comme le parent, sans reintroduire de nouveau membre runtime dans cette vague.
+
+Invariants de couche:
+- `astral_llm_application` possede le contrat de port; `astral_llm_infra` reste proprietaire du client HTTP concret;
+- `integration_job_executor.rs` et `horoscope/orchestrators.rs` ne doivent plus importer `CalculatorClient` ni `astral_llm_infra`;
+- aucun changement de contrat JSON public, de payload persiste, ni de composition runtime API/worker dans cette vague;
+- la vague depasse le budget initial de 3 fichiers de production d'un fichier technique minimal (`src/core/mod.rs`) pour exposer le nouveau module de port.
+
+Commandes de verification:
+- `cargo metadata --manifest-path astral_llm/Cargo.toml --format-version 1 --no-deps`
+- `cargo test -p astral_llm_application --test integration_job_executor_tests`
+- `cargo test -p astral_llm_application --test horoscope_application_builders_tests`
+- `rg -n "CalculatorClient|astral_llm_infra" astral_llm/crates/astral_llm_application/src/integration_job_executor.rs astral_llm/crates/astral_llm_application/src/horoscope/orchestrators.rs`
+
+## 2026-06-22 - astral_llm Phase 1: trace runtime settings boundary
+
+Resume court:
+- retrait des lectures directes d'environnement de `astral_llm_application::prompt_trace` et `astral_llm_application::raw_provider_trace`;
+- introduction d'un runtime settings store applicatif pour les traces prompt/raw, configure depuis les composition roots API/worker;
+- recentrage du mapping `ASTRAL_LLM_* -> trace settings` dans `astral_llm_infra::config` puis dans `astral_llm_api/src/main.rs` et `astral_llm_worker/src/main.rs`;
+- ajout d'un test racine cible `trace_runtime_settings_tests` pour verrouiller le comportement sans base ni provider reel;
+- overrun documente: la slice touche exactement 7 fichiers de production/manifeste (`prompt_trace.rs`, `raw_provider_trace.rs`, `astral_llm_api/src/main.rs`, `astral_llm_worker/src/main.rs`, `astral_llm_infra/src/config.rs`, `astral_llm_infra/src/lib.rs`, `astral_llm_application/Cargo.toml`) car la fermeture atomique du boundary impose les deux composition roots, l'exposition infra des helpers env existants et l'enregistrement du test racine dans le crate application.
+
+Invariants de couche:
+- `astral_llm_application` reste cote settings/runtime et ne doit plus lire `env_var`, `env_bool` ou des noms `ASTRAL_LLM_*` dans les helpers de trace;
+- `astral_llm_api` et `astral_llm_worker` possedent la traduction des variables d'environnement vers des DTOs/settings applicatifs;
+- aucun changement de contrat JSON public, de payload persiste, ni de schema des prompt traces / raw provider traces dans cette vague;
+- aucun test inline n'est ajoute sous `astral_llm/crates/*/src`; le test reste sous `tests/`.
+
+Budget et justification:
+- budget planifie: 3 fichiers de production maximum plus tests directs;
+- realisation effective: 7 fichiers de production/manifeste plus `tests/trace_runtime_settings_tests.rs`;
+- justification atomique: laisser un seul entrypoint sur l'ancien chemin env, ou garder les helpers infra non exposes au runtime, laissait une moitie de boundary ouverte et ne permettait pas de prouver que toute la resolution `ASTRAL_LLM_* -> settings applicatifs` sortait bien de `astral_llm_application`.
+
+Commandes de verification:
+- `cargo fmt --package astral_llm_application --package astral_llm_api --package astral_llm_worker --package astral_llm_infra`
+- `rg -n "env_bool|env_var|ASTRAL_LLM_" astral_llm/crates/astral_llm_application/src/prompt_trace.rs astral_llm/crates/astral_llm_application/src/raw_provider_trace.rs`
+- `cargo test -p astral_llm_application --test trace_runtime_settings_tests`
+- `cargo test -p astral_llm_application --no-run`
+- `cargo test -p astral_llm_api --no-run`
+- `cargo test -p astral_llm_worker --no-run`
+
+## 2026-06-22 - astral_llm Phase 2: root export inventory slice
+
+Resume court:
+- inventaire des callers du re-export racine `editorial_validation::{EditorialFixtureSpec, EditorialValidator}`;
+- migration du seul caller repo vers le chemin canonique `astral_llm_application::editorial_validation::...`;
+- suppression du `pub use` racine devenu sans consommateur.
+
+Invariants de couche:
+- les exports crate root de `astral_llm_application` ne sont conserves que pour des surfaces stables partagees par API, worker ou tests multiples;
+- un alias racine uniquement consomme par un test unique doit etre remplace par l'import du module proprietaire avant suppression;
+- aucun changement de comportement, de payload ou de contrat JSON dans cette vague.
+
+Commandes de verification:
+- `rg -n "EditorialFixtureSpec|EditorialValidator" astral_llm tests`
+- `cargo test -p astral_llm_api --test astral_llm_editorial_fixtures --no-run`
+- `cargo test -p astral_llm_application --no-run`

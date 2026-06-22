@@ -3,18 +3,22 @@ use std::time::Duration;
 
 use astral_llm_application::{
     build_capability_registry_with_db, build_fallback_policy, build_providers,
-    job_error_from_reading, job_status_from_reading, unified_result_envelope,
-    GenerateReadingUseCase, IntegrationJobExecutor, IntegrationJobValidator, PromptCompiler,
-    ProviderCircuitBreaker, ProviderRouter, ResponseValidator, SchemaRegistry,
-    UnifiedReadingOutcome,
+    job_error_from_reading, job_status_from_reading,
+    prompt_trace::{configure_prompt_trace, PromptTraceSettings},
+    raw_provider_trace::{configure_raw_provider_trace, RawProviderTraceSettings},
+    unified_result_envelope, GenerateReadingUseCase, IntegrationJobExecutor,
+    IntegrationJobValidator, PromptCompiler, ProviderCircuitBreaker, ProviderRouter,
+    ResponseValidator, SchemaRegistry, UnifiedReadingOutcome,
 };
 use astral_llm_domain::GenerateReadingResponse;
 use astral_llm_infra::{
     bootstrap_domains, bootstrap_product_policies, bootstrap_safety_patterns,
     calculator_api_key_from_env, calculator_base_url_from_env, enrich_catalog_from_bootstrap,
     init_tracing, load_active_provider_codes, load_canonical_catalog, load_model_capabilities,
-    AppConfig, CalculatorClient, CanonicalCatalog, ConfigValidator, JobPersistence,
-    MercurePublisher, ProviderSecrets, RunPersistence, SharedCanonicalCatalog,
+    prompt_trace_dir_from_env, prompt_trace_enabled_from_env, raw_provider_trace_dir_from_env,
+    raw_provider_trace_enabled_from_env, AppConfig, CalculatorClient, CanonicalCatalog,
+    ConfigValidator, JobPersistence, MercurePublisher, ProviderSecrets, RunPersistence,
+    SharedCanonicalCatalog,
 };
 use sqlx::postgres::PgPoolOptions;
 use uuid::Uuid;
@@ -28,6 +32,15 @@ async fn main() {
     if let Err(err) = ConfigValidator::validate(&config, &secrets) {
         panic!("invalid astral_llm_worker configuration: {err}");
     }
+    configure_prompt_trace(PromptTraceSettings::from_runtime(
+        prompt_trace_enabled_from_env(),
+        prompt_trace_dir_from_env().map(Into::into),
+    ));
+    configure_raw_provider_trace(RawProviderTraceSettings::from_runtime(
+        config.runtime_env,
+        raw_provider_trace_enabled_from_env(config.runtime_env),
+        raw_provider_trace_dir_from_env().map(Into::into),
+    ));
 
     let database_url = config
         .database_url
