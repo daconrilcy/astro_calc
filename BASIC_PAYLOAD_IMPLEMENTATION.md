@@ -1269,3 +1269,31 @@ Commandes de verification:
 - `cargo test -p astral_calculator --test refactor_governance_tests astral_llm_worker_workspace_boundary_stays_explicit`
 - `rg -n "astral_llm_worker" Cargo.toml astral_llm/Cargo.toml astral_llm/README.md astral_llm/RAILGUARD.md`
 - 2026-06-22: closed a bootstrap config slice for `astral_llm_infra::AppConfig`. `from_env()` and `try_from_env()` now both surface typed config-loading errors for invalid provider base URLs and invalid bind addresses, while `astral_llm_api` and `astral_llm_worker` remain the binary edges that convert startup config failures into process-fatal errors. Verification: `cargo test -p astral_llm_infra --test app_config_env_tests`; `cargo test -p astral_llm_api --test astral_llm_tests`; `cargo test -p astral_llm_worker --no-run`.
+
+## 2026-06-22 - astral_llm Phase 1a: reading persistence port slice
+
+Resume court:
+- fermeture de la sous-tranche persistence du plan `plan-1782114537.md` avant le decouplage catalogue plus large;
+- introduction d'un port applicatif `reading_persistence` avec DTOs applicatifs pour les runs, prompt traces et token usages;
+- remplacement des references directes a `RunPersistence` dans `generate_reading_use_case.rs` et `provider_router.rs`;
+- adaptation de `horoscope/mod.rs` au meme port pour conserver un seul chemin de persistence cote application;
+- wiring des adaptateurs via `shared_reading_persistence(...)` dans `astral_llm_api`, `astral_llm_worker` et les tests PostgreSQL de prompt trace.
+
+Invariants de couche:
+- `astral_llm_application` ne stocke plus `RunPersistence` dans `GenerateReadingUseCase` ni `ProviderRouter`; la persistence y est exprimee par un port applicatif minimal;
+- l'adaptateur concret `RunPersistence -> ReadingPersistence` reste un glue local au crate application pour cette vague uniquement, afin d'eviter un cycle Cargo avec `astral_llm_infra`;
+- aucune modification de contrats JSON publics, de shapes de prompt trace persistees, de tables runs/steps/token usages, ni du catalogue canonique dans cette sous-tranche;
+- le decouplage `SharedCanonicalCatalog` reste explicitement hors de cette sous-tranche et n'est pas revendique comme ferme.
+
+Budget et justification:
+- budget planifie initialement pour la Phase 1 complete: 3 fichiers de production plus tests directs;
+- realisation effective de la sous-tranche: 7 fichiers de production/manifeste (`reading_persistence.rs`, `generate_reading_use_case.rs`, `provider_router.rs`, `horoscope/mod.rs`, `astral_llm_application/src/lib.rs`, `astral_llm_application/Cargo.toml`, `astral_llm_api/src/main.rs`, `astral_llm_worker/src/main.rs`) plus `tests/prompt_trace_persistence_tests.rs`;
+- justification atomique: laisser `horoscope/mod.rs` ou les composition roots sur l'ancien chemin `RunPersistence` aurait casse le closure metric du boundary persistence et laisse deux conventions concurrentes.
+
+Commandes de verification:
+- `cargo fmt`
+- `cargo test -p astral_llm_application`
+- `cargo test -p astral_llm_api --test astral_llm_tests`
+- `cargo test -p astral_llm_api --test integration_jobs_tests`
+- `cargo test -p astral_llm_worker --no-run`
+- `rg -n "RunPersistence" astral_llm/crates/astral_llm_application/src/generate_reading_use_case.rs astral_llm/crates/astral_llm_application/src/chapter_orchestrator.rs astral_llm/crates/astral_llm_application/src/provider_router.rs`

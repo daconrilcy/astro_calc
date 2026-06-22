@@ -1,4 +1,7 @@
 use crate::generate_reading_use_case::GenerateReadingUseCase;
+use crate::reading_persistence::{
+    priced_usage_records, PersistedGenerationRunRecord, PersistedRunStatus, PersistedSafetyStatus,
+};
 use crate::text_reprocessing_service_adapter::{
     reprocess_horoscope_daily, reprocess_horoscope_period,
 };
@@ -8,9 +11,7 @@ use astral_llm_domain::{
     EngineDefaults, GenerationError, GenerationErrorCode, ProviderKind, ReasoningEffort,
     SafetyMode, TokenUsage, TokenUsageType,
 };
-use astral_llm_infra::{
-    hash_json, GenerationRunRecord, GenerationTokenUsageRecord, RunStatus, SafetyStatus,
-};
+use astral_llm_infra::hash_json;
 use astral_llm_providers::{
     GenerationMetadata, PromptMessage, PromptRole, ProviderGenerationRequest,
 };
@@ -97,7 +98,7 @@ pub(crate) async fn persist_horoscope_run_started(
     let Ok(run_uuid) = uuid::Uuid::parse_str(run_id) else {
         return;
     };
-    let record = GenerationRunRecord {
+    let record = PersistedGenerationRunRecord {
         id: run_uuid,
         request_id: None,
         idempotency_key: None,
@@ -124,8 +125,8 @@ pub(crate) async fn persist_horoscope_run_started(
         generation_mode: "single_pass".into(),
         fallback_used: false,
         selected_domains: None,
-        status: RunStatus::Pending,
-        safety_status: SafetyStatus::NotChecked,
+        status: PersistedRunStatus::Pending,
+        safety_status: PersistedSafetyStatus::NotChecked,
         input_hash: hash_json(request),
         output_hash: None,
         token_input: None,
@@ -163,8 +164,8 @@ pub(crate) async fn persist_horoscope_run_finished(
     let (status, safety_status, provider_used, model_used, fallback_used, output_hash, error_code) =
         match result {
             Ok(response) => (
-                RunStatus::Success,
-                SafetyStatus::Passed,
+                PersistedRunStatus::Success,
+                PersistedSafetyStatus::Passed,
                 response
                     .pointer("/quality/provider")
                     .and_then(Value::as_str)
@@ -181,8 +182,8 @@ pub(crate) async fn persist_horoscope_run_finished(
                 None,
             ),
             Err(err) => (
-                RunStatus::Failed,
-                SafetyStatus::NotChecked,
+                PersistedRunStatus::Failed,
+                PersistedSafetyStatus::NotChecked,
                 None,
                 None,
                 false,
@@ -190,7 +191,7 @@ pub(crate) async fn persist_horoscope_run_finished(
                 Some(err.detail().code.as_str().to_string()),
             ),
         };
-    let record = GenerationRunRecord {
+    let record = PersistedGenerationRunRecord {
         id: run_uuid,
         request_id: None,
         idempotency_key: None,
@@ -254,7 +255,7 @@ pub(crate) async fn persist_horoscope_run_finished(
             .or(Some(record.model_requested.as_str()))?;
         price_horoscope_usage(use_case, provider, model, usage)
     }) {
-        let usage_records = horoscope_usage_records(&run_usage);
+        let usage_records = priced_usage_records(&run_usage);
         if let Err(err) = persistence
             .replace_run_token_usages(run_uuid, &usage_records)
             .await
@@ -271,7 +272,7 @@ pub(crate) async fn persist_horoscope_run_finished(
         else {
             continue;
         };
-        let usage_records = horoscope_usage_records(&step_usage);
+        let usage_records = priced_usage_records(&step_usage);
         if let Err(err) = persistence
             .replace_step_token_usages(step_id, &usage_records)
             .await
@@ -347,19 +348,4 @@ fn price_horoscope_usage(
         .require(&provider_kind, model)
         .ok()?;
     Some(usage.priced(&capability.token_pricing()))
-}
-
-fn horoscope_usage_records(usage: &TokenUsage) -> Vec<GenerationTokenUsageRecord> {
-    usage
-        .items
-        .iter()
-        .map(|item| GenerationTokenUsageRecord {
-            usage_type_code: item.usage_type.as_str().to_string(),
-            usage_subtype: item.usage_subtype.clone(),
-            token_count: i32::try_from(item.token_count).unwrap_or(i32::MAX),
-            unit_price_usd_per_mtok: item.unit_price_usd_per_mtok,
-            estimated_cost_usd: item.estimated_cost_usd,
-            provider_metric_name: item.provider_metric_name.clone(),
-        })
-        .collect()
 }

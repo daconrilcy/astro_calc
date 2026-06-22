@@ -11,8 +11,8 @@ use astral_llm_application::{
     build_capability_registry_with_db, build_fallback_policy, build_providers,
     prompt_trace::{configure_prompt_trace, PromptTraceSettings},
     raw_provider_trace::{configure_raw_provider_trace, RawProviderTraceSettings},
-    GenerateReadingUseCase, IntegrationJobValidator, PromptCompiler, ProviderCircuitBreaker,
-    ProviderRouter, ResponseValidator, SchemaRegistry,
+    shared_reading_persistence, GenerateReadingUseCase, IntegrationJobValidator, PromptCompiler,
+    ProviderCircuitBreaker, ProviderRouter, ResponseValidator, SchemaRegistry,
 };
 use astral_llm_infra::{
     bootstrap_domains, bootstrap_product_policies, bootstrap_safety_patterns,
@@ -118,7 +118,7 @@ async fn main() {
         capability_registry,
         privacy_policy,
         circuit_breaker,
-        persistence.clone(),
+        persistence.clone().map(shared_reading_persistence),
     );
 
     let schema_registry = Arc::new(SchemaRegistry::new());
@@ -134,7 +134,7 @@ async fn main() {
         catalog.clone(),
         config.privacy_policy.clone(),
         config.legacy_product_code_shim_available(),
-        persistence.clone(),
+        persistence.clone().map(shared_reading_persistence),
     ));
 
     tracing::info!(

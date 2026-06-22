@@ -8,14 +8,10 @@ use astral_llm_domain::{
     EngineDefaults, GenerateReadingRequest, GenerationError, GenerationErrorCode, PrivacyPolicy,
     ProviderKind, PublicTokenUsage, SafetyMode, ServiceLimits, TokenUsage,
 };
-use astral_llm_infra::{
-    hash_json, GenerationRunRecord, GenerationTokenUsageRecord, RunPersistence, RunStatus,
-    SafetyStatus, SharedCanonicalCatalog,
-};
+use astral_llm_infra::{hash_json, SharedCanonicalCatalog};
 
 use astral_llm_providers::{GenerationMetadata, ProviderGenerationRequest};
 use chrono::Utc;
-use std::sync::Arc;
 
 use crate::astro_basis_validator::AstroBasisValidator;
 use crate::astro_payload_normalizer::AstroPayloadNormalizer;
@@ -31,6 +27,10 @@ use crate::prompt_compiler::{PromptCompilationInput, PromptCompiler};
 use crate::prompt_trace;
 use crate::provider_router::ProviderRouter;
 use crate::provider_schema_compiler::ProviderSchemaCompiler;
+use crate::reading_persistence::{
+    priced_usage_records, PersistedGenerationRunRecord, PersistedRunStatus, PersistedSafetyStatus,
+    SharedReadingPersistence,
+};
 use crate::reading_quality_validator::ReadingQualityValidator;
 use crate::reasoning_generation::{
     apply_reasoning_output_reserve, effective_temperature, resolve_reasoning_effort,
@@ -54,7 +54,7 @@ pub struct GenerateReadingUseCase {
     pub(super) catalog: SharedCanonicalCatalog,
     privacy_policy: PrivacyPolicy,
     legacy_product_code_shim_available: bool,
-    persistence: Option<Arc<RunPersistence>>,
+    persistence: Option<SharedReadingPersistence>,
 }
 
 pub struct UseCaseOutput {
@@ -95,7 +95,7 @@ impl GenerateReadingUseCase {
         catalog: SharedCanonicalCatalog,
         privacy_policy: PrivacyPolicy,
         legacy_product_code_shim_available: bool,
-        persistence: Option<Arc<RunPersistence>>,
+        persistence: Option<SharedReadingPersistence>,
     ) -> Self {
         Self {
             router,
@@ -119,7 +119,7 @@ impl GenerateReadingUseCase {
         &self.engine_defaults
     }
 
-    pub fn persistence(&self) -> Option<&Arc<RunPersistence>> {
+    pub fn persistence(&self) -> Option<&SharedReadingPersistence> {
         self.persistence.as_ref()
     }
 
@@ -690,7 +690,7 @@ impl GenerateReadingUseCase {
         let Ok(run_uuid) = uuid::Uuid::parse_str(run_id) else {
             return;
         };
-        let record = GenerationRunRecord {
+        let record = PersistedGenerationRunRecord {
             id: run_uuid,
             request_id: context.request_id.clone(),
             idempotency_key: context.idempotency_key.clone(),
@@ -712,8 +712,8 @@ impl GenerateReadingUseCase {
             } else {
                 Some(serde_json::json!(audit.selected_domains))
             },
-            status: RunStatus::Pending,
-            safety_status: SafetyStatus::NotChecked,
+            status: PersistedRunStatus::Pending,
+            safety_status: PersistedSafetyStatus::NotChecked,
             input_hash: context.input_hash.clone(),
             output_hash: None,
             token_input: None,
@@ -744,31 +744,31 @@ impl GenerateReadingUseCase {
         let (status, safety_status, provider_used, model_used, output_hash, error) = match response
         {
             GenerateReadingResponse::Success { reading, .. } => (
-                RunStatus::Success,
-                SafetyStatus::Passed,
+                PersistedRunStatus::Success,
+                PersistedSafetyStatus::Passed,
                 Some(reading.quality.used_provider.clone()),
                 Some(reading.quality.used_model.clone()),
                 serde_json::to_value(response).ok().map(|v| hash_json(&v)),
                 None,
             ),
             GenerateReadingResponse::SafetyRejected { error, .. } => (
-                RunStatus::SafetyRejected,
-                SafetyStatus::Rejected,
+                PersistedRunStatus::SafetyRejected,
+                PersistedSafetyStatus::Rejected,
                 None,
                 None,
                 serde_json::to_value(response).ok().map(|v| hash_json(&v)),
                 Some(error.code.clone()),
             ),
             GenerateReadingResponse::Failed { error, .. } => (
-                RunStatus::Failed,
-                SafetyStatus::NotChecked,
+                PersistedRunStatus::Failed,
+                PersistedSafetyStatus::NotChecked,
                 None,
                 None,
                 serde_json::to_value(response).ok().map(|v| hash_json(&v)),
                 Some(error.code.as_str().to_string()),
             ),
         };
-        let final_record = GenerationRunRecord {
+        let final_record = PersistedGenerationRunRecord {
             id: run_uuid,
             request_id: context.request_id.clone(),
             idempotency_key: context.idempotency_key.clone(),
@@ -831,7 +831,7 @@ impl GenerateReadingUseCase {
                 .or(Some(final_record.model_requested.as_str()))?;
             self.priced_usage(provider, model, usage)
         }) {
-            let usage_records = to_usage_records(&run_usage);
+            let usage_records = priced_usage_records(&run_usage);
             if let Err(err) = persistence
                 .replace_run_token_usages(run_uuid, &usage_records)
                 .await
@@ -847,7 +847,7 @@ impl GenerateReadingUseCase {
             else {
                 continue;
             };
-            let usage_records = to_usage_records(&step_usage);
+            let usage_records = priced_usage_records(&step_usage);
             if let Err(err) = persistence
                 .replace_step_token_usages(step_id, &usage_records)
                 .await
@@ -944,19 +944,4 @@ impl GenerateReadingUseCase {
             model.to_string(),
         ))
     }
-}
-
-fn to_usage_records(usage: &TokenUsage) -> Vec<GenerationTokenUsageRecord> {
-    usage
-        .items
-        .iter()
-        .map(|item| GenerationTokenUsageRecord {
-            usage_type_code: item.usage_type.as_str().to_string(),
-            usage_subtype: item.usage_subtype.clone(),
-            token_count: i32::try_from(item.token_count).unwrap_or(i32::MAX),
-            unit_price_usd_per_mtok: item.unit_price_usd_per_mtok,
-            estimated_cost_usd: item.estimated_cost_usd,
-            provider_metric_name: item.provider_metric_name.clone(),
-        })
-        .collect()
 }

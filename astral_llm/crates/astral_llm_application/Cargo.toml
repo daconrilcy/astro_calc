@@ -8,6 +8,7 @@ astral_contracts.workspace = true
 astral_calculator.workspace = true
 astral_llm_domain.workspace = true
 astral_llm_providers.workspace = true
+async-trait.workspace = true
 jsonschema.workspace = true
 schemars.workspace = true
 serde.workspace = true
@@ -49,3 +50,7 @@ path = "../../../tests/horoscope_application_builders_tests.rs"
 [[test]]
 name = "trace_runtime_settings_tests"
 path = "../../../tests/trace_runtime_settings_tests.rs"
+
+[[test]]
+name = "reading_persistence_tests"
+path = "../../../tests/reading_persistence_tests.rs"

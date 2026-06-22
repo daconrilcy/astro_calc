@@ -10,9 +10,9 @@ use astral_llm_application::{
     job_error_from_reading, job_status_from_reading,
     prompt_trace::{configure_prompt_trace, PromptTraceSettings},
     raw_provider_trace::{configure_raw_provider_trace, RawProviderTraceSettings},
-    unified_result_envelope, GenerateReadingUseCase, IntegrationJobExecutor,
-    IntegrationJobValidator, PromptCompiler, ProviderCircuitBreaker, ProviderRouter,
-    ResponseValidator, SchemaRegistry, UnifiedReadingOutcome,
+    shared_reading_persistence, unified_result_envelope, GenerateReadingUseCase,
+    IntegrationJobExecutor, IntegrationJobValidator, PromptCompiler, ProviderCircuitBreaker,
+    ProviderRouter, ResponseValidator, SchemaRegistry, UnifiedReadingOutcome,
 };
 use astral_llm_domain::GenerateReadingResponse;
 use astral_llm_infra::{
@@ -103,7 +103,7 @@ async fn run_worker() {
             config.circuit_breaker_failure_threshold,
             config.circuit_breaker_open_secs,
         )),
-        Some(run_persistence.clone()),
+        Some(shared_reading_persistence(run_persistence.clone())),
     );
     let schema_registry = Arc::new(SchemaRegistry::new());
     let use_case = GenerateReadingUseCase::new(
@@ -115,7 +115,7 @@ async fn run_worker() {
         catalog,
         config.privacy_policy.clone(),
         config.legacy_product_code_shim_available(),
-        Some(run_persistence.clone()),
+        Some(shared_reading_persistence(run_persistence.clone())),
     );
 
     let calculator = WorkerCalculatorPort::new(

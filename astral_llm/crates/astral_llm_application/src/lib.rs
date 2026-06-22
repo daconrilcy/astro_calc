@@ -45,6 +45,7 @@ pub mod provider_router;
 pub mod provider_schema_compiler;
 pub mod raw_provider_trace;
 pub mod reading_opening_diversity_validator;
+pub mod reading_persistence;
 pub mod reading_plan;
 pub mod reading_quality_validator;
 pub mod reading_script_guard;
@@ -117,6 +118,7 @@ pub use provider_router::{
 };
 pub use provider_schema_compiler::ProviderSchemaCompiler;
 pub use reading_opening_diversity_validator::ReadingOpeningDiversityValidator;
+pub use reading_persistence::shared_reading_persistence;
 pub use reading_plan::ReadingPlanBuilder;
 pub use reading_quality_validator::{
     requires_blocking_quality_gate, PremiumQualityThresholds, ReadingQualityReport,

@@ -7,7 +7,6 @@ use astral_llm_domain::{
     provider::{ProviderKind, StructuredOutputMode},
     FallbackPolicy, FallbackReason, GenerationError, GenerationErrorCode, PrivacyPolicy,
 };
-use astral_llm_infra::{GenerationPromptTraceRecord, RunPersistence};
 use astral_llm_providers::{
     LlmProvider, LlmProviderError, ProviderGenerationRequest, ProviderGenerationResponse,
     SharedLlmProvider,
@@ -15,6 +14,7 @@ use astral_llm_providers::{
 
 use crate::model_capability_registry::ModelCapabilityRegistry;
 use crate::provider_circuit_breaker::{CircuitBreakerState, ProviderCircuitBreaker};
+use crate::reading_persistence::{persisted_prompt_trace_record, SharedReadingPersistence};
 
 #[derive(Debug, Clone)]
 pub struct ProviderRouteResult {
@@ -30,7 +30,7 @@ pub struct ProviderRouter {
     capability_registry: Arc<ModelCapabilityRegistry>,
     privacy_policy: PrivacyPolicy,
     circuit_breaker: Arc<ProviderCircuitBreaker>,
-    persistence: Option<Arc<RunPersistence>>,
+    persistence: Option<SharedReadingPersistence>,
 }
 
 impl ProviderRouter {
@@ -40,7 +40,7 @@ impl ProviderRouter {
         capability_registry: Arc<ModelCapabilityRegistry>,
         privacy_policy: PrivacyPolicy,
         circuit_breaker: Arc<ProviderCircuitBreaker>,
-        persistence: Option<Arc<RunPersistence>>,
+        persistence: Option<SharedReadingPersistence>,
     ) -> Self {
         Self {
             providers,
@@ -285,17 +285,10 @@ impl ProviderRouter {
             (None, 0) => None,
             (None, index) => Some(format!("provider_retry_{index}")),
         };
-        let record = GenerationPromptTraceRecord {
+        let record = persisted_prompt_trace_record(
             run_id,
-            chapter_code: trace.chapter_code,
-            step_type: trace.step_type,
-            attempt,
-            prompt_family: trace.prompt_family,
-            prompt_version: trace.prompt_version,
-            message_count: trace.message_count,
-            compiled_prompt: trace.compiled_prompt,
-            messages_json: trace.messages_json,
-        };
+            crate::prompt_trace::PromptTraceRecord { attempt, ..trace },
+        );
         if let Err(err) = persistence.insert_prompt_trace(&record).await {
             tracing::warn!(
                 run_id = %request.metadata.run_id,

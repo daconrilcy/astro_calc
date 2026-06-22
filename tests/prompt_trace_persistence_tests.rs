@@ -5,9 +5,10 @@ use std::sync::{Arc, Mutex};
 use astral_llm_api::{routes, state::AppState};
 use astral_llm_application::{
     build_period_writer_request, build_provider_map, daily_writer_response,
-    period_writer_response_with_quality_loop, validate_period_public_request,
-    GenerateReadingUseCase, IntegrationJobValidator, ModelCapabilityRegistry, PromptCompiler,
-    ProviderCircuitBreaker, ProviderRouter, ResponseValidator, SchemaRegistry,
+    period_writer_response_with_quality_loop, shared_reading_persistence,
+    validate_period_public_request, GenerateReadingUseCase, IntegrationJobValidator,
+    ModelCapabilityRegistry, PromptCompiler, ProviderCircuitBreaker, ProviderRouter,
+    ResponseValidator, SchemaRegistry,
 };
 use astral_llm_domain::{
     output_contract::GenerationMode,
@@ -74,7 +75,7 @@ fn build_fake_use_case(persistence: Arc<RunPersistence>) -> GenerateReadingUseCa
         Arc::new(ModelCapabilityRegistry::bootstrap()),
         PrivacyPolicy::default(),
         Arc::new(ProviderCircuitBreaker::new(5, 60)),
-        Some(persistence.clone()),
+        Some(shared_reading_persistence(persistence.clone())),
     );
     GenerateReadingUseCase::new(
         router,
@@ -88,7 +89,7 @@ fn build_fake_use_case(persistence: Arc<RunPersistence>) -> GenerateReadingUseCa
         test_catalog(),
         PrivacyPolicy::default(),
         true,
-        Some(persistence),
+        Some(shared_reading_persistence(persistence)),
     )
 }
 
@@ -142,7 +143,7 @@ fn build_openai_use_case(
         Arc::new(ModelCapabilityRegistry::bootstrap_dev_fallback()),
         PrivacyPolicy::default(),
         Arc::new(ProviderCircuitBreaker::new(5, 60)),
-        Some(persistence.clone()),
+        Some(shared_reading_persistence(persistence.clone())),
     );
     GenerateReadingUseCase::new(
         router,
@@ -156,7 +157,7 @@ fn build_openai_use_case(
         test_catalog(),
         PrivacyPolicy::default(),
         true,
-        Some(persistence),
+        Some(shared_reading_persistence(persistence)),
     )
 }
 
