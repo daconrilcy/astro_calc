@@ -1,3 +1,42 @@
+# 2026-06-22 - `astral_llm_application` hash JSON boundary
+
+Resume court:
+- ajout d'un helper applicatif stable `reading_persistence::hash_json_value(&serde_json::Value) -> String` avec le meme algorithme que l'ancien hash infra (`serde_json::to_vec(...).unwrap_or_default()`, SHA-256, hex);
+- remplacement des usages de `astral_llm_infra::hash_json` dans `generate_reading_use_case.rs` et `horoscope/mod.rs` par ce helper applicatif;
+- conservation du glue temporaire `reading_persistence/infra_adapter.rs` et absence de changement sur les contrats JSON publics, traces prompt, traces provider, persistence table ou enveloppes job.
+
+Invariants de couche:
+- `astral_llm_application` calcule ses hashes de persistence sans importer `astral_llm_infra::hash_json` dans les modules de feature/runtime;
+- le hash reste deterministe et byte-identique pour les payloads JSON valides;
+- aucun nouveau test inline n'est ajouté sous `src/`; la validation reste dans les tests racine.
+
+Commandes de verification:
+- `cargo fmt --package astral_llm_application`
+- `cargo test -p astral_llm_application`
+- `cargo test -p astral_llm_application --test reading_persistence_tests`
+- `cargo test -p astral_llm_api --test astral_llm_tests`
+- `cargo test -p astral_llm_api --test integration_jobs_tests`
+- `Select-String -Path astral_llm\\crates\\astral_llm_application\\src\\generate_reading_use_case.rs,astral_llm\\crates\\astral_llm_application\\src\\horoscope\\mod.rs -Pattern 'astral_llm_infra::hash_json|hash_json'`
+
+# 2026-06-22 - `astral_llm` review loop: trace runtime settings verification gate
+
+Resume court:
+- revue d'implementation locale sur `astral_llm` sans correction runtime requise;
+- ajout au `astral_llm/RAILGUARD.md` d'un gate de verification explicite pour la slice `trace runtime settings`;
+- la revue confirme que `prompt_trace.rs` et `raw_provider_trace.rs` ne lisent plus directement `ASTRAL_LLM_*`, et que les edges API/worker compilent toujours avec les settings injectes.
+
+Invariants de couche:
+- `astral_llm_application::prompt_trace` et `astral_llm_application::raw_provider_trace` restent des consommateurs de settings runtime injectes, pas des lecteurs directs d'environnement;
+- les lectures d'environnement residuelles pour cette zone restent bornees aux composition roots / runtime (`astral_llm_api`, `astral_llm_worker`, `astral_llm_infra`);
+- aucun contrat JSON public, aucune persistence, aucun flux job, et aucun wiring manifest workspace ne changent dans cette vague documentaire.
+
+Commandes de verification:
+- `rg -n "env_bool|env_var|ASTRAL_LLM_" astral_llm/crates/astral_llm_application/src/prompt_trace.rs astral_llm/crates/astral_llm_application/src/raw_provider_trace.rs astral_llm/crates/astral_llm_worker/src/main.rs`
+- `cargo test -p astral_llm_application --test trace_runtime_settings_tests`
+- `cargo test -p astral_llm_api --no-run`
+- `cargo test -p astral_llm_worker --no-run`
+- `cargo metadata --format-version 1 --no-deps` depuis `astral_llm/`
+
 # 2026-06-22 - astral_llm Phase 1b: role and locale catalog boundary
 
 Resume court:
@@ -1343,3 +1382,27 @@ Commandes de verification:
 - `cargo test -p astral_llm_api --test integration_jobs_tests`
 - `cargo test -p astral_llm_worker --no-run`
 - `rg -n "RunPersistence" astral_llm/crates/astral_llm_application/src/generate_reading_use_case.rs astral_llm/crates/astral_llm_application/src/chapter_orchestrator.rs astral_llm/crates/astral_llm_application/src/provider_router.rs`
+
+## 2026-06-22 - astral_llm Phase 1: prompt golden test-support boundary
+
+Resume court:
+- suppression de l'export de production `astral_llm_application::prompt_golden`;
+- deplacement des helpers d'assertion prompt golden vers `tests/common/prompt_golden.rs`;
+- suppression du fichier de production `astral_llm/crates/astral_llm_application/src/prompt_golden.rs`;
+- adaptation du test racine `tests/prompt_golden_tests.rs` pour consommer un support de test local (`tests/prompt_golden_support.rs`) sans relinker les autres helpers `tests/common` dependants de `astral_calculator`.
+
+Invariants de couche:
+- les assertions prompt golden restent dans `tests/` et ne doivent pas redevenir une surface publique de `astral_llm_application`;
+- aucun helper de verification prompt golden ne vit sous `astral_llm/crates/astral_llm_application/src`;
+- aucun contrat JSON public, payload persiste, wiring runtime ou manifest Cargo n'est modifie par cette vague.
+
+Budget et justification:
+- budget planifie: 2 fichiers de production plus tests/support directs;
+- realisation effective: 1 fichier de production modifie (`astral_llm_application/src/lib.rs`), 1 fichier de production supprime (`astral_llm_application/src/prompt_golden.rs`), 4 fichiers de tests/support ajoutes ou modifies;
+- justification atomique: le support `tests/prompt_golden_support.rs` isole le helper `prompt_golden` pour le harness `astral_llm_api` sans reintroduire d'export de production ni ajouter de dependance `astral_calculator` au crate API.
+
+Commandes de verification:
+- `cargo fmt --package astral_llm_application --package astral_llm_api`
+- `rg -n "prompt_golden|assert_compiled_prompt_is_safe|assert_premium_plus_prompt_structure|assert_premium_compact_prompt_structure" astral_llm/crates/astral_llm_application/src`
+- `cargo test -p astral_llm_api --test prompt_golden_tests`
+- `cargo test -p astral_llm_application --test trace_runtime_settings_tests`
