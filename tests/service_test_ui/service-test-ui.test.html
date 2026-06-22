@@ -97,6 +97,27 @@
       });
       assert("rendu gateway natal sections", natalSections.length >= 4);
 
+      const simplifiedSections = api.normalizeGatewayReadingSections({
+        metadata: { product_code: "natal_simplified_free", variant: "simplified", tier: "free" },
+        quality: { calculator_contract_version: "astro_simplified_natal_response_v1", llm_contract_version: "generate_reading_response_v1" },
+        reading: {
+          reading: {
+            summary: {
+              title: "Identité - profil synthétique",
+              short_text: "Votre thème met en avant un esprit curieux et adaptable qui cherche à comprendre et à communiquer.",
+            },
+            chapters: [{
+              title: "Identité - profil synthétique",
+              body: "Votre thème met en avant un esprit curieux et adaptable qui cherche à comprendre et à communiquer. Le chapitre développe ensuite les nuances.",
+            }],
+          }
+        }
+      });
+      assert(
+        "rendu gateway natal simplifie masque le resume redondant",
+        simplifiedSections.filter((section) => section.title === "Identité - profil synthétique").length === 1
+      );
+
       const copyText = api.composeCopiedReading("Natal full Basic", "Bloc 1\nBloc 2");
       assert("copie contient service", copyText.includes("Service: Natal full Basic"));
       assert("copie contient date", copyText.includes("Date: "));

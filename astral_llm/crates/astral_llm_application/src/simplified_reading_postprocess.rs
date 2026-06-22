@@ -64,9 +64,14 @@ pub fn post_process_single_pass_reading(
         reading.legal.disclaimer = default_legal_disclaimer(language, true);
     }
 
-    let is_simplified = interpretation
-        .map(|ctx| ctx.profile.profile_code == SIMPLIFIED_PROFILE)
-        .unwrap_or(false);
+    let is_simplified = request
+        .product_context
+        .interpretation_profile_code
+        .as_deref()
+        == Some(SIMPLIFIED_PROFILE)
+        || interpretation
+            .map(|ctx| ctx.profile.profile_code == SIMPLIFIED_PROFILE)
+            .unwrap_or(false);
 
     let sanitize_audit = sanitize_reading_text_fields(reading, language);
     audit
@@ -145,6 +150,9 @@ pub fn build_compact_summary_from_body(body: &str, language: &str) -> String {
     for sentence in &sentences {
         let sentence_words = count_words(sentence);
         if picked.len() >= rules.max_short_text_sentences {
+            break;
+        }
+        if picked.is_empty() && sentence_words > rules.max_short_text_words {
             break;
         }
         if !picked.is_empty() && words + sentence_words > rules.max_short_text_words {

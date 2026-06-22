@@ -1506,3 +1506,22 @@ Commandes de verification:
 - `cargo test -p astral_llm_application`
 - `cargo test -p astral_llm_api --test astral_llm_tests`
 - `cargo test -p astral_llm_api --test astral_llm_evidence_planner_tests`
+
+## 2026-06-22 - natal simplifie: compact summary hardening
+
+Resume court:
+- correction du post-traitement `natal_simplified` pour s'appuyer aussi sur `GenerateReadingRequest.product_context.interpretation_profile_code`, pas seulement sur le profil resolu en base;
+- durcissement de `build_compact_summary_from_body` pour couper une premiere phrase trop longue au lieu de la recopier integralement;
+- ajout d'une regression qui reproduit une sortie OpenAI ou `summary.short_text` est identique au corps du chapitre;
+- ajustement de l'UI de test pour masquer le resume gateway natal lorsqu'il chevauche fortement l'unique chapitre avec le meme titre.
+
+Invariants de couche:
+- le rendu public peut continuer a exposer `summary` puis `chapters`, mais le serveur doit garantir que `summary.short_text` reste compact et distinct d'un chapitre long;
+- aucun changement de contrat JSON public ni de wiring API/worker/gateway;
+- la correction serveur reste dans le post-traitement applicatif de lecture simplifiee;
+- la correction UI ne modifie que le rendu/copie de `tests/service_test_ui`, le JSON brut reste consultable.
+
+Commandes de verification:
+- `cargo fmt --package astral_llm_application`
+- `cargo test -p astral_llm_api --test astral_llm_simplified_reading_tests`
+- `node --check tests\service_test_ui\service-test-ui.js`

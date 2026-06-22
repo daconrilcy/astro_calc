@@ -12,7 +12,7 @@ use astral_llm_application::simplified_reading_guard::{
 use astral_llm_application::simplified_reading_postprocess::{
     apply_simplified_body_fallback, build_compact_summary_from_body,
     harden_ambiguous_core_identity_chapter, normalize_simplified_interpretive_roles,
-    simplified_deterministic_body,
+    post_process_single_pass_reading, simplified_deterministic_body,
 };
 use astral_llm_application::{
     astro_payload_normalizer::AstroPayloadNormalizer, build_reading_request,
@@ -249,6 +249,68 @@ fn compact_summary_is_autonomous_without_ellipsis() {
     assert!(!summary.contains('…'));
     assert!(summary.ends_with('.') || summary.ends_with('!') || summary.ends_with('?'));
     assert!(!summary.contains("Troisième phrase"));
+}
+
+#[test]
+fn simplified_postprocess_compacts_summary_without_resolved_profile() {
+    use astral_llm_domain::generation_response::{
+        ConfidenceLevel, LegalBlock, NatalReadingResponse, QualityMetadata, ReadingChapter,
+        ReadingSummary,
+    };
+    use astral_llm_domain::output_contract::GenerationMode;
+
+    let request =
+        build_reading_request(&stable_calculation(), "fr", AudienceLevel::Beginner).expect("build");
+    assert_eq!(
+        request.product_context.interpretation_profile_code.as_deref(),
+        Some(SIMPLIFIED_PROFILE)
+    );
+
+    let body = "Votre thème suggère une identité mentale et relationnelle marquée par la curiosité et la facilité d'expression. \
+                Cette vivacité intellectuelle rencontre une sensibilité intérieure douce et imaginative. \
+                Dans les relations et les valeurs, vous cherchez du concret et du réconfort. \
+                Votre moteur personnel est franc et volontaire, avec une capacité à prendre des initiatives sans trop attendre. \
+                Un soutien émotionnel fort, souvent lié au foyer ou aux proches, peut élargir vos opportunités et nourrir votre confiance. \
+                Parallèlement, une structure patiente et disciplinée vous aide à canaliser vos élans dans des choix durables. \
+                Cette dynamique gagne en clarté lorsque vous acceptez de relier vos idées rapides à des habitudes concrètes, \
+                à des échanges fiables et à une écoute plus fine de vos besoins affectifs. \
+                Enfin, une intensité intérieure révèle une capacité à évoluer quand vous réorganisez vos priorités.";
+    let mut reading = NatalReadingResponse {
+        schema_version: "natal_reading_v1".into(),
+        language: "fr".into(),
+        reading_type: "natal_prompter".into(),
+        summary: ReadingSummary {
+            title: "Identité (lecture simplifiée)".into(),
+            short_text: body.into(),
+        },
+        chapters: vec![ReadingChapter {
+            code: SIMPLIFIED_CHAPTER_IDENTITY.into(),
+            title: "Identité (lecture simplifiée)".into(),
+            body: body.into(),
+            astro_basis: vec![],
+            confidence: ConfidenceLevel::High,
+            safety_flags: vec![],
+        }],
+        legal: LegalBlock {
+            disclaimer: String::new(),
+        },
+        quality: QualityMetadata {
+            used_provider: "openai".into(),
+            used_model: "gpt-4o-mini".into(),
+            generation_mode: GenerationMode::SinglePass,
+            prompt_family: "natal_simplified".into(),
+            prompt_version: "1.0".into(),
+            astro_contract_version: "natal_simplified_structured_v1".into(),
+            fallback_used: false,
+        },
+    };
+
+    let audit = post_process_single_pass_reading(&mut reading, &request, None);
+
+    assert_eq!(audit.summary_source.as_deref(), Some("server_compact_from_chapter"));
+    assert_ne!(reading.summary.short_text, reading.chapters[0].body);
+    assert!(reading.summary.short_text.len() < reading.chapters[0].body.len());
+    assert!(!reading.summary.short_text.contains("Enfin"));
 }
 
 #[test]

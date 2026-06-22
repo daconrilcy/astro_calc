@@ -1631,7 +1631,18 @@
       });
     }
 
-    return sections.concat(normalizeReadingSections(reading));
+    return sections.concat(normalizeReadingSections(reading, {
+      suppressSingleChapterOverlappingSummary: isGatewayNatalPayload(payload),
+    }));
+  }
+
+  function isGatewayNatalPayload(payload) {
+    return Boolean(
+      payload &&
+      payload.metadata &&
+      typeof payload.metadata.product_code === "string" &&
+      payload.metadata.product_code.startsWith("natal_")
+    );
   }
 
   function extractReadingPayload(result) {
@@ -1642,8 +1653,9 @@
     return result;
   }
 
-  function normalizeReadingSections(payload) {
+  function normalizeReadingSections(payload, options) {
     if (!payload || typeof payload !== "object") return [];
+    const config = options || {};
     const sections = [];
 
     if (payload.status && TERMINAL_READING_STATUSES.has(payload.status) && payload.error) {
@@ -1653,7 +1665,7 @@
       });
     }
 
-    if (payload.summary) {
+    if (payload.summary && !shouldSuppressSummary(payload, config)) {
       sections.push({
         title: payload.summary.title || "Resume",
         paragraphs: [payload.summary.short_text || payload.summary.text].filter(Boolean),
@@ -1695,6 +1707,38 @@
     addObjectAdvice(sections, payload.strategy, "Strategie");
 
     return sections.filter((section) => section.paragraphs.length > 0 || section.items);
+  }
+
+  function shouldSuppressSummary(payload, config) {
+    if (!config.suppressSingleChapterOverlappingSummary) return false;
+    if (!payload.summary || !Array.isArray(payload.chapters) || payload.chapters.length !== 1) return false;
+    const summaryText = normalizedText(payload.summary.short_text || payload.summary.text || "");
+    const chapter = payload.chapters[0] || {};
+    const chapterText = normalizedText(chapter.body || "");
+    if (!summaryText || !chapterText) return false;
+    const summaryTitle = normalizedText(payload.summary.title || "");
+    const chapterTitle = normalizedText(chapter.title || chapter.code || "");
+    return summaryTitle === chapterTitle && textsOverlap(summaryText, chapterText);
+  }
+
+  function normalizedText(value) {
+    return String(value || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim()
+      .replace(/\s+/g, " ");
+  }
+
+  function textsOverlap(shorter, longer) {
+    if (!shorter || !longer) return false;
+    if (longer.includes(shorter)) return true;
+    const shorterWords = shorter.split(" ").filter(Boolean);
+    const longerWords = longer.split(" ").filter(Boolean);
+    if (!shorterWords.length || !longerWords.length) return false;
+    const sample = shorterWords.slice(0, Math.min(shorterWords.length, 24)).join(" ");
+    return sample.length > 40 && longerWords.join(" ").includes(sample);
   }
 
   function addStringSection(sections, title, value) {
