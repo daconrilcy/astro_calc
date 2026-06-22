@@ -22,6 +22,7 @@ chrono = { version = "0.4", features = ["serde"] }
 dotenvy = "0.15"
 hex = "0.4"
 jsonschema = "0.18"
+regex = "1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 schemars = "0.8"
 secrecy = { version = "0.10", features = ["serde"] }
@@ -34,7 +35,8 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
 tower = "0.5"
 tower-http = { version = "0.6", features = ["trace", "timeout"] }
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "registry"] }
+tracing-appender = "0.2"
 uuid = { version = "1", features = ["v4", "serde"] }
 
 astral_contracts = { path = "../astral_contracts" }
@@ -43,3 +45,4 @@ astral_llm_domain = { path = "crates/astral_llm_domain" }
 astral_llm_application = { path = "crates/astral_llm_application" }
 astral_llm_providers = { path = "crates/astral_llm_providers" }
 astral_llm_infra = { path = "crates/astral_llm_infra" }
+astral_time_window = { path = "../astral_time_window" }

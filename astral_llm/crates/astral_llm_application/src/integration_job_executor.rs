@@ -4,10 +4,10 @@ use astral_llm_domain::{
     integration::{CalculationMode, IntegrationService},
     GenerateReadingResponse, GenerationError, GenerationErrorCode,
 };
-use astral_llm_infra::CalculatorClient;
 use serde_json::Value;
 use uuid::Uuid;
 
+use crate::core::calculator::CalculatorPort;
 use crate::generate_reading_use_case::{GenerateReadingUseCase, UseCaseOutput};
 use crate::horoscope::{HoroscopeDailyNatalOrchestrator, HoroscopePeriodNatalOrchestrator};
 use crate::integration_job_validator::ValidatedIntegrationJob;
@@ -29,13 +29,19 @@ pub enum UnifiedReadingOutcome {
     Json(Value),
 }
 
-pub struct IntegrationJobExecutor<'a> {
-    calculator: &'a CalculatorClient,
+pub struct IntegrationJobExecutor<'a, C>
+where
+    C: CalculatorPort + ?Sized,
+{
+    calculator: &'a C,
     use_case: &'a GenerateReadingUseCase,
 }
 
-impl<'a> IntegrationJobExecutor<'a> {
-    pub fn new(calculator: &'a CalculatorClient, use_case: &'a GenerateReadingUseCase) -> Self {
+impl<'a, C> IntegrationJobExecutor<'a, C>
+where
+    C: CalculatorPort + ?Sized,
+{
+    pub fn new(calculator: &'a C, use_case: &'a GenerateReadingUseCase) -> Self {
         Self {
             calculator,
             use_case,

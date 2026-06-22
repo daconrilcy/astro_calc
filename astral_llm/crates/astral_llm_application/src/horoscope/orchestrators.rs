@@ -1,12 +1,13 @@
 use super::*;
+use crate::core::calculator::CalculatorPort;
 pub struct HoroscopeBasicDailyNatalOrchestrator;
 pub struct HoroscopeFreeDailyOrchestrator;
 pub struct HoroscopePremiumDailyLocalOrchestrator;
 pub struct HoroscopeDailyNatalOrchestrator;
 pub struct HoroscopePeriodNatalOrchestrator;
 impl HoroscopeBasicDailyNatalOrchestrator {
-    pub async fn execute(
-        calculator: &astral_llm_infra::CalculatorClient,
+    pub async fn execute<C: CalculatorPort + ?Sized>(
+        calculator: &C,
         use_case: &GenerateReadingUseCase,
         payload: &Value,
         run_id: Option<&str>,
@@ -22,8 +23,8 @@ impl HoroscopeBasicDailyNatalOrchestrator {
     }
 }
 impl HoroscopeFreeDailyOrchestrator {
-    pub async fn execute(
-        calculator: &astral_llm_infra::CalculatorClient,
+    pub async fn execute<C: CalculatorPort + ?Sized>(
+        calculator: &C,
         use_case: &GenerateReadingUseCase,
         payload: &Value,
         run_id: Option<&str>,
@@ -39,8 +40,8 @@ impl HoroscopeFreeDailyOrchestrator {
     }
 }
 impl HoroscopePremiumDailyLocalOrchestrator {
-    pub async fn execute(
-        calculator: &astral_llm_infra::CalculatorClient,
+    pub async fn execute<C: CalculatorPort + ?Sized>(
+        calculator: &C,
         use_case: &GenerateReadingUseCase,
         payload: &Value,
         run_id: Option<&str>,
@@ -56,9 +57,9 @@ impl HoroscopePremiumDailyLocalOrchestrator {
     }
 }
 impl HoroscopePeriodNatalOrchestrator {
-    pub async fn execute(
+    pub async fn execute<C: CalculatorPort + ?Sized>(
         service_code: &str,
-        calculator: &astral_llm_infra::CalculatorClient,
+        calculator: &C,
         use_case: &GenerateReadingUseCase,
         payload: &Value,
         run_id: Option<&str>,
@@ -98,9 +99,9 @@ impl HoroscopePeriodNatalOrchestrator {
     }
 }
 impl HoroscopeDailyNatalOrchestrator {
-    pub async fn execute(
+    pub async fn execute<C: CalculatorPort + ?Sized>(
         service_code: &str,
-        calculator: &astral_llm_infra::CalculatorClient,
+        calculator: &C,
         use_case: &GenerateReadingUseCase,
         payload: &Value,
         run_id: Option<&str>,
