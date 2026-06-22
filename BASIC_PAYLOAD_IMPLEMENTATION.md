@@ -58,7 +58,7 @@ Commandes de verification:
 ## 2026-06-22 - astral_llm Phase 1c: application hash boundary
 
 Resume court:
-- ajout d'un helper applicatif `reading_persistence::hash_json_value(&serde_json::Value) -> String`;
+- ajout d'un helper applicatif `reading_persistence::stable_json_digest(&serde_json::Value) -> String`;
 - remplacement des usages runtime directs de `astral_llm_infra::hash_json` dans `generate_reading_use_case.rs` et `horoscope/mod.rs`;
 - ajout d'une regression racine `reading_persistence_tests` qui verrouille un digest stable avec l'algorithme infra actuel;
 - documentation explicite du scope workspace: `astral_llm_worker` reste verifie depuis la racine du depot et ne devient pas membre du workspace imbrique dans cette vague;
@@ -1431,7 +1431,7 @@ Commandes de verification:
 ## 2026-06-22 - astral_llm Phase 1b: application hash helper boundary
 
 Resume court:
-- ajout d'un helper applicatif `reading_persistence::hash_json_value(&serde_json::Value) -> String` pour sortir le hash JSON de la dependance directe a `astral_llm_infra` dans les modules de feature/runtime;
+- ajout d'un helper applicatif `reading_persistence::stable_json_digest(&serde_json::Value) -> String` pour sortir le hash JSON de la dependance directe a `astral_llm_infra` dans les modules de feature/runtime;
 - remplacement des usages dans `generate_reading_use_case.rs` et `horoscope/mod.rs` par le helper applicatif;
 - conservation de l'algo canonique existant: `serde_json::to_vec(value).unwrap_or_default()`, SHA-256, encodage hex;
 - aucun changement des contrats JSON publics, traces de prompt, traces provider brutes, tables de persistence ou enveloppes de job.

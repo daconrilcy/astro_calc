@@ -155,6 +155,10 @@ pub fn hash_json_value(value: &serde_json::Value) -> String {
     hex::encode(digest)
 }
 
+pub fn stable_json_digest(value: &serde_json::Value) -> String {
+    hash_json_value(value)
+}
+
 pub fn persisted_prompt_trace_record(
     run_id: Uuid,
     trace: PromptTraceRecord,
