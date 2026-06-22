@@ -1,3 +1,10 @@
+# 2026-06-22 - `astral_llm_application` public API export split
+
+- Extracted the crate-level re-export surface from `crates/astral_llm_application/src/lib.rs` into `crates/astral_llm_application/src/public_api.rs`.
+- Kept the public API unchanged; `lib.rs` still owns the module declarations and now re-exports through a single dedicated module, which makes the entrypoint easier to scan and maintain.
+- Invariants: no behavior change; no public symbol rename; no new dependency edges between feature modules; only the location of export wiring changed.
+- Verification: pending `cargo test -p astral_llm_api --test astral_llm_tests` or a narrower `cargo check -p astral_llm_application` once the refactor is staged.
+
 # 2026-06-21 - Docker integration stack build-time hardening
 
 - Diagnosed `scripts/docker_update_integration_stack.ps1` long build startup: the Docker context still included local Cargo artefacts under `tmp_target/` and `.cargo-target-loop-*`, which represented roughly 21 GB on the inspected workspace even though `target/` was ignored.
@@ -1263,3 +1270,20 @@ Commandes de verification:
 - `rg -n "EditorialFixtureSpec|EditorialValidator" astral_llm tests`
 - `cargo test -p astral_llm_api --test astral_llm_editorial_fixtures --no-run`
 - `cargo test -p astral_llm_application --no-run`
+
+## 2026-06-22 - astral_llm workspace alignment: nested worker membership
+
+Resume court:
+- ajout de `crates/astral_llm_worker` dans le workspace imbrique `astral_llm/Cargo.toml` pour aligner le perimetre local avec les crates Rust presentes dans `astral_llm/crates/`;
+- regeneration du lockfile imbrique pour inclure le package `astral_llm_worker`;
+- mise a jour de `astral_llm/README.md` et `astral_llm/RAILGUARD.md` pour documenter l'usage du workspace imbrique, le role du workspace parent et les commandes de verification associees.
+
+Invariants de couche:
+- aucun changement de comportement runtime, de contrat JSON public, de payload persiste, ni de wiring fonctionnel API/worker dans cette vague;
+- le workspace parent reste le point d'entree recommande pour les changements qui debordent `astral_llm/`, Docker ou l'integration API+worker;
+- toute vague `astral_llm` qui modifie manifestes, railguard ou documentation de workspace doit etre journalisee ici, meme sans changement de logique Rust.
+
+Commandes de verification:
+- `cargo metadata --format-version 1 --no-deps` depuis `astral_llm/`
+- `cargo test -p astral_llm_worker --no-run` depuis `astral_llm/`
+- `cargo test -p astral_llm_worker --no-run` depuis la racine du depot
