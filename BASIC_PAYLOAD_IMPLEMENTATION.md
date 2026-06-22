@@ -1,3 +1,20 @@
+# 2026-06-22 - astral_llm adversarial follow-up: clarify catalog bridge scope
+
+Resume court:
+- review adversariale post-commit `8cf8bde` sur la tranche catalog/hash/persistence;
+- correction documentaire du railguard: la disparition de `ReadingCatalog::as_shared()` dans `GenerateReadingUseCase` et `ChapterOrchestrator` ne signifie pas decouplage catalogue complet;
+- `ReadingCatalog::shared_catalog()` reste un bridge crate-visible temporaire vers `SharedCanonicalCatalog` pour les modules applicatifs non encore migres.
+
+Invariants de couche:
+- `astro_basis_validator.rs` et `chapter_evidence_planner.rs` restent libres d'import direct `SharedCanonicalCatalog` / `EvidenceCanonicalCatalog`;
+- `reading_catalog.rs` reste le wrapper applicatif autorise pour les micro-vues role/evidence;
+- les prochains runs ne doivent pas presenter `shared_catalog()` comme une fermeture complete du boundary catalogue.
+
+Commandes de verification:
+- `Select-String` sur `astro_basis_validator.rs` et `chapter_evidence_planner.rs` pour les imports infra catalogue cibles;
+- `Select-String` sur `generate_reading_use_case.rs` et `chapter_orchestrator.rs` pour `as_shared(`;
+- review documentaire de `astral_llm/RAILGUARD.md`.
+
 # 2026-06-22 - `astral_llm_application` hash JSON boundary
 
 Resume court:
