@@ -6,7 +6,7 @@ use astral_llm_domain::{
     interpretive_evidence::ChapterEvidencePack,
     GenerationError, GenerationErrorCode, ProductGenerationPolicy,
 };
-use astral_llm_infra::bootstrap_astro_basis_roles;
+use astral_llm_infra::SharedCanonicalCatalog;
 
 pub struct AstroBasisValidator;
 
@@ -14,10 +14,11 @@ impl AstroBasisValidator {
     pub fn validate_chapters(
         chapters: &[ReadingChapter],
         facts: &NormalizedAstroFacts,
+        catalog: &SharedCanonicalCatalog,
         policy: &ProductGenerationPolicy,
     ) -> Result<(), GenerationError> {
         for chapter in chapters {
-            Self::validate_chapter(chapter, facts, policy)?;
+            Self::validate_chapter(chapter, facts, catalog, policy)?;
         }
         Ok(())
     }
@@ -25,21 +26,24 @@ impl AstroBasisValidator {
     pub fn validate_chapter(
         chapter: &ReadingChapter,
         facts: &NormalizedAstroFacts,
+        catalog: &SharedCanonicalCatalog,
         policy: &ProductGenerationPolicy,
     ) -> Result<(), GenerationError> {
-        Self::validate_chapter_with_pack(chapter, facts, None, policy)
+        Self::validate_chapter_with_pack(chapter, facts, None, catalog, policy)
     }
 
     pub fn validate_chapter_with_pack(
         chapter: &ReadingChapter,
         facts: &NormalizedAstroFacts,
         pack: Option<&ChapterEvidencePack>,
+        catalog: &SharedCanonicalCatalog,
         policy: &ProductGenerationPolicy,
     ) -> Result<(), GenerationError> {
         Self::validate_chapter_with_min_refs(
             chapter,
             facts,
             pack,
+            catalog,
             policy.min_astro_basis_refs_per_chapter,
             policy.min_interpretive_astro_basis_refs_per_chapter,
         )
@@ -49,11 +53,12 @@ impl AstroBasisValidator {
         chapter: &ReadingChapter,
         facts: &NormalizedAstroFacts,
         pack: Option<&ChapterEvidencePack>,
+        catalog: &SharedCanonicalCatalog,
         min_refs: u8,
         min_interpretive_refs: u8,
     ) -> Result<(), GenerationError> {
         Self::validate_fact_ids(chapter, facts, pack)?;
-        let allowed_roles = Self::allowed_basis_roles();
+        let allowed_roles = Self::allowed_basis_roles(catalog);
         Self::validate_interpretive_roles(chapter, &allowed_roles)?;
 
         let valid_refs = chapter
@@ -135,8 +140,8 @@ impl AstroBasisValidator {
         Ok(())
     }
 
-    fn allowed_basis_roles() -> HashSet<String> {
-        bootstrap_astro_basis_roles()
+    fn allowed_basis_roles(catalog: &SharedCanonicalCatalog) -> HashSet<String> {
+        catalog.astro_basis_roles.clone()
     }
 
     fn validate_fact_ids(

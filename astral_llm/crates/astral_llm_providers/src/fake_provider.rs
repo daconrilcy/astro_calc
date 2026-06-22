@@ -137,14 +137,35 @@ fn build_chapter_response(request: &ProviderGenerationRequest) -> ChapterProvide
 const FAKE_CHAPTER_SUFFIX: &str = "Cette lecture symbolique reste une piste de reflexion, \
     jamais une prescription rigide ni une promesse certaine.";
 
-/// Seuil conservateur au-dessus des min_words des profils de test (ex. natal_basic = 70).
-const FAKE_MIN_CHAPTER_WORDS: u32 = 80;
+/// Keep fake-provider chapter bodies above current premium profile floors so
+/// focused orchestration tests fail on real regressions, not fake content size.
+const FAKE_MIN_CHAPTER_WORDS: u32 = 300;
 
 const FAKE_CHAPTER_PAD: &[&str] = &[
     "Observer ces dynamiques avec curiosite permet de transformer l incertitude en matiere creative.",
     "Chaque cycle interieur merite d etre accueilli comme une information utile, jamais comme un verdict.",
     "La symbolique astrologique eclaire des possibles, non des obligations figees dans le temps.",
     "Accueillir vos contradictions interieures ouvre un espace de lucidite bienveillante et concrete.",
+    "Les ajustements les plus durables naissent souvent d une attention calme portee aux details du quotidien.",
+    "Votre theme invite a privilegier une progression souple plutot qu une recherche de certitudes immediates.",
+    "Quand une tension apparait, elle peut devenir un point d appui pour clarifier ce qui compte vraiment.",
+    "Cette lecture encourage une posture de discernement qui laisse de la place a l experience vecue.",
+    "Les symboles proposes ici servent a nommer des mouvements interieurs sans vous enfermer dans un role unique.",
+    "Une decision utile peut emerger lorsque vous reliez vos besoins concrets a votre rythme emotionnel reel.",
+    "Le recul apporte par cette perspective favorise des choix plus coherents avec vos priorites profondes.",
+    "Certaines hesitations prennent sens lorsqu elles sont lues comme une phase d integration plutot que comme un blocage.",
+    "Mettre des mots nuances sur ce que vous traversez peut reduire la pression de devoir tout comprendre d un coup.",
+    "Votre facon de repondre aux changements gagne en stabilite lorsque vous observez les motifs qui reviennent.",
+    "Le theme souligne aussi l importance de respirer entre deux engagements pour sentir ce qui reste vivant.",
+    "Une interpretation symbolique devient feconde lorsqu elle ouvre des options de lecture au lieu de fermer l avenir.",
+    "Les liens entre sensibilite, action et prudence peuvent alors etre explores avec davantage de souplesse.",
+    "Prendre le temps d articuler vos perceptions favorise une confiance plus ancree et moins defensive.",
+    "Ce type de narration astrologique sert surtout a organiser l experience et a soutenir une reflexion personnelle.",
+    "Vous pouvez y puiser des reperes evolutifs sans confondre ces hypotheses avec une obligation definitive.",
+    "Le mouvement du theme rappelle qu une transformation stable passe parfois par des gestes modestes mais regulierement tenus.",
+    "Chaque nuance ajoutee a la lecture aide a distinguer ce qui releve d un besoin present de ce qui releve d une vieille habitude.",
+    "La mise en perspective des ambivalences offre souvent une marge de manoeuvre plus interessante qu une reponse binaire.",
+    "Rester attentif aux variations de contexte permet de traduire ces symboles en choix pratiques plus justes.",
 ];
 
 fn chapter_word_count(text: &str) -> u32 {

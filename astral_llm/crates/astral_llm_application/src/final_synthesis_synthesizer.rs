@@ -237,6 +237,7 @@ impl<'a> FinalSynthesisSynthesizer<'a> {
             &reading_chapter,
             astro_facts,
             chapter_pack,
+            self.catalog,
             product_policy,
         )?;
 

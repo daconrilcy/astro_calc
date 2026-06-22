@@ -404,6 +404,7 @@ impl GenerateReadingUseCase {
             AstroBasisValidator::validate_chapters(
                 &reading.chapters,
                 &astro_facts,
+                &self.catalog,
                 product_policy,
             )?;
         }

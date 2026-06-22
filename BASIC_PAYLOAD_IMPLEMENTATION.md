@@ -1,3 +1,21 @@
+# 2026-06-22 - astral_llm Phase 1b: role and locale catalog boundary
+
+Resume court:
+- suppression des appels directs `bootstrap_astro_basis_roles()` et `bootstrap_writing_locales()` depuis `astral_llm_application`;
+- `AstroBasisValidator` consomme maintenant les roles autorises depuis le `SharedCanonicalCatalog` deja injecte dans les chemins runtime, et `WritingLanguageDirective` retombe seulement sur une directive generique si la locale n'est pas presente au catalogue;
+- adaptation des call sites runtime et des tests racine `astral_llm_astro_basis_tests` pour passer explicitement par le catalogue.
+
+Invariants de couche:
+- `astral_llm_application` ne doit plus relancer de bootstrap canonique i18n/roles dans `astro_basis_validator.rs` ni `writing_language.rs`;
+- les roles `astro_basis` et les locales d'ecriture restent des donnees canoniques chargees dans le catalogue partage;
+- aucun contrat JSON public, aucune shape de prompt trace, et aucune persistence runs/steps/token usages ne changent dans cette vague.
+
+Commandes de verification:
+- `cargo fmt --package astral_llm_application`
+- `rg -n "bootstrap_astro_basis_roles|bootstrap_writing_locales" astral_llm/crates/astral_llm_application/src`
+- `cargo test -p astral_llm_api --test astral_llm_i18n_tests`
+- `cargo test -p astral_llm_api --test astral_llm_astro_basis_tests premium_rejects_domain_score_only_chapter_basis premium_accepts_domain_score_plus_placement`
+
 # 2026-06-22 - `astral_llm` calculator port boundary slice
 
 - Closed the first planned `astral_llm` application-to-infra slice by removing the concrete `impl CalculatorPort for astral_llm_infra::CalculatorClient` from `crates/astral_llm_application/src/core/calculator.rs`.

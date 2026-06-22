@@ -19,8 +19,9 @@ use astral_llm_domain::{
     ServiceLimits,
 };
 use astral_llm_infra::{
-    bootstrap_astro_object_labels, bootstrap_domains, bootstrap_interpretation_profiles,
-    bootstrap_product_policies, bootstrap_zodiac_sign_labels, CanonicalCatalog, SafetyPattern,
+    bootstrap_astro_basis_roles, bootstrap_astro_object_labels, bootstrap_domains,
+    bootstrap_interpretation_profiles, bootstrap_product_policies, bootstrap_zodiac_sign_labels,
+    CanonicalCatalog, SafetyPattern,
 };
 use astral_llm_providers::FakeProvider;
 
@@ -29,6 +30,7 @@ fn test_catalog() -> Arc<CanonicalCatalog> {
         astrological_domains: bootstrap_domains(),
         product_generation_policies: bootstrap_product_policies(),
         interpretation_profiles: bootstrap_interpretation_profiles(),
+        astro_basis_roles: bootstrap_astro_basis_roles(),
         safety_patterns: vec![SafetyPattern {
             pattern_type: "symbolic".into(),
             locale: "fr".into(),
@@ -178,7 +180,9 @@ fn premium_rejects_domain_score_only_chapter_basis() {
         .get("natal_premium")
         .expect("natal_premium")
         .to_product_generation_policy();
-    assert!(AstroBasisValidator::validate_chapter(&chapter, &facts, &policy).is_err());
+    assert!(
+        AstroBasisValidator::validate_chapter(&chapter, &facts, &test_catalog(), &policy).is_err()
+    );
 }
 
 #[test]
@@ -215,7 +219,41 @@ fn premium_accepts_domain_score_plus_placement() {
         .get("natal_premium")
         .expect("natal_premium")
         .to_product_generation_policy();
-    assert!(AstroBasisValidator::validate_chapter(&chapter, &facts, &policy).is_ok());
+    assert!(
+        AstroBasisValidator::validate_chapter(&chapter, &facts, &test_catalog(), &policy).is_ok()
+    );
+}
+
+#[test]
+fn premium_rejects_invalid_interpretive_role() {
+    let facts = normalize_facts(&AstroCalculationPayload {
+        contract_version: "natal_structured_v14".into(),
+        chart_type: "natal".into(),
+        data: premium_payload_with_placements(),
+    });
+
+    let chapter = ReadingChapter {
+        code: "identity".into(),
+        title: "Identite".into(),
+        body: "texte".into(),
+        astro_basis: vec![astral_llm_domain::AstroBasisItem {
+            fact_id: Some("placement:sun:capricorn:house:2".into()),
+            label: None,
+            factor: "sun".into(),
+            interpretive_role: "primary".into(),
+        }],
+        confidence: ConfidenceLevel::Medium,
+        safety_flags: vec![],
+    };
+
+    let policy = bootstrap_interpretation_profiles()
+        .get("natal_premium")
+        .expect("natal_premium")
+        .to_product_generation_policy();
+    let error = AstroBasisValidator::validate_chapter(&chapter, &facts, &test_catalog(), &policy)
+        .expect_err("invalid interpretive_role must be rejected");
+    assert_eq!(error.detail().code.as_str(), "ASTRO_BASIS_INVALID");
+    assert!(error.detail().message.contains("invalid interpretive_role"));
 }
 
 #[tokio::test]

@@ -35,6 +35,15 @@ fn writing_directive_german_in_prompt_block() {
 }
 
 #[test]
+fn writing_directive_unknown_language_uses_generic_fallback() {
+    let block = WritingLanguageDirective::prompt_block(&catalog(), "it");
+    assert_eq!(
+        block,
+        "OUTPUT_LANGUAGE: it. Write title, body, summary fields, and human-readable astro_basis strings (factor, label) in language it. Never translate fact_ids."
+    );
+}
+
+#[test]
 fn humanizer_sets_french_factor_on_basis_item() {
     let cat = catalog();
     let h = AstroLabelHumanizer::new(cat.as_ref());
