@@ -8,6 +8,9 @@ Resume court:
   que la prose publique et jamais les identifiants techniques (`fact_id`,
   `signal_key`, codes de preuve), afin d'eviter les citations de type
   `placement:Milieu du Ciel:...` ;
+- les sorties qui publicisent encore un `fact_id` avant validation sont
+  canonisees en amont via le catalogue DB, y compris pour les labels publics
+  d'angles et de signes ;
 - la barriere de secours cote prompt reste en place, mais la sanitation
   upstream limite les risques de fuite de termes techniques dans le texte
   prompt-facing;

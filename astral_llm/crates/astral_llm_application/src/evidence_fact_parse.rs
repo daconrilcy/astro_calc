@@ -3,6 +3,9 @@
 use std::collections::HashMap;
 
 use astral_llm_domain::{astro_fact::NormalizedAstroFacts, generation_response::ReadingChapter};
+use astral_llm_infra::CanonicalCatalog;
+
+use crate::astro_label_humanizer::AstroLabelHumanizer;
 
 pub fn object_code_from_fact_id(fact_id: &str) -> Option<String> {
     object_codes_from_fact_id(fact_id).into_iter().next()
@@ -251,6 +254,107 @@ pub fn normalize_chapter_astro_basis_fact_ids(
             basis.fact_id = Some(resolved);
         }
     }
+}
+
+pub fn normalize_chapter_astro_basis_fact_ids_with_catalog(
+    chapter: &mut ReadingChapter,
+    facts: &NormalizedAstroFacts,
+    catalog: &CanonicalCatalog,
+    language: &str,
+) {
+    let locale = AstroLabelHumanizer::locale_key(language);
+    for basis in &mut chapter.astro_basis {
+        let Some(id) = basis.fact_id.as_ref() else {
+            continue;
+        };
+        let Some(resolved) = resolve_canonical_fact_id(id, facts)
+            .or_else(|| canonicalize_public_fact_id(id, catalog, locale))
+        else {
+            continue;
+        };
+        if resolved != *id {
+            tracing::warn!(
+                chapter = %chapter.code,
+                received = %id,
+                normalized = %resolved,
+                "astro_basis fact_id normalized after provider drift"
+            );
+            basis.fact_id = Some(resolved);
+        }
+    }
+}
+
+fn canonicalize_public_fact_id(
+    fact_id: &str,
+    catalog: &CanonicalCatalog,
+    locale: &str,
+) -> Option<String> {
+    if let Some(rest) = fact_id.strip_prefix("placement:") {
+        let parts: Vec<&str> = rest.split(':').collect();
+        if parts.len() >= 4 && parts[parts.len() - 2] == "house" {
+            let house = parts[parts.len() - 1];
+            let sign = parts.get(parts.len() - 3)?.trim();
+            let object = parts[..parts.len() - 3].join(":");
+            let object_code = canonical_object_code(&object, catalog, locale);
+            let sign_code = canonical_sign_code(sign, catalog, locale);
+            return Some(format!("placement:{object_code}:{sign_code}:house:{house}"));
+        }
+    }
+    if let Some(rest) = fact_id.strip_prefix("angle:") {
+        let mut parts = rest.split(':');
+        let angle = parts.next()?.trim();
+        let sign = parts.next()?.trim();
+        let angle_code = canonical_object_code(angle, catalog, locale);
+        let sign_code = canonical_sign_code(sign, catalog, locale);
+        return Some(format!("angle:{angle_code}:{sign_code}"));
+    }
+    if let Some(rest) = fact_id.strip_prefix("signal:angle:") {
+        let parts: Vec<&str> = rest.split(':').collect();
+        if parts.len() >= 3 && parts[1] == "sign" {
+            let angle_code = canonical_object_code(parts[0].trim(), catalog, locale);
+            let sign_code = canonical_sign_code(parts[2].trim(), catalog, locale);
+            return Some(format!("signal:angle:{angle_code}:sign:{sign_code}"));
+        }
+    }
+    if let Some(rest) = fact_id.strip_prefix("ruler:angle:") {
+        let parts: Vec<&str> = rest.split(':').collect();
+        if parts.len() >= 2 {
+            let angle_code = canonical_object_code(parts[0].trim(), catalog, locale);
+            let ruler_code = canonical_object_code(parts[1].trim(), catalog, locale);
+            return Some(format!("ruler:angle:{angle_code}:{ruler_code}"));
+        }
+    }
+    if let Some(rest) = fact_id.strip_prefix("ruler:ascendant:") {
+        let ruler_code = canonical_object_code(rest.trim(), catalog, locale);
+        return Some(format!("ruler:ascendant:{ruler_code}"));
+    }
+    if let Some(rest) = fact_id.strip_prefix("ruler:dominant_house:") {
+        let parts: Vec<&str> = rest.split(':').collect();
+        if parts.len() >= 2 {
+            let ruler_code = canonical_object_code(parts[parts.len() - 1].trim(), catalog, locale);
+            let prefix = parts[..parts.len() - 1].join(":");
+            return Some(format!("ruler:dominant_house:{prefix}:{ruler_code}"));
+        }
+    }
+    if let Some(rest) = fact_id.strip_prefix("dominant_planet:") {
+        let ruler_code = canonical_object_code(rest.trim(), catalog, locale);
+        return Some(format!("dominant_planet:{ruler_code}"));
+    }
+    None
+}
+
+fn canonical_object_code(raw: &str, catalog: &CanonicalCatalog, locale: &str) -> String {
+    catalog
+        .object_code_for_label(locale, raw)
+        .or_else(|| catalog.object_code_for_label("en", raw))
+        .unwrap_or_else(|| raw.trim().to_lowercase())
+}
+
+fn canonical_sign_code(raw: &str, catalog: &CanonicalCatalog, locale: &str) -> String {
+    catalog
+        .sign_code_for_label(locale, raw)
+        .or_else(|| catalog.sign_code_for_label("en", raw))
+        .unwrap_or_else(|| raw.trim().to_lowercase())
 }
 
 fn aspect_semantic_key_from_fact_id(fact_id: &str) -> Option<String> {

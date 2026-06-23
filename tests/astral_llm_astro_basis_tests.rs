@@ -276,6 +276,41 @@ fn premium_rejects_invalid_interpretive_role() {
     assert!(error.detail().message.contains("invalid interpretive_role"));
 }
 
+#[test]
+fn public_label_fact_ids_are_normalized_before_validation() {
+    let facts = normalize_facts(&AstroCalculationPayload {
+        contract_version: "natal_structured_v14".into(),
+        chart_type: "natal".into(),
+        data: rich_premium_payload(),
+    });
+
+    let mut chapter = ReadingChapter {
+        code: "career".into(),
+        title: "Carriere".into(),
+        body: "texte".into(),
+        astro_basis: vec![astral_llm_domain::AstroBasisItem {
+            fact_id: Some("placement:Milieu du Ciel:cancer:house:10".into()),
+            label: Some("Milieu du Ciel en Cancer en maison 10".into()),
+            factor: "Milieu du Ciel".into(),
+            interpretive_role: "core".into(),
+        }],
+        confidence: ConfidenceLevel::Medium,
+        safety_flags: vec![],
+    };
+
+    astral_llm_application::evidence_fact_parse::normalize_chapter_astro_basis_fact_ids_with_catalog(
+        &mut chapter,
+        &facts,
+        test_catalog().as_ref(),
+        "fr",
+    );
+
+    assert_eq!(
+        chapter.astro_basis[0].fact_id.as_deref(),
+        Some("placement:mc:cancer:house:10")
+    );
+}
+
 #[tokio::test]
 async fn premium_e2e_fails_without_interpretive_payload() {
     let use_case = build_use_case(test_catalog());

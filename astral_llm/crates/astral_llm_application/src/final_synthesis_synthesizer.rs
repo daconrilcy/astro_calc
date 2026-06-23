@@ -229,9 +229,11 @@ impl<'a> FinalSynthesisSynthesizer<'a> {
             astro_facts,
             &request.product_context.user_language,
         );
-        crate::evidence_fact_parse::normalize_chapter_astro_basis_fact_ids(
+        crate::evidence_fact_parse::normalize_chapter_astro_basis_fact_ids_with_catalog(
             &mut reading_chapter,
             astro_facts,
+            self.catalog.as_ref(),
+            &request.product_context.user_language,
         );
 
         AstroBasisValidator::validate_chapter_with_pack(

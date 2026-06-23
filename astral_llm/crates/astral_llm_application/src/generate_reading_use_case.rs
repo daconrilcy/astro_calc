@@ -649,9 +649,11 @@ impl GenerateReadingUseCase {
         )?;
 
         for chapter in &mut reading.chapters {
-            crate::evidence_fact_parse::normalize_chapter_astro_basis_fact_ids(
+            crate::evidence_fact_parse::normalize_chapter_astro_basis_fact_ids_with_catalog(
                 chapter,
                 astro_facts,
+                self.catalog.canonical_catalog(),
+                &request.product_context.user_language,
             );
         }
 

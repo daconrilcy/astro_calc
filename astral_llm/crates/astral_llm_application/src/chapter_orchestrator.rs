@@ -1349,9 +1349,11 @@ impl<'a> ChapterOrchestrator<'a> {
             &request.product_context.user_language,
         );
 
-        crate::evidence_fact_parse::normalize_chapter_astro_basis_fact_ids(
+        crate::evidence_fact_parse::normalize_chapter_astro_basis_fact_ids_with_catalog(
             &mut reading_chapter,
             astro_facts,
+            self.catalog.canonical_catalog(),
+            &request.product_context.user_language,
         );
 
         reading_chapter.body = crate::safety_guard::ensure_symbolic_framing_text(

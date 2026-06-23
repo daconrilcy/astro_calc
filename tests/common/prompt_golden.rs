@@ -284,7 +284,7 @@ pub fn assert_premium_plus_prompt_structure(prompts_root: &std::path::Path) -> R
         return Err("premium_plus prompt missing public abbreviation expansion rule".into());
     }
     if !task.contains("astro_basis.fact_id values are technical identifiers")
-        || !task.contains("never replace a fact_id with a public label")
+        || !task.contains("do not rewrite a fact_id with the human label shown elsewhere in the prompt")
     {
         return Err("premium_plus prompt missing exact fact_id citation rule".into());
     }

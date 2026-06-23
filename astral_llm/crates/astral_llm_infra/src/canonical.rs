@@ -594,10 +594,46 @@ impl CanonicalCatalog {
             .map(String::as_str)
     }
 
+    pub fn object_code_for_label(&self, locale: &str, label: &str) -> Option<String> {
+        let needle = normalized_lookup_key(label);
+        for loc in locale_fallback_chain(locale) {
+            if let Some(code) = self.astro_object_labels.iter().find_map(
+                |((entry_locale, entry_code), entry_label)| {
+                    if entry_locale == loc && normalized_lookup_key(entry_label) == needle {
+                        Some(entry_code.clone())
+                    } else {
+                        None
+                    }
+                },
+            ) {
+                return Some(code);
+            }
+        }
+        None
+    }
+
     pub fn sign_label(&self, locale: &str, sign_code: &str) -> Option<&str> {
         self.zodiac_sign_labels
             .get(&(locale.to_string(), sign_code.to_string()))
             .map(String::as_str)
+    }
+
+    pub fn sign_code_for_label(&self, locale: &str, label: &str) -> Option<String> {
+        let needle = normalized_lookup_key(label);
+        for loc in locale_fallback_chain(locale) {
+            if let Some(code) = self.zodiac_sign_labels.iter().find_map(
+                |((entry_locale, entry_code), entry_label)| {
+                    if entry_locale == loc && normalized_lookup_key(entry_label) == needle {
+                        Some(entry_code.clone())
+                    } else {
+                        None
+                    }
+                },
+            ) {
+                return Some(code);
+            }
+        }
+        None
     }
 
     pub fn element_balance_label(
@@ -691,6 +727,14 @@ fn insert_label(
     label: &str,
 ) {
     map.insert((locale.into(), code.into()), label.into());
+}
+
+fn normalized_lookup_key(text: &str) -> String {
+    text.split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .trim()
+        .to_lowercase()
 }
 
 pub fn bootstrap_astro_object_labels() -> HashMap<(String, String), String> {
