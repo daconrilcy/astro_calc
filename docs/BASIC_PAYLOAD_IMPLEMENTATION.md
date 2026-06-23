@@ -1,3 +1,23 @@
+# 2026-06-23 - Isolation helper prompt golden LLM
+
+Resume court:
+- `tests/common/mod.rs` n'expose plus le helper `prompt_golden`, qui depend des
+  crates LLM et ne doit pas etre compile par les tests `astral_calculator`;
+- `tests/prompt_golden_support.rs` conserve l'inclusion directe du helper pour
+  le target dedie `prompt_golden_tests`;
+- correction des diagnostics rust-analyzer et Cargo causes par des imports LLM
+  hors du crate `astral_llm_api`.
+
+Invariants de couche:
+- les helpers communs du calculateur ne prennent pas de dependance LLM;
+- le test golden de prompt reste rattache au crate `astral_llm_api`;
+- aucun contrat JSON public ni comportement runtime n'est modifie.
+
+Commandes de verification:
+- `cargo fmt --check`
+- `cargo test -p astral_calculator --test aspects_tests --no-run`
+- `cargo test -p astral_llm_api --test prompt_golden_tests --no-run`
+
 # 2026-06-21 - Phase 2 typed position-context seam restoration
 
 Resume court:
