@@ -1525,3 +1525,39 @@ Commandes de verification:
 - `cargo fmt --package astral_llm_application`
 - `cargo test -p astral_llm_api --test astral_llm_simplified_reading_tests`
 - `node --check tests\service_test_ui\service-test-ui.js`
+
+## 2026-06-23 - documentation structure donnees interpretation natal
+
+Resume court:
+- ajout de `docs/natal_interpretation_data_structure.md` pour documenter la structure des donnees produites par une interpretation de theme natal;
+- separation explicite des enveloppes gateway V2, calcul complet `natal_structured_v14`, projection `llm_projection_natal_v1`, lecture LLM `natal_reading_v1` et parcours sans heure `natal_simplified_structured_v1`;
+- clarification produit: les routes `full` exigent heure, timezone et localisation; l'absence d'heure passe par le parcours `simplified` avec `reading_completeness: partial`, pas par un full degrade.
+
+Invariants de couche:
+- aucun code runtime, schema JSON, contrat public ou configuration DB n'est modifie;
+- la documentation reference les contrats existants et les profils `natal_light`, `natal_basic`, `natal_premium`;
+- le wording public recommande reste lecture partielle / simplifiee / indicative, sans exposer `degraded`.
+
+Commandes de verification:
+- lecture croisee avec `astral_gateway/src/natal.rs`;
+- lecture croisee avec `contracts/calculator/natal_structured_v14.schema.json`;
+- lecture croisee avec `contracts/calculator/astro_simplified_natal_response_v1.schema.json`;
+- lecture croisee avec `contracts/llm/natal_reading_v1.schema.json`;
+
+## 2026-06-23 - theme natal: prompt anti-abreviations publiques
+
+Resume court:
+- ajout d'une consigne centralisee de prompt natal pour eviter les sigles astrologiques isoles dans le texte public;
+- la consigne remplace les libelles courts issus des donnees par des formes lisibles pour non-inities, par exemple `MC` -> `Milieu du Ciel`;
+- couverture du prompt compile, des consignes chapitrees, du resume UX et de la synthese finale;
+- couverture par le golden prompt et le test i18n pour verrouiller la presence de la regle.
+
+Invariants de couche:
+- aucun contrat JSON public, schema persiste, catalogue canonique ou post-traitement de prose n'est modifie;
+- la correction reste une contrainte editoriale de prompt, sans reecrire deterministiquement le texte genere;
+- les champs techniques et `astro_basis` peuvent conserver leurs identifiants internes; seule la prose publique doit eviter les abreviations isolees.
+
+Commandes de verification:
+- `cargo fmt --package astral_llm_application`
+- `cargo test -p astral_llm_api --test prompt_golden_tests`
+- `cargo test -p astral_llm_api --test astral_llm_i18n_tests`

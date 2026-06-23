@@ -130,10 +130,13 @@ impl PromptCompiler {
             input.catalog,
             &input.request.product_context.user_language,
         );
+        let public_abbreviation_rule = WritingLanguageDirective::public_abbreviation_rule(
+            &input.request.product_context.user_language,
+        );
 
         Ok(PromptBundle {
             system_instructions: format!(
-                "{system}\n\n{language_block}\n\n{profile_block}\n\nDomains: {domain_block}\n{chapter_hint}"
+                "{system}\n\n{language_block}\n\n{public_abbreviation_rule}\n\n{profile_block}\n\nDomains: {domain_block}\n{chapter_hint}"
             ),
             task_instructions: task,
             format_instructions: format,

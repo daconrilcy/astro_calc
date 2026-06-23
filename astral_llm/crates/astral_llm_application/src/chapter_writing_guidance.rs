@@ -9,6 +9,7 @@ use crate::astro_label_humanizer::AstroLabelHumanizer;
 use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
 use crate::prompt_compiler::PromptBundle;
 use crate::text_trigrams::{openings_to_avoid_from_prior, phrases_to_avoid_from_prior};
+use crate::writing_language::WritingLanguageDirective;
 use astral_llm_domain::chapter_orchestration::ReadingPlanChapter;
 
 const MAX_PRIOR_PHRASES: usize = 8;
@@ -141,6 +142,11 @@ impl ChapterWritingGuidance {
                  \"Dès le premier regard\", \"Cette configuration\", \"Votre parcours\", \"Cette dynamique\".\n",
             );
         }
+        block.push('\n');
+        block.push_str(&WritingLanguageDirective::public_abbreviation_rule(
+            language,
+        ));
+        block.push('\n');
 
         if let Some(pack) = pack {
             if !pack.avoid_repeating.is_empty() {

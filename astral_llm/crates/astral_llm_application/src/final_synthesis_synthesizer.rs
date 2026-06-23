@@ -303,6 +303,8 @@ fn build_synthesis_messages(
 ) -> Vec<PromptMessage> {
     let language_block =
         WritingLanguageDirective::prompt_block(catalog, &request.product_context.user_language);
+    let public_abbreviation_rule =
+        WritingLanguageDirective::public_abbreviation_rule(&request.product_context.user_language);
     let chapter_digest: Vec<serde_json::Value> = prior_chapters
         .iter()
         .map(|c| {
@@ -341,6 +343,7 @@ fn build_synthesis_messages(
         ));
     let system = format!(
         "{language_block}\n\n\
+         {public_abbreviation_rule}\n\n\
          Write the final integrative synthesis chapter of a natal reading (code: synthesis). \
          Output JSON matching chapter_provider_v1 (code, title, body, astro_basis, confidence). \
          This is NOT a new astrological domain chapter: weave together themes from prior chapters. \

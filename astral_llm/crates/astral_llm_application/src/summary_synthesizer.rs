@@ -374,6 +374,8 @@ fn build_summary_messages(
 ) -> Vec<PromptMessage> {
     let language_block =
         WritingLanguageDirective::prompt_block(catalog, &request.product_context.user_language);
+    let public_abbreviation_rule =
+        WritingLanguageDirective::public_abbreviation_rule(&request.product_context.user_language);
     let chapter_digest: Vec<serde_json::Value> = chapters
         .iter()
         .map(|c| {
@@ -387,6 +389,7 @@ fn build_summary_messages(
 
     let system = format!(
         "{language_block}\n\n\
+         {public_abbreviation_rule}\n\n\
          Write a concise UX summary for a natal reading.\n\
          Rules:\n\
          - Output JSON with title and short_text only.\n\

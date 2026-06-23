@@ -122,6 +122,13 @@ pub fn assert_compiled_prompt_is_safe(prompts_root: &std::path::Path) -> Result<
     if !full_prompt.contains("OUTPUT_LANGUAGE") {
         return Err("compiled prompt missing OUTPUT_LANGUAGE block".into());
     }
+    if !full_prompt.contains("PUBLIC_ASTRO_ABBREVIATIONS")
+        || !full_prompt.contains("Milieu du Ciel")
+        || !full_prompt.contains("au lieu de \"MC\"")
+        || !full_prompt.contains("Fond du Ciel")
+    {
+        return Err("compiled prompt missing public abbreviation expansion rule".into());
+    }
 
     for forbidden in FORBIDDEN_SUBSTRINGS {
         if full_prompt
@@ -269,6 +276,13 @@ pub fn assert_premium_plus_prompt_structure(prompts_root: &std::path::Path) -> R
     }
     if !task.contains("target ~720") {
         return Err("premium_plus prompt must contain target ~720".into());
+    }
+    if !task.contains("public_astro_abbreviations")
+        || !task.contains("milieu du ciel")
+        || !task.contains("au lieu de \"mc\"")
+        || !task.contains("fond du ciel")
+    {
+        return Err("premium_plus prompt missing public abbreviation expansion rule".into());
     }
     let structure_blocks = task.matches("--- chapter writing structure").count();
     if structure_blocks != 1 {

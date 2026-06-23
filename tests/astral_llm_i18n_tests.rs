@@ -44,6 +44,15 @@ fn writing_directive_unknown_language_uses_generic_fallback() {
 }
 
 #[test]
+fn public_abbreviation_rule_expands_french_angle_codes() {
+    let rule = WritingLanguageDirective::public_abbreviation_rule("fr");
+    assert!(rule.contains("PUBLIC_ASTRO_ABBREVIATIONS"));
+    assert!(rule.contains("Milieu du Ciel"));
+    assert!(rule.contains("au lieu de \"MC\""));
+    assert!(rule.contains("Fond du Ciel"));
+}
+
+#[test]
 fn humanizer_sets_french_factor_on_basis_item() {
     let cat = catalog();
     let h = AstroLabelHumanizer::new(cat.as_ref());
