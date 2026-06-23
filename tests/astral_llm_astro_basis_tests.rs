@@ -3,9 +3,9 @@
 use std::sync::Arc;
 
 use astral_llm_application::{
-    build_provider_map, AstroBasisValidator, AstroPayloadNormalizer, GenerateReadingUseCase,
-    ModelCapabilityRegistry, PromptCompiler, ProviderCircuitBreaker, ProviderRouter,
-    ResponseValidator, SchemaRegistry,
+    build_provider_map, reading_catalog::ReadingCatalog, AstroBasisValidator,
+    AstroPayloadNormalizer, GenerateReadingUseCase, ModelCapabilityRegistry, PromptCompiler,
+    ProviderCircuitBreaker, ProviderRouter, ResponseValidator, SchemaRegistry,
 };
 use astral_llm_domain::{
     astro_fact::AstroFactUsage,
@@ -40,6 +40,10 @@ fn test_catalog() -> Arc<CanonicalCatalog> {
         zodiac_sign_labels: bootstrap_zodiac_sign_labels(),
         ..Default::default()
     })
+}
+
+fn test_reading_catalog() -> ReadingCatalog {
+    ReadingCatalog::new(test_catalog())
 }
 
 fn normalize_facts(payload: &AstroCalculationPayload) -> astral_llm_domain::NormalizedAstroFacts {
@@ -180,9 +184,14 @@ fn premium_rejects_domain_score_only_chapter_basis() {
         .get("natal_premium")
         .expect("natal_premium")
         .to_product_generation_policy();
-    assert!(
-        AstroBasisValidator::validate_chapter(&chapter, &facts, &test_catalog(), &policy).is_err()
-    );
+    let catalog = test_reading_catalog();
+    assert!(AstroBasisValidator::validate_chapter(
+        &chapter,
+        &facts,
+        catalog.astro_basis_roles_view(),
+        &policy
+    )
+    .is_err());
 }
 
 #[test]
@@ -219,9 +228,14 @@ fn premium_accepts_domain_score_plus_placement() {
         .get("natal_premium")
         .expect("natal_premium")
         .to_product_generation_policy();
-    assert!(
-        AstroBasisValidator::validate_chapter(&chapter, &facts, &test_catalog(), &policy).is_ok()
-    );
+    let catalog = test_reading_catalog();
+    assert!(AstroBasisValidator::validate_chapter(
+        &chapter,
+        &facts,
+        catalog.astro_basis_roles_view(),
+        &policy
+    )
+    .is_ok());
 }
 
 #[test]
@@ -250,8 +264,14 @@ fn premium_rejects_invalid_interpretive_role() {
         .get("natal_premium")
         .expect("natal_premium")
         .to_product_generation_policy();
-    let error = AstroBasisValidator::validate_chapter(&chapter, &facts, &test_catalog(), &policy)
-        .expect_err("invalid interpretive_role must be rejected");
+    let catalog = test_reading_catalog();
+    let error = AstroBasisValidator::validate_chapter(
+        &chapter,
+        &facts,
+        catalog.astro_basis_roles_view(),
+        &policy,
+    )
+    .expect_err("invalid interpretive_role must be rejected");
     assert_eq!(error.detail().code.as_str(), "ASTRO_BASIS_INVALID");
     assert!(error.detail().message.contains("invalid interpretive_role"));
 }

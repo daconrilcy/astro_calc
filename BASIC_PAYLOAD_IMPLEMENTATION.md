@@ -1,3 +1,20 @@
+# 2026-06-23 - astral_llm astro basis test catalog view
+
+Resume court:
+- correction de `tests/astral_llm_astro_basis_tests.rs` apres migration de `AstroBasisValidator` vers `AstroBasisRoleCatalogView`;
+- ajout d'un helper de test `test_reading_catalog()` pour obtenir la vue publique via `ReadingCatalog::astro_basis_roles_view()`;
+- aucun changement runtime ni contrat JSON public.
+
+Invariants de couche:
+- les tests racine consomment la micro-vue applicative `ReadingCatalog` au lieu de passer directement le catalogue infra complet au validateur;
+- `AstroBasisValidator` reste decouple de `CanonicalCatalog` et ne recoit que les roles autorises;
+- les donnees canoniques de roles restent seed depuis `bootstrap_astro_basis_roles()` dans le catalogue de test.
+
+Commandes de verification:
+- `cargo fmt -- tests\astral_llm_astro_basis_tests.rs`
+- `cargo test -p astral_llm_api --test astral_llm_astro_basis_tests --no-run`
+- `cargo test -p astral_llm_api --test astral_llm_astro_basis_tests`
+
 # 2026-06-22 - astral_llm adversarial follow-up: clarify catalog bridge scope
 
 Resume court:
