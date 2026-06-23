@@ -156,6 +156,10 @@ impl ChapterWritingGuidance {
                 block.push_str(&pack.avoid_repeating.join(", "));
                 block.push('\n');
             }
+            block.push_str(
+                "\nastro_basis.fact_id values are technical identifiers. Copy them exactly as listed below. \
+                 Never replace a fact_id with a public label such as Milieu du Ciel, Midheaven, Ascendant or Descendant.\n",
+            );
             let basis_lines: Vec<String> = pack
                 .core
                 .iter()

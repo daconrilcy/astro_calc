@@ -283,6 +283,11 @@ pub fn assert_premium_plus_prompt_structure(prompts_root: &std::path::Path) -> R
     {
         return Err("premium_plus prompt missing public abbreviation expansion rule".into());
     }
+    if !task.contains("astro_basis.fact_id values are technical identifiers")
+        || !task.contains("never replace a fact_id with a public label")
+    {
+        return Err("premium_plus prompt missing exact fact_id citation rule".into());
+    }
     let structure_blocks = task.matches("--- chapter writing structure").count();
     if structure_blocks != 1 {
         return Err(format!(

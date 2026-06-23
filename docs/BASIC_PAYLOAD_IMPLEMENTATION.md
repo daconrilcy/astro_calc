@@ -4,6 +4,10 @@ Resume court:
 - le compilateur de prompt natal envoie maintenant au LLM des faits et blocs
   publics resolus en amont, avec remplacement des abreviations d'angles
   visibles (`MC`, `IC`, `ASC`, `DSC`) par leurs libelles canoniques;
+- les instructions de generation precisent que cette expansion ne concerne
+  que la prose publique et jamais les identifiants techniques (`fact_id`,
+  `signal_key`, codes de preuve), afin d'eviter les citations de type
+  `placement:Milieu du Ciel:...` ;
 - la barriere de secours cote prompt reste en place, mais la sanitation
   upstream limite les risques de fuite de termes techniques dans le texte
   prompt-facing;

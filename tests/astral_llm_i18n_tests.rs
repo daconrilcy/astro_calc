@@ -50,6 +50,8 @@ fn public_abbreviation_rule_expands_french_angle_codes() {
     assert!(rule.contains("Milieu du Ciel"));
     assert!(rule.contains("au lieu de \"MC\""));
     assert!(rule.contains("Fond du Ciel"));
+    assert!(rule.contains("fact_id"));
+    assert!(rule.contains("signal_key"));
 }
 
 #[test]
