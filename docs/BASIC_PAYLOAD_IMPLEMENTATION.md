@@ -1,3 +1,29 @@
+# 2026-06-23 - Prompt natal: libelles publics resolus avant envoi au LLM
+
+Resume court:
+- le compilateur de prompt natal envoie maintenant au LLM des faits et blocs
+  publics resolus en amont, avec remplacement des abreviations d'angles
+  visibles (`MC`, `IC`, `ASC`, `DSC`) par leurs libelles canoniques;
+- la barriere de secours cote prompt reste en place, mais la sanitation
+  upstream limite les risques de fuite de termes techniques dans le texte
+  prompt-facing;
+- verification DB: `llm_astro_object_labels` contient deja les libelles
+  publics pour `ascendant`, `descendant`, `mc` et `ic`; aucune table de
+  correspondance supplementaire n'etait requise.
+
+Invariants de couche:
+- les identifiers techniques (`fact_id`, `kind_code`, `object_code`,
+  `sign_code`) restent intacts dans les donnees internes;
+- le prompt recoit des libelles publics resolus avant passage au LLM, tout en
+  conservant les garde-fous de prompt existants;
+- aucun nouveau mapping canonique en dur n'est introduit si la valeur existe
+  deja dans la base.
+
+Commandes de verification:
+- `cargo fmt`
+- `cargo test -p astral_llm_api --test astral_llm_injection_tests`
+- `cargo test -p astral_llm_api --test prompt_golden_tests`
+
 # 2026-06-23 - Isolation helper prompt golden LLM
 
 Resume court:

@@ -103,7 +103,11 @@ impl PromptCompiler {
             .interpretation
             .is_some_and(|ctx| ctx.profile.profile_code == SIMPLIFIED_PROFILE)
         {
-            let mut block = AstroPayloadNormalizer::to_prompt_data_block(input.astro_facts);
+            let mut block = AstroPayloadNormalizer::to_public_prompt_data_block(
+                input.astro_facts,
+                input.catalog,
+                &input.request.product_context.user_language,
+            );
             if let Some(obj) = block.as_object_mut() {
                 if let Some(controls) = input.request.astro_result.data.get("llm_controls") {
                     obj.insert("llm_controls".into(), controls.clone());
@@ -121,9 +125,18 @@ impl PromptCompiler {
                 input.astro_facts,
             )
         } else if let Some(chapter_code) = input.chapter_code {
-            AstroPayloadNormalizer::to_chapter_prompt_data_block(input.astro_facts, chapter_code)
+            AstroPayloadNormalizer::to_public_chapter_prompt_data_block(
+                input.astro_facts,
+                input.catalog,
+                &input.request.product_context.user_language,
+                chapter_code,
+            )
         } else {
-            AstroPayloadNormalizer::to_prompt_data_block(input.astro_facts)
+            AstroPayloadNormalizer::to_public_prompt_data_block(
+                input.astro_facts,
+                input.catalog,
+                &input.request.product_context.user_language,
+            )
         };
 
         let language_block = WritingLanguageDirective::prompt_block(

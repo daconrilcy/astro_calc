@@ -17,7 +17,8 @@ use astral_llm_domain::{
     ServiceLimits,
 };
 use astral_llm_infra::{
-    bootstrap_domains, bootstrap_interpretation_profiles, bootstrap_product_policies,
+    bootstrap_astro_object_labels, bootstrap_domains, bootstrap_interpretation_profiles,
+    bootstrap_product_policies, bootstrap_writing_locales, bootstrap_zodiac_sign_labels,
     CanonicalCatalog,
 };
 use astral_llm_providers::FakeProvider;
@@ -63,6 +64,15 @@ fn build_use_case() -> GenerateReadingUseCase {
         true,
         None,
     )
+}
+
+fn public_label_catalog() -> CanonicalCatalog {
+    CanonicalCatalog {
+        astro_object_labels: bootstrap_astro_object_labels(),
+        zodiac_sign_labels: bootstrap_zodiac_sign_labels(),
+        writing_locales: bootstrap_writing_locales(),
+        ..Default::default()
+    }
 }
 
 fn base_request() -> GenerateReadingRequest {
@@ -140,6 +150,66 @@ async fn birth_date_not_in_normalized_facts_for_llm() {
     let block = AstroPayloadNormalizer::to_prompt_data_block(&facts);
     let serialized = block.to_string();
     assert!(!serialized.contains("1990-01-01"));
+}
+
+#[tokio::test]
+async fn prompt_data_block_uses_public_labels_for_angles() {
+    use astral_llm_application::AstroPayloadNormalizer;
+    use astral_llm_domain::{AstroCalculationPayload, PrivacyPolicy};
+
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../tests/golden/natal_payload_v14_paris_1990.json");
+    let raw = std::fs::read_to_string(&path).expect("golden payload");
+    let payload = AstroCalculationPayload {
+        contract_version: "natal_structured_v14".into(),
+        chart_type: "natal".into(),
+        data: serde_json::from_str(&raw).expect("parse golden"),
+    };
+    let privacy = PrivacyPolicy::default();
+    let catalog = public_label_catalog();
+    let facts = AstroPayloadNormalizer::normalize(&payload, &privacy, &catalog, "fr").unwrap();
+    let block = AstroPayloadNormalizer::to_public_prompt_data_block(&facts, &catalog, "fr");
+    let serialized = block.to_string();
+
+    assert!(
+        serialized.contains("Milieu du Ciel"),
+        "expected public angle label in prompt block"
+    );
+    assert!(
+        !serialized.contains("\"short_label\":\"MC\""),
+        "technical angle abbreviation must not leak into prompt block"
+    );
+}
+
+#[tokio::test]
+async fn chapter_prompt_data_block_uses_public_labels_for_angles() {
+    use astral_llm_application::AstroPayloadNormalizer;
+    use astral_llm_domain::{AstroCalculationPayload, PrivacyPolicy};
+
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../tests/golden/natal_payload_v14_paris_1990.json");
+    let raw = std::fs::read_to_string(&path).expect("golden payload");
+    let payload = AstroCalculationPayload {
+        contract_version: "natal_structured_v14".into(),
+        chart_type: "natal".into(),
+        data: serde_json::from_str(&raw).expect("parse golden"),
+    };
+    let privacy = PrivacyPolicy::default();
+    let catalog = public_label_catalog();
+    let facts = AstroPayloadNormalizer::normalize(&payload, &privacy, &catalog, "fr").unwrap();
+    let block = AstroPayloadNormalizer::to_public_chapter_prompt_data_block(
+        &facts, &catalog, "fr", "career",
+    );
+    let serialized = block.to_string();
+
+    assert!(
+        serialized.contains("Milieu du Ciel"),
+        "expected public angle label in chapter prompt block"
+    );
+    assert!(
+        !serialized.contains("\"short_label\":\"MC\""),
+        "technical angle abbreviation must not leak into chapter prompt block"
+    );
 }
 
 #[tokio::test]
