@@ -262,7 +262,10 @@ fn simplified_postprocess_compacts_summary_without_resolved_profile() {
     let request =
         build_reading_request(&stable_calculation(), "fr", AudienceLevel::Beginner).expect("build");
     assert_eq!(
-        request.product_context.interpretation_profile_code.as_deref(),
+        request
+            .product_context
+            .interpretation_profile_code
+            .as_deref(),
         Some(SIMPLIFIED_PROFILE)
     );
 
@@ -307,7 +310,10 @@ fn simplified_postprocess_compacts_summary_without_resolved_profile() {
 
     let audit = post_process_single_pass_reading(&mut reading, &request, None);
 
-    assert_eq!(audit.summary_source.as_deref(), Some("server_compact_from_chapter"));
+    assert_eq!(
+        audit.summary_source.as_deref(),
+        Some("server_compact_from_chapter")
+    );
     assert_ne!(reading.summary.short_text, reading.chapters[0].body);
     assert!(reading.summary.short_text.len() < reading.chapters[0].body.len());
     assert!(!reading.summary.short_text.contains("Enfin"));

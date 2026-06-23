@@ -1,5 +1,4 @@
 /// Verification que le prompt compile ne contient pas de PII ni d'injection.
-
 use astral_llm_application::astro_payload_normalizer::AstroPayloadNormalizer;
 use astral_llm_application::chapter_writing_guidance::ChapterWritingGuidance;
 use astral_llm_application::interpretation_profile_resolver::ResolvedInterpretationContext;
