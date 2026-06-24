@@ -4,8 +4,9 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use astral_llm_application::reading_persistence::{
-    stable_json_digest, PersistedGenerationRunRecord, PersistedPromptTraceRecord,
-    PersistedTokenUsageRecord, ReadingPersistence, ReadingPersistenceError,
+    stable_json_digest, ExplanationCacheKeyRecord, ExplanationCacheRecord,
+    PersistedGenerationRunRecord, PersistedPromptTraceRecord, PersistedTokenUsageRecord,
+    ReadingPersistence, ReadingPersistenceError,
 };
 use astral_llm_application::{
     build_provider_map, daily_writer_response, GenerateReadingUseCase, ModelCapabilityRegistry,
@@ -84,6 +85,20 @@ impl ReadingPersistence for RecordingPersistence {
         &self,
         _step_id: Uuid,
         _usage_records: &[PersistedTokenUsageRecord],
+    ) -> Result<(), ReadingPersistenceError> {
+        Ok(())
+    }
+
+    async fn lookup_natal_explanations(
+        &self,
+        _keys: &[ExplanationCacheKeyRecord],
+    ) -> Result<Vec<ExplanationCacheRecord>, ReadingPersistenceError> {
+        Ok(Vec::new())
+    }
+
+    async fn upsert_natal_explanations(
+        &self,
+        _records: &[ExplanationCacheRecord],
     ) -> Result<(), ReadingPersistenceError> {
         Ok(())
     }
