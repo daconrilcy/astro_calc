@@ -8,6 +8,7 @@
     "metadata": { "$ref": "../common/response_metadata_common_v1.schema.json" },
     "quality": { "$ref": "../common/quality_metadata_common_v1.schema.json" },
     "calculation": {},
+    "explanations": {},
     "reading": { "$ref": "../llm/generate_reading_response_v1.schema.json" }
   },
   "additionalProperties": false

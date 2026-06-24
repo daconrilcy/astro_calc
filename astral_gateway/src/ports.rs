@@ -31,6 +31,12 @@ pub trait CalculatorPort: Send + Sync {
 pub trait LlmPort: Send + Sync {
     async fn generate_reading(&self, request: &Value) -> Result<Value, GatewayError>;
 
+    async fn prepare_natal_explanations(&self, _request: &Value) -> Result<Value, GatewayError> {
+        Err(GatewayError::Internal(
+            "natal explanation preparation is not implemented for this LLM port".to_string(),
+        ))
+    }
+
     async fn build_horoscope_daily_calculation_request(
         &self,
         _request: &Value,

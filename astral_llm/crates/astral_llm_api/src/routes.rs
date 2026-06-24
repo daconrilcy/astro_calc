@@ -37,6 +37,10 @@ pub fn router(state: AppState) -> Router {
             post(render_reading_internal),
         )
         .route(
+            "/v1/internal/natal/explanations/prepare",
+            post(prepare_natal_explanations_internal),
+        )
+        .route(
             "/v1/internal/horoscope/daily/render",
             post(render_horoscope_daily_internal),
         )
@@ -205,6 +209,13 @@ async fn render_reading_internal(
     Json(request): Json<GenerateReadingRequest>,
 ) -> Response {
     Json(state.use_case.execute(request).await).into_response()
+}
+
+async fn prepare_natal_explanations_internal(
+    State(state): State<AppState>,
+    Json(request): Json<astral_llm_application::ExplanationPreparationRequest>,
+) -> Response {
+    Json(state.use_case.prepare_natal_explanations(request).await).into_response()
 }
 
 async fn render_horoscope_period_internal(

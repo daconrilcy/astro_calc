@@ -123,6 +123,57 @@ pub struct RunPersistence {
     pool: PgPool,
 }
 
+#[derive(Debug, Clone)]
+pub struct NatalExplanationCacheKey {
+    pub language: String,
+    pub key_hash: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct NatalExplanationCacheRecord {
+    pub language: String,
+    pub kind_code: String,
+    pub key_hash: String,
+    pub key_json: serde_json::Value,
+    pub title: String,
+    pub explanation: String,
+    pub expression_primary: Option<String>,
+    pub provider: String,
+    pub model: String,
+    pub prompt_version: String,
+}
+
+#[derive(Debug, sqlx::FromRow)]
+struct NatalExplanationCacheRow {
+    language: String,
+    kind_code: String,
+    key_hash: String,
+    key_json: serde_json::Value,
+    title: String,
+    explanation: String,
+    expression_primary: Option<String>,
+    provider: String,
+    model: String,
+    prompt_version: String,
+}
+
+impl From<NatalExplanationCacheRow> for NatalExplanationCacheRecord {
+    fn from(row: NatalExplanationCacheRow) -> Self {
+        Self {
+            language: row.language,
+            kind_code: row.kind_code,
+            key_hash: row.key_hash,
+            key_json: row.key_json,
+            title: row.title,
+            explanation: row.explanation,
+            expression_primary: row.expression_primary,
+            provider: row.provider,
+            model: row.model,
+            prompt_version: row.prompt_version,
+        }
+    }
+}
+
 impl RunPersistence {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
@@ -181,7 +232,85 @@ impl RunPersistence {
         sqlx::query("SELECT 1 FROM llm_model_characteristics LIMIT 0")
             .execute(&self.pool)
             .await?;
+        sqlx::query("SELECT 1 FROM llm_natal_fact_explanations LIMIT 0")
+            .execute(&self.pool)
+            .await?;
         Ok(())
+    }
+
+    pub async fn lookup_natal_explanations(
+        &self,
+        keys: &[NatalExplanationCacheKey],
+    ) -> Result<Vec<NatalExplanationCacheRecord>, sqlx::Error> {
+        if keys.is_empty() {
+            return Ok(Vec::new());
+        }
+        let languages = keys
+            .iter()
+            .map(|key| key.language.clone())
+            .collect::<Vec<_>>();
+        let hashes = keys
+            .iter()
+            .map(|key| key.key_hash.clone())
+            .collect::<Vec<_>>();
+        sqlx::query_as::<_, NatalExplanationCacheRow>(
+            r#"
+            SELECT language, kind_code, key_hash, key_json, title, explanation,
+                   expression_primary, provider, model, prompt_version
+            FROM llm_natal_fact_explanations
+            WHERE (language, key_hash) IN (
+                SELECT * FROM UNNEST($1::text[], $2::text[])
+            )
+            "#,
+        )
+        .bind(languages)
+        .bind(hashes)
+        .fetch_all(&self.pool)
+        .await
+        .map(|rows| rows.into_iter().map(Into::into).collect())
+    }
+
+    pub async fn upsert_natal_explanations(
+        &self,
+        records: &[NatalExplanationCacheRecord],
+    ) -> Result<(), sqlx::Error> {
+        if records.is_empty() {
+            return Ok(());
+        }
+        let mut tx = self.pool.begin().await?;
+        for record in records {
+            sqlx::query(
+                r#"
+                INSERT INTO llm_natal_fact_explanations (
+                    language, kind_code, key_hash, key_json, title, explanation,
+                    expression_primary, provider, model, prompt_version, created_at, updated_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+                ON CONFLICT (language, key_hash) DO UPDATE SET
+                    kind_code = EXCLUDED.kind_code,
+                    key_json = EXCLUDED.key_json,
+                    title = EXCLUDED.title,
+                    explanation = EXCLUDED.explanation,
+                    expression_primary = EXCLUDED.expression_primary,
+                    provider = EXCLUDED.provider,
+                    model = EXCLUDED.model,
+                    prompt_version = EXCLUDED.prompt_version,
+                    updated_at = NOW()
+                "#,
+            )
+            .bind(&record.language)
+            .bind(&record.kind_code)
+            .bind(&record.key_hash)
+            .bind(&record.key_json)
+            .bind(&record.title)
+            .bind(&record.explanation)
+            .bind(&record.expression_primary)
+            .bind(&record.provider)
+            .bind(&record.model)
+            .bind(&record.prompt_version)
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await
     }
 
     pub async fn insert_payloads(

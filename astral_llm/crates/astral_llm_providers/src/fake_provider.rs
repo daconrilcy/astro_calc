@@ -47,7 +47,9 @@ impl LlmProvider for FakeProvider {
         request: ProviderGenerationRequest,
     ) -> Result<ProviderGenerationResponse, LlmProviderError> {
         crate::http::with_timeout(request.timeout, async {
-            let json = if is_full_reading_request(&request) {
+            let json = if request.metadata.product_code == "natal_explanations" {
+                build_fake_explanations(&request)
+            } else if is_full_reading_request(&request) {
                 serde_json::to_value(build_full_reading(&request))
             } else if request.metadata.chapter_code.as_deref() == Some(READING_SUMMARY_STEP_CODE) {
                 serde_json::to_value(build_summary_response())
@@ -69,6 +71,42 @@ impl LlmProvider for FakeProvider {
         })
         .await
     }
+}
+
+fn build_fake_explanations(
+    request: &ProviderGenerationRequest,
+) -> Result<serde_json::Value, serde_json::Error> {
+    let items = request
+        .messages
+        .iter()
+        .rev()
+        .find_map(|message| extract_json_object(&message.content))
+        .and_then(|value| value.get("items").and_then(|items| items.as_array()).cloned())
+        .unwrap_or_default()
+        .into_iter()
+        .map(|item| {
+            let key_hash = item
+                .get("key_hash")
+                .and_then(|v| v.as_str())
+                .unwrap_or("missing");
+            let title = item
+                .get("title")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Element natal");
+            serde_json::json!({
+                "key_hash": key_hash,
+                "title": title,
+                "explanation": format!("{title} indique un repere astrologique neutre a replacer dans le theme."),
+                "expression_primary": item.get("expression_primary").cloned().unwrap_or(serde_json::Value::Null)
+            })
+        })
+        .collect::<Vec<_>>();
+    serde_json::to_value(serde_json::json!({ "items": items }))
+}
+
+fn extract_json_object(content: &str) -> Option<serde_json::Value> {
+    let start = content.find('{')?;
+    serde_json::from_str(content.get(start..)?.trim()).ok()
 }
 
 fn is_full_reading_request(request: &ProviderGenerationRequest) -> bool {

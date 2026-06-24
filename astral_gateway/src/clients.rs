@@ -281,6 +281,11 @@ impl LlmPort for HttpLlmClient {
         Ok(body)
     }
 
+    async fn prepare_natal_explanations(&self, request: &Value) -> Result<Value, GatewayError> {
+        self.post_internal_json_without_retry("/v1/internal/natal/explanations/prepare", request)
+            .await
+    }
+
     async fn build_horoscope_daily_calculation_request(
         &self,
         request: &Value,

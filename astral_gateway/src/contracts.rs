@@ -17,6 +17,8 @@ pub struct NatalReadingResponseV2 {
     pub quality: QualityMetadataCommon,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub calculation: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub explanations: Option<Value>,
     pub reading: Value,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub debug: Option<Value>,

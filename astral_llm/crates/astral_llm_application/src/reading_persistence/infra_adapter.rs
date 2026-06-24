@@ -5,13 +5,14 @@ use async_trait::async_trait;
 use uuid::Uuid;
 
 use astral_llm_infra::{
-    GenerationPromptTraceRecord, GenerationRunRecord, GenerationTokenUsageRecord, RunPersistence,
-    RunStatus, SafetyStatus,
+    GenerationPromptTraceRecord, GenerationRunRecord, GenerationTokenUsageRecord,
+    NatalExplanationCacheKey, NatalExplanationCacheRecord, RunPersistence, RunStatus, SafetyStatus,
 };
 
 use super::{
-    PersistedGenerationRunRecord, PersistedPromptTraceRecord, PersistedRunStatus,
-    PersistedSafetyStatus, PersistedTokenUsageRecord, ReadingPersistence, ReadingPersistenceError,
+    ExplanationCacheKeyRecord, ExplanationCacheRecord, PersistedGenerationRunRecord,
+    PersistedPromptTraceRecord, PersistedRunStatus, PersistedSafetyStatus,
+    PersistedTokenUsageRecord, ReadingPersistence, ReadingPersistenceError,
     SharedReadingPersistence,
 };
 
@@ -158,5 +159,64 @@ impl ReadingPersistence for InfraReadingPersistence {
             .replace_step_token_usages(step_id, &usage_records)
             .await
             .map_err(|err| ReadingPersistenceError::from_source("replace_step_token_usages", &err))
+    }
+
+    async fn lookup_natal_explanations(
+        &self,
+        keys: &[ExplanationCacheKeyRecord],
+    ) -> Result<Vec<ExplanationCacheRecord>, ReadingPersistenceError> {
+        let keys = keys
+            .iter()
+            .map(|key| NatalExplanationCacheKey {
+                language: key.language.clone(),
+                key_hash: key.key_hash.clone(),
+            })
+            .collect::<Vec<_>>();
+        self.persistence
+            .lookup_natal_explanations(&keys)
+            .await
+            .map(|records| {
+                records
+                    .into_iter()
+                    .map(|record| ExplanationCacheRecord {
+                        language: record.language,
+                        kind_code: record.kind_code,
+                        key_hash: record.key_hash,
+                        key_json: record.key_json,
+                        title: record.title,
+                        explanation: record.explanation,
+                        expression_primary: record.expression_primary,
+                        provider: record.provider,
+                        model: record.model,
+                        prompt_version: record.prompt_version,
+                    })
+                    .collect()
+            })
+            .map_err(|err| ReadingPersistenceError::from_source("lookup_natal_explanations", &err))
+    }
+
+    async fn upsert_natal_explanations(
+        &self,
+        records: &[ExplanationCacheRecord],
+    ) -> Result<(), ReadingPersistenceError> {
+        let records = records
+            .iter()
+            .map(|record| NatalExplanationCacheRecord {
+                language: record.language.clone(),
+                kind_code: record.kind_code.clone(),
+                key_hash: record.key_hash.clone(),
+                key_json: record.key_json.clone(),
+                title: record.title.clone(),
+                explanation: record.explanation.clone(),
+                expression_primary: record.expression_primary.clone(),
+                provider: record.provider.clone(),
+                model: record.model.clone(),
+                prompt_version: record.prompt_version.clone(),
+            })
+            .collect::<Vec<_>>();
+        self.persistence
+            .upsert_natal_explanations(&records)
+            .await
+            .map_err(|err| ReadingPersistenceError::from_source("upsert_natal_explanations", &err))
     }
 }

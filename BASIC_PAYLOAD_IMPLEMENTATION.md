@@ -1,3 +1,22 @@
+# 2026-06-24 - natal neutral explanations pre-generation
+
+Resume court:
+- ajout d'un bloc public sibling `explanations` dans l'enveloppe gateway `NatalReadingResponseV2`;
+- preparation LLM interne `/v1/internal/natal/explanations/prepare` avant la lecture principale, avec selection deterministe des elements majeurs, cache PostgreSQL et generation batch `gpt-5-mini` sur miss;
+- injection de `neutral_explanations` dans `astro_result.data` pour guider le prompt principal sans modifier le contrat `generate_reading_response_v1`.
+
+Invariants de couche:
+- le calculateur reste producteur des faits astrologiques; la selection et les phrases neutres appartiennent au runtime LLM;
+- le cache `llm_natal_fact_explanations` est derriere le port applicatif `ReadingPersistence`;
+- une panne d'explications ne bloque pas la lecture natal et remonte `explanations.status = unavailable`.
+
+Commandes de verification:
+- `cargo check -p astral_llm_application -p astral_llm_api -p astral_gateway`
+- `cargo test -p astral_llm_application --test natal_explanations_tests`
+- `cargo test -p astral_gateway --test gateway_natal_v2_tests`
+- `cargo test -p astral_llm_api --test astral_llm_tests`
+- `cargo test -p astral_llm_api --test contracts_publish_tests`
+
 # 2026-06-23 - astral_llm astro basis test catalog view
 
 Resume court:

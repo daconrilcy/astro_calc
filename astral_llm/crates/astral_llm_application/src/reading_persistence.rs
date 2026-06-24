@@ -85,6 +85,26 @@ pub struct PersistedTokenUsageRecord {
     pub provider_metric_name: Option<String>,
 }
 
+#[derive(Debug, Clone)]
+pub struct ExplanationCacheKeyRecord {
+    pub language: String,
+    pub key_hash: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct ExplanationCacheRecord {
+    pub language: String,
+    pub kind_code: String,
+    pub key_hash: String,
+    pub key_json: serde_json::Value,
+    pub title: String,
+    pub explanation: String,
+    pub expression_primary: Option<String>,
+    pub provider: String,
+    pub model: String,
+    pub prompt_version: String,
+}
+
 #[derive(Debug, Error)]
 pub enum ReadingPersistenceError {
     #[error("{operation} failed: {message}")]
@@ -131,6 +151,16 @@ pub trait ReadingPersistence: Send + Sync {
         &self,
         step_id: Uuid,
         usage_records: &[PersistedTokenUsageRecord],
+    ) -> Result<(), ReadingPersistenceError>;
+
+    async fn lookup_natal_explanations(
+        &self,
+        keys: &[ExplanationCacheKeyRecord],
+    ) -> Result<Vec<ExplanationCacheRecord>, ReadingPersistenceError>;
+
+    async fn upsert_natal_explanations(
+        &self,
+        records: &[ExplanationCacheRecord],
     ) -> Result<(), ReadingPersistenceError>;
 }
 

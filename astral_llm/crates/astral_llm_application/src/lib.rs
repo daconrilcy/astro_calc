@@ -33,6 +33,7 @@ pub mod integration_job_validator;
 pub mod interpretation_profile_resolver;
 pub mod interpretive_evidence_builder;
 pub mod model_capability_registry;
+pub mod natal_explanations;
 pub mod payload_sanitizer;
 pub mod prior_chapter_usage;
 pub mod product_policy_validator;
@@ -107,6 +108,11 @@ pub use interpretive_evidence_builder::{
     evidence_enabled_for_request, pool_richness_check, InterpretiveEvidenceBuilder,
 };
 pub use model_capability_registry::ModelCapabilityRegistry;
+pub use natal_explanations::{
+    prepare_natal_explanations_response, select_major_explanation_candidates, ExplanationCacheKey,
+    ExplanationPreparationRequest, ExplanationPreparationResponse, NatalExplanationItem,
+    NatalExplanationService,
+};
 pub use prompt_compiler::{PromptBundle, PromptCompiler};
 pub use provider_circuit_breaker::{CircuitBreakerState, ProviderCircuitBreaker};
 pub use provider_factory::{

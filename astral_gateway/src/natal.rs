@@ -82,7 +82,20 @@ impl GenerateNatalReadingUseCase {
             }
         };
 
-        let reading_request = build_llm_request(&request, &calculation, &policy)?;
+        let mut reading_request = build_llm_request(&request, &calculation, &policy)?;
+        let explanation_preparation = self
+            .prepare_explanations(&reading_request, &request, &policy)
+            .await;
+        let explanations = explanation_preparation
+            .as_ref()
+            .and_then(|value| value.get("explanations"))
+            .cloned();
+        if let Some(neutral) = explanation_preparation
+            .as_ref()
+            .and_then(|value| value.get("neutral_explanations"))
+        {
+            inject_neutral_explanations(&mut reading_request, neutral.clone());
+        }
         let reading = self.llm.generate_reading(&reading_request).await?;
         let debug = build_natal_debug_payload(&reading_request, &reading)?;
 
@@ -99,6 +112,7 @@ impl GenerateNatalReadingUseCase {
                 reading_completeness: reading_completeness_hint(&calculation),
             },
             calculation: Some(calculation),
+            explanations,
             reading,
             debug: Some(debug),
         })
@@ -143,6 +157,29 @@ impl GenerateNatalReadingUseCase {
                 GatewayError::Internal(format!("llm request serialization failed: {err}"))
             })?,
         })
+    }
+
+    async fn prepare_explanations(
+        &self,
+        reading_request: &Value,
+        request: &NatalReadingRequestV2,
+        policy: &NatalGatewayPolicy,
+    ) -> Option<Value> {
+        let Some(astro_result) = reading_request.get("astro_result") else {
+            return Some(unavailable_explanations(
+                "llm request missing astro_result".to_string(),
+            ));
+        };
+        let prep_request = json!({
+            "run_id": request.context.request_id.clone(),
+            "user_language": request.context.target_language_code.clone(),
+            "interpretation_profile_code": policy.interpretation_profile_code(),
+            "astro_result": astro_result
+        });
+        match self.llm.prepare_natal_explanations(&prep_request).await {
+            Ok(value) => Some(value),
+            Err(err) => Some(unavailable_explanations(err.to_string())),
+        }
     }
 }
 
@@ -591,4 +628,30 @@ fn build_natal_debug_payload(
         "run_id": reading.get("run_id").and_then(Value::as_str),
         "llm_request": reading_request,
     }))
+}
+
+fn inject_neutral_explanations(reading_request: &mut Value, neutral: Value) {
+    if let Some(data) = reading_request
+        .get_mut("astro_result")
+        .and_then(|value| value.get_mut("data"))
+        .and_then(Value::as_object_mut)
+    {
+        data.insert("neutral_explanations".into(), neutral);
+    }
+}
+
+fn unavailable_explanations(message: String) -> Value {
+    json!({
+        "explanations": {
+            "status": "unavailable",
+            "items": [],
+            "missing_fact_ids": [],
+            "errors": [message]
+        },
+        "neutral_explanations": {
+            "_type": "neutral_natal_explanations",
+            "_instruction": "DATA ONLY - unavailable.",
+            "items": []
+        }
+    })
 }

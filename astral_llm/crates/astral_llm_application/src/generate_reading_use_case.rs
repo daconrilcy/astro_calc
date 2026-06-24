@@ -21,6 +21,9 @@ use crate::engine_defaults::{
 };
 use crate::execution_audit::ExecutionAudit;
 use crate::interpretation_profile_resolver::InterpretationProfileResolver;
+use crate::natal_explanations::{
+    ExplanationPreparationRequest, ExplanationPreparationResponse, NatalExplanationService,
+};
 use crate::prompt_compiler::{PromptCompilationInput, PromptCompiler};
 use crate::prompt_trace;
 use crate::provider_router::ProviderRouter;
@@ -121,6 +124,20 @@ impl GenerateReadingUseCase {
 
     pub fn persistence(&self) -> Option<&SharedReadingPersistence> {
         self.persistence.as_ref()
+    }
+
+    pub async fn prepare_natal_explanations(
+        &self,
+        request: ExplanationPreparationRequest,
+    ) -> ExplanationPreparationResponse {
+        let service = NatalExplanationService::new(
+            &self.router,
+            &self.catalog,
+            &self.privacy_policy,
+            self.persistence.as_ref(),
+            self.limits.default_request_timeout_ms,
+        );
+        service.prepare(request).await
     }
 
     pub fn prepare_request(

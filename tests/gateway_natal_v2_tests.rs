@@ -68,6 +68,35 @@ impl astral_gateway::ports::LlmPort for FakeLlm {
     ) -> Result<Value, astral_gateway::error::GatewayError> {
         Ok(fake_reading_response(request))
     }
+
+    async fn prepare_natal_explanations(
+        &self,
+        _request: &Value,
+    ) -> Result<Value, astral_gateway::error::GatewayError> {
+        Ok(json!({
+            "explanations": {
+                "status": "complete",
+                "items": [{
+                    "fact_id": "placement:sun:taurus:house:10",
+                    "kind_code": "placement",
+                    "title": "Soleil en Taureau",
+                    "explanation": "Soleil en Taureau donne un repere neutre sur l'identite stable et concrete.",
+                    "expression_primary": "Maison 10",
+                    "source": "cache"
+                }],
+                "missing_fact_ids": [],
+                "errors": []
+            },
+            "neutral_explanations": {
+                "_type": "neutral_natal_explanations",
+                "items": [{
+                    "fact_id": "placement:sun:taurus:house:10",
+                    "title": "Soleil en Taureau",
+                    "explanation": "Soleil en Taureau donne un repere neutre sur l'identite stable et concrete."
+                }]
+            }
+        }))
+    }
 }
 
 #[async_trait]
@@ -295,5 +324,41 @@ async fn natal_gateway_execute_calls_llm_for_standard_flow() {
     assert_eq!(
         response.reading.get("status").and_then(Value::as_str),
         Some("success")
+    );
+}
+
+#[tokio::test]
+async fn natal_gateway_exposes_explanations_and_injects_prompt_block() {
+    let use_case = GenerateNatalReadingUseCase::new(Arc::new(FakeCalculator), Arc::new(FakeLlm));
+
+    let response = use_case
+        .execute(
+            NatalGatewayPolicy {
+                variant: NatalVariant::Full,
+                tier: ProductTier::Basic,
+            },
+            request(Some("14:30:00")),
+        )
+        .await
+        .expect("reading response");
+
+    assert_eq!(
+        response
+            .explanations
+            .as_ref()
+            .and_then(|value| value.get("status"))
+            .and_then(Value::as_str),
+        Some("complete")
+    );
+    assert!(response.reading.get("status").is_some());
+    assert_eq!(
+        response
+            .debug
+            .as_ref()
+            .and_then(
+                |debug| debug.pointer("/llm_request/astro_result/data/neutral_explanations/_type")
+            )
+            .and_then(Value::as_str),
+        Some("neutral_natal_explanations")
     );
 }

@@ -61,3 +61,7 @@ path = "../../../tests/reading_persistence_tests.rs"
 [[test]]
 name = "astral_llm_catalog_view_tests"
 path = "../../../tests/astral_llm_catalog_view_tests.rs"
+
+[[test]]
+name = "natal_explanations_tests"
+path = "../../../tests/natal_explanations_tests.rs"

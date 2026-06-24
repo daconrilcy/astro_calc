@@ -99,7 +99,7 @@ impl PromptCompiler {
             .map(|c| format!("Focus chapter code: {c}"))
             .unwrap_or_default();
 
-        let data_payload = if input
+        let mut data_payload = if input
             .interpretation
             .is_some_and(|ctx| ctx.profile.profile_code == SIMPLIFIED_PROFILE)
         {
@@ -138,6 +138,7 @@ impl PromptCompiler {
                 &input.request.product_context.user_language,
             )
         };
+        attach_neutral_explanations(&mut data_payload, &input.request.astro_result.data);
 
         let language_block = WritingLanguageDirective::prompt_block(
             input.catalog,
@@ -252,4 +253,16 @@ fn build_profile_block(
 
 fn safety_policy_text(policy: &SafetyPolicy) -> String {
     serde_json::to_string_pretty(policy).unwrap_or_default()
+}
+
+fn attach_neutral_explanations(
+    data_payload: &mut serde_json::Value,
+    astro_data: &serde_json::Value,
+) {
+    let Some(explanations) = astro_data.get("neutral_explanations") else {
+        return;
+    };
+    if let Some(obj) = data_payload.as_object_mut() {
+        obj.insert("neutral_explanations".into(), explanations.clone());
+    }
 }

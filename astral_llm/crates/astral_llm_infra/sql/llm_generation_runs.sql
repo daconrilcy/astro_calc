@@ -63,3 +63,23 @@ CREATE TABLE IF NOT EXISTS llm_generation_prompt_traces (
 
 CREATE INDEX IF NOT EXISTS idx_llm_generation_prompt_traces_run_created
     ON llm_generation_prompt_traces (run_id, created_at ASC, id ASC);
+
+CREATE TABLE IF NOT EXISTS llm_natal_fact_explanations (
+    id BIGSERIAL PRIMARY KEY,
+    language TEXT NOT NULL,
+    kind_code TEXT NOT NULL,
+    key_hash TEXT NOT NULL,
+    key_json JSONB NOT NULL,
+    title TEXT NOT NULL,
+    explanation TEXT NOT NULL,
+    expression_primary TEXT,
+    provider TEXT NOT NULL,
+    model TEXT NOT NULL,
+    prompt_version TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_llm_natal_fact_explanations_language_hash UNIQUE (language, key_hash)
+);
+
+CREATE INDEX IF NOT EXISTS idx_llm_natal_fact_explanations_kind
+    ON llm_natal_fact_explanations (language, kind_code);
