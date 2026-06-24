@@ -96,6 +96,7 @@
         },
         explanations: {
           status: "complete",
+          language_code: "fr",
           items: [{
             fact_id: "sun_taurus_house_x",
             kind_code: "placement",
@@ -106,8 +107,9 @@
           }],
         },
       });
-      assert("rendu gateway natal sections", natalSections.length === 4);
-      assert("rendu gateway natal n'injecte pas explanations", !natalSections.some((section) => section.title === "Explications neutres"));
+      assert("rendu gateway natal sections", natalSections.length === 5);
+      assert("rendu gateway natal expose explanations", natalSections.some((section) => section.title === "Explications neutres"));
+      assert("rendu gateway natal contient le texte des explications", natalSections.some((section) => section.paragraphs.some((paragraph) => paragraph.includes("Soleil en Taureau"))));
       assert("extraction explanations natal", api.extractNatalExplanations({
         explanations: { status: "complete", items: [{ title: "Soleil en Taureau" }] },
       }, { kind: "natal_full" }).items[0].title === "Soleil en Taureau");

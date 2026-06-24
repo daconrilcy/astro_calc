@@ -5,6 +5,7 @@ pub fn unified_result_envelope(
     calculation: Option<serde_json::Value>,
     reading: &GenerateReadingResponse,
     reading_completeness: Option<String>,
+    explanations: Option<serde_json::Value>,
 ) -> serde_json::Value {
     let mut out = json!({ "reading": reading });
     if let Some(token_usage) = reading.token_usage() {
@@ -15,6 +16,9 @@ pub fn unified_result_envelope(
     }
     if let Some(rc) = reading_completeness {
         out["reading_completeness"] = json!(rc);
+    }
+    if let Some(explanations) = explanations {
+        out["explanations"] = explanations;
     }
     out
 }

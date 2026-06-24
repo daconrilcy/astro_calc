@@ -261,12 +261,13 @@ async fn handle_job_result(
     result: astral_llm_application::UnifiedReadingResult,
 ) {
     let gen_run_id = Uuid::parse_str(&result.run_id).ok();
-    let (calculation, reading, reading_completeness) = match result.outcome {
+    let (calculation, reading, reading_completeness, explanations) = match result.outcome {
         UnifiedReadingOutcome::Reading {
             calculation,
             reading,
             reading_completeness,
-        } => (calculation, reading, reading_completeness),
+            explanations,
+        } => (calculation, reading, reading_completeness, explanations),
         UnifiedReadingOutcome::Json(envelope) => {
             if let Err(err) = jobs.mark_completed(job.job_id, gen_run_id, &envelope).await {
                 tracing::error!(
@@ -288,7 +289,8 @@ async fn handle_job_result(
             return;
         }
     };
-    let envelope = unified_result_envelope(calculation, &reading, reading_completeness);
+    let envelope =
+        unified_result_envelope(calculation, &reading, reading_completeness, explanations);
     let status = job_status_from_reading(&reading);
     match &reading {
         GenerateReadingResponse::Success { .. } => {

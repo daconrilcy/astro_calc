@@ -1654,7 +1654,7 @@
 
     return sections.concat(normalizeReadingSections(reading, {
       suppressSingleChapterOverlappingSummary: isGatewayNatalPayload(payload),
-    }));
+    })).concat(normalizeNatalExplanationsSections(payload));
   }
 
   function isGatewayNatalPayload(payload) {
@@ -1672,6 +1672,46 @@
     if (result.reading && result.reading.status === "success") return result.reading.reading;
     if (result.reading) return result.reading;
     return result;
+  }
+
+  function normalizeNatalExplanationsSections(payload) {
+    if (!isGatewayNatalPayload(payload)) return [];
+    const explanations = payload && payload.explanations && typeof payload.explanations === "object"
+      ? payload.explanations
+      : null;
+    if (!explanations) return [];
+
+    const meta = [];
+    if (explanations.status) meta.push(`status: ${explanations.status}`);
+    if (explanations.language_code) meta.push(`langue: ${explanations.language_code}`);
+
+    const paragraphs = [];
+    if (Array.isArray(explanations.items)) {
+      explanations.items.forEach((item) => {
+        if (!item || typeof item !== "object") return;
+        const title = item.title || item.fact_id || "Explication";
+        const expression = item.expression_primary ? ` (${item.expression_primary})` : "";
+        const text = item.explanation || "";
+        if (text.trim()) {
+          paragraphs.push(`${title}${expression}: ${text}`);
+        } else {
+          paragraphs.push(`${title}${expression}`);
+        }
+      });
+    }
+    if (Array.isArray(explanations.missing_fact_ids) && explanations.missing_fact_ids.length) {
+      paragraphs.push(`Fact_id manquants: ${explanations.missing_fact_ids.join(", ")}`);
+    }
+    if (Array.isArray(explanations.errors) && explanations.errors.length) {
+      paragraphs.push(`Erreurs: ${explanations.errors.join(" | ")}`);
+    }
+
+    if (!paragraphs.length && !meta.length) return [];
+    return [{
+      title: "Explications neutres",
+      meta,
+      paragraphs,
+    }];
   }
 
   function normalizeReadingSections(payload, options) {

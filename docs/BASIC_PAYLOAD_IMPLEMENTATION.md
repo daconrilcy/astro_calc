@@ -111,6 +111,30 @@ Reviews:
 - `docs/reviews/astral_calculator_refactor/REV-GOVERNANCE-SPLIT-2026-06-21.md`
 - `docs/reviews/astral_calculator_refactor_feature_boundaries/REV-GOVERNANCE-SPLIT-2026-06-21.md`
 
+## Explications calcul natal via jobs LLM (2026-06-24)
+
+Le chemin async `/v1/jobs` du worker LLM prépare désormais les explications
+neutres du calcul natal avant génération pour les lectures `natal_prompter`
+issues d'un payload direct ou d'un calcul natal complet. Le bloc neutre est
+injecté dans `astro_result.data.neutral_explanations` pour le prompt, et le bloc
+public `explanations` est propagé dans l'enveloppe persistée du job afin que le
+front puisse l'afficher sous `result.explanations`.
+
+Invariants:
+
+- Le calcul brut et le contrat `reading` restent inchangés.
+- Les explications restent produites par le service applicatif existant
+  `prepare_natal_explanations`; le worker ne duplique pas la logique métier.
+- Les jobs simplifiés et horoscope ne changent pas de surface publique.
+
+Verification:
+
+```powershell
+cargo test -p astral_llm_application --test integration_job_executor_tests
+cargo check -p astral_llm_worker
+cargo test -p astral_llm_api --test integration_jobs_tests
+```
+
 ## Correction détection whole-sign Swiss Ephemeris (2026-06-21)
 
 Cette correction évite une constante Rust canonique pour le système de maisons

@@ -2,7 +2,7 @@ use astral_contracts::horoscope_service_descriptor;
 use astral_llm_domain::{
     generation_request::AudienceLevel,
     integration::{CalculationMode, IntegrationService},
-    GenerateReadingResponse, GenerationError, GenerationErrorCode,
+    GenerateReadingRequest, GenerateReadingResponse, GenerationError, GenerationErrorCode,
 };
 use serde_json::Value;
 use uuid::Uuid;
@@ -11,6 +11,7 @@ use crate::core::calculator::CalculatorPort;
 use crate::generate_reading_use_case::{GenerateReadingUseCase, UseCaseOutput};
 use crate::horoscope::{HoroscopeDailyNatalOrchestrator, HoroscopePeriodNatalOrchestrator};
 use crate::integration_job_validator::ValidatedIntegrationJob;
+use crate::natal_explanations::ExplanationPreparationRequest;
 use crate::simplified_reading::build_reading_request;
 
 #[derive(Debug, Clone)]
@@ -25,6 +26,7 @@ pub enum UnifiedReadingOutcome {
         calculation: Option<Value>,
         reading: GenerateReadingResponse,
         reading_completeness: Option<String>,
+        explanations: Option<Value>,
     },
     Json(Value),
 }
@@ -167,6 +169,7 @@ where
             Some(calculation),
             output,
             reading_completeness,
+            None,
         ))
     }
 
@@ -174,7 +177,7 @@ where
         &self,
         job: &ValidatedIntegrationJob,
     ) -> Result<UnifiedReadingResult, GenerationError> {
-        let mut reading_request: astral_llm_domain::GenerateReadingRequest =
+        let mut reading_request: GenerateReadingRequest =
             serde_json::from_value(job.payload.clone()).map_err(|err| {
                 GenerationError::with_details(
                     GenerationErrorCode::InvalidInput,
@@ -185,12 +188,21 @@ where
         self.use_case.prepare_request(&mut reading_request)?;
 
         let run_id = Uuid::new_v4().to_string();
+        let explanations = self
+            .prepare_and_inject_natal_explanations(&run_id, &mut reading_request)
+            .await;
         let output = self
             .use_case
             .execute_with_audit(reading_request, run_id.clone())
             .await;
 
-        Ok(build_unified_result(run_id, None, output, None))
+        Ok(build_unified_result(
+            run_id,
+            None,
+            output,
+            None,
+            explanations,
+        ))
     }
 
     async fn run_full_natal(
@@ -212,6 +224,9 @@ where
         self.use_case.prepare_request(&mut reading_request)?;
 
         let run_id = Uuid::new_v4().to_string();
+        let explanations = self
+            .prepare_and_inject_natal_explanations(&run_id, &mut reading_request)
+            .await;
         let output = self
             .use_case
             .execute_with_audit(reading_request, run_id.clone())
@@ -222,7 +237,37 @@ where
             Some(calculation),
             output,
             Some("full".into()),
+            explanations,
         ))
+    }
+
+    async fn prepare_and_inject_natal_explanations(
+        &self,
+        run_id: &str,
+        reading_request: &mut GenerateReadingRequest,
+    ) -> Option<Value> {
+        if reading_request.astro_result.chart_type != "natal" {
+            return None;
+        }
+        let response = self
+            .use_case
+            .prepare_natal_explanations(ExplanationPreparationRequest {
+                run_id: Some(run_id.to_string()),
+                user_language: reading_request.product_context.user_language.clone(),
+                astro_result: reading_request.astro_result.clone(),
+                interpretation_profile_code: reading_request
+                    .product_context
+                    .interpretation_profile_code
+                    .clone(),
+            })
+            .await;
+        if let Some(data) = reading_request.astro_result.data.as_object_mut() {
+            data.insert(
+                "neutral_explanations".into(),
+                response.neutral_explanations.clone(),
+            );
+        }
+        serde_json::to_value(response.explanations).ok()
     }
 }
 
@@ -268,6 +313,7 @@ fn build_unified_result(
     calculation: Option<Value>,
     output: UseCaseOutput,
     reading_completeness: Option<String>,
+    explanations: Option<Value>,
 ) -> UnifiedReadingResult {
     UnifiedReadingResult {
         run_id,
@@ -275,6 +321,7 @@ fn build_unified_result(
             calculation,
             reading: output.response,
             reading_completeness,
+            explanations,
         },
     }
 }
