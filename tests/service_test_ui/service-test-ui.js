@@ -416,6 +416,17 @@
     };
   }
 
+  function isNatalService(service) {
+    return service && (service.kind === "natal_simplified" || service.kind === "natal_full");
+  }
+
+  function extractNatalExplanations(payload, service) {
+    if (!isNatalService(service)) return null;
+    if (!payload || typeof payload !== "object") return null;
+    const explanations = payload.explanations;
+    return explanations && typeof explanations === "object" ? explanations : null;
+  }
+
   function supportedTargetLanguageCode(value) {
     return ["fr", "en", "es", "de"].includes(value) ? value : null;
   }
@@ -864,6 +875,10 @@
 
     card.querySelector(".show-prompt").addEventListener("click", () => openPromptModal(service));
     card.querySelector(".show-usage").addEventListener("click", () => openUsageModal(service));
+    card.querySelector(".show-explanations").addEventListener("click", () => {
+      const result = state.results[service.service_code];
+      openJsonModal(`Explications neutres - ${service.label_fr}`, service.service_code, extractNatalExplanations(result && result.response, service));
+    });
     card.querySelector(".run-service").addEventListener("click", () => runService(service));
   }
 
@@ -878,6 +893,12 @@
     card.querySelector(".copy-text").disabled = !result || !result.readingText;
     card.querySelector(".show-prompt").disabled = !result;
     card.querySelector(".show-usage").disabled = !result;
+    const explanationsButton = card.querySelector(".show-explanations");
+    if (explanationsButton) {
+      const hasExplanations = Boolean(extractNatalExplanations(result && result.response, service));
+      explanationsButton.hidden = !isNatalService(service);
+      explanationsButton.disabled = !hasExplanations;
+    }
 
     renderProgress(card, service, result);
     renderResult(card, service, result);
@@ -1957,6 +1978,7 @@
     extractRunId,
     extractNatalLlmRequest,
     extractPromptPayload,
+    extractNatalExplanations,
     isAutoLocationEnabled,
     isHoroscopeService,
     joinSectionsForCopy,

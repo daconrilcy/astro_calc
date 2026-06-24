@@ -93,9 +93,27 @@
             summary: { title: "Synthese", short_text: "Texte court." },
             chapters: [{ title: "Chapitre", body: "Paragraphe 1.\n\nParagraphe 2." }],
           }
-        }
+        },
+        explanations: {
+          status: "complete",
+          items: [{
+            fact_id: "sun_taurus_house_x",
+            kind_code: "placement",
+            title: "Soleil en Taureau",
+            explanation: "Une identité stable, concrète et patiente.",
+            expression_primary: "Maison X - Carrière",
+            source: "generated",
+          }],
+        },
       });
-      assert("rendu gateway natal sections", natalSections.length >= 4);
+      assert("rendu gateway natal sections", natalSections.length === 4);
+      assert("rendu gateway natal n'injecte pas explanations", !natalSections.some((section) => section.title === "Explications neutres"));
+      assert("extraction explanations natal", api.extractNatalExplanations({
+        explanations: { status: "complete", items: [{ title: "Soleil en Taureau" }] },
+      }, { kind: "natal_full" }).items[0].title === "Soleil en Taureau");
+      assert("extraction explanations ignore non natal", api.extractNatalExplanations({
+        explanations: { status: "complete" },
+      }, { kind: "horoscope_daily" }) === null);
 
       const simplifiedSections = api.normalizeGatewayReadingSections({
         metadata: { product_code: "natal_simplified_free", variant: "simplified", tier: "free" },

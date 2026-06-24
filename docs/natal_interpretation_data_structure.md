@@ -8,6 +8,7 @@ Sources de verite:
 - projection LLM theme complet: `contracts/calculator/llm_projection_natal_v1.schema.json`;
 - calcul sans heure ou partiel: `contracts/calculator/astro_simplified_natal_response_v1.schema.json` et `contracts/calculator/natal_simplified_structured_v1.schema.json`;
 - lecture LLM: `contracts/llm/generate_reading_response_v1.schema.json` et `contracts/llm/natal_reading_v1.schema.json`;
+- explications neutres pre-generation: `docs/natal_explanations_contract.md`;
 - profils editoriaux: `config/natal_interpretation_profiles/natal_light.json`, `natal_basic.json`, `natal_premium.json`.
 
 ## 1. Taxonomie produit
@@ -534,3 +535,75 @@ L'enveloppe async est differente de V2:
 ```
 
 Pour le produit public courant, la surface recommandee reste `astral_gateway` `/v2/natal/*`.
+
+## 13. Explications neutres pre-generation
+
+La gateway V2 natal expose un sibling public `explanations` a cote de `reading`.
+Ce bloc ne remplace pas la lecture finale. Il sert de glossaire factuel et neutre
+pour guider le prompt principal, puis peut aussi etre inspecte dans l'UI de test.
+
+Flux:
+1. la passerelle envoie un sous-payload interne a `/v1/internal/natal/explanations/prepare`;
+2. le runtime selectionne deterministement un petit ensemble d'elements majeurs;
+3. le cache PostgreSQL renvoie les explications deja connues quand la combinaison existe;
+4. sur miss, `gpt-5-mini` genere des phrases courtes, neutres et explicatives;
+5. le resultat est injecte dans `astro_result.data.neutral_explanations` pour la lecture LLM;
+6. la reponse gateway publie le sibling `explanations` sans modifier `reading`.
+
+Structure publique de `explanations`:
+
+```json
+{
+  "status": "complete|partial|unavailable",
+  "items": [
+    {
+      "fact_id": "placement:sun_taurus_house_x",
+      "kind_code": "placement|angle|house|axis|aspect",
+      "title": "Soleil en Taureau",
+      "explanation": "Une identite stable, concrete et patiente.",
+      "expression_primary": "Maison X - Carriere",
+      "source": "cache|generated"
+    }
+  ],
+  "missing_fact_ids": [],
+  "errors": []
+}
+```
+
+Champs:
+- `status`: etat de la preparation. `complete` signifie que tous les items retenus sont disponibles; `partial` signifie qu'une partie seulement a pu etre produite ou relue; `unavailable` signifie que la preparation a echoue sans bloquer la lecture.
+- `items[]`: liste ordonnee des explications neutres retenues pour la lecture.
+- `fact_id`: cle metier stable pour la combinaison expliquee.
+- `kind_code`: type logique de l'element source.
+- `title`: libelle court lisible dans l'UI.
+- `explanation`: une phrase courte, descriptive et non prescriptive.
+- `expression_primary`: expression principale retenue pour guider la lecture.
+- `source`: `cache` quand la combinaison existe deja en base, `generated` quand elle vient du moteur LLM.
+- `missing_fact_ids[]`: elements attendus mais absents du cache ou de la generation.
+- `errors[]`: erreurs non bloquantes de preparation.
+
+Contraintes editoriales:
+- pas d'interpretation psychologique au sens fort, pas de prediction, pas de conseil, pas de diagnostic;
+- phrase courte, neutre, pedagogique, au present;
+- vocabulaire simple, sans jargon technique expose au public;
+- si l'item est un axe, une maison dominante ou un aspect, l'explication doit decrire la relation ou la zone activee, pas produire une conclusion globale.
+
+Exemple d'usage dans la lecture:
+
+```json
+{
+  "explanations": {
+    "status": "complete",
+    "items": [
+      {
+        "fact_id": "placement:sun_taurus_house_x",
+        "kind_code": "placement",
+        "title": "Soleil en Taureau",
+        "explanation": "Une identite stable, concrete et patiente, qui cherche a se construire dans la carriere et la place sociale.",
+        "expression_primary": "Maison X - Carriere",
+        "source": "cache"
+      }
+    ]
+  }
+}
+```

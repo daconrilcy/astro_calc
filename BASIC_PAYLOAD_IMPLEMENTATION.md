@@ -4,6 +4,7 @@ Resume court:
 - ajout d'un bloc public sibling `explanations` dans l'enveloppe gateway `NatalReadingResponseV2`;
 - preparation LLM interne `/v1/internal/natal/explanations/prepare` avant la lecture principale, avec selection deterministe des elements majeurs, cache PostgreSQL et generation batch `gpt-5-mini` sur miss;
 - injection de `neutral_explanations` dans `astro_result.data` pour guider le prompt principal sans modifier le contrat `generate_reading_response_v1`.
+- documentation fonctionnelle et de format dans `docs/natal_interpretation_data_structure.md` et `docs/natal_explanations_contract.md`.
 
 Invariants de couche:
 - le calculateur reste producteur des faits astrologiques; la selection et les phrases neutres appartiennent au runtime LLM;
