@@ -184,8 +184,9 @@ impl ReadingPersistence for MemoryExplanationPersistence {
         Ok(records
             .iter()
             .filter(|record| {
-                keys.iter()
-                    .any(|key| key.language == record.language && key.key_hash == record.key_hash)
+                keys.iter().any(|key| {
+                    key.language_code == record.language_code && key.key_hash == record.key_hash
+                })
             })
             .cloned()
             .collect())
@@ -198,7 +199,8 @@ impl ReadingPersistence for MemoryExplanationPersistence {
         let mut stored = self.records.lock().await;
         for record in records {
             if let Some(existing) = stored.iter_mut().find(|existing| {
-                existing.language == record.language && existing.key_hash == record.key_hash
+                existing.language_code == record.language_code
+                    && existing.key_hash == record.key_hash
             }) {
                 *existing = record.clone();
             } else {
@@ -315,4 +317,110 @@ async fn natal_explanations_cache_miss_is_persisted_then_reused() {
     let second = use_case.prepare_natal_explanations(request).await;
     assert_eq!(second.explanations.status, "complete");
     assert_eq!(second.explanations.items[0].source, "cache");
+}
+
+#[tokio::test]
+async fn natal_explanations_cache_hit_requires_requested_language() {
+    let persistence = Arc::new(MemoryExplanationPersistence::default());
+    let use_case = use_case_with_fake_fallback(Some(persistence.clone()));
+    let astro_result = AstroCalculationPayload {
+        contract_version: "natal_structured_v14".into(),
+        chart_type: "natal".into(),
+        data: serde_json::json!({
+            "planets": {
+                "sun": { "house": 10, "sign": "taurus" }
+            }
+        }),
+    };
+
+    let fr = use_case
+        .prepare_natal_explanations(ExplanationPreparationRequest {
+            run_id: Some("run-fr".into()),
+            user_language: "fr".into(),
+            interpretation_profile_code: Some("natal_basic".into()),
+            astro_result: astro_result.clone(),
+        })
+        .await;
+    assert_eq!(fr.explanations.status, "complete");
+    assert_eq!(fr.explanations.language_code, "fr");
+    assert_eq!(fr.explanations.items[0].source, "generated");
+
+    let en = use_case
+        .prepare_natal_explanations(ExplanationPreparationRequest {
+            run_id: Some("run-en".into()),
+            user_language: "en".into(),
+            interpretation_profile_code: Some("natal_basic".into()),
+            astro_result,
+        })
+        .await;
+    assert_eq!(en.explanations.status, "complete");
+    assert_eq!(en.explanations.language_code, "en");
+    assert_eq!(
+        en.explanations.items[0].source, "generated",
+        "fr cache entries must not satisfy en requests"
+    );
+    assert_eq!(persistence.records.lock().await.len(), 2);
+}
+
+#[tokio::test]
+async fn natal_explanations_german_miss_is_persisted_then_reused() {
+    let persistence = Arc::new(MemoryExplanationPersistence::default());
+    let use_case = use_case_with_fake_fallback(Some(persistence.clone()));
+    let request = ExplanationPreparationRequest {
+        run_id: Some("run-de".into()),
+        user_language: "de".into(),
+        interpretation_profile_code: Some("natal_basic".into()),
+        astro_result: AstroCalculationPayload {
+            contract_version: "natal_structured_v14".into(),
+            chart_type: "natal".into(),
+            data: serde_json::json!({
+                "planets": {
+                    "sun": { "house": 10, "sign": "taurus" }
+                }
+            }),
+        },
+    };
+
+    let first = use_case.prepare_natal_explanations(request.clone()).await;
+    assert_eq!(first.explanations.status, "complete");
+    assert_eq!(first.explanations.language_code, "de");
+    assert_eq!(first.explanations.items[0].source, "generated");
+
+    let second = use_case.prepare_natal_explanations(request).await;
+    assert_eq!(second.explanations.status, "complete");
+    assert_eq!(second.explanations.language_code, "de");
+    assert_eq!(second.explanations.items[0].source, "cache");
+    assert!(persistence
+        .records
+        .lock()
+        .await
+        .iter()
+        .all(|record| record.language_code == "de"));
+}
+
+#[tokio::test]
+async fn natal_explanations_unsupported_language_is_unavailable() {
+    let use_case = use_case_with_fake_fallback(None);
+
+    let response = use_case
+        .prepare_natal_explanations(ExplanationPreparationRequest {
+            run_id: Some("run-unsupported".into()),
+            user_language: "spanish".into(),
+            interpretation_profile_code: Some("natal_basic".into()),
+            astro_result: AstroCalculationPayload {
+                contract_version: "natal_structured_v14".into(),
+                chart_type: "natal".into(),
+                data: serde_json::json!({
+                    "planets": {
+                        "sun": { "house": 10, "sign": "taurus" }
+                    }
+                }),
+            },
+        })
+        .await;
+
+    assert_eq!(response.explanations.status, "unavailable");
+    assert_eq!(response.explanations.language_code, "spanish");
+    assert!(response.explanations.items.is_empty());
+    assert!(response.explanations.errors[0].contains("unsupported"));
 }

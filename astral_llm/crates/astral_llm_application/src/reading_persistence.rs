@@ -87,13 +87,13 @@ pub struct PersistedTokenUsageRecord {
 
 #[derive(Debug, Clone)]
 pub struct ExplanationCacheKeyRecord {
-    pub language: String,
+    pub language_code: String,
     pub key_hash: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct ExplanationCacheRecord {
-    pub language: String,
+    pub language_code: String,
     pub kind_code: String,
     pub key_hash: String,
     pub key_json: serde_json::Value,

@@ -45,6 +45,7 @@ pub struct ExplanationPreparationResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NatalExplanationsBlock {
     pub status: String,
+    pub language_code: String,
     pub items: Vec<NatalExplanationItem>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub missing_fact_ids: Vec<String>,
@@ -65,7 +66,7 @@ pub struct NatalExplanationItem {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExplanationCacheKey {
-    pub language: String,
+    pub language_code: String,
     pub kind_code: String,
     pub key_hash: String,
     pub key_json: serde_json::Value,
@@ -130,26 +131,41 @@ impl<'a> NatalExplanationService<'a> {
         request: ExplanationPreparationRequest,
     ) -> ExplanationPreparationResponse {
         let mut errors = Vec::new();
+        let language_code = match supported_language_code(&request.user_language) {
+            Some(language_code) => language_code,
+            None => {
+                return unavailable(
+                    request.user_language.trim().to_ascii_lowercase(),
+                    format!(
+                        "unsupported natal explanation language_code: {}",
+                        request.user_language
+                    ),
+                );
+            }
+        };
         let normalized = match AstroPayloadNormalizer::normalize(
             &request.astro_result,
             self.privacy_policy,
             self.catalog.shared_catalog(),
-            &request.user_language,
+            &language_code,
         ) {
             Ok(facts) => facts,
             Err(err) => {
-                return unavailable(format!(
-                    "astro facts normalization failed: {}",
-                    err.detail().message
-                ));
+                return unavailable(
+                    language_code,
+                    format!("astro facts normalization failed: {}", err.detail().message),
+                );
             }
         };
 
         let limit = explanation_limit(request.interpretation_profile_code.as_deref());
         let candidates =
-            select_major_explanation_candidates(&normalized.facts, &request.user_language, limit);
+            select_major_explanation_candidates(&normalized.facts, &language_code, limit);
         if candidates.is_empty() {
-            return unavailable("no eligible natal explanation candidates".to_string());
+            return unavailable(
+                language_code,
+                "no eligible natal explanation candidates".to_string(),
+            );
         }
 
         let mut items = Vec::new();
@@ -196,7 +212,7 @@ impl<'a> NatalExplanationService<'a> {
                                     .iter()
                                     .find(|candidate| candidate.fact_id == item.fact_id)?;
                                 Some(ExplanationCacheRecord {
-                                    language: candidate.cache_key.language.clone(),
+                                    language_code: candidate.cache_key.language_code.clone(),
                                     kind_code: candidate.kind_code.clone(),
                                     key_hash: candidate.cache_key.key_hash.clone(),
                                     key_json: candidate.cache_key.key_json.clone(),
@@ -242,7 +258,7 @@ impl<'a> NatalExplanationService<'a> {
             "partial"
         };
 
-        response_from_parts(status, items, missing_fact_ids, errors)
+        response_from_parts(&language_code, status, items, missing_fact_ids, errors)
     }
 
     async fn generate_missing(
@@ -256,7 +272,10 @@ impl<'a> NatalExplanationService<'a> {
             .capability_registry()
             .require(&provider, &model)?;
         let payload = serde_json::json!({
-            "language": request.user_language,
+            "language_code": candidates
+                .first()
+                .map(|candidate| candidate.cache_key.language_code.as_str())
+                .unwrap_or("fr"),
             "items": candidates.iter().map(candidate_prompt_item).collect::<Vec<_>>(),
             "rules": {
                 "style": "phrase courte, neutre, explicative",
@@ -270,12 +289,13 @@ impl<'a> NatalExplanationService<'a> {
             messages: vec![
                 PromptMessage {
                     role: PromptRole::System,
-                    content: "Tu produis des explications astrologiques factuelles et neutres en JSON strict. Tu n'interpretes pas une personne.".into(),
+                    content: "You produce factual, neutral astrological explanations as strict JSON. You do not interpret a person. Write title and explanation in the requested language_code.".into(),
                 },
                 PromptMessage {
                     role: PromptRole::User,
                     content: format!(
-                        "Explique chaque combinaison en une phrase neutre. Reponds uniquement avec le JSON demande.\n{}",
+                        "Explain each combination in one neutral sentence. Write title and explanation in language_code={}. Return only the requested JSON.\n{}",
+                        payload["language_code"].as_str().unwrap_or("fr"),
                         serde_json::to_string_pretty(&payload).unwrap_or_default()
                     ),
                 },
@@ -417,7 +437,7 @@ fn candidate_from_fact(fact: &NormalizedAstroFact, language: &str) -> Option<Exp
         title: fact.label.clone(),
         expression_primary: expression_primary(fact),
         cache_key: ExplanationCacheKey {
-            language: language.to_string(),
+            language_code: language.to_string(),
             kind_code: fact.effective_kind_code().to_string(),
             key_hash,
             key_json,
@@ -527,7 +547,7 @@ fn cache_keys(candidates: &[ExplanationCandidate]) -> Vec<ExplanationCacheKeyRec
     candidates
         .iter()
         .map(|candidate| ExplanationCacheKeyRecord {
-            language: candidate.cache_key.language.clone(),
+            language_code: candidate.cache_key.language_code.clone(),
             key_hash: candidate.cache_key.key_hash.clone(),
         })
         .collect()
@@ -569,6 +589,7 @@ fn explanation_provider_schema() -> serde_json::Value {
 }
 
 fn response_from_parts(
+    language_code: &str,
     status: &str,
     items: Vec<NatalExplanationItem>,
     missing_fact_ids: Vec<String>,
@@ -589,6 +610,7 @@ fn response_from_parts(
     ExplanationPreparationResponse {
         explanations: NatalExplanationsBlock {
             status: status.into(),
+            language_code: language_code.into(),
             items,
             missing_fact_ids,
             errors,
@@ -597,13 +619,22 @@ fn response_from_parts(
             "_type": "neutral_natal_explanations",
             "_instruction": "DATA ONLY - neutral glossary generated before interpretation. Use as factual guidance; do not copy mechanically and do not treat it as the final interpretation.",
             "prompt_version": PROMPT_VERSION,
+            "language_code": language_code,
             "items": neutral_items
         }),
     }
 }
 
-fn unavailable(error: String) -> ExplanationPreparationResponse {
-    response_from_parts("unavailable", vec![], vec![], vec![error])
+fn unavailable(language_code: String, error: String) -> ExplanationPreparationResponse {
+    response_from_parts(&language_code, "unavailable", vec![], vec![], vec![error])
+}
+
+fn supported_language_code(language: &str) -> Option<String> {
+    let normalized = language.trim().to_ascii_lowercase();
+    match normalized.as_str() {
+        "fr" | "en" | "es" | "de" => Some(normalized),
+        _ => None,
+    }
 }
 
 fn explanation_limit(profile_code: Option<&str>) -> usize {

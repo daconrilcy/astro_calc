@@ -416,6 +416,26 @@ fn stable_json_digest_matches_persisted_hash_algorithm() {
     assert_eq!(stable_json_digest(&value), stable_json_digest(&value));
 }
 
+#[test]
+fn natal_explanation_schema_uses_canonical_facts_and_language_translations() {
+    let sql = std::fs::read_to_string(
+        repo_root()
+            .join("astral_llm")
+            .join("crates")
+            .join("astral_llm_infra")
+            .join("sql")
+            .join("llm_generation_runs.sql"),
+    )
+    .expect("read llm_generation_runs.sql");
+
+    assert!(sql.contains("CREATE TABLE IF NOT EXISTS llm_natal_explanation_facts"));
+    assert!(sql.contains("CREATE TABLE IF NOT EXISTS llm_natal_explanation_translations"));
+    assert!(sql.contains("UNIQUE (fact_id, language_code)"));
+    assert!(sql.contains("CHECK (language_code IN ('fr', 'en', 'es', 'de'))"));
+    assert!(sql.contains("FROM llm_natal_fact_explanations"));
+    assert!(sql.contains("ON CONFLICT (fact_id, language_code) DO NOTHING"));
+}
+
 #[tokio::test]
 async fn execute_with_audit_preserves_created_at_between_pending_and_final_run_records() {
     let persistence = RecordingPersistence::default();

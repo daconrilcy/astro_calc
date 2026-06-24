@@ -125,13 +125,13 @@ pub struct RunPersistence {
 
 #[derive(Debug, Clone)]
 pub struct NatalExplanationCacheKey {
-    pub language: String,
+    pub language_code: String,
     pub key_hash: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct NatalExplanationCacheRecord {
-    pub language: String,
+    pub language_code: String,
     pub kind_code: String,
     pub key_hash: String,
     pub key_json: serde_json::Value,
@@ -145,7 +145,7 @@ pub struct NatalExplanationCacheRecord {
 
 #[derive(Debug, sqlx::FromRow)]
 struct NatalExplanationCacheRow {
-    language: String,
+    language_code: String,
     kind_code: String,
     key_hash: String,
     key_json: serde_json::Value,
@@ -160,7 +160,7 @@ struct NatalExplanationCacheRow {
 impl From<NatalExplanationCacheRow> for NatalExplanationCacheRecord {
     fn from(row: NatalExplanationCacheRow) -> Self {
         Self {
-            language: row.language,
+            language_code: row.language_code,
             kind_code: row.kind_code,
             key_hash: row.key_hash,
             key_json: row.key_json,
@@ -232,7 +232,10 @@ impl RunPersistence {
         sqlx::query("SELECT 1 FROM llm_model_characteristics LIMIT 0")
             .execute(&self.pool)
             .await?;
-        sqlx::query("SELECT 1 FROM llm_natal_fact_explanations LIMIT 0")
+        sqlx::query("SELECT 1 FROM llm_natal_explanation_facts LIMIT 0")
+            .execute(&self.pool)
+            .await?;
+        sqlx::query("SELECT 1 FROM llm_natal_explanation_translations LIMIT 0")
             .execute(&self.pool)
             .await?;
         Ok(())
@@ -245,9 +248,9 @@ impl RunPersistence {
         if keys.is_empty() {
             return Ok(Vec::new());
         }
-        let languages = keys
+        let language_codes = keys
             .iter()
-            .map(|key| key.language.clone())
+            .map(|key| key.language_code.clone())
             .collect::<Vec<_>>();
         let hashes = keys
             .iter()
@@ -255,15 +258,25 @@ impl RunPersistence {
             .collect::<Vec<_>>();
         sqlx::query_as::<_, NatalExplanationCacheRow>(
             r#"
-            SELECT language, kind_code, key_hash, key_json, title, explanation,
-                   expression_primary, provider, model, prompt_version
-            FROM llm_natal_fact_explanations
-            WHERE (language, key_hash) IN (
+            SELECT translations.language_code,
+                   facts.kind_code,
+                   facts.key_hash,
+                   facts.key_json,
+                   translations.title,
+                   translations.explanation,
+                   translations.expression_primary,
+                   translations.provider,
+                   translations.model,
+                   translations.prompt_version
+            FROM llm_natal_explanation_facts facts
+            JOIN llm_natal_explanation_translations translations
+                ON translations.fact_id = facts.id
+            WHERE (translations.language_code, facts.key_hash) IN (
                 SELECT * FROM UNNEST($1::text[], $2::text[])
             )
             "#,
         )
-        .bind(languages)
+        .bind(language_codes)
         .bind(hashes)
         .fetch_all(&self.pool)
         .await
@@ -279,15 +292,31 @@ impl RunPersistence {
         }
         let mut tx = self.pool.begin().await?;
         for record in records {
-            sqlx::query(
+            let fact_id: i64 = sqlx::query_scalar(
                 r#"
-                INSERT INTO llm_natal_fact_explanations (
-                    language, kind_code, key_hash, key_json, title, explanation,
-                    expression_primary, provider, model, prompt_version, created_at, updated_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
-                ON CONFLICT (language, key_hash) DO UPDATE SET
+                INSERT INTO llm_natal_explanation_facts (
+                    kind_code, key_hash, key_json, created_at, updated_at
+                ) VALUES ($1, $2, $3, NOW(), NOW())
+                ON CONFLICT (key_hash) DO UPDATE SET
                     kind_code = EXCLUDED.kind_code,
                     key_json = EXCLUDED.key_json,
+                    updated_at = NOW()
+                RETURNING id
+                "#,
+            )
+            .bind(&record.kind_code)
+            .bind(&record.key_hash)
+            .bind(&record.key_json)
+            .fetch_one(&mut *tx)
+            .await?;
+
+            sqlx::query(
+                r#"
+                INSERT INTO llm_natal_explanation_translations (
+                    fact_id, language_code, title, explanation, expression_primary,
+                    provider, model, prompt_version, created_at, updated_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+                ON CONFLICT (fact_id, language_code) DO UPDATE SET
                     title = EXCLUDED.title,
                     explanation = EXCLUDED.explanation,
                     expression_primary = EXCLUDED.expression_primary,
@@ -297,10 +326,8 @@ impl RunPersistence {
                     updated_at = NOW()
                 "#,
             )
-            .bind(&record.language)
-            .bind(&record.kind_code)
-            .bind(&record.key_hash)
-            .bind(&record.key_json)
+            .bind(fact_id)
+            .bind(&record.language_code)
             .bind(&record.title)
             .bind(&record.explanation)
             .bind(&record.expression_primary)

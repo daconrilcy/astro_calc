@@ -1,3 +1,22 @@
+# 2026-06-24 - natal explanations multilingual cache
+
+Resume court:
+- normalisation du cache d'explications natal en `llm_natal_explanation_facts` + `llm_natal_explanation_translations`, avec backfill idempotent depuis la table legacy `llm_natal_fact_explanations`;
+- resolution stricte par `language_code` (`fr`, `en`, `es`, `de`): une traduction existante dans une langue ne satisfait pas une demande dans une autre langue;
+- generation LLM des misses dans la langue demandee, persistance par `(fact_id, language_code)` et exposition publique de `explanations.language_code`;
+- mise a jour du contrat `docs/natal_explanations_contract.md`.
+
+Invariants de couche:
+- le modele canonique de combinaison astrologique appartient a l'infra persistence; le service applicatif decide seulement de la langue demandee et des misses a generer;
+- la table legacy `llm_natal_fact_explanations` reste source de backfill mais n'est plus le chemin runtime courant;
+- une langue non supportee rend `explanations.status = unavailable` sans bloquer la lecture natal.
+
+Commandes de verification:
+- `cargo fmt`
+- `cargo test -p astral_llm_application --test natal_explanations_tests`
+- `cargo test -p astral_llm_application --test reading_persistence_tests`
+- `cargo test -p astral_llm_api --test astral_llm_tests`
+
 # 2026-06-24 - natal neutral explanations pre-generation
 
 Resume court:

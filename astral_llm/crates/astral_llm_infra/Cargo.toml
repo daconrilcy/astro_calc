@@ -31,3 +31,7 @@ path = "../../../tests/calculator_client_tests.rs"
 [[test]]
 name = "app_config_env_tests"
 path = "../../../tests/app_config_env_tests.rs"
+
+[[test]]
+name = "natal_explanation_persistence_db_tests"
+path = "../../../tests/natal_explanation_persistence_db_tests.rs"

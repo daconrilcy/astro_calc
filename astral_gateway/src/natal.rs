@@ -167,6 +167,7 @@ impl GenerateNatalReadingUseCase {
     ) -> Option<Value> {
         let Some(astro_result) = reading_request.get("astro_result") else {
             return Some(unavailable_explanations(
+                request.context.target_language_code.clone(),
                 "llm request missing astro_result".to_string(),
             ));
         };
@@ -178,7 +179,10 @@ impl GenerateNatalReadingUseCase {
         });
         match self.llm.prepare_natal_explanations(&prep_request).await {
             Ok(value) => Some(value),
-            Err(err) => Some(unavailable_explanations(err.to_string())),
+            Err(err) => Some(unavailable_explanations(
+                request.context.target_language_code.clone(),
+                err.to_string(),
+            )),
         }
     }
 }
@@ -640,10 +644,11 @@ fn inject_neutral_explanations(reading_request: &mut Value, neutral: Value) {
     }
 }
 
-fn unavailable_explanations(message: String) -> Value {
+fn unavailable_explanations(language_code: String, message: String) -> Value {
     json!({
         "explanations": {
             "status": "unavailable",
+            "language_code": language_code.clone(),
             "items": [],
             "missing_fact_ids": [],
             "errors": [message]
@@ -651,6 +656,7 @@ fn unavailable_explanations(message: String) -> Value {
         "neutral_explanations": {
             "_type": "neutral_natal_explanations",
             "_instruction": "DATA ONLY - unavailable.",
+            "language_code": language_code,
             "items": []
         }
     })

@@ -168,7 +168,7 @@ impl ReadingPersistence for InfraReadingPersistence {
         let keys = keys
             .iter()
             .map(|key| NatalExplanationCacheKey {
-                language: key.language.clone(),
+                language_code: key.language_code.clone(),
                 key_hash: key.key_hash.clone(),
             })
             .collect::<Vec<_>>();
@@ -179,7 +179,7 @@ impl ReadingPersistence for InfraReadingPersistence {
                 records
                     .into_iter()
                     .map(|record| ExplanationCacheRecord {
-                        language: record.language,
+                        language_code: record.language_code,
                         kind_code: record.kind_code,
                         key_hash: record.key_hash,
                         key_json: record.key_json,
@@ -202,7 +202,7 @@ impl ReadingPersistence for InfraReadingPersistence {
         let records = records
             .iter()
             .map(|record| NatalExplanationCacheRecord {
-                language: record.language.clone(),
+                language_code: record.language_code.clone(),
                 kind_code: record.kind_code.clone(),
                 key_hash: record.key_hash.clone(),
                 key_json: record.key_json.clone(),

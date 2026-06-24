@@ -83,3 +83,67 @@ CREATE TABLE IF NOT EXISTS llm_natal_fact_explanations (
 
 CREATE INDEX IF NOT EXISTS idx_llm_natal_fact_explanations_kind
     ON llm_natal_fact_explanations (language, kind_code);
+
+CREATE TABLE IF NOT EXISTS llm_natal_explanation_facts (
+    id BIGSERIAL PRIMARY KEY,
+    kind_code TEXT NOT NULL,
+    key_hash TEXT NOT NULL,
+    key_json JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_llm_natal_explanation_facts_hash UNIQUE (key_hash)
+);
+
+CREATE INDEX IF NOT EXISTS idx_llm_natal_explanation_facts_kind
+    ON llm_natal_explanation_facts (kind_code);
+
+CREATE TABLE IF NOT EXISTS llm_natal_explanation_translations (
+    id BIGSERIAL PRIMARY KEY,
+    fact_id BIGINT NOT NULL REFERENCES llm_natal_explanation_facts(id) ON DELETE CASCADE,
+    language_code TEXT NOT NULL,
+    title TEXT NOT NULL,
+    explanation TEXT NOT NULL,
+    expression_primary TEXT,
+    provider TEXT NOT NULL,
+    model TEXT NOT NULL,
+    prompt_version TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT chk_llm_natal_explanation_translations_language
+        CHECK (language_code IN ('fr', 'en', 'es', 'de')),
+    CONSTRAINT uq_llm_natal_explanation_translations_fact_language
+        UNIQUE (fact_id, language_code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_llm_natal_explanation_translations_language
+    ON llm_natal_explanation_translations (language_code);
+
+INSERT INTO llm_natal_explanation_facts (
+    kind_code, key_hash, key_json, created_at, updated_at
+)
+SELECT DISTINCT ON (key_hash)
+    kind_code, key_hash, key_json, created_at, updated_at
+FROM llm_natal_fact_explanations
+WHERE language IN ('fr', 'en', 'es', 'de')
+ORDER BY key_hash, updated_at DESC
+ON CONFLICT (key_hash) DO NOTHING;
+
+INSERT INTO llm_natal_explanation_translations (
+    fact_id, language_code, title, explanation, expression_primary,
+    provider, model, prompt_version, created_at, updated_at
+)
+SELECT
+    facts.id,
+    legacy.language,
+    legacy.title,
+    legacy.explanation,
+    legacy.expression_primary,
+    legacy.provider,
+    legacy.model,
+    legacy.prompt_version,
+    legacy.created_at,
+    legacy.updated_at
+FROM llm_natal_fact_explanations legacy
+JOIN llm_natal_explanation_facts facts ON facts.key_hash = legacy.key_hash
+WHERE legacy.language IN ('fr', 'en', 'es', 'de')
+ON CONFLICT (fact_id, language_code) DO NOTHING;
