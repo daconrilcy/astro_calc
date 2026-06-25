@@ -145,6 +145,204 @@ fn natal_explanations_candidates_are_localized_by_language() {
     assert_eq!(en[0].expression_primary.as_deref(), Some("House 10"));
 }
 
+#[test]
+fn natal_explanations_house_axis_cache_key_includes_justification_signature() {
+    let catalog = test_catalog();
+    let base = serde_json::json!({
+        "axis_code": "resources_sharing",
+        "houses": [2, 8],
+        "theme_codes": ["resources", "shared_resources"],
+        "primary_house": 2,
+        "secondary_house": 8,
+        "polarity_balance": "primary_house_dominant",
+        "axis_score": 0.91,
+        "reason_details": [
+            { "reason_code": "object_in_house", "object_code": "sun", "house_number": 2, "theme_code": "resources" }
+        ]
+    });
+    let changed = serde_json::json!({
+        "axis_code": "resources_sharing",
+        "houses": [2, 8],
+        "theme_codes": ["resources", "shared_resources"],
+        "primary_house": 2,
+        "secondary_house": 8,
+        "polarity_balance": "primary_house_dominant",
+        "axis_score": 0.91,
+        "reason_details": [
+            { "reason_code": "object_in_house", "object_code": "moon", "house_number": 2, "theme_code": "resources" }
+        ]
+    });
+
+    let first = select_major_explanation_candidates(
+        &[fact(
+            "house_axis:resources_sharing",
+            AstroFactKind::HousePlacement,
+            "house_axis",
+            "Axe maison : resources_sharing",
+            base,
+        )],
+        &catalog,
+        "fr",
+        1,
+    );
+    let second = select_major_explanation_candidates(
+        &[fact(
+            "house_axis:resources_sharing",
+            AstroFactKind::HousePlacement,
+            "house_axis",
+            "Axe maison : resources_sharing",
+            changed,
+        )],
+        &catalog,
+        "fr",
+        1,
+    );
+
+    assert_ne!(
+        first[0].cache_key.key_hash, second[0].cache_key.key_hash,
+        "house_axis cache must vary when concrete astrological justification changes"
+    );
+    assert_eq!(
+        first[0].cache_key.key_json["justification_signature"]["houses"],
+        serde_json::json!([2, 8])
+    );
+}
+
+#[test]
+fn natal_explanations_house_axis_signature_contains_prompt_context() {
+    let catalog = test_catalog();
+    let candidates = select_major_explanation_candidates(
+        &[fact(
+            "house_axis:resources_sharing",
+            AstroFactKind::HousePlacement,
+            "house_axis",
+            "Axe maison : resources_sharing",
+            serde_json::json!({
+                "axis_code": "resources_sharing",
+                "houses": [2, 8],
+                "theme_codes": ["resources", "shared_resources"],
+                "primary_house": 2,
+                "secondary_house": 8,
+                "polarity_balance": "primary_house_dominant",
+                "axis_score": 1.0,
+                "interpretive_hint": "Resources and Sharing is activated mainly through house 2.",
+                "reason_details": [
+                    { "reason_code": "dominant_house" },
+                    { "reason_code": "object_in_house", "object_code": "sun", "house_number": 2, "theme_code": "resources" },
+                    { "reason_code": "cross_axis_aspect", "signal_key": "aspect:jupiter:uranus:opposition" }
+                ]
+            }),
+        )],
+        &catalog,
+        "fr",
+        1,
+    );
+
+    let context = &candidates[0].cache_key.key_json["justification_signature"];
+
+    assert_eq!(candidates[0].kind_code, "house_axis");
+    assert_eq!(context["axis_code"], "resources_sharing");
+    assert_eq!(context["houses"], serde_json::json!([2, 8]));
+    assert_eq!(context["polarity_balance"], "primary_house_dominant");
+    assert_eq!(
+        context["interpretive_hint"],
+        "Resources and Sharing is activated mainly through house 2."
+    );
+    assert!(context["supporting_factors"]
+        .as_array()
+        .is_some_and(|factors| factors.iter().any(|factor| factor["object_code"] == "sun")));
+}
+
+#[test]
+fn natal_explanations_house_axis_signature_uses_projection_supporting_factors() {
+    let catalog = test_catalog();
+    let candidates = select_major_explanation_candidates(
+        &[fact(
+            "house_axis:resources_and_sharing",
+            AstroFactKind::HousePlacement,
+            "house_axis",
+            "Axe maison : Resources and Sharing",
+            serde_json::json!({
+                "axis": "Resources and Sharing",
+                "houses": [
+                    { "number": 2, "theme": "Resources" },
+                    { "number": 8, "theme": "Transformation" }
+                ],
+                "balance": "Mainly house 2",
+                "summary": "Resources and Sharing is activated mainly through house 2.",
+                "supporting_factors": [
+                    "Dominant house emphasis",
+                    "Sun in house",
+                    "A major aspect connects both sides of this house axis"
+                ]
+            }),
+        )],
+        &catalog,
+        "fr",
+        1,
+    );
+
+    let signature = &candidates[0].cache_key.key_json["justification_signature"];
+
+    assert_eq!(signature["axis_code"], "resources_and_sharing");
+    assert_eq!(signature["houses"], serde_json::json!([2, 8]));
+    assert_eq!(
+        signature["supporting_factors"],
+        serde_json::json!([
+            "Dominant house emphasis",
+            "Sun in house",
+            "A major aspect connects both sides of this house axis"
+        ])
+    );
+}
+
+#[test]
+fn natal_explanations_house_axes_rank_after_angles_before_house_emphasis() {
+    let catalog = test_catalog();
+    let facts = vec![
+        fact(
+            "house_emphasis:house:2",
+            AstroFactKind::HousePlacement,
+            "house_emphasis",
+            "Emphase maison resources",
+            serde_json::json!({ "house_number": 2, "theme_code": "resources" }),
+        ),
+        fact(
+            "house_axis:resources_sharing",
+            AstroFactKind::HousePlacement,
+            "house_axis",
+            "Axe maison : resources_sharing",
+            serde_json::json!({
+                "axis_code": "resources_sharing",
+                "houses": [2, 8],
+                "reason_details": [{ "reason_code": "dominant_house" }]
+            }),
+        ),
+        fact(
+            "angle:mc:aries",
+            AstroFactKind::Angle,
+            "angle",
+            "MC en Bélier",
+            serde_json::json!({ "sign": "aries" }),
+        ),
+    ];
+
+    let candidates = select_major_explanation_candidates(&facts, &catalog, "fr", 10);
+    let ids = candidates
+        .iter()
+        .map(|candidate| candidate.fact_id.as_str())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        ids,
+        vec![
+            "angle:mc:aries",
+            "house_axis:resources_sharing",
+            "house_emphasis:house:2"
+        ]
+    );
+}
+
 fn test_catalog() -> ReadingCatalog {
     ReadingCatalog::new(Arc::new(CanonicalCatalog {
         astrological_domains: bootstrap_domains(),
@@ -313,6 +511,90 @@ async fn natal_explanations_prepare_generates_prompt_safe_block() {
     assert_eq!(
         response.neutral_explanations["_type"],
         "neutral_natal_explanations"
+    );
+}
+
+#[tokio::test]
+async fn natal_explanations_prepare_persists_house_axis_context_signature() {
+    let persistence = Arc::new(MemoryExplanationPersistence::default());
+    let use_case = use_case_with_fake_fallback(Some(persistence.clone()));
+
+    let response = use_case
+        .prepare_natal_explanations(ExplanationPreparationRequest {
+            run_id: Some("run-axis".into()),
+            user_language: "fr".into(),
+            interpretation_profile_code: Some("natal_basic".into()),
+            astro_result: AstroCalculationPayload {
+                contract_version: "natal_structured_v14".into(),
+                chart_type: "natal".into(),
+                data: serde_json::json!({
+                    "house_axis_emphasis": [
+                        {
+                            "axis_code": "resources_sharing",
+                            "houses": [2, 8],
+                            "theme_codes": ["resources", "shared_resources"],
+                            "house_scores": [
+                                {
+                                    "house_number": 2,
+                                    "theme_code": "resources",
+                                    "score": 1.0,
+                                    "reason_details": [
+                                        { "reason_code": "dominant_house" },
+                                        { "reason_code": "object_in_house", "object_code": "sun", "house_number": 2, "theme_code": "resources" }
+                                    ]
+                                },
+                                {
+                                    "house_number": 8,
+                                    "theme_code": "shared_resources",
+                                    "score": 0.4,
+                                    "reason_details": [
+                                        { "reason_code": "cross_axis_aspect", "signal_key": "aspect:jupiter:uranus:opposition" }
+                                    ]
+                                }
+                            ],
+                            "primary_house": 2,
+                            "secondary_house": 8,
+                            "axis_score": 1.0,
+                            "polarity_balance": "primary_house_dominant",
+                            "interpretive_hint": "Resources and Sharing is activated mainly through house 2.",
+                            "reason_details": [
+                                { "reason_code": "dominant_house" },
+                                { "reason_code": "object_in_house", "object_code": "sun", "house_number": 2, "theme_code": "resources" },
+                                { "reason_code": "cross_axis_aspect", "signal_key": "aspect:jupiter:uranus:opposition" }
+                            ]
+                        }
+                    ]
+                }),
+            },
+        })
+        .await;
+
+    assert_eq!(
+        response.explanations.status, "complete",
+        "errors: {:?}",
+        response.explanations.errors
+    );
+    assert_eq!(response.explanations.items[0].kind_code, "house_axis");
+    assert!(
+        response.neutral_explanations["items"][0]
+            .get("astrological_context")
+            .is_none(),
+        "neutral_explanations public block must not expose internal prompt context"
+    );
+
+    let records = persistence.records.lock().await;
+    let axis_record = records
+        .iter()
+        .find(|record| record.kind_code == "house_axis")
+        .expect("persisted house axis explanation");
+    assert_eq!(
+        axis_record.key_json["justification_signature"]["houses"],
+        serde_json::json!([2, 8])
+    );
+    assert!(
+        axis_record.key_json["justification_signature"]["supporting_factors"]
+            .as_array()
+            .is_some_and(|factors| factors.iter().any(|factor| factor["object_code"] == "sun"))
     );
 }
 

@@ -1,3 +1,20 @@
+# 2026-06-25 - natal explanations house-axis justification context
+
+Resume court:
+- enrichissement interne des candidats `house_axis` dans les explications natal avec un contexte astrologique compact: maisons, themes, score, equilibre, hint et facteurs concrets issus de `reason_details`, `house_scores` ou `supporting_factors`;
+- passage du prompt d'explications neutres en `natal_neutral_explanations_v2`, avec consigne specifique pour justifier les axes par les maisons concernees et au moins un facteur astrologique fourni;
+- inclusion d'une `justification_signature` stable dans la cle de cache des axes, afin d'eviter de reutiliser une explication generique quand les preuves astrologiques de l'axe changent;
+- le bloc public `neutral_explanations.items[]` reste stable et n'expose pas le contexte prompt interne.
+
+Invariants de couche:
+- le calculateur reste source des preuves astrologiques; `astral_llm_application` ne fait que condenser les preuves deja presentes dans le payload;
+- aucun libelle canonique nouveau n'est code en dur: les valeurs viennent du payload normalise ou des catalogues existants;
+- la persistance conserve le meme modele titre/explication/traduction, seule la cle canonique de fait s'enrichit pour les axes.
+
+Commandes de verification:
+- `cargo fmt`
+- `cargo test -p astral_llm_application --test natal_explanations_tests`
+
 # 2026-06-24 - natal explanations multilingual cache
 
 Resume court:

@@ -22,7 +22,7 @@ use crate::reading_persistence::{
 };
 use crate::reasoning_generation::resolve_reasoning_effort;
 
-const PROMPT_VERSION: &str = "natal_neutral_explanations_v1";
+const PROMPT_VERSION: &str = "natal_neutral_explanations_v2";
 const DEFAULT_MODEL: &str = "gpt-5-mini";
 const MAX_ITEMS_DEFAULT: usize = 12;
 
@@ -290,7 +290,8 @@ impl<'a> NatalExplanationService<'a> {
             "rules": {
                 "style": "phrase courte, neutre, explicative",
                 "forbid": ["prediction", "conseil", "diagnostic", "interpretation personnelle", "fatalisme"],
-                "max_sentences": 1
+                "max_sentences": 1,
+                "house_axis_rule": "Pour kind_code=house_axis, utiliser 1 a 2 phrases et justifier l'axe par les maisons concernees plus au moins un facteur astrologique concret fourni dans astrological_context. Ne pas ecrire seulement que l'axe parle d'un theme sans preuve astrologique issue du contexte."
             }
         });
         let schema = ProviderSchemaCompiler::compile(&explanation_provider_schema(), model_cap)?;
@@ -304,7 +305,7 @@ impl<'a> NatalExplanationService<'a> {
                 PromptMessage {
                     role: PromptRole::User,
                     content: format!(
-                        "Explain each combination in one neutral sentence. Write title and explanation in language_code={}. Return only the requested JSON.\n{}",
+                        "Explain each combination in one neutral sentence. For house_axis items, use one or two neutral sentences and justify the axis with the houses plus at least one concrete astrological factor from astrological_context; avoid generic theme-only wording. Write title and explanation in language_code={}. Return only the requested JSON.\n{}",
                         payload["language_code"].as_str().unwrap_or("fr"),
                         serde_json::to_string_pretty(&payload).unwrap_or_default()
                     ),
@@ -502,7 +503,8 @@ fn canonical_key_json(fact: &NormalizedAstroFact) -> Option<serde_json::Value> {
             } else if fact.effective_kind_code() == "house_axis" {
                 Some(serde_json::json!({
                     "type": "house_axis",
-                    "axis": fact.value.get("axis_code").or_else(|| fact.value.get("theme")).or_else(|| fact.value.get("label")).cloned()
+                    "axis": house_axis_code(fact),
+                    "justification_signature": house_axis_justification_signature(fact)
                 }))
             } else {
                 None
@@ -513,6 +515,248 @@ fn canonical_key_json(fact: &NormalizedAstroFact) -> Option<serde_json::Value> {
             "label": normalize_token(&fact.label)
         })),
         AstroFactKind::DomainScore | AstroFactKind::Other => None,
+    }
+}
+
+fn house_axis_astrological_context(fact: &NormalizedAstroFact) -> Option<serde_json::Value> {
+    if fact.effective_kind_code() != "house_axis" {
+        return None;
+    }
+
+    let houses = house_axis_houses(&fact.value);
+    let theme_codes = house_axis_theme_codes(&fact.value);
+    let factors = house_axis_supporting_factors(&fact.value);
+    let mut context = serde_json::Map::new();
+
+    insert_string(&mut context, "axis_code", house_axis_code(fact));
+    insert_array(&mut context, "houses", houses);
+    insert_array(&mut context, "theme_codes", theme_codes);
+    insert_u64_value(
+        &mut context,
+        "primary_house",
+        fact.value.get("primary_house"),
+    );
+    insert_u64_value(
+        &mut context,
+        "secondary_house",
+        fact.value.get("secondary_house"),
+    );
+    insert_string_value(
+        &mut context,
+        "polarity_balance",
+        fact.value
+            .get("polarity_balance")
+            .or_else(|| fact.value.get("balance")),
+    );
+    insert_number_value(&mut context, "axis_score", fact.value.get("axis_score"));
+    insert_string_value(
+        &mut context,
+        "interpretive_hint",
+        fact.value
+            .get("interpretive_hint")
+            .or_else(|| fact.value.get("summary")),
+    );
+    insert_array(&mut context, "supporting_factors", factors);
+
+    if context.len() <= 1 {
+        return None;
+    }
+    Some(serde_json::Value::Object(context))
+}
+
+fn house_axis_justification_signature(fact: &NormalizedAstroFact) -> serde_json::Value {
+    house_axis_astrological_context(fact).unwrap_or_else(|| {
+        serde_json::json!({
+            "axis_code": house_axis_code(fact)
+        })
+    })
+}
+
+fn house_axis_code(fact: &NormalizedAstroFact) -> serde_json::Value {
+    let code = fact
+        .value
+        .get("axis_code")
+        .or_else(|| fact.value.get("axis"))
+        .or_else(|| fact.value.get("theme"))
+        .or_else(|| fact.value.get("label"))
+        .and_then(|value| value.as_str())
+        .or_else(|| fact.id.strip_prefix("house_axis:"))
+        .unwrap_or("axis");
+    serde_json::Value::String(normalize_token(code))
+}
+
+fn house_axis_houses(value: &serde_json::Value) -> Vec<serde_json::Value> {
+    if let Some(houses) = value.get("houses").and_then(|v| v.as_array()) {
+        return houses
+            .iter()
+            .filter_map(|house| {
+                house
+                    .as_u64()
+                    .or_else(|| house.get("number").and_then(|v| v.as_u64()))
+            })
+            .map(serde_json::Value::from)
+            .collect();
+    }
+    value
+        .get("house_scores")
+        .and_then(|v| v.as_array())
+        .into_iter()
+        .flatten()
+        .filter_map(|score| score.get("house_number").and_then(|v| v.as_u64()))
+        .map(serde_json::Value::from)
+        .collect()
+}
+
+fn house_axis_theme_codes(value: &serde_json::Value) -> Vec<serde_json::Value> {
+    if let Some(themes) = value.get("theme_codes").and_then(|v| v.as_array()) {
+        return themes
+            .iter()
+            .filter_map(|theme| theme.as_str())
+            .map(normalize_token)
+            .map(serde_json::Value::from)
+            .collect();
+    }
+    if let Some(houses) = value.get("houses").and_then(|v| v.as_array()) {
+        let themes = houses
+            .iter()
+            .filter_map(|house| house.get("theme").and_then(|v| v.as_str()))
+            .map(normalize_token)
+            .map(serde_json::Value::from)
+            .collect::<Vec<_>>();
+        if !themes.is_empty() {
+            return themes;
+        }
+    }
+    value
+        .get("house_scores")
+        .and_then(|v| v.as_array())
+        .into_iter()
+        .flatten()
+        .filter_map(|score| score.get("theme_code").and_then(|v| v.as_str()))
+        .map(normalize_token)
+        .map(serde_json::Value::from)
+        .collect()
+}
+
+fn house_axis_supporting_factors(value: &serde_json::Value) -> Vec<serde_json::Value> {
+    let mut factors = Vec::new();
+    push_string_array_values(&mut factors, value.get("supporting_factors"));
+    if !factors.is_empty() {
+        return factors;
+    }
+
+    push_reason_factor_values(&mut factors, value.get("reason_details"));
+    if let Some(scores) = value.get("house_scores").and_then(|v| v.as_array()) {
+        for score in scores {
+            push_reason_factor_values(&mut factors, score.get("reason_details"));
+        }
+    }
+    factors.truncate(8);
+    factors
+}
+
+fn push_string_array_values(
+    target: &mut Vec<serde_json::Value>,
+    value: Option<&serde_json::Value>,
+) {
+    if let Some(items) = value.and_then(|v| v.as_array()) {
+        for item in items.iter().filter_map(|item| item.as_str()) {
+            push_unique_value(target, serde_json::Value::String(item.trim().to_string()));
+        }
+    }
+}
+
+fn push_reason_factor_values(
+    target: &mut Vec<serde_json::Value>,
+    value: Option<&serde_json::Value>,
+) {
+    let Some(reasons) = value.and_then(|v| v.as_array()) else {
+        return;
+    };
+    for reason in reasons {
+        let Some(reason_code) = reason.get("reason_code").and_then(|v| v.as_str()) else {
+            continue;
+        };
+        let mut factor = serde_json::Map::new();
+        factor.insert(
+            "reason_code".into(),
+            serde_json::Value::String(reason_code.into()),
+        );
+        for field in [
+            "object_code",
+            "house_number",
+            "theme_code",
+            "dignity_type",
+            "signal_key",
+            "context_key",
+        ] {
+            if let Some(value) = reason.get(field) {
+                factor.insert(field.into(), value.clone());
+            }
+        }
+        push_unique_value(target, serde_json::Value::Object(factor));
+    }
+}
+
+fn insert_string(
+    target: &mut serde_json::Map<String, serde_json::Value>,
+    key: &str,
+    value: serde_json::Value,
+) {
+    if value.as_str().is_some_and(|value| !value.trim().is_empty()) {
+        target.insert(key.into(), value);
+    }
+}
+
+fn insert_string_value(
+    target: &mut serde_json::Map<String, serde_json::Value>,
+    key: &str,
+    value: Option<&serde_json::Value>,
+) {
+    if let Some(text) = value
+        .and_then(|v| v.as_str())
+        .filter(|text| !text.trim().is_empty())
+    {
+        target.insert(key.into(), serde_json::Value::String(text.to_string()));
+    }
+}
+
+fn insert_u64_value(
+    target: &mut serde_json::Map<String, serde_json::Value>,
+    key: &str,
+    value: Option<&serde_json::Value>,
+) {
+    if let Some(number) = value.and_then(|v| v.as_u64()) {
+        target.insert(key.into(), serde_json::Value::from(number));
+    }
+}
+
+fn insert_number_value(
+    target: &mut serde_json::Map<String, serde_json::Value>,
+    key: &str,
+    value: Option<&serde_json::Value>,
+) {
+    if let Some(number) = value
+        .and_then(|v| v.as_f64())
+        .and_then(serde_json::Number::from_f64)
+    {
+        target.insert(key.into(), serde_json::Value::Number(number));
+    }
+}
+
+fn insert_array(
+    target: &mut serde_json::Map<String, serde_json::Value>,
+    key: &str,
+    values: Vec<serde_json::Value>,
+) {
+    if !values.is_empty() {
+        target.insert(key.into(), serde_json::Value::Array(values));
+    }
+}
+
+fn push_unique_value(target: &mut Vec<serde_json::Value>, value: serde_json::Value) {
+    if !target.iter().any(|existing| existing == &value) {
+        target.push(value);
     }
 }
 
@@ -570,14 +814,31 @@ fn cache_keys(candidates: &[ExplanationCandidate]) -> Vec<ExplanationCacheKeyRec
 }
 
 fn candidate_prompt_item(candidate: &ExplanationCandidate) -> serde_json::Value {
-    serde_json::json!({
+    let mut item = serde_json::json!({
         "fact_id": candidate.fact_id,
         "kind_code": candidate.kind_code,
         "key_hash": candidate.cache_key.key_hash,
         "key": candidate.cache_key.key_json,
         "title": candidate.title,
         "expression_primary": candidate.expression_primary
-    })
+    });
+    if let Some(context) = candidate_prompt_astrological_context(candidate) {
+        item["astrological_context"] = context;
+    }
+    item
+}
+
+fn candidate_prompt_astrological_context(
+    candidate: &ExplanationCandidate,
+) -> Option<serde_json::Value> {
+    if candidate.kind_code != "house_axis" {
+        return None;
+    }
+    candidate
+        .cache_key
+        .key_json
+        .get("justification_signature")
+        .cloned()
 }
 
 fn explanation_provider_schema() -> serde_json::Value {
