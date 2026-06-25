@@ -1,3 +1,20 @@
+# 2026-06-25 - natal explanations localized title handoff
+
+Resume court:
+- les candidats d'explications natal marquent si le titre fourni au prompt provient d'une source localisee fiable (`localized_input`) ou seulement d'un libelle source (`source_fallback`);
+- quand le titre amont est localise, le service conserve ce titre; quand il ne l'est pas, le prompt demande explicitement au moteur de reecrire `title` dans `language_code` et le titre genere est persiste;
+- le cache passe en `natal_neutral_explanations_v3` pour regenerer les anciens titres ambigus, avec verification stricte titre/`expression_primary` seulement lorsque le titre canonique amont est disponible.
+
+Invariants de couche:
+- les libelles canoniques disponibles viennent des catalogues i18n existants et des donnees structurees; les cas non couverts ne sont pas traduits en dur par l'application;
+- le LLM reste responsable de la phrase explicative et des titres lorsque le titre localise n'est pas disponible en amont;
+- le contrat public `explanations.items[]` reste inchange.
+
+Commandes de verification:
+- `cargo fmt`
+- `cargo test -p astral_llm_application --test natal_explanations_tests`
+- `cargo test -p astral_llm_providers`
+
 # 2026-06-25 - natal explanations house-axis justification context
 
 Resume court:

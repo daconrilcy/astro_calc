@@ -22,7 +22,7 @@ use crate::reading_persistence::{
 };
 use crate::reasoning_generation::resolve_reasoning_effort;
 
-const PROMPT_VERSION: &str = "natal_neutral_explanations_v2";
+const PROMPT_VERSION: &str = "natal_neutral_explanations_v3";
 const DEFAULT_MODEL: &str = "gpt-5-mini";
 const MAX_ITEMS_DEFAULT: usize = 12;
 
@@ -77,6 +77,7 @@ pub struct ExplanationCandidate {
     pub fact_id: String,
     pub kind_code: String,
     pub title: String,
+    pub title_is_localized: bool,
     pub expression_primary: Option<String>,
     pub cache_key: ExplanationCacheKey,
 }
@@ -186,11 +187,16 @@ impl<'a> NatalExplanationService<'a> {
                         .collect::<HashMap<_, _>>();
                     missing.retain(|candidate| {
                         if let Some(record) = by_hash.get(&candidate.cache_key.key_hash) {
-                            let title_matches = record.title.trim() == candidate.title.trim();
-                            let expression_matches =
-                                record.expression_primary == candidate.expression_primary;
-                            if !title_matches || !expression_matches {
+                            if record.prompt_version != PROMPT_VERSION {
                                 return true;
+                            }
+                            if candidate.title_is_localized {
+                                let title_matches = record.title.trim() == candidate.title.trim();
+                                let expression_matches =
+                                    record.expression_primary == candidate.expression_primary;
+                                if !title_matches || !expression_matches {
+                                    return true;
+                                }
                             }
                             items.push(NatalExplanationItem {
                                 fact_id: candidate.fact_id.clone(),
@@ -291,6 +297,7 @@ impl<'a> NatalExplanationService<'a> {
                 "style": "phrase courte, neutre, explicative",
                 "forbid": ["prediction", "conseil", "diagnostic", "interpretation personnelle", "fatalisme"],
                 "max_sentences": 1,
+                "title_rule": "Si item.title_source=localized_input, conserver le meme titre. Si item.title_source=source_fallback, reecrire title dans language_code a partir de key, fact_id, kind_code et du titre fourni; ne pas conserver un titre dans une autre langue.",
                 "house_axis_rule": "Pour kind_code=house_axis, utiliser 1 a 2 phrases et justifier l'axe par les maisons concernees plus au moins un facteur astrologique concret fourni dans astrological_context. Ne pas ecrire seulement que l'axe parle d'un theme sans preuve astrologique issue du contexte."
             }
         });
@@ -372,12 +379,16 @@ impl<'a> NatalExplanationService<'a> {
                 Some(NatalExplanationItem {
                     fact_id: candidate.fact_id.clone(),
                     kind_code: candidate.kind_code.clone(),
-                    title: non_empty(&generated.title).unwrap_or_else(|| candidate.title.clone()),
+                    title: if candidate.title_is_localized {
+                        candidate.title.clone()
+                    } else {
+                        non_empty(&generated.title).unwrap_or_else(|| candidate.title.clone())
+                    },
                     explanation: non_empty(&generated.explanation)?,
-                    expression_primary: generated
+                    expression_primary: candidate
                         .expression_primary
                         .clone()
-                        .or_else(|| candidate.expression_primary.clone()),
+                        .or_else(|| generated.expression_primary.clone()),
                     source: "generated".into(),
                 })
             })
@@ -447,10 +458,13 @@ fn candidate_from_fact(
     let kind_code = fact.effective_kind_code().to_string();
     let key_json = canonical_key_json(fact)?;
     let key_hash = hash_json_value(&key_json);
+    let (title, title_is_localized) =
+        localize_explanation_title_with_origin(fact, catalog, language);
     Some(ExplanationCandidate {
         fact_id: fact.id.clone(),
         kind_code,
-        title: localize_explanation_title(fact, catalog, language),
+        title,
+        title_is_localized,
         expression_primary: expression_primary(fact, language),
         cache_key: ExplanationCacheKey {
             language_code: language.to_string(),
@@ -820,6 +834,7 @@ fn candidate_prompt_item(candidate: &ExplanationCandidate) -> serde_json::Value 
         "key_hash": candidate.cache_key.key_hash,
         "key": candidate.cache_key.key_json,
         "title": candidate.title,
+        "title_source": if candidate.title_is_localized { "localized_input" } else { "source_fallback" },
         "expression_primary": candidate.expression_primary
     });
     if let Some(context) = candidate_prompt_astrological_context(candidate) {
@@ -970,8 +985,36 @@ pub fn localize_explanation_title(
     catalog: &ReadingCatalog,
     language: &str,
 ) -> String {
+    localize_explanation_title_with_origin(fact, catalog, language).0
+}
+
+fn localize_explanation_title_with_origin(
+    fact: &NormalizedAstroFact,
+    catalog: &ReadingCatalog,
+    language: &str,
+) -> (String, bool) {
     let humanizer = AstroLabelHumanizer::new(catalog.shared_catalog());
-    humanizer
-        .label_for_fact_id(&fact.id, language, None)
-        .unwrap_or_else(|| fact.label.clone())
+    if let Some(axis_code) = fact.id.strip_prefix("house_axis:") {
+        let locale = AstroLabelHumanizer::locale_key(language);
+        if let Some(label) = catalog
+            .shared_catalog()
+            .house_axis_labels
+            .get(&(locale.to_string(), axis_code.to_string()))
+        {
+            return (label.display_label.clone(), true);
+        }
+        return (
+            humanizer
+                .label_for_fact_id(&fact.id, language, None)
+                .unwrap_or_else(|| fact.label.clone()),
+            false,
+        );
+    }
+    if let Some(label) = humanizer.label_for_fact_id(&fact.id, language, None) {
+        return (label, true);
+    }
+
+    let label = humanizer.humanize_fact_label(fact, language, None);
+    let localized_from_structured_data = label.trim() != fact.label.trim();
+    (label, localized_from_structured_data)
 }

@@ -20,8 +20,10 @@ use astral_llm_domain::{
     ServiceLimits,
 };
 use astral_llm_infra::{
-    bootstrap_astro_basis_roles, bootstrap_astro_object_labels, bootstrap_domains,
-    bootstrap_interpretation_profiles, bootstrap_product_policies, bootstrap_zodiac_sign_labels,
+    bootstrap_aspect_type_labels, bootstrap_astro_basis_roles, bootstrap_astro_object_labels,
+    bootstrap_domains, bootstrap_extra_object_sign_labels, bootstrap_interpretation_profiles,
+    bootstrap_product_policies, bootstrap_zodiac_sign_labels,
+    i18n_canonical::bootstrap_house_axis_labels, i18n_canonical::bootstrap_house_theme_labels,
     CanonicalCatalog,
 };
 use astral_llm_providers::FakeProvider;
@@ -143,6 +145,89 @@ fn natal_explanations_candidates_are_localized_by_language() {
     let en = select_major_explanation_candidates(&[fact], &catalog, "en", 1);
     assert_eq!(en[0].title, "Sun in Taurus in house 10");
     assert_eq!(en[0].expression_primary.as_deref(), Some("House 10"));
+}
+
+#[test]
+fn natal_explanations_signal_titles_use_requested_language_not_cached_label_shape() {
+    let catalog = test_catalog();
+    let fact = fact(
+        "signal:object_position:sun",
+        AstroFactKind::PlanetPosition,
+        "placement",
+        "Sun en taurus maison 10",
+        serde_json::json!({ "object": "sun", "sign": "taurus", "house": 10 }),
+    );
+
+    let fr = select_major_explanation_candidates(&[fact.clone()], &catalog, "fr", 1);
+    assert_eq!(fr[0].title, "Soleil en Taureau en maison 10");
+
+    let es = select_major_explanation_candidates(&[fact], &catalog, "es", 1);
+    assert_eq!(es[0].title, "Sol en Tauro en casa 10");
+}
+
+#[test]
+fn natal_explanations_axis_titles_use_catalog_translations() {
+    let catalog = test_catalog();
+    let fact = fact(
+        "house_axis:private_public",
+        AstroFactKind::HousePlacement,
+        "house_axis",
+        "Axe maison : private_public",
+        serde_json::json!({
+            "axis_code": "private_public",
+            "houses": [4, 10],
+            "reason_details": [{ "reason_code": "dominant_house" }]
+        }),
+    );
+
+    let fr = select_major_explanation_candidates(&[fact.clone()], &catalog, "fr", 1);
+    assert_eq!(fr[0].title, "Axe vie privée / vie publique");
+
+    let en = select_major_explanation_candidates(&[fact], &catalog, "en", 1);
+    assert_eq!(en[0].title, "Private / public life axis");
+}
+
+#[test]
+fn natal_explanations_axis_without_locale_catalog_falls_back_to_generation() {
+    let catalog = test_catalog();
+    let fact = fact(
+        "house_axis:private_public",
+        AstroFactKind::HousePlacement,
+        "house_axis",
+        "Axe maison : private_public",
+        serde_json::json!({
+            "axis_code": "private_public",
+            "houses": [4, 10],
+            "reason_details": [{ "reason_code": "dominant_house" }]
+        }),
+    );
+
+    let es = select_major_explanation_candidates(&[fact], &catalog, "es", 1);
+    assert!(!es[0].title_is_localized);
+    assert_eq!(es[0].title, "Private / public life axis");
+}
+
+#[test]
+fn natal_explanations_aspect_titles_fallback_to_generation_when_not_structured() {
+    let catalog = test_catalog();
+    let fact = fact(
+        "aspect:mars_trine_uranus",
+        AstroFactKind::Aspect,
+        "aspect",
+        "Mars trine Uranus",
+        serde_json::json!({ "aspect": "Mars trine Uranus" }),
+    );
+
+    let fr = select_major_explanation_candidates(&[fact.clone()], &catalog, "fr", 1);
+    assert_eq!(fr[0].title, "Mars trine Uranus");
+    assert!(!fr[0].title_is_localized);
+
+    let es = select_major_explanation_candidates(&[fact.clone()], &catalog, "es", 1);
+    assert_eq!(es[0].title, "Mars trine Uranus");
+    assert!(!es[0].title_is_localized);
+
+    let en = select_major_explanation_candidates(&[fact], &catalog, "en", 1);
+    assert_eq!(en[0].title, "Mars trine Uranus");
 }
 
 #[test]
@@ -344,13 +429,20 @@ fn natal_explanations_house_axes_rank_after_angles_before_house_emphasis() {
 }
 
 fn test_catalog() -> ReadingCatalog {
+    let mut object_labels = bootstrap_astro_object_labels();
+    let mut sign_labels = bootstrap_zodiac_sign_labels();
+    bootstrap_extra_object_sign_labels(&mut object_labels, &mut sign_labels);
+
     ReadingCatalog::new(Arc::new(CanonicalCatalog {
         astrological_domains: bootstrap_domains(),
         astro_basis_roles: bootstrap_astro_basis_roles(),
-        astro_object_labels: bootstrap_astro_object_labels(),
-        zodiac_sign_labels: bootstrap_zodiac_sign_labels(),
+        astro_object_labels: object_labels,
+        zodiac_sign_labels: sign_labels,
+        aspect_type_labels: bootstrap_aspect_type_labels(),
         product_generation_policies: bootstrap_product_policies(),
         interpretation_profiles: bootstrap_interpretation_profiles(),
+        house_axis_labels: bootstrap_house_axis_labels(),
+        house_theme_labels: bootstrap_house_theme_labels(),
         ..Default::default()
     }))
 }
@@ -709,6 +801,79 @@ async fn natal_explanations_stale_cache_entry_is_regenerated() {
     assert_eq!(
         second.explanations.items[0].title,
         "Soleil en Taureau en maison 10"
+    );
+}
+
+#[tokio::test]
+async fn natal_explanations_mixed_language_cache_title_is_regenerated() {
+    let persistence = Arc::new(MemoryExplanationPersistence::default());
+    let use_case = use_case_with_fake_fallback(Some(persistence.clone()));
+    let request = ExplanationPreparationRequest {
+        run_id: Some("run-mixed-cache".into()),
+        user_language: "fr".into(),
+        interpretation_profile_code: Some("natal_basic".into()),
+        astro_result: AstroCalculationPayload {
+            contract_version: "natal_structured_v14".into(),
+            chart_type: "natal".into(),
+            data: serde_json::json!({
+                "planets": {
+                    "sun": { "house": 10, "sign": "taurus" }
+                }
+            }),
+        },
+    };
+
+    let first = use_case.prepare_natal_explanations(request.clone()).await;
+    assert_eq!(first.explanations.status, "complete");
+
+    {
+        let mut records = persistence.records.lock().await;
+        let record = records.first_mut().expect("stored explanation");
+        record.title = "Sun en taurus maison 10".into();
+    }
+
+    let second = use_case.prepare_natal_explanations(request).await;
+    assert_eq!(second.explanations.status, "complete");
+    assert_eq!(second.explanations.items[0].source, "generated");
+    assert_eq!(
+        second.explanations.items[0].title,
+        "Soleil en Taureau en maison 10"
+    );
+}
+
+#[tokio::test]
+async fn natal_explanations_fallback_title_is_generated_in_requested_language() {
+    let persistence = Arc::new(MemoryExplanationPersistence::default());
+    let use_case = use_case_with_fake_fallback(Some(persistence));
+
+    let response = use_case
+        .prepare_natal_explanations(ExplanationPreparationRequest {
+            run_id: Some("run-fallback-title".into()),
+            user_language: "fr".into(),
+            interpretation_profile_code: Some("natal_basic".into()),
+            astro_result: AstroCalculationPayload {
+                contract_version: "llm_projection_natal_v1".into(),
+                chart_type: "natal".into(),
+                data: serde_json::json!({
+                    "dynamics": {
+                        "major_aspects": [
+                            { "aspect": "Mars trine Uranus" }
+                        ]
+                    }
+                }),
+            },
+        })
+        .await;
+
+    assert_eq!(
+        response.explanations.status, "complete",
+        "errors: {:?}",
+        response.explanations.errors
+    );
+    assert_eq!(response.explanations.items[0].source, "generated");
+    assert_eq!(
+        response.explanations.items[0].title,
+        "Titre français - Mars trine Uranus"
     );
 }
 

@@ -76,11 +76,18 @@ impl LlmProvider for FakeProvider {
 fn build_fake_explanations(
     request: &ProviderGenerationRequest,
 ) -> Result<serde_json::Value, serde_json::Error> {
-    let items = request
+    let payload = request
         .messages
         .iter()
         .rev()
-        .find_map(|message| extract_json_object(&message.content))
+        .find_map(|message| extract_json_object(&message.content));
+    let language_code = payload
+        .as_ref()
+        .and_then(|value| value.get("language_code"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("fr")
+        .to_string();
+    let items = payload
         .and_then(|value| value.get("items").and_then(|items| items.as_array()).cloned())
         .unwrap_or_default()
         .into_iter()
@@ -93,9 +100,21 @@ fn build_fake_explanations(
                 .get("title")
                 .and_then(|v| v.as_str())
                 .unwrap_or("Element natal");
+            let output_title =
+                if item.get("title_source").and_then(|v| v.as_str()) == Some("source_fallback")
+                {
+                    match language_code.as_str() {
+                        "fr" => format!("Titre français - {title}"),
+                        "es" => format!("Título español - {title}"),
+                        "de" => format!("Deutscher Titel - {title}"),
+                        _ => title.to_string(),
+                    }
+                } else {
+                    title.to_string()
+                };
             serde_json::json!({
                 "key_hash": key_hash,
-                "title": title,
+                "title": output_title,
                 "explanation": format!("{title} indique un repere astrologique neutre a replacer dans le theme."),
                 "expression_primary": item.get("expression_primary").cloned().unwrap_or(serde_json::Value::Null)
             })
