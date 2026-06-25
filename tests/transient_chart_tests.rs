@@ -66,6 +66,7 @@ fn calculate_transient_chart_facts_overrides_datetime_and_product_code_only() {
         coordinate_reference_system_id: 84,
         house_system_id: 12,
         product_code: Some("simplified".to_string()),
+        language_code: Some("en".to_string()),
         client_idempotency_key: Some("idempotency-key".to_string()),
     };
     let chart_context = ChartContextData {

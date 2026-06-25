@@ -10,12 +10,14 @@ pub(super) fn build_chart_context(
     positions: &[ObjectPositionFact],
     contract_version: &str,
     catalog: Option<&BasicPayloadCatalog>,
+    locale: &str,
 ) -> BasicChartContext {
     crate::features::natal::payload::rules::chart_context::build_chart_context(
         input,
         positions,
         contract_version,
         catalog,
+        locale,
     )
 }
 

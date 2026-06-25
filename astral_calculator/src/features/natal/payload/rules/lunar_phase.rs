@@ -13,6 +13,7 @@ pub(crate) fn build_lunar_phase_context(
     positions: &[ObjectPositionFact],
     signals: &[BasicSignal],
     reading_plan: &[BasicReadingPlanItem],
+    locale: &str,
 ) -> Option<BasicLunarPhaseContext> {
     let sun = positions
         .iter()
@@ -76,7 +77,7 @@ pub(crate) fn build_lunar_phase_context(
             reference.cycle_family.clone(),
             reference.phase_code.clone(),
         ],
-        interpretive_hint: interpretive_hint(reference),
+        interpretive_hint: interpretive_hint(reference, locale),
     })
 }
 
@@ -294,10 +295,25 @@ fn push_if_active(target: &mut Vec<String>, signal_keys: &HashSet<&str>, signal_
 }
 
 /// Fonction interpretive_hint.
-fn interpretive_hint(reference: &LunarPhaseReference) -> String {
-    format!(
-        "The Sun-Moon cycle is in a {} phase, indicating a structured {} relationship between solar identity and lunar needs.",
-        reference.label.to_ascii_lowercase(),
-        reference.cycle_family
-    )
+fn interpretive_hint(reference: &LunarPhaseReference, locale: &str) -> String {
+    let phase = reference.label.to_ascii_lowercase();
+    match locale {
+        "fr" => format!(
+            "Le cycle Soleil-Lune se trouve dans une phase {}, indiquant une relation structurée de type {} entre l'identité solaire et les besoins lunaires.",
+            phase, reference.cycle_family
+        ),
+        "es" => format!(
+            "El ciclo Sol-Luna se encuentra en una fase {}, indicando una relación estructurada de tipo {} entre la identidad solar y las necesidades lunares.",
+            phase, reference.cycle_family
+        ),
+        "de" => format!(
+            "Der Sonnen-Mond-Zyklus befindet sich in einer {}-Phase und deutet auf eine strukturierte {}-Beziehung zwischen solarem Selbst und lunarem Bedarf hin.",
+            phase, reference.cycle_family
+        ),
+        _ => format!(
+            "The Sun-Moon cycle is in a {} phase, indicating a structured {} relationship between solar identity and lunar needs.",
+            phase,
+            reference.cycle_family
+        ),
+    }
 }

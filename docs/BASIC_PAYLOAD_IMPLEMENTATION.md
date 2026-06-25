@@ -1,3 +1,47 @@
+# 2026-06-24 - Alignement de la langue de sortie sur la demande LLM
+
+Resume court:
+- la langue de sortie demandee pour le LLM est maintenant propagee depuis la
+  requete jusqu'aux builders de projection et au payload natal, afin d'eviter
+  les melanges de langues dans les `interpretive_hint` et textes publics;
+- le chemin natal transporte `language_code` dans `NatalChartInput`,
+  `EngineProjectionRequest` et `LlmProjectionBuildContext`, puis localise les
+  aides textuelles du payload, des signaux, de l'hémisphère, des dignites
+  accidentelles, des axes et du rulership;
+- le service d'explanations natal cote LLM regroupe aussi les libelles selon
+  la langue cible, avec regeneration si le cache contient encore une langue
+  stale;
+- le contrat `astro_engine_request_v1` accepte maintenant
+  `projection.language_code` pour que la langue demandee traverse aussi les
+  appels publics du calculateur;
+- les tests de contrat engine et les tests payload ont ete mis a jour pour
+  injecter explicitement `language_code: "en"` dans les initialiseurs de
+  contexte de projection.
+
+Invariants de couche:
+- la langue de sortie est une donnee de requete, pas une constante cachee dans
+  les couches metier;
+- les valeurs par defaut conservent l'anglais quand aucun code n'est fourni,
+  mais les chemins qui portent un code de langue doivent s'y conformer;
+- le changement de contrat public est additive et optionnel: les anciennes
+  requetes sans `projection.language_code` restent valides.
+
+Commandes de verification:
+- `cargo fmt`
+- `cargo check -p astral_calculator`
+- `cargo test -p astral_calculator --test payload_tests`
+- `cargo test -p astral_calculator --test signals_tests`
+- `cargo test -p astral_calculator --test idempotency_tests`
+- `cargo test -p astral_calculator --test engine_contract_tests sample_engine_request_matches_schema`
+- `cargo test -p astral_calculator --test natal_reuse_policy_tests`
+- `cargo test -p astral_llm_application --test natal_explanations_tests`
+- `cargo test -p astral_llm_api --test contracts_publish_tests`
+
+Verification bloquee:
+- `cargo test -p astral_calculator --test engine_contract_tests -- --test-threads=1`
+  echoue localement sur `DATABASE_URL and PostgreSQL are required ... pool timed
+  out while waiting for an open connection`.
+
 # 2026-06-23 - Prompt natal: libelles publics resolus avant envoi au LLM
 
 Resume court:

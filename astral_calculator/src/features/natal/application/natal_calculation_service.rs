@@ -72,7 +72,9 @@ where
         input: NatalChartInput,
     ) -> Result<(BasicPayload, BasicPayloadCatalog), RuntimeError> {
         let product_code = input.product_code().to_string();
-        let payload_language_id = self.payload_language_id().await?;
+        let payload_language_id = self
+            .payload_language_id(input.language_code.as_deref())
+            .await?;
         let input_hash = input_hash(&input)?;
         let idempotency_key = idempotency_key(&input, &self.options)?;
         let lock_key = advisory_lock_key(&idempotency_key);
@@ -120,10 +122,9 @@ where
         .map(|payload| (payload, snapshot.catalog))
     }
 
-    async fn payload_language_id(&self) -> Result<i32, RuntimeError> {
-        self.references
-            .language_id_for_code(NATAL_PROMPTER_LANGUAGE_CODE)
-            .await
+    async fn payload_language_id(&self, language_code: Option<&str>) -> Result<i32, RuntimeError> {
+        let code = language_code.unwrap_or(NATAL_PROMPTER_LANGUAGE_CODE);
+        self.references.language_id_for_code(code).await
     }
 }
 

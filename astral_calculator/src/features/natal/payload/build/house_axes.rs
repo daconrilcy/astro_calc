@@ -35,6 +35,7 @@ pub(super) fn build_house_axis_emphasis(
     rulership_context: &BasicRulershipContext,
     signals: &[BasicSignal],
     catalog: &BasicPayloadCatalog,
+    locale: &str,
 ) -> Vec<BasicHouseAxisEmphasis> {
     let scoring = &catalog.product_scoring;
     if references.is_empty() {
@@ -68,6 +69,7 @@ pub(super) fn build_house_axis_emphasis(
                 &signal_keys,
                 &position_house_by_object,
                 catalog,
+                locale,
             )
         })
         .collect::<Vec<_>>();
@@ -98,6 +100,7 @@ fn build_axis(
     signal_keys: &HashSet<&str>,
     position_house_by_object: &HashMap<&str, i32>,
     catalog: &BasicPayloadCatalog,
+    locale: &str,
 ) -> BasicHouseAxisEmphasis {
     let scoring = &catalog.product_scoring;
     let mut first = score_house(
@@ -182,7 +185,7 @@ fn build_axis(
         source_signal_keys,
         source_context_keys,
         reason_details,
-        interpretive_hint: interpretive_hint(reference, &polarity_balance),
+        interpretive_hint: interpretive_hint(reference, &polarity_balance, locale),
     }
 }
 
@@ -478,40 +481,156 @@ fn polarity_balance(
     }
 }
 
-fn interpretive_hint(reference: &HouseAxisReference, polarity_balance: &str) -> String {
+fn interpretive_hint(
+    reference: &HouseAxisReference,
+    polarity_balance: &str,
+    locale: &str,
+) -> String {
     match polarity_balance {
-        "primary_house_dominant" => format!(
-            "{} is activated mainly through house {} ({}), with house {} ({}) present as a secondary counterpoint.",
-            reference.label,
-            reference.house_a_number,
-            reference.theme_a_code,
-            reference.house_b_number,
-            reference.theme_b_code
+        "primary_house_dominant" => localized_axis_hint(
+            locale,
+            &reference.label,
+            &format!(
+                "is activated mainly through house {} ({}), with house {} ({}) present as a secondary counterpoint.",
+                reference.house_a_number,
+                reference.theme_a_code,
+                reference.house_b_number,
+                reference.theme_b_code
+            ),
+            &format!(
+                "s'active principalement à travers la maison {} ({}), la maison {} ({}) apparaissant comme contrepoint secondaire.",
+                reference.house_a_number,
+                reference.theme_a_code,
+                reference.house_b_number,
+                reference.theme_b_code
+            ),
+            &format!(
+                "se activa principalmente a través de la casa {} ({}), con la casa {} ({}) presente como contrapunto secundario.",
+                reference.house_a_number,
+                reference.theme_a_code,
+                reference.house_b_number,
+                reference.theme_b_code
+            ),
+            &format!(
+                "wird vor allem durch Haus {} ({} ) aktiviert, während Haus {} ({}) als sekundärer Gegenpol präsent ist.",
+                reference.house_a_number,
+                reference.theme_a_code,
+                reference.house_b_number,
+                reference.theme_b_code
+            ),
         ),
-        "secondary_house_dominant" => format!(
-            "{} is activated mainly through house {} ({}), with house {} ({}) present as a secondary counterpoint.",
-            reference.label,
-            reference.house_b_number,
-            reference.theme_b_code,
-            reference.house_a_number,
-            reference.theme_a_code
+        "secondary_house_dominant" => localized_axis_hint(
+            locale,
+            &reference.label,
+            &format!(
+                "is activated mainly through house {} ({}), with house {} ({}) present as a secondary counterpoint.",
+                reference.house_b_number,
+                reference.theme_b_code,
+                reference.house_a_number,
+                reference.theme_a_code
+            ),
+            &format!(
+                "s'active principalement à travers la maison {} ({}), la maison {} ({}) apparaissant comme contrepoint secondaire.",
+                reference.house_b_number,
+                reference.theme_b_code,
+                reference.house_a_number,
+                reference.theme_a_code
+            ),
+            &format!(
+                "se activa principalmente a través de la casa {} ({}), con la casa {} ({}) presente como contrapunto secundario.",
+                reference.house_b_number,
+                reference.theme_b_code,
+                reference.house_a_number,
+                reference.theme_a_code
+            ),
+            &format!(
+                "wird vor allem durch Haus {} ({}) aktiviert, während Haus {} ({}) als sekundärer Gegenpol präsent ist.",
+                reference.house_b_number,
+                reference.theme_b_code,
+                reference.house_a_number,
+                reference.theme_a_code
+            ),
         ),
-        "balanced_axis" => format!(
-            "{} is activated with both house {} ({}) and house {} ({}) strongly active.",
-            reference.label,
-            reference.house_a_number,
-            reference.theme_a_code,
-            reference.house_b_number,
-            reference.theme_b_code
+        "balanced_axis" => localized_axis_hint(
+            locale,
+            &reference.label,
+            &format!(
+                "is activated with both house {} ({}) and house {} ({}) strongly active.",
+                reference.house_a_number,
+                reference.theme_a_code,
+                reference.house_b_number,
+                reference.theme_b_code
+            ),
+            &format!(
+                "s'active avec les maisons {} ({}) et {} ({}) toutes deux fortement actives.",
+                reference.house_a_number,
+                reference.theme_a_code,
+                reference.house_b_number,
+                reference.theme_b_code
+            ),
+            &format!(
+                "se activa con la casa {} ({}) y la casa {} ({}) ambas fuertemente activas.",
+                reference.house_a_number,
+                reference.theme_a_code,
+                reference.house_b_number,
+                reference.theme_b_code
+            ),
+            &format!(
+                "ist mit Haus {} ({}) und Haus {} ({}) gleichermaßen stark aktiviert.",
+                reference.house_a_number,
+                reference.theme_a_code,
+                reference.house_b_number,
+                reference.theme_b_code
+            ),
         ),
-        _ => format!(
-            "{} is weakly activated across house {} ({}) and house {} ({}).",
-            reference.label,
-            reference.house_a_number,
-            reference.theme_a_code,
-            reference.house_b_number,
-            reference.theme_b_code
+        _ => localized_axis_hint(
+            locale,
+            &reference.label,
+            &format!(
+                "is weakly activated across house {} ({}) and house {} ({}).",
+                reference.house_a_number,
+                reference.theme_a_code,
+                reference.house_b_number,
+                reference.theme_b_code
+            ),
+            &format!(
+                "est faiblement activé à travers les maisons {} ({}) et {} ({}).",
+                reference.house_a_number,
+                reference.theme_a_code,
+                reference.house_b_number,
+                reference.theme_b_code
+            ),
+            &format!(
+                "está débilmente activado entre la casa {} ({}) y la casa {} ({}).",
+                reference.house_a_number,
+                reference.theme_a_code,
+                reference.house_b_number,
+                reference.theme_b_code
+            ),
+            &format!(
+                "ist schwach über Haus {} ({}) und Haus {} ({}) aktiviert.",
+                reference.house_a_number,
+                reference.theme_a_code,
+                reference.house_b_number,
+                reference.theme_b_code
+            ),
         ),
+    }
+}
+
+fn localized_axis_hint(
+    locale: &str,
+    label: &str,
+    en_tail: &str,
+    fr_tail: &str,
+    es_tail: &str,
+    de_tail: &str,
+) -> String {
+    match locale {
+        "fr" => format!("{label} {fr_tail}"),
+        "es" => format!("{label} {es_tail}"),
+        "de" => format!("{label} {de_tail}"),
+        _ => format!("{label} {en_tail}"),
     }
 }
 

@@ -15,6 +15,7 @@ pub(crate) fn build_rulership_context(
     chart_emphasis: &BasicChartEmphasis,
     rulers: &[DomicileRulerReference],
     signals: &[BasicSignal],
+    locale: &str,
 ) -> BasicRulershipContext {
     let rules_by_sign = rules_by_sign(rulers);
     let positions_by_object = positions
@@ -33,6 +34,7 @@ pub(crate) fn build_rulership_context(
         &rules_by_sign,
         &positions_by_object,
         &signal_keys,
+        locale,
     );
     let mc_ruler = angle_ruler(
         "mc",
@@ -41,6 +43,7 @@ pub(crate) fn build_rulership_context(
         &rules_by_sign,
         &positions_by_object,
         &signal_keys,
+        locale,
     );
     let descendant_ruler = angle_ruler(
         "descendant",
@@ -49,6 +52,7 @@ pub(crate) fn build_rulership_context(
         &rules_by_sign,
         &positions_by_object,
         &signal_keys,
+        locale,
     );
     let dominant_sign_rulers = chart_emphasis
         .dominant_signs
@@ -62,6 +66,7 @@ pub(crate) fn build_rulership_context(
                 &rules_by_sign,
                 &positions_by_object,
                 &signal_keys,
+                locale,
             )
         })
         .collect();
@@ -78,6 +83,7 @@ pub(crate) fn build_rulership_context(
                     &rules_by_sign,
                     &positions_by_object,
                     &signal_keys,
+                    locale,
                 )
             })
         })
@@ -87,6 +93,7 @@ pub(crate) fn build_rulership_context(
         &rules_by_sign,
         &positions_by_object,
         &signal_keys,
+        locale,
     );
     let rulership_chains = rulership_chains(positions, &rules_by_sign);
     let final_dispositors = final_dispositors(&rulership_chains);
@@ -219,6 +226,7 @@ fn angle_ruler(
     rules_by_sign: &HashMap<&str, Vec<&DomicileRulerReference>>,
     positions_by_object: &HashMap<&str, &ObjectPositionFact>,
     signal_keys: &HashSet<&str>,
+    locale: &str,
 ) -> Option<BasicRulerContext> {
     let angle = positions.iter().find(|position| {
         position.object_code == angle_code
@@ -239,6 +247,7 @@ fn angle_ruler(
         rules_by_sign,
         positions_by_object,
         signal_keys,
+        locale,
     )
 }
 
@@ -251,6 +260,7 @@ fn ruler_context_for_sign(
     rules_by_sign: &HashMap<&str, Vec<&DomicileRulerReference>>,
     positions_by_object: &HashMap<&str, &ObjectPositionFact>,
     signal_keys: &HashSet<&str>,
+    locale: &str,
 ) -> Option<BasicRulerContext> {
     let rules = rules_by_sign.get(sign_code)?;
     let primary = rules.first()?;
@@ -279,6 +289,7 @@ fn ruler_context_for_sign(
             sign_code,
             primary,
             ruler_position,
+            locale,
         ),
     })
 }
@@ -289,6 +300,7 @@ fn dispositor_links(
     rules_by_sign: &HashMap<&str, Vec<&DomicileRulerReference>>,
     positions_by_object: &HashMap<&str, &ObjectPositionFact>,
     signal_keys: &HashSet<&str>,
+    locale: &str,
 ) -> Vec<BasicDispositorLink> {
     positions
         .iter()
@@ -309,9 +321,11 @@ fn dispositor_links(
                     dispositor_position,
                 ),
                 ruler_sources: rules.iter().map(|rule| ruler_source(rule)).collect(),
-                interpretive_hint: format!(
-                    "{} in {} is routed through {} by domicile rulership.",
-                    position.object_name, position.sign_name, primary.object_name
+                interpretive_hint: dispositor_hint(
+                    &position.object_name,
+                    &position.sign_name,
+                    &primary.object_name,
+                    locale,
                 ),
             })
         })
@@ -530,17 +544,82 @@ fn interpretive_hint(
     sign_code: &str,
     ruler: &DomicileRulerReference,
     ruler_position: Option<&ObjectPositionFact>,
+    locale: &str,
 ) -> String {
     match ruler_position {
-        Some(position) => format!(
-            "The {source_kind} {source_code} in {sign_code} is routed through {}, placed in {} house {}.",
-            ruler.object_name,
-            position.sign_name,
-            position.house_number.map(|number| number.to_string()).unwrap_or_else(|| "unknown".to_string())
+        Some(position) => match locale {
+            "fr" => format!(
+                "Le {source_kind} {source_code} en {sign_code} passe par {}, placé en maison {}.",
+                ruler.object_name,
+                position
+                    .house_number
+                    .map(|number| number.to_string())
+                    .unwrap_or_else(|| "inconnue".to_string())
+            ),
+            "es" => format!(
+                "El {source_kind} {source_code} en {sign_code} pasa por {}, situado en la casa {}.",
+                ruler.object_name,
+                position
+                    .house_number
+                    .map(|number| number.to_string())
+                    .unwrap_or_else(|| "desconocida".to_string())
+            ),
+            "de" => format!(
+                "Der {source_kind} {source_code} in {sign_code} wird durch {} geleitet und steht in Haus {}.",
+                ruler.object_name,
+                position
+                    .house_number
+                    .map(|number| number.to_string())
+                    .unwrap_or_else(|| "unbekannt".to_string())
+            ),
+            _ => format!(
+                "The {source_kind} {source_code} in {sign_code} is routed through {}, placed in {} house {}.",
+                ruler.object_name,
+                position.sign_name,
+                position
+                    .house_number
+                    .map(|number| number.to_string())
+                    .unwrap_or_else(|| "unknown".to_string())
+            ),
+        },
+        None => match locale {
+            "fr" => format!(
+                "Le {source_kind} {source_code} en {sign_code} passe par {} selon la maîtrise de domicile.",
+                ruler.object_name
+            ),
+            "es" => format!(
+                "El {source_kind} {source_code} en {sign_code} pasa por {} por regencia de domicilio.",
+                ruler.object_name
+            ),
+            "de" => format!(
+                "Der {source_kind} {source_code} in {sign_code} wird durch {} über die Domizilherrschaft geleitet.",
+                ruler.object_name
+            ),
+            _ => format!(
+                "The {source_kind} {source_code} in {sign_code} is routed through {} by domicile rulership.",
+                ruler.object_name
+            ),
+        },
+    }
+}
+
+fn dispositor_hint(object_name: &str, sign_name: &str, ruler_name: &str, locale: &str) -> String {
+    match locale {
+        "fr" => format!(
+            "{} en {} passe par {} selon la maîtrise de domicile.",
+            object_name, sign_name, ruler_name
         ),
-        None => format!(
-            "The {source_kind} {source_code} in {sign_code} is routed through {} by domicile rulership.",
-            ruler.object_name
+        "es" => format!(
+            "{} en {} pasa por {} por regencia de domicilio.",
+            object_name, sign_name, ruler_name
+        ),
+        "de" => format!(
+            "{} in {} wird durch {} über die Domizilherrschaft geleitet.",
+            object_name, sign_name, ruler_name
+        ),
+        _ => format!(
+            "{} in {} is routed through {} by domicile rulership.",
+            object_name, sign_name, ruler_name
         ),
     }
 }

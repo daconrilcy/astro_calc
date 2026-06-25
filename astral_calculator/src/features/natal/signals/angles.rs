@@ -28,6 +28,7 @@ pub(super) fn angle_signal(
     position: &ObjectPositionFact,
     angle_point_object_codes: &HashMap<String, String>,
     catalog: &BasicPayloadCatalog,
+    locale: &str,
 ) -> InterpretationSignalDraft {
     let angle_context = angle_context(position, angle_point_object_codes);
     let semantic_tags = angle_semantic_tags(position);
@@ -39,16 +40,13 @@ pub(super) fn angle_signal(
         signal_key: format!("angle:{}:sign:{}", position.object_code, position.sign_code),
         signal_type_id: None,
         theme_code: Some(theme_code),
-        title: format!("{} in {}", position.object_name, position.sign_name),
-        summary: Some(format!(
-            "{} falls in {}, giving the chart a concrete orientation through this angle.",
-            position.object_name, position.sign_name
-        )),
+        title: angle_title(position, locale),
+        summary: Some(angle_summary(position, locale)),
         priority_score: angle_priority(position),
         confidence_score: Some(0.95),
         suppression_state: SUPPRESSION_ACTIVE.to_string(),
         payload_json: Some(json!({
-            "interpretive_hint": angle_interpretive_hint(position),
+            "interpretive_hint": angle_interpretive_hint(position, locale),
             "semantic_tags": semantic_tags,
             "source_weight": round4(object_source_weight(position)),
             "aggregation_group": format!("angle:{}:{}", position.object_code, position.sign_code),
@@ -114,25 +112,130 @@ fn opposite_angle_object_code(
 }
 
 /// Fonction angle_interpretive_hint.
-fn angle_interpretive_hint(position: &ObjectPositionFact) -> String {
+fn angle_interpretive_hint(position: &ObjectPositionFact, locale: &str) -> String {
     match position.object_code.as_str() {
         "ascendant" => format!(
-            "Use the Ascendant as the chart's immediate orientation: embodiment, instinctive style, and first impression through {} qualities.",
-            position.sign_name
+            "{}",
+            angle_hint_text(
+                locale,
+                "Ascendant",
+                &position.sign_name,
+                "immediate orientation: embodiment, instinctive style, and first impression",
+                "orientation immédiate : incarnation, style instinctif et première impression",
+                "orientación inmediata: encarnación, estilo instintivo y primera impresión",
+                "unmittelbare Orientierung: Verkörperung, instinktiver Stil und erster Eindruck",
+            )
         ),
         "mc" => format!(
-            "Use the MC as public direction and visibility, colored by {} qualities.",
-            position.sign_name
+            "{}",
+            angle_hint_text(
+                locale,
+                "MC",
+                &position.sign_name,
+                "public direction and visibility",
+                "direction publique et visibilité",
+                "dirección pública y visibilidad",
+                "öffentliche Ausrichtung und Sichtbarkeit",
+            )
         ),
         "descendant" => format!(
-            "Use the Descendant as the relationship horizon and encounter style through {} qualities.",
-            position.sign_name
+            "{}",
+            angle_hint_text(
+                locale,
+                "Descendant",
+                &position.sign_name,
+                "relationship horizon and encounter style",
+                "horizon relationnel et style de rencontre",
+                "horizonte relacional y estilo de encuentro",
+                "Beziehungshorizont und Begegnungsstil",
+            )
         ),
         "ic" => format!(
-            "Use the IC as private foundation, roots, and inner base through {} qualities.",
-            position.sign_name
+            "{}",
+            angle_hint_text(
+                locale,
+                "IC",
+                &position.sign_name,
+                "private foundation, roots, and inner base",
+                "fondation privée, racines et base intérieure",
+                "fundación privada, raíces y base interior",
+                "private Grundlage, Wurzeln und innere Basis",
+            )
         ),
-        _ => format!("Use this angle as a chart orientation marker in {}.", position.sign_name),
+        _ => match locale {
+            "fr" => format!(
+                "Utilisez cet angle comme repère d'orientation du thème dans {}.",
+                position.sign_name
+            ),
+            "es" => format!(
+                "Use este ángulo como marcador de orientación de la carta en {}.",
+                position.sign_name
+            ),
+            "de" => format!(
+                "Nutzen Sie diesen Winkel als Orientierungsmarker im Horoskop in {}.",
+                position.sign_name
+            ),
+            _ => format!(
+                "Use this angle as a chart orientation marker in {}.",
+                position.sign_name
+            ),
+        },
+    }
+}
+
+fn angle_title(position: &ObjectPositionFact, locale: &str) -> String {
+    match locale {
+        "fr" => format!("{} en {}", position.object_name, position.sign_name),
+        "es" => format!("{} en {}", position.object_name, position.sign_name),
+        "de" => format!("{} in {}", position.object_name, position.sign_name),
+        _ => format!("{} in {}", position.object_name, position.sign_name),
+    }
+}
+
+fn angle_summary(position: &ObjectPositionFact, locale: &str) -> String {
+    match locale {
+        "fr" => format!(
+            "{} se place en {}, donnant au thème une orientation concrète à travers cet angle.",
+            position.object_name, position.sign_name
+        ),
+        "es" => format!(
+            "{} cae en {}, dando a la carta una orientación concreta a través de este ángulo.",
+            position.object_name, position.sign_name
+        ),
+        "de" => format!(
+            "{} fällt in {}, was dem Horoskop durch diesen Winkel eine konkrete Ausrichtung gibt.",
+            position.object_name, position.sign_name
+        ),
+        _ => format!(
+            "{} falls in {}, giving the chart a concrete orientation through this angle.",
+            position.object_name, position.sign_name
+        ),
+    }
+}
+
+fn angle_hint_text(
+    locale: &str,
+    angle_name: &str,
+    sign_name: &str,
+    en_tail: &str,
+    fr_tail: &str,
+    es_tail: &str,
+    de_tail: &str,
+) -> String {
+    match locale {
+        "fr" => format!(
+            "Utilisez {angle_name} comme {} à travers les qualités de {sign_name}.",
+            fr_tail
+        ),
+        "es" => format!(
+            "Use {angle_name} como {} a través de las cualidades de {sign_name}.",
+            es_tail
+        ),
+        "de" => format!(
+            "Verwenden Sie {angle_name} als {} durch die Qualitäten von {sign_name}.",
+            de_tail
+        ),
+        _ => format!("Use {angle_name} as {en_tail} through {sign_name} qualities."),
     }
 }
 

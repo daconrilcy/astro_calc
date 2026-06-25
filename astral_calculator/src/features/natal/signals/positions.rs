@@ -71,27 +71,22 @@ pub(super) fn position_aggregation_group(position: &ObjectPositionFact) -> Strin
 pub(super) fn position_interpretive_hint(
     position: &ObjectPositionFact,
     catalog: &BasicPayloadCatalog,
+    locale: &str,
 ) -> String {
     let base = match (position.house_name.as_deref(), position.house_number) {
-        (Some(house_name), Some(_)) => format!(
-            "{} expresses through {} qualities in the field of {}.",
-            position.object_name, position.sign_name, house_name
-        ),
-        _ => format!(
-            "{} expresses through {} qualities.",
-            position.object_name, position.sign_name
-        ),
+        (Some(house_name), Some(_)) => position_expresses(position, house_name, locale),
+        _ => position_expresses(position, "", locale),
     };
 
     let dignities = essential_dignities_for_position(position, catalog);
     if !dignities.is_empty() {
         format!(
-            "{base} Its dignity context adds {}.{}",
-            dignity_effect_phrase_for_position(&dignities),
-            retrograde_hint(position)
+            "{base} {}{}",
+            dignity_effect_phrase_for_position(&dignities, locale),
+            retrograde_hint(position, locale)
         )
     } else {
-        format!("{base}{}", retrograde_hint(position))
+        format!("{base}{}", retrograde_hint(position, locale))
     }
 }
 
@@ -228,19 +223,32 @@ fn angle_horizon_position(position: &ObjectPositionFact) -> Option<&'static str>
     }
 }
 
-pub(super) fn retrograde_summary(position: &ObjectPositionFact) -> String {
+pub(super) fn retrograde_summary(position: &ObjectPositionFact, locale: &str) -> String {
     if is_retrograde_position(position) {
-        " Its retrograde motion adds a reflective or revising layer to the placement.".to_string()
+        match locale {
+            "fr" => " Son mouvement rétrograde ajoute une couche réflexive ou de révision à la position.".to_string(),
+            "es" => " Su movimiento retrógrado añade una capa de reflexión o revisión a la posición.".to_string(),
+            "de" => " Die rückläufige Bewegung fügt der Stellung eine reflektierende oder überarbeitende Ebene hinzu.".to_string(),
+            _ => " Its retrograde motion adds a reflective or revising layer to the placement.".to_string(),
+        }
     } else {
         String::new()
     }
 }
 
 /// Fonction retrograde_hint.
-fn retrograde_hint(position: &ObjectPositionFact) -> String {
+fn retrograde_hint(position: &ObjectPositionFact, locale: &str) -> String {
     if is_retrograde_position(position) {
-        " Read the retrograde state as a modifier for pacing, review, and internal processing."
-            .to_string()
+        match locale {
+            "fr" => " Lire l'état rétrograde comme un modificateur de rythme, de révision et de traitement intérieur."
+                .to_string(),
+            "es" => " Lea el estado retrógrado como un modificador de ritmo, revisión y procesamiento interno."
+                .to_string(),
+            "de" => " Den rückläufigen Zustand als Modifikator für Tempo, Überprüfung und innere Verarbeitung lesen."
+                .to_string(),
+            _ => " Read the retrograde state as a modifier for pacing, review, and internal processing."
+                .to_string(),
+        }
     } else {
         String::new()
     }
@@ -251,22 +259,67 @@ fn is_retrograde_position(position: &ObjectPositionFact) -> bool {
     placement_context_str(position, "motion_context", "motion_state") == Some("retrograde")
 }
 
-pub(super) fn dignity_summary_for_position(dignities: &[EssentialDignityFact]) -> String {
+pub(super) fn dignity_summary_for_position(
+    dignities: &[EssentialDignityFact],
+    locale: &str,
+) -> String {
     if dignities.is_empty() {
         String::new()
     } else {
         format!(
             " Its dignity context adds {}.",
-            dignity_effect_phrase_for_position(dignities)
+            dignity_effect_phrase_for_position(dignities, locale)
         )
     }
 }
 
 /// Fonction dignity_effect_phrase_for_position.
-fn dignity_effect_phrase_for_position(dignities: &[EssentialDignityFact]) -> String {
+fn dignity_effect_phrase_for_position(dignities: &[EssentialDignityFact], locale: &str) -> String {
     let phrases = dignities
         .iter()
-        .map(dignity_effect_phrase)
+        .map(|dignity| dignity_effect_phrase(dignity, locale))
         .collect::<Vec<_>>();
-    phrases.join(" and ")
+    match locale {
+        "fr" => phrases.join(" et "),
+        "es" => phrases.join(" y "),
+        "de" => phrases.join(" und "),
+        _ => phrases.join(" and "),
+    }
+}
+
+fn position_expresses(position: &ObjectPositionFact, house_name: &str, locale: &str) -> String {
+    match (locale, house_name.is_empty()) {
+        ("fr", true) => format!(
+            "{} exprime ses qualités à travers {}.",
+            position.object_name, position.sign_name
+        ),
+        ("fr", false) => format!(
+            "{} exprime ses qualités à travers {} dans le domaine de {}.",
+            position.object_name, position.sign_name, house_name
+        ),
+        ("es", true) => format!(
+            "{} expresa sus cualidades a través de {}.",
+            position.object_name, position.sign_name
+        ),
+        ("es", false) => format!(
+            "{} expresa sus cualidades a través de {} en el ámbito de {}.",
+            position.object_name, position.sign_name, house_name
+        ),
+        ("de", true) => format!(
+            "{} entfaltet seine Qualitäten durch {}.",
+            position.object_name, position.sign_name
+        ),
+        ("de", false) => format!(
+            "{} entfaltet seine Qualitäten durch {} im Bereich von {}.",
+            position.object_name, position.sign_name, house_name
+        ),
+        (_, true) => format!(
+            "{} expresses through {} qualities.",
+            position.object_name, position.sign_name
+        ),
+        _ => format!(
+            "{} expresses through {} qualities in the field of {}.",
+            position.object_name, position.sign_name, house_name
+        ),
+    }
 }

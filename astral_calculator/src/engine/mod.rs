@@ -68,6 +68,11 @@ pub fn build_engine_response(
         profile,
         &LlmProjectionBuildContext {
             birth_location_label: &resolved.location_label,
+            language_code: resolved
+                .natal_input
+                .language_code
+                .as_deref()
+                .unwrap_or("en"),
             zodiac_label,
             coordinate_label,
             house_system_label,

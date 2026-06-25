@@ -159,8 +159,12 @@ impl<'a> NatalExplanationService<'a> {
         };
 
         let limit = explanation_limit(request.interpretation_profile_code.as_deref());
-        let candidates =
-            select_major_explanation_candidates(&normalized.facts, &language_code, limit);
+        let candidates = select_major_explanation_candidates(
+            &normalized.facts,
+            self.catalog,
+            &language_code,
+            limit,
+        );
         if candidates.is_empty() {
             return unavailable(
                 language_code,
@@ -182,6 +186,12 @@ impl<'a> NatalExplanationService<'a> {
                         .collect::<HashMap<_, _>>();
                     missing.retain(|candidate| {
                         if let Some(record) = by_hash.get(&candidate.cache_key.key_hash) {
+                            let title_matches = record.title.trim() == candidate.title.trim();
+                            let expression_matches =
+                                record.expression_primary == candidate.expression_primary;
+                            if !title_matches || !expression_matches {
+                                return true;
+                            }
                             items.push(NatalExplanationItem {
                                 fact_id: candidate.fact_id.clone(),
                                 kind_code: candidate.kind_code.clone(),
@@ -409,12 +419,13 @@ pub async fn prepare_natal_explanations_response(
 
 pub fn select_major_explanation_candidates(
     facts: &[NormalizedAstroFact],
+    catalog: &ReadingCatalog,
     language: &str,
     limit: usize,
 ) -> Vec<ExplanationCandidate> {
     let mut ordered = facts
         .iter()
-        .filter_map(|fact| candidate_from_fact(fact, language))
+        .filter_map(|fact| candidate_from_fact(fact, catalog, language))
         .collect::<Vec<_>>();
     ordered.sort_by(|a, b| {
         candidate_rank(&a.fact_id, &a.kind_code).cmp(&candidate_rank(&b.fact_id, &b.kind_code))
@@ -427,15 +438,19 @@ pub fn select_major_explanation_candidates(
         .collect()
 }
 
-fn candidate_from_fact(fact: &NormalizedAstroFact, language: &str) -> Option<ExplanationCandidate> {
+fn candidate_from_fact(
+    fact: &NormalizedAstroFact,
+    catalog: &ReadingCatalog,
+    language: &str,
+) -> Option<ExplanationCandidate> {
     let kind_code = fact.effective_kind_code().to_string();
     let key_json = canonical_key_json(fact)?;
     let key_hash = hash_json_value(&key_json);
     Some(ExplanationCandidate {
         fact_id: fact.id.clone(),
         kind_code,
-        title: fact.label.clone(),
-        expression_primary: expression_primary(fact),
+        title: localize_explanation_title(fact, catalog, language),
+        expression_primary: expression_primary(fact, language),
         cache_key: ExplanationCacheKey {
             language_code: language.to_string(),
             kind_code: fact.effective_kind_code().to_string(),
@@ -501,22 +516,23 @@ fn canonical_key_json(fact: &NormalizedAstroFact) -> Option<serde_json::Value> {
     }
 }
 
-fn expression_primary(fact: &NormalizedAstroFact) -> Option<String> {
+fn expression_primary(fact: &NormalizedAstroFact, language: &str) -> Option<String> {
+    let locale = AstroLabelHumanizer::locale_key(language);
     fact.value
         .get("house")
         .and_then(|v| v.as_u64())
-        .map(|house| format!("Maison {house}"))
+        .map(|house| localized_house_label(locale, house))
         .or_else(|| {
             fact.value
                 .get("theme")
                 .and_then(|v| v.as_str())
-                .map(str::to_string)
+                .map(localize_primary_token)
         })
         .or_else(|| {
             fact.value
                 .get("theme_code")
                 .and_then(|v| v.as_str())
-                .map(str::to_string)
+                .map(localize_primary_token)
         })
 }
 
@@ -661,6 +677,31 @@ fn non_empty(value: &str) -> Option<String> {
     } else {
         Some(trimmed.to_string())
     }
+}
+
+fn localized_house_label(locale: &str, house: u64) -> String {
+    match locale {
+        "fr" => format!("Maison {house}"),
+        "es" => format!("Casa {house}"),
+        "de" => format!("Haus {house}"),
+        _ => format!("House {house}"),
+    }
+}
+
+fn localize_primary_token(value: &str) -> String {
+    value
+        .trim()
+        .replace('_', " ")
+        .split_whitespace()
+        .map(|token| {
+            let mut chars = token.chars();
+            match chars.next() {
+                None => String::new(),
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 pub fn localize_explanation_title(

@@ -75,6 +75,7 @@ fn projection_context() -> LlmProjectionBuildContext<'static> {
     static ESSENTIAL_DIGNITIES: OnceLock<Vec<EssentialDignityRuleReference>> = OnceLock::new();
     LlmProjectionBuildContext {
         birth_location_label: "Paris, France",
+        language_code: "en",
         zodiac_label: "Tropical",
         coordinate_label: "Geocentric",
         house_system_label: "Placidus",
@@ -107,6 +108,7 @@ fn sample_resolved(level: &str, payload: &BasicPayload) -> ResolvedEngineRequest
             coordinate_reference_system_id: 1,
             house_system_id: 1,
             product_code: Some("basic".to_string()),
+            language_code: Some("en".to_string()),
             client_idempotency_key: None,
         },
         projection_level: level.to_string(),
@@ -566,7 +568,8 @@ fn sample_engine_request_matches_schema() {
         },
         "projection": {
             "contract_version": "llm_projection_natal_v1",
-            "level": "rich"
+            "level": "rich",
+            "language_code": "fr"
         }
     });
     let errors = validate_schema(&request, REQUEST_SCHEMA);
@@ -871,6 +874,7 @@ fn llm_projection_fails_when_reason_definition_is_missing() {
         &profile,
         &LlmProjectionBuildContext {
             birth_location_label: "Paris, France",
+            language_code: "en",
             zodiac_label: "Tropical",
             coordinate_label: "Geocentric",
             house_system_label: "Placidus",
@@ -904,6 +908,7 @@ fn llm_projection_fails_when_projection_label_definition_is_missing() {
         &profile,
         &LlmProjectionBuildContext {
             birth_location_label: ctx.birth_location_label,
+            language_code: "en",
             zodiac_label: ctx.zodiac_label,
             coordinate_label: ctx.coordinate_label,
             house_system_label: ctx.house_system_label,
@@ -935,6 +940,7 @@ fn llm_projection_fails_when_accidental_condition_reference_is_missing() {
         &profile,
         &LlmProjectionBuildContext {
             birth_location_label: ctx.birth_location_label,
+            language_code: "en",
             zodiac_label: ctx.zodiac_label,
             coordinate_label: ctx.coordinate_label,
             house_system_label: ctx.house_system_label,
@@ -966,6 +972,7 @@ fn llm_projection_fails_when_house_reference_is_missing() {
         &profile,
         &LlmProjectionBuildContext {
             birth_location_label: ctx.birth_location_label,
+            language_code: "en",
             zodiac_label: ctx.zodiac_label,
             coordinate_label: ctx.coordinate_label,
             house_system_label: ctx.house_system_label,

@@ -10,11 +10,13 @@ pub(super) fn build_lunar_phase_context(
     positions: &[ObjectPositionFact],
     signals: &[BasicSignal],
     reading_plan: &[BasicReadingPlanItem],
+    locale: &str,
 ) -> Option<BasicLunarPhaseContext> {
     crate::features::natal::payload::rules::lunar_phase::build_lunar_phase_context(
         references,
         positions,
         signals,
         reading_plan,
+        locale,
     )
 }

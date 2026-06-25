@@ -19,6 +19,7 @@ struct StableIdempotencyDocument<'a> {
     zodiacal_reference_system_id: i32,
     coordinate_reference_system_id: i32,
     house_system_id: i32,
+    language_code: &'a str,
 }
 
 #[derive(Debug, Serialize)]
@@ -55,6 +56,7 @@ pub fn idempotency_key(
         zodiacal_reference_system_id: input.zodiacal_reference_system_id,
         coordinate_reference_system_id: input.coordinate_reference_system_id,
         house_system_id: input.house_system_id,
+        language_code: stable_language_code(input),
     };
 
     sha256_json(&document)
@@ -69,6 +71,16 @@ fn stable_calculation_input(input: &NatalChartInput) -> StableCalculationInput<'
         longitude_deg: input.longitude_deg,
         altitude_m: input.altitude_m,
     }
+}
+
+/// Fonction stable_language_code.
+fn stable_language_code(input: &NatalChartInput) -> &str {
+    input
+        .language_code
+        .as_deref()
+        .map(str::trim)
+        .filter(|code| !code.is_empty())
+        .unwrap_or("en")
 }
 
 /// Fonction advisory_lock_key.

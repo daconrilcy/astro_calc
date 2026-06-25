@@ -66,31 +66,118 @@ fn aspect_dynamic_quality(aspect: &AspectFact) -> &'static str {
     }
 }
 
-pub(super) fn aspect_interpretive_hint(aspect: &AspectFact, aspect_name: &str) -> String {
-    format!(
-        "Read this {aspect_name} as {} between {} and {}, with attention to the {} phase.",
-        aspect_hint_quality_phrase(aspect),
-        aspect.source_object_name,
-        aspect.target_object_name,
-        aspect.phase_state
-    )
+pub(super) fn aspect_interpretive_hint(
+    aspect: &AspectFact,
+    aspect_name: &str,
+    locale: &str,
+) -> String {
+    match locale {
+        "fr" => format!(
+            "Lisez ce {aspect_name} comme {} entre {} et {}, en prêtant attention à la phase {}.",
+            aspect_hint_quality_phrase(aspect, locale),
+            aspect.source_object_name,
+            aspect.target_object_name,
+            aspect.phase_state
+        ),
+        "es" => format!(
+            "Lea este {aspect_name} como {} entre {} y {}, prestando atención a la fase {}.",
+            aspect_hint_quality_phrase(aspect, locale),
+            aspect.source_object_name,
+            aspect.target_object_name,
+            aspect.phase_state
+        ),
+        "de" => format!(
+            "Lesen Sie diesen {aspect_name} als {} zwischen {} und {}, mit Blick auf die {}-Phase.",
+            aspect_hint_quality_phrase(aspect, locale),
+            aspect.source_object_name,
+            aspect.target_object_name,
+            aspect.phase_state
+        ),
+        _ => format!(
+            "Read this {aspect_name} as {} between {} and {}, with attention to the {} phase.",
+            aspect_hint_quality_phrase(aspect, locale),
+            aspect.source_object_name,
+            aspect.target_object_name,
+            aspect.phase_state
+        ),
+    }
 }
 
 /// Fonction aspect_hint_quality_phrase.
-fn aspect_hint_quality_phrase(aspect: &AspectFact) -> String {
+fn aspect_hint_quality_phrase(aspect: &AspectFact, locale: &str) -> String {
     let base = match aspect.primary_valence.as_deref() {
-        Some("supportive") => "a supportive flow",
-        Some("harmonious") => "a natural flow",
-        Some("creative" | "refined_creative" | "creative_ordering") => "a creative opening",
-        Some("dynamic_challenging") => "an active tension",
-        Some("polarizing") => "a polarity to balance",
-        Some("minor_friction") => "manageable friction",
-        Some("indirect_tension") => "indirect tension",
-        Some("adjustment") => "an adjustment",
-        Some("subtle_adjustment") => "a subtle adjustment",
-        Some("symbolic_fated") => "a symbolic emphasis",
-        Some("spiritual_integration") => "an integrating connection",
-        Some(_) => "a contextual relationship",
+        Some("supportive") => match locale {
+            "fr" => "un flux soutenant",
+            "es" => "un flujo de apoyo",
+            "de" => "ein unterstützender Fluss",
+            _ => "a supportive flow",
+        },
+        Some("harmonious") => match locale {
+            "fr" => "un flux naturel",
+            "es" => "un flujo armónico",
+            "de" => "ein harmonischer Fluss",
+            _ => "a natural flow",
+        },
+        Some("creative" | "refined_creative" | "creative_ordering") => match locale {
+            "fr" => "une ouverture créative",
+            "es" => "una apertura creativa",
+            "de" => "eine kreative Öffnung",
+            _ => "a creative opening",
+        },
+        Some("dynamic_challenging") => match locale {
+            "fr" => "une tension active",
+            "es" => "una tensión activa",
+            "de" => "eine aktive Spannung",
+            _ => "an active tension",
+        },
+        Some("polarizing") => match locale {
+            "fr" => "une polarité à équilibrer",
+            "es" => "una polaridad a equilibrar",
+            "de" => "eine auszubalancierende Polarität",
+            _ => "a polarity to balance",
+        },
+        Some("minor_friction") => match locale {
+            "fr" => "une friction gérable",
+            "es" => "una fricción manejable",
+            "de" => "eine handhabbare Reibung",
+            _ => "manageable friction",
+        },
+        Some("indirect_tension") => match locale {
+            "fr" => "une tension indirecte",
+            "es" => "una tensión indirecta",
+            "de" => "eine indirekte Spannung",
+            _ => "indirect tension",
+        },
+        Some("adjustment") => match locale {
+            "fr" => "un ajustement",
+            "es" => "un ajuste",
+            "de" => "eine Anpassung",
+            _ => "an adjustment",
+        },
+        Some("subtle_adjustment") => match locale {
+            "fr" => "un ajustement subtil",
+            "es" => "un ajuste sutil",
+            "de" => "eine subtile Anpassung",
+            _ => "a subtle adjustment",
+        },
+        Some("symbolic_fated") => match locale {
+            "fr" => "une mise en relief symbolique",
+            "es" => "un énfasis simbólico",
+            "de" => "eine symbolische Betonung",
+            _ => "a symbolic emphasis",
+        },
+        Some("spiritual_integration") => match locale {
+            "fr" => "un lien intégrateur",
+            "es" => "un vínculo integrador",
+            "de" => "eine integrierende Verbindung",
+            _ => "an integrating connection",
+        },
+        Some(_) => match locale {
+            "fr" => "une relation contextuelle",
+            "es" => "una relación contextual",
+            "de" => "eine kontextuelle Beziehung",
+            _ => "a contextual relationship",
+        },
         None => return intensity_only_aspect_hint_phrase(aspect).to_string(),
     };
 

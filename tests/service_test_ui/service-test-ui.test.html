@@ -48,6 +48,7 @@
       const calculatorNatal = api.buildCalculatorNatalPayload(input);
       assert("payload calculator natal contract", calculatorNatal.request_contract_version === "astro_engine_request_v1");
       assert("payload calculator natal projection", calculatorNatal.projection.level === "compact");
+      assert("payload calculator natal langue", calculatorNatal.projection.language_code === "fr");
       assert("payload calculator natal heure", calculatorNatal.birth.time === "14:30:00");
 
       const daily = api.buildGatewayHoroscopeDailyRequest(input, 123, { tier: "premium" });

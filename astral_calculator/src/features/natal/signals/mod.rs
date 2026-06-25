@@ -62,7 +62,9 @@ use crate::features::natal::dignities::{
 pub fn aggregate_basic_signals(
     facts: &CalculatedChartFacts,
     catalog: &BasicPayloadCatalog,
+    language_code: &str,
 ) -> Vec<InterpretationSignalDraft> {
+    let locale = crate::features::natal::i18n::locale_key(language_code);
     let max_active_signals = catalog.product_scoring.max_active_signals;
     let aspect_min_strength = catalog.product_scoring.aspect_min_strength;
     let mut signals = Vec::new();
@@ -82,19 +84,15 @@ pub fn aggregate_basic_signals(
 
     for position in &facts.positions {
         if is_angle_position(position) {
-            signals.push(angle_signal(position, &angle_point_object_codes, catalog));
+            signals.push(angle_signal(
+                position,
+                &angle_point_object_codes,
+                catalog,
+                locale,
+            ));
             continue;
         }
 
-        let house_suffix = position
-            .house_number
-            .map(|house_number| format!(", house {house_number}"))
-            .unwrap_or_default();
-        let summary_house = position
-            .house_name
-            .as_deref()
-            .map(|house_name| format!(" and the {house_name} house"))
-            .unwrap_or_default();
         let dignities = essential_dignities_for_position(position, catalog);
         let semantic_tags = position_semantic_tags(position, catalog);
         let source_weight = round4(
@@ -103,30 +101,25 @@ pub fn aggregate_basic_signals(
         );
         let theme_code = position_theme_code(position);
         let aggregation_group = position_aggregation_group(position);
-        let dignity_summary = dignity_summary_for_position(&dignities);
-        let motion_summary = retrograde_summary(position);
+        let dignity_summary = dignity_summary_for_position(&dignities, locale);
+        let motion_summary = retrograde_summary(position, locale);
 
         signals.push(InterpretationSignalDraft {
             signal_key: format!("object_position:{}", position.object_code),
             signal_type_id: None,
             theme_code: Some(theme_code.to_string()),
-            title: format!(
-                "{} in {}{}",
-                position.object_name, position.sign_name, house_suffix
-            ),
-            summary: Some(format!(
-                "{} is placed in {}{}, emphasizing this chart factor through a concrete, readable placement.{}{}",
-                position.object_name,
-                position.sign_name,
-                summary_house,
-                dignity_summary,
-                motion_summary
+            title: position_title(position, locale),
+            summary: Some(position_summary(
+                position,
+                &dignity_summary,
+                &motion_summary,
+                locale,
             )),
             priority_score: position_priority(position, catalog),
             confidence_score: Some(0.95),
             suppression_state: SUPPRESSION_ACTIVE.to_string(),
             payload_json: Some(json!({
-                "interpretive_hint": position_interpretive_hint(position, catalog),
+                "interpretive_hint": position_interpretive_hint(position, catalog, locale),
                 "semantic_tags": semantic_tags,
                 "source_weight": source_weight,
                 "aggregation_group": aggregation_group,
@@ -149,7 +142,7 @@ pub fn aggregate_basic_signals(
         });
     }
 
-    add_dignity_signals(facts, &object_source_weights, &mut signals, catalog);
+    add_dignity_signals(facts, &object_source_weights, &mut signals, catalog, locale);
 
     for aspect in &facts.aspects {
         if is_structural_axis_aspect(aspect, &structural_axis_pairs) {
@@ -164,7 +157,7 @@ pub fn aggregate_basic_signals(
         } else {
             SUPPRESSION_SUPPRESSED
         };
-        let aspect_name = aspect.aspect_name.to_lowercase();
+        let aspect_name = aspect_name_label(aspect, locale);
         let article = indefinite_article(&aspect_name);
         let aspect_context = aspect_context(aspect);
 
@@ -175,24 +168,13 @@ pub fn aggregate_basic_signals(
             ),
             signal_type_id: None,
             theme_code: Some(THEME_ASPECT.to_string()),
-            title: format!(
-                "{} {} {}",
-                aspect.source_object_name, aspect_name, aspect.target_object_name
-            ),
-            summary: Some(format!(
-                "{} and {} form {} {} with {:.2} degrees of orb; the phase is {}.",
-                aspect.source_object_name,
-                aspect.target_object_name,
-                article,
-                aspect_name,
-                aspect.orb_deg,
-                aspect.phase_state
-            )),
+            title: aspect_title(aspect, &aspect_name, locale),
+            summary: Some(aspect_summary(aspect, &aspect_name, &article, locale)),
             priority_score: strength_score * 80.0,
             confidence_score: Some(0.85),
             suppression_state: suppression_state.to_string(),
             payload_json: Some(json!({
-                "interpretive_hint": aspect_interpretive_hint(aspect, &aspect_name),
+                "interpretive_hint": aspect_interpretive_hint(aspect, &aspect_name, locale),
                 "semantic_tags": aspect_semantic_tags(aspect, strength_score, aspect_min_strength),
                 "source_weight": round4(
                     object_source_weights
@@ -229,7 +211,7 @@ pub fn aggregate_basic_signals(
         });
     }
 
-    add_position_cluster_signals(facts, &mut signals, catalog);
+    add_position_cluster_signals(facts, &mut signals, catalog, locale);
 
     signals.sort_by(|left, right| {
         right
@@ -252,4 +234,225 @@ pub fn aggregate_basic_signals(
     preserve_strong_tension_aspect(&mut signals, &angle_object_codes);
     preserve_strong_non_structural_aspect(&mut signals, &angle_object_codes);
     signals
+}
+
+fn position_title(position: &crate::domain::ObjectPositionFact, locale: &str) -> String {
+    let house_suffix = position_house_suffix(position, locale);
+    match locale {
+        "fr" => format!(
+            "{} en {}{}",
+            position.object_name, position.sign_name, house_suffix
+        ),
+        "es" => format!(
+            "{} en {}{}",
+            position.object_name, position.sign_name, house_suffix
+        ),
+        "de" => format!(
+            "{} in {}{}",
+            position.object_name, position.sign_name, house_suffix
+        ),
+        _ => format!(
+            "{} in {}{}",
+            position.object_name, position.sign_name, house_suffix
+        ),
+    }
+}
+
+fn position_summary(
+    position: &crate::domain::ObjectPositionFact,
+    dignity_summary: &str,
+    motion_summary: &str,
+    locale: &str,
+) -> String {
+    let summary_house = position_summary_house(position, locale);
+    let base = match locale {
+        "fr" => format!(
+            "{} est placé en {}{}, ce qui met ce facteur en relief dans une position lisible et concrète.",
+            position.object_name, position.sign_name, summary_house
+        ),
+        "es" => format!(
+            "{} se sitúa en {}{}, lo que pone este factor en primer plano de forma concreta y legible.",
+            position.object_name, position.sign_name, summary_house
+        ),
+        "de" => format!(
+            "{} steht in {}{}, was diesen Faktor konkret und lesbar hervorhebt.",
+            position.object_name, position.sign_name, summary_house
+        ),
+        _ => format!(
+            "{} is placed in {}{}, emphasizing this chart factor through a concrete, readable placement.",
+            position.object_name, position.sign_name, summary_house
+        ),
+    };
+    format!("{base}{dignity_summary}{motion_summary}")
+}
+
+fn aspect_title(aspect: &crate::domain::AspectFact, aspect_name: &str, locale: &str) -> String {
+    match locale {
+        "fr" => format!(
+            "{} {} {}",
+            aspect.source_object_name, aspect_name, aspect.target_object_name
+        ),
+        "es" => format!(
+            "{} {} {}",
+            aspect.source_object_name, aspect_name, aspect.target_object_name
+        ),
+        "de" => format!(
+            "{} {} {}",
+            aspect.source_object_name, aspect_name, aspect.target_object_name
+        ),
+        _ => format!(
+            "{} {} {}",
+            aspect.source_object_name, aspect_name, aspect.target_object_name
+        ),
+    }
+}
+
+fn aspect_summary(
+    aspect: &crate::domain::AspectFact,
+    aspect_name: &str,
+    article: &str,
+    locale: &str,
+) -> String {
+    let phase = phase_state_label(&aspect.phase_state, locale);
+    match locale {
+        "fr" => format!(
+            "{} et {} forment l'aspect {} avec un orbe de {:.2} degrés ; la phase est {}.",
+            aspect.source_object_name,
+            aspect.target_object_name,
+            aspect_name,
+            aspect.orb_deg,
+            phase
+        ),
+        "es" => format!(
+            "{} y {} forman el aspecto {} con un orbe de {:.2} grados; la fase es {}.",
+            aspect.source_object_name,
+            aspect.target_object_name,
+            aspect_name,
+            aspect.orb_deg,
+            phase
+        ),
+        "de" => format!(
+            "{} und {} bilden den Aspekt {} mit einem Orbis von {:.2} Grad; die Phase ist {}.",
+            aspect.source_object_name,
+            aspect.target_object_name,
+            aspect_name,
+            aspect.orb_deg,
+            phase
+        ),
+        _ => format!(
+            "{} and {} form {} {} with {:.2} degrees of orb; the phase is {}.",
+            aspect.source_object_name,
+            aspect.target_object_name,
+            article,
+            aspect_name,
+            aspect.orb_deg,
+            phase
+        ),
+    }
+}
+
+fn position_house_suffix(position: &crate::domain::ObjectPositionFact, locale: &str) -> String {
+    let Some(house_number) = position.house_number else {
+        return String::new();
+    };
+    match locale {
+        "fr" => format!(", maison {house_number}"),
+        "es" => format!(", casa {house_number}"),
+        "de" => format!(", Haus {house_number}"),
+        _ => format!(", house {house_number}"),
+    }
+}
+
+fn position_summary_house(position: &crate::domain::ObjectPositionFact, locale: &str) -> String {
+    let Some(house_name) = position.house_name.as_deref() else {
+        return String::new();
+    };
+    match locale {
+        "fr" => format!(" et la maison {house_name}"),
+        "es" => format!(" y la casa {house_name}"),
+        "de" => format!(" und dem Haus {house_name}"),
+        _ => format!(" and the {house_name} house"),
+    }
+}
+
+fn aspect_name_label(aspect: &crate::domain::AspectFact, locale: &str) -> String {
+    let code = aspect.aspect_code.as_str();
+    match (locale, code) {
+        ("fr", "conjunction") => "conjonction".to_string(),
+        ("fr", "sextile") => "sextile".to_string(),
+        ("fr", "square") => "carre".to_string(),
+        ("fr", "trine") => "trigone".to_string(),
+        ("fr", "opposition") => "opposition".to_string(),
+        ("fr", "semi_sextile") => "semi-sextile".to_string(),
+        ("fr", "semi_square") => "semi-carre".to_string(),
+        ("fr", "quintile") => "quintile".to_string(),
+        ("fr", "sesquiquadrate") => "sesqui-carre".to_string(),
+        ("fr", "quincunx") => "quinconce".to_string(),
+        ("fr", "biquintile") => "biquintile".to_string(),
+        ("fr", "septile") => "septile".to_string(),
+        ("fr", "biseptile") => "biseptile".to_string(),
+        ("fr", "triseptile") => "triseptile".to_string(),
+        ("fr", "novile") => "novile".to_string(),
+        ("fr", "binovile") => "binovile".to_string(),
+        ("fr", "quadranovile") => "quadranovile".to_string(),
+        ("fr", "decile") => "decile".to_string(),
+        ("fr", "tredecile") => "tredecile".to_string(),
+        ("fr", "quindecile") => "quindecile".to_string(),
+        ("es", "conjunction") => "conjuncion".to_string(),
+        ("es", "sextile") => "sextil".to_string(),
+        ("es", "square") => "cuadratura".to_string(),
+        ("es", "trine") => "trigono".to_string(),
+        ("es", "opposition") => "oposicion".to_string(),
+        ("es", "semi_sextile") => "semisextil".to_string(),
+        ("es", "semi_square") => "semicuadratura".to_string(),
+        ("es", "quintile") => "quintil".to_string(),
+        ("es", "sesquiquadrate") => "sesquicuadratura".to_string(),
+        ("es", "quincunx") => "quincuncio".to_string(),
+        ("es", "biquintile") => "biquintil".to_string(),
+        ("es", "septile") => "septil".to_string(),
+        ("es", "biseptile") => "biseptil".to_string(),
+        ("es", "triseptile") => "triseptil".to_string(),
+        ("es", "novile") => "novil".to_string(),
+        ("es", "binovile") => "binovil".to_string(),
+        ("es", "quadranovile") => "cuadranovil".to_string(),
+        ("es", "decile") => "decil".to_string(),
+        ("es", "tredecile") => "tredecil".to_string(),
+        ("es", "quindecile") => "quindecil".to_string(),
+        ("de", "conjunction") => "Konjunktion".to_string(),
+        ("de", "sextile") => "Sextil".to_string(),
+        ("de", "square") => "Quadrat".to_string(),
+        ("de", "trine") => "Trigon".to_string(),
+        ("de", "opposition") => "Opposition".to_string(),
+        ("de", "semi_sextile") => "Halbsextil".to_string(),
+        ("de", "semi_square") => "Halbquadrat".to_string(),
+        ("de", "quintile") => "Quintil".to_string(),
+        ("de", "sesquiquadrate") => "Anderthalbquadrat".to_string(),
+        ("de", "quincunx") => "Quinkunx".to_string(),
+        ("de", "biquintile") => "Biquintil".to_string(),
+        ("de", "septile") => "Septil".to_string(),
+        ("de", "biseptile") => "Biseptil".to_string(),
+        ("de", "triseptile") => "Triseptil".to_string(),
+        ("de", "novile") => "Novil".to_string(),
+        ("de", "binovile") => "Binovil".to_string(),
+        ("de", "quadranovile") => "Quadranovil".to_string(),
+        ("de", "decile") => "Dezil".to_string(),
+        ("de", "tredecile") => "Tredezil".to_string(),
+        ("de", "quindecile") => "Quindezil".to_string(),
+        _ => aspect.aspect_name.to_lowercase(),
+    }
+}
+
+fn phase_state_label(phase_state: &str, locale: &str) -> String {
+    match (locale, phase_state) {
+        ("fr", "applying") => "appliquante".to_string(),
+        ("fr", "separating") => "separante".to_string(),
+        ("fr", "exact") => "exacte".to_string(),
+        ("es", "applying") => "aplicativa".to_string(),
+        ("es", "separating") => "separativa".to_string(),
+        ("es", "exact") => "exacta".to_string(),
+        ("de", "applying") => "applikativ".to_string(),
+        ("de", "separating") => "separativ".to_string(),
+        ("de", "exact") => "exakt".to_string(),
+        _ => phase_state.to_string(),
+    }
 }

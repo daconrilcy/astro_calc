@@ -226,6 +226,7 @@ fn build_angular_natal_input(
         coordinate_reference_system_id,
         house_system_id,
         product_code: Some("simplified".to_string()),
+        language_code: None,
         client_idempotency_key: None,
     })
 }

@@ -75,6 +75,7 @@ where
         projection: EngineProjectionRequest {
             contract_version: Some("llm_projection_natal_v1".to_string()),
             level: projection_level,
+            language_code: optional_non_empty_env("ASTRAL_OUTPUT_LANGUAGE"),
         },
     })
 }

@@ -17,6 +17,7 @@ pub(super) fn add_position_cluster_signals(
     facts: &CalculatedChartFacts,
     signals: &mut Vec<InterpretationSignalDraft>,
     catalog: &BasicPayloadCatalog,
+    locale: &str,
 ) {
     let mut sign_house_groups: HashMap<(String, i32), Vec<&ObjectPositionFact>> = HashMap::new();
 
@@ -78,18 +79,18 @@ pub(super) fn add_position_cluster_signals(
             signal_key: format!("cluster:{sign_code}:house_{house_number}"),
             signal_type_id: None,
             theme_code: Some(house_theme_code.clone()),
-            title: format!("Strong concentration in {sign_name}, house {house_number}"),
-            summary: Some(format!(
-                "{} chart factors are concentrated in {sign_name} and the {house_name} house, giving extra interpretive weight to this area of the chart.",
-                positions.len()
+            title: cluster_title(&sign_name, house_number, locale),
+            summary: Some(cluster_summary(
+                positions.len(),
+                &sign_name,
+                &house_name,
+                locale,
             )),
             priority_score,
             confidence_score: Some(0.9),
             suppression_state: SUPPRESSION_ACTIVE.to_string(),
             payload_json: Some(json!({
-                "interpretive_hint": format!(
-                    "Read this as a repeated emphasis: {sign_name} qualities are focused through the themes of the {house_name} house."
-                ),
+                "interpretive_hint": cluster_hint(&sign_name, &house_name, locale),
                 "semantic_tags": semantic_tags,
                 "source_weight": source_weight,
                 "aggregation_group": aggregation_group,
@@ -166,6 +167,49 @@ pub(super) fn apply_cluster_source_deduplication(
     }
 
     changed
+}
+
+fn cluster_title(sign_name: &str, house_number: i32, locale: &str) -> String {
+    match locale {
+        "fr" => format!("Forte concentration en {sign_name}, maison {house_number}"),
+        "es" => format!("Fuerte concentración en {sign_name}, casa {house_number}"),
+        "de" => format!("Starke Konzentration in {sign_name}, Haus {house_number}"),
+        _ => format!("Strong concentration in {sign_name}, house {house_number}"),
+    }
+}
+
+fn cluster_summary(count: usize, sign_name: &str, house_name: &str, locale: &str) -> String {
+    match locale {
+        "fr" => format!(
+            "{count} facteurs du thème sont concentrés en {sign_name} et dans la maison {house_name}, ce qui donne un poids interprétatif supplémentaire à cette zone du thème."
+        ),
+        "es" => format!(
+            "{count} factores de la carta se concentran en {sign_name} y en la casa {house_name}, lo que da un peso interpretativo extra a esta zona."
+        ),
+        "de" => format!(
+            "{count} Faktoren konzentrieren sich in {sign_name} und im Haus {house_name}, was diesem Bereich des Horoskops zusätzliches interpretatives Gewicht verleiht."
+        ),
+        _ => format!(
+            "{count} chart factors are concentrated in {sign_name} and the {house_name} house, giving extra interpretive weight to this area of the chart."
+        ),
+    }
+}
+
+fn cluster_hint(sign_name: &str, house_name: &str, locale: &str) -> String {
+    match locale {
+        "fr" => format!(
+            "Lire cela comme un accent répété : les qualités de {sign_name} sont focalisées à travers les thèmes de la maison {house_name}."
+        ),
+        "es" => format!(
+            "Léalo como un énfasis repetido: las cualidades de {sign_name} se concentran a través de los temas de la casa {house_name}."
+        ),
+        "de" => format!(
+            "Lesen Sie dies als wiederholte Betonung: Die Qualitäten von {sign_name} bündeln sich durch die Themen des Hauses {house_name}."
+        ),
+        _ => format!(
+            "Read this as a repeated emphasis: {sign_name} qualities are focused through the themes of the {house_name} house."
+        ),
+    }
 }
 
 /// Fonction annotate_cluster_source.

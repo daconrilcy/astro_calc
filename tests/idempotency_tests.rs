@@ -16,6 +16,7 @@ fn input() -> NatalChartInput {
         coordinate_reference_system_id: 1,
         house_system_id: 1,
         product_code: Some("basic".to_string()),
+        language_code: Some("en".to_string()),
         client_idempotency_key: None,
     }
 }
@@ -64,6 +65,20 @@ fn idempotency_changes_when_engine_changes() {
         idempotency_key(&input, &left).unwrap(),
         idempotency_key(&input, &right).unwrap()
     );
+}
+
+#[test]
+fn idempotency_changes_when_language_changes() {
+    let mut french = input();
+    let mut english = input();
+    french.language_code = Some("fr".to_string());
+    english.language_code = Some("en".to_string());
+
+    assert_ne!(
+        idempotency_key(&french, &RuntimeOptions::default()).unwrap(),
+        idempotency_key(&english, &RuntimeOptions::default()).unwrap()
+    );
+    assert_eq!(input_hash(&french).unwrap(), input_hash(&english).unwrap());
 }
 
 #[test]

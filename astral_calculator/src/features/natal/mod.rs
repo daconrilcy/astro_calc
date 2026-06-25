@@ -5,6 +5,8 @@ pub mod application;
 pub mod catalog;
 /// Module dignities.
 pub mod dignities;
+/// Module i18n.
+pub mod i18n;
 /// Module payload.
 pub mod payload;
 /// Module signals.

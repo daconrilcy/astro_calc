@@ -382,6 +382,7 @@
       },
       projection: {
         level: "compact",
+        language_code: supportedTargetLanguageCode(input.language),
       },
     };
   }

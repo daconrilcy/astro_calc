@@ -79,6 +79,10 @@ async fn natal_input_from_env(
         product_code: Some(
             std::env::var("ASTRAL_PRODUCT_CODE").unwrap_or_else(|_| "basic".to_string()),
         ),
+        language_code: std::env::var("ASTRAL_OUTPUT_LANGUAGE")
+            .ok()
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty()),
         client_idempotency_key: idempotency_key,
     })
 }

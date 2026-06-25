@@ -42,6 +42,7 @@ use themes::build_dominant_themes;
 /// Structure LlmProjectionBuildContext.
 pub struct LlmProjectionBuildContext<'a> {
     pub birth_location_label: &'a str,
+    pub language_code: &'a str,
     pub zodiac_label: &'a str,
     pub coordinate_label: &'a str,
     pub house_system_label: &'a str,

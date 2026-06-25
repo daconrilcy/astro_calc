@@ -57,6 +57,7 @@ pub(crate) struct BasicPayloadBuilderInput<'a> {
     pub(crate) accidental_conditions: &'a [AccidentalDignityConditionReference],
     pub(crate) sect_affinities: &'a [ObjectSectAffinityReference],
     pub(crate) catalog: &'a BasicPayloadCatalog,
+    pub(crate) language_code: &'a str,
 }
 
 /// Fonction build_basic_payload.
@@ -66,6 +67,7 @@ pub fn build_basic_payload(
     positions: &[ObjectPositionFact],
     signals: &[InterpretationSignalRow],
     catalog: &BasicPayloadCatalog,
+    language_code: &str,
 ) -> BasicPayload {
     build_basic_payload_with_rulership(
         chart_calculation_id,
@@ -74,6 +76,7 @@ pub fn build_basic_payload(
         signals,
         &[],
         catalog,
+        language_code,
     )
 }
 
@@ -85,6 +88,7 @@ pub fn build_basic_payload_with_rulership(
     signals: &[InterpretationSignalRow],
     domicile_rulers: &[crate::domain::DomicileRulerReference],
     catalog: &BasicPayloadCatalog,
+    language_code: &str,
 ) -> BasicPayload {
     build_basic_payload_with_references(
         chart_calculation_id,
@@ -94,6 +98,7 @@ pub fn build_basic_payload_with_rulership(
         domicile_rulers,
         &[],
         catalog,
+        language_code,
     )
 }
 
@@ -106,6 +111,7 @@ pub fn build_basic_payload_with_references(
     domicile_rulers: &[crate::domain::DomicileRulerReference],
     house_axes: &[HouseAxisReference],
     catalog: &BasicPayloadCatalog,
+    language_code: &str,
 ) -> BasicPayload {
     build_basic_payload_with_all_references(
         chart_calculation_id,
@@ -116,6 +122,7 @@ pub fn build_basic_payload_with_references(
         house_axes,
         &[],
         catalog,
+        language_code,
     )
 }
 
@@ -129,6 +136,7 @@ pub fn build_basic_payload_with_all_references(
     house_axes: &[HouseAxisReference],
     lunar_phases: &[LunarPhaseReference],
     catalog: &BasicPayloadCatalog,
+    language_code: &str,
 ) -> BasicPayload {
     build_basic_payload_with_accidental_references(
         chart_calculation_id,
@@ -141,6 +149,7 @@ pub fn build_basic_payload_with_all_references(
         &[],
         &[],
         catalog,
+        language_code,
     )
 }
 
@@ -157,6 +166,7 @@ pub fn build_basic_payload_with_accidental_references(
     accidental_conditions: &[AccidentalDignityConditionReference],
     sect_affinities: &[ObjectSectAffinityReference],
     catalog: &BasicPayloadCatalog,
+    language_code: &str,
 ) -> BasicPayload {
     build_basic_payload_from(BasicPayloadBuilderInput {
         chart_calculation_id,
@@ -169,6 +179,7 @@ pub fn build_basic_payload_with_accidental_references(
         accidental_conditions,
         sect_affinities,
         catalog,
+        language_code,
     })
 }
 
@@ -186,10 +197,12 @@ pub(crate) fn build_basic_payload_from(
         accidental_conditions,
         sect_affinities,
         catalog,
+        language_code,
     } = builder_input;
 
     let structural_axis_pairs = structural_axis_pairs_from_positions(positions);
     let angle_object_codes = angle_object_codes_from_positions(positions);
+    let locale = crate::features::natal::i18n::locale_key(language_code);
     let mut basic_signals: Vec<BasicSignal> = signals
         .iter()
         .map(|signal| BasicSignal {
@@ -216,8 +229,13 @@ pub(crate) fn build_basic_payload_from(
     let angles = build_payload_angles(positions);
     let dignities = build_payload_dignities(positions, &basic_signals, catalog);
     let chart_emphasis = build_chart_emphasis(positions, &dignities, &basic_signals, catalog);
-    let rulership_context =
-        build_rulership_context(positions, &chart_emphasis, domicile_rulers, &basic_signals);
+    let rulership_context = build_rulership_context(
+        positions,
+        &chart_emphasis,
+        domicile_rulers,
+        &basic_signals,
+        locale,
+    );
     let house_axis_emphasis = house_axes::build_house_axis_emphasis(
         house_axes,
         positions,
@@ -227,6 +245,7 @@ pub(crate) fn build_basic_payload_from(
         &rulership_context,
         &basic_signals,
         catalog,
+        locale,
     );
     let reading_plan = build_reading_plan(&basic_signals);
     let lunar_phase_context = lunar_phase::build_lunar_phase_context(
@@ -234,6 +253,7 @@ pub(crate) fn build_basic_payload_from(
         positions,
         &basic_signals,
         &reading_plan,
+        locale,
     );
     let has_accidental_references = !accidental_conditions.is_empty()
         && !sect_affinities.is_empty()
@@ -250,6 +270,7 @@ pub(crate) fn build_basic_payload_from(
         positions,
         contract_version,
         has_accidental_references.then_some(catalog),
+        locale,
     );
     let chart_sect = chart_context.sect.chart_sect.as_deref();
     let active_signal_keys: HashSet<&str> = basic_signals
@@ -264,6 +285,7 @@ pub(crate) fn build_basic_payload_from(
             sect_affinities,
             &active_signal_keys,
             catalog,
+            locale,
         )
     } else {
         accidental_dignities::AccidentalDignityBuild {

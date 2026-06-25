@@ -75,4 +75,6 @@ pub struct EngineProjectionRequest {
     #[serde(default)]
     pub contract_version: Option<String>,
     pub level: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language_code: Option<String>,
 }

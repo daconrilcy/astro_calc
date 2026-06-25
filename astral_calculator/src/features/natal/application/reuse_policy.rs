@@ -91,6 +91,7 @@ where
                         aspects,
                     },
                     &self.snapshot.catalog,
+                    input.language_code.as_deref().unwrap_or("en"),
                 );
                 self.calculations.commit(tx).await?;
                 let mut payload_tx = self.calculations.begin().await?;
@@ -114,6 +115,7 @@ where
                     &self.snapshot.accidental_conditions,
                     &self.snapshot.sect_affinities,
                     &self.snapshot.catalog,
+                    input.language_code.as_deref().unwrap_or("en"),
                 );
                 self.calculations
                     .persist_basic_payload(

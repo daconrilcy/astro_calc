@@ -96,6 +96,10 @@
         "level": {
           "type": "string",
           "enum": ["compact", "standard", "rich", "expert"]
+        },
+        "language_code": {
+          "type": ["string", "null"],
+          "enum": ["fr", "en", "es", "de", null]
         }
       }
     }

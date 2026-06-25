@@ -137,6 +137,7 @@ pub fn validate_and_resolve_request(
             coordinate_reference_system_id,
             house_system_id,
             product_code: Some("basic".to_string()),
+            language_code: request.projection.language_code.clone(),
             client_idempotency_key: request
                 .idempotency_key
                 .clone()

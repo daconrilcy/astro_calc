@@ -22,6 +22,7 @@ pub(super) fn add_dignity_signals(
     object_source_weights: &HashMap<&str, f64>,
     signals: &mut Vec<InterpretationSignalDraft>,
     catalog: &BasicPayloadCatalog,
+    locale: &str,
 ) {
     let positions_by_object: HashMap<&str, &ObjectPositionFact> = facts
         .positions
@@ -41,8 +42,8 @@ pub(super) fn add_dignity_signals(
         } else {
             THEME_FUNCTIONAL_CHALLENGE
         };
-        let title = dignity_title(&dignity);
-        let summary = dignity_summary(&dignity);
+        let title = dignity_title(&dignity, locale);
+        let summary = dignity_summary(&dignity, locale);
 
         signals.push(InterpretationSignalDraft {
             signal_key: format!(
@@ -57,7 +58,7 @@ pub(super) fn add_dignity_signals(
             confidence_score: Some(0.95),
             suppression_state: SUPPRESSION_ACTIVE.to_string(),
             payload_json: Some(json!({
-                "interpretive_hint": dignity_interpretive_hint(&dignity),
+                "interpretive_hint": dignity_interpretive_hint(&dignity, locale),
                 "semantic_tags": dignity_semantic_tags(&dignity),
                 "source_weight": round4(
                     object_source_weights

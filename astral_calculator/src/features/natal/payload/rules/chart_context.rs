@@ -24,6 +24,7 @@ pub(crate) fn build_chart_context(
     positions: &[ObjectPositionFact],
     contract_version: &str,
     catalog: Option<&BasicPayloadCatalog>,
+    locale: &str,
 ) -> BasicChartContext {
     let sun_position = positions
         .iter()
@@ -34,7 +35,6 @@ pub(crate) fn build_chart_context(
         .and_then(chart_sect_for_sun_horizon)
         .map(str::to_string);
     let sect_source = sun_position.map(visibility_source_for_fact);
-    let hemisphere_emphasis = build_hemisphere_emphasis(positions);
 
     BasicChartContext {
         chart_type: CHART_TYPE_NATAL.to_string(),
@@ -57,7 +57,7 @@ pub(crate) fn build_chart_context(
             sun_horizon_position,
             source: sect_source,
         },
-        hemisphere_emphasis,
+        hemisphere_emphasis: build_hemisphere_emphasis(positions, locale),
         accidental_scoring: catalog.map(|catalog| BasicAccidentalScoringSnapshot {
             overall_score_baseline: catalog.accidental_scoring.overall_score_baseline,
             overall_score_min: catalog.accidental_scoring.overall_score_min,
@@ -222,7 +222,10 @@ fn visibility_flag_for_fact(position: &ObjectPositionFact) -> Option<bool> {
 }
 
 /// Fonction build_hemisphere_emphasis.
-fn build_hemisphere_emphasis(positions: &[ObjectPositionFact]) -> BasicHemisphereEmphasis {
+fn build_hemisphere_emphasis(
+    positions: &[ObjectPositionFact],
+    locale: &str,
+) -> BasicHemisphereEmphasis {
     let mut above_horizon_count = 0;
     let mut below_horizon_count = 0;
     let mut on_horizon_count = 0;
@@ -244,18 +247,41 @@ fn build_hemisphere_emphasis(positions: &[ObjectPositionFact]) -> BasicHemispher
         above_horizon_count,
         below_horizon_count,
         on_horizon_count,
-        interpretive_hint: hemisphere_hint(above_horizon_count, below_horizon_count),
+        interpretive_hint: hemisphere_hint(above_horizon_count, below_horizon_count, locale),
     }
 }
 
 /// Fonction hemisphere_hint.
-fn hemisphere_hint(above_horizon_count: i32, below_horizon_count: i32) -> Option<String> {
+fn hemisphere_hint(
+    above_horizon_count: i32,
+    below_horizon_count: i32,
+    locale: &str,
+) -> Option<String> {
     if above_horizon_count > below_horizon_count {
-        Some("The chart has a stronger visible or outward emphasis.".to_string())
+        Some(match locale {
+            "fr" => "Le thème présente une accentuation plus visible ou tournée vers l'extérieur."
+                .to_string(),
+            "es" => "La carta presenta un énfasis más visible o hacia el exterior.".to_string(),
+            "de" => {
+                "Das Horoskop zeigt eine stärkere sichtbare oder nach außen gerichtete Betonung."
+                    .to_string()
+            }
+            _ => "The chart has a stronger visible or outward emphasis.".to_string(),
+        })
     } else if below_horizon_count > above_horizon_count {
-        Some("The chart has a stronger private or interior emphasis.".to_string())
+        Some(match locale {
+            "fr" => "Le thème présente une accentuation plus privée ou intérieure.".to_string(),
+            "es" => "La carta presenta un énfasis más privado o interior.".to_string(),
+            "de" => "Das Horoskop zeigt eine stärkere private oder innere Betonung.".to_string(),
+            _ => "The chart has a stronger private or interior emphasis.".to_string(),
+        })
     } else if above_horizon_count > 0 {
-        Some("The chart balances visible and private emphases.".to_string())
+        Some(match locale {
+            "fr" => "Le thème équilibre les accentuations visibles et privées.".to_string(),
+            "es" => "La carta equilibra los énfasis visibles y privados.".to_string(),
+            "de" => "Das Horoskop balanciert sichtbare und private Betonungen aus.".to_string(),
+            _ => "The chart balances visible and private emphases.".to_string(),
+        })
     } else {
         None
     }

@@ -22,6 +22,7 @@ fn build_basic_payload(
         positions,
         signals,
         &test_catalog(),
+        "en",
     )
 }
 
@@ -43,6 +44,7 @@ fn build_basic_payload_with_all_references(
         house_axes,
         lunar_phases,
         &test_catalog(),
+        "en",
     )
 }
 
@@ -59,6 +61,7 @@ fn input() -> NatalChartInput {
         coordinate_reference_system_id: 1,
         house_system_id: 1,
         product_code: Some("basic".to_string()),
+        language_code: Some("en".to_string()),
         client_idempotency_key: None,
     }
 }

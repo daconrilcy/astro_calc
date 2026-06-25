@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use astral_llm_application::{
     build_provider_map,
+    reading_catalog::ReadingCatalog,
     reading_persistence::{
         ExplanationCacheKeyRecord, ExplanationCacheRecord, PersistedGenerationRunRecord,
         PersistedPromptTraceRecord, PersistedTokenUsageRecord, ReadingPersistence,
@@ -19,8 +20,9 @@ use astral_llm_domain::{
     ServiceLimits,
 };
 use astral_llm_infra::{
-    bootstrap_astro_basis_roles, bootstrap_domains, bootstrap_interpretation_profiles,
-    bootstrap_product_policies, CanonicalCatalog,
+    bootstrap_astro_basis_roles, bootstrap_astro_object_labels, bootstrap_domains,
+    bootstrap_interpretation_profiles, bootstrap_product_policies, bootstrap_zodiac_sign_labels,
+    CanonicalCatalog,
 };
 use astral_llm_providers::FakeProvider;
 use async_trait::async_trait;
@@ -79,7 +81,8 @@ fn natal_explanations_select_major_candidates_in_deterministic_order() {
         ),
     ];
 
-    let candidates = select_major_explanation_candidates(&facts, "fr", 10);
+    let catalog = test_catalog();
+    let candidates = select_major_explanation_candidates(&facts, &catalog, "fr", 10);
 
     let ids = candidates
         .iter()
@@ -115,20 +118,43 @@ fn natal_explanations_cache_key_is_stable_for_same_combination() {
         serde_json::json!({ "object": "sun", "sign": "taurus", "house": 10 }),
     );
 
-    let a = select_major_explanation_candidates(&[first], "fr", 1);
-    let b = select_major_explanation_candidates(&[second], "fr", 1);
+    let catalog = test_catalog();
+    let a = select_major_explanation_candidates(&[first], &catalog, "fr", 1);
+    let b = select_major_explanation_candidates(&[second], &catalog, "fr", 1);
 
     assert_eq!(a[0].cache_key.key_hash, b[0].cache_key.key_hash);
 }
 
-fn test_catalog() -> Arc<CanonicalCatalog> {
-    Arc::new(CanonicalCatalog {
+#[test]
+fn natal_explanations_candidates_are_localized_by_language() {
+    let catalog = test_catalog();
+    let fact = fact(
+        "placement:sun:taurus:house:10",
+        AstroFactKind::PlanetPosition,
+        "placement",
+        "Sun in Taurus",
+        serde_json::json!({ "object": "sun", "sign": "taurus", "house": 10 }),
+    );
+
+    let fr = select_major_explanation_candidates(&[fact.clone()], &catalog, "fr", 1);
+    assert_eq!(fr[0].title, "Soleil en Taureau en maison 10");
+    assert_eq!(fr[0].expression_primary.as_deref(), Some("Maison 10"));
+
+    let en = select_major_explanation_candidates(&[fact], &catalog, "en", 1);
+    assert_eq!(en[0].title, "Sun in Taurus in house 10");
+    assert_eq!(en[0].expression_primary.as_deref(), Some("House 10"));
+}
+
+fn test_catalog() -> ReadingCatalog {
+    ReadingCatalog::new(Arc::new(CanonicalCatalog {
         astrological_domains: bootstrap_domains(),
         astro_basis_roles: bootstrap_astro_basis_roles(),
+        astro_object_labels: bootstrap_astro_object_labels(),
+        zodiac_sign_labels: bootstrap_zodiac_sign_labels(),
         product_generation_policies: bootstrap_product_policies(),
         interpretation_profiles: bootstrap_interpretation_profiles(),
         ..Default::default()
-    })
+    }))
 }
 
 #[derive(Default)]
@@ -360,6 +386,48 @@ async fn natal_explanations_cache_hit_requires_requested_language() {
         "fr cache entries must not satisfy en requests"
     );
     assert_eq!(persistence.records.lock().await.len(), 2);
+}
+
+#[tokio::test]
+async fn natal_explanations_stale_cache_entry_is_regenerated() {
+    let persistence = Arc::new(MemoryExplanationPersistence::default());
+    let use_case = use_case_with_fake_fallback(Some(persistence.clone()));
+    let request = ExplanationPreparationRequest {
+        run_id: Some("run-stale".into()),
+        user_language: "fr".into(),
+        interpretation_profile_code: Some("natal_basic".into()),
+        astro_result: AstroCalculationPayload {
+            contract_version: "natal_structured_v14".into(),
+            chart_type: "natal".into(),
+            data: serde_json::json!({
+                "planets": {
+                    "sun": { "house": 10, "sign": "taurus" }
+                }
+            }),
+        },
+    };
+
+    let first = use_case.prepare_natal_explanations(request.clone()).await;
+    assert_eq!(first.explanations.status, "complete");
+    assert_eq!(first.explanations.items[0].source, "generated");
+
+    {
+        let mut records = persistence.records.lock().await;
+        let record = records.first_mut().expect("stored explanation");
+        record.title = "Sun in Taurus in house 10".into();
+        record.expression_primary = Some("House 10".into());
+    }
+
+    let second = use_case.prepare_natal_explanations(request).await;
+    assert_eq!(second.explanations.status, "complete");
+    assert_eq!(
+        second.explanations.items[0].source, "generated",
+        "stale cached language should be regenerated"
+    );
+    assert_eq!(
+        second.explanations.items[0].title,
+        "Soleil en Taureau en maison 10"
+    );
 }
 
 #[tokio::test]

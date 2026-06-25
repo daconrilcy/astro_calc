@@ -109,7 +109,11 @@ where
             house_cusps: Vec::new(),
             aspects,
         };
-        let signal_drafts = aggregate_basic_signals(&enriched_facts, &self.snapshot.catalog);
+        let signal_drafts = aggregate_basic_signals(
+            &enriched_facts,
+            &self.snapshot.catalog,
+            input.language_code.as_deref().unwrap_or("en"),
+        );
         let signal_rows = self
             .calculations
             .persist_signals(
@@ -138,6 +142,7 @@ where
             &self.snapshot.accidental_conditions,
             &self.snapshot.sect_affinities,
             &self.snapshot.catalog,
+            input.language_code.as_deref().unwrap_or("en"),
         );
         self.calculations
             .persist_basic_payload(&mut tx, &input, Some(payload_language_id), &payload)

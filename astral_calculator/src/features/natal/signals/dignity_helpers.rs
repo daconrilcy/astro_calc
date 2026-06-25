@@ -20,48 +20,120 @@ pub(super) fn dignity_priority(
     round4((base + dignity_priority_delta(dignity, catalog)).min(95.0))
 }
 
-pub(super) fn dignity_title(dignity: &EssentialDignityFact) -> String {
-    if dignity.polarity == "dignity" {
-        format!(
+pub(super) fn dignity_title(dignity: &EssentialDignityFact, locale: &str) -> String {
+    match (locale, dignity.polarity.as_str()) {
+        ("fr", "dignity") => format!(
+            "{} bien placé en {}",
+            dignity.object_name, dignity.sign_name
+        ),
+        ("fr", _) => format!(
+            "{} sous tension en {}",
+            dignity.object_name, dignity.sign_name
+        ),
+        ("es", "dignity") => format!(
+            "{} bien situado en {}",
+            dignity.object_name, dignity.sign_name
+        ),
+        ("es", _) => format!(
+            "{} bajo tensión en {}",
+            dignity.object_name, dignity.sign_name
+        ),
+        ("de", "dignity") => format!(
+            "{} stark gestellt in {}",
+            dignity.object_name, dignity.sign_name
+        ),
+        ("de", _) => format!(
+            "{} unter Druck in {}",
+            dignity.object_name, dignity.sign_name
+        ),
+        _ if dignity.polarity == "dignity" => format!(
             "{} strongly placed in {}",
             dignity.object_name, dignity.sign_name
-        )
-    } else {
-        format!(
+        ),
+        _ => format!(
             "{} under pressure in {}",
             dignity.object_name, dignity.sign_name
-        )
+        ),
     }
 }
 
-pub(super) fn dignity_summary(dignity: &EssentialDignityFact) -> String {
-    if dignity.polarity == "dignity" {
-        format!(
+pub(super) fn dignity_summary(dignity: &EssentialDignityFact, locale: &str) -> String {
+    match (locale, dignity.polarity.as_str()) {
+        ("fr", "dignity") => format!(
+            "{} se trouve en {}, un signe où sa fonction est renforcée par {}.",
+            dignity.object_name, dignity.sign_name, dignity.dignity_type
+        ),
+        ("fr", _) => format!(
+            "{} se trouve en {}, un signe où sa fonction demande davantage d'ajustement à cause de {}.",
+            dignity.object_name, dignity.sign_name, dignity.dignity_type
+        ),
+        ("es", "dignity") => format!(
+            "{} está en {}, un signo donde su función se refuerza por {}.",
+            dignity.object_name, dignity.sign_name, dignity.dignity_type
+        ),
+        ("es", _) => format!(
+            "{} está en {}, un signo donde su función necesita más ajuste por {}.",
+            dignity.object_name, dignity.sign_name, dignity.dignity_type
+        ),
+        ("de", "dignity") => format!(
+            "{} befindet sich in {}, einem Zeichen, in dem seine Funktion durch {} gestärkt wird.",
+            dignity.object_name, dignity.sign_name, dignity.dignity_type
+        ),
+        ("de", _) => format!(
+            "{} befindet sich in {}, einem Zeichen, in dem seine Funktion wegen {} mehr Anpassung braucht.",
+            dignity.object_name, dignity.sign_name, dignity.dignity_type
+        ),
+        _ if dignity.polarity == "dignity" => format!(
             "{} is in {}, a sign where its function is reinforced by {}.",
             dignity.object_name, dignity.sign_name, dignity.dignity_type
-        )
-    } else {
-        format!(
+        ),
+        _ => format!(
             "{} is in {}, a sign where its function needs more adjustment because of {}.",
             dignity.object_name, dignity.sign_name, dignity.dignity_type
-        )
+        ),
     }
 }
 
-pub(super) fn dignity_interpretive_hint(dignity: &EssentialDignityFact) -> String {
+pub(super) fn dignity_interpretive_hint(dignity: &EssentialDignityFact, locale: &str) -> String {
     let article = indefinite_article(&dignity.dignity_type);
-    format!(
-        "Treat {} in {} as {} {} modifier for the existing placement signal.",
-        dignity.object_name, dignity.sign_name, article, dignity.dignity_type
-    )
+    match locale {
+        "fr" => format!(
+            "Traitez {} en {} comme un modificateur {} {} du signal de position existant.",
+            dignity.object_name, dignity.sign_name, article, dignity.dignity_type
+        ),
+        "es" => format!(
+            "Trate {} en {} como un modificador {} {} de la señal de posición existente.",
+            dignity.object_name, dignity.sign_name, article, dignity.dignity_type
+        ),
+        "de" => format!(
+            "Betrachten Sie {} in {} als einen {} {}-Modifikator für das bestehende Positionssignal.",
+            dignity.object_name, dignity.sign_name, article, dignity.dignity_type
+        ),
+        _ => format!(
+            "Treat {} in {} as {} {} modifier for the existing placement signal.",
+            dignity.object_name, dignity.sign_name, article, dignity.dignity_type
+        ),
+    }
 }
 
-pub(super) fn dignity_effect_phrase(dignity: &EssentialDignityFact) -> &'static str {
-    match dignity.dignity_type.as_str() {
-        "domicile" => "functional strength, coherence, and self-command",
-        "exaltation" => "heightened visibility and constructive emphasis",
-        "detriment" => "a need for translation, adaptation, and deliberate handling",
-        "fall" => "a more sensitive or constrained expression that needs care",
+pub(super) fn dignity_effect_phrase(dignity: &EssentialDignityFact, locale: &str) -> &'static str {
+    match (locale, dignity.dignity_type.as_str()) {
+        ("fr", "domicile") => "force fonctionnelle, cohérence et maîtrise de soi",
+        ("fr", "exaltation") => "visibilité accrue et accent constructif",
+        ("fr", "detriment") => "besoin de traduction, d'adaptation et de gestion volontaire",
+        ("fr", "fall") => "expression plus sensible ou contrainte qui demande de l'attention",
+        ("es", "domicile") => "fuerza funcional, coherencia y autocontrol",
+        ("es", "exaltation") => "mayor visibilidad y énfasis constructivo",
+        ("es", "detriment") => "necesidad de traducción, adaptación y manejo deliberado",
+        ("es", "fall") => "una expresión más sensible o limitada que requiere cuidado",
+        ("de", "domicile") => "funktionale Stärke, Kohärenz und Selbststeuerung",
+        ("de", "exaltation") => "erhöhte Sichtbarkeit und konstruktive Betonung",
+        ("de", "detriment") => "Bedarf an Übersetzung, Anpassung und bewusster Handhabung",
+        ("de", "fall") => "ein empfindlicherer oder eingeschränkter Ausdruck, der Sorgfalt braucht",
+        (_, "domicile") => "functional strength, coherence, and self-command",
+        (_, "exaltation") => "heightened visibility and constructive emphasis",
+        (_, "detriment") => "a need for translation, adaptation, and deliberate handling",
+        (_, "fall") => "a more sensitive or constrained expression that needs care",
         _ => "additional interpretive context",
     }
 }
