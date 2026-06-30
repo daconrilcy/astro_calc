@@ -212,6 +212,7 @@ impl<'a> FinalSynthesisSynthesizer<'a> {
         let mut reading_chapter = ReadingChapter {
             code: chapter_reading.code,
             title: chapter_reading.title,
+            summary_sentence: chapter_reading.summary_sentence,
             body: chapter_reading.body,
             astro_basis: chapter_reading.astro_basis,
             confidence: chapter_reading.confidence,

@@ -100,9 +100,11 @@ fn good_reading() -> NatalReadingResponse {
             title: "Titre".into(),
             short_text: "Resume".into(),
         },
+        calculation_reference: None,
         chapters: vec![ReadingChapter {
             code: "identity".into(),
             title: "Identite".into(),
+            summary_sentence: "Resume du chapitre identite.".into(),
             body: "Votre theme suggere une personnalite reflechie, orientee vers la comprehension symbolique des experiences et des transitions interieures. Vous avancez avec prudence lorsque le sens n'est pas clair, tout en montrant une grande capacite d'adaptation lorsque vous sentez une direction authentique. Cette configuration invite a accueillir les phases de questionnement comme des espaces creatifs, plutot que comme des blocages rigides.\n\nDans l'experience vecue, cette tonalite peut se traduire par une facon tres consciente de proteger vos ressources, votre rythme et votre sentiment de coherence interne. Vous observez d'abord, puis vous engagez lorsque la situation offre une base credible. Cette lecture met en lumiere une intelligence du temps long: vous prefere des choix solides aux emballements rapides, et cette lente maturation offre souvent une vraie stabilite a votre trajectoire.\n\nSur le plan relationnel et symbolique, ce climat interieur suggere aussi un besoin de donner une forme utile a ce que vous ressentez. Vous pouvez chercher des liens, des projets ou des engagements qui aient une colonne vertebrale claire, afin que l'attachement ne se perde pas dans l'ambivalence. Cette tendance n'annule pas la sensibilite; elle lui offre plutot un cadre, une methode et une maniere constructive de se dire.\n\nEnfin, cette dynamique invite a reconnaitre que votre exigence n'est pas seulement defensive: elle peut devenir un levier de maturation, de discernement et de responsabilite. Lorsque vous faites confiance a votre propre cadence, vous offrez autour de vous une presence fiable, capable de contenir la complexite sans la simplifier. La carte natale suggere donc une force calme, qui se revele davantage par la constance que par l'effet immediat.".into(),
             astro_basis: vec![
                 basis("domain_score:identity", "identity", "domain_score"),
@@ -164,6 +166,7 @@ fn premium_plus_rejects_short_synthesis_chapter() {
     reading.chapters.push(ReadingChapter {
         code: SYNTHESIS_CHAPTER_CODE.into(),
         title: "Synthese".into(),
+        summary_sentence: "Resume de synthese.".into(),
         body: "Court.".into(),
         astro_basis: vec![
             basis("dominant_planet:jupiter", "jupiter", "core"),

@@ -162,7 +162,11 @@ impl GenerateReadingUseCase {
                     );
                 }
                 Err(violations) if violations_are_script_only(&violations) && is_simplified => {
-                    apply_simplified_body_fallback(&mut reading, chapter_code);
+                    apply_simplified_body_fallback(
+                        &mut reading,
+                        chapter_code,
+                        &request.product_context.user_language,
+                    );
                     let _ = post_process_single_pass_reading(&mut reading, request, interpretation);
                     if self
                         .validate_single_pass_output(request, &reading, safety_policy, true)
@@ -189,7 +193,11 @@ impl GenerateReadingUseCase {
                 Err(violations)
                     if violations_are_ambiguous_core_only(&violations) && is_simplified =>
                 {
-                    apply_simplified_body_fallback(&mut reading, SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE);
+                    apply_simplified_body_fallback(
+                        &mut reading,
+                        SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE,
+                        &request.product_context.user_language,
+                    );
                     let _ = post_process_single_pass_reading(&mut reading, request, interpretation);
                     if self
                         .validate_single_pass_output(request, &reading, safety_policy, true)

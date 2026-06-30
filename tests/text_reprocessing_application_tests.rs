@@ -824,9 +824,11 @@ fn text_reprocessing_adapter_natal_simplified_preserves_technical_fields() {
             title: "l impression — titre".into(),
             short_text: "d une synthese संकेत".into(),
         },
+        calculation_reference: None,
         chapters: vec![ReadingChapter {
             code: "identity_core".into(),
             title: "d une dynamique".into(),
+            summary_sentence: "d une phrase courte".into(),
             body: "l impression reste lisible — vraiment संकेत".into(),
             astro_basis: vec![AstroBasisItem {
                 fact_id: Some("fact_l impression".into()),
@@ -896,9 +898,11 @@ fn text_reprocessing_adapter_natal_theme_removes_chapter_disclaimer_boilerplate(
             title: "Synthese".into(),
             short_text: "Une synthese lisible.".into(),
         },
+        calculation_reference: None,
         chapters: vec![ReadingChapter {
             code: "identity".into(),
             title: "Identite".into(),
+            summary_sentence: "Resume du chapitre identite.".into(),
             body: "Votre presence se construit avec profondeur. Cette lecture reste symbolique et exploratoire, non deterministe.\n\nDans une lecture symbolique, Venus montre une facon plus relationnelle de chercher l'accord.\n\nCette lecture symbolique met en lumiere une priorite relationnelle concrete.\n\nLe chapitre propose une hypothese exploratoire sur votre rythme professionnel.\n\nLe chapitre garde son developpement utile.".into(),
             astro_basis: vec![AstroBasisItem {
                 fact_id: Some("fact_identity".into()),

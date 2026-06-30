@@ -44,6 +44,7 @@ fn premium_career_drift_jupiter_in_body_rejected() {
     let chapter = ReadingChapter {
         code: "career".into(),
         title: "Carriere".into(),
+        summary_sentence: "Resume du chapitre carriere.".into(),
         body: "Jupiter en Cancer en maison 8 colore votre parcours professionnel.".into(),
         astro_basis: vec![AstroBasisItem {
             fact_id: Some("placement:mc:leo:house:10".into()),

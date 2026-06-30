@@ -169,6 +169,7 @@ fn premium_rejects_domain_score_only_chapter_basis() {
     let chapter = ReadingChapter {
         code: "identity".into(),
         title: "Identite".into(),
+        summary_sentence: "Resume du chapitre identite.".into(),
         body: "texte".into(),
         astro_basis: vec![astral_llm_domain::AstroBasisItem {
             fact_id: Some("domain_score:identity".into()),
@@ -205,6 +206,7 @@ fn premium_accepts_domain_score_plus_placement() {
     let chapter = ReadingChapter {
         code: "identity".into(),
         title: "Identite".into(),
+        summary_sentence: "Resume du chapitre identite.".into(),
         body: "texte".into(),
         astro_basis: vec![
             astral_llm_domain::AstroBasisItem {
@@ -249,6 +251,7 @@ fn premium_rejects_invalid_interpretive_role() {
     let chapter = ReadingChapter {
         code: "identity".into(),
         title: "Identite".into(),
+        summary_sentence: "Resume du chapitre identite.".into(),
         body: "texte".into(),
         astro_basis: vec![astral_llm_domain::AstroBasisItem {
             fact_id: Some("placement:sun:capricorn:house:2".into()),
@@ -287,6 +290,7 @@ fn public_label_fact_ids_are_normalized_before_validation() {
     let mut chapter = ReadingChapter {
         code: "career".into(),
         title: "Carriere".into(),
+        summary_sentence: "Resume du chapitre carriere.".into(),
         body: "texte".into(),
         astro_basis: vec![astral_llm_domain::AstroBasisItem {
             fact_id: Some("placement:Milieu du Ciel:cancer:house:10".into()),

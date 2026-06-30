@@ -195,6 +195,7 @@ fn collect_text(reading: &NatalReadingResponse) -> String {
     ];
     for chapter in &reading.chapters {
         parts.push(chapter.title.clone());
+        parts.push(chapter.summary_sentence.clone());
         parts.push(chapter.body.clone());
     }
     parts.join("\n")

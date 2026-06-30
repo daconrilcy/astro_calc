@@ -1,3 +1,32 @@
+# 2026-06-30 - Enrichissement JSON theme natal interprete
+
+Resume court:
+- la reponse `natal_reading_v1` expose maintenant `chapters[].summary_sentence`,
+  rempli par le provider quand disponible et complete deterministiquement cote
+  serveur si absent;
+- le JSON final expose `reading.calculation_reference` avec les valeurs deja
+  presentes dans le payload calculateur: systeme zodiacal, coordonnees,
+  systeme de maisons, reference d'ephemerides et precision si fournie;
+- le prompt natal recoit un contexte `significant_houses` limite a une ou deux
+  maisons dominantes quand `dominant_houses` est deja disponible dans le
+  payload, sans recalcul ni constante canonique;
+- les schemas LLM publies ont ete regeneres via le test d'export existant.
+
+Invariants de couche:
+- l'enrichissement de sortie reste dans `astral_llm_application`; les types
+  contractuels restent dans `astral_llm_domain`;
+- aucune valeur canonique de reference astrologique n'est inventee dans le
+  code: les champs sont recopies depuis le payload calculateur s'ils existent;
+- les providers restent compatibles avec les anciennes sorties, car le serveur
+  complete les resumes de chapitre avant validation finale applicative.
+
+Commandes de verification:
+- `cargo check -p astral_gateway -p astral_llm_application -p astral_llm_providers -p astral_llm_domain`
+- `cargo test -p astral_llm_api --test astral_llm_tests`
+- `cargo test -p astral_llm_api --test astral_llm_simplified_reading_tests`
+- `cargo test -p astral_gateway --test gateway_natal_v2_tests`
+- `cargo test -p astral_llm_api --test contracts_publish_tests`
+
 # 2026-06-24 - Alignement de la langue de sortie sur la demande LLM
 
 Resume court:

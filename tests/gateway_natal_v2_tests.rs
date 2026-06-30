@@ -43,10 +43,32 @@ impl astral_gateway::ports::CalculatorPort for FakeCalculator {
     ) -> Result<Value, astral_gateway::error::GatewayError> {
         Ok(json!({
             "response_contract_version": "astro_engine_response_v1",
-            "calculation_result": { "status": "completed" },
+            "calculation_result": {
+                "status": "completed",
+                "ephemeris_version": "Swiss Ephe v2.10",
+                "precision": "+ 0°00'01"
+            },
             "audit_payload": {
                 "contract_version": "natal_structured_v14",
-                "payload": { "positions": [], "signals": [] }
+                "payload": {
+                    "positions": [],
+                    "signals": [],
+                    "chart_emphasis": {
+                        "dominant_houses": [
+                            { "house_number": 2, "theme_code": "resources", "score": 0.8 },
+                            { "house_number": 1, "theme_code": "identity", "score": 0.6 }
+                        ]
+                    }
+                }
+            },
+            "llm_payload": {
+                "chart": {
+                    "calculation": {
+                        "zodiac": "Tropical",
+                        "coordinates": "Geocentric",
+                        "house_system": "Placidus"
+                    }
+                }
             }
         }))
     }
@@ -296,6 +318,27 @@ async fn natal_gateway_inspect_builds_llm_request_without_calling_llm() {
             .and_then(|value| value.get("interpretation_profile_code"))
             .and_then(|value| value.as_str()),
         Some("natal_basic")
+    );
+    assert_eq!(
+        response
+            .llm_request
+            .pointer("/astro_result/data/calculation_result/ephemeris_version")
+            .and_then(Value::as_str),
+        Some("Swiss Ephe v2.10")
+    );
+    assert_eq!(
+        response
+            .llm_request
+            .pointer("/astro_result/data/llm_payload/chart/calculation/zodiac")
+            .and_then(Value::as_str),
+        Some("Tropical")
+    );
+    assert_eq!(
+        response
+            .llm_request
+            .pointer("/astro_result/data/chart_emphasis/dominant_houses/0/house_number")
+            .and_then(Value::as_i64),
+        Some(2)
     );
 }
 

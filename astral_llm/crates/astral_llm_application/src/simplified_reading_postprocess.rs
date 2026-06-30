@@ -102,11 +102,16 @@ pub fn post_process_single_pass_reading(
     audit
 }
 
-pub fn apply_simplified_body_fallback(reading: &mut NatalReadingResponse, chapter_code: &str) {
+pub fn apply_simplified_body_fallback(
+    reading: &mut NatalReadingResponse,
+    chapter_code: &str,
+    language: &str,
+) {
     let body = simplified_deterministic_body(chapter_code);
     if let Some(chapter) = reading.chapters.first_mut() {
         chapter.code = chapter_code.to_string();
         chapter.body = body;
+        chapter.summary_sentence = build_compact_summary_from_body(&chapter.body, language);
         return;
     }
     reading.chapters.push(ReadingChapter {
@@ -116,6 +121,7 @@ pub fn apply_simplified_body_fallback(reading: &mut NatalReadingResponse, chapte
         } else {
             "Identité".into()
         },
+        summary_sentence: build_compact_summary_from_body(&body, language),
         body,
         astro_basis: vec![],
         confidence: ConfidenceLevel::Low,

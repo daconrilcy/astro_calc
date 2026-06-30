@@ -286,9 +286,11 @@ fn simplified_postprocess_compacts_summary_without_resolved_profile() {
             title: "Identité (lecture simplifiée)".into(),
             short_text: body.into(),
         },
+        calculation_reference: None,
         chapters: vec![ReadingChapter {
             code: SIMPLIFIED_CHAPTER_IDENTITY.into(),
             title: "Identité (lecture simplifiée)".into(),
+            summary_sentence: "Resume du chapitre identite.".into(),
             body: body.into(),
             astro_basis: vec![],
             confidence: ConfidenceLevel::High,
@@ -335,9 +337,11 @@ fn simplified_interpretive_roles_exclude_domain_score() {
             title: "T".into(),
             short_text: "S".into(),
         },
+        calculation_reference: None,
         chapters: vec![ReadingChapter {
             code: SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE.into(),
             title: "T".into(),
+            summary_sentence: "Resume.".into(),
             body: "B".into(),
             astro_basis: vec![AstroBasisItem {
                 fact_id: Some("placement:saturn".into()),
@@ -384,9 +388,11 @@ fn ambiguous_fallback_chain_repairs_non_conformant_equinox_reading() {
             title: "Identité".into(),
             short_text: "Résumé".into(),
         },
+        calculation_reference: None,
         chapters: vec![ReadingChapter {
             code: "identity".into(),
             title: "Identité".into(),
+            summary_sentence: "Resume du chapitre identite.".into(),
             body: "Portrait general sans marqueur d incertitude solaire explicite.".into(),
             astro_basis: vec![AstroBasisItem {
                 fact_id: Some("placement:sun".into()),
@@ -415,7 +421,7 @@ fn ambiguous_fallback_chain_repairs_non_conformant_equinox_reading() {
     assert!(!before.is_empty());
     assert!(violations_are_ambiguous_core_only(&before));
 
-    apply_simplified_body_fallback(&mut reading, SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE);
+    apply_simplified_body_fallback(&mut reading, SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE, "fr");
     let _ = harden_ambiguous_core_identity_chapter(&mut reading, true, "fr");
 
     let expected = simplified_deterministic_body(SIMPLIFIED_CHAPTER_AMBIGUOUS_CORE);

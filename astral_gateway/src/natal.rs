@@ -454,6 +454,7 @@ fn build_engine_llm_request(
         .pointer("/audit_payload/payload")
         .cloned()
         .unwrap_or(Value::Null);
+    let data = enrich_engine_payload_for_llm(payload, engine);
     Ok(json!({
         "request_id": engine.get("request_id").and_then(Value::as_str),
         "idempotency_key": null,
@@ -466,7 +467,7 @@ fn build_engine_llm_request(
         "astro_result": {
             "contract_version": contract_version,
             "chart_type": "natal",
-            "data": payload
+            "data": data
         },
         "astrologer_profile": {
             "profile_id": null,
@@ -498,6 +499,21 @@ fn build_engine_llm_request(
         },
         "safety_policy": null
     }))
+}
+
+fn enrich_engine_payload_for_llm(mut payload: Value, engine: &Value) -> Value {
+    let Some(obj) = payload.as_object_mut() else {
+        return payload;
+    };
+    if let Some(calculation_result) = engine.get("calculation_result") {
+        obj.entry("calculation_result")
+            .or_insert_with(|| calculation_result.clone());
+    }
+    if let Some(llm_payload) = engine.get("llm_payload") {
+        obj.entry("llm_payload")
+            .or_insert_with(|| llm_payload.clone());
+    }
+    payload
 }
 
 fn blocked_interpretation_fact_codes(controls: &Value) -> Vec<String> {

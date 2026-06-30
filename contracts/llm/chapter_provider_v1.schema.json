@@ -54,6 +54,10 @@
     "confidence": {
       "$ref": "#/definitions/ConfidenceLevel"
     },
+    "summary_sentence": {
+      "default": "",
+      "type": "string"
+    },
     "title": {
       "type": "string"
     }

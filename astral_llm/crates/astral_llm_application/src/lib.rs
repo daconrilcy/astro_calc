@@ -49,6 +49,7 @@ pub mod reading_opening_diversity_validator;
 pub mod reading_persistence;
 pub mod reading_plan;
 pub mod reading_quality_validator;
+pub mod reading_response_enrichment;
 pub mod reading_script_guard;
 pub mod reasoning_generation;
 pub mod request_validator;

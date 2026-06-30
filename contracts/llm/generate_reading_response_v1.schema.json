@@ -28,6 +28,41 @@
       ],
       "type": "object"
     },
+    "CalculationReferenceMetadata": {
+      "properties": {
+        "coordinate_reference_system": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ephemeris_reference": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "house_system": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "precision": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "zodiacal_reference_system": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
     "ConfidenceLevel": {
       "enum": [
         "low",
@@ -94,6 +129,16 @@
     },
     "NatalReadingResponse": {
       "properties": {
+        "calculation_reference": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/CalculationReferenceMetadata"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "chapters": {
           "items": {
             "$ref": "#/definitions/ReadingChapter"
@@ -212,6 +257,10 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "summary_sentence": {
+          "default": "",
+          "type": "string"
         },
         "title": {
           "type": "string"

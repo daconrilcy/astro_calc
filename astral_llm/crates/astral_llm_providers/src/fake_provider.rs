@@ -185,6 +185,7 @@ fn build_chapter_response(request: &ProviderGenerationRequest) -> ChapterProvide
     ChapterProviderResponse {
         code: code.clone(),
         title: code.replace('_', " "),
+        summary_sentence: "Ce chapitre resume un axe symbolique majeur du theme.".into(),
         body: chapter_body_for_code(&code),
         astro_basis: basis,
         confidence: ConfidenceLevel::Medium,
@@ -401,9 +402,11 @@ fn build_full_reading(request: &ProviderGenerationRequest) -> NatalReadingRespon
             title: "Lecture symbolique de demonstration".to_string(),
             short_text: "Interpretation symbolique de demonstration via FakeProvider.".to_string(),
         },
+        calculation_reference: None,
         chapters: vec![ReadingChapter {
             code: chapter_code,
             title: title.to_string(),
+            summary_sentence: "Votre theme suggere une personnalite reflechie.".to_string(),
             body,
             astro_basis: simplified_fake_astro_basis(&request.messages),
             confidence: ConfidenceLevel::Medium,

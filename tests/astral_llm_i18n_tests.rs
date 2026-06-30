@@ -185,6 +185,7 @@ fn role_normalizer_maps_free_text_to_core() {
     let mut chapter = ReadingChapter {
         code: "identity".into(),
         title: "T".into(),
+        summary_sentence: "Resume.".into(),
         body: "B".into(),
         astro_basis: vec![AstroBasisItem {
             fact_id: Some("placement:sun:capricorn:house:2".into()),

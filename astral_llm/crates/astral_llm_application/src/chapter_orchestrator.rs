@@ -827,6 +827,7 @@ impl<'a> ChapterOrchestrator<'a> {
             language: request.product_context.user_language.clone(),
             reading_type: request.product_context.product_code.clone(),
             summary: summary_result.summary,
+            calculation_reference: None,
             chapters: generated,
             legal: LegalBlock {
                 disclaimer: default_legal_disclaimer(
@@ -1324,6 +1325,7 @@ impl<'a> ChapterOrchestrator<'a> {
         let mut reading_chapter = ReadingChapter {
             code: chapter_reading.code.clone(),
             title: chapter_reading.title,
+            summary_sentence: chapter_reading.summary_sentence,
             body: chapter_reading.body.clone(),
             astro_basis: chapter_reading.astro_basis,
             confidence: chapter_reading.confidence,

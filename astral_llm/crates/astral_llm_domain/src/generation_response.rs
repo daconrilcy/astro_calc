@@ -43,6 +43,8 @@ pub struct NatalReadingResponse {
     pub language: String,
     pub reading_type: String,
     pub summary: ReadingSummary,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub calculation_reference: Option<CalculationReferenceMetadata>,
     pub chapters: Vec<ReadingChapter>,
     pub legal: LegalBlock,
     pub quality: QualityMetadata,
@@ -66,6 +68,8 @@ pub struct SummaryProviderResponse {
 pub struct ChapterProviderResponse {
     pub code: String,
     pub title: String,
+    #[serde(default)]
+    pub summary_sentence: String,
     pub body: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub astro_basis: Vec<AstroBasisItem>,
@@ -76,12 +80,28 @@ pub struct ChapterProviderResponse {
 pub struct ReadingChapter {
     pub code: String,
     pub title: String,
+    #[serde(default)]
+    pub summary_sentence: String,
     pub body: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub astro_basis: Vec<AstroBasisItem>,
     pub confidence: ConfidenceLevel,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub safety_flags: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct CalculationReferenceMetadata {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub zodiacal_reference_system: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub coordinate_reference_system: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub house_system: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ephemeris_reference: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub precision: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

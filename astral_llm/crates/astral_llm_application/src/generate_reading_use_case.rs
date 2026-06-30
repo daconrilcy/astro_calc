@@ -34,6 +34,7 @@ use crate::reading_persistence::{
     PersistedSafetyStatus, SharedReadingPersistence,
 };
 use crate::reading_quality_validator::ReadingQualityValidator;
+use crate::reading_response_enrichment::enrich_reading_response;
 use crate::reasoning_generation::{
     apply_reasoning_output_reserve, effective_temperature, resolve_reasoning_effort,
 };
@@ -372,7 +373,7 @@ impl GenerateReadingUseCase {
             ));
         }
 
-        let reading = match request.response_contract.generation_mode {
+        let mut reading = match request.response_contract.generation_mode {
             GenerationMode::ChapterOrchestrated => {
                 let orchestrator = ChapterOrchestrator::new(
                     &self.router,
@@ -420,6 +421,8 @@ impl GenerateReadingUseCase {
             }
         };
 
+        enrich_reading_response(&mut reading, &request);
+
         if !matches!(
             request.response_contract.generation_mode,
             GenerationMode::ChapterOrchestrated
@@ -445,24 +448,19 @@ impl GenerateReadingUseCase {
             self.validate_simplified_reading(&request, &reading)?;
         }
 
-        if !matches!(
-            request.response_contract.generation_mode,
-            GenerationMode::SinglePass
-        ) {
-            SafetyGuard::validate_response(
-                &reading,
-                &safety_policy,
-                &request.astrologer_profile.forbidden_wording,
-                self.catalog.shared_catalog(),
+        SafetyGuard::validate_response(
+            &reading,
+            &safety_policy,
+            &request.astrologer_profile.forbidden_wording,
+            self.catalog.shared_catalog(),
+        )
+        .map_err(|violations| {
+            GenerationError::with_details(
+                GenerationErrorCode::PostSafetyValidationFailed,
+                "generated content failed safety validation",
+                serde_json::json!({ "violations": violations }),
             )
-            .map_err(|violations| {
-                GenerationError::with_details(
-                    GenerationErrorCode::PostSafetyValidationFailed,
-                    "generated content failed safety validation",
-                    serde_json::json!({ "violations": violations }),
-                )
-            })?;
-        }
+        })?;
 
         ReadingQualityValidator::validate_for_product(&request, &reading, interpretation)?;
         Ok(reading)

@@ -9,6 +9,7 @@ use astral_llm_infra::SharedCanonicalCatalog;
 use crate::astro_payload_normalizer::AstroPayloadNormalizer;
 use crate::interpretation_profile_resolver::ResolvedInterpretationContext;
 use crate::payload_sanitizer::sanitize_custom_instructions;
+use crate::reading_response_enrichment::attach_significant_houses;
 use crate::simplified_reading::{prompt_constraints_block, SIMPLIFIED_PROFILE};
 use crate::writing_language::WritingLanguageDirective;
 
@@ -139,6 +140,7 @@ impl PromptCompiler {
             )
         };
         attach_neutral_explanations(&mut data_payload, &input.request.astro_result.data);
+        attach_significant_houses(&mut data_payload, &input.request.astro_result.data);
 
         let language_block = WritingLanguageDirective::prompt_block(
             input.catalog,

@@ -2,20 +2,24 @@
 
 use std::sync::Arc;
 
+use astral_llm_application::reading_response_enrichment::attach_significant_houses;
 use astral_llm_application::{
     build_provider_map, ensure_symbolic_framing_text, GenerateReadingUseCase,
     ModelCapabilityRegistry, PromptCompiler, ProviderCircuitBreaker, ProviderRouter,
-    ResponseValidator, SchemaRegistry,
+    ResponseValidator, SafetyGuard, SchemaRegistry,
 };
 use astral_llm_domain::{
     astrologer_profile::{JargonLevel, ToneProfile, WordingStyle},
     engine_params::EngineParams,
     generation_request::{AudienceLevel, GenerateReadingRequest, ProductContext},
-    generation_response::GenerateReadingResponse,
+    generation_response::{
+        ConfidenceLevel, GenerateReadingResponse, LegalBlock, NatalReadingResponse,
+        QualityMetadata, ReadingChapter, ReadingSummary,
+    },
     output_contract::{GenerationMode, OutputFormat, ResponseContract},
     provider::ProviderKind,
     AstroCalculationPayload, AstrologerProfile, EngineDefaults, FallbackPolicy, PrivacyPolicy,
-    ServiceLimits, TokenUsageType,
+    SafetyPolicy, ServiceLimits, TokenUsageType,
 };
 use astral_llm_infra::{
     bootstrap_astro_basis_roles, bootstrap_domains, bootstrap_interpretation_profiles,
@@ -95,6 +99,25 @@ fn sample_request_with_engine(
             contract_version: "natal_structured_v14".into(),
             chart_type: "natal".into(),
             data: serde_json::json!({
+                "calculation_result": {
+                    "ephemeris_version": "Swiss Ephe v2.10",
+                    "precision": "+ 0°00'01"
+                },
+                "llm_payload": {
+                    "chart": {
+                        "calculation": {
+                            "zodiac": "Tropical",
+                            "coordinates": "Geocentric",
+                            "house_system": "Placidus"
+                        }
+                    }
+                },
+                "chart_emphasis": {
+                    "dominant_houses": [
+                        { "house_number": 2, "theme_code": "resources", "score": 0.8 },
+                        { "house_number": 1, "theme_code": "identity", "score": 0.6 }
+                    ]
+                },
                 "domain_scores": {
                     "identity": 0.8,
                     "relationships": 0.6
@@ -150,6 +173,74 @@ fn build_use_case(catalog: Arc<CanonicalCatalog>) -> GenerateReadingUseCase {
     )
 }
 
+#[test]
+fn significant_houses_are_attached_to_prompt_payload() {
+    let astro_data = serde_json::json!({
+        "chart_emphasis": {
+            "dominant_houses": [
+                { "house_number": 2, "theme_code": "resources", "score": 0.8 },
+                { "house_number": 1, "theme_code": "identity", "score": 0.6 },
+                { "house_number": 10, "theme_code": "career", "score": 0.4 }
+            ]
+        }
+    });
+    let mut prompt_payload = serde_json::json!({});
+
+    attach_significant_houses(&mut prompt_payload, &astro_data);
+
+    let houses = prompt_payload["significant_houses"]
+        .as_array()
+        .expect("significant_houses");
+    assert_eq!(houses.len(), 2);
+    assert_eq!(houses[0]["house_number"], 2);
+    assert_eq!(houses[1]["theme_code"], "identity");
+}
+
+#[test]
+fn safety_guard_checks_chapter_summary_sentence() {
+    let catalog = test_catalog();
+    let reading = NatalReadingResponse {
+        schema_version: "natal_reading_v1".into(),
+        language: "fr".into(),
+        reading_type: "natal_prompter".into(),
+        summary: ReadingSummary {
+            title: "Titre".into(),
+            short_text: "Lecture symbolique.".into(),
+        },
+        calculation_reference: None,
+        chapters: vec![ReadingChapter {
+            code: "identity".into(),
+            title: "Identite".into(),
+            summary_sentence: "Phrase avec terme interdit.".into(),
+            body: "Lecture symbolique du theme natal.".into(),
+            astro_basis: vec![],
+            confidence: ConfidenceLevel::Medium,
+            safety_flags: vec![],
+        }],
+        legal: LegalBlock {
+            disclaimer: "Disclaimer.".into(),
+        },
+        quality: QualityMetadata {
+            used_provider: "fake".into(),
+            used_model: "fake".into(),
+            generation_mode: GenerationMode::SinglePass,
+            prompt_family: "natal_prompter".into(),
+            prompt_version: "v1".into(),
+            astro_contract_version: "natal_structured_v14".into(),
+            fallback_used: false,
+        },
+    };
+
+    let err = SafetyGuard::validate_response(
+        &reading,
+        &SafetyPolicy::default(),
+        &["interdit".into()],
+        &catalog,
+    )
+    .expect_err("summary_sentence must be checked");
+    assert!(err.iter().any(|item| item.contains("interdit")));
+}
+
 #[tokio::test]
 async fn generate_single_pass_with_fake_provider() {
     let use_case = build_use_case(test_catalog());
@@ -164,6 +255,20 @@ async fn generate_single_pass_with_fake_provider() {
         } => {
             assert_eq!(reading.schema_version, "natal_reading_v1");
             assert!(!reading.chapters.is_empty());
+            assert!(!reading.chapters[0].summary_sentence.trim().is_empty());
+            let calculation = reading
+                .calculation_reference
+                .expect("calculation reference metadata");
+            assert_eq!(
+                calculation.zodiacal_reference_system.as_deref(),
+                Some("Tropical")
+            );
+            assert_eq!(calculation.house_system.as_deref(), Some("Placidus"));
+            assert_eq!(
+                calculation.ephemeris_reference.as_deref(),
+                Some("Swiss Ephe v2.10")
+            );
+            assert_eq!(calculation.precision.as_deref(), Some("+ 0°00'01"));
             let usage = token_usage.expect("public token usage");
             assert_eq!(usage.summary.input_tokens, Some(120));
             assert_eq!(usage.summary.output_tokens, Some(450));
