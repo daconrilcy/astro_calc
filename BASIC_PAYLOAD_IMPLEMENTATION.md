@@ -1651,3 +1651,25 @@ Commandes de verification:
 - `cargo fmt --package astral_llm_application`
 - `cargo test -p astral_llm_api --test prompt_golden_tests`
 - `cargo test -p astral_llm_api --test astral_llm_i18n_tests`
+
+## 2026-07-01 - theme natal: garde ponctuation publique
+
+Resume court:
+- ajout d'un garde qualite sur la prose publique du theme natal pour refuser les chapitres longs sans ponctuation lisible;
+- confirmation que le retraitement ne doit pas supprimer `.`, `,`, `;`, `:`, `!` ou `?`;
+- maintien de la seule normalisation typographique demandee: `—` devient `-`.
+
+Invariants de couche:
+- la regle bloquante vit dans `ReadingQualityValidator`, pas dans le retraitement texte qui reste un nettoyage leger;
+- les champs techniques (`code`, `fact_id`, `*_code`, `*_id`, `*_key`, `astro_basis`) ne participent pas au garde de ponctuation;
+- aucun contrat JSON public ni schema persiste n'est modifie.
+
+Commandes de verification:
+- `cargo test -p astral_llm_application --test reading_quality_validator_tests`
+- `cargo test -p astral_llm_application --test text_reprocessing_application_tests`
+- `cargo test -p astral_llm_api --test prompt_golden_tests`
+
+Note:
+- `cargo test -p astral_llm_api --test astral_llm_editorial_fixtures` reste une
+  verification plus large, mais la suite contient encore des echecs de baseline
+  premium sans lien avec cette vague.

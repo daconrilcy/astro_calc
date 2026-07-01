@@ -145,6 +145,7 @@ fn remove_symbolic_boilerplate_sentences(paragraph: &str) -> String {
 
 fn strip_symbolic_boilerplate_fragments(text: &str) -> String {
     let mut cleaned = text.to_string();
+    let mut changed = false;
     for phrase in [
         "Cette lecture reste symbolique et exploratoire, non deterministe.",
         "Cette lecture reste symbolique et exploratoire, non déterministe.",
@@ -163,13 +164,24 @@ fn strip_symbolic_boilerplate_fragments(text: &str) -> String {
         "dans une lecture symbolique",
         "Dans une lecture symbolique",
     ] {
-        cleaned = cleaned.replace(phrase, "");
+        if cleaned.contains(phrase) {
+            cleaned = cleaned.replace(phrase, "");
+            changed = true;
+        }
     }
-    let cleaned = cleaned.trim().trim_matches(|ch: char| {
+    let normalized_for_detection = cleaned.trim().trim_matches(|ch: char| {
         ch.is_whitespace() || matches!(ch, '.' | '!' | '?' | ',' | ';' | ':')
     });
-    if is_symbolic_boilerplate_sentence(cleaned) {
+    if is_symbolic_boilerplate_sentence(normalized_for_detection) {
         return String::new();
+    }
+    if changed {
+        cleaned = cleaned
+            .trim()
+            .trim_matches(|ch: char| {
+                ch.is_whitespace() || matches!(ch, '.' | '!' | '?' | ',' | ';' | ':')
+            })
+            .to_string();
     }
     cleaned
         .split_whitespace()

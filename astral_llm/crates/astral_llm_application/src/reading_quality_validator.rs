@@ -13,6 +13,7 @@ pub struct ReadingQualityReport {
     pub chapter_length_ok: bool,
     pub interpretive_framing_ok: bool,
     pub repetition_ok: bool,
+    pub public_punctuation_ok: bool,
     pub deterministic_claims_ok: bool,
     pub disclaimer_ok: bool,
     pub astro_basis_density_ok: bool,
@@ -100,6 +101,8 @@ impl ReadingQualityValidator {
             warnings.push("premium reading has no chapters".into());
         }
 
+        warnings.extend(public_text_punctuation_warnings(reading));
+
         for chapter in &reading.chapters {
             let words = word_count(&chapter.body);
             let min_words = if chapter.code == SYNTHESIS_CHAPTER_CODE {
@@ -176,6 +179,7 @@ impl ReadingQualityValidator {
         report.chapter_length_ok = !warnings.iter().any(|w| w.contains("too short"));
         report.interpretive_framing_ok = !warnings.iter().any(|w| w.contains("interpretive"));
         report.repetition_ok = !warnings.iter().any(|w| w.contains("repetition"));
+        report.public_punctuation_ok = !warnings.iter().any(|w| w.contains("punctuation"));
         report.deterministic_claims_ok = !warnings.iter().any(|w| w.contains("deterministic"));
         report.disclaimer_ok = !warnings.iter().any(|w| w.contains("disclaimer"));
         report.astro_basis_density_ok = !warnings.iter().any(|w| w.contains("astro_basis"));
@@ -264,6 +268,60 @@ pub fn thresholds_for_request(
 
 fn word_count(text: &str) -> usize {
     text.split_whitespace().count()
+}
+
+fn public_text_punctuation_warnings(reading: &NatalReadingResponse) -> Vec<String> {
+    let mut warnings = Vec::new();
+    if lacks_readable_punctuation(&reading.summary.short_text) {
+        warnings.push("summary.short_text lacks readable punctuation".into());
+    }
+    if lacks_readable_punctuation(&reading.legal.disclaimer) {
+        warnings.push("legal.disclaimer lacks readable punctuation".into());
+    }
+    for chapter in &reading.chapters {
+        if lacks_readable_punctuation(&chapter.summary_sentence) {
+            warnings.push(format!(
+                "chapter '{}' summary_sentence lacks readable punctuation",
+                chapter.code
+            ));
+        }
+        if lacks_readable_punctuation(&chapter.body) {
+            warnings.push(format!(
+                "chapter '{}' lacks readable punctuation",
+                chapter.code
+            ));
+        }
+    }
+    warnings
+}
+
+fn lacks_readable_punctuation(text: &str) -> bool {
+    const MIN_WORDS_FOR_TERMINAL_PUNCTUATION: usize = 12;
+    const MIN_WORDS_FOR_DENSITY: usize = 40;
+    const MAX_WORDS_PER_PUNCTUATION_MARK: usize = 45;
+
+    let words = word_count(text);
+    if words < MIN_WORDS_FOR_TERMINAL_PUNCTUATION {
+        return false;
+    }
+
+    let terminal_count = text
+        .chars()
+        .filter(|ch| matches!(ch, '.' | '!' | '?'))
+        .count();
+    if terminal_count == 0 {
+        return true;
+    }
+
+    if words < MIN_WORDS_FOR_DENSITY {
+        return false;
+    }
+
+    let punctuation_count = text
+        .chars()
+        .filter(|ch| matches!(ch, '.' | ',' | ';' | ':' | '!' | '?'))
+        .count();
+    punctuation_count == 0 || words / punctuation_count > MAX_WORDS_PER_PUNCTUATION_MARK
 }
 
 fn has_interpretive_framing(body: &str) -> bool {

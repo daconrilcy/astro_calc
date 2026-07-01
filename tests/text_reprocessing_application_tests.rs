@@ -889,6 +889,74 @@ fn text_reprocessing_adapter_natal_simplified_preserves_technical_fields() {
 }
 
 #[test]
+fn text_reprocessing_adapter_natal_theme_preserves_standard_punctuation() {
+    let mut reading = NatalReadingResponse {
+        schema_version: "natal_reading_v1".into(),
+        language: LANG_FR.into(),
+        reading_type: "natal_prompter".into(),
+        summary: ReadingSummary {
+            title: "Synthese — lisible".into(),
+            short_text: "Une synthese, courte; claire: et ponctuee.".into(),
+        },
+        calculation_reference: None,
+        chapters: vec![ReadingChapter {
+            code: "identity".into(),
+            title: "Identite — Soleil".into(),
+            summary_sentence: "Une phrase, autonome; claire: et ponctuee.".into(),
+            body: "Cette interpretation suggere une progression symbolique, nuancee; lisible: elle garde les points. Elle transforme seulement le tiret — cadratin.".into(),
+            astro_basis: vec![AstroBasisItem {
+                fact_id: Some("placement:sun—capricorn".into()),
+                label: Some("Soleil — Capricorne".into()),
+                factor: "sun factor".into(),
+                interpretive_role: "core".into(),
+            }],
+            confidence: ConfidenceLevel::High,
+            safety_flags: vec![],
+        }],
+        legal: LegalBlock {
+            disclaimer: "Cette lecture est symbolique, indicative; non deterministe.".into(),
+        },
+        quality: QualityMetadata {
+            used_provider: "fixture".into(),
+            used_model: "fixture".into(),
+            generation_mode: GenerationMode::ChapterOrchestrated,
+            prompt_family: "fixture".into(),
+            prompt_version: "fixture".into(),
+            astro_contract_version: "fixture".into(),
+            fallback_used: false,
+        },
+    };
+
+    reprocess_natal_theme(&mut reading, LANG_FR).expect("fixture must reprocess");
+
+    assert_eq!(reading.summary.title, "Synthese - lisible");
+    assert_eq!(
+        reading.summary.short_text,
+        "Une synthese, courte; claire : et ponctuee."
+    );
+    assert_eq!(
+        reading.chapters[0].summary_sentence,
+        "Une phrase, autonome; claire : et ponctuee."
+    );
+    assert!(reading.chapters[0]
+        .body
+        .contains("symbolique, nuancee; lisible : elle garde les points."));
+    assert!(reading.chapters[0].body.contains("tiret - cadratin."));
+    assert_eq!(
+        reading.chapters[0].astro_basis[0].fact_id.as_deref(),
+        Some("placement:sun—capricorn")
+    );
+    assert_eq!(
+        reading.chapters[0].astro_basis[0].label.as_deref(),
+        Some("Soleil - Capricorne")
+    );
+    assert!(reading
+        .legal
+        .disclaimer
+        .contains("symbolique, indicative; non deterministe."));
+}
+
+#[test]
 fn text_reprocessing_adapter_natal_theme_removes_chapter_disclaimer_boilerplate() {
     let mut reading = NatalReadingResponse {
         schema_version: "natal_reading_v1".into(),

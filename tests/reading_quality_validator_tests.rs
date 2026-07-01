@@ -222,6 +222,65 @@ fn premium_rejects_chapter_below_strengthened_word_floor() {
 }
 
 #[test]
+fn premium_rejects_long_chapter_without_readable_punctuation() {
+    let request = premium_request("natal_premium");
+    let mut reading = good_reading();
+    let ctx = premium_ctx("natal_premium");
+    reading.chapters[0].body = reading.chapters[0]
+        .body
+        .replace(['.', ',', ';', ':', '!', '?'], "");
+
+    let report = ReadingQualityValidator::assess(&request, &reading, Some(&ctx));
+
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|warning| warning == "chapter 'identity' lacks readable punctuation"),
+        "expected punctuation warning, got {:?}",
+        report.warnings
+    );
+    assert!(!report.public_punctuation_ok);
+    assert!(ReadingQualityValidator::validate_for_product(&request, &reading, Some(&ctx)).is_err());
+}
+
+#[test]
+fn premium_accepts_normally_punctuated_chapter() {
+    let request = premium_request("natal_premium");
+    let reading = good_reading();
+    let ctx = premium_ctx("natal_premium");
+    let report = ReadingQualityValidator::assess(&request, &reading, Some(&ctx));
+
+    assert!(
+        report.public_punctuation_ok,
+        "unexpected warnings: {:?}",
+        report.warnings
+    );
+    assert!(ReadingQualityValidator::validate_for_product(&request, &reading, Some(&ctx)).is_ok());
+}
+
+#[test]
+fn premium_punctuation_gate_ignores_technical_astro_basis_fields() {
+    let request = premium_request("natal_premium");
+    let mut reading = good_reading();
+    let ctx = premium_ctx("natal_premium");
+    reading.chapters[0].astro_basis = vec![
+        basis("domain_score:identity", "identity", "domain_score"),
+        basis("placement:sun:capricorn:house:2", "sun", "core"),
+        basis("placement:moon:cancer:house:4", "moon", "core"),
+        basis("aspect:sun:moon:trine", "sun moon", "supporting"),
+    ];
+
+    let report = ReadingQualityValidator::assess(&request, &reading, Some(&ctx));
+
+    assert!(
+        report.public_punctuation_ok,
+        "technical fields must not trigger punctuation warnings: {:?}",
+        report.warnings
+    );
+}
+
+#[test]
 fn normalize_chapter_code_accepts_model_suffix_drift() {
     assert_eq!(
         normalize_chapter_code("emotional_life_natal_premium_v1", "emotional_life").as_deref(),
